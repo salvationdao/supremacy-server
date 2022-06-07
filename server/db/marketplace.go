@@ -380,9 +380,7 @@ func MarketplaceItemSaleList(
 	}
 
 	records := []*server.MarketplaceSaleItem{}
-	boil.DebugMode = true
 	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
@@ -486,18 +484,19 @@ func MarketplaceSaleCreate(
 
 	if hasBuyout {
 		obj.Buyout = true
-		obj.BuyoutPrice = askingPrice
+		obj.BuyoutPrice = decimal.NewNullDecimal(askingPrice.Decimal.Mul(decimal.New(1, 18)))
 	}
 	if hasAuction {
+		auctionPrice := decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
 		obj.Auction = true
-		obj.AuctionCurrentPrice = auctionReservedPrice
-		obj.AuctionReservedPrice = auctionReservedPrice
+		obj.AuctionCurrentPrice = auctionPrice
+		obj.AuctionReservedPrice = auctionPrice
 	}
 	if hasDutchAuction {
 		obj.DutchAuction = true
-		obj.BuyoutPrice = askingPrice
-		obj.DutchAuctionDropRate = dutchAuctionDropRate
-		obj.AuctionReservedPrice = auctionReservedPrice
+		obj.BuyoutPrice = decimal.NewNullDecimal(askingPrice.Decimal.Mul(decimal.New(1, 18)))
+		obj.DutchAuctionDropRate = decimal.NewNullDecimal(dutchAuctionDropRate.Decimal.Mul(decimal.New(1, 18)))
+		obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
 	}
 
 	err := obj.Insert(conn, boil.Infer())
@@ -573,7 +572,7 @@ func MarketplaceSaleBidHistoryCreate(conn boil.Executor, id uuid.UUID, bidderUse
 		ItemSaleID: id.String(),
 		BidderID:   bidderUserID.String(),
 		BidTXID:    txid,
-		BidPrice:   amount,
+		BidPrice:   amount.Mul(decimal.New(1, 18)),
 	}
 	err := obj.Insert(conn, boil.Infer())
 	if err != nil {

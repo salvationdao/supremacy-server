@@ -635,7 +635,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.String(),
+		Amount:               saleItemCost.Mul(decimal.New(1, 18)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
@@ -788,7 +788,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.String(),
+		Amount:               saleItemCost.Mul(decimal.New(1, 18)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|keycard|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
@@ -965,7 +965,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               req.Payload.Amount.String(),
+		Amount:               req.Payload.Amount.Mul(decimal.New(1, 18)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
@@ -1068,7 +1068,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 
 	// Broadcast new current price
 	resp := &SaleItemUpdate{
-		AuctionCurrentPrice: req.Payload.Amount.String(),
+		AuctionCurrentPrice: req.Payload.Amount.Mul(decimal.New(1, 18)).String(),
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
 
