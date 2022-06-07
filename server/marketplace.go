@@ -15,6 +15,7 @@ type MarketplaceSaleItem struct {
 	Auction              bool                     `json:"auction" boil:"auction"`
 	AuctionCurrentPrice  null.String              `json:"auction_current_price,omitempty" boil:"auction_current_price"`
 	AuctionReservedPrice null.String              `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
+	TotalBids            int64                    `json:"total_bids" boil:"total_bids"`
 	Buyout               bool                     `json:"buyout" boil:"buyout"`
 	BuyoutPrice          null.String              `json:"buyout_price" boil:"buyout_price"`
 	DutchAuction         bool                     `json:"dutch_auction" boil:"dutch_auction"`
