@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -21,13 +22,13 @@ type AuctionController struct {
 }
 
 type ItemSaleAuction struct {
-	ID               uuid.UUID `boil:"id"`
-	CollectionItemID uuid.UUID `boil:"collection_item_id"`
-	ItemType         string    `boil:"item_type"`
-	OwnerID          uuid.UUID `boil:"owner_id"`
-	AuctionBidPrice  string    `boil:"auction_bid_price"`
-	AuctionBidUserID uuid.UUID `boil:"auction_bid_user_id"`
-	FactionID        uuid.UUID `boil:"faction_id"`
+	ID               uuid.UUID       `boil:"id"`
+	CollectionItemID uuid.UUID       `boil:"collection_item_id"`
+	ItemType         string          `boil:"item_type"`
+	OwnerID          uuid.UUID       `boil:"owner_id"`
+	AuctionBidPrice  decimal.Decimal `boil:"auction_bid_price"`
+	AuctionBidUserID uuid.UUID       `boil:"auction_bid_user_id"`
+	FactionID        uuid.UUID       `boil:"faction_id"`
 }
 
 func NewAuctionController(pp *xsyn_rpcclient.XsynXrpcClient) *AuctionController {
@@ -98,7 +99,7 @@ func (a *AuctionController) Run() {
 				txid, err := a.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 					ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
-					Amount:               auctionItem.AuctionBidPrice,
+					Amount:               auctionItem.AuctionBidPrice.String(),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_auction_item:%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupMarketplace),
 					SubGroup:             "SUPREMACY",
@@ -109,7 +110,7 @@ func (a *AuctionController) Run() {
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
 						Err(err).
 						Msg("Failed to send sups to item seller.")
 					continue
@@ -121,7 +122,7 @@ func (a *AuctionController) Run() {
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
 						Err(err).
 						Msg("Failed to start db transaction.")
 					continue
@@ -132,7 +133,7 @@ func (a *AuctionController) Run() {
 				saleItemRecord := &boiler.ItemSale{
 					ID:       auctionItem.ID.String(),
 					SoldAt:   null.TimeFrom(time.Now()),
-					SoldFor:  null.StringFrom(auctionItem.AuctionBidPrice),
+					SoldFor:  decimal.NewNullDecimal(auctionItem.AuctionBidPrice),
 					SoldTXID: null.StringFrom(txid),
 					SoldBy:   null.StringFrom(auctionItem.AuctionBidUserID.String()),
 				}
@@ -148,7 +149,7 @@ func (a *AuctionController) Run() {
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
 						Err(err).
 						Msg("Failed to process transaction for Purchase Sale Item.")
 					continue
@@ -162,7 +163,7 @@ func (a *AuctionController) Run() {
 						gamelog.L.Error().
 							Str("item_id", auctionItem.ID.String()).
 							Str("user_id", auctionItem.AuctionBidUserID.String()).
-							Str("cost", auctionItem.AuctionBidPrice).
+							Str("cost", auctionItem.AuctionBidPrice.String()).
 							Err(err).
 							Msg("Failed to Transfer Mech to New Owner")
 						continue
@@ -176,7 +177,7 @@ func (a *AuctionController) Run() {
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
 						Err(err).
 						Msg("Failed to commit db transaction")
 					continue

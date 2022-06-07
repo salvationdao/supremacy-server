@@ -53,16 +53,16 @@ const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"
 type MarketplaceSalesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID             server.UserID `json:"user_id"`
-		SortDir            db.SortByDir  `json:"sort_dir"`
-		SortBy             string        `json:"sort_by"`
-		FilterRarities     []string      `json:"rarities"`
-		FilterListingTypes []string      `json:"listing_types"`
-		MinPrice           *string       `json:"min_price"`
-		MaxPrice           *string       `json:"max_price"`
-		Search             string        `json:"search"`
-		PageSize           int           `json:"page_size"`
-		Page               int           `json:"page"`
+		UserID             server.UserID       `json:"user_id"`
+		SortDir            db.SortByDir        `json:"sort_dir"`
+		SortBy             string              `json:"sort_by"`
+		FilterRarities     []string            `json:"rarities"`
+		FilterListingTypes []string            `json:"listing_types"`
+		MinPrice           decimal.NullDecimal `json:"min_price"`
+		MaxPrice           decimal.NullDecimal `json:"max_price"`
+		Search             string              `json:"search"`
+		PageSize           int                 `json:"page_size"`
+		Page               int                 `json:"page"`
 	} `json:"payload"`
 }
 
@@ -88,6 +88,8 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		nil,
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
+		req.Payload.MinPrice,
+		req.Payload.MaxPrice,
 		user.ID,
 		offset,
 		req.Payload.PageSize,
@@ -199,15 +201,15 @@ const HubKeyMarketplaceSalesCreate = "MARKETPLACE:SALES:CREATE"
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemType             string    `json:"item_type"`
-		ItemID               uuid.UUID `json:"item_id"`
-		HasBuyout            bool      `json:"has_buyout"`
-		HasAuction           bool      `json:"has_auction"`
-		HasDutchAuction      bool      `json:"has_dutch_auction"`
-		AskingPrice          *string   `json:"asking_price"`
-		AuctionReservedPrice *string   `json:"auction_reserved_price"`
-		DutchAuctionDropRate *string   `json:"dutch_auction_drop_rate"`
-		ListingDurationHours int64     `json:"listing_duration_hours"`
+		ItemType             string              `json:"item_type"`
+		ItemID               uuid.UUID           `json:"item_id"`
+		HasBuyout            bool                `json:"has_buyout"`
+		HasAuction           bool                `json:"has_auction"`
+		HasDutchAuction      bool                `json:"has_dutch_auction"`
+		AskingPrice          decimal.NullDecimal `json:"asking_price"`
+		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
+		DutchAuctionDropRate decimal.NullDecimal `json:"dutch_auction_drop_rate"`
+		ListingDurationHours int64               `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -240,40 +242,20 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check price input
-	var (
-		askingPrice          *decimal.Decimal
-		auctionReservedPrice *decimal.Decimal
-		dutchAuctionDropRate *decimal.Decimal
-	)
 	if req.Payload.HasBuyout || req.Payload.HasDutchAuction {
-		if req.Payload.AskingPrice == nil {
+		if !req.Payload.AskingPrice.Valid {
 			return terror.Error(terror.ErrInvalidInput, "Asking Price is required.")
 		}
-		price, err := decimal.NewFromString(*req.Payload.AskingPrice)
-		if err != nil {
-			return terror.Error(err, "Asking Price is invalid.")
-		}
-		askingPrice = &price
 	}
 	if req.Payload.HasAuction || req.Payload.HasDutchAuction {
-		if req.Payload.AuctionReservedPrice == nil {
+		if !req.Payload.AuctionReservedPrice.Valid {
 			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
 		}
-		price, err := decimal.NewFromString(*req.Payload.AuctionReservedPrice)
-		if err != nil {
-			return terror.Error(err, "Reserved Auction Price is invalid.")
-		}
-		auctionReservedPrice = &price
 	}
 	if req.Payload.HasDutchAuction {
-		if req.Payload.DutchAuctionDropRate == nil {
+		if !req.Payload.DutchAuctionDropRate.Valid {
 			return terror.Error(terror.ErrInvalidInput, "Drop Rate is required.")
 		}
-		price, err := decimal.NewFromString(*req.Payload.DutchAuctionDropRate)
-		if err != nil {
-			return terror.Error(err, "Drop Rate is invalid.")
-		}
-		dutchAuctionDropRate = &price
 	}
 
 	// Check if allowed to sell item
@@ -391,11 +373,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		endAt,
 		collectionItemID,
 		req.Payload.HasBuyout,
-		askingPrice,
+		req.Payload.AskingPrice,
 		req.Payload.HasAuction,
-		auctionReservedPrice,
+		req.Payload.AuctionReservedPrice,
 		req.Payload.HasDutchAuction,
-		dutchAuctionDropRate,
+		req.Payload.DutchAuctionDropRate,
 	)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
@@ -615,49 +597,22 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 
 	// Calculate Cost depending on sale type
 	saleType := "BUYOUT"
-	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice.String)
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Err(err).
-			Msg("Unable to get current buyout price.")
-		return terror.Error(err, errMsg)
-	}
+	saleItemCost := saleItem.BuyoutPrice.Decimal
 	if saleItem.DutchAuction {
 		saleType = "DUTCH_AUCTION"
-		auctionReservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
-		if err != nil {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Unable to get current auction reserved price.")
-			return terror.Error(err, errMsg)
-		}
-		if saleItem.DutchAuctionDropRate.IsZero() {
+		if !saleItem.DutchAuctionDropRate.Valid {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
 				Str("item_sale_id", req.Payload.ID.String()).
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
 		}
-		dropRate, err := decimal.NewFromString(saleItem.DutchAuctionDropRate.String)
-		if err != nil {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Str("drop_rate_amount", saleItem.DutchAuctionDropRate.String).
-				Msg("Dutch Auction Drop rate is missing.")
-			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
-		}
-
 		hoursLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Hours()))
-		dutchAuctionAmount := saleItemCost.Sub(dropRate.Mul(hoursLapse))
-		if dutchAuctionAmount.GreaterThanOrEqual(auctionReservedPrice) {
+		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(hoursLapse))
+		if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 			saleItemCost = dutchAuctionAmount
 		} else {
-			saleItemCost = auctionReservedPrice
+			saleItemCost = saleItem.AuctionCurrentPrice.Decimal
 		}
 	}
 
@@ -719,7 +674,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	saleItemRecord := &boiler.ItemSale{
 		ID:       saleItem.ID,
 		SoldAt:   null.TimeFrom(time.Now()),
-		SoldFor:  null.StringFrom(saleItemCost.String()),
+		SoldFor:  decimal.NewNullDecimal(saleItemCost),
 		SoldTXID: null.StringFrom(txid),
 		SoldBy:   null.StringFrom(user.ID),
 	}
@@ -814,15 +769,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 
-	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice)
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Err(err).
-			Msg("Unable to get current buyout price.")
-		return terror.Error(err, errMsg)
-	}
+	saleItemCost := saleItem.BuyoutPrice
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
@@ -880,7 +827,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	saleItemRecord := &boiler.ItemKeycardSale{
 		ID:       saleItem.ID,
 		SoldAt:   null.TimeFrom(time.Now()),
-		SoldFor:  null.StringFrom(saleItemCost.String()),
+		SoldFor:  decimal.NewNullDecimal(saleItemCost),
 		SoldTXID: null.StringFrom(txid),
 		SoldBy:   null.StringFrom(user.ID),
 	}
@@ -946,8 +893,8 @@ const HubKeyMarketplaceSalesBid = "MARKETPLACE:SALES:BID"
 type MarketplaceSalesBidRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ID     uuid.UUID `json:"id"`
-		Amount string    `json:"amount"`
+		ID     uuid.UUID       `json:"id"`
+		Amount decimal.Decimal `json:"amount"`
 	} `json:"payload"`
 }
 
@@ -995,51 +942,22 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
 	}
-
-	reservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
-			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
-			Err(err).
-			Msg("Unable to retrieve sale item.")
-		return terror.Error(err, errMsg)
-	}
-
-	currentAmount, err := decimal.NewFromString(saleItem.AuctionCurrentPrice.String)
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
-			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
-			Err(err).
-			Msg("Unable to retrieve sale item.")
-		return terror.Error(err, errMsg)
-	}
-
-	bidAmount, err := decimal.NewFromString(req.Payload.Amount)
-	if err != nil {
-		return terror.Error(err, "Invalid Bid Amount received.")
-	}
-	if bidAmount.LessThanOrEqual(reservedPrice) {
+	if req.Payload.Amount.LessThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than reserved price"), "Invalid bid amount, must be above the reserved price.")
 	}
-	if bidAmount.LessThanOrEqual(currentAmount) {
+	if req.Payload.Amount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
 	}
 
 	// Pay bid amount
 	balance := mp.API.Passport.UserBalanceGet(userID)
-	if balance.Sub(bidAmount).LessThan(decimal.Zero) {
+	if balance.Sub(req.Payload.Amount).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
 			Str("balance", balance.String()).
-			Str("cost", bidAmount.String()).
+			Str("cost", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Player does not have enough sups.")
 		return terror.Error(err, "You do not have enough sups.")
@@ -1047,7 +965,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               bidAmount.String(),
+		Amount:               req.Payload.Amount.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
@@ -1062,8 +980,8 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
-			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
-			Str("bid_amount", bidAmount.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.Decimal.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Failed to cancel previous bid(s).")
 		return terror.Error(err, errMsg)
@@ -1077,22 +995,22 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
-			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
-			Str("bid_amount", bidAmount.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.Decimal.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Failed to cancel previous bid(s).")
 		return terror.Error(err, errMsg)
 	}
 
 	// Place Bid
-	_, err = db.MarketplaceSaleBidHistoryCreate(tx, req.Payload.ID, userID, bidAmount, txid)
+	_, err = db.MarketplaceSaleBidHistoryCreate(tx, req.Payload.ID, userID, req.Payload.Amount, txid)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
-			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
-			Str("bid_amount", bidAmount.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.Decimal.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Unable to place bid.")
 		return terror.Error(err, errMsg)
@@ -1104,7 +1022,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
-			Str("bid_amount", bidAmount.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Unable to update current auction price.")
 		return terror.Error(err, errMsg)
@@ -1140,7 +1058,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_sale_id", req.Payload.ID.String()).
-			Str("bid_amount", bidAmount.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
 			Err(err).
 			Msg("Unable to update current auction price.")
 		return terror.Error(err, errMsg)
@@ -1150,7 +1068,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 
 	// Broadcast new current price
 	resp := &SaleItemUpdate{
-		AuctionCurrentPrice: bidAmount.String(),
+		AuctionCurrentPrice: req.Payload.Amount.String(),
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
 

@@ -12,7 +12,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -257,6 +256,8 @@ func MarketplaceItemSaleList(
 	filter *ListFilterRequest,
 	rarities []string,
 	saleTypes []string,
+	minPrice decimal.NullDecimal,
+	maxPrice decimal.NullDecimal,
 	excludeUserID string,
 	offset int,
 	pageSize int,
@@ -306,6 +307,38 @@ func MarketplaceItemSaleList(
 			}
 		}
 		queryMods = append(queryMods, qm.Expr(saleTypeConditions...))
+	}
+	if minPrice.Valid {
+		queryMods = append(queryMods, qm.Expr(
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Buyout.EQ(true),
+					boiler.ItemSaleWhere.BuyoutPrice.GTE(minPrice),
+				),
+			),
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Auction.EQ(true),
+					boiler.ItemSaleWhere.AuctionCurrentPrice.GTE(minPrice),
+				),
+			),
+		))
+	}
+	if maxPrice.Valid {
+		queryMods = append(queryMods, qm.Expr(
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Buyout.EQ(true),
+					boiler.ItemSaleWhere.BuyoutPrice.LTE(maxPrice),
+				),
+			),
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Auction.EQ(true),
+					boiler.ItemSaleWhere.AuctionCurrentPrice.LTE(maxPrice),
+				),
+			),
+		))
 	}
 
 	// Search
@@ -437,11 +470,11 @@ func MarketplaceSaleCreate(
 	endAt time.Time,
 	collectionItemID uuid.UUID,
 	hasBuyout bool,
-	askingPrice *decimal.Decimal,
+	askingPrice decimal.NullDecimal,
 	hasAuction bool,
-	auctionReservedPrice *decimal.Decimal,
+	auctionReservedPrice decimal.NullDecimal,
 	hasDutchAuction bool,
-	dutchAuctionDropRate *decimal.Decimal,
+	dutchAuctionDropRate decimal.NullDecimal,
 ) (*server.MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:          ownerID.String(),
@@ -453,18 +486,18 @@ func MarketplaceSaleCreate(
 
 	if hasBuyout {
 		obj.Buyout = true
-		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
+		obj.BuyoutPrice = askingPrice
 	}
 	if hasAuction {
 		obj.Auction = true
-		obj.AuctionCurrentPrice = null.StringFrom(auctionReservedPrice.String())
-		obj.AuctionReservedPrice = null.StringFrom(auctionReservedPrice.String())
+		obj.AuctionCurrentPrice = auctionReservedPrice
+		obj.AuctionReservedPrice = auctionReservedPrice
 	}
 	if hasDutchAuction {
 		obj.DutchAuction = true
-		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
-		obj.DutchAuctionDropRate = null.StringFrom(dutchAuctionDropRate.String())
-		obj.AuctionReservedPrice = null.StringFrom(auctionReservedPrice.String())
+		obj.BuyoutPrice = askingPrice
+		obj.DutchAuctionDropRate = dutchAuctionDropRate
+		obj.AuctionReservedPrice = auctionReservedPrice
 	}
 
 	err := obj.Insert(conn, boil.Infer())
@@ -540,7 +573,7 @@ func MarketplaceSaleBidHistoryCreate(conn boil.Executor, id uuid.UUID, bidderUse
 		ItemSaleID: id.String(),
 		BidderID:   bidderUserID.String(),
 		BidTXID:    txid,
-		BidPrice:   amount.String(),
+		BidPrice:   amount,
 	}
 	err := obj.Insert(conn, boil.Infer())
 	if err != nil {
@@ -662,7 +695,7 @@ func MarketplaceKeycardSaleCreate(
 		ListingFeeTXID: listFeeTxnID,
 		ItemID:         itemID.String(),
 		EndAt:          endAt,
-		BuyoutPrice:    askingPrice.String(),
+		BuyoutPrice:    askingPrice,
 	}
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {

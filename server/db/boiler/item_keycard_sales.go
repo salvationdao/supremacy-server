@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,20 +24,20 @@ import (
 
 // ItemKeycardSale is an object representing the database table.
 type ItemKeycardSale struct {
-	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID      string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	ItemID         string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
-	ListingFeeTXID string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
-	OwnerID        string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	BuyoutPrice    string      `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price" toml:"buyout_price" yaml:"buyout_price"`
-	EndAt          time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
-	SoldAt         null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
-	SoldFor        null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
-	SoldBy         null.String `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
-	SoldTXID       null.String `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
-	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID             string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionID      string              `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	ItemID         string              `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
+	ListingFeeTXID string              `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
+	OwnerID        string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	BuyoutPrice    decimal.Decimal     `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price" toml:"buyout_price" yaml:"buyout_price"`
+	EndAt          time.Time           `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	SoldAt         null.Time           `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
+	SoldFor        decimal.NullDecimal `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
+	SoldBy         null.String         `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
+	SoldTXID       null.String         `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
+	DeletedAt      null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *itemKeycardSaleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemKeycardSaleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -114,10 +115,10 @@ var ItemKeycardSaleWhere = struct {
 	ItemID         whereHelperstring
 	ListingFeeTXID whereHelperstring
 	OwnerID        whereHelperstring
-	BuyoutPrice    whereHelperstring
+	BuyoutPrice    whereHelperdecimal_Decimal
 	EndAt          whereHelpertime_Time
 	SoldAt         whereHelpernull_Time
-	SoldFor        whereHelpernull_String
+	SoldFor        whereHelperdecimal_NullDecimal
 	SoldBy         whereHelpernull_String
 	SoldTXID       whereHelpernull_String
 	DeletedAt      whereHelpernull_Time
@@ -129,10 +130,10 @@ var ItemKeycardSaleWhere = struct {
 	ItemID:         whereHelperstring{field: "\"item_keycard_sales\".\"item_id\""},
 	ListingFeeTXID: whereHelperstring{field: "\"item_keycard_sales\".\"listing_fee_tx_id\""},
 	OwnerID:        whereHelperstring{field: "\"item_keycard_sales\".\"owner_id\""},
-	BuyoutPrice:    whereHelperstring{field: "\"item_keycard_sales\".\"buyout_price\""},
+	BuyoutPrice:    whereHelperdecimal_Decimal{field: "\"item_keycard_sales\".\"buyout_price\""},
 	EndAt:          whereHelpertime_Time{field: "\"item_keycard_sales\".\"end_at\""},
 	SoldAt:         whereHelpernull_Time{field: "\"item_keycard_sales\".\"sold_at\""},
-	SoldFor:        whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_for\""},
+	SoldFor:        whereHelperdecimal_NullDecimal{field: "\"item_keycard_sales\".\"sold_for\""},
 	SoldBy:         whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_by\""},
 	SoldTXID:       whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_tx_id\""},
 	DeletedAt:      whereHelpernull_Time{field: "\"item_keycard_sales\".\"deleted_at\""},

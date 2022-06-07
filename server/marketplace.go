@@ -3,6 +3,7 @@ package server
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -13,17 +14,17 @@ type MarketplaceSaleItem struct {
 	ListingFeeTXID       string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID              string                   `json:"owner_id" boil:"owner_id"`
 	Auction              bool                     `json:"auction" boil:"auction"`
-	AuctionCurrentPrice  null.String              `json:"auction_current_price,omitempty" boil:"auction_current_price"`
-	AuctionReservedPrice null.String              `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
+	AuctionCurrentPrice  decimal.NullDecimal      `json:"auction_current_price,omitempty" boil:"auction_current_price"`
+	AuctionReservedPrice decimal.NullDecimal      `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
 	TotalBids            int64                    `json:"total_bids" boil:"total_bids"`
 	Buyout               bool                     `json:"buyout" boil:"buyout"`
-	BuyoutPrice          null.String              `json:"buyout_price" boil:"buyout_price"`
+	BuyoutPrice          decimal.NullDecimal      `json:"buyout_price" boil:"buyout_price"`
 	DutchAuction         bool                     `json:"dutch_auction" boil:"dutch_auction"`
-	DutchAuctionDropRate null.String              `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
+	DutchAuctionDropRate decimal.NullDecimal      `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
 	EndAt                time.Time                `json:"end_at" boil:"end_at"`
 	SoldAt               null.Time                `json:"sold_at" boil:"sold_at"`
 	SoldFor              null.String              `json:"sold_for" boil:"sold_for"`
-	SoldBy               null.String              `json:"sold_by" boil:"sold_by"`
+	SoldBy               decimal.NullDecimal      `json:"sold_by" boil:"sold_by"`
 	SoldTXID             null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
 	DeletedAt            null.Time                `json:"deleted_at" boil:"deleted_at"`
 	UpdatedAt            time.Time                `json:"updated_at" boil:"updated_at"`
@@ -63,10 +64,10 @@ type MarketplaceKeycardSaleItem struct {
 	ItemID         string                   `json:"item_id" boil:"item_id"`
 	ListingFeeTXID string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID        string                   `json:"owner_id" boil:"owner_id"`
-	BuyoutPrice    string                   `json:"buyout_price" boil:"buyout_price"`
+	BuyoutPrice    decimal.Decimal          `json:"buyout_price" boil:"buyout_price"`
 	EndAt          time.Time                `json:"end_at" boil:"end_at"`
 	SoldAt         null.Time                `json:"sold_at" boil:"sold_at"`
-	SoldFor        null.String              `json:"sold_for" boil:"sold_for"`
+	SoldFor        decimal.NullDecimal      `json:"sold_for" boil:"sold_for"`
 	SoldBy         null.String              `json:"sold_by" boil:"sold_by"`
 	SoldTXID       null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
 	DeletedAt      null.Time                `json:"deleted_at" boil:"deleted_at"`

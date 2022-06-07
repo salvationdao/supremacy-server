@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,14 +24,14 @@ import (
 
 // ItemSalesBidHistory is an object representing the database table.
 type ItemSalesBidHistory struct {
-	ItemSaleID      string      `boiler:"item_sale_id" boil:"item_sale_id" json:"item_sale_id" toml:"item_sale_id" yaml:"item_sale_id"`
-	BidTXID         string      `boiler:"bid_tx_id" boil:"bid_tx_id" json:"bid_tx_id" toml:"bid_tx_id" yaml:"bid_tx_id"`
-	RefundBidTXID   null.String `boiler:"refund_bid_tx_id" boil:"refund_bid_tx_id" json:"refund_bid_tx_id,omitempty" toml:"refund_bid_tx_id" yaml:"refund_bid_tx_id,omitempty"`
-	BidderID        string      `boiler:"bidder_id" boil:"bidder_id" json:"bidder_id" toml:"bidder_id" yaml:"bidder_id"`
-	BidAt           time.Time   `boiler:"bid_at" boil:"bid_at" json:"bid_at" toml:"bid_at" yaml:"bid_at"`
-	BidPrice        string      `boiler:"bid_price" boil:"bid_price" json:"bid_price" toml:"bid_price" yaml:"bid_price"`
-	CancelledAt     null.Time   `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
-	CancelledReason null.String `boiler:"cancelled_reason" boil:"cancelled_reason" json:"cancelled_reason,omitempty" toml:"cancelled_reason" yaml:"cancelled_reason,omitempty"`
+	ItemSaleID      string          `boiler:"item_sale_id" boil:"item_sale_id" json:"item_sale_id" toml:"item_sale_id" yaml:"item_sale_id"`
+	BidTXID         string          `boiler:"bid_tx_id" boil:"bid_tx_id" json:"bid_tx_id" toml:"bid_tx_id" yaml:"bid_tx_id"`
+	RefundBidTXID   null.String     `boiler:"refund_bid_tx_id" boil:"refund_bid_tx_id" json:"refund_bid_tx_id,omitempty" toml:"refund_bid_tx_id" yaml:"refund_bid_tx_id,omitempty"`
+	BidderID        string          `boiler:"bidder_id" boil:"bidder_id" json:"bidder_id" toml:"bidder_id" yaml:"bidder_id"`
+	BidAt           time.Time       `boiler:"bid_at" boil:"bid_at" json:"bid_at" toml:"bid_at" yaml:"bid_at"`
+	BidPrice        decimal.Decimal `boiler:"bid_price" boil:"bid_price" json:"bid_price" toml:"bid_price" yaml:"bid_price"`
+	CancelledAt     null.Time       `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
+	CancelledReason null.String     `boiler:"cancelled_reason" boil:"cancelled_reason" json:"cancelled_reason,omitempty" toml:"cancelled_reason" yaml:"cancelled_reason,omitempty"`
 
 	R *itemSalesBidHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemSalesBidHistoryL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -84,7 +85,7 @@ var ItemSalesBidHistoryWhere = struct {
 	RefundBidTXID   whereHelpernull_String
 	BidderID        whereHelperstring
 	BidAt           whereHelpertime_Time
-	BidPrice        whereHelperstring
+	BidPrice        whereHelperdecimal_Decimal
 	CancelledAt     whereHelpernull_Time
 	CancelledReason whereHelpernull_String
 }{
@@ -93,7 +94,7 @@ var ItemSalesBidHistoryWhere = struct {
 	RefundBidTXID:   whereHelpernull_String{field: "\"item_sales_bid_history\".\"refund_bid_tx_id\""},
 	BidderID:        whereHelperstring{field: "\"item_sales_bid_history\".\"bidder_id\""},
 	BidAt:           whereHelpertime_Time{field: "\"item_sales_bid_history\".\"bid_at\""},
-	BidPrice:        whereHelperstring{field: "\"item_sales_bid_history\".\"bid_price\""},
+	BidPrice:        whereHelperdecimal_Decimal{field: "\"item_sales_bid_history\".\"bid_price\""},
 	CancelledAt:     whereHelpernull_Time{field: "\"item_sales_bid_history\".\"cancelled_at\""},
 	CancelledReason: whereHelpernull_String{field: "\"item_sales_bid_history\".\"cancelled_reason\""},
 }

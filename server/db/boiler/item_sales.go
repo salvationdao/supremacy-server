@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,26 +24,26 @@ import (
 
 // ItemSale is an object representing the database table.
 type ItemSale struct {
-	ID                   string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID            string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	CollectionItemID     string      `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
-	ListingFeeTXID       string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
-	OwnerID              string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Auction              bool        `boiler:"auction" boil:"auction" json:"auction" toml:"auction" yaml:"auction"`
-	AuctionCurrentPrice  null.String `boiler:"auction_current_price" boil:"auction_current_price" json:"auction_current_price,omitempty" toml:"auction_current_price" yaml:"auction_current_price,omitempty"`
-	AuctionReservedPrice null.String `boiler:"auction_reserved_price" boil:"auction_reserved_price" json:"auction_reserved_price,omitempty" toml:"auction_reserved_price" yaml:"auction_reserved_price,omitempty"`
-	Buyout               bool        `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
-	BuyoutPrice          null.String `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
-	DutchAuction         bool        `boiler:"dutch_auction" boil:"dutch_auction" json:"dutch_auction" toml:"dutch_auction" yaml:"dutch_auction"`
-	DutchAuctionDropRate null.String `boiler:"dutch_auction_drop_rate" boil:"dutch_auction_drop_rate" json:"dutch_auction_drop_rate,omitempty" toml:"dutch_auction_drop_rate" yaml:"dutch_auction_drop_rate,omitempty"`
-	EndAt                time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
-	SoldAt               null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
-	SoldFor              null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
-	SoldBy               null.String `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
-	SoldTXID             null.String `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
-	DeletedAt            null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt            time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt            time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionID            string              `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	CollectionItemID     string              `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
+	ListingFeeTXID       string              `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
+	OwnerID              string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Auction              bool                `boiler:"auction" boil:"auction" json:"auction" toml:"auction" yaml:"auction"`
+	AuctionCurrentPrice  decimal.NullDecimal `boiler:"auction_current_price" boil:"auction_current_price" json:"auction_current_price,omitempty" toml:"auction_current_price" yaml:"auction_current_price,omitempty"`
+	AuctionReservedPrice decimal.NullDecimal `boiler:"auction_reserved_price" boil:"auction_reserved_price" json:"auction_reserved_price,omitempty" toml:"auction_reserved_price" yaml:"auction_reserved_price,omitempty"`
+	Buyout               bool                `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
+	BuyoutPrice          decimal.NullDecimal `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
+	DutchAuction         bool                `boiler:"dutch_auction" boil:"dutch_auction" json:"dutch_auction" toml:"dutch_auction" yaml:"dutch_auction"`
+	DutchAuctionDropRate decimal.NullDecimal `boiler:"dutch_auction_drop_rate" boil:"dutch_auction_drop_rate" json:"dutch_auction_drop_rate,omitempty" toml:"dutch_auction_drop_rate" yaml:"dutch_auction_drop_rate,omitempty"`
+	EndAt                time.Time           `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	SoldAt               null.Time           `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
+	SoldFor              decimal.NullDecimal `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
+	SoldBy               null.String         `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
+	SoldTXID             null.String         `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
+	DeletedAt            null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt            time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt            time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *itemSaleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemSaleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -145,15 +146,15 @@ var ItemSaleWhere = struct {
 	ListingFeeTXID       whereHelperstring
 	OwnerID              whereHelperstring
 	Auction              whereHelperbool
-	AuctionCurrentPrice  whereHelpernull_String
-	AuctionReservedPrice whereHelpernull_String
+	AuctionCurrentPrice  whereHelperdecimal_NullDecimal
+	AuctionReservedPrice whereHelperdecimal_NullDecimal
 	Buyout               whereHelperbool
-	BuyoutPrice          whereHelpernull_String
+	BuyoutPrice          whereHelperdecimal_NullDecimal
 	DutchAuction         whereHelperbool
-	DutchAuctionDropRate whereHelpernull_String
+	DutchAuctionDropRate whereHelperdecimal_NullDecimal
 	EndAt                whereHelpertime_Time
 	SoldAt               whereHelpernull_Time
-	SoldFor              whereHelpernull_String
+	SoldFor              whereHelperdecimal_NullDecimal
 	SoldBy               whereHelpernull_String
 	SoldTXID             whereHelpernull_String
 	DeletedAt            whereHelpernull_Time
@@ -166,15 +167,15 @@ var ItemSaleWhere = struct {
 	ListingFeeTXID:       whereHelperstring{field: "\"item_sales\".\"listing_fee_tx_id\""},
 	OwnerID:              whereHelperstring{field: "\"item_sales\".\"owner_id\""},
 	Auction:              whereHelperbool{field: "\"item_sales\".\"auction\""},
-	AuctionCurrentPrice:  whereHelpernull_String{field: "\"item_sales\".\"auction_current_price\""},
-	AuctionReservedPrice: whereHelpernull_String{field: "\"item_sales\".\"auction_reserved_price\""},
+	AuctionCurrentPrice:  whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"auction_current_price\""},
+	AuctionReservedPrice: whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"auction_reserved_price\""},
 	Buyout:               whereHelperbool{field: "\"item_sales\".\"buyout\""},
-	BuyoutPrice:          whereHelpernull_String{field: "\"item_sales\".\"buyout_price\""},
+	BuyoutPrice:          whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"buyout_price\""},
 	DutchAuction:         whereHelperbool{field: "\"item_sales\".\"dutch_auction\""},
-	DutchAuctionDropRate: whereHelpernull_String{field: "\"item_sales\".\"dutch_auction_drop_rate\""},
+	DutchAuctionDropRate: whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"dutch_auction_drop_rate\""},
 	EndAt:                whereHelpertime_Time{field: "\"item_sales\".\"end_at\""},
 	SoldAt:               whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
-	SoldFor:              whereHelpernull_String{field: "\"item_sales\".\"sold_for\""},
+	SoldFor:              whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"sold_for\""},
 	SoldBy:               whereHelpernull_String{field: "\"item_sales\".\"sold_by\""},
 	SoldTXID:             whereHelpernull_String{field: "\"item_sales\".\"sold_tx_id\""},
 	DeletedAt:            whereHelpernull_Time{field: "\"item_sales\".\"deleted_at\""},
