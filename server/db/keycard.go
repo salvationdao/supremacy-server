@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func CreateOrGetKeycard(ownerID string, tokenID int) (*boiler.PlayerKeycard, error) {
@@ -51,11 +52,11 @@ func CreateOrGetKeycard(ownerID string, tokenID int) (*boiler.PlayerKeycard, err
 
 func UpdateKeycardReductionAmount(ownerID string, tokenID int) error {
 	q := `
-UPDATE player_keycards pk SET count = count - 1 WHERE pk.id = (
-	SELECT pk2.id FROM player_keycards pk2
-	INNER JOIN blueprint_keycards bk ON bk.id = pk2.blueprint_keycard_id AND bk.keycard_token_id = $1
-	WHERE pk2.player_id = $2
-);`
+		UPDATE player_keycards pk 
+		SET count = count - 1 
+		WHERE pk.player_id = $1 AND pk.blueprint_keycard_id = (
+			SELECT id FROM blueprint_keycards WHERE keycard_token_id = $2
+		);`
 
 	_, err := boiler.NewQuery(qm.SQL(q, tokenID, ownerID)).Exec(gamedb.StdConn)
 	if err != nil {
