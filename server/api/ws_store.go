@@ -4,14 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/rs/zerolog"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"math/rand"
 	"server"
 	"server/battle"
@@ -22,6 +14,17 @@ import (
 	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type StoreController struct {
@@ -102,6 +105,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	storeCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(req.Payload.Type),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to get crate for purchase, please try again or contact support.")
@@ -151,7 +155,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		err = txItem.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to insert item into purchase history table.")
+			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to insert collectionItem into purchase history table.")
 		}
 	}
 
@@ -180,6 +184,8 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 	//update purchased value
 	assignedCrate.Purchased = true
+	assignedCrate.Description = storeCrate.Description
+
 	_, err = assignedCrate.Update(tx, boil.Infer())
 	if err != nil {
 		refundFunc()
@@ -187,34 +193,19 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
-	c := &boiler.CollectionItem{
-		CollectionSlug:   "supremacy-general",
-		ItemType:         boiler.ItemTypeMysteryCrate,
-		ItemID:           assignedCrate.ID,
-		Tier:             "",
-		OwnerID:          user.ID,
-		ImageURL:         assignedCrate.ImageURL,
-		AvatarURL:        assignedCrate.AvatarURL,
-		CardAnimationURL: assignedCrate.CardAnimationURL,
-		LargeImageURL:    assignedCrate.LargeImageURL,
-		YoutubeURL:       assignedCrate.YoutubeURL,
-		BackgroundColor:  assignedCrate.BackgroundColor,
-		AnimationURL:     assignedCrate.AnimationURL,
-	}
-
-	item, err := db.InsertNewCollectionItem(tx,
-		c.CollectionSlug,
-		c.ItemType,
-		c.ItemID,
-		c.Tier,
-		c.OwnerID,
-		c.ImageURL,
-		c.CardAnimationURL,
-		c.AvatarURL,
-		c.LargeImageURL,
-		c.BackgroundColor,
-		c.AnimationURL,
-		c.YoutubeURL,
+	collectionItem, err := db.InsertNewCollectionItem(tx,
+		"supremacy-general",
+		boiler.ItemTypeMysteryCrate,
+		assignedCrate.ID,
+		"",
+		user.ID,
+		storeCrate.ImageURL,
+		storeCrate.CardAnimationURL,
+		storeCrate.AvatarURL,
+		storeCrate.LargeImageURL,
+		storeCrate.BackgroundColor,
+		storeCrate.AnimationURL,
+		storeCrate.YoutubeURL,
 	)
 	if err != nil {
 		refundFunc()
@@ -223,7 +214,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	storeCrate.AmountSold = storeCrate.AmountSold + 1
-	_, err = storeCrate.Update(tx, boil.Whitelist(boiler.StorefrontMysteryCrateColumns.AmountSold))
+	_, err = storeCrate.Update(tx, boil.Infer())
 	if err != nil {
 		refundFunc()
 		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
@@ -231,8 +222,9 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	//register
-	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, item)
-	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer)
+	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, collectionItem)
+
+	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, storeCrate.R.Faction.Label)
 
 	err = sc.API.Passport.AssetRegister(xsynAsset)
 	if err != nil {

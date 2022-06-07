@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server/db"
@@ -10,8 +9,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
-
-	"github.com/friendsofgo/errors"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -33,8 +30,6 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
-	api.SecureUserFactionCommand(HubKeyPlayerAssetMechQueueDetail, pac.PlayerAssetMechQueueDetail)
-
 	return pac
 }
 
@@ -209,33 +204,5 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
-	return nil
-}
-
-const HubKeyPlayerAssetMechQueueDetail = "PLAYER:ASSET:MECH:QUEUE"
-
-type PlayerAssetMechQueueDetailRequest struct {
-	Payload struct {
-		MechID string `json:"mech_id"`
-	} `json:"payload"`
-}
-
-func (pac *PlayerAssetsControllerWS) PlayerAssetMechQueueDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetMechDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	queueDetails, err := db.MechQueuePosition(req.Payload.MechID, fID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
-	}
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		reply(-1)
-		return nil
-	}
-
-	reply(queueDetails.QueuePosition)
 	return nil
 }
