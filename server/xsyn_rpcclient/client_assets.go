@@ -124,6 +124,7 @@ func (pp *XsynXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUpdate
 }
 
 type UpdateUser1155AssetReq struct {
+	ApiKey        string               `json:"api_key"`
 	PublicAddress string               `json:"public_address"`
 	AssetData     []Supremacy1155Asset `json:"asset_data"`
 }
@@ -153,9 +154,10 @@ type UpdateUser1155AssetResp struct {
 	PublicAddress null.String `json:"public_address"`
 }
 
-func (pp *XsynXrpcClient) UpdateKeycardItem(keycardUpdate UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
+func (pp *XsynXrpcClient) UpdateKeycardItem(keycardUpdate *UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
+	keycardUpdate.ApiKey = pp.ApiKey
 	resp := &UpdateUser1155AssetResp{}
-	err := pp.XrpcClient.Call("S.InsertUser1155Asset", keycardUpdate, resp)
+	err := pp.XrpcClient.Call("S.InsertUser1155AssetHandler", keycardUpdate, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Msg("rpc error")
 		return nil, err

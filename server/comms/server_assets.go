@@ -182,3 +182,36 @@ func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *Gene
 	resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
 	return nil
 }
+
+type NFT1155DetailsReq struct {
+	TokenID        int    `json:"token_id"`
+	CollectionSlug string `json:"collection_slug"`
+}
+
+type NFT1155DetailsResp struct {
+	Label        string      `json:"label"`
+	Description  string      `json:"description"`
+	ImageURL     string      `json:"image_url"`
+	AnimationUrl null.String `json:"animation_url"`
+	Group        string      `json:"group"`
+	Syndicate    null.String `json:"syndicate"`
+}
+
+func (s *S) Get1155Details(req *NFT1155DetailsReq, resp *NFT1155DetailsResp) error {
+	asset, err := boiler.BlueprintKeycards(
+		boiler.BlueprintKeycardWhere.KeycardTokenID.EQ(req.TokenID),
+		boiler.BlueprintKeycardWhere.Collection.EQ(req.CollectionSlug),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	resp.Syndicate = asset.Syndicate
+	resp.Label = asset.Label
+	resp.Description = asset.Description
+	resp.ImageURL = asset.ImageURL
+	resp.AnimationUrl = asset.AnimationURL
+	resp.Group = asset.KeycardGroup
+
+	return nil
+}
