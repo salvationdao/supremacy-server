@@ -7,7 +7,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"strconv"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -376,75 +375,6 @@ func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 	return output, nil
 }
 
-// QueuePosition returns the current queue position of the specified mech.
-// QueuePosition returns -1 if the mech is in battle.
-func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
-	var pos int64
-
-	// check whether it is in battle
-	inBattle, err := boiler.BattleQueues(
-		boiler.BattleQueueWhere.MechID.EQ(mechID.String()),
-		boiler.BattleQueueWhere.BattleID.IsNotNull(),
-	).Exists(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().
-			Str("mech_id", mechID.String()).
-			Str("faction_id", factionID.String()).
-			Str("db func", "QueuePosition").Err(err).Msg("unable to check battle status of mech")
-		return -1, err
-	}
-	if inBattle {
-		return -1, nil
-	}
-
-	query := `
-		WITH bqpos AS (
-    		SELECT 	t.mech_id,
-           			ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-    		FROM battle_queue t WHERE t.faction_id = $1 AND t.battle_id isnull
-    	)
-		SELECT s.position
-		FROM bqpos s
-		WHERE s.mech_id = $2;
-	`
-	err = gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
-	if err != nil {
-		if !errors.Is(sql.ErrNoRows, err) {
-			gamelog.L.Error().
-				Str("mech_id", mechID.String()).
-				Str("faction_id", factionID.String()).
-				Bool("NoRows?", errors.Is(sql.ErrNoRows, err)).
-				Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
-		}
-		return -1, err
-	}
-
-	return pos, nil
-}
-
-func QueueContract(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
-	var contractReward decimal.Decimal
-
-	// Get latest queue contract
-	query := `select contract_reward
-		from battle_contracts
-		where mech_id = $1 AND faction_id = $2
-		order by queued_at desc
-		limit 1
-	`
-
-	err := gamedb.StdConn.QueryRow(query, mechID.String(), factionID.String()).Scan(&contractReward)
-	if err != nil {
-		gamelog.L.Error().
-			Str("mech_id", mechID.String()).
-			Str("faction_id", factionID.String()).
-			Str("db func", "QueueContract").Err(err).Msg("unable to get battle contract of mech")
-		return nil, err
-	}
-
-	return &contractReward, nil
-}
-
 func QueueFee(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
 	var queueCost decimal.Decimal
 
@@ -514,55 +444,6 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	}
 
 	return nil
-}
-
-func ClearQueueByBattle(battleID string) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
-		return err
-	}
-	defer tx.Rollback()
-
-	query := `DELETE FROM battle_queue WHERE battle_id = $1`
-	_, err = gamedb.StdConn.Exec(query, battleID)
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
-		return err
-	}
-
-	return tx.Commit()
-}
-
-func ClearQueue(mechIDs ...uuid.UUID) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
-		return err
-	}
-	defer tx.Rollback()
-
-	mechids := make([]interface{}, len(mechIDs))
-	var paramrefs string
-	for i, id := range mechIDs {
-		paramrefs += `$` + strconv.Itoa(i+1) + `,`
-		mechids[i] = id.String()
-	}
-	if len(mechids) == 0 {
-		fmt.Println("no mechs", len(mechIDs))
-	}
-
-	paramrefs = paramrefs[:len(paramrefs)-1]
-
-	query := `UPDATE battle_queue SET deleted_at = NOW() WHERE mech_id IN (` + paramrefs + `)`
-
-	_, err = gamedb.StdConn.Exec(query, mechids...)
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
-		return err
-	}
-
-	return tx.Commit()
 }
 
 type BattleViewer struct {

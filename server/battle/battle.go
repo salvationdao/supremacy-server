@@ -270,11 +270,6 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
 			return err
 		}
-
-		// Tell clients to refetch war machine queue status
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.RedMountainFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.BostonCyberneticsFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.ZaibatsuFactionID), WSQueueUpdatedSubscribe, true)
 	}
 
 	// broadcast battle settings
@@ -1833,6 +1828,8 @@ func (btl *Battle) Load() error {
 	}
 
 	btl.warMachineIDs = uuids
+
+	go BroadcastQueuePositions()
 
 	return nil
 }
