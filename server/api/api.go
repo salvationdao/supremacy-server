@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"net"
 	"net/http"
 	"server"
@@ -15,6 +14,8 @@ import (
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/null/v8"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 
@@ -195,6 +196,9 @@ func NewAPI(
 		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
 
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
+
+		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatUser)))
+		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.RemoveShadowbanChatUser)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
@@ -441,7 +445,7 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 		return nil, err
 	}
 
-	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID)
+	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to update player detail")
 		return nil, err

@@ -1,6 +1,11 @@
 package comms
 
 import (
+	"fmt"
+	"github.com/kevinms/leakybucket-go"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -79,6 +84,68 @@ func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *Asset
 		return err
 	}
 
+	// TODO: store transfer event ID
+
+	return nil
+}
+
+type Asset1155LockToSupremacyResp struct {
+}
+
+type Asset1155LockToSupremacyReq struct {
+	ApiKey          string `json:"api_key,omitempty"`
+	OwnerID         string `json:"owner_id,omitempty"`
+	Amount          int    `json:"amount"`
+	TokenID         int    `json:"token_id"`
+	TransferEventID int64  `json:"transfer_event_id"`
+}
+
+var TransferBucket = leakybucket.NewCollector(0.5, 1, true)
+
+// KeycardTransferToSupremacyHandler transfer keycard to supremacy
+func (s *S) KeycardTransferToSupremacyHandler(req Asset1155LockToSupremacyReq, resp *AssetLockToSupremacyResp) error {
+	b := TransferBucket.Add(fmt.Sprintf("%s_%d", req.OwnerID, req.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
+	}
+	asset, err := db.CreateOrGetKeycard(req.OwnerID, req.TokenID)
+	if err != nil {
+		return terror.Error(err, "Failed to create or get player keycard")
+	}
+
+	asset.Count += req.Amount
+
+	_, err = asset.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerKeycardColumns.Count))
+	if err != nil {
+		return terror.Error(err, "Failed to update amount")
+	}
+
+	// TODO: store transfer event ID
+
+	return nil
+}
+
+type Asset1155FromSupremacyResp struct {
+	Label        string      `json:"label"`
+	Description  string      `json:"description"`
+	ImageURL     string      `json:"image_url"`
+	AnimationURL null.String `json:"animation_url"`
+	KeycardGroup string      `json:"keycard_group"`
+	Syndicate    null.String `json:"syndicate"`
+	Count        int         `json:"count"`
+}
+
+// KeycardTransferToXsynHandler transfer keycard to xsyn
+func (s *S) KeycardTransferToXsynHandler(req Asset1155LockToSupremacyReq, resp *Asset1155FromSupremacyResp) error {
+	b := TransferBucket.Add(fmt.Sprintf("%s_%d", req.OwnerID, req.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
+	}
+
+	err := db.UpdateKeycardReductionAmount(req.OwnerID, req.TokenID)
+	if err != nil {
+		return terror.Error(err, "Failed to update amount")
+	}
 	// TODO: store transfer event ID
 
 	return nil
