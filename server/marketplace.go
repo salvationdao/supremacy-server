@@ -29,12 +29,21 @@ type MarketplaceSaleItem struct {
 	CreatedAt            time.Time                `json:"created_at" boil:"created_at"`
 	Owner                MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
 	Mech                 MarketplaceSaleItemMech  `json:"mech,omitempty" boil:",bind"`
+	LastBid              MarketplaceBidder        `json:"last_bid,empty" boil:",bind"`
+}
+
+type MarketplaceBidder struct {
+	ID            null.String `json:"id" boil:"bidder.id"`
+	Username      null.String `json:"username" boil:"bidder.username"`
+	FactionID     null.String `json:"faction_id" boil:"bidder.faction_id"`
+	PublicAddress null.String `json:"public_address" boil:"bidder.public_address"`
+	Gid           null.Int    `json:"gid" boil:"bidder.gid"`
 }
 
 type MarketplaceSaleItemOwner struct {
 	ID            string      `json:"id" boil:"players.id"`
 	Username      null.String `json:"username" boil:"players.username"`
-	FactionID      null.String `json:"faction_id" boil:"players.faction_id"`
+	FactionID     null.String `json:"faction_id" boil:"players.faction_id"`
 	PublicAddress null.String `json:"public_address" boil:"players.public_address"`
 	Gid           int         `json:"gid" boil:"players.gid"`
 }

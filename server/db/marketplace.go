@@ -48,7 +48,13 @@ var itemSaleQueryMods = []qm.QueryMod{
 		mechs.id AS "mechs.id",
 		mechs.name AS "mechs.name",
 		mechs.label AS "mechs.label",
-		mech_skin.avatar_url AS "mech_skin.avatar_url"`,
+		mech_skin.avatar_url AS "mech_skin.avatar_url",
+		bidder.id AS "bidder.id",
+		bidder.username AS "bidder.username",
+		bidder.faction_id AS "bidder.faction_id",
+		bidder.public_address AS "bidder.public_address",
+		bidder.gid AS "bidder.gid"
+		`,
 	),
 	qm.InnerJoin(
 		fmt.Sprintf(
@@ -80,6 +86,26 @@ var itemSaleQueryMods = []qm.QueryMod{
 			boiler.TableNames.Players,
 			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
+		),
+	),
+
+	// Last Auction Bidder
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s AND %s IS NULL AND %s IS NULL",
+			boiler.TableNames.ItemSalesBidHistory,
+			qm.Rels(boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.ItemSaleID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.CancelledAt),
+			qm.Rels(boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.RefundBidTXID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s AS bidder ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels("bidder", boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.BidderID),
 		),
 	),
 }
@@ -167,6 +193,11 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Mech.Name,
 		&output.Mech.Label,
 		&output.Mech.AvatarURL,
+		&output.LastBid.ID,
+		&output.LastBid.Username,
+		&output.LastBid.FactionID,
+		&output.LastBid.PublicAddress,
+		&output.LastBid.Gid,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -284,7 +315,9 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	}
 
 	records := []*server.MarketplaceSaleItem{}
+	boil.DebugMode = true
 	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
