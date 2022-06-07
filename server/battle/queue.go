@@ -743,7 +743,7 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, user *boiler.Player, f
 	resp.Total = len(mechs)
 
 	// get queue position
-	queuePosition, err := db.MechQueuePosition(factionID, user.ID)
+	queuePosition, err := db.MechQueuePositions(factionID, user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player mech position")
 		return terror.Error(err, "Failed to get mech position")
