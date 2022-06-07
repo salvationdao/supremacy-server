@@ -252,7 +252,17 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleIte
 }
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
-func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities []string, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
+func MarketplaceItemSaleList(
+	search string,
+	filter *ListFilterRequest,
+	rarities []string,
+	saleTypes []string,
+	excludeUserID string,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int64, []*server.MarketplaceSaleItem, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -282,6 +292,20 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	}
 	if len(rarities) > 0 {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(rarities))
+	}
+	if len(saleTypes) > 0 {
+		saleTypeConditions := []qm.QueryMod{}
+		for _, st := range saleTypes {
+			switch st {
+			case "BUY_NOW":
+				saleTypeConditions = append(saleTypeConditions, qm.Or2(boiler.ItemSaleWhere.Buyout.EQ(true)))
+			case "AUCTION":
+				saleTypeConditions = append(saleTypeConditions, qm.Or2(boiler.ItemSaleWhere.Auction.EQ(true)))
+			case "DUTCH_AUCTION":
+				saleTypeConditions = append(saleTypeConditions, qm.Or2(boiler.ItemSaleWhere.DutchAuction.EQ(true)))
+			}
+		}
+		queryMods = append(queryMods, qm.Expr(saleTypeConditions...))
 	}
 
 	// Search

@@ -53,14 +53,15 @@ const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"
 type MarketplaceSalesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID         server.UserID         `json:"user_id"`
-		SortDir        db.SortByDir          `json:"sort_dir"`
-		SortBy         string                `json:"sort_by"`
-		Filter         *db.ListFilterRequest `json:"filter,omitempty"`
-		FilterRarities []string              `json:"rarities"`
-		Search         string                `json:"search"`
-		PageSize       int                   `json:"page_size"`
-		Page           int                   `json:"page"`
+		UserID             server.UserID         `json:"user_id"`
+		SortDir            db.SortByDir          `json:"sort_dir"`
+		SortBy             string                `json:"sort_by"`
+		Filter             *db.ListFilterRequest `json:"filter"`
+		FilterRarities     []string              `json:"rarities"`
+		FilterListingTypes []string              `json:"listing_types"`
+		Search             string                `json:"search"`
+		PageSize           int                   `json:"page_size"`
+		Page               int                   `json:"page"`
 	} `json:"payload"`
 }
 
@@ -85,6 +86,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.Search,
 		req.Payload.Filter,
 		req.Payload.FilterRarities,
+		req.Payload.FilterListingTypes,
 		user.ID,
 		offset,
 		req.Payload.PageSize,
