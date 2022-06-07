@@ -9,7 +9,7 @@ import (
 type MarketplaceSaleItem struct {
 	ID                   string                   `json:"id" boil:"id"`
 	FactionID            string                   `json:"faction_id" boil:"faction_id"`
-	ItemID               string                   `json:"item_id" boil:"item_id"`
+	CollectionItemID     string                   `json:"collection_item_id" boil:"collection_item_id"`
 	ListingFeeTXID       string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID              string                   `json:"owner_id" boil:"owner_id"`
 	Auction              bool                     `json:"auction" boil:"auction"`

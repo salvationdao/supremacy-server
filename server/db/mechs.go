@@ -36,6 +36,7 @@ SELECT
 	collection_items.item_type,
 	collection_items.market_locked,
 	collection_items.xsyn_locked,
+	collection_items.id AS collection_item_id,
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -178,6 +179,7 @@ func Mech(mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -265,6 +267,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -554,14 +557,13 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
 		// TODO: Handle marketplace various item types
-		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s = ? AND %s > NOW() AND %s IS NULL",
+		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
 			boiler.TableNames.ItemSales,
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DeletedAt),
-		), "mech"),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs {
@@ -636,6 +638,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			fmt.Sprintf("(%s IS NOT NULL) AS market_listed", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID)),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
@@ -664,11 +667,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)),
 	)
 
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}
@@ -688,6 +689,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
 			&mc.CollectionItem.MarketListed,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

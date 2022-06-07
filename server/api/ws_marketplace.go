@@ -274,23 +274,41 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check if allowed to sell item
-	item, err := db.Mech(req.Payload.ItemID.String())
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Failed to get collection item.")
-		if errors.Is(err, sql.ErrNoRows) {
-			return terror.Error(err, "Item not found.")
+	collectionItemID := uuid.Nil
+	if req.Payload.ItemType == boiler.ItemTypeMech {
+		item, err := db.Mech(req.Payload.ItemID.String())
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("Failed to get collection item.")
+			if errors.Is(err, sql.ErrNoRows) {
+				return terror.Error(err, "Item not found.")
+			}
+			return terror.Error(err, errMsg)
 		}
-		return terror.Error(err, errMsg)
+		if item.XsynLocked || item.MarketLocked {
+			return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
+		}
+		collectionItemID, err = uuid.FromString(item.CollectionItemID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Str("collection_item_id", item.CollectionItemID).
+				Err(err).
+				Msg("Unable to parse collection item id")
+			return terror.Error(err, errMsg)
+		}
+	}
+	if collectionItemID == uuid.Nil {
+		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
 	}
 
-	if item.XsynLocked || item.MarketLocked {
-		return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
-	}
-	alreadySelling, err := db.MarketplaceCheckCollectionItem(req.Payload.ItemID)
+	alreadySelling, err := db.MarketplaceCheckCollectionItem(collectionItemID)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -363,11 +381,12 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	// Create Sales Item
 	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
 	obj, err := db.MarketplaceSaleCreate(
+		gamedb.StdConn,
 		userID,
 		factionID,
 		txid,
 		endAt,
-		req.Payload.ItemID,
+		collectionItemID,
 		req.Payload.HasBuyout,
 		askingPrice,
 		req.Payload.HasAuction,
@@ -396,7 +415,6 @@ const HubKeyMarketplaceSalesKeycardCreate = "MARKETPLACE:SALES:KEYCARD:CREATE"
 type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemType             string          `json:"item_type"`
 		ItemID               uuid.UUID       `json:"item_id"`
 		AskingPrice          decimal.Decimal `json:"asking_price"`
 		ListingDurationHours int64           `json:"listing_duration_hours"`
@@ -481,7 +499,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Player does not have enough sups.")
@@ -493,10 +510,10 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace fee: %s: %s", req.Payload.ItemType, req.Payload.ItemID.String()),
+		Description:          fmt.Sprintf("marketplace fee: keycard: %s", req.Payload.ItemID.String()),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -504,7 +521,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Marketplace Fee.")
@@ -525,7 +541,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to create new sale item.")
@@ -557,7 +572,7 @@ const (
 type MarketplaceSalesBuyRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemID uuid.UUID `json:"item_id"`
+		ID uuid.UUID `json:"id"`
 	} `json:"payload"`
 }
 
@@ -570,14 +585,14 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// Check whether user can buy sale item
-	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Item not found.")
 	}
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
@@ -589,7 +604,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to retrieve buyer's user id.")
 		return terror.Error(err, errMsg)
@@ -601,7 +616,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to get current buyout price.")
 		return terror.Error(err, errMsg)
@@ -612,7 +627,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
 				Err(err).
 				Msg("Unable to get current auction reserved price.")
 			return terror.Error(err, errMsg)
@@ -620,7 +635,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if saleItem.DutchAuctionDropRate.IsZero() {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
 		}
@@ -628,7 +643,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
 				Str("drop_rate_amount", saleItem.DutchAuctionDropRate.String).
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
@@ -650,7 +665,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		err = fmt.Errorf("insufficient funds")
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Err(err).
@@ -676,7 +691,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
@@ -690,7 +705,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to start purchase sale item db transaction.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
@@ -705,7 +720,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		SoldTXID: null.StringFrom(txid),
 		SoldBy:   null.StringFrom(user.ID),
 	}
-
 	_, err = saleItemRecord.Update(tx,
 		boil.Whitelist(
 			boiler.ItemSaleColumns.SoldAt,
@@ -721,14 +735,14 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeMechOwner(tx, req.Payload.ItemID)
+	err = db.ChangeMechOwner(tx, req.Payload.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -736,7 +750,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to Transfer Mech to New Owner")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
@@ -751,7 +765,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
@@ -772,14 +786,14 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	// Check whether user can buy sale item
-	saleItem, err := db.MarketplaceItemKeycardSale(req.Payload.ItemID)
+	saleItem, err := db.MarketplaceItemKeycardSale(req.Payload.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Item not found.")
 	}
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
@@ -791,7 +805,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to retrieve buyer's user id.")
 		return terror.Error(err, errMsg)
@@ -801,7 +815,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to get current buyout price.")
 		return terror.Error(err, errMsg)
@@ -812,7 +826,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		err = fmt.Errorf("insufficient funds")
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Err(err).
@@ -838,7 +852,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
@@ -852,7 +866,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to start purchase sale item db transaction.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
@@ -882,14 +896,14 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to update to Keycard Sale Item.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeKeycardOwner(tx, req.Payload.ItemID)
+	err = db.ChangeKeycardOwner(tx, req.Payload.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -897,7 +911,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to Transfer Keycard to New Owner")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
@@ -912,7 +926,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
@@ -929,7 +943,7 @@ const HubKeyMarketplaceSalesBid = "MARKETPLACE:SALES:BID"
 type MarketplaceSalesBidRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemID uuid.UUID `json:"item_id"`
+		ID     uuid.UUID `json:"id"`
 		Amount string    `json:"amount"`
 	} `json:"payload"`
 }
@@ -960,14 +974,14 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 
 	// Check whether user can buy sale item
-	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Item not found.")
 	}
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
@@ -983,7 +997,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Err(err).
@@ -995,7 +1009,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Err(err).
@@ -1020,7 +1034,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		err = fmt.Errorf("insufficient funds")
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("balance", balance.String()).
 			Str("cost", bidAmount.String()).
 			Err(err).
@@ -1044,7 +1058,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Str("bid_amount", bidAmount.String()).
 			Err(err).
@@ -1054,12 +1068,12 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	defer tx.Rollback()
 
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ItemID)
+	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Str("bid_amount", bidAmount.String()).
 			Err(err).
@@ -1068,12 +1082,12 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 
 	// Place Bid
-	_, err = db.MarketplaceSaleBidHistoryCreate(tx, req.Payload.ItemID, userID, bidAmount, txid)
+	_, err = db.MarketplaceSaleBidHistoryCreate(tx, req.Payload.ID, userID, bidAmount, txid)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Str("bid_amount", bidAmount.String()).
 			Err(err).
@@ -1081,12 +1095,12 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	err = db.MarketplaceSaleAuctionSync(tx, req.Payload.ItemID)
+	err = db.MarketplaceSaleAuctionSync(tx, req.Payload.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("bid_amount", bidAmount.String()).
 			Err(err).
 			Msg("Unable to update current auction price.")
@@ -1098,16 +1112,16 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		refundTxID, err := mp.API.Passport.RefundSupsMessage(bidTxID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
 				Str("txid", bidTxID).
 				Err(err).
 				Msg("Unable to refund cancelled bid.")
 			continue
 		}
-		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ItemID, bidTxID, refundTxID)
+		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, bidTxID, refundTxID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
 				Str("txid", bidTxID).
 				Str("refund_tx_id", refundTxID).
 				Err(err).
@@ -1122,7 +1136,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
 			Str("bid_amount", bidAmount.String()).
 			Err(err).
 			Msg("Unable to update current auction price.")
@@ -1135,7 +1149,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	resp := &SaleItemUpdate{
 		AuctionCurrentPrice: bidAmount.String(),
 	}
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ItemID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
 
 	return nil
 }

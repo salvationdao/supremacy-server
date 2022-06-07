@@ -163,17 +163,17 @@ var CollectionItemWhere = struct {
 
 // CollectionItemRels is where relationship names are stored.
 var CollectionItemRels = struct {
-	Owner         string
-	ItemItemSales string
+	Owner     string
+	ItemSales string
 }{
-	Owner:         "Owner",
-	ItemItemSales: "ItemItemSales",
+	Owner:     "Owner",
+	ItemSales: "ItemSales",
 }
 
 // collectionItemR is where relationships are stored.
 type collectionItemR struct {
-	Owner         *Player       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	ItemItemSales ItemSaleSlice `boiler:"ItemItemSales" boil:"ItemItemSales" json:"ItemItemSales" toml:"ItemItemSales" yaml:"ItemItemSales"`
+	Owner     *Player       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	ItemSales ItemSaleSlice `boiler:"ItemSales" boil:"ItemSales" json:"ItemSales" toml:"ItemSales" yaml:"ItemSales"`
 }
 
 // NewStruct creates a new relationship struct
@@ -449,15 +449,15 @@ func (o *CollectionItem) Owner(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// ItemItemSales retrieves all the item_sale's ItemSales with an executor via item_id column.
-func (o *CollectionItem) ItemItemSales(mods ...qm.QueryMod) itemSaleQuery {
+// ItemSales retrieves all the item_sale's ItemSales with an executor.
+func (o *CollectionItem) ItemSales(mods ...qm.QueryMod) itemSaleQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"item_sales\".\"item_id\"=?", o.ItemID),
+		qm.Where("\"item_sales\".\"collection_item_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"item_sales\".\"deleted_at\""),
 	)
 
@@ -576,9 +576,9 @@ func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollection
 	return nil
 }
 
-// LoadItemItemSales allows an eager lookup of values, cached into the
+// LoadItemSales allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
+func (collectionItemL) LoadItemSales(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
 	var slice []*CollectionItem
 	var object *CollectionItem
 
@@ -593,7 +593,7 @@ func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCo
 		if object.R == nil {
 			object.R = &collectionItemR{}
 		}
-		args = append(args, object.ItemID)
+		args = append(args, object.ID)
 	} else {
 	Outer:
 		for _, obj := range slice {
@@ -602,12 +602,12 @@ func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCo
 			}
 
 			for _, a := range args {
-				if a == obj.ItemID {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.ItemID)
+			args = append(args, obj.ID)
 		}
 	}
 
@@ -617,7 +617,7 @@ func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCo
 
 	query := NewQuery(
 		qm.From(`item_sales`),
-		qm.WhereIn(`item_sales.item_id in ?`, args...),
+		qm.WhereIn(`item_sales.collection_item_id in ?`, args...),
 		qmhelper.WhereIsNull(`item_sales.deleted_at`),
 	)
 	if mods != nil {
@@ -649,24 +649,24 @@ func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCo
 		}
 	}
 	if singular {
-		object.R.ItemItemSales = resultSlice
+		object.R.ItemSales = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &itemSaleR{}
 			}
-			foreign.R.Item = object
+			foreign.R.CollectionItem = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ItemID == foreign.ItemID {
-				local.R.ItemItemSales = append(local.R.ItemItemSales, foreign)
+			if local.ID == foreign.CollectionItemID {
+				local.R.ItemSales = append(local.R.ItemSales, foreign)
 				if foreign.R == nil {
 					foreign.R = &itemSaleR{}
 				}
-				foreign.R.Item = local
+				foreign.R.CollectionItem = local
 				break
 			}
 		}
@@ -721,25 +721,25 @@ func (o *CollectionItem) SetOwner(exec boil.Executor, insert bool, related *Play
 	return nil
 }
 
-// AddItemItemSales adds the given related objects to the existing relationships
+// AddItemSales adds the given related objects to the existing relationships
 // of the collection_item, optionally inserting them as new records.
-// Appends related to o.R.ItemItemSales.
-// Sets related.R.Item appropriately.
-func (o *CollectionItem) AddItemItemSales(exec boil.Executor, insert bool, related ...*ItemSale) error {
+// Appends related to o.R.ItemSales.
+// Sets related.R.CollectionItem appropriately.
+func (o *CollectionItem) AddItemSales(exec boil.Executor, insert bool, related ...*ItemSale) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.ItemID = o.ItemID
+			rel.CollectionItemID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"item_sales\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"item_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
 				strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ItemID, rel.ID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -749,25 +749,25 @@ func (o *CollectionItem) AddItemItemSales(exec boil.Executor, insert bool, relat
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.ItemID = o.ItemID
+			rel.CollectionItemID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &collectionItemR{
-			ItemItemSales: related,
+			ItemSales: related,
 		}
 	} else {
-		o.R.ItemItemSales = append(o.R.ItemItemSales, related...)
+		o.R.ItemSales = append(o.R.ItemSales, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &itemSaleR{
-				Item: o,
+				CollectionItem: o,
 			}
 		} else {
-			rel.R.Item = o
+			rel.R.CollectionItem = o
 		}
 	}
 	return nil

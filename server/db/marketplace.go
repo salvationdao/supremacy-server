@@ -21,7 +21,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 	qm.Select(
 		`item_sales.id AS id,
 		item_sales.faction_id AS faction_id,
-		item_sales.item_id AS item_id,
+		item_sales.collection_item_id AS collection_item_id,
 		item_sales.listing_fee_tx_id AS listing_fee_tx_id,
 		item_sales.owner_id AS owner_id,
 		item_sales.auction AS auction,
@@ -53,8 +53,8 @@ var itemSaleQueryMods = []qm.QueryMod{
 		fmt.Sprintf(
 			"%s ON %s = %s",
 			boiler.TableNames.CollectionItems,
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
 		),
 	),
 	qm.LeftOuterJoin(
@@ -62,7 +62,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 			"%s ON %s = %s",
 			boiler.TableNames.Mechs,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		),
 	),
 	qm.LeftOuterJoin(
@@ -138,7 +138,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	).QueryRow(gamedb.StdConn).Scan(
 		&output.ID,
 		&output.FactionID,
-		&output.ItemID,
+		&output.CollectionItemID,
 		&output.ListingFeeTXID,
 		&output.OwnerID,
 		&output.Auction,
@@ -363,11 +363,12 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 
 // MarketplaceSaleCreate inserts a new sale item.
 func MarketplaceSaleCreate(
+	conn boil.Executor,
 	ownerID uuid.UUID,
 	factionID uuid.UUID,
 	listFeeTxnID string,
 	endAt time.Time,
-	itemID uuid.UUID,
+	collectionItemID uuid.UUID,
 	hasBuyout bool,
 	askingPrice *decimal.Decimal,
 	hasAuction bool,
@@ -376,11 +377,11 @@ func MarketplaceSaleCreate(
 	dutchAuctionDropRate *decimal.Decimal,
 ) (*server.MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
-		OwnerID:        ownerID.String(),
-		FactionID:      factionID.String(),
-		ListingFeeTXID: listFeeTxnID,
-		ItemID:         itemID.String(),
-		EndAt:          endAt,
+		OwnerID:          ownerID.String(),
+		FactionID:        factionID.String(),
+		ListingFeeTXID:   listFeeTxnID,
+		CollectionItemID: collectionItemID.String(),
+		EndAt:            endAt,
 	}
 
 	if hasBuyout {
@@ -399,14 +400,14 @@ func MarketplaceSaleCreate(
 		obj.AuctionReservedPrice = null.StringFrom(auctionReservedPrice.String())
 	}
 
-	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	err := obj.Insert(conn, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 	output := &server.MarketplaceSaleItem{
 		ID:                   obj.ID,
 		FactionID:            obj.FactionID,
-		ItemID:               obj.ItemID,
+		CollectionItemID:     obj.CollectionItemID,
 		ListingFeeTXID:       obj.ListingFeeTXID,
 		OwnerID:              obj.OwnerID,
 		Auction:              obj.Auction,
@@ -530,9 +531,9 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 }
 
 // MarketplaceCheckCollectionItem checks whether collection item is already in marketplace.
-func MarketplaceCheckCollectionItem(mechID uuid.UUID) (bool, error) {
+func MarketplaceCheckCollectionItem(collectionItemID uuid.UUID) (bool, error) {
 	output, err := boiler.ItemSales(
-		boiler.ItemSaleWhere.ItemID.EQ(mechID.String()),
+		boiler.ItemSaleWhere.CollectionItemID.EQ(collectionItemID.String()),
 		boiler.ItemSaleWhere.SoldAt.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
@@ -557,22 +558,22 @@ func MarketplaceCountKeycards(playerKeycardID uuid.UUID) (int64, error) {
 }
 
 // ChangeMechOwner transfers a collection item to a new owner.
-// TODO: Subject to change...
 func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	q := `
 		UPDATE collection_items AS ci
 		SET owner_id = s.sold_by
 		FROM item_sales s
+			INNER JOIN collection_items ci_mech ON ci_mech.id = s.collection_item_id
+				AND ci_mech.item_type = $2
+			INNER JOIN mechs m ON m.id = ci_mech.item_id
+			LEFT JOIN collection_items ci_mech_skin ON ci_mech_skin.item_id = m.chassis_skin_id
+				AND ci_mech_skin.item_type = $3
+			LEFT JOIN collection_items ci_power_core ON ci_power_core.item_id = m.power_core_id
+				AND ci_power_core.item_type = $4
 		WHERE s.id = $1
-			AND ci.id IN (
-				SELECT _ci.id
-				FROM mechs _m
-					INNER JOIN collection_items _ci ON _ci.item_id = _m.id
-						OR _ci.item_id = _m.chassis_skin_id
-						OR _ci.item_id = _m.power_core_id
-				WHERE _m.id = s.item_id
-			)`
-	_, err := conn.Exec(q, itemSaleID)
+			AND s.sold_by IS NOT NULL
+			AND ci.id in (ci_mech.id, ci_mech_skin.id, ci_power_core.id)`
+	_, err := conn.Exec(q, itemSaleID, boiler.ItemTypeMech, boiler.ItemTypeMechSkin, boiler.ItemTypePowerCore)
 	if err != nil {
 		return terror.Error(err)
 	}

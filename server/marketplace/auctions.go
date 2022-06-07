@@ -22,7 +22,8 @@ type AuctionController struct {
 
 type ItemSaleAuction struct {
 	ID               uuid.UUID `boil:"id"`
-	ItemID           uuid.UUID `boil:"item_id"`
+	CollectionItemID uuid.UUID `boil:"collection_item_id"`
+	ItemType         string    `boil:"item_type"`
 	OwnerID          uuid.UUID `boil:"owner_id"`
 	AuctionBidPrice  string    `boil:"auction_bid_price"`
 	AuctionBidUserID uuid.UUID `boil:"auction_bid_user_id"`
@@ -54,7 +55,8 @@ func (a *AuctionController) Run() {
 			err := boiler.NewQuery(
 				qm.SQL(`
 					SELECT item_sales.id AS id,
-						item_sales.item_id,
+						item_sales.collection_item_id,
+						collection_items.item_type,
 						item_sales.owner_id,
 						item_sales_bid_history.bid_price AS auction_bid_price,
 						item_sales_bid_history.bidder_id AS auction_bid_user_id,
@@ -64,6 +66,7 @@ func (a *AuctionController) Run() {
 							AND item_sales_bid_history.cancelled_at IS NULL
 							AND item_sales_bid_history.refund_bid_tx_id IS NULL
 						INNER JOIN players ON players.id = item_sales.owner_id 
+						INNER JOIN collection_items ON collection_items.id = item_sales.collection_item_id
 					WHERE item_sales.auction = TRUE
 						AND item_sales.sold_by IS NULL
 						AND item_sales.end_at <= NOW()
@@ -152,16 +155,18 @@ func (a *AuctionController) Run() {
 				}
 
 				// Transfer ownership of asset
-				err = db.ChangeMechOwner(tx, auctionItem.ID)
-				if err != nil {
-					a.Passport.RefundSupsMessage(txid)
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice).
-						Err(err).
-						Msg("Failed to Transfer Mech to New Owner")
-					continue
+				if auctionItem.ItemType == boiler.ItemTypeMech {
+					err = db.ChangeMechOwner(tx, auctionItem.ID)
+					if err != nil {
+						a.Passport.RefundSupsMessage(txid)
+						gamelog.L.Error().
+							Str("item_id", auctionItem.ID.String()).
+							Str("user_id", auctionItem.AuctionBidUserID.String()).
+							Str("cost", auctionItem.AuctionBidPrice).
+							Err(err).
+							Msg("Failed to Transfer Mech to New Owner")
+						continue
+					}
 				}
 
 				// Commit Transaction
