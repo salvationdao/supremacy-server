@@ -1303,9 +1303,8 @@ func (btl *Battle) Tick(payload []byte) {
 
 		if warMachineIndex == -1 {
 			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-				Interface("btl.WarMachines", btl.WarMachines).
 				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
-			continue
+			return
 		}
 
 		// Get Sync byte (tells us which data was updated for this warmachine)

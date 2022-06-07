@@ -55,7 +55,7 @@ var TableNames = struct {
 	KV                                                 string
 	Languages                                          string
 	MechAnimation                                      string
-	MechModel                                          string
+	MechModels                                         string
 	MechRepair                                         string
 	MechSkin                                           string
 	MechStats                                          string
@@ -64,6 +64,8 @@ var TableNames = struct {
 	Mechs                                              string
 	MechsOld                                           string
 	Multipliers                                        string
+	MysteryCrate                                       string
+	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerFingerprints                                 string
@@ -84,6 +86,8 @@ var TableNames = struct {
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
+	StorePurchaseHistory                               string
+	StorefrontMysteryCrates                            string
 	StreamList                                         string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
@@ -96,6 +100,7 @@ var TableNames = struct {
 	UtilityRepairDrone                                 string
 	UtilityShield                                      string
 	WeaponAmmo                                         string
+	WeaponModels                                       string
 	WeaponSkin                                         string
 	Weapons                                            string
 }{
@@ -150,7 +155,7 @@ var TableNames = struct {
 	KV:                          "kv",
 	Languages:                   "languages",
 	MechAnimation:               "mech_animation",
-	MechModel:                   "mech_model",
+	MechModels:                  "mech_models",
 	MechRepair:                  "mech_repair",
 	MechSkin:                    "mech_skin",
 	MechStats:                   "mech_stats",
@@ -159,6 +164,8 @@ var TableNames = struct {
 	Mechs:                       "mechs",
 	MechsOld:                    "mechs_old",
 	Multipliers:                 "multipliers",
+	MysteryCrate:                "mystery_crate",
+	MysteryCrateBlueprints:      "mystery_crate_blueprints",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",
 	PlayerFingerprints:          "player_fingerprints",
@@ -179,6 +186,8 @@ var TableNames = struct {
 	SalePlayerAbilities:         "sale_player_abilities",
 	SchemaMigrations:            "schema_migrations",
 	SpoilsOfWar:                 "spoils_of_war",
+	StorePurchaseHistory:        "store_purchase_history",
+	StorefrontMysteryCrates:     "storefront_mystery_crates",
 	StreamList:                  "stream_list",
 	TelegramNotifications:       "telegram_notifications",
 	TemplateBlueprints:          "template_blueprints",
@@ -191,6 +200,7 @@ var TableNames = struct {
 	UtilityRepairDrone:          "utility_repair_drone",
 	UtilityShield:               "utility_shield",
 	WeaponAmmo:                  "weapon_ammo",
+	WeaponModels:                "weapon_models",
 	WeaponSkin:                  "weapon_skin",
 	Weapons:                     "weapons",
 }

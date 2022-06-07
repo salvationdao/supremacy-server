@@ -797,3 +797,44 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 
 	return assets
 }
+
+func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate) *XsynAsset {
+	asJson, err := json.Marshal(mysteryCrate)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("interface", mysteryCrate).Msg("failed to convert item to json")
+	}
+
+	// convert stats to attributes to
+	attributes := []*Attribute{
+		{
+			TraitType: "Label",
+			Value:     mysteryCrate.Label,
+		},
+		{
+			TraitType: "Type",
+			Value:     mysteryCrate.Type,
+		},
+	}
+
+	asset := &XsynAsset{
+		ID:             mysteryCrate.ID,
+		CollectionSlug: mysteryCrate.CollectionSlug,
+		TokenID:        mysteryCrate.TokenID,
+		Tier:           mysteryCrate.Tier,
+		Data:           asJson,
+		Attributes:     attributes,
+		Hash:           mysteryCrate.Hash,
+		OwnerID:        mysteryCrate.OwnerID,
+		AssetType:      null.StringFrom(mysteryCrate.ItemType),
+
+		Name:             mysteryCrate.Label,
+		ImageURL:         mysteryCrate.ImageURL,
+		BackgroundColor:  mysteryCrate.BackgroundColor,
+		AnimationURL:     mysteryCrate.AnimationURL,
+		YoutubeURL:       mysteryCrate.YoutubeURL,
+		AvatarURL:        mysteryCrate.AvatarURL,
+		CardAnimationURL: mysteryCrate.CardAnimationURL,
+	}
+
+	return asset
+}

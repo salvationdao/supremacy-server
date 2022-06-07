@@ -68,7 +68,7 @@ LEFT OUTER JOIN (
 	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
 	) ec ON ec.id = mechs.power_core_id
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
-LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
+LEFT OUTER JOIN mech_models mm ON mechs.model_id = mm.id
 LEFT OUTER JOIN (
 	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_skin _ms
@@ -454,7 +454,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		mechBlueprint.Collection,
 		boiler.ItemTypeMech,
 		newMech.ID,
