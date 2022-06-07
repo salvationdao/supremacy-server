@@ -120,7 +120,7 @@ func PlayerKeycardList(
 			queryMods,
 			qm.And(
 				fmt.Sprintf("%s = ?", qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.PlayerID)),
-				userID,
+				*userID,
 			),
 		)
 	}
@@ -141,8 +141,7 @@ func PlayerKeycardList(
 
 	// Get total rows
 	var total int64
-	countQueryMods := append(queryMods[1:], qm.Select("COUNT(*)"))
-	err := boiler.NewQuery(countQueryMods...).QueryRow(gamedb.StdConn).Scan(&total)
+	err := boiler.NewQuery(append(queryMods[1:], qm.Select("COUNT(*)"))...).QueryRow(gamedb.StdConn).Scan(&total)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
