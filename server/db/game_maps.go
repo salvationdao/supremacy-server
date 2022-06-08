@@ -96,7 +96,10 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 
 	rand.Seed(time.Now().UnixNano())
 
-	gameMap := maps[rand.Intn(len(maps))]
-
-	return gameMap, nil
+	if len(maps) > 1 {
+		gameMap := maps[rand.Intn(len(maps))]
+		return gameMap, nil
+	} else {
+		return maps[0], nil
+	}
 }
