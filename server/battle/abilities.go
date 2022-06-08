@@ -1658,9 +1658,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			}
 		}
 
-		// broadcast the progress bar
-		as.BroadcastAbilityProgressBar()
-
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.GreaterThan(ability.CurrentSups) {
 			// store updated price to db
@@ -1745,6 +1742,9 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		return false
 	})
+
+	// broadcast the progress bar
+	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
