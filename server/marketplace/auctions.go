@@ -50,7 +50,7 @@ func (a *AuctionController) Run() {
 		select {
 		case <-mainTicker.C:
 			// Scan all completed auctions that haven't went through payment process
-			gamelog.L.Info().Msg("processing completed auction items started")
+			gamelog.L.Trace().Msg("processing completed auction items started")
 
 			completedAuctions := []*ItemSaleAuction{}
 			err := boiler.NewQuery(
@@ -198,7 +198,7 @@ func (a *AuctionController) Run() {
 				numProcessed++
 			}
 
-			gamelog.L.Info().
+			gamelog.L.Trace().
 				Int("num_processed", numProcessed).
 				Int("num_failed", len(completedAuctions)-numProcessed).
 				Int("num_pending", len(completedAuctions)).
