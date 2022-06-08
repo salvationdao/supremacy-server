@@ -34,7 +34,7 @@ type MarketplaceSaleItem struct {
 	Owner                MarketplaceSaleItemOwner        `json:"owner,omitempty" boil:",bind"`
 	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
 	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
-	LastBid              MarketplaceBidder               `json:"last_bid,empty" boil:",bind"`
+	LastBid              MarketplaceBidder               `json:"last_bid,omitempty" boil:",bind"`
 }
 
 type MarketplaceBidder struct {

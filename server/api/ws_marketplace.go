@@ -1153,6 +1153,13 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	// Broadcast new current price
 	resp := &SaleItemUpdate{
 		AuctionCurrentPrice: req.Payload.Amount.Mul(decimal.New(1, 18)).String(),
+		LastBid: server.MarketplaceBidder{
+			ID:            null.StringFrom(user.ID),
+			FactionID:     user.FactionID,
+			Username:      user.Username,
+			PublicAddress: user.PublicAddress,
+			Gid:           null.IntFrom(user.Gid),
+		},
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
 
@@ -1162,7 +1169,8 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 const HubKeyMarketplaceSalesItemUpdate = "MARKETPLACE:SALES:ITEM:UPDATE"
 
 type SaleItemUpdate struct {
-	AuctionCurrentPrice string `json:"auction_current_price"`
+	AuctionCurrentPrice string                   `json:"auction_current_price"`
+	LastBid             server.MarketplaceBidder `json:"last_bid,omitempty"`
 }
 
 func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
