@@ -427,7 +427,7 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 			continue
 		}
 		if b.BattleContractID.String == "" {
-			gamelog.L.Error().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Msg("queue entry did not have a contract")
+			gamelog.L.Warn().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Msg("queue entry did not have a contract")
 			continue
 		}
 		bc, err := boiler.FindBattleContract(gamedb.StdConn, b.BattleContractID.String)
