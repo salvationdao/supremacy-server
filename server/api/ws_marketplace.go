@@ -138,6 +138,8 @@ type MarketplaceSalesKeycardListRequest struct {
 		UserID   server.UserID         `json:"user_id"`
 		SortDir  db.SortByDir          `json:"sort_dir"`
 		SortBy   string                `json:"sort_by"`
+		MinPrice decimal.NullDecimal   `json:"min_price"`
+		MaxPrice decimal.NullDecimal   `json:"max_price"`
 		Filter   *db.ListFilterRequest `json:"filter,omitempty"`
 		Search   string                `json:"search"`
 		PageSize int                   `json:"page_size"`
@@ -160,6 +162,30 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	offset := 0
 	if req.Payload.Page > 0 {
 		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	filters := req.Payload.Filter
+	if filters == nil {
+		filters = &db.ListFilterRequest{
+			LinkOperator: db.LinkOperatorTypeAnd,
+			Items:        []*db.ListFilterRequestItem{},
+		}
+	}
+	if req.Payload.MinPrice.Valid {
+		filters.Items = append(filters.Items, &db.ListFilterRequestItem{
+			Table:    boiler.TableNames.ItemKeycardSales,
+			Column:   boiler.ItemKeycardSaleColumns.BuyoutPrice,
+			Value:    req.Payload.MinPrice.Decimal.String(),
+			Operator: db.OperatorValueTypeGreaterOrEqual,
+		})
+	}
+	if req.Payload.MaxPrice.Valid {
+		filters.Items = append(filters.Items, &db.ListFilterRequestItem{
+			Table:    boiler.TableNames.ItemKeycardSales,
+			Column:   boiler.ItemKeycardSaleColumns.BuyoutPrice,
+			Value:    req.Payload.MaxPrice.Decimal.String(),
+			Operator: db.OperatorValueTypeLessOrEqual,
+		})
 	}
 
 	total, records, err := db.MarketplaceItemKeycardSaleList(

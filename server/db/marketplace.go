@@ -421,21 +421,12 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	)
 
 	// Filters
-	// if filter != nil {
-	// 	for i, f := range filter.Items {
-	// 		if f.Table != "" {
-	// 			if f.Table == boiler.TableNames.BlueprintKeycards {
-	// 				column := MechColumns(f.Column)
-	// 				err := column.IsValid()
-	// 				if err != nil {
-	// 					return 0, nil, terror.Error(err)
-	// 				}
-	// 			}
-	// 		}
-	// 		queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
-	// 		queryMods = append(queryMods, queryMod)
-	// 	}
-	// }
+	if filter != nil {
+		for i, f := range filter.Items {
+			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
+			queryMods = append(queryMods, queryMod)
+		}
+	}
 
 	// Search
 	if search != "" {
