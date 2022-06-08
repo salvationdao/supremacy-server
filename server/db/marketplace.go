@@ -452,7 +452,12 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	}
 
 	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
+	var orderBy qm.QueryMod
+	if sortBy == "alphabetical" {
+		orderBy = qm.OrderBy(fmt.Sprintf("blueprint_keycards.label %s", sortDir))
+	} else {
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
+	}
 	queryMods = append(queryMods, orderBy)
 
 	// Limit/Offset
