@@ -63,6 +63,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 
 // GameMapGetRandom return a game map by given id
 func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
+
 	mapQueries := []qm.QueryMod{
 		qm.Select(
 			boiler.GameMapColumns.ID,
@@ -70,7 +71,21 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 		),
 		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
-	rand.Seed(time.Now().UnixNano())
+
+	mapCount, err := boiler.GameMaps(mapQueries...).Count(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if mapCount == 1 {
+		gameMap, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		return gameMap[0], nil
+	}
+
 	if !allowLastMap {
 		lastBattle, err := boiler.Battles(
 			qm.Select(
@@ -89,27 +104,13 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 		}
 	}
 
-	var gameMap *boiler.GameMap
-
 	maps, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, err
-	} else if err != nil && errors.Is(err, sql.ErrNoRows) {
-		maps, err := boiler.GameMaps(
-			qm.Select(
-				boiler.GameMapColumns.ID,
-				boiler.GameMapColumns.Name,
-			),
-			boiler.GameMapWhere.DisabledAt.IsNull(),
-		).All(gamedb.StdConn)
-		if err != nil {
-			return nil, err
-		} else {
-			gameMap = maps[0]
-		}
-	} else {
-		gameMap = maps[rand.Intn(len(maps))]
 	}
+
+	rand.Seed(time.Now().UnixNano())
+	gameMap := maps[rand.Intn(len(maps))]
 
 	return gameMap, nil
 }
