@@ -33,6 +33,15 @@ type StorefrontMysteryCrate struct {
 	DeletedAt        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Label            string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Description      string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	ImageURL         null.String     `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String     `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String     `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String     `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *storefrontMysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L storefrontMysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,6 +57,15 @@ var StorefrontMysteryCrateColumns = struct {
 	DeletedAt        string
 	UpdatedAt        string
 	CreatedAt        string
+	Label            string
+	Description      string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
 	ID:               "id",
 	MysteryCrateType: "mystery_crate_type",
@@ -58,6 +76,15 @@ var StorefrontMysteryCrateColumns = struct {
 	DeletedAt:        "deleted_at",
 	UpdatedAt:        "updated_at",
 	CreatedAt:        "created_at",
+	Label:            "label",
+	Description:      "description",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var StorefrontMysteryCrateTableColumns = struct {
@@ -70,6 +97,15 @@ var StorefrontMysteryCrateTableColumns = struct {
 	DeletedAt        string
 	UpdatedAt        string
 	CreatedAt        string
+	Label            string
+	Description      string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
 	ID:               "storefront_mystery_crates.id",
 	MysteryCrateType: "storefront_mystery_crates.mystery_crate_type",
@@ -80,6 +116,15 @@ var StorefrontMysteryCrateTableColumns = struct {
 	DeletedAt:        "storefront_mystery_crates.deleted_at",
 	UpdatedAt:        "storefront_mystery_crates.updated_at",
 	CreatedAt:        "storefront_mystery_crates.created_at",
+	Label:            "storefront_mystery_crates.label",
+	Description:      "storefront_mystery_crates.description",
+	ImageURL:         "storefront_mystery_crates.image_url",
+	CardAnimationURL: "storefront_mystery_crates.card_animation_url",
+	AvatarURL:        "storefront_mystery_crates.avatar_url",
+	LargeImageURL:    "storefront_mystery_crates.large_image_url",
+	BackgroundColor:  "storefront_mystery_crates.background_color",
+	AnimationURL:     "storefront_mystery_crates.animation_url",
+	YoutubeURL:       "storefront_mystery_crates.youtube_url",
 }
 
 // Generated where
@@ -94,6 +139,15 @@ var StorefrontMysteryCrateWhere = struct {
 	DeletedAt        whereHelpernull_Time
 	UpdatedAt        whereHelpertime_Time
 	CreatedAt        whereHelpertime_Time
+	Label            whereHelperstring
+	Description      whereHelperstring
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"storefront_mystery_crates\".\"id\""},
 	MysteryCrateType: whereHelperstring{field: "\"storefront_mystery_crates\".\"mystery_crate_type\""},
@@ -104,14 +158,27 @@ var StorefrontMysteryCrateWhere = struct {
 	DeletedAt:        whereHelpernull_Time{field: "\"storefront_mystery_crates\".\"deleted_at\""},
 	UpdatedAt:        whereHelpertime_Time{field: "\"storefront_mystery_crates\".\"updated_at\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"storefront_mystery_crates\".\"created_at\""},
+	Label:            whereHelperstring{field: "\"storefront_mystery_crates\".\"label\""},
+	Description:      whereHelperstring{field: "\"storefront_mystery_crates\".\"description\""},
+	ImageURL:         whereHelpernull_String{field: "\"storefront_mystery_crates\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"storefront_mystery_crates\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"storefront_mystery_crates\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"storefront_mystery_crates\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"storefront_mystery_crates\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"storefront_mystery_crates\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"storefront_mystery_crates\".\"youtube_url\""},
 }
 
 // StorefrontMysteryCrateRels is where relationship names are stored.
 var StorefrontMysteryCrateRels = struct {
-}{}
+	Faction string
+}{
+	Faction: "Faction",
+}
 
 // storefrontMysteryCrateR is where relationships are stored.
 type storefrontMysteryCrateR struct {
+	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 }
 
 // NewStruct creates a new relationship struct
@@ -123,9 +190,9 @@ func (*storefrontMysteryCrateR) NewStruct() *storefrontMysteryCrateR {
 type storefrontMysteryCrateL struct{}
 
 var (
-	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at"}
+	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "faction_id"}
-	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "amount_sold", "deleted_at", "updated_at", "created_at"}
+	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "amount_sold", "deleted_at", "updated_at", "created_at", "label", "description", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	storefrontMysteryCratePrimaryKeyColumns     = []string{"id"}
 	storefrontMysteryCrateGeneratedColumns      = []string{}
 )
@@ -370,6 +437,172 @@ func (q storefrontMysteryCrateQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// Faction pointed to by the foreign key.
+func (o *StorefrontMysteryCrate) Faction(mods ...qm.QueryMod) factionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.FactionID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// LoadFaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (storefrontMysteryCrateL) LoadFaction(e boil.Executor, singular bool, maybeStorefrontMysteryCrate interface{}, mods queries.Applicator) error {
+	var slice []*StorefrontMysteryCrate
+	var object *StorefrontMysteryCrate
+
+	if singular {
+		object = maybeStorefrontMysteryCrate.(*StorefrontMysteryCrate)
+	} else {
+		slice = *maybeStorefrontMysteryCrate.(*[]*StorefrontMysteryCrate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &storefrontMysteryCrateR{}
+		}
+		args = append(args, object.FactionID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &storefrontMysteryCrateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.FactionID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.FactionID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+		qmhelper.WhereIsNull(`factions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Faction")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(storefrontMysteryCrateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Faction = foreign
+		if foreign.R == nil {
+			foreign.R = &factionR{}
+		}
+		foreign.R.StorefrontMysteryCrates = append(foreign.R.StorefrontMysteryCrates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.FactionID == foreign.ID {
+				local.R.Faction = foreign
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.StorefrontMysteryCrates = append(foreign.R.StorefrontMysteryCrates, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetFaction of the storefrontMysteryCrate to the related item.
+// Sets o.R.Faction to related.
+// Adds o to related.R.StorefrontMysteryCrates.
+func (o *StorefrontMysteryCrate) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"storefront_mystery_crates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, storefrontMysteryCratePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.FactionID = related.ID
+	if o.R == nil {
+		o.R = &storefrontMysteryCrateR{
+			Faction: related,
+		}
+	} else {
+		o.R.Faction = related
+	}
+
+	if related.R == nil {
+		related.R = &factionR{
+			StorefrontMysteryCrates: StorefrontMysteryCrateSlice{o},
+		}
+	} else {
+		related.R.StorefrontMysteryCrates = append(related.R.StorefrontMysteryCrates, o)
+	}
+
+	return nil
 }
 
 // StorefrontMysteryCrates retrieves all the records using an executor.

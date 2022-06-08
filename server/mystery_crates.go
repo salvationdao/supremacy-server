@@ -3,10 +3,11 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"server/db/boiler"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 )
 
 type MysteryCrate struct {
@@ -72,10 +73,15 @@ type StorefrontMysteryCrate struct {
 	Amount           int             `json:"amount"`
 	AmountSold       int             `json:"amount_sold"`
 	FactionID        string          `json:"faction_id"`
-
-	DeletedAt null.Time `json:"purchased"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Label            string          `json:"label"`
+	Description      string          `json:"description"`
+	ImageURL         null.String     `json:"image_url,omitempty"`
+	CardAnimationURL null.String     `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String     `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String     `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String     `json:"background_color,omitempty"`
+	AnimationURL     null.String     `json:"animation_url,omitempty"`
+	YoutubeURL       null.String     `json:"youtube_url,omitempty"`
 }
 
 func (b *StorefrontMysteryCrate) Scan(value interface{}) error {
@@ -94,27 +100,22 @@ func StoreFrontMysteryCrateFromBoiler(storefrontMysteryCrate *boiler.StorefrontM
 		Amount:           storefrontMysteryCrate.Amount,
 		AmountSold:       storefrontMysteryCrate.AmountSold,
 		FactionID:        storefrontMysteryCrate.FactionID,
-		DeletedAt:        storefrontMysteryCrate.DeletedAt,
-		UpdatedAt:        storefrontMysteryCrate.UpdatedAt,
-		CreatedAt:        storefrontMysteryCrate.CreatedAt,
+		Label:            storefrontMysteryCrate.Label,
+		Description:      storefrontMysteryCrate.Description,
+		ImageURL:         storefrontMysteryCrate.ImageURL,
+		CardAnimationURL: storefrontMysteryCrate.CardAnimationURL,
+		AvatarURL:        storefrontMysteryCrate.AvatarURL,
+		LargeImageURL:    storefrontMysteryCrate.LargeImageURL,
+		BackgroundColor:  storefrontMysteryCrate.BackgroundColor,
+		AnimationURL:     storefrontMysteryCrate.AnimationURL,
+		YoutubeURL:       storefrontMysteryCrate.YoutubeURL,
 	}
 }
 
 func StoreFrontMysteryCrateSliceFromBoiler(storefrontMysteryCrates []*boiler.StorefrontMysteryCrate) []*StorefrontMysteryCrate {
 	var slice []*StorefrontMysteryCrate
 	for _, mc := range storefrontMysteryCrates {
-		crate := &StorefrontMysteryCrate{
-			ID:               mc.ID,
-			MysteryCrateType: mc.MysteryCrateType,
-			Price:            mc.Price,
-			Amount:           mc.Amount,
-			AmountSold:       mc.AmountSold,
-			FactionID:        mc.FactionID,
-			DeletedAt:        mc.DeletedAt,
-			UpdatedAt:        mc.UpdatedAt,
-			CreatedAt:        mc.CreatedAt,
-		}
-		slice = append(slice, crate)
+		slice = append(slice, StoreFrontMysteryCrateFromBoiler(mc))
 	}
 
 	return slice

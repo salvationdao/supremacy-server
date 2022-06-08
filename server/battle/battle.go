@@ -270,11 +270,6 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
 			return err
 		}
-
-		// Tell clients to refetch war machine queue status
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.RedMountainFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.BostonCyberneticsFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.ZaibatsuFactionID), WSQueueUpdatedSubscribe, true)
 	}
 
 	// broadcast battle settings
@@ -1457,9 +1452,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 
-					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
+					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(wm.OwnedByID)).One(gamedb.StdConn)
 					if err != nil && !errors.Is(err, sql.ErrNoRows) {
-						gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
+						gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get player preferences")
 
 					}
 
@@ -1833,6 +1828,8 @@ func (btl *Battle) Load() error {
 	}
 
 	btl.warMachineIDs = uuids
+
+	go BroadcastQueuePositions()
 
 	return nil
 }

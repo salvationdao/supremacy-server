@@ -29,8 +29,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
-	api.SecureUserCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
-
+	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	return pac
 }
 
@@ -182,7 +181,7 @@ type PlayerAssetMechDetailRequest struct {
 
 const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
 
-func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerAssetMechDetailRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

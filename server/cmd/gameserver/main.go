@@ -543,7 +543,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 			}
 
 			keycardAssets.AssetData = keyCardData
-			resp, err := pp.UpdateKeycardItem(keycardAssets)
+			resp, err := pp.UpdateKeycardItem(&keycardAssets)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to update key card item from passport server")
 				failed++
