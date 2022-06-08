@@ -724,7 +724,7 @@ func MarketplaceKeycardSaleCreate(
 		ListingFeeTXID: listFeeTxnID,
 		ItemID:         itemID.String(),
 		EndAt:          endAt,
-		BuyoutPrice:    askingPrice,
+		BuyoutPrice:    askingPrice.Mul(decimal.New(1, 18)),
 	}
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
