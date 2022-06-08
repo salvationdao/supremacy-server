@@ -146,8 +146,8 @@ type MarketplaceSalesKeycardListRequest struct {
 }
 
 type MarketplaceSalesListKeycardResponse struct {
-	Total   int64                                `json:"total"`
-	Records []*server.MarketplaceKeycardSaleItem `json:"records"`
+	Total   int64                             `json:"total"`
+	Records []*server.MarketplaceSaleItem1155 `json:"records"`
 }
 
 func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {

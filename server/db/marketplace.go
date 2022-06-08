@@ -225,8 +225,8 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 }
 
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
-func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleItem, error) {
-	output := &server.MarketplaceKeycardSaleItem{}
+func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, error) {
+	output := &server.MarketplaceSaleItem1155{}
 	err := boiler.ItemKeycardSales(
 		append(
 			itemKeycardSaleQueryMods,
@@ -251,16 +251,16 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleIte
 		&output.Owner.Username,
 		&output.Owner.PublicAddress,
 		&output.Owner.Gid,
-		&output.Blueprints.ID,
-		&output.Blueprints.Label,
-		&output.Blueprints.Description,
-		&output.Blueprints.Collection,
-		&output.Blueprints.KeycardTokenID,
-		&output.Blueprints.ImageURL,
-		&output.Blueprints.AnimationURL,
-		&output.Blueprints.KeycardGroup,
-		&output.Blueprints.Syndicate,
-		&output.Blueprints.CreatedAt,
+		&output.Keycard.ID,
+		&output.Keycard.Label,
+		&output.Keycard.Description,
+		&output.Keycard.Collection,
+		&output.Keycard.KeycardTokenID,
+		&output.Keycard.ImageURL,
+		&output.Keycard.AnimationURL,
+		&output.Keycard.KeycardGroup,
+		&output.Keycard.Syndicate,
+		&output.Keycard.CreatedAt,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -408,7 +408,7 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceKeycardSaleItem, error) {
+func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -457,7 +457,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 		return 0, nil, terror.Error(err)
 	}
 	if total == 0 {
-		return 0, []*server.MarketplaceKeycardSaleItem{}, nil
+		return 0, []*server.MarketplaceSaleItem1155{}, nil
 	}
 
 	// Sort
@@ -469,7 +469,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	records := []*server.MarketplaceKeycardSaleItem{}
+	records := []*server.MarketplaceSaleItem1155{}
 	err = boiler.ItemKeycardSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
 	if err != nil {
 		return 0, nil, terror.Error(err)
@@ -721,7 +721,7 @@ func MarketplaceKeycardSaleCreate(
 	endAt time.Time,
 	itemID uuid.UUID,
 	askingPrice decimal.Decimal,
-) (*server.MarketplaceKeycardSaleItem, error) {
+) (*server.MarketplaceSaleItem1155, error) {
 	obj := &boiler.ItemKeycardSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
@@ -734,7 +734,7 @@ func MarketplaceKeycardSaleCreate(
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	output := &server.MarketplaceKeycardSaleItem{
+	output := &server.MarketplaceSaleItem1155{
 		ID:             obj.ID,
 		FactionID:      obj.FactionID,
 		ItemID:         obj.ItemID,

@@ -90,7 +90,7 @@ func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(localMarketplaceSaleItemMysteryCrate(b))
 }
 
-type MarketplaceKeycardSaleItem struct {
+type MarketplaceSaleItem1155 struct {
 	ID             string                   `json:"id" boil:"id"`
 	FactionID      string                   `json:"faction_id" boil:"faction_id"`
 	ItemID         string                   `json:"item_id" boil:"item_id"`
@@ -106,5 +106,5 @@ type MarketplaceKeycardSaleItem struct {
 	UpdatedAt      time.Time                `json:"updated_at" boil:"updated_at"`
 	CreatedAt      time.Time                `json:"created_at" boil:"created_at"`
 	Owner          MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
-	Blueprints     AssetKeycardBlueprint    `json:"blueprints,omitempty" boil:",bind"`
+	Keycard        AssetKeycardBlueprint    `json:",omitempty" boil:",bind"`
 }
