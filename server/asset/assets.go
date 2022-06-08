@@ -9,6 +9,9 @@ import (
 	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"sort"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
 )
 
 func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
@@ -22,12 +25,31 @@ func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
 			return transferEvents[i].TransferEventID < transferEvents[k].TransferEventID
 		})
 		for _, te := range transferEvents {
+			exists, err := boiler.Players(boiler.PlayerWhere.ID.EQ(te.ToUserID)).Exists(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to check if user exists in transfer event")
+				break
+			}
+
+			if !exists {
+				userUUID := server.UserID(uuid.Must(uuid.FromString(te.ToUserID)))
+				user, err := rpcClient.UserGet(userUUID)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get new user in transfer event")
+					break
+				}
+				_, err = db.PlayerRegister(uuid.UUID(userUUID), user.Username, uuid.FromStringOrNil(user.FactionID.String), common.HexToAddress(user.PublicAddress.String))
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get register new user in transfer event")
+					break
+				}
+			}
+
 			_, err = boiler.CollectionItems(
 				boiler.CollectionItemWhere.Hash.EQ(te.AssetHast),
-			).
-				UpdateAll(gamedb.StdConn, boiler.M{
-					"owner_id": te.ToUserID,
-				})
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				"owner_id": te.ToUserID,
+			})
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
 				break

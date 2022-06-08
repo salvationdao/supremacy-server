@@ -703,6 +703,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 					Msg("Had to transfer funds to the syndicate account")
 			}
 
+			if factID.String() == contract.PlayerID {
+				continue
+			}
+
 			// pay sups
 			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
