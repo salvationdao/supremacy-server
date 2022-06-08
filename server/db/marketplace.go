@@ -38,6 +38,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 		item_sales.deleted_at AS deleted_at,
 		item_sales.updated_at AS updated_at,
 		item_sales.created_at AS created_at,
+		collection_items.item_type AS collection_item_type,
 		(SELECT COUNT(*) FROM item_sales_bid_history _isbh WHERE item_sale_id = item_sales.id) AS total_bids,
 		players.id AS "players.id",
 		players.username AS "players.username",
@@ -49,6 +50,8 @@ var itemSaleQueryMods = []qm.QueryMod{
 		mechs.name AS "mechs.name",
 		mechs.label AS "mechs.label",
 		mech_skin.avatar_url AS "mech_skin.avatar_url",
+		mystery_crate.id AS "mystery_crate.id",
+		mystery_crate.label AS "mystery_crate.label",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -66,11 +69,13 @@ var itemSaleQueryMods = []qm.QueryMod{
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
-			"%s ON %s = %s",
+			"%s ON %s = %s AND %s = ?",
 			boiler.TableNames.Mechs,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 		),
+		boiler.ItemTypeMech,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -79,6 +84,16 @@ var itemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.MysteryCrate,
+			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeMysteryCrate,
 	),
 	qm.InnerJoin(
 		fmt.Sprintf(
@@ -183,6 +198,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.DeletedAt,
 		&output.UpdatedAt,
 		&output.CreatedAt,
+		&output.CollectionItemType,
 		&output.TotalBids,
 		&output.Owner.ID,
 		&output.Owner.Username,
@@ -194,6 +210,8 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Mech.Name,
 		&output.Mech.Label,
 		&output.Mech.AvatarURL,
+		&output.MysteryCrate.ID,
+		&output.MysteryCrate.Label,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -369,7 +387,6 @@ func MarketplaceItemSaleList(
 	// Sort
 	var orderBy qm.QueryMod
 	if sortBy == "alphabetical" {
-		// TODO: Handle any other item types here too
 		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name) %s", sortDir))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
@@ -675,6 +692,21 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 			AND s.sold_by IS NOT NULL
 			AND ci.id in (ci_mech.id, ci_mech_skin.id, ci_power_core.id)`
 	_, err := conn.Exec(q, itemSaleID, boiler.ItemTypeMech, boiler.ItemTypeMechSkin, boiler.ItemTypePowerCore)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// ChangeMysteryCrateOwner transfers a collection item to a new owner.
+func ChangeMysteryCrateOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
+	q := `
+		UPDATE collection_items ci
+		SET owner_id = s.sold_by
+		FROM item_sales s
+		WHERE s.id = $1
+			AND ci.id = s.collection_item_id`
+	_, err := conn.Exec(q, itemSaleID, boiler.ItemTypeMysteryCrate)
 	if err != nil {
 		return terror.Error(err)
 	}

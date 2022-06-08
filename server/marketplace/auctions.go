@@ -168,6 +168,18 @@ func (a *AuctionController) Run() {
 							Msg("Failed to Transfer Mech to New Owner")
 						continue
 					}
+				} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate {
+					err = db.ChangeMysteryCrateOwner(tx, auctionItem.ID)
+					if err != nil {
+						a.Passport.RefundSupsMessage(txid)
+						gamelog.L.Error().
+							Str("item_id", auctionItem.ID.String()).
+							Str("user_id", auctionItem.AuctionBidUserID.String()).
+							Str("cost", auctionItem.AuctionBidPrice.String()).
+							Err(err).
+							Msg("Failed to Transfer Mystery Crate to New Owner")
+						continue
+					}
 				}
 
 				// Commit Transaction

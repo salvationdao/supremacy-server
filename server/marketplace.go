@@ -8,30 +8,32 @@ import (
 )
 
 type MarketplaceSaleItem struct {
-	ID                   string                   `json:"id" boil:"id"`
-	FactionID            string                   `json:"faction_id" boil:"faction_id"`
-	CollectionItemID     string                   `json:"collection_item_id" boil:"collection_item_id"`
-	ListingFeeTXID       string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
-	OwnerID              string                   `json:"owner_id" boil:"owner_id"`
-	Auction              bool                     `json:"auction" boil:"auction"`
-	AuctionCurrentPrice  decimal.NullDecimal      `json:"auction_current_price,omitempty" boil:"auction_current_price"`
-	AuctionReservedPrice decimal.NullDecimal      `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
-	TotalBids            int64                    `json:"total_bids" boil:"total_bids"`
-	Buyout               bool                     `json:"buyout" boil:"buyout"`
-	BuyoutPrice          decimal.NullDecimal      `json:"buyout_price" boil:"buyout_price"`
-	DutchAuction         bool                     `json:"dutch_auction" boil:"dutch_auction"`
-	DutchAuctionDropRate decimal.NullDecimal      `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
-	EndAt                time.Time                `json:"end_at" boil:"end_at"`
-	SoldAt               null.Time                `json:"sold_at" boil:"sold_at"`
-	SoldFor              null.String              `json:"sold_for" boil:"sold_for"`
-	SoldBy               decimal.NullDecimal      `json:"sold_by" boil:"sold_by"`
-	SoldTXID             null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
-	DeletedAt            null.Time                `json:"deleted_at" boil:"deleted_at"`
-	UpdatedAt            time.Time                `json:"updated_at" boil:"updated_at"`
-	CreatedAt            time.Time                `json:"created_at" boil:"created_at"`
-	Owner                MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
-	Mech                 MarketplaceSaleItemMech  `json:"mech,omitempty" boil:",bind"`
-	LastBid              MarketplaceBidder        `json:"last_bid,empty" boil:",bind"`
+	ID                   string                          `json:"id" boil:"id"`
+	FactionID            string                          `json:"faction_id" boil:"faction_id"`
+	CollectionItemID     string                          `json:"collection_item_id" boil:"collection_item_id"`
+	CollectionItemType   string                          `json:"collection_item_type" boil:"collection_item_type"`
+	ListingFeeTXID       string                          `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	OwnerID              string                          `json:"owner_id" boil:"owner_id"`
+	Auction              bool                            `json:"auction" boil:"auction"`
+	AuctionCurrentPrice  decimal.NullDecimal             `json:"auction_current_price,omitempty" boil:"auction_current_price"`
+	AuctionReservedPrice decimal.NullDecimal             `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
+	TotalBids            int64                           `json:"total_bids" boil:"total_bids"`
+	Buyout               bool                            `json:"buyout" boil:"buyout"`
+	BuyoutPrice          decimal.NullDecimal             `json:"buyout_price" boil:"buyout_price"`
+	DutchAuction         bool                            `json:"dutch_auction" boil:"dutch_auction"`
+	DutchAuctionDropRate decimal.NullDecimal             `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
+	EndAt                time.Time                       `json:"end_at" boil:"end_at"`
+	SoldAt               null.Time                       `json:"sold_at" boil:"sold_at"`
+	SoldFor              null.String                     `json:"sold_for" boil:"sold_for"`
+	SoldBy               decimal.NullDecimal             `json:"sold_by" boil:"sold_by"`
+	SoldTXID             null.String                     `json:"sold_tx_id" boil:"sold_tx_id"`
+	DeletedAt            null.Time                       `json:"deleted_at" boil:"deleted_at"`
+	UpdatedAt            time.Time                       `json:"updated_at" boil:"updated_at"`
+	CreatedAt            time.Time                       `json:"created_at" boil:"created_at"`
+	Owner                MarketplaceSaleItemOwner        `json:"owner,omitempty" boil:",bind"`
+	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
+	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
+	LastBid              MarketplaceBidder               `json:"last_bid,empty" boil:",bind"`
 }
 
 type MarketplaceBidder struct {
@@ -56,6 +58,11 @@ type MarketplaceSaleItemMech struct {
 	Name      string `json:"name" boil:"mechs.name"`
 	Tier      string `json:"tier" boil:"collection_items.tier"`
 	AvatarURL string `json:"avatar_url" boil:"mech_skin.avatar_url"`
+}
+
+type MarketplaceSaleItemMysteryCrate struct {
+	ID    string `json:"id" boil:"mystery_crate.id"`
+	Label string `json:"label" boil:"mystery_crate.label"`
 }
 
 type MarketplaceKeycardSaleItem struct {

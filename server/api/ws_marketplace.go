@@ -652,7 +652,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
-		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
 	}
 
 	// start transaction
@@ -666,7 +666,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to start purchase sale item db transaction.")
-		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
 	}
 	defer tx.Rollback()
 
@@ -696,22 +696,38 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("item_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
-		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeMechOwner(tx, req.Payload.ID)
-	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
-		gamelog.L.Error().
-			Str("from_user_id", user.ID).
-			Str("to_user_id", saleItem.OwnerID).
-			Str("balance", balance.String()).
-			Str("cost", saleItemCost.String()).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Err(err).
-			Msg("Failed to Transfer Mech to New Owner")
-		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	if saleItem.CollectionItemType == boiler.ItemTypeMech {
+		err = db.ChangeMechOwner(tx, req.Payload.ID)
+		if err != nil {
+			mp.API.Passport.RefundSupsMessage(txid)
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to Transfer Mech to New Owner")
+			return terror.Error(err, errMsg)
+		}
+	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
+		err = db.ChangeMysteryCrateOwner(tx, req.Payload.ID)
+		if err != nil {
+			mp.API.Passport.RefundSupsMessage(txid)
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to Transfer Mystery Crate to New Owner")
+			return terror.Error(err, errMsg)
+		}
 	}
 
 	// commit transaction
@@ -726,7 +742,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Str("item_sale_id", req.Payload.ID.String()).
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
-		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
 	}
 
 	// success
