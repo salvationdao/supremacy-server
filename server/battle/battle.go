@@ -1305,7 +1305,10 @@ func (btl *Battle) Tick(payload []byte) {
 				Err(fmt.Errorf("warMachineIndex == -1")).
 				Int("c", int(c)).
 				Str("participantID", string(participantID)).
-				Bytes("payload", payload).
+				Str("payload", string(payload)).
+				Interface("payload", payload).
+				Str("payload", fmt.Sprintf("%08b", payload)).
+				Interface("btl", btl.WarMachines).
 				Msg("unable to find warmachine participant ID")
 			return
 		}
