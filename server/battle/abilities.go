@@ -1765,7 +1765,7 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 		return
 	}
 
-	go as.BroadcastAbilityProgressBar()
+	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
