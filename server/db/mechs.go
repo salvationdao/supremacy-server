@@ -491,6 +491,7 @@ type MechListOpts struct {
 	Page                int
 	OwnerID             string
 	DisplayXsynMechs    bool
+	ExcludeMarketLocked bool
 	ExcludeMarketListed bool
 }
 
@@ -512,7 +513,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
-		// TODO: Handle marketplace various item types
 		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
 			boiler.TableNames.ItemSales,
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
@@ -522,10 +522,17 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)),
 	)
 
-	if !opts.DisplayXsynMechs {
+	if !opts.DisplayXsynMechs || opts.ExcludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.MarketLocked,
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
 	}

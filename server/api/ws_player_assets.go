@@ -47,6 +47,7 @@ type PlayerAssetMechListRequest struct {
 		PageSize            int                   `json:"page_size"`
 		Page                int                   `json:"page"`
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
 	} `json:"payload"`
 }
@@ -121,6 +122,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		Page:                req.Payload.Page,
 		OwnerID:             user.ID,
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		ExcludeMarketListed: req.Payload.ExcludeMarketListed,
 	})
 	if err != nil {
@@ -227,14 +229,14 @@ const HubKeyPlayerAssetMysteryCrateList = "PLAYER:ASSET:MYSTERY_CRATE:LIST"
 
 type PlayerAssetMysteryCrateListRequest struct {
 	Payload struct {
-		Search              string                `json:"search"`
-		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
-		PageSize            int                   `json:"page_size"`
-		Page                int                   `json:"page"`
-		SortDir             db.SortByDir          `json:"sort_dir"`
-		SortBy              string                `json:"sort_by"`
-		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+		Search              string              `json:"search"`
+		Sort                *db.ListSortRequest `json:"sort"`
+		PageSize            int                 `json:"page_size"`
+		Page                int                 `json:"page"`
+		SortDir             db.SortByDir        `json:"sort_dir"`
+		SortBy              string              `json:"sort_by"`
+		ExcludeMarketListed bool                `json:"exclude_market_listed"`
+		ExcludeMarketLocked bool                `json:"exclude_market_locked"`
 	} `json:"payload"`
 }
 
@@ -244,6 +246,37 @@ type PlayerAssetMysteryCrateListResponse struct {
 }
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMysteryCrateListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !req.Payload.SortDir.IsValid() {
+		req.Payload.SortDir = db.SortByDirDesc
+	}
+
+	total, records, err := db.PlayerMysteryCrateList(
+		req.Payload.Search,
+		req.Payload.ExcludeMarketListed,
+		req.Payload.ExcludeMarketLocked,
+		&user.ID,
+		req.Payload.Page,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of mystery crate assets")
+		return terror.Error(err, "Failed to get list of mystery crate assets")
+	}
+
+	resp := &PlayerAssetMysteryCrateListResponse{
+		Total:         total,
+		MysteryCrates: records,
+	}
+	reply(resp)
+
 	return nil
 }
 

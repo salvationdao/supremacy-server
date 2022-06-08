@@ -23,6 +23,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -259,38 +260,35 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check if allowed to sell item
-	collectionItemID := uuid.Nil
-	if req.Payload.ItemType == boiler.ItemTypeMech {
-		item, err := db.Mech(req.Payload.ItemID.String())
-		if err != nil {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
-				Str("item_type", req.Payload.ItemType).
-				Err(err).
-				Msg("Failed to get collection item.")
-			if errors.Is(err, sql.ErrNoRows) {
-				return terror.Error(err, "Item not found.")
-			}
-			return terror.Error(err, errMsg)
+	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
+		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
+	}
+	var collectionItemID uuid.UUID
+	err = boiler.CollectionItems(
+		qm.Select(boiler.CollectionItemColumns.ID),
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.ItemID.String()),
+		boiler.CollectionItemWhere.ItemType.EQ(req.Payload.ItemType),
+	).QueryRow(gamedb.StdConn).Scan(&collectionItemID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_type", req.Payload.ItemType).
+			Err(err).
+			Msg("Failed to get collection item.")
+		if errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Item not found.")
 		}
-		if item.XsynLocked || item.MarketLocked {
-			return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
-		}
-		collectionItemID, err = uuid.FromString(item.CollectionItemID)
-		if err != nil {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
-				Str("item_type", req.Payload.ItemType).
-				Str("collection_item_id", item.CollectionItemID).
-				Err(err).
-				Msg("Unable to parse collection item id")
-			return terror.Error(err, errMsg)
-		}
+		return terror.Error(err, errMsg)
 	}
 	if collectionItemID == uuid.Nil {
-		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_type", req.Payload.ItemType).
+			Err(err).
+			Msg("Unable to parse collection item id")
+		return terror.Error(err, errMsg)
 	}
 
 	alreadySelling, err := db.MarketplaceCheckCollectionItem(collectionItemID)
