@@ -68,6 +68,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
 		),
+		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
 
 	if !allowLastMap {

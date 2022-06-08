@@ -13,167 +13,68 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // GameMap is an object representing the database table.
 type GameMap struct {
-	ID            string           `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Name          string           `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	MaxSpawns     int              `boiler:"max_spawns" boil:"max_spawns" json:"max_spawns" toml:"max_spawns" yaml:"max_spawns"`
-	ImageURL      string           `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	Width         int              `boiler:"width" boil:"width" json:"width" toml:"width" yaml:"width"`
-	Height        int              `boiler:"height" boil:"height" json:"height" toml:"height" yaml:"height"`
-	CellsX        int              `boiler:"cells_x" boil:"cells_x" json:"cells_x" toml:"cells_x" yaml:"cells_x"`
-	CellsY        int              `boiler:"cells_y" boil:"cells_y" json:"cells_y" toml:"cells_y" yaml:"cells_y"`
-	TopPixels     int              `boiler:"top_pixels" boil:"top_pixels" json:"top_pixels" toml:"top_pixels" yaml:"top_pixels"`
-	LeftPixels    int              `boiler:"left_pixels" boil:"left_pixels" json:"left_pixels" toml:"left_pixels" yaml:"left_pixels"`
-	Scale         float64          `boiler:"scale" boil:"scale" json:"scale" toml:"scale" yaml:"scale"`
-	DisabledCells types.Int64Array `boiler:"disabled_cells" boil:"disabled_cells" json:"disabled_cells" toml:"disabled_cells" yaml:"disabled_cells"`
+	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Name       string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	MaxSpawns  int       `boiler:"max_spawns" boil:"max_spawns" json:"max_spawns" toml:"max_spawns" yaml:"max_spawns"`
+	Type       string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	DisabledAt null.Time `boiler:"disabled_at" boil:"disabled_at" json:"disabled_at,omitempty" toml:"disabled_at" yaml:"disabled_at,omitempty"`
 
 	R *gameMapR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameMapL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var GameMapColumns = struct {
-	ID            string
-	Name          string
-	MaxSpawns     string
-	ImageURL      string
-	Width         string
-	Height        string
-	CellsX        string
-	CellsY        string
-	TopPixels     string
-	LeftPixels    string
-	Scale         string
-	DisabledCells string
+	ID         string
+	Name       string
+	MaxSpawns  string
+	Type       string
+	DisabledAt string
 }{
-	ID:            "id",
-	Name:          "name",
-	MaxSpawns:     "max_spawns",
-	ImageURL:      "image_url",
-	Width:         "width",
-	Height:        "height",
-	CellsX:        "cells_x",
-	CellsY:        "cells_y",
-	TopPixels:     "top_pixels",
-	LeftPixels:    "left_pixels",
-	Scale:         "scale",
-	DisabledCells: "disabled_cells",
+	ID:         "id",
+	Name:       "name",
+	MaxSpawns:  "max_spawns",
+	Type:       "type",
+	DisabledAt: "disabled_at",
 }
 
 var GameMapTableColumns = struct {
-	ID            string
-	Name          string
-	MaxSpawns     string
-	ImageURL      string
-	Width         string
-	Height        string
-	CellsX        string
-	CellsY        string
-	TopPixels     string
-	LeftPixels    string
-	Scale         string
-	DisabledCells string
+	ID         string
+	Name       string
+	MaxSpawns  string
+	Type       string
+	DisabledAt string
 }{
-	ID:            "game_maps.id",
-	Name:          "game_maps.name",
-	MaxSpawns:     "game_maps.max_spawns",
-	ImageURL:      "game_maps.image_url",
-	Width:         "game_maps.width",
-	Height:        "game_maps.height",
-	CellsX:        "game_maps.cells_x",
-	CellsY:        "game_maps.cells_y",
-	TopPixels:     "game_maps.top_pixels",
-	LeftPixels:    "game_maps.left_pixels",
-	Scale:         "game_maps.scale",
-	DisabledCells: "game_maps.disabled_cells",
+	ID:         "game_maps.id",
+	Name:       "game_maps.name",
+	MaxSpawns:  "game_maps.max_spawns",
+	Type:       "game_maps.type",
+	DisabledAt: "game_maps.disabled_at",
 }
 
 // Generated where
 
-type whereHelperfloat64 struct{ field string }
-
-func (w whereHelperfloat64) EQ(x float64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperfloat64) NEQ(x float64) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelperfloat64) LT(x float64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperfloat64) LTE(x float64) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelperfloat64) GT(x float64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperfloat64) GTE(x float64) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-func (w whereHelperfloat64) IN(slice []float64) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelperfloat64) NIN(slice []float64) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
-type whereHelpertypes_Int64Array struct{ field string }
-
-func (w whereHelpertypes_Int64Array) EQ(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelpertypes_Int64Array) NEQ(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelpertypes_Int64Array) LT(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpertypes_Int64Array) LTE(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpertypes_Int64Array) GT(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpertypes_Int64Array) GTE(x types.Int64Array) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
 var GameMapWhere = struct {
-	ID            whereHelperstring
-	Name          whereHelperstring
-	MaxSpawns     whereHelperint
-	ImageURL      whereHelperstring
-	Width         whereHelperint
-	Height        whereHelperint
-	CellsX        whereHelperint
-	CellsY        whereHelperint
-	TopPixels     whereHelperint
-	LeftPixels    whereHelperint
-	Scale         whereHelperfloat64
-	DisabledCells whereHelpertypes_Int64Array
+	ID         whereHelperstring
+	Name       whereHelperstring
+	MaxSpawns  whereHelperint
+	Type       whereHelperstring
+	DisabledAt whereHelpernull_Time
 }{
-	ID:            whereHelperstring{field: "\"game_maps\".\"id\""},
-	Name:          whereHelperstring{field: "\"game_maps\".\"name\""},
-	MaxSpawns:     whereHelperint{field: "\"game_maps\".\"max_spawns\""},
-	ImageURL:      whereHelperstring{field: "\"game_maps\".\"image_url\""},
-	Width:         whereHelperint{field: "\"game_maps\".\"width\""},
-	Height:        whereHelperint{field: "\"game_maps\".\"height\""},
-	CellsX:        whereHelperint{field: "\"game_maps\".\"cells_x\""},
-	CellsY:        whereHelperint{field: "\"game_maps\".\"cells_y\""},
-	TopPixels:     whereHelperint{field: "\"game_maps\".\"top_pixels\""},
-	LeftPixels:    whereHelperint{field: "\"game_maps\".\"left_pixels\""},
-	Scale:         whereHelperfloat64{field: "\"game_maps\".\"scale\""},
-	DisabledCells: whereHelpertypes_Int64Array{field: "\"game_maps\".\"disabled_cells\""},
+	ID:         whereHelperstring{field: "\"game_maps\".\"id\""},
+	Name:       whereHelperstring{field: "\"game_maps\".\"name\""},
+	MaxSpawns:  whereHelperint{field: "\"game_maps\".\"max_spawns\""},
+	Type:       whereHelperstring{field: "\"game_maps\".\"type\""},
+	DisabledAt: whereHelpernull_Time{field: "\"game_maps\".\"disabled_at\""},
 }
 
 // GameMapRels is where relationship names are stored.
@@ -197,9 +98,9 @@ func (*gameMapR) NewStruct() *gameMapR {
 type gameMapL struct{}
 
 var (
-	gameMapAllColumns            = []string{"id", "name", "max_spawns", "image_url", "width", "height", "cells_x", "cells_y", "top_pixels", "left_pixels", "scale", "disabled_cells"}
-	gameMapColumnsWithoutDefault = []string{"name", "image_url", "width", "height", "cells_x", "cells_y", "top_pixels", "left_pixels", "scale", "disabled_cells"}
-	gameMapColumnsWithDefault    = []string{"id", "max_spawns"}
+	gameMapAllColumns            = []string{"id", "name", "max_spawns", "type", "disabled_at"}
+	gameMapColumnsWithoutDefault = []string{"name"}
+	gameMapColumnsWithDefault    = []string{"id", "max_spawns", "type", "disabled_at"}
 	gameMapPrimaryKeyColumns     = []string{"id"}
 	gameMapGeneratedColumns      = []string{}
 )
