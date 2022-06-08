@@ -137,7 +137,9 @@ func (ap *ActivePlayers) CheckExpiry() {
 			}
 		}
 
+		fmt.Println("start delete player id", playerID)
 		delete(ap.Map, playerID)
+		fmt.Println("end delete player id", playerID)
 	}
 
 	// broadcast current online player

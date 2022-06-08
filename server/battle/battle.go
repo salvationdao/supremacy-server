@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"math/rand"
 	"server"
 	"server/db"
@@ -18,6 +17,7 @@ import (
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -65,7 +65,7 @@ type Battle struct {
 	inserted bool
 
 	viewerCountInputChan chan *ViewerLiveCount
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 func (btl *Battle) abilities() *AbilitiesSystem {
