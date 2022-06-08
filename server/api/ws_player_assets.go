@@ -31,6 +31,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	return pac
@@ -219,6 +220,30 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+const HubKeyPlayerAssetMysteryCrateList = "PLAYER:ASSET:MYSTERY_CRATE:LIST"
+
+type PlayerAssetMysteryCrateListRequest struct {
+	Payload struct {
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		SortDir             db.SortByDir          `json:"sort_dir"`
+		SortBy              string                `json:"sort_by"`
+		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+	} `json:"payload"`
+}
+
+type PlayerAssetMysteryCrateListResponse struct {
+	Total         int64                  `json:"total"`
+	MysteryCrates []*server.MysteryCrate `json:"mystery_crates"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	return nil
 }
 

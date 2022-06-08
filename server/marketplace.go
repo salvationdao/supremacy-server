@@ -53,16 +53,16 @@ type MarketplaceSaleItemOwner struct {
 }
 
 type MarketplaceSaleItemMech struct {
-	ID        string `json:"id" boil:"mechs.id"`
-	Label     string `json:"label" boil:"mechs.label"`
-	Name      string `json:"name" boil:"mechs.name"`
-	Tier      string `json:"tier" boil:"collection_items.tier"`
-	AvatarURL string `json:"avatar_url" boil:"mech_skin.avatar_url"`
+	ID        null.String `json:"id" boil:"mechs.id"`
+	Label     null.String `json:"label" boil:"mechs.label"`
+	Name      null.String `json:"name" boil:"mechs.name"`
+	Tier      null.String `json:"tier" boil:"collection_items.tier"`
+	AvatarURL null.String `json:"avatar_url" boil:"mech_skin.avatar_url"`
 }
 
 type MarketplaceSaleItemMysteryCrate struct {
-	ID    string `json:"id" boil:"mystery_crate.id"`
-	Label string `json:"label" boil:"mystery_crate.label"`
+	ID    null.String `json:"id" boil:"mystery_crate.id"`
+	Label null.String `json:"label" boil:"mystery_crate.label"`
 }
 
 type MarketplaceKeycardSaleItem struct {
