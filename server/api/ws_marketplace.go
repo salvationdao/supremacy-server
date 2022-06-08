@@ -974,10 +974,11 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
 	}
-	if req.Payload.Amount.LessThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
+	bidAmount := req.Payload.Amount.Mul(decimal.New(1, 18))
+	if bidAmount.LessThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than reserved price"), "Invalid bid amount, must be above the reserved price.")
 	}
-	if req.Payload.Amount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
+	if bidAmount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
 	}
 
@@ -997,7 +998,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               req.Payload.Amount.Mul(decimal.New(1, 18)).String(),
+		Amount:               bidAmount.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
