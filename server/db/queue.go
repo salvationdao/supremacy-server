@@ -1,6 +1,9 @@
 package db
 
-import "server/gamedb"
+import (
+	"fmt"
+	"server/gamedb"
+)
 
 // MechQueuePositions return a list of mech queue position of the player (exclude in battle)
 func MechQueuePositions(factionID string, ownerID string) ([]*BattleQueuePosition, error) {
@@ -74,7 +77,6 @@ func MechQueuePosition(mechID, factionID string) (*BattleQueuePosition, error) {
 }
 
 func FactionQueue(factionID string) ([]*BattleQueuePosition, error) {
-	var result []*BattleQueuePosition
 	q := `
 		SELECT
 			bq.mech_id,
@@ -97,16 +99,18 @@ func FactionQueue(factionID string) ([]*BattleQueuePosition, error) {
 		return nil, err
 	}
 
-	mqp := []*BattleQueuePosition{}
+	var mqp []*BattleQueuePosition
 	for qResult.Next() {
+		fmt.Println(".next")
 		qp := &BattleQueuePosition{}
 		err = qResult.Scan(&qp.MechID, &qp.QueuePosition, &qp.BattleContractID)
 		if err != nil {
+			fmt.Println(".next error")
 			return nil, err
 		}
 
 		mqp = append(mqp, qp)
 	}
 
-	return result, nil
+	return mqp, nil
 }
