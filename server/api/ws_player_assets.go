@@ -235,6 +235,7 @@ type PlayerAssetMysteryCrateListRequest struct {
 		Page                int                 `json:"page"`
 		SortDir             db.SortByDir        `json:"sort_dir"`
 		SortBy              string              `json:"sort_by"`
+		ExcludeOpened       bool                `json:"exclude_opened"`
 		ExcludeMarketListed bool                `json:"exclude_market_listed"`
 		ExcludeMarketLocked bool                `json:"exclude_market_locked"`
 	} `json:"payload"`
@@ -258,6 +259,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx conte
 
 	total, records, err := db.PlayerMysteryCrateList(
 		req.Payload.Search,
+		req.Payload.ExcludeOpened,
 		req.Payload.ExcludeMarketListed,
 		req.Payload.ExcludeMarketLocked,
 		&user.ID,

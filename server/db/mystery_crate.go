@@ -20,6 +20,7 @@ func IsMysteryCrateColumn(col string) bool {
 
 func PlayerMysteryCrateList(
 	search string,
+	excludeOpened bool,
 	excludeMarketListed bool,
 	excludeMarketLocked bool,
 	userID *string,
@@ -39,6 +40,9 @@ func PlayerMysteryCrateList(
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
 	}
 
+	if excludeOpened {
+		queryMods = append(queryMods, boiler.MysteryCrateWhere.Opened.EQ(false))
+	}
 	if excludeMarketListed {
 		queryMods = append(queryMods,
 			qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
