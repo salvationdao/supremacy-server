@@ -33,7 +33,6 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
-
 	return pac
 }
 

@@ -392,50 +392,6 @@ type BattleQueuePosition struct {
 	BattleContractID string    `db:"battle_contract_id"`
 }
 
-// MechQueuePosition return a list of mech queue position of the player (exclude in battle)
-func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition, error) {
-	q := `
-		SELECT
-			x.mech_id,
-			x.queue_position,
-		    x.battle_contract_id
-		FROM
-			(
-				SELECT
-					bq.mech_id,
-				    bq.owner_id,
-				    bq.battle_contract_id,
-					row_number () over (ORDER BY bq.queued_at) AS queue_position
-				FROM
-					battle_queue bq
-				WHERE 
-					bq.faction_id = $1 AND bq.battle_id isnull
-			) x
-		WHERE
-			x.owner_id = $2
-		ORDER BY
-			x.queue_position
-	`
-
-	result, err := gamedb.StdConn.Query(q, factionID, ownerID)
-	if err != nil {
-		return nil, err
-	}
-
-	mqp := []*BattleQueuePosition{}
-	for result.Next() {
-		qp := &BattleQueuePosition{}
-		err = result.Scan(&qp.MechID, &qp.QueuePosition, &qp.BattleContractID)
-		if err != nil {
-			return nil, err
-		}
-
-		mqp = append(mqp, qp)
-	}
-
-	return mqp, nil
-}
-
 // TODO: I want InsertNewMech tested.
 
 func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {

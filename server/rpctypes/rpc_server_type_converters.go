@@ -798,7 +798,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 	return assets
 }
 
-func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate) *XsynAsset {
+func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionName string) *XsynAsset {
 	asJson, err := json.Marshal(mysteryCrate)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("interface", mysteryCrate).Msg("failed to convert item to json")
@@ -807,13 +807,16 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate) *XsynAsset
 	// convert stats to attributes to
 	attributes := []*Attribute{
 		{
-			TraitType: "Label",
-			Value:     mysteryCrate.Label,
-		},
-		{
 			TraitType: "Type",
 			Value:     mysteryCrate.Type,
 		},
+	}
+
+	if factionName != "" {
+		attributes = append(attributes, &Attribute{
+			TraitType: "Faction",
+			Value:     factionName,
+		})
 	}
 
 	asset := &XsynAsset{
