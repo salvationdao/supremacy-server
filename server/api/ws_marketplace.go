@@ -95,7 +95,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 			Items: []*db.ListFilterRequestItem{
 				{
 					Table:    boiler.TableNames.CollectionItems,
-					Column:   qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+					Column:   boiler.CollectionItemColumns.ItemType,
 					Value:    req.Payload.ItemType,
 					Operator: db.OperatorValueTypeEquals,
 				},
