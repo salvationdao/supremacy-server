@@ -59,6 +59,7 @@ type MarketplaceSalesListRequest struct {
 		SortBy             string              `json:"sort_by"`
 		FilterRarities     []string            `json:"rarities"`
 		FilterListingTypes []string            `json:"listing_types"`
+		ItemType           string              `json:"item_type"`
 		MinPrice           decimal.NullDecimal `json:"min_price"`
 		MaxPrice           decimal.NullDecimal `json:"max_price"`
 		Search             string              `json:"search"`
@@ -84,9 +85,27 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
+	var filters *db.ListFilterRequest
+	if req.Payload.ItemType != "" {
+		if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
+			return terror.Error(fmt.Errorf("invalid item type"), "Invalid item type received.")
+		}
+		filters = &db.ListFilterRequest{
+			LinkOperator: db.LinkOperatorTypeAnd,
+			Items: []*db.ListFilterRequestItem{
+				{
+					Table:    boiler.TableNames.CollectionItems,
+					Column:   qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+					Value:    req.Payload.ItemType,
+					Operator: db.OperatorValueTypeEquals,
+				},
+			},
+		}
+	}
+
 	total, records, err := db.MarketplaceItemSaleList(
 		req.Payload.Search,
-		nil,
+		filters,
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
 		req.Payload.MinPrice,
@@ -116,14 +135,13 @@ const HubKeyMarketplaceSalesKeycardList = "MARKETPLACE:SALES:KEYCARD:LIST"
 type MarketplaceSalesKeycardListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID         server.UserID         `json:"user_id"`
-		SortDir        db.SortByDir          `json:"sort_dir"`
-		SortBy         string                `json:"sort_by"`
-		Filter         *db.ListFilterRequest `json:"filter,omitempty"`
-		FilterRarities []string              `json:"rarities"`
-		Search         string                `json:"search"`
-		PageSize       int                   `json:"page_size"`
-		Page           int                   `json:"page"`
+		UserID   server.UserID         `json:"user_id"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   string                `json:"sort_by"`
+		Filter   *db.ListFilterRequest `json:"filter,omitempty"`
+		Search   string                `json:"search"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
 
