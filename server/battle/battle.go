@@ -703,6 +703,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 					Msg("Had to transfer funds to the syndicate account")
 			}
 
+			if factID.String() == contract.PlayerID {
+				continue
+			}
+
 			// pay sups
 			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
@@ -1297,8 +1301,12 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if warMachineIndex == -1 {
-			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+			gamelog.L.Warn().
+				Err(fmt.Errorf("warMachineIndex == -1")).
+				Int("c", int(c)).
+				Str("participantID", string(participantID)).
+				Bytes("payload", payload).
+				Msg("unable to find warmachine participant ID")
 			return
 		}
 
