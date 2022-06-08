@@ -3,11 +3,11 @@ package xsyn_rpcclient
 import (
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"log"
 	"math"
 	"net/rpc"
 	"server/gamelog"
-	"sync"
 	"time"
 
 	"go.uber.org/atomic"
@@ -17,10 +17,10 @@ import (
 
 // XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
 type XrpcClient struct {
-	Addrs   []string      // list of rpc addresses available to use
-	clients []*rpc.Client // holds rpc clients, same len/pos as the Addrs
-	counter atomic.Int64  // counter for cycling address/clients
-	mutex   sync.Mutex    // lock and unlocks clients slice editing
+	Addrs   []string       // list of rpc addresses available to use
+	clients []*rpc.Client  // holds rpc clients, same len/pos as the Addrs
+	counter atomic.Int64   // counter for cycling address/clients
+	mutex   deadlock.Mutex // lock and unlocks clients slice editing
 }
 
 type XsynXrpcClient struct {

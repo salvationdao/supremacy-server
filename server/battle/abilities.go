@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"math"
 	"server"
 	"server/benchmark"
@@ -13,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
-	"sync"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -46,7 +46,7 @@ type LocationDeciders struct {
 }
 
 type LiveCount struct {
-	sync.Mutex
+	deadlock.Mutex
 	TotalVotes decimal.Decimal `json:"total_votes"`
 }
 
@@ -98,7 +98,7 @@ type AbilitiesSystem struct {
 
 	abilityConfig *AbilityConfig
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (as *AbilitiesSystem) battle() *Battle {
@@ -952,7 +952,7 @@ var BribeStages = [4]string{"HOLD", "BRIBE",
 type GabsBribeStage struct {
 	Phase   *atomic.Int32 `json:"phase"`
 	endTime time.Time     `json:"end_time"`
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (p *GabsBribeStage) EndTime() time.Time {
@@ -986,13 +986,13 @@ func (p *GabsBribeStage) MarshalJSON() ([]byte, error) {
 
 // track user contribution of current battle
 type UserContribution struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	contributionMap map[uuid.UUID]decimal.Decimal
 }
 
 type AbilitiesMap struct {
 	m map[string]*GameAbility
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (am *AbilitiesMap) Store(key string, ga *GameAbility) {
@@ -1050,7 +1050,7 @@ type BattleAbilityPool struct {
 	Abilities     *AbilitiesMap // faction ability current, change on every bribing cycle
 
 	TriggeredFactionID atomic.String
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type LocationSelectAnnouncement struct {
@@ -1754,9 +1754,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 					Err(err).Msg("could not update faction ability cost")
 			}
 
-			// broadcast the progress bar
-			as.BroadcastAbilityProgressBar()
-
 			return true
 		}
 
@@ -1804,6 +1801,9 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		return false
 	})
+
+	// broadcast the progress bar
+	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
@@ -1824,7 +1824,7 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 		return
 	}
 
-	go as.BroadcastAbilityProgressBar()
+	as.BroadcastAbilityProgressBar()
 }
 
 type AbilityBattleProgress struct {
@@ -2197,7 +2197,7 @@ func (as *AbilitiesSystem) calculateUserContributeMultiplier() decimal.Decimal {
 
 type UserContributeMultiplier struct {
 	value decimal.Decimal
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (as *AbilitiesSystem) SetUserContributeMultiplier() decimal.Decimal {

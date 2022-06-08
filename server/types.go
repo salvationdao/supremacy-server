@@ -3,10 +3,10 @@ package server
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"math/big"
 	"server/db/boiler"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
@@ -670,7 +670,7 @@ type GameAbilityEvent struct {
 }
 
 var env string
-var lock = sync.RWMutex{}
+var lock = deadlock.RWMutex{}
 
 func SetEnv(environment string) {
 	lock.Lock()

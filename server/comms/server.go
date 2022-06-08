@@ -2,20 +2,19 @@ package comms
 
 import (
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/rpc"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
-	"sync"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // S holds all the listeners together
 type XrpcServer struct {
 	isListening bool           // is server initialized and in use?
 	listeners   []net.Listener // listening sockets
-	mutex       sync.Mutex     // basic lock for listeners modification
+	mutex       deadlock.Mutex // basic lock for listeners modification
 }
 
 // S holds all the RPC answer functions, remote rpc caller must use same naming.

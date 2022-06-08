@@ -2,14 +2,12 @@ package pubsub
 
 import (
 	"encoding/json"
-	"net/http"
-	"server/gamelog"
-	"sync"
-
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/valyala/fastjson"
 	"go.uber.org/atomic"
+	"net/http"
+	"server/gamelog"
 )
 
 type ReplyFunc func(interface{})
@@ -18,8 +16,8 @@ type CommandFunc func(key string, payload []byte, reply ReplyFunc) error
 
 var (
 	commands *CommandTree
-	commOnce sync.Once
-	commLock sync.RWMutex
+	commOnce deadlock.Once
+	commLock deadlock.RWMutex
 )
 
 func Endpoint(key string, fn CommandFunc) {
