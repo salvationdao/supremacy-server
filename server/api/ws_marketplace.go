@@ -40,6 +40,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardList, marketplaceHub.SalesListKeycardHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesGet, marketplaceHub.SalesGetHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, marketplaceHub.SalesKeycardCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
@@ -211,9 +212,12 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	return nil
 }
 
-const HubKeyMarketplaceSalesGet = "MARKETPLACE:SALES:GET"
+const (
+	HubKeyMarketplaceSalesGet        = "MARKETPLACE:SALES:GET"
+	HubKeyMarketplaceSalesKeycardGet = "MARKETPLACE:SALES:KEYCARD:GET"
+)
 
-type MarketplaceSalesKeycardGetRequest struct {
+type MarketplaceSalesGetRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ID uuid.UUID `json:"id"`
@@ -221,7 +225,7 @@ type MarketplaceSalesKeycardGetRequest struct {
 }
 
 func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &MarketplaceSalesKeycardGetRequest{}
+	req := &MarketplaceSalesGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
@@ -233,7 +237,28 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 	}
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get of items for sale")
-		return terror.Error(err, "Failed to get items for sale")
+		return terror.Error(err, "Failed to get item.")
+	}
+
+	reply(resp)
+
+	return nil
+}
+
+func (fc *MarketplaceController) SalesKeycardGetHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &MarketplaceSalesGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	resp, err := db.MarketplaceItemKeycardSale(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Sale Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get keycard for sale")
+		return terror.Error(err, "Failed to get keycard.")
 	}
 
 	reply(resp)
