@@ -317,12 +317,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			return terror.Error(terror.ErrInvalidInput, "Asking Price is required.")
 		}
 	}
-	if req.Payload.HasAuction || req.Payload.HasDutchAuction {
+	if req.Payload.HasDutchAuction {
 		if !req.Payload.AuctionReservedPrice.Valid {
 			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
 		}
-	}
-	if req.Payload.HasDutchAuction {
 		if !req.Payload.DutchAuctionDropRate.Valid {
 			return terror.Error(terror.ErrInvalidInput, "Drop Rate is required.")
 		}
@@ -1026,9 +1024,6 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
 	}
 	bidAmount := req.Payload.Amount.Mul(decimal.New(1, 18))
-	if bidAmount.LessThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
-		return terror.Error(fmt.Errorf("bid amount less than reserved price"), "Invalid bid amount, must be above the reserved price.")
-	}
 	if bidAmount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
 	}

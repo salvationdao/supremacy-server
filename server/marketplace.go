@@ -78,12 +78,14 @@ func (b MarketplaceSaleItemMech) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleItemMysteryCrate struct {
-	ID    null.String `json:"id" boil:"mystery_crate.id"`
-	Label null.String `json:"label" boil:"mystery_crate.label"`
+	ID          null.String `json:"id" boil:"mystery_crate.id"`
+	Label       null.String `json:"label" boil:"mystery_crate.label"`
+	ImageURL    null.String `json:"image_url" boil:"mystery_crate.image_url"`
+	LockedUntil null.Time   `json:"locked_until" boil:"mystery_crate.locked_until"`
 }
 
 func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
-	if !b.ID.Valid && !b.Label.Valid {
+	if !b.ID.Valid && !b.Label.Valid && !b.ImageURL && !b.LockedUntil.Valid {
 		return null.NullBytes, nil
 	}
 	type localMarketplaceSaleItemMysteryCrate MarketplaceSaleItemMysteryCrate

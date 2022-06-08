@@ -260,7 +260,6 @@ func NewAPI(
 				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 			}))
-
 		})
 	})
 

@@ -52,6 +52,8 @@ var itemSaleQueryMods = []qm.QueryMod{
 		mech_skin.avatar_url AS "mech_skin.avatar_url",
 		mystery_crate.id AS "mystery_crate.id",
 		mystery_crate.label AS "mystery_crate.label",
+		mystery_crate.image_url AS "mystery_crate.image_url",
+		mystery_crate.locked_until AS "mystery_crate.locked_until",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -212,6 +214,8 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Mech.AvatarURL,
 		&output.MysteryCrate.ID,
 		&output.MysteryCrate.Label,
+		&output.MysteryCrate.ImageURL,
+		&output.MysteryCrate.LockedUntil,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -502,10 +506,11 @@ func MarketplaceSaleCreate(
 		obj.BuyoutPrice = decimal.NewNullDecimal(askingPrice.Decimal.Mul(decimal.New(1, 18)))
 	}
 	if hasAuction {
-		auctionPrice := decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
 		obj.Auction = true
-		obj.AuctionCurrentPrice = auctionPrice
-		obj.AuctionReservedPrice = auctionPrice
+		obj.AuctionCurrentPrice = decimal.NewNullDecimal(decimal.New(1, 18))
+		if auctionReservedPrice.Valid {
+			obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
+		}
 	}
 	if hasDutchAuction {
 		obj.DutchAuction = true
