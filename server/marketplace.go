@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -44,6 +45,14 @@ type MarketplaceBidder struct {
 	Gid           null.Int    `json:"gid" boil:"bidder.gid"`
 }
 
+func (b MarketplaceBidder) MarshalJSON() ([]byte, error) {
+	if !b.ID.Valid && !b.Username.Valid && !b.FactionID.Valid && !b.PublicAddress.Valid && !b.Gid.Valid {
+		return null.NullBytes, nil
+	}
+	type localMarketplaceBidder MarketplaceBidder
+	return json.Marshal(localMarketplaceBidder(b))
+}
+
 type MarketplaceSaleItemOwner struct {
 	ID            string      `json:"id" boil:"players.id"`
 	Username      null.String `json:"username" boil:"players.username"`
@@ -60,9 +69,25 @@ type MarketplaceSaleItemMech struct {
 	AvatarURL null.String `json:"avatar_url" boil:"mech_skin.avatar_url"`
 }
 
+func (b MarketplaceSaleItemMech) MarshalJSON() ([]byte, error) {
+	if !b.ID.Valid && !b.Label.Valid && !b.Name.Valid && !b.Tier.Valid && !b.AvatarURL.Valid {
+		return null.NullBytes, nil
+	}
+	type localMarketplaceSaleItemMech MarketplaceSaleItemMech
+	return json.Marshal(localMarketplaceSaleItemMech(b))
+}
+
 type MarketplaceSaleItemMysteryCrate struct {
 	ID    null.String `json:"id" boil:"mystery_crate.id"`
 	Label null.String `json:"label" boil:"mystery_crate.label"`
+}
+
+func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
+	if !b.ID.Valid && !b.Label.Valid {
+		return null.NullBytes, nil
+	}
+	type localMarketplaceSaleItemMysteryCrate MarketplaceSaleItemMysteryCrate
+	return json.Marshal(localMarketplaceSaleItemMysteryCrate(b))
 }
 
 type MarketplaceKeycardSaleItem struct {
