@@ -96,8 +96,9 @@ func (b MarketplaceSaleItemMech) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleItemMysteryCrate struct {
-	ID    null.String `json:"id" boil:"mystery_crate.id"`
-	Label null.String `json:"label" boil:"mystery_crate.label"`
+	ID          null.String `json:"id" boil:"mystery_crate.id"`
+	Label       null.String `json:"label" boil:"mystery_crate.label"`
+	Description null.String `json:"description" boil:"mystery_crate.description"`
 }
 
 func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
