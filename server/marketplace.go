@@ -106,5 +106,5 @@ type MarketplaceSaleItem1155 struct {
 	UpdatedAt      time.Time                `json:"updated_at" boil:"updated_at"`
 	CreatedAt      time.Time                `json:"created_at" boil:"created_at"`
 	Owner          MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
-	Keycard        AssetKeycardBlueprint    `json:",omitempty" boil:",bind"`
+	Keycard        AssetKeycardBlueprint    `json:"keycard,omitempty" boil:",bind"`
 }
