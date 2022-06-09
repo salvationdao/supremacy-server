@@ -905,6 +905,25 @@ type BattleWMDestroyedPayload struct {
 	BattleID string `json:"battleID"`
 }
 
+type AISpawnedRequest struct {
+	BattleID       string          `json:"battleID"`
+	SpawnedAIEvent *SpawnedAIEvent `json:"spawnedAIEvent"`
+}
+
+type SpawnedAIEvent struct {
+	ParticipantID byte            `json:"participantID"`
+	Name          string          `json:"name"`
+	Model         string          `json:"model"`
+	Skin          string          `json:"skin"`
+	MaxHealth     uint32          `json:"maxHealth"`
+	Health        uint32          `json:"health"`
+	MaxShield     uint32          `json:"maxShield"`
+	Shield        uint32          `json:"shield"`
+	FactionID     string          `json:"factionID"`
+	Position      *server.Vector3 `json:"position"`
+	Rotation      int             `json:"rotation"`
+}
+
 type BattleWMPickupPayload struct {
 	WarMachineHash string `json:"warMachineHash"`
 	EventID        string `json:"eventID"`
@@ -1009,6 +1028,16 @@ func (arena *Arena) start() {
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
 				arena.beginBattle()
+			case "BATTLE:AI_SPAWNED":
+				var dataPayload *AISpawnedRequest
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					continue
+				}
+				err = btl.AISpawned(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Err(err)
+				}
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -1119,6 +1148,41 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *b
 	if us != nil {
 		reply(us)
 	}
+
+	return nil
+}
+
+func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
+	// check battle id
+	if payload.BattleID != btl.BattleID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	}
+
+	if payload.SpawnedAIEvent == nil {
+		return terror.Error(fmt.Errorf("missing Spawned AI event"))
+	}
+
+	// get spawned AI
+	spawnedAI := &WarMachine{
+		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
+		Name:          payload.SpawnedAIEvent.Name,
+		Model:         payload.SpawnedAIEvent.Model,
+		Skin:          payload.SpawnedAIEvent.Skin,
+		MaxHealth:     payload.SpawnedAIEvent.MaxHealth,
+		Health:        payload.SpawnedAIEvent.MaxHealth,
+		MaxShield:     payload.SpawnedAIEvent.MaxShield,
+		Shield:        payload.SpawnedAIEvent.MaxShield,
+		FactionID:     payload.SpawnedAIEvent.FactionID,
+		Position:      payload.SpawnedAIEvent.Position,
+		Rotation:      payload.SpawnedAIEvent.Rotation,
+	}
+
+	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
+
+	// cache record in battle, for future subscription
+	btl.spawnedAIMux.Lock()
+	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
+	btl.spawnedAIMux.Unlock()
 
 	return nil
 }

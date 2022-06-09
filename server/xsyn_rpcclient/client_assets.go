@@ -159,7 +159,7 @@ func (pp *XsynXrpcClient) UpdateKeycardItem(keycardUpdate *UpdateUser1155AssetRe
 	resp := &UpdateUser1155AssetResp{}
 	err := pp.XrpcClient.Call("S.InsertUser1155AssetHandler", keycardUpdate, resp)
 	if err != nil {
-		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Msg("rpc error")
+		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Str("func", "S.InsertUser1155AssetHandler").Msg("rpc error")
 		return nil, err
 	}
 
