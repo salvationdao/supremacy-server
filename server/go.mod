@@ -17,7 +17,7 @@ require (
 	github.com/ninja-syndicate/ws v0.10.5
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
-	github.com/urfave/cli/v2 v2.3.0
+	github.com/urfave/cli/v2 v2.8.1
 	golang.org/x/net v0.0.0-20211020060615-d418f374d309
 	nhooyr.io/websocket v1.8.7
 )
@@ -46,8 +46,6 @@ require (
 	gopkg.in/telebot.v3 v3.0.0
 )
 
-require github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
-
 require (
 	github.com/DataDog/datadog-agent/pkg/obfuscate v0.34.0 // indirect
 	github.com/DataDog/datadog-go v4.8.3+incompatible // indirect
@@ -75,6 +73,7 @@ require (
 	github.com/tinylib/msgp v1.1.6 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )
@@ -86,7 +85,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.14
 	github.com/fatih/color v1.13.0 // indirect
@@ -118,8 +117,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/russross/blackfriday/v2 v2.0.1 // indirect
-	github.com/sasha-s/go-deadlock v0.3.1
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
