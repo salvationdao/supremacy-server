@@ -1000,11 +1000,14 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
+
 			case "BATTLE:OUTRO_FINISHED":
-				gamelog.L.Info().Msg("battle outro finish")
+				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
+				arena.beginBattle()
 
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
+
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -1012,6 +1015,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.Destroyed(&dataPayload)
+
 			case "BATTLE:WAR_MACHINE_PICKUP":
 				var dataPayload BattleWMPickupPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -1019,6 +1023,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.Pickup(&dataPayload)
+
 			case "BATTLE:END":
 				var dataPayload *BattleEndPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -1026,9 +1031,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.end(dataPayload)
-				//TODO: this needs to be triggered by a message from the game client
-				time.Sleep(time.Second * 30)
-				arena.beginBattle()
+
 			case "BATTLE:AI_SPAWNED":
 				var dataPayload *AISpawnedRequest
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1039,6 +1042,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Err(err)
 				}
+				
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
