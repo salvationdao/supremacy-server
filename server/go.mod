@@ -2,8 +2,6 @@ module server
 
 go 1.18
 
-replace github.com/ninja-syndicate/ws => /home/darren/go/src/github.com/ninja-syndicate/ws
-
 require (
 	github.com/antonholmquist/jason v1.0.0 // indirect
 	github.com/cosmtrek/air v1.27.8
@@ -16,7 +14,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/ws v0.10.4
+	github.com/ninja-syndicate/ws v0.10.5
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/urfave/cli/v2 v2.3.0
