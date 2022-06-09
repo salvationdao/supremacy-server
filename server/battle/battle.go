@@ -1304,7 +1304,7 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			if warMachineIndex == -1 {
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-					Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
 				continue
 			}
 			warmachine = btl.SpawnedAI[warMachineIndex]
@@ -1315,6 +1315,11 @@ func (btl *Battle) Tick(payload []byte) {
 					warMachineIndex = i
 					break
 				}
+			}
+			if warMachineIndex == -1 {
+				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
+				continue
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
