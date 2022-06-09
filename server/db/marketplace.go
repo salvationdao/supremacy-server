@@ -35,6 +35,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 		item_sales.sold_for AS sold_for,
 		item_sales.sold_by AS sold_by,
 		item_sales.sold_tx_id AS sold_tx_id,
+		item_sales.sold_fee_tx_id AS sold_fee_tx_id,
 		item_sales.deleted_at AS deleted_at,
 		item_sales.updated_at AS updated_at,
 		item_sales.created_at AS created_at,
