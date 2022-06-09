@@ -5,12 +5,12 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -19,7 +19,7 @@ import (
 type ActivePlayers struct {
 	FactionID string
 	Map       map[string]*ActiveStat
-	deadlock.RWMutex
+	sync.RWMutex
 
 	// channel for debounce broadcast
 	ActivePlayerListChan chan *ActivePlayerBroadcast

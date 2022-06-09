@@ -8,6 +8,7 @@ import (
 	"go.uber.org/atomic"
 	"net/http"
 	"server/gamelog"
+	"sync"
 )
 
 type ReplyFunc func(interface{})
@@ -16,8 +17,8 @@ type CommandFunc func(key string, payload []byte, reply ReplyFunc) error
 
 var (
 	commands *CommandTree
-	commOnce deadlock.Once
-	commLock deadlock.RWMutex
+	commOnce sync.Once
+	commLock sync.RWMutex
 )
 
 func Endpoint(key string, fn CommandFunc) {

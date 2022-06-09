@@ -13,6 +13,7 @@ import (
 	"server/gamelog"
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
+	"sync"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -30,7 +31,6 @@ import (
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/sasha-s/go-deadlock"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -39,7 +39,7 @@ type WelcomePayload struct {
 }
 
 type LiveVotingData struct {
-	deadlock.Mutex
+	sync.Mutex
 	TotalVote server.BigInt
 }
 
@@ -55,9 +55,9 @@ type VotePriceSystem struct {
 
 type FactionVotePrice struct {
 	// priority lock
-	OuterLock      deadlock.Mutex
-	NextAccessLock deadlock.Mutex
-	DataLock       deadlock.Mutex
+	OuterLock      sync.Mutex
+	NextAccessLock sync.Mutex
+	DataLock       sync.Mutex
 
 	// price
 	CurrentVotePriceSups server.BigInt

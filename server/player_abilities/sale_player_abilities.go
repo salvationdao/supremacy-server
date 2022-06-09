@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -41,7 +41,7 @@ type SalePlayerAbilitiesSystem struct {
 	Purchase chan *Purchase
 
 	closed *atomic.Bool
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {

@@ -1,8 +1,8 @@
 package battle
 
 import (
-	"github.com/sasha-s/go-deadlock"
 	"go.uber.org/atomic"
+	"sync"
 )
 
 type PlayerAbilitiesSystem struct {
@@ -10,7 +10,7 @@ type PlayerAbilitiesSystem struct {
 
 	end    chan bool
 	closed *atomic.Bool
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 func NewPlayerAbilitiesSystem() *PlayerAbilitiesSystem {

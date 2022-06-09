@@ -12,6 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -25,7 +26,6 @@ import (
 	"github.com/friendsofgo/errors"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/sasha-s/go-deadlock"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -81,7 +81,7 @@ type MessagePunishVote struct {
 
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	deadlock.RWMutex
+	sync.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }

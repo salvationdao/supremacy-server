@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"server/gamelog"
+	"sync"
 	"time"
 
 	"github.com/gobwas/ws"
@@ -15,13 +16,13 @@ import (
 
 type Subscribers struct {
 	pools map[string]*pools
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 var (
 	subscribers *Subscribers
-	once        deadlock.Once
-	l           deadlock.RWMutex
+	once        sync.Once
+	l           sync.RWMutex
 )
 
 func Sub(URI string, c *Client) {
@@ -116,7 +117,7 @@ func (cpool *pool) run() {
 type pools struct {
 	p        []*pool
 	lastPool *pool
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 func (pls *pools) register(c *Client) {

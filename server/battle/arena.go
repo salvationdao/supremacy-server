@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server"
@@ -17,6 +16,7 @@ import (
 	"server/telegram"
 	"server/xsyn_rpcclient"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -46,11 +46,11 @@ type Arena struct {
 	syndicates               map[string]boiler.Faction
 	AIPlayers                map[string]db.PlayerWithFaction
 	RPCClient                *xsyn_rpcclient.XsynXrpcClient
-	gameClientLock           deadlock.Mutex
+	gameClientLock           sync.Mutex
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 func (arena *Arena) IsClientConnected() error {
