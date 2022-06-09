@@ -120,8 +120,12 @@ type MultiplierUpdateBattles struct {
 }
 
 type Faction struct {
-	ID              string `json:"id"`
-	Label           string `json:"label"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Theme *Theme `json:"theme"`
+}
+
+type Theme struct {
 	PrimaryColor    string `json:"primary"`
 	SecondaryColor  string `json:"secondary"`
 	BackgroundColor string `json:"background"`

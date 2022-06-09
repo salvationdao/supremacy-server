@@ -620,11 +620,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 			FactionID: player.FactionID.String,
 			Gid:       player.Gid,
 			Faction: &Faction{
-				ID:              faction.ID,
-				Label:           faction.Label,
-				PrimaryColor:    faction.PrimaryColor,
-				SecondaryColor:  faction.SecondaryColor,
-				BackgroundColor: faction.BackgroundColor,
+				ID:    faction.ID,
+				Label: faction.Label,
+				Theme: &Theme{
+					PrimaryColor:    faction.PrimaryColor,
+					SecondaryColor:  faction.SecondaryColor,
+					BackgroundColor: faction.BackgroundColor,
+				},
 			},
 		},
 	})
