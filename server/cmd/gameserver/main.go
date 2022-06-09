@@ -24,21 +24,21 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/pemistahl/lingua-go"
+	"github.com/urfave/cli/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
+	_ "net/http/pprof"
+	"time"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/pemistahl/lingua-go"
-
-	_ "net/http/pprof"
-	"time"
-
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -46,8 +46,6 @@ import (
 
 	"context"
 	"os"
-
-	"github.com/urfave/cli/v2"
 )
 
 // Variable passed in at compile time using `-ldflags`
@@ -446,7 +444,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 	gamelog.L.Info().Msg("Syncing Keycards with Passport")
 	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
 	if !updated {
-		f, err := os.Open(filePath)
+		f, err := os.OpenFile(filePath, os.O_RDONLY, 0755)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue updating keycards")
 			return
