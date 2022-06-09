@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/helpers"
 
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
@@ -60,6 +61,7 @@ func (a *API) ShadowbanChatPlayer(w http.ResponseWriter, r *http.Request) (int, 
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to insert player to banned fingerprints %w", err))
 		}
 	}
+	helpers.EncodeJSON(w, fmt.Sprintf("player %s: %s has been banned successfully", req.ColumnName, req.Value))
 
 	return http.StatusOK, nil
 }
@@ -104,6 +106,8 @@ func (a *API) ShadowbanChatPlayerRemove(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	helpers.EncodeJSON(w, fmt.Sprintf("player %s: %s has been un banned successfully", req.ColumnName, req.Value))
+
 	return http.StatusOK, nil
 }
 
@@ -111,6 +115,11 @@ func (a *API) ShadowbanChatPlayerRemove(w http.ResponseWriter, r *http.Request) 
 func (a *API) ShadowbanChatPlayerList(w http.ResponseWriter, r *http.Request) (int, error) {
 	// get banned players
 	bannedPlayers, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.PublicAddress,
+		),
 		// join fingerprints
 		qm.InnerJoin(
 			fmt.Sprintf(
@@ -120,6 +129,7 @@ func (a *API) ShadowbanChatPlayerList(w http.ResponseWriter, r *http.Request) (i
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
 			),
 		),
+		// join banned fingerprints
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
@@ -128,18 +138,12 @@ func (a *API) ShadowbanChatPlayerList(w http.ResponseWriter, r *http.Request) (i
 				qm.Rels(boiler.TableNames.PlayerFingerprints, boiler.PlayerFingerprintColumns.FingerprintID),
 			),
 		),
-
-		qm.Select(
-			boiler.PlayerColumns.ID,
-			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.PublicAddress,
-		),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get banned players %w", err))
 	}
 
-	fmt.Fprintf(w, &bannedPlayers)
+	helpers.EncodeJSON(w, bannedPlayers)
 
 	return http.StatusOK, nil
 
