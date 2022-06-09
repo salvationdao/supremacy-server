@@ -24,21 +24,20 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/pemistahl/lingua-go"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
+	_ "net/http/pprof"
+	"time"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/pemistahl/lingua-go"
-
-	_ "net/http/pprof"
-	"time"
-
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -567,7 +566,10 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			_, _ = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			if err != nil {
+				gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
+			}
 
 			for _, assetData := range keyCardData {
 				playerKeycard := boiler.PlayerKeycard{
@@ -584,7 +586,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 						PublicAddress:      keycardAssets.PublicAddress,
 						BlueprintKeycardID: assetData.BlueprintID,
 						Count:              assetData.Count,
-						Reason:             "Gameserver Insert Error",
+						Reason:             fmt.Sprintf("Gameserver Insert Error: %s", err.Error()),
 					}
 
 					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
