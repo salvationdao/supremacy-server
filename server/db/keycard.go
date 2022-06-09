@@ -58,7 +58,7 @@ func UpdateKeycardReductionAmount(ownerID string, tokenID int) error {
 			SELECT id FROM blueprint_keycards WHERE keycard_token_id = $2
 		);`
 
-	_, err := boiler.NewQuery(qm.SQL(q, tokenID, ownerID)).Exec(gamedb.StdConn)
+	_, err := boiler.NewQuery(qm.SQL(q, ownerID, tokenID)).Exec(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
