@@ -46,6 +46,7 @@ type Battle struct {
 	BattleID       string        `json:"battleID"`
 	MapName        string        `json:"mapName"`
 	WarMachines    []*WarMachine `json:"warMachines"`
+	spawnedAIMux   sync.RWMutex
 	SpawnedAI      []*WarMachine `json:"SpawnedAI"`
 	warMachineIDs  []uuid.UUID   `json:"ids"`
 	lastTick       *[]byte
@@ -1297,15 +1298,18 @@ func (btl *Battle) Tick(payload []byte) {
 		warMachineIndex := -1
 		var warmachine *WarMachine
 		if participantID > 100 {
-			// Spawned AI
+			// find Spawned AI
+			btl.spawnedAIMux.RLock()
 			for i, wmn := range btl.SpawnedAI {
 				if wmn.ParticipantID == participantID {
 					warMachineIndex = i
 					break
 				}
 			}
+			btl.spawnedAIMux.RUnlock()
+
 			if warMachineIndex == -1 {
-				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+				gamelog.L.Warn().Err(fmt.Errorf("aiSpawnedIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
 				continue
 			}
@@ -1324,12 +1328,6 @@ func (btl *Battle) Tick(payload []byte) {
 				return
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
-		}
-
-		if warMachineIndex == -1 {
-			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
-			return
 		}
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
@@ -1373,12 +1371,14 @@ func (btl *Battle) Tick(payload []byte) {
 			offset += 4
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
-			Position: warmachine.Position,
-			Rotation: warmachine.Rotation,
-			Health:   warmachine.Health,
-			Shield:   warmachine.Shield,
-		})
+		if participantID < 100 {
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
+				Position: warmachine.Position,
+				Rotation: warmachine.Rotation,
+				Health:   warmachine.Health,
+				Shield:   warmachine.Shield,
+			})
+		}
 	}
 }
 
