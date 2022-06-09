@@ -472,6 +472,18 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID.String()), WSPlayerAssetMechQueueSubscribe, -1)
 	gamelog.L.Info().Str("factionID", factionID).Str("mechID", mechID.String()).Msg("published message on queue leave")
 
+	go func() {
+		factionQueue, err := db.FactionQueue(factionID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to get faction queue to broadcast queue positions")
+			return
+		}
+
+		for _, fc := range factionQueue {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, fc.MechID.String()), WSPlayerAssetMechQueueSubscribe, fc.QueuePosition)
+		}
+	}()
+
 	return nil
 }
 

@@ -703,6 +703,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 					Msg("Had to transfer funds to the syndicate account")
 			}
 
+			if factID.String() == contract.PlayerID {
+				continue
+			}
+
 			// pay sups
 			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
@@ -1297,8 +1301,12 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if warMachineIndex == -1 {
-			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+			gamelog.L.Warn().
+				Err(fmt.Errorf("warMachineIndex == -1")).
+				Int("c", int(c)).
+				Str("participantID", string(participantID)).
+				Bytes("payload", payload).
+				Msg("unable to find warmachine participant ID")
 			return
 		}
 
@@ -1452,9 +1460,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 
-					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
+					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(wm.OwnedByID)).One(gamedb.StdConn)
 					if err != nil && !errors.Is(err, sql.ErrNoRows) {
-						gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
+						gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get player preferences")
 
 					}
 

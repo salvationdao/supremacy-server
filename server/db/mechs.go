@@ -387,9 +387,9 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 }
 
 type BattleQueuePosition struct {
-	MechID           uuid.UUID `db:"mech_id"`
-	QueuePosition    int64     `db:"queue_position"`
-	BattleContractID string    `db:"battle_contract_id"`
+	MechID           uuid.UUID   `db:"mech_id"`
+	QueuePosition    int64       `db:"queue_position"`
+	BattleContractID null.String `db:"battle_contract_id"`
 }
 
 // TODO: I want InsertNewMech tested.
