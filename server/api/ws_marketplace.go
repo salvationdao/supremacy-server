@@ -278,6 +278,7 @@ type MarketplaceSalesCreateRequest struct {
 		HasDutchAuction      bool                `json:"has_dutch_auction"`
 		AskingPrice          decimal.NullDecimal `json:"asking_price"`
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
+		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
 		DutchAuctionDropRate decimal.NullDecimal `json:"dutch_auction_drop_rate"`
 	} `json:"payload"`
 }
@@ -439,6 +440,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		req.Payload.AskingPrice,
 		req.Payload.HasAuction,
 		req.Payload.AuctionReservedPrice,
+		req.Payload.AuctionCurrentPrice,
 		req.Payload.HasDutchAuction,
 		req.Payload.DutchAuctionDropRate,
 	)

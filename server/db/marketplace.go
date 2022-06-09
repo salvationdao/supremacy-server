@@ -500,6 +500,7 @@ func MarketplaceSaleCreate(
 	askingPrice decimal.NullDecimal,
 	hasAuction bool,
 	auctionReservedPrice decimal.NullDecimal,
+	auctionCurrentPrice decimal.NullDecimal,
 	hasDutchAuction bool,
 	dutchAuctionDropRate decimal.NullDecimal,
 ) (*server.MarketplaceSaleItem, error) {
@@ -517,7 +518,11 @@ func MarketplaceSaleCreate(
 	}
 	if hasAuction {
 		obj.Auction = true
-		obj.AuctionCurrentPrice = decimal.NewNullDecimal(decimal.New(1, 18))
+		if auctionCurrentPrice.Valid {
+			obj.AuctionCurrentPrice = decimal.NewNullDecimal(auctionCurrentPrice.Decimal.Mul(decimal.New(1, 18)))
+		} else {
+			obj.AuctionCurrentPrice = decimal.NewNullDecimal(decimal.New(1, 18))
+		}
 		if auctionReservedPrice.Valid {
 			obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
 		}
