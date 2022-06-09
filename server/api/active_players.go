@@ -96,7 +96,7 @@ func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
 func (ap *ActivePlayers) Run() {
 	for {
 		// run check every minute
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Minute)
 		ap.CheckExpiry()
 	}
 }
