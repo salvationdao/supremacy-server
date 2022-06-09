@@ -1214,8 +1214,21 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	reply(true)
 
 	// Broadcast new current price
+	totalBids, err := boiler.ItemSalesBidHistories(boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(req.Payload.ID.String())).Count(gamedb.StdConn)
+	if err != nil {
+		// No need to abort failure
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
+			Err(err).
+			Msg("Unable to get current total bids.")
+		return nil
+	}
+
 	resp := &SaleItemUpdate{
 		AuctionCurrentPrice: req.Payload.Amount.Mul(decimal.New(1, 18)).String(),
+		TotalBids:           totalBids,
 		LastBid: server.MarketplaceBidder{
 			ID:            null.StringFrom(user.ID),
 			FactionID:     user.FactionID,
@@ -1233,6 +1246,7 @@ const HubKeyMarketplaceSalesItemUpdate = "MARKETPLACE:SALES:ITEM:UPDATE"
 
 type SaleItemUpdate struct {
 	AuctionCurrentPrice string                   `json:"auction_current_price"`
+	TotalBids           int64                    `json:"total_bids"`
 	LastBid             server.MarketplaceBidder `json:"last_bid,omitempty"`
 }
 
