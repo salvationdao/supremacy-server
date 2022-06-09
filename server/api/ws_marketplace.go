@@ -279,7 +279,6 @@ type MarketplaceSalesCreateRequest struct {
 		AskingPrice          decimal.NullDecimal `json:"asking_price"`
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		DutchAuctionDropRate decimal.NullDecimal `json:"dutch_auction_drop_rate"`
-		ListingDurationHours int64               `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -289,11 +288,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.ListingDurationHours <= 0 {
-		err = fmt.Errorf("listing duration hours required")
-		return terror.Error(err, "Invalid request received")
 	}
 
 	userID, err := uuid.FromString(user.ID)
@@ -387,11 +381,14 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
+	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
 	if req.Payload.HasBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
-	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours)).Mul(decimal.New(1, 18))
+	if req.Payload.AuctionReservedPrice.Valid {
+		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
+	}
+	feePrice = feePrice.Mul(decimal.New(1, 18))
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
@@ -402,7 +399,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups.")
+		return terror.Error(err, "You do not have enough sups to list item.")
 	}
 
 	// pay sup
@@ -429,7 +426,8 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Create Sales Item
-	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
+	// TODO: Add listing hours option back with fee rates applied
+	endAt := time.Now().Add(time.Hour * 24)
 	obj, err := db.MarketplaceSaleCreate(
 		gamedb.StdConn,
 		userID,
@@ -465,9 +463,8 @@ const HubKeyMarketplaceSalesKeycardCreate = "MARKETPLACE:SALES:KEYCARD:CREATE"
 type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemID               uuid.UUID       `json:"item_id"`
-		AskingPrice          decimal.Decimal `json:"asking_price"`
-		ListingDurationHours int64           `json:"listing_duration_hours"`
+		ItemID      uuid.UUID       `json:"item_id"`
+		AskingPrice decimal.Decimal `json:"asking_price"`
 	} `json:"payload"`
 }
 
@@ -477,11 +474,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.ListingDurationHours <= 0 {
-		err = fmt.Errorf("listing duration hours required")
-		return terror.Error(err, "Invalid request received")
 	}
 
 	userID, err := uuid.FromString(user.ID)
@@ -540,9 +532,8 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 
 	// Process fee
 	balance := mp.API.Passport.UserBalanceGet(userID)
-	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
-	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
-	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours)).Mul(decimal.New(1, 18))
+
+	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
@@ -552,7 +543,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups.")
+		return terror.Error(err, "You do not have enough sups to list item.")
 	}
 
 	// pay sup
@@ -578,7 +569,8 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 
 	// Create Sales Item
-	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
+	// TODO: Add listing hours option back with fee rates applied
+	endAt := time.Now().Add(time.Hour * 24)
 	obj, err := db.MarketplaceKeycardSaleCreate(
 		userID,
 		factionID,
@@ -596,18 +588,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("Unable to create new sale item.")
 		return terror.Error(err, "Unable to create new sale item.")
 	}
-
-	// obj, err = db.MarketplaceLoadItemSaleObject(obj)
-	// if err != nil {
-	// 	mp.API.Passport.RefundSupsMessage(txid)
-	// 	gamelog.L.Error().
-	// 		Str("user_id", user.ID).
-	// 		Str("item_type", string(req.Payload.ItemType)).
-	// 		Str("item_id", req.Payload.ItemID.String()).
-	// 		Err(err).
-	// 		Msg("Unable to create new sale item (post create).")
-	// 	return terror.Error(err, "Unable to create new sale item.")
-	// }
 
 	reply(obj)
 
@@ -661,10 +641,10 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// Calculate Cost depending on sale type
-	saleType := "BUYOUT"
+	saleType := "buyout"
 	saleItemCost := saleItem.BuyoutPrice.Decimal
 	if saleItem.DutchAuction {
-		saleType = "DUTCH_AUCTION"
+		saleType = "dutch_auction"
 		if !saleItem.DutchAuctionDropRate.Valid {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
@@ -681,8 +661,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 	}
 
-	// Pay item
-	// TODO: Work out Sales Cut
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
@@ -696,18 +676,53 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, "You do not have enough sups.")
 	}
 
-	// pay sup
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	// Pay sales cut fee amount to faction account
+	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	if !ok {
+		err = fmt.Errorf("failed to get hard coded syndicate player id")
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+		return terror.Error(err, errMsg)
+	}
+	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.New(1, 18)).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
+		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
+		err = fmt.Errorf("failed to process payment transaction")
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to process sales cut fee transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
+	}
+
+	// Give sales cut amount to seller
+	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           userID,
+		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupMarketplace),
+		SubGroup:             "SUPREMACY",
+		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		NotSafe:              true,
+	})
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -723,6 +738,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	// start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -737,20 +754,23 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 
 	// update sale item
 	saleItemRecord := &boiler.ItemSale{
-		ID:       saleItem.ID,
-		SoldAt:   null.TimeFrom(time.Now()),
-		SoldFor:  decimal.NewNullDecimal(saleItemCost),
-		SoldTXID: null.StringFrom(txid),
-		SoldBy:   null.StringFrom(user.ID),
+		ID:          saleItem.ID,
+		SoldAt:      null.TimeFrom(time.Now()),
+		SoldFor:     decimal.NewNullDecimal(saleItemCost),
+		SoldTXID:    null.StringFrom(txid),
+		SoldFeeTXID: null.StringFrom(feeTXID),
+		SoldBy:      null.StringFrom(user.ID),
 	}
 	_, err = saleItemRecord.Update(tx,
 		boil.Whitelist(
 			boiler.ItemSaleColumns.SoldAt,
 			boiler.ItemSaleColumns.SoldFor,
 			boiler.ItemSaleColumns.SoldTXID,
+			boiler.ItemSaleColumns.SoldFeeTXID,
 			boiler.ItemSaleColumns.SoldBy,
 		))
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
@@ -768,6 +788,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.CollectionItemType == boiler.ItemTypeMech {
 		err = db.ChangeMechOwner(tx, req.Payload.ID)
 		if err != nil {
+			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
@@ -782,6 +803,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
 		err = db.ChangeMysteryCrateOwner(tx, req.Payload.ID)
 		if err != nil {
+			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
@@ -798,6 +820,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	// commit transaction
 	err = tx.Commit()
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -839,7 +862,6 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	// Pay item
-	// TODO: Work out Sales Cut
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
 		gamelog.L.Error().
@@ -865,18 +887,55 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "You do not have enough sups.")
 	}
 
-	// pay sup
-	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+
+	// Pay sales cut fee amount to faction account
+	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	if !ok {
+		err = fmt.Errorf("failed to get hard coded syndicate player id")
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+		return terror.Error(err, errMsg)
+	}
+	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.New(1, 18)).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|keycard|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
+		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
+		err = fmt.Errorf("failed to process payment transaction")
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to process sales cut fee transaction for Purchase Sale Item.")
+		return terror.Error(err, errMsg)
+	}
+
+	// Give sales cut amount to seller
+	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           userID,
+		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_keycard|buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupMarketplace),
+		SubGroup:             "SUPREMACY",
+		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		NotSafe:              true,
+	})
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -892,6 +951,8 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	// begin transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -906,20 +967,23 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 
 	// update sale item
 	saleItemRecord := &boiler.ItemKeycardSale{
-		ID:       saleItem.ID,
-		SoldAt:   null.TimeFrom(time.Now()),
-		SoldFor:  decimal.NewNullDecimal(saleItemCost),
-		SoldTXID: null.StringFrom(txid),
-		SoldBy:   null.StringFrom(user.ID),
+		ID:          saleItem.ID,
+		SoldAt:      null.TimeFrom(time.Now()),
+		SoldFor:     decimal.NewNullDecimal(saleItemCost),
+		SoldTXID:    null.StringFrom(txid),
+		SoldFeeTXID: null.StringFrom(feeTXID),
+		SoldBy:      null.StringFrom(user.ID),
 	}
 
 	_, err = saleItemRecord.Update(tx, boil.Whitelist(
 		boiler.ItemKeycardSaleColumns.SoldAt,
 		boiler.ItemKeycardSaleColumns.SoldFor,
 		boiler.ItemKeycardSaleColumns.SoldTXID,
+		boiler.ItemKeycardSaleColumns.SoldFeeTXID,
 		boiler.ItemKeycardSaleColumns.SoldBy,
 	))
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
@@ -936,6 +1000,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	// transfer ownership of asset
 	err = db.ChangeKeycardOwner(tx, req.Payload.ID)
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -951,6 +1016,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	// commit transaction
 	err = tx.Commit()
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).

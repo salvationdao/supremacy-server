@@ -35,6 +35,7 @@ type ItemKeycardSale struct {
 	SoldFor        decimal.NullDecimal `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
 	SoldBy         null.String         `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
 	SoldTXID       null.String         `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
+	SoldFeeTXID    null.String         `boiler:"sold_fee_tx_id" boil:"sold_fee_tx_id" json:"sold_fee_tx_id,omitempty" toml:"sold_fee_tx_id" yaml:"sold_fee_tx_id,omitempty"`
 	DeletedAt      null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt      time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt      time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -55,6 +56,7 @@ var ItemKeycardSaleColumns = struct {
 	SoldFor        string
 	SoldBy         string
 	SoldTXID       string
+	SoldFeeTXID    string
 	DeletedAt      string
 	UpdatedAt      string
 	CreatedAt      string
@@ -70,6 +72,7 @@ var ItemKeycardSaleColumns = struct {
 	SoldFor:        "sold_for",
 	SoldBy:         "sold_by",
 	SoldTXID:       "sold_tx_id",
+	SoldFeeTXID:    "sold_fee_tx_id",
 	DeletedAt:      "deleted_at",
 	UpdatedAt:      "updated_at",
 	CreatedAt:      "created_at",
@@ -87,6 +90,7 @@ var ItemKeycardSaleTableColumns = struct {
 	SoldFor        string
 	SoldBy         string
 	SoldTXID       string
+	SoldFeeTXID    string
 	DeletedAt      string
 	UpdatedAt      string
 	CreatedAt      string
@@ -102,6 +106,7 @@ var ItemKeycardSaleTableColumns = struct {
 	SoldFor:        "item_keycard_sales.sold_for",
 	SoldBy:         "item_keycard_sales.sold_by",
 	SoldTXID:       "item_keycard_sales.sold_tx_id",
+	SoldFeeTXID:    "item_keycard_sales.sold_fee_tx_id",
 	DeletedAt:      "item_keycard_sales.deleted_at",
 	UpdatedAt:      "item_keycard_sales.updated_at",
 	CreatedAt:      "item_keycard_sales.created_at",
@@ -121,6 +126,7 @@ var ItemKeycardSaleWhere = struct {
 	SoldFor        whereHelperdecimal_NullDecimal
 	SoldBy         whereHelpernull_String
 	SoldTXID       whereHelpernull_String
+	SoldFeeTXID    whereHelpernull_String
 	DeletedAt      whereHelpernull_Time
 	UpdatedAt      whereHelpertime_Time
 	CreatedAt      whereHelpertime_Time
@@ -136,6 +142,7 @@ var ItemKeycardSaleWhere = struct {
 	SoldFor:        whereHelperdecimal_NullDecimal{field: "\"item_keycard_sales\".\"sold_for\""},
 	SoldBy:         whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_by\""},
 	SoldTXID:       whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_tx_id\""},
+	SoldFeeTXID:    whereHelpernull_String{field: "\"item_keycard_sales\".\"sold_fee_tx_id\""},
 	DeletedAt:      whereHelpernull_Time{field: "\"item_keycard_sales\".\"deleted_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"item_keycard_sales\".\"updated_at\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"item_keycard_sales\".\"created_at\""},
@@ -171,9 +178,9 @@ func (*itemKeycardSaleR) NewStruct() *itemKeycardSaleR {
 type itemKeycardSaleL struct{}
 
 var (
-	itemKeycardSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemKeycardSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemKeycardSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at"}
-	itemKeycardSaleColumnsWithDefault    = []string{"id", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemKeycardSaleColumnsWithDefault    = []string{"id", "sold_at", "sold_for", "sold_by", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemKeycardSalePrimaryKeyColumns     = []string{"id"}
 	itemKeycardSaleGeneratedColumns      = []string{}
 )

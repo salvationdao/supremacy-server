@@ -24,6 +24,7 @@ CREATE TABLE item_sales (
 	sold_for DECIMAL,
 	sold_by UUID REFERENCES players(id),
 	sold_tx_id TEXT,
+	sold_fee_tx_id TEXT,
 
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -62,6 +63,7 @@ CREATE TABLE item_keycard_sales (
 	sold_for DECIMAL,
 	sold_by UUID REFERENCES players(id),
 	sold_tx_id TEXT,
+	sold_fee_tx_id TEXT,
 
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

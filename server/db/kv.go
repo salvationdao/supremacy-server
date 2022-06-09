@@ -2,12 +2,13 @@ package db
 
 import (
 	"database/sql"
-	"github.com/friendsofgo/errors"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
 	"time"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -37,7 +38,8 @@ const KeyFactionAbilityPriceDropRate KVKey = "faction_ability_price_drop_rate"
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
 const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
-const KeyMarketplaceSaleCutPercentage KVKey = "marketplace_sale_cut_percentage"
+const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auction_reserve_fee"
+const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
