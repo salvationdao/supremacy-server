@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/volatiletech/null/v8"
-
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
+	"github.com/pemistahl/lingua-go"
+	"github.com/volatiletech/null/v8"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -29,7 +29,6 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
-	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -324,6 +323,8 @@ func (api *API) Run(ctx context.Context) error {
 		<-ctx.Done()
 		api.Close()
 	}()
+
+	api.BattleArena.Serve()
 
 	return api.server.ListenAndServe()
 }

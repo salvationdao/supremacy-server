@@ -553,7 +553,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 						Reason:             "Passport RPC Error",
 					}
 
-					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+					if err := failedSync.Insert(gamedb.StdConn, boil.Infer()); err != nil {
 						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
 						continue
 					}
@@ -567,7 +567,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 
 			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
 			if err != nil {
-				gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
+				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
 
 			for _, assetData := range keyCardData {
