@@ -516,13 +516,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
-		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
-			boiler.TableNames.ItemSales,
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DeletedAt),
-		)),
 	)
 
 	if !opts.DisplayXsynMechs || opts.ExcludeMarketListed {
@@ -541,9 +534,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	}
 	if opts.ExcludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.ItemSales,
-			Column:   boiler.ItemSaleColumns.ID,
-			Operator: OperatorValueTypeIsNull,
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
+			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
 	}
 
