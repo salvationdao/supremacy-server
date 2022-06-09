@@ -703,6 +703,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 					Msg("Had to transfer funds to the syndicate account")
 			}
 
+			if factID.String() == contract.PlayerID {
+				continue
+			}
+
 			// pay sups
 			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
@@ -1289,11 +1293,35 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Get Warmachine Index
 		warMachineIndex := -1
-		for i, wmn := range btl.WarMachines {
-			if wmn.ParticipantID == participantID {
-				warMachineIndex = i
-				break
+		var warmachine *WarMachine
+		if participantID > 100 {
+			// Spawned AI
+			for i, wmn := range btl.SpawnedAI {
+				if wmn.ParticipantID == participantID {
+					warMachineIndex = i
+					break
+				}
 			}
+			if warMachineIndex == -1 {
+				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
+				continue
+			}
+			warmachine = btl.SpawnedAI[warMachineIndex]
+		} else {
+			// Mech
+			for i, wmn := range btl.WarMachines {
+				if wmn.ParticipantID == participantID {
+					warMachineIndex = i
+					break
+				}
+			}
+			if warMachineIndex == -1 {
+				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine")
+				continue
+			}
+			warmachine = btl.WarMachines[warMachineIndex]
 		}
 
 		if warMachineIndex == -1 {
@@ -1316,26 +1344,26 @@ func (btl *Battle) Tick(payload []byte) {
 			rotation := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
 
-			if btl.WarMachines[warMachineIndex].Position == nil {
-				btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
+			if warmachine.Position == nil {
+				warmachine.Position = &server.Vector3{}
 			}
-			btl.WarMachines[warMachineIndex].Position.X = x
-			btl.WarMachines[warMachineIndex].Position.Y = y
-			btl.WarMachines[warMachineIndex].Rotation = rotation
+			warmachine.Position.X = x
+			warmachine.Position.Y = y
+			warmachine.Rotation = rotation
 
 		}
 		// Health
 		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			btl.WarMachines[warMachineIndex].Health = health
+			warmachine.Health = health
 
 		}
 		// Shield
 		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			btl.WarMachines[warMachineIndex].Shield = shield
+			warmachine.Shield = shield
 		}
 
 		// Energy
@@ -1344,10 +1372,10 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
-			Position: btl.WarMachines[warMachineIndex].Position,
-			Rotation: btl.WarMachines[warMachineIndex].Rotation,
-			Health:   btl.WarMachines[warMachineIndex].Health,
-			Shield:   btl.WarMachines[warMachineIndex].Shield,
+			Position: warmachine.Position,
+			Rotation: warmachine.Rotation,
+			Health:   warmachine.Health,
+			Shield:   warmachine.Shield,
 		})
 	}
 }

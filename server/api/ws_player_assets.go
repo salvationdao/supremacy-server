@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,6 +16,7 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PlayerAssetsControllerWS struct {
@@ -29,7 +31,9 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
+	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	return pac
 }
 
@@ -37,12 +41,14 @@ const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
-		Search           string                `json:"search"`
-		Filter           *db.ListFilterRequest `json:"filter"`
-		Sort             *db.ListSortRequest   `json:"sort"`
-		PageSize         int                   `json:"page_size"`
-		Page             int                   `json:"page"`
-		DisplayXsynMechs bool                  `json:"display_xsyn_mechs"`
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
+		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
 	} `json:"payload"`
 }
 
@@ -62,6 +68,7 @@ type PlayerAssetMech struct {
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 	MarketLocked     bool        `json:"market_locked"`
 	XsynLocked       bool        `json:"xsyn_locked"`
+	MarketListed     bool        `json:"market_listed"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -108,13 +115,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	}
 
 	total, mechs, err := db.MechList(&db.MechListOpts{
-		Search:           req.Payload.Search,
-		Filter:           req.Payload.Filter,
-		Sort:             req.Payload.Sort,
-		PageSize:         req.Payload.PageSize,
-		Page:             req.Payload.Page,
-		OwnerID:          user.ID,
-		DisplayXsynMechs: req.Payload.DisplayXsynMechs,
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             user.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
+		ExcludeMarketListed: req.Payload.ExcludeMarketListed,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
@@ -156,6 +165,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			OwnerID:               m.CollectionItem.OwnerID,
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
+			MarketListed:          m.CollectionItem.MarketListed,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,
@@ -191,7 +201,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -204,5 +222,117 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+const HubKeyPlayerAssetMysteryCrateList = "PLAYER:ASSET:MYSTERY_CRATE:LIST"
+
+type PlayerAssetMysteryCrateListRequest struct {
+	Payload struct {
+		Search              string              `json:"search"`
+		Sort                *db.ListSortRequest `json:"sort"`
+		PageSize            int                 `json:"page_size"`
+		Page                int                 `json:"page"`
+		SortDir             db.SortByDir        `json:"sort_dir"`
+		SortBy              string              `json:"sort_by"`
+		ExcludeOpened       bool                `json:"exclude_opened"`
+		ExcludeMarketListed bool                `json:"exclude_market_listed"`
+		ExcludeMarketLocked bool                `json:"exclude_market_locked"`
+	} `json:"payload"`
+}
+
+type PlayerAssetMysteryCrateListResponse struct {
+	Total         int64                  `json:"total"`
+	MysteryCrates []*server.MysteryCrate `json:"mystery_crates"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMysteryCrateListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !req.Payload.SortDir.IsValid() {
+		req.Payload.SortDir = db.SortByDirDesc
+	}
+
+	total, records, err := db.PlayerMysteryCrateList(
+		req.Payload.Search,
+		req.Payload.ExcludeOpened,
+		req.Payload.ExcludeMarketListed,
+		req.Payload.ExcludeMarketLocked,
+		&user.ID,
+		req.Payload.Page,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of mystery crate assets")
+		return terror.Error(err, "Failed to get list of mystery crate assets")
+	}
+
+	resp := &PlayerAssetMysteryCrateListResponse{
+		Total:         total,
+		MysteryCrates: records,
+	}
+	reply(resp)
+
+	return nil
+}
+
+const HubKeyPlayerAssetKeycardList = "PLAYER:ASSET:KEYCARD:LIST"
+
+type PlayerAssetKeycardListRequest struct {
+	Payload struct {
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		SortDir             db.SortByDir          `json:"sort_dir"`
+		SortBy              string                `json:"sort_by"`
+		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+	} `json:"payload"`
+}
+
+type PlayerAssetKeycardListResponse struct {
+	Total    int64                  `json:"total"`
+	Keycards []*server.AssetKeycard `json:"keycards"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetKeycardListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !req.Payload.SortDir.IsValid() {
+		req.Payload.SortDir = db.SortByDirDesc
+	}
+
+	total, records, err := db.PlayerKeycardList(
+		req.Payload.Search,
+		req.Payload.Filter,
+		req.Payload.ExcludeMarketListed,
+		&user.ID,
+		req.Payload.Page,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of keycard assets")
+		return terror.Error(err, "Failed to get list of keycard assets")
+	}
+
+	resp := &PlayerAssetKeycardListResponse{
+		Total:    total,
+		Keycards: records,
+	}
+	reply(resp)
+
 	return nil
 }
