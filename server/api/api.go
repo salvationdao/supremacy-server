@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
 	"sync"
@@ -87,6 +88,9 @@ type API struct {
 
 	FactionActivePlayers map[string]*ActivePlayers
 
+	// Marketplace
+	AuctionManager *marketplace.AuctionController
+
 	// chatrooms
 	GlobalChat      *Chatroom
 	RedMountainChat *Chatroom
@@ -127,6 +131,9 @@ func NewAPI(
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
+		// marketplace
+		AuctionManager: marketplace.NewAuctionController(pp),
+
 		// chatroom
 		GlobalChat:      NewChatroom(""),
 		RedMountainChat: NewChatroom(server.RedMountainFactionID),
@@ -154,6 +161,7 @@ func NewAPI(
 	cc := NewChatController(api)
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
+	mc := NewMarketplaceController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
 
@@ -239,6 +247,7 @@ func NewAPI(
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
@@ -253,7 +262,6 @@ func NewAPI(
 				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 			}))
-
 		})
 	})
 

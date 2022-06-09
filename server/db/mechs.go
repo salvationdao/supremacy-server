@@ -16,6 +16,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type MechColumns string
+
+func (c MechColumns) IsValid() error {
+	switch string(c) {
+	case boiler.MechColumns.Name:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid mech column"))
+}
+
 const CompleteMechQuery = `
 SELECT
 	collection_items.collection_slug,
@@ -26,6 +36,7 @@ SELECT
 	collection_items.item_type,
 	collection_items.market_locked,
 	collection_items.xsyn_locked,
+	collection_items.id AS collection_item_id,
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -168,6 +179,7 @@ func Mech(mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -255,6 +267,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -471,13 +484,15 @@ func IsMechColumn(col string) bool {
 }
 
 type MechListOpts struct {
-	Search           string
-	Filter           *ListFilterRequest
-	Sort             *ListSortRequest
-	PageSize         int
-	Page             int
-	OwnerID          string
-	DisplayXsynMechs bool
+	Search              string
+	Filter              *ListFilterRequest
+	Sort                *ListSortRequest
+	PageSize            int
+	Page                int
+	OwnerID             string
+	DisplayXsynMechs    bool
+	ExcludeMarketLocked bool
+	ExcludeMarketListed bool
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -497,13 +512,35 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Column:   boiler.CollectionItemColumns.ItemType,
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
-		}, 0, "and"))
+		}, 0, "and"),
+		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
+			boiler.TableNames.ItemSales,
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DeletedAt),
+		)),
+	)
 
-	if !opts.DisplayXsynMechs {
+	if !opts.DisplayXsynMechs || opts.ExcludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.XsynLocked,
 			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.MarketLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if opts.ExcludeMarketListed {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.ItemSales,
+			Column:   boiler.ItemSaleColumns.ID,
+			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
 
@@ -563,6 +600,8 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			fmt.Sprintf("(%s IS NOT NULL) AS market_listed", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID)),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
@@ -612,6 +651,8 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItem.MarketListed,
+			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

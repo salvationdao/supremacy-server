@@ -78,17 +78,20 @@ var PlayerKeycardWhere = struct {
 
 // PlayerKeycardRels is where relationship names are stored.
 var PlayerKeycardRels = struct {
-	BlueprintKeycard string
-	Player           string
+	BlueprintKeycard     string
+	Player               string
+	ItemItemKeycardSales string
 }{
-	BlueprintKeycard: "BlueprintKeycard",
-	Player:           "Player",
+	BlueprintKeycard:     "BlueprintKeycard",
+	Player:               "Player",
+	ItemItemKeycardSales: "ItemItemKeycardSales",
 }
 
 // playerKeycardR is where relationships are stored.
 type playerKeycardR struct {
-	BlueprintKeycard *BlueprintKeycard `boiler:"BlueprintKeycard" boil:"BlueprintKeycard" json:"BlueprintKeycard" toml:"BlueprintKeycard" yaml:"BlueprintKeycard"`
-	Player           *Player           `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	BlueprintKeycard     *BlueprintKeycard    `boiler:"BlueprintKeycard" boil:"BlueprintKeycard" json:"BlueprintKeycard" toml:"BlueprintKeycard" yaml:"BlueprintKeycard"`
+	Player               *Player              `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	ItemItemKeycardSales ItemKeycardSaleSlice `boiler:"ItemItemKeycardSales" boil:"ItemItemKeycardSales" json:"ItemItemKeycardSales" toml:"ItemItemKeycardSales" yaml:"ItemItemKeycardSales"`
 }
 
 // NewStruct creates a new relationship struct
@@ -378,6 +381,28 @@ func (o *PlayerKeycard) Player(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// ItemItemKeycardSales retrieves all the item_keycard_sale's ItemKeycardSales with an executor via item_id column.
+func (o *PlayerKeycard) ItemItemKeycardSales(mods ...qm.QueryMod) itemKeycardSaleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_keycard_sales\".\"item_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"item_keycard_sales\".\"deleted_at\""),
+	)
+
+	query := ItemKeycardSales(queryMods...)
+	queries.SetFrom(query.Query, "\"item_keycard_sales\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_keycard_sales\".*"})
+	}
+
+	return query
+}
+
 // LoadBlueprintKeycard allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (playerKeycardL) LoadBlueprintKeycard(e boil.Executor, singular bool, maybePlayerKeycard interface{}, mods queries.Applicator) error {
@@ -587,6 +612,105 @@ func (playerKeycardL) LoadPlayer(e boil.Executor, singular bool, maybePlayerKeyc
 	return nil
 }
 
+// LoadItemItemKeycardSales allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerKeycardL) LoadItemItemKeycardSales(e boil.Executor, singular bool, maybePlayerKeycard interface{}, mods queries.Applicator) error {
+	var slice []*PlayerKeycard
+	var object *PlayerKeycard
+
+	if singular {
+		object = maybePlayerKeycard.(*PlayerKeycard)
+	} else {
+		slice = *maybePlayerKeycard.(*[]*PlayerKeycard)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerKeycardR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerKeycardR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_keycard_sales`),
+		qm.WhereIn(`item_keycard_sales.item_id in ?`, args...),
+		qmhelper.WhereIsNull(`item_keycard_sales.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_keycard_sales")
+	}
+
+	var resultSlice []*ItemKeycardSale
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_keycard_sales")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_keycard_sales")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_keycard_sales")
+	}
+
+	if len(itemKeycardSaleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ItemItemKeycardSales = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemKeycardSaleR{}
+			}
+			foreign.R.Item = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ItemID {
+				local.R.ItemItemKeycardSales = append(local.R.ItemItemKeycardSales, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemKeycardSaleR{}
+				}
+				foreign.R.Item = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBlueprintKeycard of the playerKeycard to the related item.
 // Sets o.R.BlueprintKeycard to related.
 // Adds o to related.R.PlayerKeycards.
@@ -676,6 +800,58 @@ func (o *PlayerKeycard) SetPlayer(exec boil.Executor, insert bool, related *Play
 		related.R.PlayerKeycards = append(related.R.PlayerKeycards, o)
 	}
 
+	return nil
+}
+
+// AddItemItemKeycardSales adds the given related objects to the existing relationships
+// of the player_keycard, optionally inserting them as new records.
+// Appends related to o.R.ItemItemKeycardSales.
+// Sets related.R.Item appropriately.
+func (o *PlayerKeycard) AddItemItemKeycardSales(exec boil.Executor, insert bool, related ...*ItemKeycardSale) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ItemID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_keycard_sales\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"item_id"}),
+				strmangle.WhereClause("\"", "\"", 2, itemKeycardSalePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ItemID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerKeycardR{
+			ItemItemKeycardSales: related,
+		}
+	} else {
+		o.R.ItemItemKeycardSales = append(o.R.ItemItemKeycardSales, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemKeycardSaleR{
+				Item: o,
+			}
+		} else {
+			rel.R.Item = o
+		}
+	}
 	return nil
 }
 

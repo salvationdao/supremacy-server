@@ -23,6 +23,7 @@ type CollectionItem struct {
 	OwnerID        string `json:"owner_id"`
 	MarketLocked   bool   `json:"market_locked"`
 	XsynLocked     bool   `json:"xsyn_locked"`
+	MarketListed   bool   `json:"market_listed"`
 
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
@@ -48,6 +49,7 @@ type Mech struct {
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	PowerCoreSize         string     `json:"power_core_size"`
+	CollectionItemID      string     `json:"-"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
