@@ -1000,6 +1000,9 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
+			case "BATTLE:OUTRO_FINISHED":
+				gamelog.L.Info().Msg("battle outro finish")
+
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
 			case "BATTLE:WAR_MACHINE_DESTROYED":
