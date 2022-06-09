@@ -403,7 +403,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, "You do not have enough sups to list item.")
 	}
 
-	// pay sup
+	// Pay Listing Fees
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
@@ -426,11 +426,25 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
 	}
 
+	// Begin transaction
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to start db transaction (new sale item).")
+		return terror.Error(err, errMsg)
+	}
+	defer tx.Rollback()
+
 	// Create Sales Item
 	// TODO: Add listing hours option back with fee rates applied
 	endAt := time.Now().Add(time.Hour * 24)
 	obj, err := db.MarketplaceSaleCreate(
-		gamedb.StdConn,
+		tx,
 		userID,
 		factionID,
 		txid,
@@ -452,7 +466,40 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to create new sale item.")
-		return terror.Error(err, "Unable to create new sale item.")
+		return terror.Error(err, errMsg)
+	}
+
+	// Unlock Item
+	collectionItem := boiler.CollectionItem{
+		ID:                  collectionItemID.String(),
+		LockedToMarketplace: true,
+	}
+	_, err = collectionItem.Update(tx, boil.Whitelist(
+		boiler.CollectionItemColumns.ID,
+		boiler.CollectionItemColumns.LockedToMarketplace,
+	))
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to create new sale item.")
+		return terror.Error(err, errMsg)
+	}
+
+	// Commit Transaction
+	err = tx.Commit()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to commit db transaction (new sale item).")
+		return terror.Error(err, errMsg)
 	}
 
 	reply(obj)
@@ -737,7 +784,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// start transaction
+	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -754,7 +801,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 	defer tx.Rollback()
 
-	// update sale item
+	// Update sale item
 	saleItemRecord := &boiler.ItemSale{
 		ID:          saleItem.ID,
 		SoldAt:      null.TimeFrom(time.Now()),
@@ -762,6 +809,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		SoldTXID:    null.StringFrom(txid),
 		SoldFeeTXID: null.StringFrom(feeTXID),
 		SoldBy:      null.StringFrom(user.ID),
+		UpdatedAt:   time.Now(),
 	}
 	_, err = saleItemRecord.Update(tx,
 		boil.Whitelist(
@@ -770,6 +818,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			boiler.ItemSaleColumns.SoldTXID,
 			boiler.ItemSaleColumns.SoldFeeTXID,
 			boiler.ItemSaleColumns.SoldBy,
+			boiler.ItemSaleColumns.UpdatedAt,
 		))
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -786,7 +835,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// transfer ownership of asset
+	// Transfer ownership of asset
 	if saleItem.CollectionItemType == boiler.ItemTypeMech {
 		err = db.ChangeMechOwner(tx, req.Payload.ID)
 		if err != nil {
@@ -819,7 +868,31 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 	}
 
-	// commit transaction
+	// Unlock Listed Item
+	collectionItem := boiler.CollectionItem{
+		ID:                  saleItem.CollectionItemID,
+		LockedToMarketplace: false,
+	}
+	_, err = collectionItem.Update(tx, boil.Whitelist(
+		boiler.CollectionItemColumns.ID,
+		boiler.CollectionItemColumns.LockedToMarketplace,
+	))
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
+		err = fmt.Errorf("failed to complete payment transaction")
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to unlock marketplace listed collection item.")
+		return terror.Error(err, errMsg)
+	}
+
+	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -950,7 +1023,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
-	// begin transaction
+	// Begin transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -967,7 +1040,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 	defer tx.Rollback()
 
-	// update sale item
+	// Update sale item
 	saleItemRecord := &boiler.ItemKeycardSale{
 		ID:          saleItem.ID,
 		SoldAt:      null.TimeFrom(time.Now()),
@@ -999,7 +1072,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
-	// transfer ownership of asset
+	// Transfer ownership of asset
 	err = db.ChangeKeycardOwner(tx, req.Payload.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1015,7 +1088,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
 	}
 
-	// commit transaction
+	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1031,7 +1104,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
 	}
 
-	// success
+	// Success
 	reply(true)
 
 	return nil
