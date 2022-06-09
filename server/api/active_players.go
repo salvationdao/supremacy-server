@@ -86,9 +86,7 @@ func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				fmt.Println("ws publish message")
 				ws.PublishMessage(fmt.Sprintf("/faction/%s", ap.FactionID), HubKeyFactionActivePlayersSubscribe, result.Players)
-				fmt.Println("done ws publish message")
 				result = nil
 			}
 		}
@@ -103,18 +101,9 @@ func (ap *ActivePlayers) Run() {
 	}
 }
 
-var testint = 0
-
 func (ap *ActivePlayers) CheckExpiry() {
 	ap.Lock()
-	testint += 1
-	i := testint
-
-	fmt.Println("lock check expiry", i)
-	defer func(i int) {
-		fmt.Println("unlock check expiry", i)
-		ap.Unlock()
-	}(i)
+	defer ap.Unlock()
 
 	now := time.Now()
 
@@ -148,18 +137,13 @@ func (ap *ActivePlayers) CheckExpiry() {
 			}
 		}
 
-		fmt.Println("start delete player id", playerID)
 		delete(ap.Map, playerID)
-		fmt.Println("end delete player id", playerID)
 	}
 
 	// broadcast current online player
-	fmt.Println("send through channel", ap.FactionID)
 	ap.ActivePlayerListChan <- &ActivePlayerBroadcast{
 		Players: players,
 	}
-
-	fmt.Println("finish send channel", ap.FactionID)
 }
 
 func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
