@@ -565,7 +565,10 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			_, _ = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			if err != nil {
+				gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
+			}
 
 			for _, assetData := range keyCardData {
 				playerKeycard := boiler.PlayerKeycard{
@@ -582,7 +585,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 						PublicAddress:      keycardAssets.PublicAddress,
 						BlueprintKeycardID: assetData.BlueprintID,
 						Count:              assetData.Count,
-						Reason:             "Gameserver Insert Error",
+						Reason:             fmt.Sprintf("Gameserver Insert Error: %s", err.Error()),
 					}
 
 					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
