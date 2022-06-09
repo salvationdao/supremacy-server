@@ -22,13 +22,15 @@ type AuctionController struct {
 }
 
 type ItemSaleAuction struct {
-	ID               uuid.UUID       `boil:"id"`
-	CollectionItemID uuid.UUID       `boil:"collection_item_id"`
-	ItemType         string          `boil:"item_type"`
-	OwnerID          uuid.UUID       `boil:"owner_id"`
-	AuctionBidPrice  decimal.Decimal `boil:"auction_bid_price"`
-	AuctionBidUserID uuid.UUID       `boil:"auction_bid_user_id"`
-	FactionID        uuid.UUID       `boil:"faction_id"`
+	ID                   uuid.UUID           `boil:"id"`
+	CollectionItemID     uuid.UUID           `boil:"collection_item_id"`
+	ItemType             string              `boil:"item_type"`
+	OwnerID              uuid.UUID           `boil:"owner_id"`
+	AuctionReservedPrice decimal.NullDecimal `boil:"auction_reserved_price"`
+	AuctionBidPrice      decimal.Decimal     `boil:"auction_bid_price"`
+	AuctionBidUserID     uuid.UUID           `boil:"auction_bid_user_id"`
+	AuctionBidTXID       string              `boil:"auction_bid_tx_id"`
+	FactionID            uuid.UUID           `boil:"faction_id"`
 }
 
 func NewAuctionController(pp *xsyn_rpcclient.XsynXrpcClient) *AuctionController {
@@ -59,8 +61,10 @@ func (a *AuctionController) Run() {
 						item_sales.collection_item_id,
 						collection_items.item_type,
 						item_sales.owner_id,
+						item_sales.auction_reserved_price,
 						item_sales_bid_history.bid_price AS auction_bid_price,
 						item_sales_bid_history.bidder_id AS auction_bid_user_id,
+						item_sales_bid_history.bid_tx_id AS auction_bid_tx_id,
 						players.faction_id
 					FROM item_sales 
 						INNER JOIN item_sales_bid_history ON item_sales_bid_history.item_sale_id = item_sales.id
@@ -82,6 +86,35 @@ func (a *AuctionController) Run() {
 
 			numProcessed := 0
 			for _, auctionItem := range completedAuctions {
+				// Check if auction reserved price needs to be refunded
+				if auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice) {
+					rtxid, err := a.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
+					if err != nil {
+						gamelog.L.Error().
+							Str("item_id", auctionItem.ID.String()).
+							Str("user_id", auctionItem.AuctionBidUserID.String()).
+							Str("cost", auctionItem.AuctionBidPrice.String()).
+							Str("bid_tx_id", auctionItem.AuctionBidTXID).
+							Err(err).
+							Msg("unable to refund cancelled auction bid transaction")
+						continue
+					}
+					err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, auctionItem.ID, auctionItem.AuctionBidTXID, rtxid, true)
+					if err != nil {
+						gamelog.L.Error().
+							Str("item_id", auctionItem.ID.String()).
+							Str("user_id", auctionItem.AuctionBidUserID.String()).
+							Str("cost", auctionItem.AuctionBidPrice.String()).
+							Str("bid_tx_id", auctionItem.AuctionBidTXID).
+							Str("refund_tx_id", rtxid).
+							Err(err).
+							Msg("unable to update refund tx id on bid record")
+						continue
+					}
+					numProcessed++
+					continue
+				}
+
 				// Get Faction Account sending bid amount to
 				factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
 				if !ok {

@@ -583,12 +583,20 @@ func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID) ([]string, 
 }
 
 // MarketplaceSaleBidHistoryRefund adds in refund details to a specific bid.
-func MarketplaceSaleBidHistoryRefund(conn boil.Executor, itemID uuid.UUID, txID, refundTxID string) error {
-	q := `
+func MarketplaceSaleBidHistoryRefund(conn boil.Executor, itemID uuid.UUID, txID, refundTxID string, cancelledAuction bool) error {
+	cancelledAuctionSet := ""
+	if cancelledAuction {
+		cancelledAuctionSet = ", cancelled_at = NOW(), cancelled_reason = 'Auction Cancelled'"
+
+	}
+	q := fmt.Sprintf(`
 		UPDATE item_sales_bid_history
 		SET refund_bid_tx_id = $3
+			%s
 		WHERE item_sale_id = $1
-			AND bid_tx_id = $2`
+			AND bid_tx_id = $2`,
+		cancelledAuctionSet,
+	)
 	_, err := conn.Exec(q, itemID, txID, refundTxID)
 	if err != nil {
 		return terror.Error(err)

@@ -1118,7 +1118,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 				Msg("Unable to refund cancelled bid.")
 			continue
 		}
-		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, bidTxID, refundTxID)
+		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, bidTxID, refundTxID, false)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_sale_id", req.Payload.ID.String()).
