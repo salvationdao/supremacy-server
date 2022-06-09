@@ -654,8 +654,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
 		}
-		hoursLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Hours()))
-		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(hoursLapse))
+		minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Minutes()))
+		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
 		if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 			saleItemCost = dutchAuctionAmount
 		} else {
