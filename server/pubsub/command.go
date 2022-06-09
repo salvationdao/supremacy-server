@@ -2,14 +2,13 @@ package pubsub
 
 import (
 	"encoding/json"
-	"net/http"
-	"server/gamelog"
-	"sync"
-
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/valyala/fastjson"
 	"go.uber.org/atomic"
+	"net/http"
+	"server/gamelog"
+	"sync"
 )
 
 type ReplyFunc func(interface{})

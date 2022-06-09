@@ -2,15 +2,15 @@ package battle
 
 import (
 	"server/multipliers"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
 
 type usersMap struct {
-	deadlock.RWMutex
+	sync.RWMutex
 	m map[uuid.UUID]*BattleUser
 }
 
@@ -76,7 +76,7 @@ type BattleUser struct {
 	ID        uuid.UUID `json:"id"`
 	Username  string    `json:"username"`
 	FactionID string    `json:"faction_id"`
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 var FactionNames = map[string]string{

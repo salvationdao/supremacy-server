@@ -2,13 +2,12 @@ package comms
 
 import (
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"net"
 	"net/rpc"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"sync"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // S holds all the listeners together

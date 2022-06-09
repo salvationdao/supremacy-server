@@ -11,8 +11,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
+	"sync"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -30,7 +32,6 @@ import (
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/sasha-s/go-deadlock"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -39,7 +40,7 @@ type WelcomePayload struct {
 }
 
 type LiveVotingData struct {
-	deadlock.Mutex
+	sync.Mutex
 	TotalVote server.BigInt
 }
 
@@ -55,9 +56,9 @@ type VotePriceSystem struct {
 
 type FactionVotePrice struct {
 	// priority lock
-	OuterLock      deadlock.Mutex
-	NextAccessLock deadlock.Mutex
-	DataLock       deadlock.Mutex
+	OuterLock      sync.Mutex
+	NextAccessLock sync.Mutex
+	DataLock       sync.Mutex
 
 	// price
 	CurrentVotePriceSups server.BigInt
@@ -86,6 +87,9 @@ type API struct {
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	// Marketplace
+	AuctionManager *marketplace.AuctionController
 
 	// chatrooms
 	GlobalChat      *Chatroom
@@ -127,6 +131,9 @@ func NewAPI(
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
+		// marketplace
+		AuctionManager: marketplace.NewAuctionController(pp),
+
 		// chatroom
 		GlobalChat:      NewChatroom(""),
 		RedMountainChat: NewChatroom(server.RedMountainFactionID),
@@ -154,6 +161,7 @@ func NewAPI(
 	cc := NewChatController(api)
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
+	mc := NewMarketplaceController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
 
@@ -228,6 +236,8 @@ func NewAPI(
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
+				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
+
 			}))
 
 			// secured faction route ws
@@ -237,6 +247,7 @@ func NewAPI(
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
@@ -251,7 +262,6 @@ func NewAPI(
 				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 			}))
-
 		})
 	})
 
