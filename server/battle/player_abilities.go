@@ -1,9 +1,8 @@
 package battle
 
 import (
-	"sync"
-
 	"go.uber.org/atomic"
+	"sync"
 )
 
 type PlayerAbilitiesSystem struct {
