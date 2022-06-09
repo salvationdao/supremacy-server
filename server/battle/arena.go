@@ -757,7 +757,7 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 	wm := arena.currentBattleWarMachine(participantID)
 
 	if wm == nil {
-		return fmt.Errorf("war machine not found")
+		return nil
 	}
 	if wm.FactionID != factionID {
 		return fmt.Errorf("war machine faction id does not match")
@@ -791,16 +791,14 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 
 	wm := arena.currentBattleWarMachine(participantID)
 
-	if wm == nil {
-		return fmt.Errorf("war machine not found")
+	if wm != nil {
+		reply(WarMachineStat{
+			Position: wm.Position,
+			Rotation: wm.Rotation,
+			Health:   wm.Health,
+			Shield:   wm.Shield,
+		})
 	}
-
-	reply(WarMachineStat{
-		Position: wm.Position,
-		Rotation: wm.Rotation,
-		Health:   wm.Health,
-		Shield:   wm.Shield,
-	})
 
 	return nil
 }
