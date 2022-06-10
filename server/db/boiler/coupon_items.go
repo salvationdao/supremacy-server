@@ -31,6 +31,7 @@ type CouponItem struct {
 	Claimed       bool                `boiler:"claimed" boil:"claimed" json:"claimed" toml:"claimed" yaml:"claimed"`
 	Amount        decimal.NullDecimal `boiler:"amount" boil:"amount" json:"amount,omitempty" toml:"amount" yaml:"amount,omitempty"`
 	TransactionID null.String         `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
+	CreatedAt     time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *couponItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L couponItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -44,6 +45,7 @@ var CouponItemColumns = struct {
 	Claimed       string
 	Amount        string
 	TransactionID string
+	CreatedAt     string
 }{
 	ID:            "id",
 	CouponID:      "coupon_id",
@@ -52,6 +54,7 @@ var CouponItemColumns = struct {
 	Claimed:       "claimed",
 	Amount:        "amount",
 	TransactionID: "transaction_id",
+	CreatedAt:     "created_at",
 }
 
 var CouponItemTableColumns = struct {
@@ -62,6 +65,7 @@ var CouponItemTableColumns = struct {
 	Claimed       string
 	Amount        string
 	TransactionID string
+	CreatedAt     string
 }{
 	ID:            "coupon_items.id",
 	CouponID:      "coupon_items.coupon_id",
@@ -70,6 +74,7 @@ var CouponItemTableColumns = struct {
 	Claimed:       "coupon_items.claimed",
 	Amount:        "coupon_items.amount",
 	TransactionID: "coupon_items.transaction_id",
+	CreatedAt:     "coupon_items.created_at",
 }
 
 // Generated where
@@ -82,6 +87,7 @@ var CouponItemWhere = struct {
 	Claimed       whereHelperbool
 	Amount        whereHelperdecimal_NullDecimal
 	TransactionID whereHelpernull_String
+	CreatedAt     whereHelpertime_Time
 }{
 	ID:            whereHelperstring{field: "\"coupon_items\".\"id\""},
 	CouponID:      whereHelperstring{field: "\"coupon_items\".\"coupon_id\""},
@@ -90,6 +96,7 @@ var CouponItemWhere = struct {
 	Claimed:       whereHelperbool{field: "\"coupon_items\".\"claimed\""},
 	Amount:        whereHelperdecimal_NullDecimal{field: "\"coupon_items\".\"amount\""},
 	TransactionID: whereHelpernull_String{field: "\"coupon_items\".\"transaction_id\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"coupon_items\".\"created_at\""},
 }
 
 // CouponItemRels is where relationship names are stored.
@@ -113,9 +120,9 @@ func (*couponItemR) NewStruct() *couponItemR {
 type couponItemL struct{}
 
 var (
-	couponItemAllColumns            = []string{"id", "coupon_id", "item_type", "item_id", "claimed", "amount", "transaction_id"}
+	couponItemAllColumns            = []string{"id", "coupon_id", "item_type", "item_id", "claimed", "amount", "transaction_id", "created_at"}
 	couponItemColumnsWithoutDefault = []string{"coupon_id", "item_type"}
-	couponItemColumnsWithDefault    = []string{"id", "item_id", "claimed", "amount", "transaction_id"}
+	couponItemColumnsWithDefault    = []string{"id", "item_id", "claimed", "amount", "transaction_id", "created_at"}
 	couponItemPrimaryKeyColumns     = []string{"id"}
 	couponItemGeneratedColumns      = []string{}
 )
@@ -570,6 +577,11 @@ func (o *CouponItem) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -771,6 +783,11 @@ func (o CouponItemSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 func (o *CouponItem) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no coupon_items provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {

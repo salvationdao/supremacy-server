@@ -27,6 +27,7 @@ type Coupon struct {
 	Code       null.String `boiler:"code" boil:"code" json:"code,omitempty" toml:"code" yaml:"code,omitempty"`
 	Redeemed   bool        `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
 	ExpiryDate time.Time   `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
+	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *couponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L couponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -37,11 +38,13 @@ var CouponColumns = struct {
 	Code       string
 	Redeemed   string
 	ExpiryDate string
+	CreatedAt  string
 }{
 	ID:         "id",
 	Code:       "code",
 	Redeemed:   "redeemed",
 	ExpiryDate: "expiry_date",
+	CreatedAt:  "created_at",
 }
 
 var CouponTableColumns = struct {
@@ -49,11 +52,13 @@ var CouponTableColumns = struct {
 	Code       string
 	Redeemed   string
 	ExpiryDate string
+	CreatedAt  string
 }{
 	ID:         "coupons.id",
 	Code:       "coupons.code",
 	Redeemed:   "coupons.redeemed",
 	ExpiryDate: "coupons.expiry_date",
+	CreatedAt:  "coupons.created_at",
 }
 
 // Generated where
@@ -63,11 +68,13 @@ var CouponWhere = struct {
 	Code       whereHelpernull_String
 	Redeemed   whereHelperbool
 	ExpiryDate whereHelpertime_Time
+	CreatedAt  whereHelpertime_Time
 }{
 	ID:         whereHelperstring{field: "\"coupons\".\"id\""},
 	Code:       whereHelpernull_String{field: "\"coupons\".\"code\""},
 	Redeemed:   whereHelperbool{field: "\"coupons\".\"redeemed\""},
 	ExpiryDate: whereHelpertime_Time{field: "\"coupons\".\"expiry_date\""},
+	CreatedAt:  whereHelpertime_Time{field: "\"coupons\".\"created_at\""},
 }
 
 // CouponRels is where relationship names are stored.
@@ -91,9 +98,9 @@ func (*couponR) NewStruct() *couponR {
 type couponL struct{}
 
 var (
-	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date"}
+	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date", "created_at"}
 	couponColumnsWithoutDefault = []string{}
-	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date"}
+	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date", "created_at"}
 	couponPrimaryKeyColumns     = []string{"id"}
 	couponGeneratedColumns      = []string{}
 )
@@ -555,6 +562,11 @@ func (o *Coupon) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -756,6 +768,11 @@ func (o CouponSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 func (o *Coupon) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no coupons provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
