@@ -169,7 +169,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupMarketplace),
-			Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
+			Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
 			NotSafe:              true,
 		})
 		if err != nil {

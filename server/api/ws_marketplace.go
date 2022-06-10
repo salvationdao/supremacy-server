@@ -411,7 +411,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace fee: %s: %s", req.Payload.ItemType, req.Payload.ItemID.String()),
+		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -603,7 +603,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace fee: keycard: %s", req.Payload.ItemID.String()),
+		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -743,7 +743,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
+		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -767,7 +767,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -982,7 +982,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
+		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -1006,7 +1006,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_keycard|buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -1186,10 +1186,10 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               bidAmount.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:auction_bid|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
-		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
+		Description:          fmt.Sprintf("Marketplace Bid Item: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 
