@@ -370,7 +370,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			}
 
 			if !user.FactionID.Valid {
-				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the faction")
+				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
 				return
 			}
 
