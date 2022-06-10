@@ -557,11 +557,6 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		})
 	}
 
-	winningFaction, err := boiler.FindFaction(gamedb.StdConn, winningWarMachines[0].FactionID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get winning faction data from db")
-	}
-
 	gamelog.L.Debug().
 		Int("top_faction_contributors", len(topFactionContributors)).
 		Int("top_player_executors", len(topPlayerExecutors)).
@@ -574,7 +569,7 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		StartedAt:                    btl.Battle.StartedAt,
 		EndedAt:                      btl.Battle.EndedAt.Time,
 		WinningCondition:             payload.WinCondition,
-		WinningFaction:               winningFaction,
+		WinningFaction:               winningWarMachines[0].Faction,
 		WinningWarMachines:           winningWarMachines,
 		TopSupsContributeFactions:    topFactionContributors,
 		TopSupsContributors:          topPlayerContributors,
