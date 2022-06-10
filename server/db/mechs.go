@@ -36,6 +36,7 @@ SELECT
 	collection_items.item_type,
 	collection_items.market_locked,
 	collection_items.xsyn_locked,
+	collection_items.locked_to_marketplace,
 	collection_items.id AS collection_item_id,
 	mechs.id,
 	mechs.name,
@@ -179,6 +180,7 @@ func Mech(mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
@@ -267,6 +269,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
+			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
@@ -513,13 +516,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
-		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
-			boiler.TableNames.ItemSales,
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DeletedAt),
-		)),
 	)
 
 	if !opts.DisplayXsynMechs || opts.ExcludeMarketListed {
@@ -538,9 +534,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	}
 	if opts.ExcludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.ItemSales,
-			Column:   boiler.ItemSaleColumns.ID,
-			Operator: OperatorValueTypeIsNull,
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
+			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
 	}
 
@@ -600,7 +596,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
-			fmt.Sprintf("(%s IS NOT NULL) AS market_listed", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID)),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
@@ -651,7 +647,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItem.ItemType,
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
-			&mc.CollectionItem.MarketListed,
+			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,

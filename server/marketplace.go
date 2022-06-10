@@ -28,6 +28,7 @@ type MarketplaceSaleItem struct {
 	SoldFor              null.String                     `json:"sold_for" boil:"sold_for"`
 	SoldBy               decimal.NullDecimal             `json:"sold_by" boil:"sold_by"`
 	SoldTXID             null.String                     `json:"sold_tx_id" boil:"sold_tx_id"`
+	SoldFeeTXID          null.String                     `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
 	DeletedAt            null.Time                       `json:"deleted_at" boil:"deleted_at"`
 	UpdatedAt            time.Time                       `json:"updated_at" boil:"updated_at"`
 	CreatedAt            time.Time                       `json:"created_at" boil:"created_at"`
@@ -121,6 +122,7 @@ type MarketplaceSaleItem1155 struct {
 	SoldFor        decimal.NullDecimal      `json:"sold_for" boil:"sold_for"`
 	SoldBy         null.String              `json:"sold_by" boil:"sold_by"`
 	SoldTXID       null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
+	SoldFeeTXID    null.String              `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
 	DeletedAt      null.Time                `json:"deleted_at" boil:"deleted_at"`
 	UpdatedAt      time.Time                `json:"updated_at" boil:"updated_at"`
 	CreatedAt      time.Time                `json:"created_at" boil:"created_at"`
