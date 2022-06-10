@@ -48,7 +48,7 @@ type PlayerAssetMechListRequest struct {
 		Page                int                   `json:"page"`
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
-		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
 	} `json:"payload"`
 }
 
@@ -123,7 +123,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		OwnerID:             user.ID,
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
-		ExcludeMarketListed: req.Payload.ExcludeMarketListed,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
