@@ -19,6 +19,7 @@ type MysteryCrate struct {
 	Opened      bool      `json:"opened"`
 	LockedUntil time.Time `json:"locked_until"`
 	Purchased   bool      `json:"purchased"`
+	Description string    `json:"description"`
 
 	DeletedAt null.Time `json:"deleted_at,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -63,6 +64,7 @@ func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate, collection *boile
 		DeletedAt:   mysteryCrate.DeletedAt,
 		UpdatedAt:   mysteryCrate.UpdatedAt,
 		CreatedAt:   mysteryCrate.CreatedAt,
+		Description: mysteryCrate.Description,
 	}
 }
 
