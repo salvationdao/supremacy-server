@@ -163,6 +163,7 @@ func NewAPI(
 	mc := NewMarketplaceController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
+	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 
 	api.Routes.Use(middleware.RequestID)
