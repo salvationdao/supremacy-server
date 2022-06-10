@@ -1336,13 +1336,27 @@ func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, 
 	cctx := chi.RouteContext(ctx)
 	itemSaleID := cctx.URLParam("id")
 	if itemSaleID == "" {
-		return fmt.Errorf("item sale id is required")
+		return terror.Error(fmt.Errorf("item sale id is required"), "Item Sale ID is required.")
 	}
 
-	resp := &SaleItemUpdate{}
-	err := json.Unmarshal(payload, resp)
+	itemSaleUUID, err := uuid.FromString(itemSaleID)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal sale item update")
+		return terror.Error(fmt.Errorf("item sale id is invalid"), "Item Slale ID is invalid.")
+	}
+
+	// TODO: Update this when Keycards are available for auction
+	saleItem, err := db.MarketplaceItemSale(itemSaleUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Unable to find item sale id.")
+	}
+	if err != nil {
+		return terror.Error(err, "Unable to get latest item sale update.")
+	}
+
+	resp := &SaleItemUpdate{
+		AuctionCurrentPrice: saleItem.AuctionCurrentPrice.Decimal.String(),
+		TotalBids:           saleItem.TotalBids,
+		LastBid:             saleItem.LastBid,
 	}
 
 	reply(resp)
