@@ -48,7 +48,7 @@ type PlayerAssetMechListRequest struct {
 		Page                int                   `json:"page"`
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
-		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
 	} `json:"payload"`
 }
 
@@ -123,7 +123,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		OwnerID:             user.ID,
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
-		ExcludeMarketListed: req.Payload.ExcludeMarketListed,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
@@ -236,7 +236,7 @@ type PlayerAssetMysteryCrateListRequest struct {
 		SortDir             db.SortByDir        `json:"sort_dir"`
 		SortBy              string              `json:"sort_by"`
 		ExcludeOpened       bool                `json:"exclude_opened"`
-		ExcludeMarketListed bool                `json:"exclude_market_listed"`
+		IncludeMarketListed bool                `json:"include_market_listed"`
 		ExcludeMarketLocked bool                `json:"exclude_market_locked"`
 	} `json:"payload"`
 }
@@ -260,7 +260,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx conte
 	total, records, err := db.PlayerMysteryCrateList(
 		req.Payload.Search,
 		req.Payload.ExcludeOpened,
-		req.Payload.ExcludeMarketListed,
+		req.Payload.IncludeMarketListed,
 		req.Payload.ExcludeMarketLocked,
 		&user.ID,
 		req.Payload.Page,
@@ -293,7 +293,7 @@ type PlayerAssetKeycardListRequest struct {
 		Page                int                   `json:"page"`
 		SortDir             db.SortByDir          `json:"sort_dir"`
 		SortBy              string                `json:"sort_by"`
-		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
 	} `json:"payload"`
 }
 
@@ -316,7 +316,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 	total, records, err := db.PlayerKeycardList(
 		req.Payload.Search,
 		req.Payload.Filter,
-		req.Payload.ExcludeMarketListed,
+		req.Payload.IncludeMarketListed,
 		&user.ID,
 		req.Payload.Page,
 		req.Payload.PageSize,
