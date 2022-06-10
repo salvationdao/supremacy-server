@@ -167,8 +167,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
 			Amount:               auctionItem.AuctionBidPrice.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
 			TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupMarketplace),
-			SubGroup:             "SUPREMACY",
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupMarketplace),
 			Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
 			NotSafe:              true,
 		})
