@@ -43,6 +43,8 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, marketplaceHub.SalesKeycardCreateHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesArchive, marketplaceHub.SalesArchiveHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardArchive, marketplaceHub.SalesKeycardArchiveHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardBuy, marketplaceHub.SalesKeycardBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, marketplaceHub.SalesBidHandler)
@@ -639,6 +641,96 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 
 	reply(obj)
+
+	return nil
+}
+
+const (
+	HubKeyMarketplaceSalesArchive        = "MARKETPLACE:SALES:ARCHIVE"
+	HubKeyMarketplaceSalesKeycardArchive = "MARKETPLACE:SALES:KEYCARD:ARCHIVE"
+)
+
+type MarketplaceSalesCancelRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ID uuid.UUID `json:"id"`
+	} `json:"payload"`
+}
+
+func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue cancelling sale item, try again or contact support."
+	req := &MarketplaceSalesCancelRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Check whether user can cancel sale item
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if saleItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
+
+	// Cancel item
+	err = db.MarketplaceSaleArchive(gamedb.StdConn, req.Payload.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
+
+	return nil
+}
+
+func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue cancelling sale item, try again or contact support."
+	req := &MarketplaceSalesCancelRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Check whether user can cancel sale item
+	saleItem, err := db.MarketplaceItemKeycardSale(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if saleItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
+
+	// Cancel item
+	err = db.MarketplaceKeycardSaleArchive(gamedb.StdConn, req.Payload.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
 
 	return nil
 }

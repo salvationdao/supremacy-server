@@ -12,6 +12,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -499,6 +500,32 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	}
 
 	return total, records, nil
+}
+
+// MarketplaceSaleArchive archives as sale item.
+func MarketplaceSaleArchive(conn boil.Executor, id uuid.UUID) error {
+	obj := &boiler.ItemSale{
+		ID:        id.String(),
+		DeletedAt: null.TimeFrom(time.Now()),
+	}
+	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// MarketplaceKeycardSaleArchive archives as sale item.
+func MarketplaceKeycardSaleArchive(conn boil.Executor, id uuid.UUID) error {
+	obj := &boiler.ItemKeycardSale{
+		ID:        id.String(),
+		DeletedAt: null.TimeFrom(time.Now()),
+	}
+	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemKeycardSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
