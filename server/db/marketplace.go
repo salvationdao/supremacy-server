@@ -60,6 +60,8 @@ var itemSaleQueryMods = []qm.QueryMod{
 		collection_items.large_image_url AS "collection_items.large_image_url",
 		collection_items.background_color AS "collection_items.background_color",
 		collection_items.youtube_url AS "collection_items.youtube_url",
+		collection_items.xsyn_locked AS "collection_items.xsyn_locked",
+		collection_items.market_locked AS "collection_items.market_locked",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -229,6 +231,8 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.CollectionItem.LargeImageURL,
 		&output.CollectionItem.BackgroundColor,
 		&output.CollectionItem.YoutubeURL,
+		&output.CollectionItem.XsynLocked,
+		&output.CollectionItem.MarketLocked,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -311,6 +315,8 @@ func MarketplaceItemSaleList(
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+		boiler.CollectionItemWhere.XsynLocked.EQ(false),
+		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
 
 	// Filters

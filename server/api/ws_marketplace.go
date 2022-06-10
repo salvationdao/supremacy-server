@@ -682,6 +682,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.SoldBy.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
+	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("item is locked"), "Item is no longer for sale.")
+	}
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
 		gamelog.L.Error().
@@ -1172,6 +1175,9 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 	if saleItem.FactionID != fID {
 		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
+	}
+	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("item is locked"), "Item is no longer for sale.")
 	}
 	bidAmount := req.Payload.Amount.Mul(decimal.New(1, 18))
 	if bidAmount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {

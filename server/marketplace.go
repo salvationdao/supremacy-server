@@ -71,6 +71,8 @@ type MarketplaceSaleCollectionItem struct {
 	LargeImageURL    null.String `json:"large_image_url,omitempty" boil:"collection_items.large_image_url"`
 	BackgroundColor  null.String `json:"background_color,omitempty" boil:"collection_items.background_color"`
 	YoutubeURL       null.String `json:"youtube_url,omitempty" boil:"collection_items.youtube_url"`
+	XsynLocked       bool        `json:"-" boil:"collection_items.xsyn_locked"`
+	MarketLocked     bool        `json:"-" boil:"collection_items.market_locked"`
 }
 
 func (b MarketplaceSaleCollectionItem) MarshalJSON() ([]byte, error) {
