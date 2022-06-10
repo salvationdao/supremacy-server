@@ -300,7 +300,6 @@ func MarketplaceItemSaleList(
 	saleTypes []string,
 	minPrice decimal.NullDecimal,
 	maxPrice decimal.NullDecimal,
-	excludeUserID string,
 	offset int,
 	pageSize int,
 	sortBy string,
@@ -312,7 +311,6 @@ func MarketplaceItemSaleList(
 
 	queryMods := append(
 		itemSaleQueryMods,
-		boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
@@ -435,14 +433,13 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
+func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
 	queryMods := append(
 		itemKeycardSaleQueryMods,
-		boiler.ItemKeycardSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
