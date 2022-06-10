@@ -10,7 +10,8 @@ CREATE TABLE coupons
     id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     code        TEXT UNIQUE, -- to test redemption flow: DEFAULT random_string(6),
     redeemed    BOOLEAN          NOT NULL DEFAULT false,
-    expiry_date TIMESTAMPTZ      NOT NULL DEFAULT NOW() + INTERVAL '30' DAY
+    expiry_date TIMESTAMPTZ      NOT NULL DEFAULT NOW() + INTERVAL '30' DAY,
+    created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE coupon_items
@@ -21,7 +22,8 @@ CREATE TABLE coupon_items
     item_id        UUID,
     claimed        BOOLEAN          NOT NULL DEFAULT false,
     amount         numeric(28),
-    transaction_id TEXT
+    transaction_id TEXT,
+    created_at     TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 -- seed coupon codes
