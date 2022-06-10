@@ -113,7 +113,6 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.FilterListingTypes,
 		req.Payload.MinPrice,
 		req.Payload.MaxPrice,
-		user.ID,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -194,7 +193,6 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	total, records, err := db.MarketplaceItemKeycardSaleList(
 		req.Payload.Search,
 		req.Payload.Filter,
-		user.ID,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
