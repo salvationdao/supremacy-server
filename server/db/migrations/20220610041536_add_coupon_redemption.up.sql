@@ -8,7 +8,7 @@ WHERE mystery_crate_type = 'WEAPON';
 CREATE TABLE coupons
 (
     id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    code        TEXT UNIQUE, -- to test redemption flow: DEFAULT random_string(6),
+    code        TEXT UNIQUE               DEFAULT random_string(6),
     redeemed    BOOLEAN          NOT NULL DEFAULT false,
     expiry_date TIMESTAMPTZ      NOT NULL DEFAULT NOW() + INTERVAL '30' DAY,
     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
