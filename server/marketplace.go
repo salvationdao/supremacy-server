@@ -25,8 +25,8 @@ type MarketplaceSaleItem struct {
 	DutchAuctionDropRate decimal.NullDecimal             `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
 	EndAt                time.Time                       `json:"end_at" boil:"end_at"`
 	SoldAt               null.Time                       `json:"sold_at" boil:"sold_at"`
-	SoldFor              null.String                     `json:"sold_for" boil:"sold_for"`
-	SoldBy               decimal.NullDecimal             `json:"sold_by" boil:"sold_by"`
+	SoldFor              decimal.NullDecimal             `json:"sold_for" boil:"sold_for"`
+	SoldBy               null.String                     `json:"sold_by" boil:"sold_by"`
 	SoldTXID             null.String                     `json:"sold_tx_id" boil:"sold_tx_id"`
 	SoldFeeTXID          null.String                     `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
 	DeletedAt            null.Time                       `json:"deleted_at" boil:"deleted_at"`
