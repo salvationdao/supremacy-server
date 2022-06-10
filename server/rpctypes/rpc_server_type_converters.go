@@ -489,7 +489,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 
 				asset.Attributes = append(asset.Attributes,
 					&Attribute{
-						TraitType: "Skin",
+						TraitType: "Submodel",
 						Value:     i.ChassisSkin.Label,
 						AssetHash: i.Hash,
 					})

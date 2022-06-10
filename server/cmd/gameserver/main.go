@@ -152,6 +152,7 @@ func main() {
 					&cli.DurationFlag{Name: "pprof_datadog_duration_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_DURATION_SEC"}, Usage: "Specifies the length of the CPU profile snapshot"},
 
 					&cli.StringFlag{Name: "auth_callback_url", Value: "https://play.supremacygame.io/login-redirect", EnvVars: []string{envPrefix + "_AUTH_CALLBACK_URL"}, Usage: "The url for gameserver to redirect after completing the auth flow"},
+					&cli.StringFlag{Name: "auth_hangar_callback_url", Value: "https://hangar.supremacygame.io", EnvVars: []string{envPrefix + "_AUTH_HANGAR_CALLBACK_URL"}, Usage: "The url for gameserver to redirect after completing the auth flow"},
 
 					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
@@ -675,6 +676,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		Environment:           environment,
 		Address:               apiAddr,
 		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
+		AuthHangarCallbackURL: ctxCLI.String("auth_hangar_callback_url"),
 	}
 
 	// HTML Sanitizer
