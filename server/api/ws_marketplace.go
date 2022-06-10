@@ -595,7 +595,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, "You do not have enough sups to list item.")
 	}
 
-	// pay sup
+	// Pay sup
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
@@ -739,7 +739,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
@@ -763,7 +763,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
@@ -978,7 +978,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
@@ -1002,7 +1002,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_keycard|buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
