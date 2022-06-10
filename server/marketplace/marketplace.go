@@ -107,7 +107,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			WHERE item_sales.auction = TRUE
 				AND item_sales.sold_by IS NULL
 				AND item_sales.end_at <= NOW()
-				AND item_sales_bid_history.bid_price >= item_sales.auction_reserved_price`),
+				AND item_sales_bid_history.bid_price >= item_sales.auction_reserved_price
+				AND item_sales.deleted_at IS NULL`),
 	).Bind(nil, gamedb.StdConn, &completedAuctions)
 	if err != nil {
 		gamelog.L.Error().

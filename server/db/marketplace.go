@@ -310,6 +310,7 @@ func MarketplaceItemSaleList(
 		boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
 	)
 
 	// Filters
@@ -437,6 +438,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 		boiler.ItemKeycardSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
 
 	// Filters
