@@ -21,8 +21,8 @@ func IsMysteryCrateColumn(col string) bool {
 func PlayerMysteryCrateList(
 	search string,
 	excludeOpened bool,
-	excludeMarketListed bool,
-	includeMarketLocked bool,
+	includeMarketListed bool,
+	excludeMarketLocked bool,
 	userID *string,
 	page int,
 	pageSize int,
@@ -43,10 +43,10 @@ func PlayerMysteryCrateList(
 	if excludeOpened {
 		queryMods = append(queryMods, boiler.MysteryCrateWhere.Opened.EQ(false))
 	}
-	if excludeMarketListed {
+	if !includeMarketListed {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
 	}
-	if !includeMarketLocked {
+	if excludeMarketLocked {
 		queryMods = append(queryMods,
 			boiler.CollectionItemWhere.XsynLocked.EQ(false),
 			boiler.CollectionItemWhere.MarketLocked.EQ(false),

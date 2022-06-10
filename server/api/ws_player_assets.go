@@ -236,8 +236,8 @@ type PlayerAssetMysteryCrateListRequest struct {
 		SortDir             db.SortByDir        `json:"sort_dir"`
 		SortBy              string              `json:"sort_by"`
 		ExcludeOpened       bool                `json:"exclude_opened"`
-		ExcludeMarketListed bool                `json:"exclude_market_listed"`
-		IncludeMarketLocked bool                `json:"include_market_locked"`
+		IncludeMarketListed bool                `json:"include_market_listed"`
+		ExcludeMarketLocked bool                `json:"exclude_market_locked"`
 	} `json:"payload"`
 }
 
@@ -260,8 +260,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateListHandler(tx conte
 	total, records, err := db.PlayerMysteryCrateList(
 		req.Payload.Search,
 		req.Payload.ExcludeOpened,
-		req.Payload.ExcludeMarketListed,
-		req.Payload.IncludeMarketLocked,
+		req.Payload.IncludeMarketListed,
+		req.Payload.ExcludeMarketLocked,
 		&user.ID,
 		req.Payload.Page,
 		req.Payload.PageSize,
@@ -293,7 +293,7 @@ type PlayerAssetKeycardListRequest struct {
 		Page                int                   `json:"page"`
 		SortDir             db.SortByDir          `json:"sort_dir"`
 		SortBy              string                `json:"sort_by"`
-		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
 	} `json:"payload"`
 }
 
@@ -316,7 +316,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 	total, records, err := db.PlayerKeycardList(
 		req.Payload.Search,
 		req.Payload.Filter,
-		req.Payload.ExcludeMarketListed,
+		req.Payload.IncludeMarketListed,
 		&user.ID,
 		req.Payload.Page,
 		req.Payload.PageSize,
