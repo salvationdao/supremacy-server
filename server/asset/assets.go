@@ -89,6 +89,15 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			if m.OwnerID == "2fa1a63e-a4fa-4618-921f-4b4d28132069" && m.GenesisTokenID.Int64 == 356 {
 				continue
 			}
+
+			if m.GenesisTokenID.Valid {
+				m.TokenID = m.GenesisTokenID.Int64
+				m.CollectionSlug = "supremacy-genesis"
+			} else if m.LimitedReleaseTokenID.Valid {
+				m.TokenID = m.LimitedReleaseTokenID.Int64
+				m.CollectionSlug = "supremacy-limited-release"
+			}
+
 			mechsToInsert = append(mechsToInsert, m)
 		}
 
