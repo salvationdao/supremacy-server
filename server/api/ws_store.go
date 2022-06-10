@@ -137,8 +137,6 @@ type MysteryCratePurchaseRequest struct {
 
 const HubKeyMysteryCratePurchase = "STORE:MYSTERY:CRATE:PURCHASE"
 
-//TODO: check key cards on purchase
-
 func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MysteryCratePurchaseRequest{}
 	err := json.Unmarshal(payload, req)
@@ -167,7 +165,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		}
 	}
 
-	// check owned mystery crates
+	//check owned mystery crates
 	mysteryCrateCount, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
@@ -246,69 +244,9 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 	defer tx.Rollback()
 
-	//get random crate where faction id == user.faction_id and purchased == false and opened == false and type == req.payload.type
-	availableCrates, err := boiler.MysteryCrates(
-		boiler.MysteryCrateWhere.FactionID.EQ(factionID),
-		boiler.MysteryCrateWhere.Type.EQ(req.Payload.Type),
-		boiler.MysteryCrateWhere.Purchased.EQ(false),
-		boiler.MysteryCrateWhere.Opened.EQ(false),
-	).All(tx)
-	if err != nil {
-		return terror.Error(err, "Failed to get available crates, please try again or contact support.")
-	}
-
-	//randomly assigning crate to user
-	rand.Seed(time.Now().UnixNano())
-	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
-
-	//update purchased value
-	assignedCrate.Purchased = true
-	assignedCrate.Description = storeCrate.Description
-
-	_, err = assignedCrate.Update(tx, boil.Infer())
+	assignedCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeCrate, tx, sc.API)
 	if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Msg("unable to update assigned crate information")
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
-
-	collectionItem, err := db.InsertNewCollectionItem(tx,
-		"supremacy-general",
-		boiler.ItemTypeMysteryCrate,
-		assignedCrate.ID,
-		"",
-		user.ID,
-		storeCrate.ImageURL,
-		storeCrate.CardAnimationURL,
-		storeCrate.AvatarURL,
-		storeCrate.LargeImageURL,
-		storeCrate.BackgroundColor,
-		storeCrate.AnimationURL,
-		storeCrate.YoutubeURL,
-	)
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
-
-	storeCrate.AmountSold = storeCrate.AmountSold + 1
-	_, err = storeCrate.Update(tx, boil.Infer())
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
-
-	//register
-	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, collectionItem)
-
-	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, storeCrate.R.Faction.Label)
-
-	err = sc.API.Passport.AssetRegister(xsynAsset)
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to register to XSYN")
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
@@ -334,13 +272,84 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
 	}
 
-	resp := server.StoreFrontMysteryCrateFromBoiler(storeCrate)
+	serverStoreCrate := server.StoreFrontMysteryCrateFromBoiler(storeCrate)
+
+	resp := &Reward{
+		Label:       storeCrate.MysteryCrateType,
+		ImageURL:    storeCrate.ImageURL,
+		LockedUntil: null.TimeFrom(assignedCrate.LockedUntil),
+	}
 
 	//update mysterycrate subscribers and update player
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, resp)
-
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, serverStoreCrate)
 	go BroadcastCrateOwnershipUpdate(user.ID)
 
-	reply(true)
+	reply(resp)
 	return nil
+}
+
+func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.StorefrontMysteryCrate, tx *sql.Tx, api *API) (*server.MysteryCrate, error) {
+	availableCrates, err := boiler.MysteryCrates(
+		boiler.MysteryCrateWhere.FactionID.EQ(storeCrate.FactionID),
+		boiler.MysteryCrateWhere.Type.EQ(storeCrate.MysteryCrateType),
+		boiler.MysteryCrateWhere.Purchased.EQ(false),
+		boiler.MysteryCrateWhere.Opened.EQ(false),
+	).All(tx)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get available crates, please try again or contact support.")
+	}
+
+	faction, err := boiler.FindFaction(tx, storeCrate.FactionID)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to find faction, please try again or contact support.")
+	}
+
+	//randomly assigning crate to user
+	rand.Seed(time.Now().UnixNano())
+	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
+
+	//update purchased value
+	assignedCrate.Purchased = true
+	_, err = assignedCrate.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to update assigned crate information")
+		return nil, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+	}
+
+	collectionItem, err := db.InsertNewCollectionItem(tx,
+		"supremacy-general",
+		boiler.ItemTypeMysteryCrate,
+		assignedCrate.ID,
+		"",
+		userID,
+		storeCrate.ImageURL,
+		storeCrate.CardAnimationURL,
+		storeCrate.AvatarURL,
+		storeCrate.LargeImageURL,
+		storeCrate.BackgroundColor,
+		storeCrate.AnimationURL,
+		storeCrate.YoutubeURL,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")
+		return nil, terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+	}
+	storeCrate.AmountSold = storeCrate.AmountSold + 1
+	_, err = storeCrate.Update(tx, boil.Whitelist(boiler.StorefrontMysteryCrateColumns.AmountSold))
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
+		return nil, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+	}
+
+	//register
+	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, collectionItem)
+	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, faction.Label)
+
+	err = api.Passport.AssetRegister(xsynAsset)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to register to XSYN")
+		return nil, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+	}
+
+	return assignedCrateServer, nil
 }

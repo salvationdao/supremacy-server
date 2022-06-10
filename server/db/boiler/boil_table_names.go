@@ -44,6 +44,8 @@ var TableNames = struct {
 	ChatHistory                                        string
 	CollectionItems                                    string
 	ConsumedAbilities                                  string
+	CouponItems                                        string
+	Coupons                                            string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -147,6 +149,8 @@ var TableNames = struct {
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
 	ConsumedAbilities:           "consumed_abilities",
+	CouponItems:                 "coupon_items",
+	Coupons:                     "coupons",
 	FactionStats:                "faction_stats",
 	Factions:                    "factions",
 	FailedPlayerKeycardsSync:    "failed_player_keycards_sync",

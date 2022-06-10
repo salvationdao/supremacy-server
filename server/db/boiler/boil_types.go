@@ -142,6 +142,14 @@ const (
 	ItemTypeMysteryCrate  = "mystery_crate"
 )
 
+// Enum values for CouponItemType
+const (
+	CouponItemTypeSUPS         = "SUPS"
+	CouponItemTypeWEAPON_CRATE = "WEAPON_CRATE"
+	CouponItemTypeMECH_CRATE   = "MECH_CRATE"
+	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
+)
+
 // Enum values for AbilityLevel
 const (
 	AbilityLevelMECH    = "MECH"
