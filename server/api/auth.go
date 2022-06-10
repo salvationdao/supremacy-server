@@ -31,6 +31,8 @@ func AuthRouter(api *API) chi.Router {
 }
 
 func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
+	isHangar := r.URL.Query().Get("isHangar") != ""
+
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		http.Error(w, `token missing`, http.StatusBadRequest)
@@ -55,7 +57,12 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, api.Config.AuthCallbackURL+"?token=true", http.StatusSeeOther)
+	callbackUrl := api.Config.AuthCallbackURL
+	if isHangar {
+		callbackUrl = api.Config.AuthHangarCallbackURL
+	}
+
+	http.Redirect(w, r, callbackUrl+"?token=true", http.StatusSeeOther)
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {

@@ -13,4 +13,5 @@ type Config struct {
 	Environment           string
 	Address               string
 	AuthCallbackURL       string
+	AuthHangarCallbackURL string
 }

@@ -66,6 +66,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
+	if mech.CollectionItem.LockedToMarketplace {
+		err := fmt.Errorf("mech is listed in marketplace")
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("war machine is listed in marketplace")
+		return err
+	}
+
 	if mech.Faction == nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
 		return terror.Error(fmt.Errorf("missing warmachine faction"))
