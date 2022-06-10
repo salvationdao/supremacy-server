@@ -12,20 +12,20 @@ type Record struct {
 	endedAt   time.Time
 }
 
-type BenchMarker struct {
+type Benchmarker struct {
 	RecordMap map[string]*Record
 }
 
 // New create a new benchmark instance
-func New() *BenchMarker {
-	bm := &BenchMarker{
+func New() *Benchmarker {
+	bm := &Benchmarker{
 		RecordMap: make(map[string]*Record),
 	}
 
 	return bm
 }
 
-func (bm *BenchMarker) Start(key string) {
+func (bm *Benchmarker) Start(key string) {
 	// check record exists
 	if _, ok := bm.RecordMap[key]; ok {
 		gamelog.L.Warn().Msgf(`Benchmark on key "%s" has been override`, key)
@@ -39,7 +39,7 @@ func (bm *BenchMarker) Start(key string) {
 	}
 }
 
-func (bm *BenchMarker) End(key string) {
+func (bm *Benchmarker) End(key string) {
 	now := time.Now()
 
 	r, ok := bm.RecordMap[key]
@@ -51,7 +51,7 @@ func (bm *BenchMarker) End(key string) {
 	r.endedAt = now
 }
 
-func (bm *BenchMarker) ReportGet() (time.Duration, []string, error) {
+func (bm *Benchmarker) ReportGet() (time.Duration, []string, error) {
 	if len(bm.RecordMap) == 0 {
 		gamelog.L.Warn().Msg("There is no benchmark record")
 		return 0, nil, fmt.Errorf("benchmark record not found")
@@ -75,7 +75,7 @@ func (bm *BenchMarker) ReportGet() (time.Duration, []string, error) {
 	return totalTime, reports, nil
 }
 
-func (bm *BenchMarker) Report() {
+func (bm *Benchmarker) Report() {
 	if len(bm.RecordMap) == 0 {
 		gamelog.L.Warn().Msg("There is no benchmark record to report")
 		return
@@ -92,7 +92,7 @@ func (bm *BenchMarker) Report() {
 	gamelog.L.Info().Interface("report", reports).Int64("total ms", totalTime.Milliseconds()).Msg("Benchmark report")
 }
 
-func (bm *BenchMarker) Alert(millisecond int64) {
+func (bm *Benchmarker) Alert(millisecond int64) {
 	if len(bm.RecordMap) == 0 {
 		gamelog.L.Warn().Msg("There is no benchmark record to alert")
 		return
