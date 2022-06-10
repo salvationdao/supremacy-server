@@ -25,6 +25,7 @@ func AuthRouter(api *API) chi.Router {
 	r.Get("/xsyn", api.XSYNAuth)
 	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
+	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
 
 	return r
 }
@@ -90,6 +91,11 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 			return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 		}
 
+		err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
+		}
+
 		// write cookie
 		err = api.WriteCookie(w, r, token)
 		if err != nil {
@@ -118,6 +124,33 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
+	}
+
+	return helpers.EncodeJSON(w, player)
+}
+
+func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Player are not signed in.")
+	}
+
+	// check user from token
+	player, err := api.TokenLogin(token)
+	if err != nil {
+		if errors.Is(err, errors.New("session is expired")) {
+			err := api.DeleteCookie(w, r)
+			if err != nil {
+				return http.StatusInternalServerError, err
+			}
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
+		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
+	}
+
+	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, nil)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
@@ -225,6 +258,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 
 		err = player.Insert(tx, boil.Infer())
 		if err != nil {
+			gamelog.L.Error().Err(err).Str("player id", playerID).Msg("player insert")
 			return terror.Error(err, "Failed to insert player.")
 		}
 	} else {
@@ -239,6 +273,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 			boiler.PlayerColumns.FactionID,
 		))
 		if err != nil {
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player update")
 			return terror.Error(err, "Failed to update player detail.")
 		}
 	}
@@ -247,8 +282,8 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 	if fingerprint != nil {
 		err = FingerprintUpsert(*fingerprint, playerID)
 		if err != nil {
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player finger print upsert")
 			return terror.Error(err, "browser identification fail.")
-
 		}
 	}
 
@@ -264,12 +299,14 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 
 		err = playStat.Insert(tx, boil.Infer())
 		if err != nil {
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player stat insert")
 			return terror.Error(err, "Failed to insert player stat.")
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to update player")
 		return terror.Error(err, "Failed to update player")
 	}
 
