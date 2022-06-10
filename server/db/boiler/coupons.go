@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,11 +22,11 @@ import (
 
 // Coupon is an object representing the database table.
 type Coupon struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Code       null.String `boiler:"code" boil:"code" json:"code,omitempty" toml:"code" yaml:"code,omitempty"`
-	Redeemed   bool        `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
-	ExpiryDate time.Time   `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Code       string    `boiler:"code" boil:"code" json:"code" toml:"code" yaml:"code"`
+	Redeemed   bool      `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
+	ExpiryDate time.Time `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
+	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *couponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L couponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -65,13 +64,13 @@ var CouponTableColumns = struct {
 
 var CouponWhere = struct {
 	ID         whereHelperstring
-	Code       whereHelpernull_String
+	Code       whereHelperstring
 	Redeemed   whereHelperbool
 	ExpiryDate whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
 }{
 	ID:         whereHelperstring{field: "\"coupons\".\"id\""},
-	Code:       whereHelpernull_String{field: "\"coupons\".\"code\""},
+	Code:       whereHelperstring{field: "\"coupons\".\"code\""},
 	Redeemed:   whereHelperbool{field: "\"coupons\".\"redeemed\""},
 	ExpiryDate: whereHelpertime_Time{field: "\"coupons\".\"expiry_date\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"coupons\".\"created_at\""},

@@ -12,6 +12,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -60,6 +61,8 @@ var itemSaleQueryMods = []qm.QueryMod{
 		collection_items.large_image_url AS "collection_items.large_image_url",
 		collection_items.background_color AS "collection_items.background_color",
 		collection_items.youtube_url AS "collection_items.youtube_url",
+		collection_items.xsyn_locked AS "collection_items.xsyn_locked",
+		collection_items.market_locked AS "collection_items.market_locked",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -229,6 +232,8 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.CollectionItem.LargeImageURL,
 		&output.CollectionItem.BackgroundColor,
 		&output.CollectionItem.YoutubeURL,
+		&output.CollectionItem.XsynLocked,
+		&output.CollectionItem.MarketLocked,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -310,6 +315,9 @@ func MarketplaceItemSaleList(
 		boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+		boiler.CollectionItemWhere.XsynLocked.EQ(false),
+		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
 
 	// Filters
@@ -437,6 +445,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 		boiler.ItemKeycardSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
 
 	// Filters
@@ -491,6 +500,32 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	}
 
 	return total, records, nil
+}
+
+// MarketplaceSaleArchive archives as sale item.
+func MarketplaceSaleArchive(conn boil.Executor, id uuid.UUID) error {
+	obj := &boiler.ItemSale{
+		ID:        id.String(),
+		DeletedAt: null.TimeFrom(time.Now()),
+	}
+	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// MarketplaceKeycardSaleArchive archives as sale item.
+func MarketplaceKeycardSaleArchive(conn boil.Executor, id uuid.UUID) error {
+	obj := &boiler.ItemKeycardSale{
+		ID:        id.String(),
+		DeletedAt: null.TimeFrom(time.Now()),
+	}
+	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemKeycardSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
