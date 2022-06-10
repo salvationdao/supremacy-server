@@ -273,7 +273,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 			boiler.PlayerColumns.FactionID,
 		))
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("player update")
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player update")
 			return terror.Error(err, "Failed to update player detail.")
 		}
 	}
@@ -282,7 +282,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 	if fingerprint != nil {
 		err = FingerprintUpsert(*fingerprint, playerID)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("player finger print upsert")
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player finger print upsert")
 			return terror.Error(err, "browser identification fail.")
 		}
 	}
@@ -299,14 +299,14 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 
 		err = playStat.Insert(tx, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("player stat insert")
+			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player stat insert")
 			return terror.Error(err, "Failed to insert player stat.")
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		gamelog.L.Error().Err(err)
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to update player")
 		return terror.Error(err, "Failed to update player")
 	}
 
