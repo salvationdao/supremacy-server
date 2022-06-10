@@ -206,8 +206,9 @@ func NewAPI(
 
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
-		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatUser)))
-		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.RemoveShadowbanChatUser)))
+		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
+		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
+		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
