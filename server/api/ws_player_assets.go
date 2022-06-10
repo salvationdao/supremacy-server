@@ -53,22 +53,22 @@ type PlayerAssetMechListRequest struct {
 }
 
 type PlayerAssetMech struct {
-	CollectionSlug   string      `json:"collection_slug"`
-	Hash             string      `json:"hash"`
-	TokenID          int64       `json:"token_id"`
-	ItemType         string      `json:"item_type"`
-	Tier             string      `json:"tier"`
-	OwnerID          string      `json:"owner_id"`
-	ImageURL         null.String `json:"image_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	BackgroundColor  null.String `json:"background_color,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty"`
-	MarketLocked     bool        `json:"market_locked"`
-	XsynLocked       bool        `json:"xsyn_locked"`
-	MarketListed     bool        `json:"market_listed"`
+	CollectionSlug      string      `json:"collection_slug"`
+	Hash                string      `json:"hash"`
+	TokenID             int64       `json:"token_id"`
+	ItemType            string      `json:"item_type"`
+	Tier                string      `json:"tier"`
+	OwnerID             string      `json:"owner_id"`
+	ImageURL            null.String `json:"image_url,omitempty"`
+	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
+	AvatarURL           null.String `json:"avatar_url,omitempty"`
+	LargeImageURL       null.String `json:"large_image_url,omitempty"`
+	BackgroundColor     null.String `json:"background_color,omitempty"`
+	AnimationURL        null.String `json:"animation_url,omitempty"`
+	YoutubeURL          null.String `json:"youtube_url,omitempty"`
+	MarketLocked        bool        `json:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -165,7 +165,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			OwnerID:               m.CollectionItem.OwnerID,
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
-			MarketListed:          m.CollectionItem.MarketListed,
+			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,

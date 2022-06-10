@@ -14,16 +14,16 @@ import (
 */
 
 type CollectionItem struct {
-	CollectionSlug string `json:"collection_slug"`
-	Hash           string `json:"hash"`
-	TokenID        int64  `json:"token_id"`
-	ItemType       string `json:"item_type"`
-	ItemID         string `json:"item_id"`
-	Tier           string `json:"tier"`
-	OwnerID        string `json:"owner_id"`
-	MarketLocked   bool   `json:"market_locked"`
-	XsynLocked     bool   `json:"xsyn_locked"`
-	MarketListed   bool   `json:"market_listed"`
+	CollectionSlug      string `json:"collection_slug"`
+	Hash                string `json:"hash"`
+	TokenID             int64  `json:"token_id"`
+	ItemType            string `json:"item_type"`
+	ItemID              string `json:"item_id"`
+	Tier                string `json:"tier"`
+	OwnerID             string `json:"owner_id"`
+	MarketLocked        bool   `json:"market_locked"`
+	XsynLocked          bool   `json:"xsyn_locked"`
+	LockedToMarketplace bool   `json:"locked_to_marketplace"`
 
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`

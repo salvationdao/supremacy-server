@@ -89,7 +89,7 @@ type API struct {
 	FactionActivePlayers map[string]*ActivePlayers
 
 	// Marketplace
-	AuctionManager *marketplace.AuctionController
+	MarketplaceController *marketplace.MarketplaceController
 
 	// chatrooms
 	GlobalChat      *Chatroom
@@ -132,7 +132,7 @@ func NewAPI(
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
 		// marketplace
-		AuctionManager: marketplace.NewAuctionController(pp),
+		MarketplaceController: marketplace.NewMarketplaceController(pp),
 
 		// chatroom
 		GlobalChat:      NewChatroom(""),

@@ -44,16 +44,7 @@ func PlayerMysteryCrateList(
 		queryMods = append(queryMods, boiler.MysteryCrateWhere.Opened.EQ(false))
 	}
 	if excludeMarketListed {
-		queryMods = append(queryMods,
-			qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s AND %s > NOW() AND %s IS NULL",
-				boiler.TableNames.ItemSales,
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
-				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DeletedAt),
-			)),
-			qm.And(fmt.Sprintf("%s IS NULL", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID))),
-		)
+		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
 	}
 	if excludeMarketLocked {
 		queryMods = append(queryMods,
