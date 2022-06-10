@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
+	"github.com/urfave/cli/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
@@ -45,8 +46,6 @@ import (
 
 	"context"
 	"os"
-
-	"github.com/urfave/cli/v2"
 )
 
 // Variable passed in at compile time using `-ldflags`
@@ -445,7 +444,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 	gamelog.L.Info().Msg("Syncing Keycards with Passport")
 	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
 	if !updated {
-		f, err := os.Open(filePath)
+		f, err := os.OpenFile(filePath, os.O_RDONLY, 0755)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue updating keycards")
 			return
@@ -554,7 +553,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 						Reason:             "Passport RPC Error",
 					}
 
-					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+					if err := failedSync.Insert(gamedb.StdConn, boil.Infer()); err != nil {
 						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
 						continue
 					}
@@ -568,7 +567,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 
 			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
 			if err != nil {
-				gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
+				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
 
 			for _, assetData := range keyCardData {

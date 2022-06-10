@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/volatiletech/null/v8"
-
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
+	"github.com/pemistahl/lingua-go"
+	"github.com/volatiletech/null/v8"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -29,7 +29,6 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
-	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -206,8 +205,9 @@ func NewAPI(
 
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
-		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatUser)))
-		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.RemoveShadowbanChatUser)))
+		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
+		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
+		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
@@ -325,6 +325,8 @@ func (api *API) Run(ctx context.Context) error {
 		<-ctx.Done()
 		api.Close()
 	}()
+
+	api.BattleArena.Serve()
 
 	return api.server.ListenAndServe()
 }

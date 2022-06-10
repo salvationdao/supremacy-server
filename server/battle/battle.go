@@ -520,11 +520,13 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
 	for _, f := range topFactionContributorBoilers {
 		topFactionContributors = append(topFactionContributors, &Faction{
-			ID:              f.ID,
-			Label:           f.Label,
-			PrimaryColor:    f.PrimaryColor,
-			SecondaryColor:  f.SecondaryColor,
-			BackgroundColor: f.BackgroundColor,
+			ID:    f.ID,
+			Label: f.Label,
+			Theme: &Theme{
+				PrimaryColor:    f.PrimaryColor,
+				SecondaryColor:  f.SecondaryColor,
+				BackgroundColor: f.BackgroundColor,
+			},
 		})
 	}
 	topPlayerContributors := []*BattleUser{}
@@ -1322,8 +1324,8 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			if warMachineIndex == -1 {
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
-					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine")
-				continue
+					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine - returning")
+				return
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
@@ -1928,11 +1930,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
 
 			Faction: &Faction{
-				ID:              mech.Faction.ID,
-				Label:           mech.Faction.Label,
-				PrimaryColor:    mech.Faction.PrimaryColor,
-				SecondaryColor:  mech.Faction.SecondaryColor,
-				BackgroundColor: mech.Faction.BackgroundColor,
+				ID:    mech.Faction.ID,
+				Label: mech.Faction.Label,
+				Theme: &Theme{
+					PrimaryColor:    mech.Faction.PrimaryColor,
+					SecondaryColor:  mech.Faction.SecondaryColor,
+					BackgroundColor: mech.Faction.BackgroundColor,
+				},
 			},
 
 			PowerCore: PowerCoreFromServer(mech.PowerCore),

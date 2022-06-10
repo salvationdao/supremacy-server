@@ -20,18 +20,16 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
-
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 	leakybucket "github.com/kevinms/leakybucket-go"
-	"github.com/ninja-software/terror/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -39,6 +37,8 @@ import (
 )
 
 type Arena struct {
+	server *http.Server
+	opts *Opts
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -174,12 +174,6 @@ func (mt MessageType) String() string {
 var VoteBucket = leakybucket.NewCollector(8, 8, true)
 
 func NewArena(opts *Opts) *Arena {
-	l, err := net.Listen("tcp", opts.Addr)
-
-	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
-	}
-
 	arena := &Arena{
 		connected:                atomic.NewBool(false),
 		timeout:                  opts.Timeout,
@@ -187,8 +181,10 @@ func NewArena(opts *Opts) *Arena {
 		sms:                      opts.SMS,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		telegram:                 opts.Telegram,
+		opts: opts,
 	}
 
+	var err error
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
 		gamelog.L.Fatal().Err(err).Msg("no faction users found")
@@ -198,7 +194,7 @@ func NewArena(opts *Opts) *Arena {
 		arena.timeout = 15 * time.Hour * 24
 	}
 
-	server := &http.Server{
+	arena.server = &http.Server{
 		Handler:      arena,
 		ReadTimeout:  arena.timeout,
 		WriteTimeout: arena.timeout,
@@ -207,15 +203,22 @@ func NewArena(opts *Opts) *Arena {
 	// start player rank updater
 	arena.PlayerRankUpdater()
 
-	go func() {
-		err = server.Serve(l)
+	return arena
+}
 
+func (arena *Arena) Serve() {
+	l, err := net.Listen("tcp", arena.opts.Addr)
+	if err != nil {
+		gamelog.L.Fatal().Str("Addr", arena.opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+	}
+	go func() {
+		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", arena.opts.Addr)
+
+		err := arena.server.Serve(l)
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+			gamelog.L.Fatal().Str("Addr", arena.opts.Addr).Err(err).Msg("unable to start Battle Arena server")
 		}
 	}()
-
-	return arena
 }
 
 type AuthMiddleware func(required bool, userIDMustMatch bool) func(next http.Handler) http.Handler
@@ -620,11 +623,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 			FactionID: player.FactionID.String,
 			Gid:       player.Gid,
 			Faction: &Faction{
-				ID:              faction.ID,
-				Label:           faction.Label,
-				PrimaryColor:    faction.PrimaryColor,
-				SecondaryColor:  faction.SecondaryColor,
-				BackgroundColor: faction.BackgroundColor,
+				ID:    faction.ID,
+				Label: faction.Label,
+				Theme: &Theme{
+					PrimaryColor:    faction.PrimaryColor,
+					SecondaryColor:  faction.SecondaryColor,
+					BackgroundColor: faction.BackgroundColor,
+				},
 			},
 		},
 	})

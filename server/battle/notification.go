@@ -201,7 +201,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	for _, bq := range q {
 		// if in battle or already notified skip
 		if bq.BattleID.Valid {
-			gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
 			continue
 		}
 		if bq.Notified {

@@ -639,11 +639,13 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 										Username:  player.Username.String,
 										FactionID: player.FactionID.String,
 										Faction: &Faction{
-											ID:              faction.ID,
-											Label:           faction.Label,
-											PrimaryColor:    faction.PrimaryColor,
-											SecondaryColor:  faction.SecondaryColor,
-											BackgroundColor: faction.BackgroundColor,
+											ID:    faction.ID,
+											Label: faction.Label,
+											Theme: &Theme{
+												PrimaryColor:    faction.PrimaryColor,
+												SecondaryColor:  faction.SecondaryColor,
+												BackgroundColor: faction.BackgroundColor,
+											},
 										},
 									},
 									Ability: &AbilityBrief{
@@ -2098,9 +2100,11 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			Faction: &Faction{
 				ID:              faction.ID,
 				Label:           faction.Label,
-				PrimaryColor:    faction.PrimaryColor,
-				SecondaryColor:  faction.SecondaryColor,
-				BackgroundColor: faction.BackgroundColor,
+				Theme: &Theme{
+					PrimaryColor:    faction.PrimaryColor,
+					SecondaryColor:  faction.SecondaryColor,
+					BackgroundColor: faction.BackgroundColor,
+				},
 			},
 		},
 	})
@@ -2167,9 +2171,11 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 	userBrief.Faction = &Faction{
 		ID:              faction.ID,
 		Label:           faction.Label,
-		PrimaryColor:    faction.PrimaryColor,
-		SecondaryColor:  faction.SecondaryColor,
-		BackgroundColor: faction.BackgroundColor,
+		Theme: &Theme{
+			PrimaryColor:    faction.PrimaryColor,
+			SecondaryColor:  faction.SecondaryColor,
+			BackgroundColor: faction.BackgroundColor,
+		},
 	}
 
 	return userBrief, nil
