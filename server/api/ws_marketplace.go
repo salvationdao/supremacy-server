@@ -192,6 +192,7 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	}
 
 	total, records, err := db.MarketplaceItemKeycardSaleList(
+		factionID,
 		req.Payload.Search,
 		req.Payload.Filter,
 		offset,
