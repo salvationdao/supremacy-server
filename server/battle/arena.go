@@ -37,8 +37,8 @@ import (
 )
 
 type Arena struct {
-	server *http.Server
-	opts *Opts
+	server                   *http.Server
+	opts                     *Opts
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -181,7 +181,7 @@ func NewArena(opts *Opts) *Arena {
 		sms:                      opts.SMS,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		telegram:                 opts.Telegram,
-		opts: opts,
+		opts:                     opts,
 	}
 
 	var err error
@@ -1047,7 +1047,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Err(err)
 				}
-				
+
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
