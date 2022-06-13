@@ -183,8 +183,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				}
 			}
 
-			fmt.Println("Test", auctionItem.AuctionBidPrice.String(), dutchAuctionAmount.String(), dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice))
-
 			if dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice) {
 				numProcessed++
 				return
