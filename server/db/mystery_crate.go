@@ -38,6 +38,7 @@ func PlayerMysteryCrateList(
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 	}
 
 	if excludeOpened {
