@@ -1,10 +1,6 @@
 DROP TYPE IF EXISTS COUPON_ITEM_TYPE;
 CREATE TYPE COUPON_ITEM_TYPE AS ENUM ('SUPS', 'WEAPON_CRATE', 'MECH_CRATE', 'GENESIS_MECH');
 
-UPDATE storefront_mystery_crates
-SET amount = ((select COUNT(*) from mystery_crate mc where mc.type = 'WEAPON') / 3)
-WHERE mystery_crate_type = 'WEAPON';
-
 CREATE TABLE coupons
 (
     id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
