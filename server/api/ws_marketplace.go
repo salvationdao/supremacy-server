@@ -396,7 +396,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
-	if req.Payload.HasBuyout {
+	if hasBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
 	if req.Payload.AuctionReservedPrice.Valid {
