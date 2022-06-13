@@ -1296,6 +1296,31 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
 	}
 
+	// Check if bid amount is greater than Dutch Auction drop rate
+	if saleItem.DutchAuction {
+		if !saleItem.DutchAuctionDropRate.Valid {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Msg("Dutch Auction Drop rate is missing.")
+			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
+		}
+		minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Minutes()))
+		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
+		if saleItem.AuctionReservedPrice.Valid {
+			if dutchAuctionAmount.LessThan(saleItem.AuctionReservedPrice.Decimal) {
+				dutchAuctionAmount = saleItem.AuctionReservedPrice.Decimal
+			}
+		} else {
+			if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
+				dutchAuctionAmount = decimal.New(1, 18)
+			}
+		}
+		if dutchAuctionAmount.LessThanOrEqual(bidAmount) {
+			return terror.Error(fmt.Errorf("bid amount is less than dutch auction dropped price"), "Bid Amount is cheaper than Dutch Auction Dropped Price, buy the item instead.")
+		}
+	}
+
 	// Pay bid amount
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(req.Payload.Amount).LessThan(decimal.Zero) {
