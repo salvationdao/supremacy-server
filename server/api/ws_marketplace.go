@@ -8,6 +8,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"math"
 	"server"
+	"server/asset"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -963,11 +964,57 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	err = mp.API.Passport.TransferAsset(
+		saleItem.OwnerID,
+		userID.String(),
+		saleItem.CollectionItem.Hash,
+		null.StringFrom(txid),
+		func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+			asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+		},
+	)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to start purchase sale item rpc TransferAsset.")
+		return terror.Error(err, errMsg)
+	}
+
+	rpcAssetTrasferRollback := func() {
+		err = mp.API.Passport.TransferAsset(
+			userID.String(),
+			saleItem.OwnerID,
+			saleItem.CollectionItem.Hash,
+			null.StringFrom(txid),
+			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+			},
+		)
+		if err != nil {
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to start purchase sale item rpc TransferAsset rollback.")
+		}
+	}
+
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1002,6 +1049,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1020,6 +1068,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTrasferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -1035,6 +1084,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTrasferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -1059,6 +1109,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1076,6 +1127,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).

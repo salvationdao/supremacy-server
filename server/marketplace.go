@@ -64,6 +64,7 @@ type MarketplaceSaleItemOwner struct {
 }
 
 type MarketplaceSaleCollectionItem struct {
+	Hash             string      `json:"hash" boil:"collection_items.hash"`
 	Tier             null.String `json:"tier,omitempty" boil:"collection_items.tier"`
 	ImageURL         null.String `json:"image_url,omitempty" boil:"collection_items.image_url"`
 	CardAnimationURL null.String `json:"card_animation,omitempty" boil:"collection_items.card_animation_url"`

@@ -63,6 +63,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 		collection_items.youtube_url AS "collection_items.youtube_url",
 		collection_items.xsyn_locked AS "collection_items.xsyn_locked",
 		collection_items.market_locked AS "collection_items.market_locked",
+		collection_items.hash AS "collection_items.hash",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -234,6 +235,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.CollectionItem.YoutubeURL,
 		&output.CollectionItem.XsynLocked,
 		&output.CollectionItem.MarketLocked,
+		&output.CollectionItem.Hash,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -517,6 +519,21 @@ func MarketplaceSaleArchive(conn boil.Executor, id uuid.UUID) error {
 		DeletedAt: null.TimeFrom(time.Now()),
 	}
 	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// MarketplaceSaleArchiveByItemID archives as sale item.
+func MarketplaceSaleArchiveByItemID(conn boil.Executor, id uuid.UUID) error {
+	_, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.CollectionItemID.EQ(id.String()),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+	).UpdateAll(conn, boiler.M{
+		"deleted_at": time.Now(),
+	})
 	if err != nil {
 		return terror.Error(err)
 	}

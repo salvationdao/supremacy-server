@@ -66,6 +66,15 @@ func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
 	}
 }
 
+func UpdateLatestHandledTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+	lastTransferEvent := db.GetIntWithDefault(db.KeyLastTransferEventID, 0)
+	if int64(lastTransferEvent+1) < eventID {
+		SyncAssetOwners(rpcClient)
+		return
+	}
+	db.PutInt(db.KeyLastTransferEventID, int(eventID))
+}
+
 func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcclient.TransferEvent) {
 	lastTransferEvent := db.GetIntWithDefault(db.KeyLastTransferEventID, 0)
 

@@ -2,13 +2,15 @@ package comms
 
 import (
 	"fmt"
-	"github.com/kevinms/leakybucket-go"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/gofrs/uuid"
+	"github.com/kevinms/leakybucket-go"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -41,11 +43,23 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 	collectionItem.XsynLocked = true
 	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to lock asset - AssetUnlockFromSupremacyHandler")
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
 		return err
 	}
 
 	// TODO: store transfer event ID
+
+	itemUUID, err := uuid.FromString(collectionItem.ItemID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("convert asset id to uuid - AssetUnlockFromSupremacyHandler")
+		return err
+	}
+
+	err = db.MarketplaceSaleArchiveByItemID(gamedb.StdConn, itemUUID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
+		return terror.Error(err, "Failed to unlock asset from supremacy")
+	}
 
 	return nil
 }
