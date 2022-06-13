@@ -568,7 +568,9 @@ func MarketplaceSaleCreate(
 		obj.DutchAuction = true
 		obj.BuyoutPrice = decimal.NewNullDecimal(askingPrice.Decimal.Mul(decimal.New(1, 18)))
 		obj.DutchAuctionDropRate = decimal.NewNullDecimal(dutchAuctionDropRate.Decimal.Mul(decimal.New(1, 18)))
-		obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
+		if auctionReservedPrice.Valid {
+			obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
+		}
 	}
 
 	err := obj.Insert(conn, boil.Infer())
