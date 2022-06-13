@@ -125,7 +125,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						item_sales.dutch_auction = TRUE
 						AND item_sales.buyout_price IS NOT NULL
 						AND item_sales.dutch_auction_drop_rate IS NOT NULL
-				)
+					)
 					OR collection_items.xsyn_locked = true
 					OR collection_items.market_locked = true
 				)`),
