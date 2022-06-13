@@ -249,6 +249,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
 func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, error) {
 	output := &server.MarketplaceSaleItem1155{}
+	boil.DebugMode = true
 	err := boiler.ItemKeycardSales(
 		append(
 			itemKeycardSaleQueryMods,
@@ -286,6 +287,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.Keycard.Syndicate,
 		&output.Keycard.CreatedAt,
 	)
+	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}
