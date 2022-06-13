@@ -495,7 +495,7 @@ type MechListOpts struct {
 	OwnerID             string
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
-	ExcludeMarketListed bool
+	IncludeMarketListed bool
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -518,7 +518,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}, 0, "and"),
 	)
 
-	if !opts.DisplayXsynMechs || opts.ExcludeMarketListed {
+	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.XsynLocked,
@@ -532,7 +532,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
 	}
-	if opts.ExcludeMarketListed {
+	if !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,

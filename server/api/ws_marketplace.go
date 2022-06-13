@@ -43,6 +43,8 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, marketplaceHub.SalesKeycardCreateHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesArchive, marketplaceHub.SalesArchiveHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardArchive, marketplaceHub.SalesKeycardArchiveHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardBuy, marketplaceHub.SalesKeycardBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, marketplaceHub.SalesBidHandler)
@@ -111,7 +113,6 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.FilterListingTypes,
 		req.Payload.MinPrice,
 		req.Payload.MaxPrice,
-		user.ID,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -192,7 +193,6 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	total, records, err := db.MarketplaceItemKeycardSaleList(
 		req.Payload.Search,
 		req.Payload.Filter,
-		user.ID,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -409,9 +409,9 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace fee: %s: %s", req.Payload.ItemType, req.Payload.ItemID.String()),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -595,15 +595,15 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, "You do not have enough sups to list item.")
 	}
 
-	// pay sup
+	// Pay sup
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace fee: keycard: %s", req.Payload.ItemID.String()),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -644,6 +644,96 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 }
 
 const (
+	HubKeyMarketplaceSalesArchive        = "MARKETPLACE:SALES:ARCHIVE"
+	HubKeyMarketplaceSalesKeycardArchive = "MARKETPLACE:SALES:KEYCARD:ARCHIVE"
+)
+
+type MarketplaceSalesCancelRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ID uuid.UUID `json:"id"`
+	} `json:"payload"`
+}
+
+func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue cancelling sale item, try again or contact support."
+	req := &MarketplaceSalesCancelRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Check whether user can cancel sale item
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if saleItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
+
+	// Cancel item
+	err = db.MarketplaceSaleArchive(gamedb.StdConn, req.Payload.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
+
+	return nil
+}
+
+func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue cancelling sale item, try again or contact support."
+	req := &MarketplaceSalesCancelRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Check whether user can cancel sale item
+	saleItem, err := db.MarketplaceItemKeycardSale(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if saleItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
+
+	// Cancel item
+	err = db.MarketplaceKeycardSaleArchive(gamedb.StdConn, req.Payload.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(true)
+
+	return nil
+}
+
+const (
 	HubKeyMarketplaceSalesBuy        = "MARKETPLACE:SALES:BUY"
 	HubKeyMarketplaceSalesKeycardBuy = "MARKETPLACE:SALES:KEYCARD:BUY"
 )
@@ -678,6 +768,12 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 	if saleItem.FactionID != fID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
+	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
+	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("item is locked"), "Item is no longer for sale.")
 	}
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
@@ -739,11 +835,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -763,11 +859,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -935,6 +1031,9 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
 
 	// Pay item
 	userID, err := uuid.FromString(user.ID)
@@ -978,11 +1077,11 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-		Amount:               saleItemCost.Mul(salesCutPercentageFee).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item cut fee: %s", saleItem.ID),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -1002,11 +1101,11 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
-		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).Mul(decimal.New(1, 18)).String(),
+		Amount:               saleItemCost.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_keycard|buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item sales cut (%d%%): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -1161,8 +1260,14 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if !saleItem.Auction {
 		return terror.Error(fmt.Errorf("item is not up for auction"), "Item is not up for auction.")
 	}
+	if saleItem.SoldBy.Valid {
+		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
+	}
 	if saleItem.FactionID != fID {
 		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
+	}
+	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("item is locked"), "Item is no longer for sale.")
 	}
 	bidAmount := req.Payload.Amount.Mul(decimal.New(1, 18))
 	if bidAmount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
@@ -1186,10 +1291,10 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               bidAmount.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupMarketplace),
-		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:auction_bid|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupMarketplace),
+		Description:          fmt.Sprintf("Marketplace Bid Item: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 
@@ -1327,13 +1432,27 @@ func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, 
 	cctx := chi.RouteContext(ctx)
 	itemSaleID := cctx.URLParam("id")
 	if itemSaleID == "" {
-		return fmt.Errorf("item sale id is required")
+		return terror.Error(fmt.Errorf("item sale id is required"), "Item Sale ID is required.")
 	}
 
-	resp := &SaleItemUpdate{}
-	err := json.Unmarshal(payload, resp)
+	itemSaleUUID, err := uuid.FromString(itemSaleID)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal sale item update")
+		return terror.Error(fmt.Errorf("item sale id is invalid"), "Item Slale ID is invalid.")
+	}
+
+	// TODO: Update this when Keycards are available for auction
+	saleItem, err := db.MarketplaceItemSale(itemSaleUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Unable to find item sale id.")
+	}
+	if err != nil {
+		return terror.Error(err, "Unable to get latest item sale update.")
+	}
+
+	resp := &SaleItemUpdate{
+		AuctionCurrentPrice: saleItem.AuctionCurrentPrice.Decimal.String(),
+		TotalBids:           saleItem.TotalBids,
+		LastBid:             saleItem.LastBid,
 	}
 
 	reply(resp)
