@@ -102,12 +102,21 @@ func (arena *Arena) currentBattleWarMachine(participantID int) *WarMachine {
 	}
 
 	for _, wm := range arena._currentBattle.WarMachines {
-		if int(wm.ParticipantID) == participantID {
+		if checkWarMachineByParticipantID(wm, participantID) {
 			return wm
 		}
 	}
 
 	return nil
+}
+
+func checkWarMachineByParticipantID(wm *WarMachine, participantID int) bool {
+	wm.RLock()
+	defer wm.RUnlock()
+	if int(wm.ParticipantID) == participantID {
+		return true
+	}
+	return false
 }
 
 func (arena *Arena) WarMachineDestroyedDetail(mechID string) *WMDestroyedRecord {
@@ -768,7 +777,14 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return fmt.Errorf("war machine faction id does not match")
 	}
 
-	reply(wm.Abilities)
+	gameAbilities := []GameAbility{}
+	for _, ga := range wm.Abilities {
+		ga.RLock()
+		gameAbilities = append(gameAbilities, *ga)
+		ga.RUnlock()
+	}
+
+	reply(gameAbilities)
 
 	return nil
 }

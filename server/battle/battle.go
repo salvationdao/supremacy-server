@@ -96,17 +96,12 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.DisabledCells = gm.DisabledCells
 }
 
-const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
-
-func (btl *Battle) preIntro(payload *BattleStartPayload) error {
-	btl.Lock()
-	defer btl.Unlock()
-
+func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
 	factions := map[uuid.UUID]*boiler.Faction{}
 
 	for i, wm := range btl.WarMachines {
+		wm.Lock() // lock mech detail
 		for ii, pwm := range payload.WarMachines {
 			if wm.Hash == pwm.Hash {
 				wm.ParticipantID = pwm.ParticipantID
@@ -116,25 +111,26 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 				gamelog.L.Error().Err(fmt.Errorf("didnt find matching hash"))
 			}
 		}
+		wm.Unlock()
 
 		gamelog.L.Trace().Interface("battle war machine", wm).Msg("battle war machine")
 
 		mechID, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
-			return err
+			return nil, nil, err
 		}
 
 		ownerID, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.OwnedByID).Err(err).Msg("unable to convert owner id from string")
-			return err
+			return nil, nil, err
 		}
 
 		factionID, err := uuid.FromString(wm.FactionID)
 		if err != nil {
 			gamelog.L.Error().Str("factionID", wm.FactionID).Err(err).Msg("unable to convert faction id from string")
-			return err
+			return nil, nil, err
 		}
 
 		bmd[i] = &db.BattleMechData{
@@ -155,6 +151,22 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			}
 			factions[factionID] = faction
 		}
+	}
+
+	return bmd, factions, nil
+}
+
+const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
+const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
+
+func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	btl.Lock()
+	defer btl.Unlock()
+
+	bmd, factions, err := btl.warMachineUpdateFromGameClient(payload)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update war machine from game client data")
+		return err
 	}
 
 	btl.factions = factions
@@ -1263,6 +1275,7 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 	if btl == nil {
 		return nil
 	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,

@@ -751,6 +751,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 // FactionUniqueAbilityPriceUpdate update target price on every tick
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal, dropRate decimal.Decimal) bool {
+	ga.Lock()
+	defer ga.Unlock()
 	ga.SupsCost = ga.SupsCost.Mul(dropRate).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -1118,7 +1120,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						Msg("Battle mismatch is detected on progress ticker")
 					continue
 				}
-				as.BattleAbilityProgressBar()
 
 				multiplier := as.SetUserContributeMultiplier()
 
@@ -1318,7 +1319,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil || as.battle().arena.CurrentBattle().BattleNumber != bn {
 				continue
 			}
+
+			// update ability price
 			as.BattleAbilityPriceUpdater()
+
+			// broadcast the progress bar
+			as.BroadcastAbilityProgressBar()
+
 		case cont := <-as.bribe:
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil || as.battle().arena.CurrentBattle().BattleNumber != bn {
 				gamelog.L.Warn().
@@ -1803,9 +1810,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		return false
 	})
-
-	// broadcast the progress bar
-	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
@@ -2098,8 +2102,8 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			FactionID: player.FactionID.String,
 			Gid:       player.Gid,
 			Faction: &Faction{
-				ID:              faction.ID,
-				Label:           faction.Label,
+				ID:    faction.ID,
+				Label: faction.Label,
 				Theme: &Theme{
 					PrimaryColor:    faction.PrimaryColor,
 					SecondaryColor:  faction.SecondaryColor,
@@ -2169,8 +2173,8 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 	}
 
 	userBrief.Faction = &Faction{
-		ID:              faction.ID,
-		Label:           faction.Label,
+		ID:    faction.ID,
+		Label: faction.Label,
 		Theme: &Theme{
 			PrimaryColor:    faction.PrimaryColor,
 			SecondaryColor:  faction.SecondaryColor,
