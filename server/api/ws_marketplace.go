@@ -276,6 +276,9 @@ type MarketplaceSalesCreateRequest struct {
 	Payload struct {
 		ItemType             string              `json:"item_type"`
 		ItemID               uuid.UUID           `json:"item_id"`
+		HasBuyout            bool                `json:"has_buyout"`
+		HasAuction           bool                `json:"has_auction"`
+		HasDutchAuction      bool                `json:"has_dutch_auction"`
 		AskingPrice          decimal.NullDecimal `json:"asking_price"`
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
@@ -307,35 +310,18 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check price input
-	hasBuyout := false
-	hasAuction := false
-	hasDutchAuction := false
-
-	if req.Payload.AskingPrice.Valid {
-		if req.Payload.AskingPrice.Decimal.LessThanOrEqual(decimal.Zero) {
-			return terror.Error(fmt.Errorf("invalid asking price"), "Invalid asking price received.")
+	if req.Payload.HasBuyout || req.Payload.HasDutchAuction {
+		if !req.Payload.AskingPrice.Valid {
+			return terror.Error(terror.ErrInvalidInput, "Asking Price is required.")
 		}
-		hasBuyout = true
 	}
-	if req.Payload.DutchAuctionDropRate.Valid {
-		if req.Payload.DutchAuctionDropRate.Decimal.LessThanOrEqual(decimal.Zero) {
-			return terror.Error(fmt.Errorf("invalid drop rate"), "Invalid drop rate received.")
+	if req.Payload.HasDutchAuction {
+		if !req.Payload.AuctionReservedPrice.Valid {
+			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
 		}
-		hasDutchAuction = true
-		hasBuyout = false
-	}
-	if req.Payload.AuctionCurrentPrice.Valid || req.Payload.AuctionReservedPrice.Valid {
-		if req.Payload.AuctionCurrentPrice.Valid && req.Payload.AuctionCurrentPrice.Decimal.LessThan(decimal.Zero) {
-			return terror.Error(fmt.Errorf("invalid auction current price"), "Invalid auction current price received.")
+		if !req.Payload.DutchAuctionDropRate.Valid {
+			return terror.Error(terror.ErrInvalidInput, "Drop Rate is required.")
 		}
-		if req.Payload.AuctionReservedPrice.Valid && req.Payload.AuctionReservedPrice.Decimal.LessThan(decimal.Zero) {
-			return terror.Error(fmt.Errorf("invalid auction reserved price"), "Invalid auction reserved price received.")
-		}
-		hasAuction = true
-	}
-
-	if !hasBuyout && !hasAuction && !hasDutchAuction {
-		return terror.Error(fmt.Errorf("invalid sales input received"), "Unable to determine listing sale type from given input.")
 	}
 
 	// Check if allowed to sell item
@@ -400,7 +386,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
-	if hasBuyout {
+	if req.Payload.HasBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
 	if req.Payload.AuctionReservedPrice.Valid {
@@ -459,12 +445,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// Create Sales Item
 	// TODO: Add listing hours option back with fee rates applied
-	endAt := time.Now()
-	if mp.API.Config.Environment == "staging" {
-		endAt = endAt.Add(time.Minute * 5)
-	} else {
-		endAt = endAt.Add(time.Hour * 24)
-	}
+	endAt := time.Now().Add(time.Hour * 24)
 	obj, err := db.MarketplaceSaleCreate(
 		tx,
 		userID,
@@ -472,12 +453,12 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		txid,
 		endAt,
 		collectionItemID,
-		hasBuyout,
+		req.Payload.HasBuyout,
 		req.Payload.AskingPrice,
-		hasAuction,
+		req.Payload.HasAuction,
 		req.Payload.AuctionReservedPrice,
 		req.Payload.AuctionCurrentPrice,
-		hasDutchAuction,
+		req.Payload.HasDutchAuction,
 		req.Payload.DutchAuctionDropRate,
 	)
 	if err != nil {
@@ -901,18 +882,10 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 		minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Minutes()))
 		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
-		if saleItem.AuctionReservedPrice.Valid {
-			if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
-				saleItemCost = dutchAuctionAmount
-			} else {
-				saleItemCost = saleItem.AuctionReservedPrice.Decimal
-			}
+		if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
+			saleItemCost = dutchAuctionAmount
 		} else {
-			if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
-				saleItemCost = decimal.New(1, 18)
-			} else {
-				saleItemCost = dutchAuctionAmount
-			}
+			saleItemCost = saleItem.AuctionCurrentPrice.Decimal
 		}
 	}
 
@@ -1419,31 +1392,6 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	bidAmount := req.Payload.Amount.Mul(decimal.New(1, 18))
 	if bidAmount.LessThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
 		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
-	}
-
-	// Check if bid amount is greater than Dutch Auction drop rate
-	if saleItem.DutchAuction {
-		if !saleItem.DutchAuctionDropRate.Valid {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Msg("Dutch Auction Drop rate is missing.")
-			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
-		}
-		minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Minutes()))
-		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
-		if saleItem.AuctionReservedPrice.Valid {
-			if dutchAuctionAmount.LessThan(saleItem.AuctionReservedPrice.Decimal) {
-				dutchAuctionAmount = saleItem.AuctionReservedPrice.Decimal
-			}
-		} else {
-			if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
-				dutchAuctionAmount = decimal.New(1, 18)
-			}
-		}
-		if dutchAuctionAmount.LessThanOrEqual(bidAmount) {
-			return terror.Error(fmt.Errorf("bid amount is less than dutch auction dropped price"), "Bid Amount is cheaper than Dutch Auction Dropped Price, buy the item instead.")
-		}
 	}
 
 	// Pay bid amount
