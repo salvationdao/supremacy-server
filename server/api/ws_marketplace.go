@@ -319,6 +319,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			return terror.Error(fmt.Errorf("invalid drop rate"), "Invalid drop rate received.")
 		}
 		hasDutchAuction = true
+		hasBuyout = false
 	}
 	if req.Payload.AuctionCurrentPrice.Valid || req.Payload.AuctionReservedPrice.Valid {
 		if req.Payload.AuctionCurrentPrice.Valid && req.Payload.AuctionCurrentPrice.Decimal.LessThan(decimal.Zero) {
@@ -812,10 +813,18 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 		minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Minutes()))
 		dutchAuctionAmount := saleItem.BuyoutPrice.Decimal.Sub(saleItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
-		if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionCurrentPrice.Decimal) {
-			saleItemCost = dutchAuctionAmount
+		if saleItem.AuctionReservedPrice.Valid {
+			if dutchAuctionAmount.GreaterThanOrEqual(saleItem.AuctionReservedPrice.Decimal) {
+				saleItemCost = dutchAuctionAmount
+			} else {
+				saleItemCost = saleItem.AuctionReservedPrice.Decimal
+			}
 		} else {
-			saleItemCost = saleItem.AuctionCurrentPrice.Decimal
+			if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
+				saleItemCost = decimal.New(1, 18)
+			} else {
+				saleItemCost = dutchAuctionAmount
+			}
 		}
 	}
 

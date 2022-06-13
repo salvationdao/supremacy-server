@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"fmt"
+	"math"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -25,12 +26,17 @@ type ItemSaleAuction struct {
 	ID                   uuid.UUID           `boil:"id"`
 	CollectionItemID     uuid.UUID           `boil:"collection_item_id"`
 	ItemType             string              `boil:"item_type"`
+	ItemLocked           bool                `boil:"item_locked"`
 	OwnerID              uuid.UUID           `boil:"owner_id"`
 	AuctionReservedPrice decimal.NullDecimal `boil:"auction_reserved_price"`
+	BuyoutPrice          decimal.NullDecimal `boil:"buyout_price"`
+	DutchAuction         bool                `boil:"dutch_auction"`
+	DutchAuctionDropRate decimal.NullDecimal `boil:"dutch_auction_drop_rate"`
 	AuctionBidPrice      decimal.Decimal     `boil:"auction_bid_price"`
 	AuctionBidUserID     uuid.UUID           `boil:"auction_bid_user_id"`
 	AuctionBidTXID       string              `boil:"auction_bid_tx_id"`
 	FactionID            uuid.UUID           `boil:"faction_id"`
+	CreatedAt            time.Time           `boil:"created_at"`
 }
 
 func NewMarketplaceController(pp *xsyn_rpcclient.XsynXrpcClient) *MarketplaceController {
@@ -42,7 +48,7 @@ func NewMarketplaceController(pp *xsyn_rpcclient.XsynXrpcClient) *MarketplaceCon
 func (m *MarketplaceController) Run() {
 	defer func() {
 		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AuctionController!", r)
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the MarketplaceController!", r)
 		}
 	}()
 
@@ -82,11 +88,12 @@ func (m *MarketplaceController) unlockCollectionItems() {
 	}
 }
 
-// Scan all completed auctions that haven't went through payment process
+// Scan all completed auctions that haven't went through payment process.
+// This also processes and bids that exceed the dutch auction drop rate.
 func (m *MarketplaceController) processFinishedAuctions() {
 	gamelog.L.Trace().Msg("processing completed auction items started")
 
-	completedAuctions := []*ItemSaleAuction{}
+	auctions := []*ItemSaleAuction{}
 	err := boiler.NewQuery(
 		qm.SQL(`
 			SELECT item_sales.id AS id,
@@ -94,6 +101,10 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				collection_items.item_type,
 				item_sales.owner_id,
 				item_sales.auction_reserved_price,
+				item_sales.buyout_price,
+				item_sales.dutch_auction_drop_rate,
+				item_sales.created_at,
+				(collection_items.xsyn_locked OR collection_items.market_locked) AS item_locked,
 				item_sales_bid_history.bid_price AS auction_bid_price,
 				item_sales_bid_history.bidder_id AS auction_bid_user_id,
 				item_sales_bid_history.bid_tx_id AS auction_bid_tx_id,
@@ -106,14 +117,19 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				INNER JOIN collection_items ON collection_items.id = item_sales.collection_item_id
 			WHERE item_sales.auction = TRUE
 				AND item_sales.sold_by IS NULL
-				AND item_sales.end_at <= NOW()
 				AND item_sales_bid_history.bid_price > 0
+				AND item_sales.deleted_at IS NULL
 				AND (
-					item_sales.auction_reserved_price IS NULL
-					OR item_sales_bid_history.bid_price >= item_sales.auction_reserved_price
+					item_sales.end_at <= NOW()
+					OR (
+						item_sales.dutch_auction = TRUE
+						AND item_sales.buyout_price IS NOT NULL
+						AND item_sales.dutch_auction_drop_rate IS NOT NULL
 				)
-				AND item_sales.deleted_at IS NULL`),
-	).Bind(nil, gamedb.StdConn, &completedAuctions)
+					OR collection_items.xsyn_locked = true
+					OR collection_items.market_locked = true
+				)`),
+	).Bind(nil, gamedb.StdConn, &auctions)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "itemSales").
@@ -121,9 +137,9 @@ func (m *MarketplaceController) processFinishedAuctions() {
 	}
 
 	numProcessed := 0
-	for _, auctionItem := range completedAuctions {
-		// Check if auction reserved price needs to be refunded
-		if auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice) {
+	for _, auctionItem := range auctions {
+		// Check if current bid is below reserved price and issue refunds.
+		if auctionItem.ItemLocked || (auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
 			rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 			if err != nil {
 				gamelog.L.Error().
@@ -151,7 +167,26 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			continue
 		}
 
-		salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+		// Check if Dutch Auction and is below the bidder's price, bidder wins
+		if auctionItem.DutchAuction {
+			minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(auctionItem.CreatedAt).Minutes()))
+			dutchAuctionAmount := auctionItem.BuyoutPrice.Decimal.Sub(auctionItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
+
+			if auctionItem.AuctionReservedPrice.Valid {
+				if dutchAuctionAmount.LessThan(auctionItem.AuctionReservedPrice.Decimal) {
+					dutchAuctionAmount = auctionItem.AuctionReservedPrice.Decimal
+				}
+			} else {
+				if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
+					dutchAuctionAmount = decimal.New(1, 18)
+				}
+			}
+
+			if dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice) {
+				numProcessed++
+				return
+			}
+		}
 
 		// Get Faction Account sending bid amount to
 		factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
@@ -166,7 +201,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 		}
 
 		// Transfer Sups to Owner
-		// TODO: Deal with sales cut
+		salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
 		txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 			ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
@@ -293,7 +328,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 	gamelog.L.Trace().
 		Int("num_processed", numProcessed).
-		Int("num_failed", len(completedAuctions)-numProcessed).
-		Int("num_pending", len(completedAuctions)).
+		Int("num_failed", len(auctions)-numProcessed).
+		Int("num_pending", len(auctions)).
 		Msg("processing completed auction items completed")
 }
