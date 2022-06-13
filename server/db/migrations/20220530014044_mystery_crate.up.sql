@@ -448,115 +448,115 @@ $$;
 -- ALTER TABLE weapons
 --     ADD CONSTRAINT fk_weapon_models FOREIGN KEY (weapon_model_id) REFERENCES weapon_models (id);
 --
--- -- MECHS
---
--- ALTER TABLE mech_model
---     RENAME TO mech_models;
---
--- ALTER TABLE mech_models
---     ADD COLUMN brand_id   UUID,
---     ADD COLUMN faction_id UUID,
---     ADD COLUMN mech_type  MECH_TYPE;
---
--- UPDATE mech_models
--- SET mech_type = 'HUMANOID';
--- UPDATE mech_models
--- SET faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
--- WHERE label = 'Law Enforcer X-1000';
--- UPDATE mech_models
--- SET faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
--- WHERE label = 'Tenshi Mk1';
--- UPDATE mech_models
--- SET faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
--- WHERE label = 'Olympus Mons LY07';
---
--- --!!: labels to be renamed
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('BC Humanoid', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
---         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('BC Platform', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
---         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
---
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('ZHI Humanoid', 'HUMANOID', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
---         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('ZHI Platform', 'PLATFORM', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
---         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
---
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('RMOMC Humanoid', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
---         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
--- INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
--- VALUES ('RMOMC Platform', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
---         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
---
--- ALTER TABLE mech_models
---     ADD CONSTRAINT fk_brands FOREIGN KEY (brand_id) REFERENCES brands (id),
---     ADD CONSTRAINT fk_factions FOREIGN KEY (faction_id) REFERENCES factions (id);
---
--- ALTER TABLE blueprint_mech_skin
---     ADD COLUMN mech_type     MECH_TYPE,
---     ADD COLUMN stat_modifier NUMERIC(8);
---
--- UPDATE blueprint_mech_skin
--- SET MECH_TYPE = 'HUMANOID';
---
--- -- for each mech_model, insert 6 skins
--- DO
--- $$
---     DECLARE
---         mech_model MECH_MODELS%ROWTYPE;
---     BEGIN
---         FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
---             LOOP
---                 CASE
---                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
---                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'BC Default', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Blue Camo', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Police', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Gold', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Crystal', mech_model.mech_type);
---                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
---                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'ZHI Default', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'x3 Wartech', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'White Camo', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Ninja', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Neon', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Gold', mech_model.mech_type);
---                     WHEN mech_model.faction_id =
---                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
---                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'RMOMC Default', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Red Camo', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Mining', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Molten', mech_model.mech_type);
---                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type)
---                              VALUES (mech_model.id, 'Gold', mech_model.mech_type);
---                     END CASE;
---             END LOOP;
---     END;
--- $$;
---
+-- MECHS
+
+ALTER TABLE mech_model
+    RENAME TO mech_models;
+
+ALTER TABLE mech_models
+    ADD COLUMN brand_id   UUID,
+    ADD COLUMN faction_id UUID,
+    ADD COLUMN mech_type  MECH_TYPE;
+
+UPDATE mech_models
+SET mech_type = 'HUMANOID';
+UPDATE mech_models
+SET faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+WHERE label = 'Law Enforcer X-1000';
+UPDATE mech_models
+SET faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
+WHERE label = 'Tenshi Mk1';
+UPDATE mech_models
+SET faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
+WHERE label = 'Olympus Mons LY07';
+
+--!!: labels to be renamed
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('WAR ENFORCER', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
+        (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('ANNIHILATOR', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
+        (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
+
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('KENJI', 'HUMANOID', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
+        (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('SHIROKUMA', 'PLATFORM', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
+        (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
+
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('ARIES', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
+        (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
+INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
+VALUES ('VIKING', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
+        (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
+
+ALTER TABLE mech_models
+    ADD CONSTRAINT fk_brands FOREIGN KEY (brand_id) REFERENCES brands (id),
+    ADD CONSTRAINT fk_factions FOREIGN KEY (faction_id) REFERENCES factions (id);
+
+ALTER TABLE blueprint_mech_skin
+    ADD COLUMN mech_type     MECH_TYPE,
+    ADD COLUMN stat_modifier NUMERIC(8);
+
+UPDATE blueprint_mech_skin
+SET MECH_TYPE = 'HUMANOID';
+
+-- for each mech_model, insert 6 skins
+DO
+$$
+    DECLARE
+        mech_model MECH_MODELS%ROWTYPE;
+    BEGIN
+        FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
+            LOOP
+                CASE
+                    WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                        THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'BC Default', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Blue Camo', mech_model.mech_type, 'RARE');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Police', mech_model.mech_type, 'EXOTIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'MYTHIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Crystal', mech_model.mech_type, 'LEGENDARY');
+                    WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
+                        THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'ZHI Default', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'x3 Wartech', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'White Camo', mech_model.mech_type, 'RARE');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Ninja', mech_model.mech_type, 'EXOTIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Neon', mech_model.mech_type, 'MYTHIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'LEGENDARY');
+                    WHEN mech_model.faction_id =
+                         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
+                        THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'RMOMC Default', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type, 'COLOSSAL');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Red Camo', mech_model.mech_type, 'RARE');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Mining', mech_model.mech_type, 'EXOTIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Lava', mech_model.mech_type, 'MYTHIC');
+                             INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
+                             VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'LEGENDARY');
+                    END CASE;
+            END LOOP;
+    END;
+$$;
+
 -- -- set default skins for mech model
 --
 -- DO
