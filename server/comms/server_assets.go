@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/asset"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpctypes"
+	"server/xsyn_rpcclient"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -213,5 +215,17 @@ func (s *S) Get1155Details(req *NFT1155DetailsReq, resp *NFT1155DetailsResp) err
 	resp.AnimationUrl = asset.AnimationURL
 	resp.Group = asset.KeycardGroup
 
+	return nil
+}
+
+type AssetTransferReq struct {
+	TransferEvent *xsyn_rpcclient.TransferEvent `json:"transfer_event"`
+}
+
+type AssetTransferResp struct {
+}
+
+func (s *S) AssetTransferHandler(req *AssetTransferReq, resp *AssetTransferResp) error {
+	asset.HandleTransferEvent(s.passportRPC, req.TransferEvent)
 	return nil
 }
