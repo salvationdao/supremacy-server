@@ -309,7 +309,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	hasDutchAuction := false
 
 	if req.Payload.AskingPrice.Valid {
-		if req.Payload.DutchAuctionDropRate.Decimal.LessThanOrEqual(decimal.Zero) {
+		if req.Payload.AskingPrice.Decimal.LessThanOrEqual(decimal.Zero) {
 			return terror.Error(fmt.Errorf("invalid asking price"), "Invalid asking price received.")
 		}
 		hasBuyout = true
