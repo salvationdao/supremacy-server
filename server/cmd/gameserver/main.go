@@ -21,6 +21,7 @@ import (
 	"server/sms"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -143,8 +144,8 @@ func main() {
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 
-					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
-					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 40, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 
 					&cli.BoolFlag{Name: "pprof_datadog", Value: true, EnvVars: []string{envPrefix + "_PPROF_DATADOG"}, Usage: "Use datadog pprof to collect debug info"},
 					&cli.StringSliceFlag{Name: "pprof_datadog_profiles", Value: cli.NewStringSlice("cpu", "heap"), EnvVars: []string{envPrefix + "_PPROF_DATADOG_PROFILES"}, Usage: "Comma seprated list of profiles to collect. Options: cpu,heap,block,mutex,goroutine,metrics"},
@@ -156,6 +157,7 @@ func main() {
 
 					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
+					&cli.StringFlag{Name: "ignore_rate_limit_ips", Value: "127.0.0.1", EnvVars: []string{envPrefix + "_IGNORE_RATE_LIMIT_IP"}, Usage: "Ignore rate limiting on these IPs"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -196,7 +198,11 @@ func main() {
 					level := c.String("log_level")
 					gamelog.New(environment, level)
 
-					ws.Init(&ws.Config{Logger: gamelog.L})
+					// initialise ws package
+					ws.Init(&ws.Config{
+						Logger:             gamelog.L,
+						IgnoreRateLimitIPs: strings.Split(c.String("ignore_rate_limit_ips"), ","),
+					})
 
 					tracer.Start(
 						tracer.WithEnv(environment),
