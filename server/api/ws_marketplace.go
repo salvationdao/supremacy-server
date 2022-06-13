@@ -458,7 +458,12 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// Create Sales Item
 	// TODO: Add listing hours option back with fee rates applied
-	endAt := time.Now().Add(time.Hour * 24)
+	endAt := time.Now()
+	if mp.API.Config.Environment == "staging" {
+		endAt = endAt.Add(time.Minute * 5)
+	} else {
+		endAt = endAt.Add(time.Hour * 24)
+	}
 	obj, err := db.MarketplaceSaleCreate(
 		tx,
 		userID,
