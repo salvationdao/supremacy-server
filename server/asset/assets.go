@@ -45,10 +45,17 @@ func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
 				}
 			}
 
+			// assets shouldn't be getting transferred on xsyn if they are locked to supremacy, but this just realigns them if that does happen.
+			xsynLocked := true
+			if te.OwnedService.Valid && te.OwnedService.String == server.SupremacyGameUserID {
+				xsynLocked = false
+			}
+
 			_, err = boiler.CollectionItems(
-				boiler.CollectionItemWhere.Hash.EQ(te.AssetHast),
+				boiler.CollectionItemWhere.Hash.EQ(te.AssetHash),
 			).UpdateAll(gamedb.StdConn, boiler.M{
-				"owner_id": te.ToUserID,
+				"owner_id":    te.ToUserID,
+				"xsyn_locked": xsynLocked,
 			})
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
@@ -57,6 +64,53 @@ func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
 			db.PutInt(db.KeyLastTransferEventID, int(te.TransferEventID))
 		}
 	}
+}
+
+func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcclient.TransferEvent) {
+	lastTransferEvent := db.GetIntWithDefault(db.KeyLastTransferEventID, 0)
+
+	if int64(lastTransferEvent+1) < te.TransferEventID {
+		SyncAssetOwners(rpcClient)
+		return
+	}
+
+	exists, err := boiler.Players(boiler.PlayerWhere.ID.EQ(te.ToUserID)).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to check if user exists in transfer event")
+		return
+	}
+
+	if !exists {
+		userUUID := server.UserID(uuid.Must(uuid.FromString(te.ToUserID)))
+		user, err := rpcClient.UserGet(userUUID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get new user in transfer event")
+			return
+		}
+		_, err = db.PlayerRegister(uuid.UUID(userUUID), user.Username, uuid.FromStringOrNil(user.FactionID.String), common.HexToAddress(user.PublicAddress.String))
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get register new user in transfer event")
+			return
+		}
+	}
+
+	// assets shouldn't be getting transferred on xsyn if they are locked to supremacy, but this just realigns them if that does happen.
+	xsynLocked := true
+	if te.OwnedService.Valid && te.OwnedService.String == server.SupremacyGameUserID {
+		xsynLocked = false
+	}
+
+	_, err = boiler.CollectionItems(
+		boiler.CollectionItemWhere.Hash.EQ(te.AssetHash),
+	).UpdateAll(gamedb.StdConn, boiler.M{
+		"owner_id":    te.ToUserID,
+		"xsyn_locked": xsynLocked,
+	})
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
+		return
+	}
+	db.PutInt(db.KeyLastTransferEventID, int(te.TransferEventID))
 }
 
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
