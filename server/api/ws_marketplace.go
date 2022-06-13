@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"math"
 	"server"
 	"server/db"
@@ -517,6 +518,11 @@ type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	} `json:"payload"`
 }
 
+type AttributeInner struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value"`
+}
+
 func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing create keycard sale item, try again or contact support."
 	req := &HubKeyMarketplaceSalesKeycardCreateRequest{}
@@ -577,6 +583,44 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 	if keycard.Count <= numKeycardsSelling {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(keycard.BlueprintKeycardID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          false,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	// Process fee
@@ -726,6 +770,43 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 	err = db.MarketplaceKeycardSaleArchive(gamedb.StdConn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(saleItem.Keycard.ID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          true,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	reply(true)
@@ -1095,6 +1176,43 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Err(err).
 			Msg("Failed to process sales cut fee transaction for Purchase Sale Item.")
 		return terror.Error(err, errMsg)
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(saleItem.Keycard.ID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          true,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	// Give sales cut amount to seller
