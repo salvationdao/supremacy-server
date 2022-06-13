@@ -294,6 +294,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
+	factionID string,
 	search string,
 	filter *ListFilterRequest,
 	rarities []string,
@@ -317,6 +318,10 @@ func MarketplaceItemSaleList(
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
+
+	if factionID != "" {
+		queryMods = append(queryMods, boiler.ItemSaleWhere.FactionID.EQ(factionID))
+	}
 
 	// Filters
 	if filter != nil {

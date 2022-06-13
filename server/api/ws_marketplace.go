@@ -107,6 +107,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 	}
 
 	total, records, err := db.MarketplaceItemSaleList(
+		factionID,
 		req.Payload.Search,
 		filters,
 		req.Payload.FilterRarities,
