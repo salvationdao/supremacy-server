@@ -312,142 +312,141 @@ $$
     END;
 $$;
 
--- -- each weapon model set default skin
--- DO
--- $$
---     DECLARE
---         weapon_model WEAPON_MODELS%ROWTYPE;
---     BEGIN
---         FOR weapon_model IN SELECT * FROM weapon_models
---             LOOP
---                 CASE
---                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
---                         THEN UPDATE weapon_models
---                              SET default_skin_id = (SELECT id
---                                                     FROM blueprint_weapon_skin
---                                                     WHERE weapon_model_id = weapon_model.id
---                                                       AND label = 'ZHI Default')
---                              WHERE id = weapon_model.id;
---                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
---                         THEN UPDATE weapon_models
---                              SET default_skin_id = (SELECT id
---                                                     FROM blueprint_weapon_skin
---                                                     WHERE weapon_model_id = weapon_model.id
---                                                       AND label = 'BC Default')
---                              WHERE id = weapon_model.id;
---                     WHEN weapon_model.faction_id =
---                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
---                         THEN UPDATE weapon_models
---                              SET default_skin_id = (SELECT id
---                                                     FROM blueprint_weapon_skin
---                                                     WHERE weapon_model_id = weapon_model.id
---                                                       AND label = 'RMOMC Default')
---                              WHERE id = weapon_model.id;
---                     WHEN weapon_model.faction_id IS NULL THEN UPDATE weapon_models
---                                                               SET default_skin_id = (SELECT id
---                                                                                      FROM blueprint_weapon_skin
---                                                                                      WHERE weapon_model_id = weapon_model.id
---                                                                                        AND label = weapon_model.label)
---                                                               WHERE id = weapon_model.id;
---                     END CASE;
---             END LOOP;
---     END;
--- $$;
---
--- ALTER TABLE weapon_models
---     ALTER COLUMN default_skin_id SET NOT NULL;
---
--- ALTER TABLE blueprint_weapons
---     ADD COLUMN weapon_model_id UUID REFERENCES weapon_models (id);
+-- each weapon model set default skin
+DO
+$$
+    DECLARE
+        weapon_model WEAPON_MODELS%ROWTYPE;
+    BEGIN
+        FOR weapon_model IN SELECT * FROM weapon_models
+            LOOP
+                CASE
+                    WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
+                        THEN UPDATE weapon_models
+                             SET default_skin_id = (SELECT id
+                                                    FROM blueprint_weapon_skin
+                                                    WHERE weapon_model_id = weapon_model.id
+                                                      AND label = 'ZHI Default')
+                             WHERE id = weapon_model.id;
+                    WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                        THEN UPDATE weapon_models
+                             SET default_skin_id = (SELECT id
+                                                    FROM blueprint_weapon_skin
+                                                    WHERE weapon_model_id = weapon_model.id
+                                                      AND label = 'BC Default')
+                             WHERE id = weapon_model.id;
+                    WHEN weapon_model.faction_id =
+                         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
+                        THEN UPDATE weapon_models
+                             SET default_skin_id = (SELECT id
+                                                    FROM blueprint_weapon_skin
+                                                    WHERE weapon_model_id = weapon_model.id
+                                                      AND label = 'RMOMC Default')
+                             WHERE id = weapon_model.id;
+                    WHEN weapon_model.faction_id IS NULL THEN UPDATE weapon_models
+                                                              SET default_skin_id = (SELECT id
+                                                                                     FROM blueprint_weapon_skin
+                                                                                     WHERE weapon_model_id = weapon_model.id
+                                                                                       AND label = weapon_model.label)
+                                                              WHERE id = weapon_model.id;
+                    END CASE;
+            END LOOP;
+    END;
+$$;
 
--- -- update existing blueprint_weapons (factionless)
--- DO
--- $$
---     DECLARE
---         blueprint_weapon BLUEPRINT_WEAPONS%ROWTYPE;
---     BEGIN
---         FOR blueprint_weapon IN SELECT * FROM blueprint_weapons
---             LOOP
---                 UPDATE blueprint_weapons
---                 SET weapon_model_id = (SELECT id
---                                        FROM weapon_models
---                                        WHERE label = blueprint_weapon.label
---                                          AND faction_id IS NULL)
---                 WHERE label = blueprint_weapon.label;
---             END LOOP;
---     END;
--- $$;
---
--- ALTER TABLE blueprint_weapons
---     ALTER COLUMN weapon_model_id SET NOT NULL;
---
--- DO
--- $$
---     DECLARE
---         weapon_model WEAPON_MODELS%ROWTYPE;
---     BEGIN
---         FOR weapon_model IN SELECT * FROM weapon_models WHERE faction_id IS NOT NULL
---             LOOP
---                 INSERT INTO blueprint_weapons (brand_id, label, slug, damage, weapon_type, is_melee, weapon_model_id)
---                 VALUES (CASE
---                             WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
---                                 THEN
---                                     (SELECT id FROM brands WHERE label = 'Archon Miltech')
---                             WHEN weapon_model.faction_id =
---                                  (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
---                                     (SELECT id FROM brands WHERE label = 'Warsui')
---                             WHEN weapon_model.faction_id =
---                                  (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
---                                     (SELECT id FROM brands WHERE label = 'Pyrotronics')
---                             END,
---                         CONCAT((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', weapon_model.label),
---                         LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', '_'),
---                                      '_', REPLACE(weapon_model.label, ' ', '_'))),
---                         0,
---                         weapon_model.weapon_type,
---                         CASE
---                             WHEN weapon_model.weapon_type = 'Sword' THEN TRUE
---                             ELSE FALSE
---                             END,
---                         weapon_model.id);
---             END LOOP;
---     END;
--- $$;
---
--- ALTER TABLE weapons
---     ADD COLUMN weapon_model_id         UUID,
---     ADD COLUMN equipped_weapon_skin_id UUID;
---
--- --updating existing weapons
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle' AND brand_id IS NULL)
--- WHERE label = 'Plasma Rifle'
---   AND brand_id IS NULL;
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Auto Cannon' AND brand_id IS NULL)
--- WHERE label = 'Auto Cannon'
---   AND brand_id IS NULL;
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Sniper Rifle' AND brand_id IS NULL)
--- WHERE label = 'Sniper Rifle'
---   AND brand_id IS NULL;
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Sword' AND brand_id IS NULL)
--- WHERE label = 'Sword'
---   AND brand_id IS NULL;
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Laser Sword' AND brand_id IS NULL)
--- WHERE label = 'Laser Sword'
---   AND brand_id IS NULL;
--- UPDATE weapons
--- SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Rocket Pod' AND brand_id IS NULL)
--- WHERE label = 'Rocket Pod'
---   AND brand_id IS NULL;
---
--- --!!: is adding this constraint afterwards ok?
--- ALTER TABLE weapons
---     ADD CONSTRAINT fk_weapon_models FOREIGN KEY (weapon_model_id) REFERENCES weapon_models (id);
---
+ALTER TABLE weapon_models
+    ALTER COLUMN default_skin_id SET NOT NULL;
+
+ALTER TABLE blueprint_weapons
+    ADD COLUMN weapon_model_id UUID REFERENCES weapon_models (id);
+
+-- update existing blueprint_weapons (factionless)
+DO
+$$
+    DECLARE
+        blueprint_weapon BLUEPRINT_WEAPONS%ROWTYPE;
+    BEGIN
+        FOR blueprint_weapon IN SELECT * FROM blueprint_weapons
+            LOOP
+                UPDATE blueprint_weapons
+                SET weapon_model_id = (SELECT id
+                                       FROM weapon_models
+                                       WHERE label = blueprint_weapon.label
+                                         AND faction_id IS NULL)
+                WHERE label = blueprint_weapon.label;
+            END LOOP;
+    END;
+$$;
+
+ALTER TABLE blueprint_weapons
+    ALTER COLUMN weapon_model_id SET NOT NULL;
+
+DO
+$$
+    DECLARE
+        weapon_model WEAPON_MODELS%ROWTYPE;
+    BEGIN
+        FOR weapon_model IN SELECT * FROM weapon_models WHERE faction_id IS NOT NULL
+            LOOP
+                INSERT INTO blueprint_weapons (brand_id, label, slug, damage, weapon_type, is_melee, weapon_model_id)
+                VALUES (CASE
+                            WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                                THEN
+                                    (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN weapon_model.faction_id =
+                                 (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
+                                    (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN weapon_model.faction_id =
+                                 (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
+                                    (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                            END,
+                        CONCAT((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', weapon_model.label),
+                        LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', '_'),
+                                     '_', REPLACE(weapon_model.label, ' ', '_'))),
+                        0,
+                        weapon_model.weapon_type,
+                        CASE
+                            WHEN weapon_model.weapon_type = 'Sword' THEN TRUE
+                            ELSE FALSE
+                            END,
+                        weapon_model.id);
+            END LOOP;
+    END;
+$$;
+
+ALTER TABLE weapons
+    ADD COLUMN weapon_model_id         UUID,
+    ADD COLUMN equipped_weapon_skin_id UUID;
+
+--updating existing weapons
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle' AND brand_id IS NULL)
+WHERE label = 'Plasma Rifle'
+  AND brand_id IS NULL;
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Auto Cannon' AND brand_id IS NULL)
+WHERE label = 'Auto Cannon'
+  AND brand_id IS NULL;
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Sniper Rifle' AND brand_id IS NULL)
+WHERE label = 'Sniper Rifle'
+  AND brand_id IS NULL;
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Sword' AND brand_id IS NULL)
+WHERE label = 'Sword'
+  AND brand_id IS NULL;
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Laser Sword' AND brand_id IS NULL)
+WHERE label = 'Laser Sword'
+  AND brand_id IS NULL;
+UPDATE weapons
+SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = 'Rocket Pod' AND brand_id IS NULL)
+WHERE label = 'Rocket Pod'
+  AND brand_id IS NULL;
+
+ALTER TABLE weapons
+    ADD CONSTRAINT fk_weapon_models FOREIGN KEY (weapon_model_id) REFERENCES weapon_models (id);
+
 -- MECHS
 
 ALTER TABLE mech_model
@@ -557,267 +556,266 @@ $$
     END;
 $$;
 
--- -- set default skins for mech model
---
--- DO
--- $$
---     DECLARE
---         model MECH_MODELS%ROWTYPE;
---     BEGIN
---         FOR model IN SELECT * FROM mech_models WHERE default_chassis_skin_id IS NULL
---             LOOP
---                 CASE
---                     WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
---                         THEN UPDATE mech_models
---                              SET default_chassis_skin_id = (SELECT id
---                                                             FROM blueprint_mech_skin
---                                                             WHERE mech_model = model.id
---                                                               AND label = 'ZHI Default')
---                              WHERE id = model.id;
---                     WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
---                         THEN UPDATE mech_models
---                              SET default_chassis_skin_id = (SELECT id
---                                                             FROM blueprint_mech_skin
---                                                             WHERE mech_model = model.id
---                                                               AND label = 'BC Default')
---                              WHERE id = model.id;
---                     WHEN model.faction_id =
---                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
---                         THEN UPDATE mech_models
---                              SET default_chassis_skin_id = (SELECT id
---                                                             FROM blueprint_mech_skin
---                                                             WHERE mech_model = model.id
---                                                               AND label = 'RMOMC Default')
---                              WHERE id = model.id;
---                     WHEN model.faction_id IS NULL THEN UPDATE mech_models
---                                                        SET default_chassis_skin_id = (SELECT id
---                                                                                       FROM blueprint_mech_skin
---                                                                                       WHERE mech_model = model.id
---                                                                                         AND label = model.label)
---                                                        WHERE id = model.id;
---                     END CASE;
---             END LOOP;
---     END;
--- $$;
---
--- ALTER TABLE mech_models
---     ALTER COLUMN default_chassis_skin_id SET NOT NULL;
---
--- ALTER TABLE blueprint_mechs
---     DROP COLUMN skin;
---
--- DO
--- $$
---     DECLARE
---         mech_model MECH_MODELS%ROWTYPE;
---     BEGIN
---         FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
---             LOOP
---                 INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
---                                              max_hitpoints, model_id, power_core_size)
---                 VALUES (mech_model.brand_id,
---                         CONCAT((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
---                         LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', '_'), '_',
---                                      REPLACE(mech_model.label, ' ', '_'))),
---                         CASE --hardpoints
---                             WHEN mech_model.mech_type = 'PLATFORM' THEN 5
---                             ELSE 2
---                             END,
---                         CASE -- utility slots
---                             WHEN mech_model.mech_type = 'PLATFORM' THEN 2
---                             ELSE 4
---                             END,
---                         CASE --speed
---                             WHEN mech_model.mech_type = 'PLATFORM' THEN 1000
---                             ELSE 2000
---                             END,
---                         CASE --max_hitpoints
---                             WHEN mech_model.mech_type = 'PLATFORM' THEN 3000
---                             ELSE 1500
---                             END,
---                         mech_model.id,
---                         CASE --max_hitpoints
---                             WHEN mech_model.mech_type = 'PLATFORM' THEN 'MEDIUM'
---                             ELSE 'SMALL'
---                             END);
---             END LOOP;
---     END;
--- $$;
---
---
--- INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_rate, recharge_rate, armour,
---                                    max_hitpoints)
--- VALUES ('supremacy-general', 'Medium Energy Core', 'MEDIUM', 1500, 150, 100, 0, 1500);
---
---
--- -- seeding mystery crates
--- -- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount
--- DO
--- $$
---     BEGIN
---         FOR COUNT IN 1..500 --change to 5000
---             LOOP
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
---                         'Red Mountain War Machine Mystery Crate');
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'),
---                         'Zaibatsu Nexus War Machine Mystery Crate');
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'),
---                         'Boston Cybernetics Nexus War Machine Mystery Crate');
---             END LOOP;
---     END;
--- $$;
---
--- DO
--- $$
---     BEGIN
---         FOR COUNT IN 1..2000 -- change to 20000
---             LOOP
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('WEAPON',
---                         (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
---                         'Red Mountain Nexus Weapon Mystery Crate');
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'),
---                         'Zaibatsu Nexus Weapon Mystery Crate');
---                 INSERT INTO mystery_crate (type, faction_id, label)
---                 VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'),
---                         'Boston Cybernetics Nexus Weapon Mystery Crate');
---             END LOOP;
---     END;
--- $$;
---
--- -- seeding crate blueprints
--- DROP FUNCTION IF EXISTS insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD);
--- CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD) RETURNS VOID
---     LANGUAGE plpgsql AS
--- $$
--- BEGIN
---     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
---     VALUES (mechCrate_id, 'MECH', (SELECT id
---                                    FROM blueprint_mechs
---                                    WHERE blueprint_mechs.power_core_size = core_size
---                                      AND blueprint_mechs.brand_id =
---                                          CASE
---                                              WHEN faction.label = 'Boston Cybernetics'
---                                                  THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')
---                                              WHEN faction.label = 'Zaibatsu Heavy Industries'
---                                                  THEN (SELECT id FROM brands WHERE label = 'x3 Wartech')
---                                              WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                                                  THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
---                                              END));
--- END;
--- $$;
---
--- DROP FUNCTION IF EXISTS insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
---                                                     previous_crates NUMERIC, faction RECORD);
--- CREATE FUNCTION insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
---                                             previous_crates NUMERIC, faction RECORD) RETURNS VOID
---     LANGUAGE plpgsql AS
--- $$
--- BEGIN
---
---     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
---     VALUES (mechCrate_id, 'MECH_SKIN', (SELECT id
---                                         FROM blueprint_mech_skin
---                                         WHERE mech_type = mechType::MECH_TYPE
---                                           AND blueprint_mech_skin.mech_model =
---                                               CASE
---                                                   WHEN faction.label = 'Boston Cybernetics'
---                                                       THEN (SELECT id
---                                                             FROM mech_models
---                                                             WHERE label = CONCAT('BC ', INITCAP(mechType)))
---                                                   WHEN faction.label = 'Zaibatsu Heavy Industries'
---                                                       THEN (SELECT id
---                                                             FROM mech_models
---                                                             WHERE label = CONCAT('ZHI ', INITCAP(mechType)))
---                                                   WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                                                       THEN (SELECT id
---                                                             FROM mech_models
---                                                             WHERE label = CONCAT('RMOMC ', INITCAP(mechType)))
---                                                   END
---                                           AND label = get_skin_label_rarity(i, 'MECH', amount_of_type, previous_crates,
---                                                                             faction)));
--- END;
--- $$;
---
--- DROP FUNCTION IF EXISTS get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
---                                               faction RECORD);
--- CREATE FUNCTION get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
---                                       faction RECORD) RETURNS TEXT
---     LANGUAGE plpgsql AS
--- $$
--- BEGIN
---     RETURN CASE
---         --30% default skin
---                WHEN i <= ((.30 * amount_of_type) + previous_crates)
---                    THEN
---                    CASE
---                        WHEN faction.label = 'Boston Cybernetics'
---                            THEN 'BC Default'
---                        WHEN faction.label = 'Zaibatsu Heavy Industries'
---                            THEN 'ZHI Default'
---                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                            THEN 'RMOMC Default'
---                        END
---         --30% for manufacturer's skin
---                WHEN i > ((.30 * amount_of_type) + previous_crates) AND
---                     i <= ((.60 * amount_of_type) + previous_crates)
---                    THEN
---                    CASE
---                        WHEN faction.label = 'Boston Cybernetics'
---                            THEN CASE WHEN type = 'MECH' THEN 'Daison Avionics' ELSE 'Archon Miltech' END
---                        WHEN faction.label = 'Zaibatsu Heavy Industries'
---                            THEN CASE WHEN type = 'MECH' THEN 'x3 Wartech' ELSE 'Warsui' END
---                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                            THEN CASE WHEN type = 'MECH' THEN 'Unified Martian Corporation' ELSE 'Pyrotronics' END
---                        END
---         --12% for camo
---                WHEN i > ((.60 * amount_of_type) + previous_crates) AND
---                     i <= ((.72 * amount_of_type) + previous_crates)
---                    THEN
---                    CASE
---                        WHEN faction.label = 'Boston Cybernetics'
---                            THEN 'Blue Camo'
---                        WHEN faction.label = 'Zaibatsu Heavy Industries'
---                            THEN 'White Camo'
---                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                            THEN 'Red Camo'
---                        END
---         --12% for Gold
---                WHEN i > ((.72 * amount_of_type) + previous_crates) AND
---                     i <= ((.84 * amount_of_type) + previous_crates)
---                    THEN 'Gold'
---         --8%
---                WHEN i > ((.84 * amount_of_type) + previous_crates) AND
---                     i <= ((.92 * amount_of_type) + previous_crates)
---                    THEN
---                    CASE
---                        WHEN faction.label = 'Boston Cybernetics'
---                            THEN 'Police'
---                        WHEN faction.label = 'Zaibatsu Heavy Industries'
---                            THEN 'Ninja'
---                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                            THEN 'Mining'
---                        END
---         --8% color
---                WHEN i > ((.92 * amount_of_type) + previous_crates) AND
---                     i <= ((1 * amount_of_type) + previous_crates)
---                    THEN
---                    CASE
---                        WHEN faction.label = 'Boston Cybernetics'
---                            THEN 'Crystal'
---                        WHEN faction.label = 'Zaibatsu Heavy Industries'
---                            THEN 'Neon'
---                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
---                            THEN 'Molten'
---                        END
---         END;
--- END;
--- $$;
---
+-- set default skins for mech model
+
+DO
+$$
+    DECLARE
+        model MECH_MODELS%ROWTYPE;
+    BEGIN
+        FOR model IN SELECT * FROM mech_models WHERE default_chassis_skin_id IS NULL
+            LOOP
+                CASE
+                    WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
+                        THEN UPDATE mech_models
+                             SET default_chassis_skin_id = (SELECT id
+                                                            FROM blueprint_mech_skin
+                                                            WHERE mech_model = model.id
+                                                              AND label = 'ZHI Default')
+                             WHERE id = model.id;
+                    WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                        THEN UPDATE mech_models
+                             SET default_chassis_skin_id = (SELECT id
+                                                            FROM blueprint_mech_skin
+                                                            WHERE mech_model = model.id
+                                                              AND label = 'BC Default')
+                             WHERE id = model.id;
+                    WHEN model.faction_id =
+                         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
+                        THEN UPDATE mech_models
+                             SET default_chassis_skin_id = (SELECT id
+                                                            FROM blueprint_mech_skin
+                                                            WHERE mech_model = model.id
+                                                              AND label = 'RMOMC Default')
+                             WHERE id = model.id;
+                    WHEN model.faction_id IS NULL THEN UPDATE mech_models
+                                                       SET default_chassis_skin_id = (SELECT id
+                                                                                      FROM blueprint_mech_skin
+                                                                                      WHERE mech_model = model.id
+                                                                                        AND label = model.label)
+                                                       WHERE id = model.id;
+                    END CASE;
+            END LOOP;
+    END;
+$$;
+
+ALTER TABLE mech_models
+    ALTER COLUMN default_chassis_skin_id SET NOT NULL;
+
+ALTER TABLE blueprint_mechs
+    DROP COLUMN skin;
+
+DO
+$$
+    DECLARE
+        mech_model MECH_MODELS%ROWTYPE;
+    BEGIN
+        FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
+            LOOP
+                INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
+                                             max_hitpoints, model_id, power_core_size)
+                VALUES (mech_model.brand_id,
+                        CONCAT((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
+                        LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', '_'), '_',
+                                     REPLACE(mech_model.label, ' ', '_'))),
+                        CASE --hardpoints
+                            WHEN mech_model.mech_type = 'PLATFORM' THEN 5
+                            ELSE 2
+                            END,
+                        CASE -- utility slots
+                            WHEN mech_model.mech_type = 'PLATFORM' THEN 2
+                            ELSE 4
+                            END,
+                        CASE --speed
+                            WHEN mech_model.mech_type = 'PLATFORM' THEN 1000
+                            ELSE 2000
+                            END,
+                        CASE --max_hitpoints
+                            WHEN mech_model.mech_type = 'PLATFORM' THEN 3000
+                            ELSE 1500
+                            END,
+                        mech_model.id,
+                        CASE --max_hitpoints
+                            WHEN mech_model.mech_type = 'PLATFORM' THEN 'MEDIUM'
+                            ELSE 'SMALL'
+                            END);
+            END LOOP;
+    END;
+$$;
+
+
+INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_rate, recharge_rate, armour,
+                                   max_hitpoints)
+VALUES ('supremacy-general', 'Medium Energy Core', 'MEDIUM', 1500, 150, 100, 0, 1500);
+
+-- seeding mystery crates
+-- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount
+DO
+$$
+    BEGIN
+        FOR COUNT IN 1..500 --change to 5000
+            LOOP
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
+                        'Red Mountain War Machine Mystery Crate');
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'),
+                        'Zaibatsu Nexus War Machine Mystery Crate');
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'),
+                        'Boston Cybernetics Nexus War Machine Mystery Crate');
+            END LOOP;
+    END;
+$$;
+
+DO
+$$
+    BEGIN
+        FOR COUNT IN 1..2000 -- change to 20000
+            LOOP
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('WEAPON',
+                        (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
+                        'Red Mountain Nexus Weapon Mystery Crate');
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'),
+                        'Zaibatsu Nexus Weapon Mystery Crate');
+                INSERT INTO mystery_crate (type, faction_id, label)
+                VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'),
+                        'Boston Cybernetics Nexus Weapon Mystery Crate');
+            END LOOP;
+    END;
+$$;
+
+-- seeding crate blueprints
+DROP FUNCTION IF EXISTS insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD);
+CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+    VALUES (mechCrate_id, 'MECH', (SELECT id
+                                   FROM blueprint_mechs
+                                   WHERE blueprint_mechs.power_core_size = core_size
+                                     AND blueprint_mechs.brand_id =
+                                         CASE
+                                             WHEN faction.label = 'Boston Cybernetics'
+                                                 THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')
+                                             WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                 THEN (SELECT id FROM brands WHERE label = 'x3 Wartech')
+                                             WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                 THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
+                                             END));
+END;
+$$;
+
+DROP FUNCTION IF EXISTS insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
+                                                    previous_crates NUMERIC, faction RECORD);
+CREATE FUNCTION insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
+                                            previous_crates NUMERIC, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+
+    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+    VALUES (mechCrate_id, 'MECH_SKIN', (SELECT id
+                                        FROM blueprint_mech_skin
+                                        WHERE mech_type = mechType::MECH_TYPE
+                                          AND blueprint_mech_skin.mech_model =
+                                              CASE
+                                                  WHEN faction.label = 'Boston Cybernetics'
+                                                      THEN (SELECT id
+                                                            FROM mech_models
+                                                            WHERE label = CONCAT('BC ', INITCAP(mechType)))
+                                                  WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                      THEN (SELECT id
+                                                            FROM mech_models
+                                                            WHERE label = CONCAT('ZHI ', INITCAP(mechType)))
+                                                  WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                      THEN (SELECT id
+                                                            FROM mech_models
+                                                            WHERE label = CONCAT('RMOMC ', INITCAP(mechType)))
+                                                  END
+                                          AND label = get_skin_label_rarity(i, 'MECH', amount_of_type, previous_crates,
+                                                                            faction)));
+END;
+$$;
+
+DROP FUNCTION IF EXISTS get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
+                                              faction RECORD);
+CREATE FUNCTION get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
+                                      faction RECORD) RETURNS TEXT
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+    RETURN CASE
+        --30% default skin
+               WHEN i <= ((.30 * amount_of_type) + previous_crates)
+                   THEN
+                   CASE
+                       WHEN faction.label = 'Boston Cybernetics'
+                           THEN 'BC Default'
+                       WHEN faction.label = 'Zaibatsu Heavy Industries'
+                           THEN 'ZHI Default'
+                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                           THEN 'RMOMC Default'
+                       END
+        --30% for manufacturer's skin
+               WHEN i > ((.30 * amount_of_type) + previous_crates) AND
+                    i <= ((.60 * amount_of_type) + previous_crates)
+                   THEN
+                   CASE
+                       WHEN faction.label = 'Boston Cybernetics'
+                           THEN CASE WHEN type = 'MECH' THEN 'Daison Avionics' ELSE 'Archon Miltech' END
+                       WHEN faction.label = 'Zaibatsu Heavy Industries'
+                           THEN CASE WHEN type = 'MECH' THEN 'x3 Wartech' ELSE 'Warsui' END
+                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                           THEN CASE WHEN type = 'MECH' THEN 'Unified Martian Corporation' ELSE 'Pyrotronics' END
+                       END
+        --12% for camo
+               WHEN i > ((.60 * amount_of_type) + previous_crates) AND
+                    i <= ((.72 * amount_of_type) + previous_crates)
+                   THEN
+                   CASE
+                       WHEN faction.label = 'Boston Cybernetics'
+                           THEN 'Blue Camo'
+                       WHEN faction.label = 'Zaibatsu Heavy Industries'
+                           THEN 'White Camo'
+                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                           THEN 'Red Camo'
+                       END
+        --12% for Gold
+               WHEN i > ((.72 * amount_of_type) + previous_crates) AND
+                    i <= ((.84 * amount_of_type) + previous_crates)
+                   THEN 'Gold'
+        --8%
+               WHEN i > ((.84 * amount_of_type) + previous_crates) AND
+                    i <= ((.92 * amount_of_type) + previous_crates)
+                   THEN
+                   CASE
+                       WHEN faction.label = 'Boston Cybernetics'
+                           THEN 'Police'
+                       WHEN faction.label = 'Zaibatsu Heavy Industries'
+                           THEN 'Ninja'
+                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                           THEN 'Mining'
+                       END
+        --8% color
+               WHEN i > ((.92 * amount_of_type) + previous_crates) AND
+                    i <= ((1 * amount_of_type) + previous_crates)
+                   THEN
+                   CASE
+                       WHEN faction.label = 'Boston Cybernetics'
+                           THEN 'Crystal'
+                       WHEN faction.label = 'Zaibatsu Heavy Industries'
+                           THEN 'Neon'
+                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                           THEN 'Lava'
+                       END
+        END;
+END;
+$$;
+
 -- DROP FUNCTION IF EXISTS insert_weapon_skin_into_crate(i INTEGER, weaponCrate_id UUID, weaponType TEXT,
 --                                                       amount_of_type NUMERIC,
 --                                                       previous_crates NUMERIC, type TEXT, skin_label TEXT,
@@ -1206,24 +1204,24 @@ $$;
 --     DROP COLUMN faction_id;
 -- ALTER TABLE mech_models
 --     DROP COLUMN faction_id;
---
--- --seeding storefront
--- -- for each faction, seed each type of crate and find how much are for sale
--- DO
--- $$
---     DECLARE
---         faction FACTIONS%ROWTYPE;
---     BEGIN
---         FOR faction IN SELECT * FROM factions
---             LOOP
---                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
---                 VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
---                         faction.id, 500000000000000000000);
---                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
---                 VALUES ('WEAPON',
---                         (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
---                         faction.id, 500000000000000000000);
---             END LOOP;
---     END;
--- $$;
---
+
+--seeding storefront
+-- for each faction, seed each type of crate and find how much are for sale
+DO
+$$
+    DECLARE
+        faction FACTIONS%ROWTYPE;
+    BEGIN
+        FOR faction IN SELECT * FROM factions
+            LOOP
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
+                        faction.id, 8000000000000000000000);
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                VALUES ('WEAPON',
+                        (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
+                        faction.id, 4000000000000000000000);
+            END LOOP;
+    END;
+$$;
+
