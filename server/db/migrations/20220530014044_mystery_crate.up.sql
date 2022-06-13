@@ -80,7 +80,7 @@ INSERT INTO brands (faction_id, label)
 VALUES ((SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Archon Miltech');
 
 INSERT INTO brands (faction_id, label)
-VALUES ((SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'x3 Wartech');
+VALUES ((SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'X3 Wartech');
 INSERT INTO brands (faction_id, label)
 VALUES ((SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Warsui');
 
@@ -205,7 +205,7 @@ $$
                             WHERE faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
             LOOP
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC Default', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Daison Avionics', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Archon Miltech', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
@@ -243,7 +243,7 @@ $$
                             WHERE faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
             LOOP
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZHI Default', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('X3 Wartech', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Warsui', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
@@ -283,7 +283,7 @@ $$
                                   (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
             LOOP
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RMOMC Default', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Unified Martian Corporation', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Pyrotronics', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
@@ -326,14 +326,14 @@ $$
                              SET default_skin_id = (SELECT id
                                                     FROM blueprint_weapon_skin
                                                     WHERE weapon_model_id = weapon_model.id
-                                                      AND label = 'ZHI Default')
+                                                      AND label = 'X3 Wartech')
                              WHERE id = weapon_model.id;
                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN UPDATE weapon_models
                              SET default_skin_id = (SELECT id
                                                     FROM blueprint_weapon_skin
                                                     WHERE weapon_model_id = weapon_model.id
-                                                      AND label = 'BC Default')
+                                                      AND label = 'Daison Avionics')
                              WHERE id = weapon_model.id;
                     WHEN weapon_model.faction_id =
                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
@@ -341,7 +341,7 @@ $$
                              SET default_skin_id = (SELECT id
                                                     FROM blueprint_weapon_skin
                                                     WHERE weapon_model_id = weapon_model.id
-                                                      AND label = 'RMOMC Default')
+                                                      AND label = 'Unified Martian Corporation')
                              WHERE id = weapon_model.id;
                     WHEN weapon_model.faction_id IS NULL THEN UPDATE weapon_models
                                                               SET default_skin_id = (SELECT id
@@ -478,10 +478,10 @@ VALUES ('ANNIHILATOR', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Daison 
         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
 
 INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('KENJI', 'HUMANOID', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
+VALUES ('KENJI', 'HUMANOID', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
 INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('SHIROKUMA', 'PLATFORM', (SELECT id FROM brands WHERE label = 'x3 Wartech'),
+VALUES ('SHIROKUMA', 'PLATFORM', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
 
 INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
@@ -513,7 +513,7 @@ $$
                 CASE
                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'BC Default', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'Archon Miltech', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
@@ -527,9 +527,9 @@ $$
 
                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'ZHI Default', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'Warsui', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'x3 Wartech', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'X3 Wartech', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'White Camo', mech_model.mech_type, 'RARE');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
@@ -542,7 +542,7 @@ $$
                     WHEN mech_model.faction_id =
                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'RMOMC Default', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'Pyrotronics', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
@@ -573,14 +573,14 @@ $$
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'ZHI Default')
+                                                              AND label = 'Warsui')
                              WHERE id = model.id;
                     WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN UPDATE mech_models
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'BC Default')
+                                                              AND label = 'Archon Miltech')
                              WHERE id = model.id;
                     WHEN model.faction_id =
                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
@@ -588,7 +588,7 @@ $$
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'RMOMC Default')
+                                                              AND label = 'Pyrotronics')
                              WHERE id = model.id;
                     WHEN model.faction_id IS NULL THEN UPDATE mech_models
                                                        SET default_chassis_skin_id = (SELECT id
@@ -704,7 +704,7 @@ BEGIN
                                              WHEN faction.label = 'Boston Cybernetics'
                                                  THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')
                                              WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                 THEN (SELECT id FROM brands WHERE label = 'x3 Wartech')
+                                                 THEN (SELECT id FROM brands WHERE label = 'X3 Wartech')
                                              WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                  THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                                              END));
@@ -734,7 +734,7 @@ BEGIN
                                                             FROM mech_models mm
                                                             WHERE mm.mech_type = mechType::MECH_TYPE
                                                               AND mm.brand_id =
-                                                                  (SELECT id FROM brands WHERE brands.label = 'x3 Wartech'))
+                                                                  (SELECT id FROM brands WHERE brands.label = 'X3 Wartech'))
                                                   WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                       THEN (SELECT id
                                                             FROM mech_models mm
@@ -748,76 +748,153 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
-                                              faction RECORD);
-CREATE FUNCTION get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
-                                      faction RECORD) RETURNS TEXT
+DROP FUNCTION IF EXISTS get_mech_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC,
+                                                   previous_crates NUMERIC,
+                                                   faction RECORD);
+CREATE FUNCTION get_mech_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
+                                           faction RECORD) RETURNS TEXT
     LANGUAGE plpgsql AS
 $$
 BEGIN
     RETURN CASE
-        --30% default skin
+        --30% mech manufacturer
                WHEN i <= ((.30 * amount_of_type) + previous_crates)
                    THEN
                    CASE
-                       WHEN faction.label = 'Boston Cybernetics'
-                           THEN 'BC Default'
-                       WHEN faction.label = 'Zaibatsu Heavy Industries'
-                           THEN 'ZHI Default'
-                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                           THEN 'RMOMC Default'
+                       WHEN type = 'MECH' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'Daison Avionics'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'X3 Wartech'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'Unified Martian Corporation'
+                               END
+                       WHEN type = 'WEAPON' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'BC_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'ZAI_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'RM_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                               END
                        END
-        --30% for manufacturer's skin
+
+
+        --30% weapons manufacturer
                WHEN i > ((.30 * amount_of_type) + previous_crates) AND
                     i <= ((.60 * amount_of_type) + previous_crates)
                    THEN
                    CASE
-                       WHEN faction.label = 'Boston Cybernetics'
-                           THEN CASE WHEN type = 'MECH' THEN 'Daison Avionics' ELSE 'Archon Miltech' END
-                       WHEN faction.label = 'Zaibatsu Heavy Industries'
-                           THEN CASE WHEN type = 'MECH' THEN 'x3 Wartech' ELSE 'Warsui' END
-                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                           THEN CASE WHEN type = 'MECH' THEN 'Unified Martian Corporation' ELSE 'Pyrotronics' END
+                       WHEN type = 'MECH' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'Archon Miltech'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'Warsui'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'Pyrotronics'
+                               END
+                       WHEN type = 'WEAPON' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'BC_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'ZAI_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'RM_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                               END
                        END
+
         --15% for camo
                WHEN i > ((.60 * amount_of_type) + previous_crates) AND
                     i <= ((.75 * amount_of_type) + previous_crates)
                    THEN
                    CASE
-                       WHEN faction.label = 'Boston Cybernetics'
-                           THEN 'Blue Camo'
-                       WHEN faction.label = 'Zaibatsu Heavy Industries'
-                           THEN 'White Camo'
-                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                           THEN 'Red Camo'
+                       WHEN type = 'MECH' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'Blue Camo'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'White Camo'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'Red Camo'
+                               END
+                       WHEN type = 'WEAPON' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'BC_WEAPON_CRATE_SKIN_RARE'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'ZAI_WEAPON_CRATE_SKIN_RARE'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'RM_WEAPON_CRATE_SKIN_RARE'
+                               END
                        END
+
         --12.5% for Gold
                WHEN i > ((.75 * amount_of_type) + previous_crates) AND
                     i <= ((.875 * amount_of_type) + previous_crates)
-                   THEN 'Gold'
+                   THEN CASE
+                            WHEN type = 'MECH' THEN 'Gold'
+                            WHEN type = 'WEAPON' THEN
+                                CASE
+                                    WHEN faction.label = 'Boston Cybernetics'
+                                        THEN 'BC_WEAPON_CRATE_SKIN_LEGENDARY'
+                                    WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                        THEN 'ZAI_WEAPON_CRATE_SKIN_LEGENDARY'
+                                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                        THEN 'RM_WEAPON_CRATE_SKIN_LEGENDARY'
+                                    END
+                   END
+
         --10% for exotic
                WHEN i > ((.875 * amount_of_type) + previous_crates) AND
                     i <= ((.975 * amount_of_type) + previous_crates)
                    THEN
                    CASE
-                       WHEN faction.label = 'Boston Cybernetics'
-                           THEN 'Police'
-                       WHEN faction.label = 'Zaibatsu Heavy Industries'
-                           THEN 'Ninja'
-                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                           THEN 'Mining'
+                       WHEN type = 'MECH' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'Police'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'Ninja'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'Mining'
+                               END
+                       WHEN type = 'WEAPON' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'BC_WEAPON_CRATE_SKIN_EXOTIC'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'ZAI_WEAPON_CRATE_SKIN_EXOTIC'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'RM_WEAPON_CRATE_SKIN_EXOTIC'
+                               END
                        END
         --2.5% mythic
                WHEN i > ((.975 * amount_of_type) + previous_crates) AND
                     i <= ((1 * amount_of_type) + previous_crates)
                    THEN
                    CASE
-                       WHEN faction.label = 'Boston Cybernetics'
-                           THEN 'Crystal'
-                       WHEN faction.label = 'Zaibatsu Heavy Industries'
-                           THEN 'Neon'
-                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                           THEN 'Lava'
+                       WHEN type = 'MECH' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'Crystal'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'Neon'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'Lava'
+                               END
+                       WHEN type = 'WEAPON' THEN
+                           CASE
+                               WHEN faction.label = 'Boston Cybernetics'
+                                   THEN 'BC_WEAPON_CRATE_SKIN_MYTHIC'
+                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                   THEN 'ZAI_WEAPON_CRATE_SKIN_MYTHIC'
+                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                   THEN 'RM_WEAPON_CRATE_SKIN_MYTHIC'
+                               END
                        END
         END;
 END;
@@ -860,9 +937,9 @@ BEGIN
                                                   CASE
                                                       WHEN type = 'MECH'
                                                           THEN skin_label
-                                                      ELSE get_skin_label_rarity(i, 'WEAPON', amount_of_type,
-                                                                                 previous_crates,
-                                                                                 faction)
+                                                      ELSE get_mech_skin_label_rarity(i, 'WEAPON', amount_of_type,
+                                                                                      previous_crates,
+                                                                                      faction)
                                                       END
 --
     ));
@@ -894,14 +971,13 @@ $$;
 DO
 $$
     DECLARE
-        faction                   FACTIONS%ROWTYPE;
-        DECLARE mechCrate         MYSTERY_CRATE%ROWTYPE;
-        DECLARE weaponCrate       MYSTERY_CRATE%ROWTYPE;
-        DECLARE i                 INTEGER;
-        DECLARE mechCrateLen      INTEGER;
-        DECLARE weaponCrateLen    INTEGER;
-        DECLARE weapon_skin_label TEXT;
-        DECLARE mech_skin_label   TEXT;
+        faction                 FACTIONS%ROWTYPE;
+        DECLARE mechCrate       MYSTERY_CRATE%ROWTYPE;
+        DECLARE weaponCrate     MYSTERY_CRATE%ROWTYPE;
+        DECLARE i               INTEGER;
+        DECLARE mechCrateLen    INTEGER;
+        DECLARE weaponCrateLen  INTEGER;
+        DECLARE mech_skin_label TEXT;
 
     BEGIN
         --for each faction loop over the mystery crates of specified faction
@@ -913,8 +989,8 @@ $$
                 -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
                 FOR mechCrate IN SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
                     LOOP
-                        weapon_skin_label := get_skin_label_rarity(i, 'WEAPON', (.8 * mechCrateLen), 0, faction);
-                        mech_skin_label := get_skin_label_rarity(i, 'MECH', (.8 * mechCrateLen), 0, faction);
+
+                        mech_skin_label := get_mech_skin_label_rarity(i, 'MECH', (.8 * mechCrateLen), 0, faction);
                         CASE
                             WHEN i <= (mechCrateLen * .8) -- seed humanoid mechs
                                 THEN PERFORM insert_mech_into_crate('SMALL', mechCrate.id, faction);
@@ -929,24 +1005,21 @@ $$
                                      PERFORM insert_weapon_into_crate(mechCrate.id, 'Flak', faction);
                                      PERFORM insert_weapon_skin_into_crate(i, mechCrate.id, 'Flak',
                                                                            (.8 * mechCrateLen),
-                                                                           0, 'MECH', weapon_skin_label,
+                                                                           0, 'MECH', mech_skin_label,
                                                                            faction);
 
                                      PERFORM insert_weapon_into_crate(mechCrate.id, 'Machine Gun', faction);
                                      PERFORM insert_weapon_skin_into_crate(i, mechCrate.id, 'Machine Gun',
                                                                            (.8 * mechCrateLen),
-                                                                           0, 'MECH', weapon_skin_label,
+                                                                           0, 'MECH', mech_skin_label,
                                                                            faction);
 
 
                                      i := i + 1;
                             -- for other half of the Mechs, insert a mech object from the appropriate brand's platform mechs and a fitted power core
-                            ELSE weapon_skin_label :=
-                                         get_skin_label_rarity(i, 'WEAPON', (.2 * mechCrateLen), .8 * mechCrateLen,
-                                                               faction);
-                                 mech_skin_label :=
-                                         get_skin_label_rarity(i, 'MECH', (.2 * mechCrateLen), .8 * mechCrateLen,
-                                                               faction);
+                            ELSE mech_skin_label :=
+                                         get_mech_skin_label_rarity(i, 'MECH', (.2 * mechCrateLen), .8 * mechCrateLen,
+                                                                    faction);
 
                                  PERFORM insert_mech_into_crate('MEDIUM', mechCrate.id, faction);
                                  PERFORM insert_mech_skin_into_crate(mechCrate.id, 'PLATFORM',
@@ -960,13 +1033,13 @@ $$
                                  PERFORM insert_weapon_into_crate(mechCrate.id, 'Flak', faction);
                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id, 'Flak',
                                                                        (.2 * mechCrateLen),
-                                                                       (.8 * mechCrateLen), 'MECH', weapon_skin_label,
+                                                                       (.8 * mechCrateLen), 'MECH', mech_skin_label,
                                                                        faction);
 
                                  PERFORM insert_weapon_into_crate(mechCrate.id, 'Machine Gun', faction);
                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id, 'Machine Gun',
                                                                        (.2 * mechCrateLen),
-                                                                       (.8 * mechCrateLen), 'MECH', weapon_skin_label,
+                                                                       (.8 * mechCrateLen), 'MECH', mech_skin_label,
                                                                        faction);
                                  i = i + 1;
                             END CASE;
