@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,20 +24,21 @@ import (
 
 // BlueprintWeaponSkin is an object representing the database table.
 type BlueprintWeaponSkin struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	WeaponType       string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
-	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	WeaponModelID    string      `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id" toml:"weapon_model_id" yaml:"weapon_model_id"`
+	ID               string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label            string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	WeaponType       string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	Tier             string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt        time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ImageURL         null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String         `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String         `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	Collection       string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	WeaponModelID    string              `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id" toml:"weapon_model_id" yaml:"weapon_model_id"`
+	StatModifier     decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
 
 	R *blueprintWeaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +59,7 @@ var BlueprintWeaponSkinColumns = struct {
 	YoutubeURL       string
 	Collection       string
 	WeaponModelID    string
+	StatModifier     string
 }{
 	ID:               "id",
 	Label:            "label",
@@ -72,6 +75,7 @@ var BlueprintWeaponSkinColumns = struct {
 	YoutubeURL:       "youtube_url",
 	Collection:       "collection",
 	WeaponModelID:    "weapon_model_id",
+	StatModifier:     "stat_modifier",
 }
 
 var BlueprintWeaponSkinTableColumns = struct {
@@ -89,6 +93,7 @@ var BlueprintWeaponSkinTableColumns = struct {
 	YoutubeURL       string
 	Collection       string
 	WeaponModelID    string
+	StatModifier     string
 }{
 	ID:               "blueprint_weapon_skin.id",
 	Label:            "blueprint_weapon_skin.label",
@@ -104,6 +109,7 @@ var BlueprintWeaponSkinTableColumns = struct {
 	YoutubeURL:       "blueprint_weapon_skin.youtube_url",
 	Collection:       "blueprint_weapon_skin.collection",
 	WeaponModelID:    "blueprint_weapon_skin.weapon_model_id",
+	StatModifier:     "blueprint_weapon_skin.stat_modifier",
 }
 
 // Generated where
@@ -123,6 +129,7 @@ var BlueprintWeaponSkinWhere = struct {
 	YoutubeURL       whereHelpernull_String
 	Collection       whereHelperstring
 	WeaponModelID    whereHelperstring
+	StatModifier     whereHelperdecimal_NullDecimal
 }{
 	ID:               whereHelperstring{field: "\"blueprint_weapon_skin\".\"id\""},
 	Label:            whereHelperstring{field: "\"blueprint_weapon_skin\".\"label\""},
@@ -138,6 +145,7 @@ var BlueprintWeaponSkinWhere = struct {
 	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"youtube_url\""},
 	Collection:       whereHelperstring{field: "\"blueprint_weapon_skin\".\"collection\""},
 	WeaponModelID:    whereHelperstring{field: "\"blueprint_weapon_skin\".\"weapon_model_id\""},
+	StatModifier:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapon_skin\".\"stat_modifier\""},
 }
 
 // BlueprintWeaponSkinRels is where relationship names are stored.
@@ -164,9 +172,9 @@ func (*blueprintWeaponSkinR) NewStruct() *blueprintWeaponSkinR {
 type blueprintWeaponSkinL struct{}
 
 var (
-	blueprintWeaponSkinAllColumns            = []string{"id", "label", "weapon_type", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "collection", "weapon_model_id"}
+	blueprintWeaponSkinAllColumns            = []string{"id", "label", "weapon_type", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "collection", "weapon_model_id", "stat_modifier"}
 	blueprintWeaponSkinColumnsWithoutDefault = []string{"label", "weapon_type", "weapon_model_id"}
-	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "collection"}
+	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "collection", "stat_modifier"}
 	blueprintWeaponSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponSkinGeneratedColumns      = []string{}
 )

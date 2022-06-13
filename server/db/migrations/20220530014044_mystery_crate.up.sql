@@ -173,8 +173,8 @@ VALUES ('Sword', 'Sword', (SELECT id FROM brands WHERE label = 'Boston Cyberneti
 INSERT INTO weapon_models (label, weapon_type, brand_id)
 VALUES ('Laser Sword', 'Sword', (SELECT id FROM brands WHERE label = 'Zaibatsu Heavy Industries'));
 
--- -- seed blueprint_weapons_skins
--- --genesis weapons w/o a faction
+-- seed blueprint_weapons_skins
+--genesis weapons w/o a faction
 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type)
 VALUES ('Plasma Rifle', (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle'),
         (SELECT weapon_type FROM weapon_models WHERE label = 'Plasma Rifle'));
@@ -194,7 +194,7 @@ INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type)
 VALUES ('Laser Sword', (SELECT id FROM weapon_models WHERE label = 'Laser Sword'),
         (SELECT weapon_type FROM weapon_models WHERE label = 'Laser Sword'));
 
---TODO: insert 6 skins for each
+-- TODO: change weapon crate skin placeholder names
 DO
 $$
     DECLARE
@@ -469,7 +469,6 @@ UPDATE mech_models
 SET faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
 WHERE label = 'Olympus Mons LY07';
 
---!!: labels to be renamed
 INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
 VALUES ('WAR ENFORCER', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
@@ -976,7 +975,6 @@ $$
         DECLARE weaponCrate     MYSTERY_CRATE%ROWTYPE;
         DECLARE i               INTEGER;
         DECLARE mechCrateLen    INTEGER;
-        DECLARE weaponCrateLen  INTEGER;
         DECLARE mech_skin_label TEXT;
 
     BEGIN
@@ -1047,10 +1045,6 @@ $$
 
                 -- for weapons crates of each faction, insert weapon blueprint.
                 i := 1;
-                weaponCrateLen := (SELECT COUNT(*)
-                                   FROM mystery_crate
-                                   WHERE faction_id = faction.id
-                                     AND type = 'WEAPON'); --length of crate rows to be allocated to 1 type of weapon
                 FOR weaponCrate IN SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'WEAPON'
                     LOOP
                         CASE
@@ -1148,11 +1142,11 @@ $$
             LOOP
                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
                 VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
-                        faction.id, 8000000000000000000000);
+                        faction.id, 3000000000000000000000);
                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
                 VALUES ('WEAPON',
                         (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
-                        faction.id, 4000000000000000000000);
+                        faction.id, 600000000000000000000);
             END LOOP;
     END;
 $$;

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,20 +24,21 @@ import (
 
 // BlueprintMechSkin is an object representing the database table.
 type BlueprintMechSkin struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	MechModel        string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
-	MechType         null.String `boiler:"mech_type" boil:"mech_type" json:"mech_type,omitempty" toml:"mech_type" yaml:"mech_type,omitempty"`
+	ID               string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection       string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	MechModel        string              `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
+	Label            string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier             string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	ImageURL         null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	AnimationURL     null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	CardAnimationURL null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	LargeImageURL    null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	AvatarURL        null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	CreatedAt        time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BackgroundColor  null.String         `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	YoutubeURL       null.String         `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	MechType         null.String         `boiler:"mech_type" boil:"mech_type" json:"mech_type,omitempty" toml:"mech_type" yaml:"mech_type,omitempty"`
+	StatModifier     decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +59,7 @@ var BlueprintMechSkinColumns = struct {
 	BackgroundColor  string
 	YoutubeURL       string
 	MechType         string
+	StatModifier     string
 }{
 	ID:               "id",
 	Collection:       "collection",
@@ -72,6 +75,7 @@ var BlueprintMechSkinColumns = struct {
 	BackgroundColor:  "background_color",
 	YoutubeURL:       "youtube_url",
 	MechType:         "mech_type",
+	StatModifier:     "stat_modifier",
 }
 
 var BlueprintMechSkinTableColumns = struct {
@@ -89,6 +93,7 @@ var BlueprintMechSkinTableColumns = struct {
 	BackgroundColor  string
 	YoutubeURL       string
 	MechType         string
+	StatModifier     string
 }{
 	ID:               "blueprint_mech_skin.id",
 	Collection:       "blueprint_mech_skin.collection",
@@ -104,6 +109,7 @@ var BlueprintMechSkinTableColumns = struct {
 	BackgroundColor:  "blueprint_mech_skin.background_color",
 	YoutubeURL:       "blueprint_mech_skin.youtube_url",
 	MechType:         "blueprint_mech_skin.mech_type",
+	StatModifier:     "blueprint_mech_skin.stat_modifier",
 }
 
 // Generated where
@@ -123,6 +129,7 @@ var BlueprintMechSkinWhere = struct {
 	BackgroundColor  whereHelpernull_String
 	YoutubeURL       whereHelpernull_String
 	MechType         whereHelpernull_String
+	StatModifier     whereHelperdecimal_NullDecimal
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
@@ -138,6 +145,7 @@ var BlueprintMechSkinWhere = struct {
 	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_mech_skin\".\"background_color\""},
 	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"youtube_url\""},
 	MechType:         whereHelpernull_String{field: "\"blueprint_mech_skin\".\"mech_type\""},
+	StatModifier:     whereHelperdecimal_NullDecimal{field: "\"blueprint_mech_skin\".\"stat_modifier\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
@@ -167,9 +175,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"mech_model", "label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )
