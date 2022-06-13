@@ -102,6 +102,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				item_sales.owner_id,
 				item_sales.auction_reserved_price,
 				item_sales.buyout_price,
+				item_sales.dutch_auction,
 				item_sales.dutch_auction_drop_rate,
 				item_sales.created_at,
 				(collection_items.xsyn_locked OR collection_items.market_locked) AS item_locked,
@@ -181,6 +182,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					dutchAuctionAmount = decimal.New(1, 18)
 				}
 			}
+
+			fmt.Println("Test", auctionItem.AuctionBidPrice.String(), dutchAuctionAmount.String(), dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice))
 
 			if dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice) {
 				numProcessed++
