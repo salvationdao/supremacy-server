@@ -249,6 +249,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
 func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, error) {
 	output := &server.MarketplaceSaleItem1155{}
+	boil.DebugMode = true
 	err := boiler.ItemKeycardSales(
 		append(
 			itemKeycardSaleQueryMods,
@@ -286,6 +287,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.Keycard.Syndicate,
 		&output.Keycard.CreatedAt,
 	)
+	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -294,6 +296,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
+	factionID string,
 	search string,
 	filter *ListFilterRequest,
 	rarities []string,
@@ -317,6 +320,10 @@ func MarketplaceItemSaleList(
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
+
+	if factionID != "" {
+		queryMods = append(queryMods, boiler.ItemSaleWhere.FactionID.EQ(factionID))
+	}
 
 	// Filters
 	if filter != nil {
@@ -433,7 +440,7 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
+func MarketplaceItemKeycardSaleList(factionID string, search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -444,6 +451,10 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, of
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
+
+	if factionID != "" {
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.FactionID.EQ(factionID))
+	}
 
 	// Filters
 	if filter != nil {
@@ -568,7 +579,9 @@ func MarketplaceSaleCreate(
 		obj.DutchAuction = true
 		obj.BuyoutPrice = decimal.NewNullDecimal(askingPrice.Decimal.Mul(decimal.New(1, 18)))
 		obj.DutchAuctionDropRate = decimal.NewNullDecimal(dutchAuctionDropRate.Decimal.Mul(decimal.New(1, 18)))
-		obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
+		if auctionReservedPrice.Valid {
+			obj.AuctionReservedPrice = decimal.NewNullDecimal(auctionReservedPrice.Decimal.Mul(decimal.New(1, 18)))
+		}
 	}
 
 	err := obj.Insert(conn, boil.Infer())
