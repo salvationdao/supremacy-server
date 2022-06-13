@@ -273,9 +273,6 @@ type MarketplaceSalesCreateRequest struct {
 	Payload struct {
 		ItemType             string              `json:"item_type"`
 		ItemID               uuid.UUID           `json:"item_id"`
-		HasBuyout            bool                `json:"has_buyout"`
-		HasAuction           bool                `json:"has_auction"`
-		HasDutchAuction      bool                `json:"has_dutch_auction"`
 		AskingPrice          decimal.NullDecimal `json:"asking_price"`
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
@@ -307,18 +304,34 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check price input
-	if req.Payload.HasBuyout || req.Payload.HasDutchAuction {
-		if !req.Payload.AskingPrice.Valid {
-			return terror.Error(terror.ErrInvalidInput, "Asking Price is required.")
+	hasBuyout := false
+	hasAuction := false
+	hasDutchAuction := false
+
+	if req.Payload.AskingPrice.Valid {
+		if req.Payload.DutchAuctionDropRate.Decimal.LessThanOrEqual(decimal.Zero) {
+			return terror.Error(fmt.Errorf("invalid asking price"), "Invalid asking price received.")
 		}
+		hasBuyout = true
 	}
-	if req.Payload.HasDutchAuction {
-		if !req.Payload.AuctionReservedPrice.Valid {
-			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
+	if req.Payload.DutchAuctionDropRate.Valid {
+		if req.Payload.DutchAuctionDropRate.Decimal.LessThanOrEqual(decimal.Zero) {
+			return terror.Error(fmt.Errorf("invalid drop rate"), "Invalid drop rate received.")
 		}
-		if !req.Payload.DutchAuctionDropRate.Valid {
-			return terror.Error(terror.ErrInvalidInput, "Drop Rate is required.")
+		hasDutchAuction = true
+	}
+	if req.Payload.AuctionCurrentPrice.Valid || req.Payload.AuctionReservedPrice.Valid {
+		if req.Payload.AuctionCurrentPrice.Valid && req.Payload.AuctionCurrentPrice.Decimal.LessThan(decimal.Zero) {
+			return terror.Error(fmt.Errorf("invalid auction current price"), "Invalid auction current price received.")
 		}
+		if req.Payload.AuctionReservedPrice.Valid && req.Payload.AuctionReservedPrice.Decimal.LessThan(decimal.Zero) {
+			return terror.Error(fmt.Errorf("invalid auction reserved price"), "Invalid auction reserved price received.")
+		}
+		hasAuction = true
+	}
+
+	if !hasBuyout && !hasAuction && !hasDutchAuction {
+		return terror.Error(fmt.Errorf("invalid sales input received"), "Unable to determine listing sale type from given input.")
 	}
 
 	// Check if allowed to sell item
@@ -450,12 +463,12 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		txid,
 		endAt,
 		collectionItemID,
-		req.Payload.HasBuyout,
+		hasBuyout,
 		req.Payload.AskingPrice,
-		req.Payload.HasAuction,
+		hasAuction,
 		req.Payload.AuctionReservedPrice,
 		req.Payload.AuctionCurrentPrice,
-		req.Payload.HasDutchAuction,
+		hasDutchAuction,
 		req.Payload.DutchAuctionDropRate,
 	)
 	if err != nil {
