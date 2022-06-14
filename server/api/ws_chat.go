@@ -12,6 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"sort"
 	"sync"
 	"time"
 
@@ -191,6 +192,11 @@ func NewChatroom(factionID string) *Chatroom {
 			},
 		}
 	}
+
+	// sort the messages to the correct order
+	sort.Slice(cms, func(i, j int) bool {
+		return cms[i].SentAt.Before(cms[j].SentAt)
+	})
 
 	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
