@@ -1,6 +1,7 @@
 package xsyn_rpcclient
 
 import (
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"server"
 	"server/gamelog"
 	"server/rpctypes"
@@ -160,6 +161,34 @@ func (pp *XsynXrpcClient) UpdateKeycardItem(keycardUpdate *UpdateUser1155AssetRe
 	err := pp.XrpcClient.Call("S.InsertUser1155AssetHandler", keycardUpdate, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Str("func", "S.InsertUser1155AssetHandler").Msg("rpc error")
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+type Asset1155CountUpdateSupremacyReq struct {
+	ApiKey         string      `json:"api_key"`
+	TokenID        int         `json:"token_id"`
+	Address        string      `json:"address"`
+	CollectionSlug string      `json:"collection_slug"`
+	Amount         int         `json:"amount"`
+	ImageURL       string      `json:"image_url"`
+	AnimationURL   null.String `json:"animation_url"`
+	KeycardGroup   string      `json:"keycard_group"`
+	Attributes     types.JSON  `json:"attributes"`
+	IsAdd          bool        `json:"is_add"`
+}
+
+type Asset1155CountUpdateSupremacyResp struct {
+	Count int `json:"count"`
+}
+
+func (pp *XsynXrpcClient) UpdateKeycardCountXSYN(keycardUpdateCount *Asset1155CountUpdateSupremacyReq) (*Asset1155CountUpdateSupremacyResp, error) {
+	resp := &Asset1155CountUpdateSupremacyResp{}
+
+	err := pp.XrpcClient.Call("S.AssetKeycardCountUpdateSupremacy", keycardUpdateCount, resp)
+	if err != nil {
 		return nil, err
 	}
 
