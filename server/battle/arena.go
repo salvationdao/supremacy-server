@@ -774,7 +774,8 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return nil
 	}
 	if wm.FactionID != factionID {
-		return fmt.Errorf("war machine faction id does not match")
+		gamelog.L.Warn().Str("war_machine_faction_id", wm.FactionID).Str("user_faction_id", factionID).Msg("War machine faction id does not match")
+		return nil
 	}
 
 	gameAbilities := []GameAbility{}
@@ -813,6 +814,8 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 	wm := arena.currentBattleWarMachine(participantID)
 
 	if wm != nil {
+		wm.RLock()
+		defer wm.RUnlock()
 		reply(WarMachineStat{
 			Position: wm.Position,
 			Rotation: wm.Rotation,

@@ -1299,6 +1299,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 	btl.lastTick = &payload
 
+	// return if the war machines list is not ready
+	if len(btl.WarMachines) == 0 {
+		return
+	}
+
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := payload[1]
 	var c byte
@@ -1314,7 +1319,7 @@ func (btl *Battle) Tick(payload []byte) {
 			// find Spawned AI
 			btl.spawnedAIMux.RLock()
 			for i, wmn := range btl.SpawnedAI {
-				if wmn.ParticipantID == participantID {
+				if checkWarMachineByParticipantID(wmn, int(participantID)) {
 					warMachineIndex = i
 					break
 				}
@@ -1330,7 +1335,7 @@ func (btl *Battle) Tick(payload []byte) {
 		} else {
 			// Mech
 			for i, wmn := range btl.WarMachines {
-				if wmn.ParticipantID == participantID {
+				if checkWarMachineByParticipantID(wmn, int(participantID)) {
 					warMachineIndex = i
 					break
 				}
@@ -1348,6 +1353,13 @@ func (btl *Battle) Tick(payload []byte) {
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
 
+		warmachine.Lock()
+		wms := WarMachineStat{
+			Position: warmachine.Position,
+			Rotation: warmachine.Rotation,
+			Health:   warmachine.Health,
+			Shield:   warmachine.Shield,
+		}
 		// Position + Yaw
 		if booleans[0] {
 			x := int(helpers.BytesToInt(payload[offset : offset+4]))
@@ -1362,7 +1374,9 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			warmachine.Position.X = x
 			warmachine.Position.Y = y
+			wms.Position = warmachine.Position
 			warmachine.Rotation = rotation
+			wms.Rotation = rotation
 
 		}
 		// Health
@@ -1370,6 +1384,7 @@ func (btl *Battle) Tick(payload []byte) {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Health = health
+			wms.Health = health
 
 		}
 		// Shield
@@ -1377,7 +1392,9 @@ func (btl *Battle) Tick(payload []byte) {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Shield = shield
+			wms.Shield = shield
 		}
+		warmachine.Unlock()
 
 		// Energy
 		if booleans[3] {
@@ -1385,12 +1402,7 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if participantID < 100 {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
-				Position: warmachine.Position,
-				Rotation: warmachine.Rotation,
-				Health:   warmachine.Health,
-				Shield:   warmachine.Shield,
-			})
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, wms)
 		}
 	}
 }
