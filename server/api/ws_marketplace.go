@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"math"
 	"server"
 	"server/asset"
@@ -15,6 +14,8 @@ import (
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -197,6 +198,8 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 		factionID,
 		req.Payload.Search,
 		req.Payload.Filter,
+		req.Payload.MinPrice,
+		req.Payload.MaxPrice,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -920,7 +923,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 	}
 
-	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
@@ -1226,7 +1229,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "You do not have enough sups.")
 	}
 
-	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 
 	// Pay sales cut fee amount to faction account
 	factionAccountID, ok := server.FactionUsers[user.FactionID.String]

@@ -453,7 +453,17 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(factionID string, search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
+func MarketplaceItemKeycardSaleList(
+	factionID string,
+	search string,
+	filter *ListFilterRequest,
+	minPrice decimal.NullDecimal,
+	maxPrice decimal.NullDecimal,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -497,6 +507,15 @@ func MarketplaceItemKeycardSaleList(factionID string, search string, filter *Lis
 				xsearch,
 			))
 		}
+	}
+
+	if minPrice.Valid {
+		value := minPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.GTE(value))
+	}
+	if maxPrice.Valid {
+		value := maxPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.LTE(value))
 	}
 
 	// Get total rows
