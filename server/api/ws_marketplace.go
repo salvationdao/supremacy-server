@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"math"
 	"server"
 	"server/asset"
@@ -15,6 +14,8 @@ import (
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -197,6 +198,8 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 		factionID,
 		req.Payload.Search,
 		req.Payload.Filter,
+		req.Payload.MinPrice,
+		req.Payload.MaxPrice,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
