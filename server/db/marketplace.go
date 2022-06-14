@@ -510,38 +510,12 @@ func MarketplaceItemKeycardSaleList(
 	}
 
 	if minPrice.Valid {
-		value := decimal.NewNullDecimal(minPrice.Decimal.Mul(decimal.New(1, 18)))
-		queryMods = append(queryMods, qm.Expr(
-			qm.Or2(
-				qm.Expr(
-					boiler.ItemSaleWhere.Buyout.EQ(true),
-					boiler.ItemSaleWhere.BuyoutPrice.GTE(value),
-				),
-			),
-			qm.Or2(
-				qm.Expr(
-					boiler.ItemSaleWhere.Auction.EQ(true),
-					boiler.ItemSaleWhere.AuctionCurrentPrice.GTE(value),
-				),
-			),
-		))
+		value := minPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.GTE(value))
 	}
 	if maxPrice.Valid {
-		value := decimal.NewNullDecimal(maxPrice.Decimal.Mul(decimal.New(1, 18)))
-		queryMods = append(queryMods, qm.Expr(
-			qm.Or2(
-				qm.Expr(
-					boiler.ItemSaleWhere.Buyout.EQ(true),
-					boiler.ItemSaleWhere.BuyoutPrice.LTE(value),
-				),
-			),
-			qm.Or2(
-				qm.Expr(
-					boiler.ItemSaleWhere.Auction.EQ(true),
-					boiler.ItemSaleWhere.AuctionCurrentPrice.LTE(value),
-				),
-			),
-		))
+		value := maxPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.LTE(value))
 	}
 
 	// Get total rows
