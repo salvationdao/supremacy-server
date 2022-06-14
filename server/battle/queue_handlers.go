@@ -270,16 +270,27 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 
 const WSMechArenaStatusUpdate = "PLAYER:ASSET:MECH:STATUS:UPDATE"
 
-func (arena *Arena) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	mechID := cctx.URLParam("mech_id")
+type AssetUpdateRequest struct {
+	Payload struct {
+		MechID string `json:"mech_id"`
+	} `json:"payload"`
+}
 
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
+func (arena *Arena) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	msg := &AssetUpdateRequest{}
+	err := json.Unmarshal(payload, msg)
+	if err != nil {
+		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue leave")
+		return terror.Error(err, "Issue leaving queue, try again or contact support.")
+	}
+
+	queueDetails, err := db.MechArenaStatus(user.ID, msg.Payload.MechID, factionID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, msg.Payload.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	return nil
 }
 
@@ -488,7 +499,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 
 	// Send updated battle queue status to all subscribers
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID.String()), WSPlayerAssetMechQueueSubscribe, -1)
 	gamelog.L.Info().Str("factionID", factionID).Str("mechID", mechID.String()).Msg("published message on queue leave")
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)

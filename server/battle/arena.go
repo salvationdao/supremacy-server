@@ -1025,10 +1025,6 @@ func (arena *Arena) start() {
 					return
 				}
 
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-
 			case "BATTLE:OUTRO_FINISHED":
 				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
 				arena.beginBattle()

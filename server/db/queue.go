@@ -15,7 +15,6 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	resp := &server.MechArenaInfo{
 		Status: server.MechArenaStatusIdle,
 	}
-
 	// check ownership of the mech
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(userID),
@@ -59,14 +58,13 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 
 	// check mech is in queue
 	bqp, err := MechQueuePosition(collectionItem.ItemID, factionID)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "Failed to check mech position")
 	}
 
 	if bqp != nil {
 		resp.Status = server.MechArenaStatusQueue
 		resp.QueuePosition = bqp.QueuePosition
-		return resp, nil
 	}
 
 	return resp, nil
