@@ -298,11 +298,13 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
+	itemType string,
+	userID string,
 	factionID string,
 	search string,
-	filter *ListFilterRequest,
 	rarities []string,
 	saleTypes []string,
+	ownedBy []string,
 	minPrice decimal.NullDecimal,
 	maxPrice decimal.NullDecimal,
 	offset int,
@@ -322,27 +324,14 @@ func MarketplaceItemSaleList(
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
-
 	if factionID != "" {
 		queryMods = append(queryMods, boiler.ItemSaleWhere.FactionID.EQ(factionID))
 	}
+	if itemType != "" {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.ItemType.EQ(itemType))
+	}
 
 	// Filters
-	if filter != nil {
-		for i, f := range filter.Items {
-			if f.Table != "" {
-				if f.Table == boiler.TableNames.Mechs {
-					column := MechColumns(f.Column)
-					err := column.IsValid()
-					if err != nil {
-						return 0, nil, terror.Error(err)
-					}
-				}
-			}
-			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
-			queryMods = append(queryMods, queryMod)
-		}
-	}
 	if len(rarities) > 0 {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(rarities))
 	}
@@ -360,6 +349,26 @@ func MarketplaceItemSaleList(
 		}
 		queryMods = append(queryMods, qm.Expr(saleTypeConditions...))
 	}
+	if len(ownedBy) > 0 {
+		isSelf := false
+		isOthers := false
+		for _, ownerType := range ownedBy {
+			if ownerType == "self" {
+				isSelf = true
+			} else if ownerType == "others" {
+				isOthers = true
+			}
+			if isSelf && isOthers {
+				break
+			}
+		}
+		if isSelf && !isOthers {
+			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.EQ(userID))
+		} else if !isSelf && isOthers {
+			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.NEQ(userID))
+		}
+	}
+
 	if minPrice.Valid {
 		value := decimal.NewNullDecimal(minPrice.Decimal.Mul(decimal.New(1, 18)))
 		queryMods = append(queryMods, qm.Expr(
@@ -454,9 +463,11 @@ func MarketplaceItemSaleList(
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
 func MarketplaceItemKeycardSaleList(
+	userID string,
 	factionID string,
 	search string,
 	filter *ListFilterRequest,
+	ownedBy []string,
 	minPrice decimal.NullDecimal,
 	maxPrice decimal.NullDecimal,
 	offset int,
@@ -484,6 +495,25 @@ func MarketplaceItemKeycardSaleList(
 		for i, f := range filter.Items {
 			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
 			queryMods = append(queryMods, queryMod)
+		}
+	}
+	if len(ownedBy) > 0 {
+		isSelf := false
+		isOthers := false
+		for _, ownerType := range ownedBy {
+			if ownerType == "self" {
+				isSelf = true
+			} else if ownerType == "others" {
+				isOthers = true
+			}
+			if isSelf && isOthers {
+				break
+			}
+		}
+		if isSelf && !isOthers {
+			queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.OwnerID.EQ(userID))
+		} else if !isSelf && isOthers {
+			queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.OwnerID.NEQ(userID))
 		}
 	}
 
