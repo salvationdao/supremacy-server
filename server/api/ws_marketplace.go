@@ -743,6 +743,27 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
+	// Refund Item if auction
+	if saleItem.Auction && saleItem.LastBid.ID.Valid {
+		lastBid, err := boiler.ItemSalesBidHistories(
+			boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(saleItem.ID),
+			boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(terror.ErrUnauthorised, "Unable to check last auction bid.")
+		}
+		if lastBid != nil {
+			rtxid, err := mp.API.Passport.RefundSupsMessage(lastBid.BidTXID)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+			err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, req.Payload.ID, lastBid.BidTXID, rtxid, true)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+	}
+
 	// Cancel item
 	err = db.MarketplaceSaleArchive(gamedb.StdConn, req.Payload.ID)
 	if err != nil {
