@@ -17,7 +17,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-var itemSaleQueryMods = []qm.QueryMod{
+var ItemSaleQueryMods = []qm.QueryMod{
 	qm.Select(
 		`item_sales.id AS id,
 		item_sales.faction_id AS faction_id,
@@ -137,7 +137,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 	),
 }
 
-var itemKeycardSaleQueryMods = []qm.QueryMod{
+var ItemKeycardSaleQueryMods = []qm.QueryMod{
 	qm.Select(
 		`item_keycard_sales.*,
 		players.id AS "players.id",
@@ -187,7 +187,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	output := &server.MarketplaceSaleItem{}
 	err := boiler.ItemSales(
 		append(
-			itemSaleQueryMods,
+			ItemSaleQueryMods,
 			boiler.ItemSaleWhere.ID.EQ(id.String()),
 		)...,
 	).QueryRow(gamedb.StdConn).Scan(
@@ -251,10 +251,9 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
 func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, error) {
 	output := &server.MarketplaceSaleItem1155{}
-	boil.DebugMode = true
 	err := boiler.ItemKeycardSales(
 		append(
-			itemKeycardSaleQueryMods,
+			ItemKeycardSaleQueryMods,
 			boiler.ItemKeycardSaleWhere.ID.EQ(id.String()),
 		)...,
 	).QueryRow(gamedb.StdConn).Scan(
@@ -289,7 +288,6 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.Keycard.Syndicate,
 		&output.Keycard.CreatedAt,
 	)
-	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -317,7 +315,7 @@ func MarketplaceItemSaleList(
 	}
 
 	queryMods := append(
-		itemSaleQueryMods,
+		ItemSaleQueryMods,
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
@@ -480,7 +478,7 @@ func MarketplaceItemKeycardSaleList(
 	}
 
 	queryMods := append(
-		itemKeycardSaleQueryMods,
+		ItemKeycardSaleQueryMods,
 		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),

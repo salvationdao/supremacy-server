@@ -16,6 +16,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type MarketplaceController struct {
@@ -39,6 +40,11 @@ type ItemSaleAuction struct {
 	CreatedAt            time.Time           `boil:"created_at"`
 }
 
+type AttributeInner struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value"`
+}
+
 func NewMarketplaceController(pp *xsyn_rpcclient.XsynXrpcClient) *MarketplaceController {
 	m := &MarketplaceController{pp}
 	go m.Run()
@@ -58,6 +64,7 @@ func (m *MarketplaceController) Run() {
 		select {
 		case <-mainTicker.C:
 			m.processFinishedAuctions()
+			m.processExpiredKeycardItemListings()
 			m.unlockCollectionItems()
 		}
 	}
@@ -86,6 +93,118 @@ func (m *MarketplaceController) unlockCollectionItems() {
 			Str("db func", "itemSaleUpdateLockToMarketplace").
 			Err(err).Msg("unable to update all collection items lock to marketplace")
 	}
+}
+
+// Notifies Xsyn on Keycards that have recently expired.
+func (m *MarketplaceController) processExpiredKeycardItemListings() {
+	gamelog.L.Trace().Msg("processing expired keycard sale items started")
+
+	// Query expired items
+	queryMods := append(db.ItemKeycardSaleQueryMods,
+		qm.Where(fmt.Sprintf(
+			`(%[1]s <= NOW() AND NOW() - %[1]s <= INTERVAL '2 MINUTE')`,
+			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt),
+		)),
+		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
+	)
+
+	records := []*server.MarketplaceSaleItem1155{}
+	err := boiler.ItemKeycardSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "expireKeycardItemListings").
+			Err(err).Msg("unable to get unprocessed expired keycard listings")
+	}
+
+	// Process expired items
+	numProcessed := 0
+	for _, expiredItem := range records {
+		var assetJson types.JSON
+		inner := &AttributeInner{
+			TraitType: "Syndicate",
+			Value:     "N/A",
+		}
+		err := assetJson.Marshal(inner)
+		if err != nil {
+			gamelog.L.Error().
+				Str("item_id", expiredItem.ID).
+				Str("user_id", expiredItem.OwnerID).
+				Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+				Err(err).
+				Msg("unable to marshal XSYN asset count")
+			continue
+		}
+
+		// Prepare to flag delete
+		func() {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to start db transaction (expired XSYN asset count)")
+				return
+			}
+
+			itemSaleKeycard := &boiler.ItemKeycardSale{
+				ID:        expiredItem.ID,
+				DeletedAt: null.TimeFrom(time.Now()),
+			}
+			_, err = itemSaleKeycard.Update(tx, boil.Whitelist(boiler.ItemKeycardSaleColumns.DeletedAt))
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to start db transaction (expired XSYN asset count)")
+				return
+			}
+
+			// Notify Xsyn about expired keycard
+			keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+				ApiKey:         m.Passport.ApiKey,
+				TokenID:        expiredItem.Keycard.KeycardTokenID,
+				Address:        expiredItem.Owner.PublicAddress.String,
+				CollectionSlug: expiredItem.Keycard.Collection,
+				Amount:         1,
+				ImageURL:       expiredItem.Keycard.ImageURL,
+				AnimationURL:   expiredItem.Keycard.AnimationURL,
+				KeycardGroup:   expiredItem.Keycard.KeycardGroup,
+				Attributes:     assetJson,
+				IsAdd:          true,
+			}
+			_, err = m.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to update XSYN asset count")
+				return
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to commit db transaction (expired XSYN asset count)")
+				return
+			}
+			numProcessed++
+		}()
+	}
+	gamelog.L.Trace().
+		Int("num_processed", numProcessed).
+		Int("num_failed", len(records)-numProcessed).
+		Int("num_pending", len(records)).
+		Msg("processing expired keycard sale items finished")
 }
 
 // Scan all completed auctions that haven't went through payment process.
