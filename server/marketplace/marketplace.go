@@ -202,7 +202,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 		}
 
 		// Transfer Sups to Owner
-		salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+		salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 		txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 			ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
