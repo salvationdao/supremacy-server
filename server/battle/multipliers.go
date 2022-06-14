@@ -252,7 +252,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
-			eventContributors, err := db.GetPlayerContributions(repairEvent.RelatedID.String)
+			eventContributors, err := db.GetPlayerContributions(ms.battle.ID, repairEvent.RelatedID.String)
 			if err != nil {
 				continue
 			}
@@ -370,7 +370,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					contributedMulti = *airstrikeContributorMultiplier
 				}
 
-				eventContributors, err := db.GetPlayerContributions(killedEvent.RelatedID.String)
+				eventContributors, err := db.GetPlayerContributions(ms.battle.ID, killedEvent.RelatedID.String)
 				if err != nil {
 					continue
 				}
