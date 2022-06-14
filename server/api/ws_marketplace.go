@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/asset"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -107,6 +110,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 	}
 
 	total, records, err := db.MarketplaceItemSaleList(
+		factionID,
 		req.Payload.Search,
 		filters,
 		req.Payload.FilterRarities,
@@ -191,8 +195,11 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	}
 
 	total, records, err := db.MarketplaceItemKeycardSaleList(
+		factionID,
 		req.Payload.Search,
 		req.Payload.Filter,
+		req.Payload.MinPrice,
+		req.Payload.MaxPrice,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
@@ -273,6 +280,9 @@ type MarketplaceSalesCreateRequest struct {
 	Payload struct {
 		ItemType             string              `json:"item_type"`
 		ItemID               uuid.UUID           `json:"item_id"`
+		HasBuyout            bool                `json:"has_buyout"`
+		HasAuction           bool                `json:"has_auction"`
+		HasDutchAuction      bool                `json:"has_dutch_auction"`
 		AskingPrice          decimal.NullDecimal `json:"asking_price"`
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
@@ -456,7 +466,12 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// Create Sales Item
 	// TODO: Add listing hours option back with fee rates applied
-	endAt := time.Now().Add(time.Hour * 24)
+	endAt := time.Now()
+	if mp.API.Config.Environment == "staging" {
+		endAt = endAt.Add(time.Minute * 5)
+	} else {
+		endAt = endAt.Add(time.Hour * 24)
+	}
 	obj, err := db.MarketplaceSaleCreate(
 		tx,
 		userID,
@@ -531,6 +546,11 @@ type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	} `json:"payload"`
 }
 
+type AttributeInner struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value"`
+}
+
 func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing create keycard sale item, try again or contact support."
 	req := &HubKeyMarketplaceSalesKeycardCreateRequest{}
@@ -591,6 +611,44 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 	if keycard.Count <= numKeycardsSelling {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(keycard.BlueprintKeycardID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          false,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	// Process fee
@@ -740,6 +798,43 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 	err = db.MarketplaceKeycardSaleArchive(gamedb.StdConn, req.Payload.ID)
 	if err != nil {
 		return terror.Error(err, errMsg)
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(saleItem.Keycard.ID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          true,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	reply(true)
@@ -902,11 +997,57 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	err = mp.API.Passport.TransferAsset(
+		saleItem.OwnerID,
+		userID.String(),
+		saleItem.CollectionItem.Hash,
+		null.StringFrom(txid),
+		func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+			asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+		},
+	)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to start purchase sale item rpc TransferAsset.")
+		return terror.Error(err, errMsg)
+	}
+
+	rpcAssetTrasferRollback := func() {
+		err = mp.API.Passport.TransferAsset(
+			userID.String(),
+			saleItem.OwnerID,
+			saleItem.CollectionItem.Hash,
+			null.StringFrom(txid),
+			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+			},
+		)
+		if err != nil {
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to start purchase sale item rpc TransferAsset rollback.")
+		}
+	}
+
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -941,6 +1082,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -959,6 +1101,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTrasferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -974,6 +1117,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTrasferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -998,6 +1142,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1015,6 +1160,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTrasferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1117,6 +1263,43 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Err(err).
 			Msg("Failed to process sales cut fee transaction for Purchase Sale Item.")
 		return terror.Error(err, errMsg)
+	}
+
+	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(saleItem.Keycard.ID)).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get blueprint keycard")
+	}
+
+	var assetJson types.JSON
+
+	if !keycardBlueprint.Syndicate.Valid {
+		keycardBlueprint.Syndicate.String = "N/A"
+	}
+
+	inner := &AttributeInner{
+		TraitType: "Syndicate",
+		Value:     keycardBlueprint.Syndicate.String,
+	}
+
+	err = assetJson.Marshal(inner)
+	if err != nil {
+		return terror.Error(err, "Failed to get marshal keycard attribute data")
+	}
+	keycardUpdate := &xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+		ApiKey:         mp.API.Passport.ApiKey,
+		TokenID:        keycardBlueprint.KeycardTokenID,
+		Address:        user.PublicAddress.String,
+		CollectionSlug: keycardBlueprint.Collection,
+		Amount:         1,
+		ImageURL:       keycardBlueprint.ImageURL,
+		AnimationURL:   keycardBlueprint.AnimationURL,
+		KeycardGroup:   keycardBlueprint.KeycardGroup,
+		Attributes:     assetJson,
+		IsAdd:          true,
+	}
+	_, err = mp.API.Passport.UpdateKeycardCountXSYN(keycardUpdate)
+	if err != nil {
+		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
 	// Give sales cut amount to seller

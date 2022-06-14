@@ -23,11 +23,11 @@ type AssetTransferOwnershipReq struct {
 
 // TransferAsset transfers an assets' ownership on xsyn
 func (pp *XsynXrpcClient) TransferAsset(
-	apiKey,
 	fromOwnerID,
 	toOwnerID,
 	hash string,
 	relatedTransactionID null.String,
+	updateLatestHandledTransferEvent func(rpcClient *XsynXrpcClient, eventID int64),
 ) error {
 	resp := &AssetTransferOwnershipResp{}
 	err := pp.XrpcClient.Call("S.AssetTransferOwnershipHandler", AssetTransferOwnershipReq{
@@ -40,7 +40,6 @@ func (pp *XsynXrpcClient) TransferAsset(
 
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "AssetTransferOwnershipHandler").
-			Str("ApiKey", apiKey).
 			Str("FromOwnerID", fromOwnerID).
 			Str("ToOwnerID", toOwnerID).
 			Str("Hash", hash).
@@ -48,17 +47,20 @@ func (pp *XsynXrpcClient) TransferAsset(
 			Msg("rpc error")
 		return terror.Error(err, "Failed to transfer asset on xsyn")
 	}
-
+	if updateLatestHandledTransferEvent != nil {
+		updateLatestHandledTransferEvent(pp, resp.TransferEventID)
+	}
 	return nil
 }
 
 type TransferEvent struct {
 	TransferEventID int64       `json:"transfer_event_id"`
-	AssetHast       string      `json:"asset_hast,omitempty"`
+	AssetHash       string      `json:"asset_hash,omitempty"`
 	FromUserID      string      `json:"from_user_id,omitempty"`
 	ToUserID        string      `json:"to_user_id,omitempty"`
 	TransferredAt   time.Time   `json:"transferred_at"`
 	TransferTXID    null.String `json:"transfer_tx_id"`
+	OwnedService    null.String `json:"owned_service"`
 }
 
 type GetAssetTransferEventsResp struct {

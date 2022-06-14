@@ -63,6 +63,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 		collection_items.youtube_url AS "collection_items.youtube_url",
 		collection_items.xsyn_locked AS "collection_items.xsyn_locked",
 		collection_items.market_locked AS "collection_items.market_locked",
+		collection_items.hash AS "collection_items.hash",
 		bidder.id AS "bidder.id",
 		bidder.username AS "bidder.username",
 		bidder.faction_id AS "bidder.faction_id",
@@ -234,6 +235,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.CollectionItem.YoutubeURL,
 		&output.CollectionItem.XsynLocked,
 		&output.CollectionItem.MarketLocked,
+		&output.CollectionItem.Hash,
 		&output.LastBid.ID,
 		&output.LastBid.Username,
 		&output.LastBid.FactionID,
@@ -249,6 +251,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
 func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, error) {
 	output := &server.MarketplaceSaleItem1155{}
+	boil.DebugMode = true
 	err := boiler.ItemKeycardSales(
 		append(
 			itemKeycardSaleQueryMods,
@@ -286,6 +289,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.Keycard.Syndicate,
 		&output.Keycard.CreatedAt,
 	)
+	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -294,6 +298,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
+	factionID string,
 	search string,
 	filter *ListFilterRequest,
 	rarities []string,
@@ -317,6 +322,10 @@ func MarketplaceItemSaleList(
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 		boiler.CollectionItemWhere.MarketLocked.EQ(false),
 	)
+
+	if factionID != "" {
+		queryMods = append(queryMods, boiler.ItemSaleWhere.FactionID.EQ(factionID))
+	}
 
 	// Filters
 	if filter != nil {
@@ -392,9 +401,20 @@ func MarketplaceItemSaleList(
 		if len(xsearch) > 0 {
 			queryMods = append(queryMods, qm.And(
 				fmt.Sprintf(
-					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
+				xsearch,
+				xsearch,
 				xsearch,
 			))
 		}
@@ -433,7 +453,17 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
+func MarketplaceItemKeycardSaleList(
+	factionID string,
+	search string,
+	filter *ListFilterRequest,
+	minPrice decimal.NullDecimal,
+	maxPrice decimal.NullDecimal,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -444,6 +474,10 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, of
 		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
+
+	if factionID != "" {
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.FactionID.EQ(factionID))
+	}
 
 	// Filters
 	if filter != nil {
@@ -459,12 +493,29 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, of
 		if len(xsearch) > 0 {
 			queryMods = append(queryMods, qm.And(
 				fmt.Sprintf(
-					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
 					qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label),
+					qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Description),
+					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
+				xsearch,
 				xsearch,
 			))
 		}
+	}
+
+	if minPrice.Valid {
+		value := minPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.GTE(value))
+	}
+	if maxPrice.Valid {
+		value := maxPrice.Decimal.Mul(decimal.New(1, 18))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.BuyoutPrice.LTE(value))
 	}
 
 	// Get total rows
@@ -506,6 +557,21 @@ func MarketplaceSaleArchive(conn boil.Executor, id uuid.UUID) error {
 		DeletedAt: null.TimeFrom(time.Now()),
 	}
 	_, err := obj.Update(conn, boil.Whitelist(boiler.ItemSaleColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+// MarketplaceSaleArchiveByItemID archives as sale item.
+func MarketplaceSaleArchiveByItemID(conn boil.Executor, id uuid.UUID) error {
+	_, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.CollectionItemID.EQ(id.String()),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+	).UpdateAll(conn, boiler.M{
+		"deleted_at": time.Now(),
+	})
 	if err != nil {
 		return terror.Error(err)
 	}
