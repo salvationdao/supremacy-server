@@ -160,6 +160,30 @@ func (m *MarketplaceController) processExpiredKeycardItemListings() {
 				return
 			}
 
+			// Restore Keycard Increment
+			playerKeycardID, err := uuid.FromString(expiredItem.ItemID)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to parse player keycard id")
+				return
+			}
+
+			err = db.IncrementPlayerKeycardCount(tx, playerKeycardID)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", expiredItem.ID).
+					Str("user_id", expiredItem.OwnerID).
+					Int("keycard_token_id", expiredItem.Keycard.KeycardTokenID).
+					Err(err).
+					Msg("unable to restore increment player keycard count")
+				return
+			}
+
+			// Archive Sale Item
 			itemSaleKeycard := &boiler.ItemKeycardSale{
 				ID:        expiredItem.ID,
 				DeletedAt: null.TimeFrom(time.Now()),
@@ -199,6 +223,7 @@ func (m *MarketplaceController) processExpiredKeycardItemListings() {
 				return
 			}
 
+			// Commit Transaction
 			err = tx.Commit()
 			if err != nil {
 				gamelog.L.Error().
