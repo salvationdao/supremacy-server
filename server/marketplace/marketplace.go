@@ -116,6 +116,7 @@ func (m *MarketplaceController) processExpiredKeycardItemListings() {
 			`(%[1]s <= NOW() AND NOW() - %[1]s <= INTERVAL '2 MINUTE')`,
 			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt),
 		)),
+		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
 
