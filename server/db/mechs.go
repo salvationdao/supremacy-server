@@ -82,7 +82,7 @@ LEFT OUTER JOIN (
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
 LEFT OUTER JOIN mech_models mm ON mechs.model_id = mm.id
 LEFT OUTER JOIN (
-	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_skin _ms
 	INNER JOIN collection_items _ci on _ci.item_id = _ms.id
 ) ms ON mechs.chassis_skin_id = ms.id
