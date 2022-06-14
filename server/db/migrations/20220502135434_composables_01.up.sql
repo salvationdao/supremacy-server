@@ -391,6 +391,8 @@ ALTER TABLE blueprint_chassis
     ADD COLUMN tier            TEXT       NOT NULL DEFAULT 'MEGA',
     ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
+UPDATE blueprint_chassis bc
+SET tier = (SELECT tier FROM templates WHERE blueprint_chassis_id = bc.id);
 
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
