@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -63,9 +64,19 @@ func (m *MarketplaceController) Run() {
 	for {
 		select {
 		case <-mainTicker.C:
+			bm := benchmark.New()
+
+			bm.Start("finished_auctions")
 			m.processFinishedAuctions()
+			bm.End("finished_auctions")
+			bm.Start("expired_keycards")
 			m.processExpiredKeycardItemListings()
+			bm.End("expired_keycards")
+			bm.Start("unlock_in_marketplace_items")
 			m.unlockCollectionItems()
+			bm.End("unlock_in_marketplace_items")
+
+			bm.Alert(60000)
 		}
 	}
 }
