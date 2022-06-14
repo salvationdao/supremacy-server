@@ -3,6 +3,7 @@ package battle
 import (
 	"server"
 	"server/db/boiler"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -50,6 +51,8 @@ type WarMachine struct {
 
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
+
+	sync.RWMutex // lock for any mech detail changes
 }
 
 type PowerCore struct {
