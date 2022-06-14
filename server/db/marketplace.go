@@ -872,6 +872,7 @@ func ChangeMysteryCrateOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 
 // MarketplaceKeycardSaleCreate inserts a new sale item.
 func MarketplaceKeycardSaleCreate(
+	conn boil.Executor,
 	ownerID uuid.UUID,
 	factionID uuid.UUID,
 	listFeeTxnID string,
@@ -925,17 +926,31 @@ func ChangeKeycardOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	if err != nil {
 		return terror.Error(err)
 	}
+	return nil
+}
 
-	q = `
-		UPDATE player_keycards AS pk
+// DecrementPlayerKeycard deducts keycard count.
+func DecrementPlayerKeycardCount(conn boil.Executor, playerKeycardID uuid.UUID) error {
+	q := `
+		UPDATE player_keycards 
 		SET count = count - 1
-		FROM item_keycard_sales iks
-		WHERE iks.id = $1
-			AND pk.id = iks.item_id`
-	_, err = conn.Exec(q, itemSaleID)
+		WHERE id = $1`
+	_, err := conn.Exec(q, playerKeycardID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
+	return nil
+}
 
+// IncrementPlayerKeycard deducts keycard count.
+func IncrementPlayerKeycardCount(conn boil.Executor, playerKeycardID uuid.UUID) error {
+	q := `
+		UPDATE player_keycards 
+		SET count = count + 1
+		WHERE id = $1`
+	_, err := conn.Exec(q, playerKeycardID.String())
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }

@@ -667,20 +667,45 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		NotSafe:              true,
 	})
 	if err != nil {
-		err = fmt.Errorf("failed to process marketplace fee transaction")
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Marketplace Fee.")
+		err = fmt.Errorf("failed to process marketplace fee transaction")
 		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	}
+
+	// Start transaction
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("balance", balance.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to start db transaction (add player keycard sale item listing)")
+		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
+	}
+
+	// Deduct Keycard Count
+	err = db.DecrementPlayerKeycardCount(tx, req.Payload.ItemID)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to create new sale item.")
+		return terror.Error(err, "Unable to create new sale item.")
 	}
 
 	// Create Sales Item
 	// TODO: Add listing hours option back with fee rates applied
 	endAt := time.Now().Add(time.Hour * 24)
 	obj, err := db.MarketplaceKeycardSaleCreate(
+		tx,
 		userID,
 		factionID,
 		txid,
@@ -688,6 +713,18 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		req.Payload.ItemID,
 		req.Payload.AskingPrice,
 	)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to create new sale item.")
+		return terror.Error(err, "Unable to create new sale item.")
+	}
+
+	// Commit Transaction
+	err = tx.Commit()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -803,6 +840,11 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
+	playerKeycardID, err := uuid.FromString(saleItem.ItemID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
 	// Cancel item
 	err = db.MarketplaceKeycardSaleArchive(gamedb.StdConn, req.Payload.ID)
 	if err != nil {
@@ -814,6 +856,13 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 		return terror.Error(err, "Failed to get blueprint keycard")
 	}
 
+	// Return Keycard Counts (Game Server)
+	err = db.IncrementPlayerKeycardCount(gamedb.StdConn, playerKeycardID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// Return Keycard Counts (Xsyn)
 	var assetJson types.JSON
 
 	if !keycardBlueprint.Syndicate.Valid {
