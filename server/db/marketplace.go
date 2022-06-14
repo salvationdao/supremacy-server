@@ -401,9 +401,20 @@ func MarketplaceItemSaleList(
 		if len(xsearch) > 0 {
 			queryMods = append(queryMods, qm.And(
 				fmt.Sprintf(
-					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
+				xsearch,
+				xsearch,
 				xsearch,
 			))
 		}
@@ -472,9 +483,17 @@ func MarketplaceItemKeycardSaleList(factionID string, search string, filter *Lis
 		if len(xsearch) > 0 {
 			queryMods = append(queryMods, qm.And(
 				fmt.Sprintf(
-					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
 					qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label),
+					qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Description),
+					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
+				xsearch,
 				xsearch,
 			))
 		}
