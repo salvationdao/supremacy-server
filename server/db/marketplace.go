@@ -453,7 +453,17 @@ func MarketplaceItemSaleList(
 }
 
 // MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
-func MarketplaceItemKeycardSaleList(factionID string, search string, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem1155, error) {
+func MarketplaceItemKeycardSaleList(
+	factionID string,
+	search string,
+	filter *ListFilterRequest,
+	minPrice decimal.NullDecimal,
+	maxPrice decimal.NullDecimal,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -497,6 +507,41 @@ func MarketplaceItemKeycardSaleList(factionID string, search string, filter *Lis
 				xsearch,
 			))
 		}
+	}
+
+	if minPrice.Valid {
+		value := decimal.NewNullDecimal(minPrice.Decimal.Mul(decimal.New(1, 18)))
+		queryMods = append(queryMods, qm.Expr(
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Buyout.EQ(true),
+					boiler.ItemSaleWhere.BuyoutPrice.GTE(value),
+				),
+			),
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Auction.EQ(true),
+					boiler.ItemSaleWhere.AuctionCurrentPrice.GTE(value),
+				),
+			),
+		))
+	}
+	if maxPrice.Valid {
+		value := decimal.NewNullDecimal(maxPrice.Decimal.Mul(decimal.New(1, 18)))
+		queryMods = append(queryMods, qm.Expr(
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Buyout.EQ(true),
+					boiler.ItemSaleWhere.BuyoutPrice.LTE(value),
+				),
+			),
+			qm.Or2(
+				qm.Expr(
+					boiler.ItemSaleWhere.Auction.EQ(true),
+					boiler.ItemSaleWhere.AuctionCurrentPrice.LTE(value),
+				),
+			),
+		))
 	}
 
 	// Get total rows
