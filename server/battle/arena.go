@@ -102,12 +102,21 @@ func (arena *Arena) currentBattleWarMachine(participantID int) *WarMachine {
 	}
 
 	for _, wm := range arena._currentBattle.WarMachines {
-		if int(wm.ParticipantID) == participantID {
+		if checkWarMachineByParticipantID(wm, participantID) {
 			return wm
 		}
 	}
 
 	return nil
+}
+
+func checkWarMachineByParticipantID(wm *WarMachine, participantID int) bool {
+	wm.RLock()
+	defer wm.RUnlock()
+	if int(wm.ParticipantID) == participantID {
+		return true
+	}
+	return false
 }
 
 func (arena *Arena) WarMachineDestroyedDetail(mechID string) *WMDestroyedRecord {
@@ -765,10 +774,18 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return nil
 	}
 	if wm.FactionID != factionID {
-		return fmt.Errorf("war machine faction id does not match")
+		gamelog.L.Warn().Str("war_machine_faction_id", wm.FactionID).Str("user_faction_id", factionID).Msg("War machine faction id does not match")
+		return nil
 	}
 
-	reply(wm.Abilities)
+	gameAbilities := []GameAbility{}
+	for _, ga := range wm.Abilities {
+		ga.RLock()
+		gameAbilities = append(gameAbilities, *ga)
+		ga.RUnlock()
+	}
+
+	reply(gameAbilities)
 
 	return nil
 }
@@ -797,6 +814,8 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 	wm := arena.currentBattleWarMachine(participantID)
 
 	if wm != nil {
+		wm.RLock()
+		defer wm.RUnlock()
 		reply(WarMachineStat{
 			Position: wm.Position,
 			Rotation: wm.Rotation,

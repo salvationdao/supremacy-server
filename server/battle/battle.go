@@ -96,17 +96,12 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.DisabledCells = gm.DisabledCells
 }
 
-const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
-
-func (btl *Battle) preIntro(payload *BattleStartPayload) error {
-	btl.Lock()
-	defer btl.Unlock()
-
+func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
 	factions := map[uuid.UUID]*boiler.Faction{}
 
 	for i, wm := range btl.WarMachines {
+		wm.Lock() // lock mech detail
 		for ii, pwm := range payload.WarMachines {
 			if wm.Hash == pwm.Hash {
 				wm.ParticipantID = pwm.ParticipantID
@@ -116,25 +111,26 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 				gamelog.L.Error().Err(fmt.Errorf("didnt find matching hash"))
 			}
 		}
+		wm.Unlock()
 
 		gamelog.L.Trace().Interface("battle war machine", wm).Msg("battle war machine")
 
 		mechID, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
-			return err
+			return nil, nil, err
 		}
 
 		ownerID, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.OwnedByID).Err(err).Msg("unable to convert owner id from string")
-			return err
+			return nil, nil, err
 		}
 
 		factionID, err := uuid.FromString(wm.FactionID)
 		if err != nil {
 			gamelog.L.Error().Str("factionID", wm.FactionID).Err(err).Msg("unable to convert faction id from string")
-			return err
+			return nil, nil, err
 		}
 
 		bmd[i] = &db.BattleMechData{
@@ -155,6 +151,22 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			}
 			factions[factionID] = faction
 		}
+	}
+
+	return bmd, factions, nil
+}
+
+const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
+const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
+
+func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	btl.Lock()
+	defer btl.Unlock()
+
+	bmd, factions, err := btl.warMachineUpdateFromGameClient(payload)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update war machine from game client data")
+		return err
 	}
 
 	btl.factions = factions
@@ -1263,6 +1275,7 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 	if btl == nil {
 		return nil
 	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
@@ -1286,6 +1299,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 	btl.lastTick = &payload
 
+	// return if the war machines list is not ready
+	if len(btl.WarMachines) == 0 {
+		return
+	}
+
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := payload[1]
 	var c byte
@@ -1301,7 +1319,7 @@ func (btl *Battle) Tick(payload []byte) {
 			// find Spawned AI
 			btl.spawnedAIMux.RLock()
 			for i, wmn := range btl.SpawnedAI {
-				if wmn.ParticipantID == participantID {
+				if checkWarMachineByParticipantID(wmn, int(participantID)) {
 					warMachineIndex = i
 					break
 				}
@@ -1317,7 +1335,7 @@ func (btl *Battle) Tick(payload []byte) {
 		} else {
 			// Mech
 			for i, wmn := range btl.WarMachines {
-				if wmn.ParticipantID == participantID {
+				if checkWarMachineByParticipantID(wmn, int(participantID)) {
 					warMachineIndex = i
 					break
 				}
@@ -1335,6 +1353,13 @@ func (btl *Battle) Tick(payload []byte) {
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
 
+		warmachine.Lock()
+		wms := WarMachineStat{
+			Position: warmachine.Position,
+			Rotation: warmachine.Rotation,
+			Health:   warmachine.Health,
+			Shield:   warmachine.Shield,
+		}
 		// Position + Yaw
 		if booleans[0] {
 			x := int(helpers.BytesToInt(payload[offset : offset+4]))
@@ -1349,7 +1374,9 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			warmachine.Position.X = x
 			warmachine.Position.Y = y
+			wms.Position = warmachine.Position
 			warmachine.Rotation = rotation
+			wms.Rotation = rotation
 
 		}
 		// Health
@@ -1357,6 +1384,7 @@ func (btl *Battle) Tick(payload []byte) {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Health = health
+			wms.Health = health
 
 		}
 		// Shield
@@ -1364,7 +1392,9 @@ func (btl *Battle) Tick(payload []byte) {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Shield = shield
+			wms.Shield = shield
 		}
+		warmachine.Unlock()
 
 		// Energy
 		if booleans[3] {
@@ -1372,12 +1402,7 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if participantID < 100 {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
-				Position: warmachine.Position,
-				Rotation: warmachine.Rotation,
-				Health:   warmachine.Health,
-				Shield:   warmachine.Shield,
-			})
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, wms)
 		}
 	}
 }
