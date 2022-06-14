@@ -29,7 +29,7 @@ func PlayerMysteryCrate(id uuid.UUID) (*server.MysteryCrate, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-		boiler.CollectionItemWhere.ID.EQ(id.String()),
+		boiler.CollectionItemWhere.ItemID.EQ(id.String()),
 	}
 
 	collection, err := boiler.CollectionItems(queryMods...).One(gamedb.StdConn)
