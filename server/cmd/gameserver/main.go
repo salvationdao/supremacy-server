@@ -6,6 +6,11 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/pemistahl/lingua-go"
+	"github.com/urfave/cli/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/url"
 	"runtime"
@@ -21,13 +26,6 @@ import (
 	"server/sms"
 	"server/telegram"
 	"server/xsyn_rpcclient"
-	"strings"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
-	"github.com/pemistahl/lingua-go"
-	"github.com/urfave/cli/v2"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -157,7 +155,6 @@ func main() {
 
 					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
-					&cli.StringFlag{Name: "ignore_rate_limit_ips", Value: "127.0.0.1", EnvVars: []string{envPrefix + "_IGNORE_RATE_LIMIT_IP"}, Usage: "Ignore rate limiting on these IPs"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -200,8 +197,8 @@ func main() {
 
 					// initialise ws package
 					ws.Init(&ws.Config{
-						Logger:             gamelog.L,
-						IgnoreRateLimitIPs: strings.Split(c.String("ignore_rate_limit_ips"), ","),
+						Logger:        gamelog.L,
+						SkipRateLimit: environment == "staging" || environment == "development",
 					})
 
 					tracer.Start(
