@@ -923,7 +923,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 	}
 
-	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
@@ -1229,7 +1229,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "You do not have enough sups.")
 	}
 
-	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.3))
+	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 
 	// Pay sales cut fee amount to faction account
 	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
