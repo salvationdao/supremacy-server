@@ -1,8 +1,76 @@
 package db
 
 import (
+	"database/sql"
+	"github.com/friendsofgo/errors"
+	"github.com/ninja-software/terror/v2"
+	"server"
+	"server/db/boiler"
 	"server/gamedb"
+	"time"
 )
+
+// MechArenaStatus return mech arena status from given collection item
+func MechArenaStatus(userID string, mechID string, factionID string) (*server.MechArenaInfo, error) {
+	resp := &server.MechArenaInfo{
+		Status: server.MechArenaStatusIdle,
+	}
+
+	// check ownership of the mech
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to find mech from db")
+	}
+
+	// check market
+	now := time.Now()
+	is, err := collectionItem.ItemSales(
+		boiler.ItemSaleWhere.EndAt.GT(now),
+		boiler.ItemSaleWhere.SoldAt.IsNull(),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to check mech in marketplace")
+	}
+
+	if is != nil {
+		resp.Status = server.MechArenaStatusMarket
+		return resp, nil
+	}
+
+	// check in battle
+	bq, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.EQ(collectionItem.ItemID),
+		boiler.BattleQueueWhere.BattleID.IsNotNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to get war machine battle state from db")
+	}
+
+	// if mech is in battle
+	if bq != nil {
+		resp.Status = server.MechArenaStatusMarket
+		return resp, nil
+	}
+
+	// check mech is in queue
+	bqp, err := MechQueuePosition(collectionItem.ItemID, factionID)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to check mech position")
+	}
+
+	if bqp != nil {
+		resp.Status = server.MechArenaStatusQueue
+		resp.QueuePosition = bqp.QueuePosition
+		return resp, nil
+	}
+
+	return resp, nil
+}
 
 // MechQueuePosition return a list of mech queue position of the player (exclude in battle)
 func MechQueuePosition(mechID, factionID string) (*BattleQueuePosition, error) {

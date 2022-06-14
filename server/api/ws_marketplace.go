@@ -8,6 +8,7 @@ import (
 	"math"
 	"server"
 	"server/asset"
+	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -521,6 +522,19 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	reply(obj)
 
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ID.EQ(collectionItemID.String()),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("collection item id", collectionItemID.String()).Err(err).Msg("Failed to get collection item from db")
+	}
+
+	if ci.ItemType == boiler.ItemTypeMech {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+			Status: server.MechArenaStatusMarket,
+		})
+	}
+
 	return nil
 }
 
@@ -808,6 +822,19 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	reply(true)
+
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ID.EQ(saleItem.CollectionItemID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("Failed to get collection item from db")
+	}
+
+	if ci.ItemType == boiler.ItemTypeMech {
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+			Status: server.MechArenaStatusIdle,
+		})
+	}
 
 	return nil
 }
@@ -1228,6 +1255,22 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, errMsg)
+	}
+
+	// broadcast status change if item is a mech
+	if saleItem.CollectionItemType == boiler.ItemTypeMech {
+		ci, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ID.EQ(saleItem.CollectionItemID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("Failed to get collection item from db")
+		}
+
+		if ci != nil {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+				Status: server.MechArenaStatusSold,
+			})
+		}
 	}
 
 	// success

@@ -256,17 +256,30 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	go func() {
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
 
-		position, err := db.MechQueuePosition(mechID.String(), factionID)
-		if err != nil {
-			gamelog.L.Error().
-				Str("mechID", mechID.String()).
-				Str("factionID", factionID).
-				Err(err).Msg("failed to get queue position after join")
+		queueDetails, err := db.MechArenaStatus(user.ID, mechID.String(), factionID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Msg("Failed to get mech arena status")
 			return
 		}
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID.String()), WSPlayerAssetMechQueueSubscribe, position.QueuePosition)
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	}()
 
+	return nil
+}
+
+const WSMechArenaStatusUpdate = "PLAYER:ASSET:MECH:STATUS:UPDATE"
+
+func (arena *Arena) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+
+	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	return nil
 }
 
@@ -478,17 +491,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID.String()), WSPlayerAssetMechQueueSubscribe, -1)
 	gamelog.L.Info().Str("factionID", factionID).Str("mechID", mechID.String()).Msg("published message on queue leave")
 
-	go func() {
-		factionQueue, err := db.FactionQueue(factionID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("failed to get faction queue to broadcast queue positions")
-			return
-		}
-
-		for _, fc := range factionQueue {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, fc.MechID.String()), WSPlayerAssetMechQueueSubscribe, fc.QueuePosition)
-		}
-	}()
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 
 	return nil
 }
@@ -512,21 +515,18 @@ func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, user *boile
 	return nil
 }
 
+const WSPlayerAssetMechQueueUpdateSubscribe = "PLAYER:ASSET:MECH:QUEUE:UPDATE"
 const WSPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
 
-func (arena *Arena) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (arena *Arena) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	mechID := cctx.URLParam("mech_id")
 
-	queueDetails, err := db.MechQueuePosition(mechID, fID)
+	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Invalid request received.")
 	}
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		reply(-1)
-		return nil
-	}
 
-	reply(queueDetails.QueuePosition)
+	reply(queueDetails)
 	return nil
 }
