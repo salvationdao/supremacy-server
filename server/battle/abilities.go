@@ -838,80 +838,71 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	multiAmount := as.GetUserContributeMultiplier(amount)
 	bm.End("get_user_contribution")
 
-	battleContrib := &boiler.BattleContribution{
-		BattleID:          battleID,
-		PlayerID:          userID.String(),
-		AbilityOfferingID: ga.OfferingID.String(),
-		DidTrigger:        isTriggered,
-		FactionID:         ga.FactionID,
-		AbilityLabel:      ga.Label,
-		IsAllSyndicates:   isAllSyndicates,
-		Amount:            amount,
-		ContributedAt:     now,
-		TransactionID:     null.StringFrom(txid),
-		MultiAmount:       multiAmount,
-	}
+	go func() {
+		battleContrib := &boiler.BattleContribution{
+			BattleID:          battleID,
+			PlayerID:          userID.String(),
+			AbilityOfferingID: ga.OfferingID.String(),
+			DidTrigger:        isTriggered,
+			FactionID:         ga.FactionID,
+			AbilityLabel:      ga.Label,
+			IsAllSyndicates:   isAllSyndicates,
+			Amount:            amount,
+			ContributedAt:     now,
+			TransactionID:     null.StringFrom(txid),
+			MultiAmount:       multiAmount,
+		}
 
-	bm.Start("insert_battle_contribution")
-	err = battleContrib.Insert(gamedb.StdConn, boil.Infer())
-	bm.End("insert_battle_contribution")
-	if err != nil {
-		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
-	}
+		err = battleContrib.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
+		}
+	}()
 
-	// update faction contribute
-	bm.Start("update_faction_contribution")
-	err = db.FactionAddContribute(ga.FactionID, amount)
-	bm.End("update_faction_contribution")
-	if err != nil {
-		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
-	}
+	go func() {
+		// update faction contribute
+		err = db.FactionAddContribute(ga.FactionID, amount)
+		if err != nil {
+			gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
+		}
+	}()
 
 	amount = amount.Truncate(0)
 
-	bm.Start("start_db_transaction")
-	tx, err := gamedb.StdConn.Begin()
-	bm.End("start_db_transaction")
-	if err == nil {
-		defer tx.Rollback()
-
-		bm.Start("get_spoil_of_war")
-		spoil, err := boiler.SpoilsOfWars(qm.Where(`battle_id = ?`, battleID)).One(tx)
-		bm.End("get_spoil_of_war")
-		if errors.Is(err, sql.ErrNoRows) {
-			spoil = &boiler.SpoilsOfWar{
-				BattleID:     battleID,
-				BattleNumber: battleNumber,
-				Amount:       amount,
-				AmountSent:   decimal.Zero,
-				CurrentTick:  0,
-				MaxTicks:     20, // ideally this comes from the sow config?
+	go func() {
+		tx, err := gamedb.StdConn.Begin()
+		if err == nil {
+			defer tx.Rollback()
+			spoil, err := boiler.SpoilsOfWars(qm.Where(`battle_id = ?`, battleID)).One(tx)
+			if errors.Is(err, sql.ErrNoRows) {
+				spoil = &boiler.SpoilsOfWar{
+					BattleID:     battleID,
+					BattleNumber: battleNumber,
+					Amount:       amount,
+					AmountSent:   decimal.Zero,
+					CurrentTick:  0,
+					MaxTicks:     20, // ideally this comes from the sow config?
+				}
+				err = spoil.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("unable to insert spoils")
+				}
+			} else {
+				spoil.Amount = spoil.Amount.Add(amount)
+				_, err = spoil.Update(tx, boil.Whitelist(boiler.SpoilsOfWarColumns.Amount))
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
+				}
 			}
-			bm.Start("insert_spoil_of_war")
-			err = spoil.Insert(gamedb.StdConn, boil.Infer())
-			bm.End("insert_spoil_of_war")
+			err = tx.Commit()
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to insert spoils")
+				gamelog.L.Error().Err(err).Msg("unable to create tx")
+				tx.Rollback()
 			}
 		} else {
-			spoil.Amount = spoil.Amount.Add(amount)
-			bm.Start("update_spoil_of_war")
-			_, err = spoil.Update(tx, boil.Whitelist(boiler.SpoilsOfWarColumns.Amount))
-			bm.End("update_spoil_of_war")
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
-			}
+			gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
 		}
-		bm.Start("commit_db_transaction")
-		err = tx.Commit()
-		bm.End("commit_db_transaction")
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("unable to create tx")
-			tx.Rollback()
-		}
-	} else {
-		gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
-	}
+	}()
 
 	ga.CurrentSups = ga.CurrentSups.Add(amount)
 
