@@ -6,6 +6,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -16,6 +17,34 @@ func IsMysteryCrateColumn(col string) bool {
 		return true
 	}
 	return false
+}
+
+func PlayerMysteryCrate(id uuid.UUID) (*server.MysteryCrate, error) {
+	queryMods := []qm.QueryMod{
+		qm.Select(boiler.TableNames.CollectionItems + ".*"),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.MysteryCrate,
+			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		boiler.CollectionItemWhere.ID.EQ(id.String()),
+	}
+
+	collection, err := boiler.CollectionItems(queryMods...).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	crate, err := boiler.MysteryCrates(
+		boiler.MysteryCrateWhere.ID.EQ(collection.ItemID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return server.MysteryCrateFromBoiler(crate, collection), nil
 }
 
 func PlayerMysteryCrateList(

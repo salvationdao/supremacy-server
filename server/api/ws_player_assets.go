@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server"
@@ -11,6 +12,8 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/friendsofgo/errors"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -32,8 +35,10 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	return pac
 }
 
@@ -333,6 +338,57 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 		Keycards: records,
 	}
 	reply(resp)
+
+	return nil
+}
+
+const (
+	HubKeyPlayerAssetMysteryCrateGet = "PLAYER:ASSET:MYSTERY_CRATE:GET"
+	HubKeyPlayerAssetKeycardGet      = "PLAYER:ASSET:KEYCARD:GET"
+)
+
+type PlayerAssetGetRequest struct {
+	Payload struct {
+		ID uuid.UUID `json:"id"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMysteryCrateGetHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	crate, err := db.PlayerMysteryCrate(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Mystery Crate not found.")
+	}
+	if err != nil {
+		return terror.Error(err, "Failed to get Mystery Crate.")
+	}
+
+	reply(crate)
+
+	return nil
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	keycard, err := db.PlayerKeycard(req.Payload.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Keycard not found.")
+	}
+	if err != nil {
+		return terror.Error(err, "Failed to get keycard.")
+	}
+
+	reply(keycard)
 
 	return nil
 }
