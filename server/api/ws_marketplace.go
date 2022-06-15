@@ -66,6 +66,7 @@ type MarketplaceSalesListRequest struct {
 		FilterRarities     []string            `json:"rarities"`
 		FilterListingTypes []string            `json:"listing_types"`
 		FilterOwnedBy      []string            `json:"owned_by"`
+		Sold               bool                `json:"sold"`
 		ItemType           string              `json:"item_type"`
 		MinPrice           decimal.NullDecimal `json:"min_price"`
 		MaxPrice           decimal.NullDecimal `json:"max_price"`
@@ -100,6 +101,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
 		req.Payload.FilterOwnedBy,
+		req.Payload.Sold,
 		req.Payload.MinPrice,
 		req.Payload.MaxPrice,
 		offset,
