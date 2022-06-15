@@ -806,6 +806,10 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
+	err = db.MarketplaceSaleItemUnlock(gamedb.StdConn, req.Payload.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
 
 	reply(true)
 
