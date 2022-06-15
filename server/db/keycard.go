@@ -31,7 +31,7 @@ var NumKeycardsOnMarketplaceSQL = fmt.Sprintf(`
 
 var ActiveItemSaleSQL = fmt.Sprintf(`
 	(
-		SELECT array_agg(%s)
+		SELECT COALESCE(array_agg(%s), '{}')
 		FROM %s
 		WHERE %s = %s 
 			AND %s > NOW()
@@ -151,8 +151,8 @@ func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
 		&item.Blueprints.KeycardGroup,
 		&item.Blueprints.Syndicate,
 		&item.Blueprints.CreatedAt,
-		&item.MarketListedCount,
 		&item.ItemSaleIDs,
+		&item.MarketListedCount,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
