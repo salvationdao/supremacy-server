@@ -403,12 +403,12 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			OwnerID:          i.OwnerID,
 			Data:             asJson,
 			AssetType:        null.StringFrom(i.ItemType),
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
+			ImageURL:         i.ChassisSkin.ImageURL,
+			BackgroundColor:  i.ChassisSkin.BackgroundColor,
+			AnimationURL:     i.ChassisSkin.AnimationURL,
+			YoutubeURL:       i.ChassisSkin.YoutubeURL,
+			AvatarURL:        i.ChassisSkin.AvatarURL,
+			CardAnimationURL: i.ChassisSkin.CardAnimationURL,
 		}
 
 		// convert stats to attributes to
