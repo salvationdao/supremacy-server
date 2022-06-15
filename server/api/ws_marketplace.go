@@ -1217,7 +1217,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			return terror.Error(err, errMsg)
 		}
 	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
-		err = db.ChangeMysteryCrateOwner(tx, req.Payload.ID)
+		err = db.ChangeMysteryCrateOwner(tx, saleItem.CollectionItemID, user.ID)
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)

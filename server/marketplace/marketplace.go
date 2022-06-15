@@ -434,7 +434,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				continue
 			}
 		} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate {
-			err = db.ChangeMysteryCrateOwner(tx, auctionItem.ID)
+			err = db.ChangeMysteryCrateOwner(tx, auctionItem.ID.String(), auctionItem.AuctionBidUserID.String())
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				gamelog.L.Error().

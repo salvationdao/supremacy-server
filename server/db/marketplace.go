@@ -958,14 +958,13 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 }
 
 // ChangeMysteryCrateOwner transfers a collection item to a new owner.
-func ChangeMysteryCrateOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
-	q := `
-		UPDATE collection_items ci
-		SET owner_id = s.sold_by
-		FROM item_sales s
-		WHERE s.id = $1
-			AND ci.id = s.collection_item_id`
-	_, err := conn.Exec(q, itemSaleID, boiler.ItemTypeMysteryCrate)
+func ChangeMysteryCrateOwner(conn boil.Executor, crateCollectionItemID string, newOwnerID string) error {
+	_, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ID.EQ(crateCollectionItemID),
+	).UpdateAll(conn,
+		boiler.M{
+			"owner_id": newOwnerID,
+		})
 	if err != nil {
 		return terror.Error(err)
 	}
