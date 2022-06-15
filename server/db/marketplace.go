@@ -303,6 +303,7 @@ func MarketplaceItemSaleList(
 	rarities []string,
 	saleTypes []string,
 	ownedBy []string,
+	sold bool,
 	minPrice decimal.NullDecimal,
 	maxPrice decimal.NullDecimal,
 	offset int,
@@ -400,6 +401,9 @@ func MarketplaceItemSaleList(
 				),
 			),
 		))
+	}
+	if sold {
+		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNotNull())
 	}
 
 	// Search
