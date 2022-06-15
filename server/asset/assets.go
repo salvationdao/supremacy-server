@@ -10,6 +10,8 @@ import (
 	"server/xsyn_rpcclient"
 	"sort"
 
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 )
@@ -109,12 +111,95 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 		xsynLocked = false
 	}
 
-	_, err = boiler.CollectionItems(
-		boiler.CollectionItemWhere.Hash.EQ(te.AssetHash),
-	).UpdateAll(gamedb.StdConn, boiler.M{
-		"owner_id":    te.ToUserID,
-		"xsyn_locked": xsynLocked,
-	})
+	colItem, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(te.AssetHash)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
+		return
+	}
+	colItem.OwnerID = te.ToUserID
+	colItem.XsynLocked = xsynLocked
+
+	if colItem.ItemType == boiler.ItemTypeMech {
+		mech, err := db.Mech(colItem.ItemID)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Interface("transfer event", te).
+				Int64("transfer event id", te.TransferEventID).
+				Msg("db.Mech - failed to transfer collection item")
+			return
+		}
+
+		if mech.ChassisSkin != nil {
+			_, err = boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				"owner_id":    te.ToUserID,
+				"xsyn_locked": xsynLocked,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("transfer event", te).
+					Int64("transfer event id", te.TransferEventID).
+					Msg("ChassisSkin owner - failed to transfer collection item")
+				return
+			}
+		}
+
+		if mech.PowerCoreID.Valid {
+			_, err = boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				"owner_id":    te.ToUserID,
+				"xsyn_locked": xsynLocked,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("transfer event", te).
+					Int64("transfer event id", te.TransferEventID).
+					Msg("PowerCoreID owner - failed to transfer collection item")
+				return
+			}
+		}
+
+		for _, w := range mech.Weapons {
+			_, err = boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.EQ(w.ItemID),
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				"owner_id":    te.ToUserID,
+				"xsyn_locked": xsynLocked,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("transfer event", te).
+					Int64("transfer event id", te.TransferEventID).
+					Msg("Weapons owner - failed to transfer collection item")
+				return
+			}
+		}
+
+		for _, u := range mech.Utility {
+			_, err = boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.EQ(u.ItemID),
+			).UpdateAll(gamedb.StdConn, boiler.M{
+				"owner_id":    te.ToUserID,
+				"xsyn_locked": xsynLocked,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("transfer event", te).
+					Int64("transfer event id", te.TransferEventID).
+					Msg("Utility owner - failed to transfer collection item")
+			}
+		}
+
+	}
+
+	_, err = colItem.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
 		return
