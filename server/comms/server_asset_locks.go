@@ -50,7 +50,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 
 	// TODO: store transfer event ID
 
-	itemUUID, err := uuid.FromString(collectionItem.ItemID)
+	itemUUID, err := uuid.FromString(collectionItem.ID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("req", req).Msg("convert asset id to uuid - AssetUnlockFromSupremacyHandler")
 		return err
