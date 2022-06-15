@@ -403,7 +403,8 @@ func MarketplaceItemSaleList(
 		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNotNull())
 	} else {
 		queryMods = append(queryMods,
-			boiler.ItemSaleWhere.SoldAt.IsNull(), boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+			boiler.ItemSaleWhere.SoldAt.IsNull(),
+			boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 			boiler.CollectionItemWhere.XsynLocked.EQ(false),
 			boiler.CollectionItemWhere.MarketLocked.EQ(false),
 		)
