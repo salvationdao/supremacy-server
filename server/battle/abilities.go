@@ -1831,7 +1831,6 @@ type AbilityBattleProgress struct {
 	FactionID   string `json:"faction_id"`
 	SupsCost    string `json:"sups_cost"`
 	CurrentSups string `json:"current_sups"`
-	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
