@@ -27,7 +27,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -338,12 +337,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
 		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
 	}
-	var collectionItemID uuid.UUID
-	err = boiler.CollectionItems(
-		qm.Select(boiler.CollectionItemColumns.ID),
+
+	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.ItemID.String()),
 		boiler.CollectionItemWhere.ItemType.EQ(req.Payload.ItemType),
-	).QueryRow(gamedb.StdConn).Scan(&collectionItemID)
+	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -356,7 +354,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		}
 		return terror.Error(err, errMsg)
 	}
-	if collectionItemID == uuid.Nil {
+
+	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
+
+	if ciUUID.IsNil() {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -366,7 +367,24 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	alreadySelling, err := db.MarketplaceCheckCollectionItem(collectionItemID)
+	// check if queue
+	if collectionItem.ItemType == boiler.ItemTypeMech {
+		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to get queue pos")
+			return err
+		}
+		if position != nil && position.QueuePosition >= 0 {
+			return fmt.Errorf("cannot sell war machine in battle queue")
+		}
+	}
+
+	alreadySelling, err := db.MarketplaceCheckCollectionItem(ciUUID)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -467,7 +485,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		factionID,
 		txid,
 		endAt,
-		collectionItemID,
+		ciUUID,
 		hasBuyout,
 		req.Payload.AskingPrice,
 		hasAuction,
@@ -488,10 +506,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Unlock Item
-	collectionItem := boiler.CollectionItem{
-		ID:                  collectionItemID.String(),
-		LockedToMarketplace: true,
-	}
+	collectionItem.LockedToMarketplace = true
 	_, err = collectionItem.Update(tx, boil.Whitelist(
 		boiler.CollectionItemColumns.ID,
 		boiler.CollectionItemColumns.LockedToMarketplace,
@@ -523,10 +538,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	reply(obj)
 
 	ci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID.String()),
+		boiler.CollectionItemWhere.ID.EQ(ciUUID.String()),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("collection item id", collectionItemID.String()).Err(err).Msg("Failed to get collection item from db")
+		gamelog.L.Error().Str("collection item id", ciUUID.String()).Err(err).Msg("Failed to get collection item from db")
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
