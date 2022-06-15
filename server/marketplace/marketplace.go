@@ -482,8 +482,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Msg("Failed to commit db transaction")
 				return
 			}
+			numProcessed++
 		}()
-		numProcessed++
 	}
 
 	gamelog.L.Info().
