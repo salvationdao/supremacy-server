@@ -1146,7 +1146,7 @@ $$
                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
                 VALUES ('WEAPON',
                         (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
-                        faction.id, 600000000000000000000);
+                        faction.id, 1800000000000000000000);
             END LOOP;
     END;
 $$;
