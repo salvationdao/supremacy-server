@@ -76,7 +76,6 @@ var keycardQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.BlueprintKeycardID),
 		),
 	),
-	boiler.PlayerKeycardWhere.Count.GT(0),
 }
 
 func CreateOrGetKeycard(ownerID string, tokenID int) (*boiler.PlayerKeycard, error) {
