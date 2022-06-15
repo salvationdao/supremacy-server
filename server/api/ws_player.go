@@ -396,8 +396,7 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check punish vote is finalised
-	// check player is available to be punished
+	// check player is available vote
 	player, err := boiler.FindPlayer(gamedb.StdConn, user.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
@@ -407,6 +406,7 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 		return terror.Error(terror.ErrInvalidInput, "Only players with rank 'GENERAL' can instantly pass a punish vote.")
 	}
 
+	// check punish vote is finalised
 	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
 	if !ok {
 		return terror.Error(fmt.Errorf("player faction id does not exist"))
@@ -686,8 +686,9 @@ const (
 
 type PunishVoteResponse struct {
 	*boiler.PunishVote
-	PunishOption *boiler.PunishOption `json:"punish_option"`
-	Decision     *PunishVoteDecision  `json:"decision,omitempty"`
+	PunishOption       *boiler.PunishOption `json:"punish_option"`
+	Decision           *PunishVoteDecision  `json:"decision,omitempty"`
+	InstantPassUserIDs []string             `json:"instant_pass_user_ids"`
 }
 
 type PunishVoteDecision struct {
@@ -705,14 +706,20 @@ func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, user
 			bv, err := boiler.PunishVotes(
 				boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
 				qm.Load(boiler.PunishVoteRels.PunishOption),
+				qm.Load(boiler.PunishVoteRels.PunishVoteInstantPassRecords),
 			).One(gamedb.StdConn)
 			if err != nil {
 				return terror.Error(err, "Failed to get punish vote from db")
 			}
 
 			pvr := &PunishVoteResponse{
-				PunishVote:   bv,
-				PunishOption: bv.R.PunishOption,
+				PunishVote:         bv,
+				PunishOption:       bv.R.PunishOption,
+				InstantPassUserIDs: []string{},
+			}
+
+			for _, ipr := range bv.R.PunishVoteInstantPassRecords {
+				pvr.InstantPassUserIDs = append(pvr.InstantPassUserIDs, ipr.VoteByPlayerID)
 			}
 
 			// check user has voted
