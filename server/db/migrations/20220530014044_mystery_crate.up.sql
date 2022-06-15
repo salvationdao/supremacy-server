@@ -207,28 +207,28 @@ $$
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Daison Avionics', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Archon Miltech', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Raptor', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Blue Camo', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('Rexeon Guard', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Gold', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Police', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Paladin', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Crystal', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('Hive', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
 
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_COLOSSAL_1', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('BC', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_COLOSSAL_2', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Space Marine', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_RARE', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('Nerf Gun', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_LEGENDARY', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
+                VALUES ('Celtic Knot', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_EXOTIC', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Cybernetics', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('BC_WEAPON_CRATE_SKIN_MYTHIC', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('Doom', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
             END LOOP;
     END;
 $$;
@@ -243,31 +243,31 @@ $$
                             WHERE faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
             LOOP
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('X3 Wartech', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('X3W', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Warsui', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('XHANCR', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('White Camo', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('2501 - Tachikoma', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Gold', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Ninja', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Shinobi', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Neon', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('Synth Punk', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
 
 
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_COLOSSAL_1', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Zaibatsu', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_COLOSSAL_2', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Purple and White', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_RARE', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('Sonnō jōi', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_LEGENDARY', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
+                VALUES ('Logogram - Arrival', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_EXOTIC', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Neko', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('ZAI_WEAPON_CRATE_SKIN_MYTHIC', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('BOTW', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
             END LOOP;
     END;
 $$;
@@ -283,31 +283,31 @@ $$
                                   (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
             LOOP
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Unified Martian Corporation', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('UMC', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Pyrotronics', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Military', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Red Camo', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('Mining', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
                 VALUES ('Gold', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Mining', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Heavy Metal', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('Lava', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('Molten', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
 
 
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_COLOSSAL_1', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('RM', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_COLOSSAL_2', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
+                VALUES ('Hazard', weapon_model.id, weapon_model.weapon_type, 'COLOSSAL');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_RARE', weapon_model.id, weapon_model.weapon_type, 'RARE');
+                VALUES ('Martian Marine Core', weapon_model.id, weapon_model.weapon_type, 'RARE');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_LEGENDARY', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
+                VALUES ('Cassowary', weapon_model.id, weapon_model.weapon_type, 'LEGENDARY');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_EXOTIC', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
+                VALUES ('Damascus', weapon_model.id, weapon_model.weapon_type, 'EXOTIC');
                 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type, tier)
-                VALUES ('RM_WEAPON_CRATE_SKIN_MYTHIC', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
+                VALUES ('Dantes Inferno', weapon_model.id, weapon_model.weapon_type, 'MYTHIC');
             END LOOP;
     END;
 $$;
@@ -326,7 +326,7 @@ $$
                              SET default_skin_id = (SELECT id
                                                     FROM blueprint_weapon_skin
                                                     WHERE weapon_model_id = weapon_model.id
-                                                      AND label = 'X3 Wartech')
+                                                      AND label = 'X3W')
                              WHERE id = weapon_model.id;
                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN UPDATE weapon_models
@@ -341,7 +341,7 @@ $$
                              SET default_skin_id = (SELECT id
                                                     FROM blueprint_weapon_skin
                                                     WHERE weapon_model_id = weapon_model.id
-                                                      AND label = 'Unified Martian Corporation')
+                                                      AND label = 'UMC')
                              WHERE id = weapon_model.id;
                     WHEN weapon_model.faction_id IS NULL THEN UPDATE weapon_models
                                                               SET default_skin_id = (SELECT id
@@ -512,44 +512,44 @@ $$
                 CASE
                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Archon Miltech', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'Raptor', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Blue Camo', mech_model.mech_type, 'RARE');
+                             VALUES (mech_model.id, 'Rexeon Guard', mech_model.mech_type, 'RARE');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Police', mech_model.mech_type, 'EXOTIC');
+                             VALUES (mech_model.id, 'Paladin', mech_model.mech_type, 'EXOTIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'MYTHIC');
+                             VALUES (mech_model.id, 'Hive', mech_model.mech_type, 'MYTHIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Crystal', mech_model.mech_type, 'LEGENDARY');
+                             VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'LEGENDARY');
 
                     WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Warsui', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'XHANCR', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'X3 Wartech', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'X3W', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'White Camo', mech_model.mech_type, 'RARE');
+                             VALUES (mech_model.id, '2501 - Tachikoma', mech_model.mech_type, 'RARE');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Ninja', mech_model.mech_type, 'EXOTIC');
+                             VALUES (mech_model.id, 'Shinobi', mech_model.mech_type, 'EXOTIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Neon', mech_model.mech_type, 'MYTHIC');
+                             VALUES (mech_model.id, 'Synth Punk', mech_model.mech_type, 'MYTHIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'LEGENDARY');
 
                     WHEN mech_model.faction_id =
                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
                         THEN INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Pyrotronics', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'Military', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type, 'COLOSSAL');
+                             VALUES (mech_model.id, 'UMC', mech_model.mech_type, 'COLOSSAL');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Red Camo', mech_model.mech_type, 'RARE');
+                             VALUES (mech_model.id, 'Mining', mech_model.mech_type, 'RARE');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Mining', mech_model.mech_type, 'EXOTIC');
+                             VALUES (mech_model.id, 'Heavy Metal', mech_model.mech_type, 'EXOTIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
-                             VALUES (mech_model.id, 'Lava', mech_model.mech_type, 'MYTHIC');
+                             VALUES (mech_model.id, 'Molten', mech_model.mech_type, 'MYTHIC');
                              INSERT INTO blueprint_mech_skin (mech_model, label, mech_type, tier)
                              VALUES (mech_model.id, 'Gold', mech_model.mech_type, 'LEGENDARY');
                     END CASE;
@@ -572,14 +572,14 @@ $$
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'Warsui')
+                                                              AND label = 'X3W')
                              WHERE id = model.id;
                     WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN UPDATE mech_models
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'Archon Miltech')
+                                                              AND label = 'Daison Avionics')
                              WHERE id = model.id;
                     WHEN model.faction_id =
                          (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
@@ -587,7 +587,7 @@ $$
                              SET default_chassis_skin_id = (SELECT id
                                                             FROM blueprint_mech_skin
                                                             WHERE mech_model = model.id
-                                                              AND label = 'Pyrotronics')
+                                                              AND label = 'UMC')
                              WHERE id = model.id;
                     WHEN model.faction_id IS NULL THEN UPDATE mech_models
                                                        SET default_chassis_skin_id = (SELECT id
@@ -756,7 +756,7 @@ CREATE FUNCTION get_mech_skin_label_rarity(i INTEGER, type TEXT, amount_of_type 
 $$
 BEGIN
     RETURN CASE
-        --30% mech manufacturer
+        --30% colossal
                WHEN i <= ((.30 * amount_of_type) + previous_crates)
                    THEN
                    CASE
@@ -765,23 +765,23 @@ BEGIN
                                WHEN faction.label = 'Boston Cybernetics'
                                    THEN 'Daison Avionics'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'X3 Wartech'
+                                   THEN 'X3W'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'Unified Martian Corporation'
+                                   THEN 'UMC'
                                END
                        WHEN type = 'WEAPON' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'BC_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                                   THEN 'BC'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'ZAI_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                                   THEN 'Zaibatsu'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'RM_WEAPON_CRATE_SKIN_COLOSSAL_1'
+                                   THEN 'RM'
                                END
                        END
 
 
-        --30% weapons manufacturer
+        --30% colossal
                WHEN i > ((.30 * amount_of_type) + previous_crates) AND
                     i <= ((.60 * amount_of_type) + previous_crates)
                    THEN
@@ -789,24 +789,24 @@ BEGIN
                        WHEN type = 'MECH' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'Archon Miltech'
+                                   THEN 'Raptor'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'Warsui'
+                                   THEN 'XHANCR'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'Pyrotronics'
+                                   THEN 'Military'
                                END
                        WHEN type = 'WEAPON' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'BC_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                                   THEN 'Space Marine'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'ZAI_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                                   THEN 'Purple and White'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'RM_WEAPON_CRATE_SKIN_COLOSSAL_2'
+                                   THEN 'Hazard'
                                END
                        END
 
-        --15% for camo
+        --15% rare
                WHEN i > ((.60 * amount_of_type) + previous_crates) AND
                     i <= ((.75 * amount_of_type) + previous_crates)
                    THEN
@@ -814,24 +814,24 @@ BEGIN
                        WHEN type = 'MECH' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'Blue Camo'
+                                   THEN 'Rexeon Guard'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'White Camo'
+                                   THEN '2501 - Tachikoma'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'Red Camo'
+                                   THEN 'Mining'
                                END
                        WHEN type = 'WEAPON' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'BC_WEAPON_CRATE_SKIN_RARE'
+                                   THEN 'Nerf Gun'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'ZAI_WEAPON_CRATE_SKIN_RARE'
+                                   THEN 'Sonnō jōi'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'RM_WEAPON_CRATE_SKIN_RARE'
+                                   THEN 'Martian Marine Core'
                                END
                        END
 
-        --12.5% for Gold
+        --12.5% legendary
                WHEN i > ((.75 * amount_of_type) + previous_crates) AND
                     i <= ((.875 * amount_of_type) + previous_crates)
                    THEN CASE
@@ -839,11 +839,11 @@ BEGIN
                             WHEN type = 'WEAPON' THEN
                                 CASE
                                     WHEN faction.label = 'Boston Cybernetics'
-                                        THEN 'BC_WEAPON_CRATE_SKIN_LEGENDARY'
+                                        THEN 'Celtic Knot'
                                     WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                        THEN 'ZAI_WEAPON_CRATE_SKIN_LEGENDARY'
+                                        THEN 'Logogram - Arrival'
                                     WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                        THEN 'RM_WEAPON_CRATE_SKIN_LEGENDARY'
+                                        THEN 'Cassowary'
                                     END
                    END
 
@@ -855,20 +855,20 @@ BEGIN
                        WHEN type = 'MECH' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'Police'
+                                   THEN 'Paladin'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'Ninja'
+                                   THEN 'Shinobi'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'Mining'
+                                   THEN 'Heavy Metal'
                                END
                        WHEN type = 'WEAPON' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'BC_WEAPON_CRATE_SKIN_EXOTIC'
+                                   THEN 'Cybernetics'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'ZAI_WEAPON_CRATE_SKIN_EXOTIC'
+                                   THEN 'Neko'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'RM_WEAPON_CRATE_SKIN_EXOTIC'
+                                   THEN 'Damascus'
                                END
                        END
         --2.5% mythic
@@ -879,20 +879,21 @@ BEGIN
                        WHEN type = 'MECH' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'Crystal'
+                                   THEN 'Hive'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'Neon'
+                                   THEN 'Synth Punk'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'Lava'
+                                   THEN 'Molten'
                                END
+--                        this will push into rare to account for no mythics for MOST weapons
                        WHEN type = 'WEAPON' THEN
                            CASE
                                WHEN faction.label = 'Boston Cybernetics'
-                                   THEN 'BC_WEAPON_CRATE_SKIN_MYTHIC'
+                                   THEN 'Nerf Gun'
                                WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                   THEN 'ZAI_WEAPON_CRATE_SKIN_MYTHIC'
+                                   THEN 'Sonnō jōi'
                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                   THEN 'RM_WEAPON_CRATE_SKIN_MYTHIC'
+                                   THEN 'Martian Marine Core'
                                END
                        END
         END;
@@ -1098,27 +1099,63 @@ $$
                                                                            faction);
                                      i := i + 1;
                             --BFG, flamethrower or Lightning Gun dependent on faction
-                            ELSE PERFORM insert_weapon_into_crate(weaponCrate.id,
-                                                                  CASE
-                                                                      WHEN faction.label = 'Boston Cybernetics'
-                                                                          THEN 'BFG'
-                                                                      WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                                          THEN 'Lightning Gun'
-                                                                      WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                                          THEN 'Flamethrower'
-                                                                      END, faction);
-                                 PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id,
-                                                                       CASE
-                                                                           WHEN faction.label = 'Boston Cybernetics'
-                                                                               THEN 'BFG'
-                                                                           WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                                               THEN 'Lightning Gun'
-                                                                           WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                                               THEN 'Flamethrower'
-                                                                           END,
-                                                                       1000,
-                                                                       12000, 'WEAPON', '', faction);
-                                 i := i + 1;
+                            WHEN i > 12000 AND i <= 13000
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id,
+                                                                      CASE
+                                                                          WHEN faction.label = 'Boston Cybernetics'
+                                                                              THEN 'BFG'
+                                                                          WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                              THEN 'Lightning Gun'
+                                                                          WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                              THEN 'Flamethrower'
+                                                                          END, faction);
+                                     CASE
+                                         WHEN i > 12000 AND i <= 12700
+                                             THEN PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
+                                                                                        CASE
+                                                                                            WHEN faction.label = 'Boston Cybernetics'
+                                                                                                THEN 'BFG'
+                                                                                            WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                                                THEN 'Lightning Gun'
+                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                                                THEN 'Flamethrower'
+                                                                                            END,
+                                                                                        0,
+                                                                                        0,
+                                                                                        'MECH',
+                                                                                        CASE
+                                                                                            WHEN faction.label = 'Boston Cybernetics'
+                                                                                                THEN 'Cybernetics'
+                                                                                            WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                                                THEN 'Neko'
+                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                                                THEN 'Damascus'
+                                                                                            END,
+                                                                                        faction);
+                                         WHEN i > 12700 AND i <= 13000
+                                             THEN PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
+                                                                                        CASE
+                                                                                            WHEN faction.label = 'Boston Cybernetics'
+                                                                                                THEN 'BFG'
+                                                                                            WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                                                THEN 'Lightning Gun'
+                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                                                THEN 'Flamethrower'
+                                                                                            END,
+                                                                                        0,
+                                                                                        0,
+                                                                                        'MECH',
+                                                                                        CASE
+                                                                                            WHEN faction.label = 'Boston Cybernetics'
+                                                                                                THEN 'Doom'
+                                                                                            WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                                                THEN 'BOTW'
+                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                                                THEN 'Dantes Inferno'
+                                                                                            END,
+                                                                                        faction);
+                                         END CASE;
+                                     i := i + 1;
                             END CASE;
                     END LOOP;
 
