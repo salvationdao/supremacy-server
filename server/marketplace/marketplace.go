@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/asset"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -29,6 +30,7 @@ type ItemSaleAuction struct {
 	CollectionItemID     uuid.UUID           `boil:"collection_item_id"`
 	ItemType             string              `boil:"item_type"`
 	ItemLocked           bool                `boil:"item_locked"`
+	Hash                 string              `boil:"hash"`
 	OwnerID              uuid.UUID           `boil:"owner_id"`
 	Auction              bool                `boil:"auction"`
 	AuctionReservedPrice decimal.NullDecimal `boil:"auction_reserved_price"`
@@ -256,6 +258,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			SELECT item_sales.id AS id,
 				item_sales.collection_item_id,
 				collection_items.item_type,
+				collection_items.hash,
 				item_sales.owner_id,
 				item_sales.auction,
 				item_sales.auction_reserved_price,
@@ -423,11 +426,52 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
+			err = m.Passport.TransferAsset(
+				saleItemRecord.OwnerID,
+				saleItemRecord.SoldBy.String,
+				auctionItem.Hash,
+				null.StringFrom(txid),
+				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+					asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+				},
+			)
+			if err != nil {
+				m.Passport.RefundSupsMessage(txid)
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
+				return
+			}
+
+			rpcAssetTrasferRollback := func() {
+				err := m.Passport.TransferAsset(
+					saleItemRecord.SoldBy.String,
+					saleItemRecord.OwnerID,
+					auctionItem.Hash,
+					null.String{},
+					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+						asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+					},
+				)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Err(err).
+						Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
+				}
+			}
+
 			// Transfer ownership of asset
 			if auctionItem.ItemType == boiler.ItemTypeMech {
 				err = db.ChangeMechOwner(tx, auctionItem.ID)
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
+					rpcAssetTrasferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -440,6 +484,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				err = db.ChangeMysteryCrateOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
+					rpcAssetTrasferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -461,6 +506,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			))
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
+				rpcAssetTrasferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -474,6 +520,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			err = tx.Commit()
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
+				rpcAssetTrasferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
