@@ -599,9 +599,6 @@ func MarketplaceSaleArchiveByItemID(conn boil.Executor, id uuid.UUID) error {
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
 	).One(conn)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
 		return terror.Error(err)
 	}
 	_, err = asset.Delete(conn, false)

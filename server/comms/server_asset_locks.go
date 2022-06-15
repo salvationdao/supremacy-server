@@ -56,10 +56,12 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 		return err
 	}
 
-	err = db.MarketplaceSaleArchiveByItemID(gamedb.StdConn, itemUUID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
-		return terror.Error(err, "Failed to unlock asset from supremacy")
+	if collectionItem.LockedToMarketplace {
+		err = db.MarketplaceSaleArchiveByItemID(gamedb.StdConn, itemUUID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
+			return terror.Error(err, "Failed to unlock asset from supremacy")
+		}
 	}
 
 	return nil
