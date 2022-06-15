@@ -329,7 +329,7 @@ func assignAndRegisterClaimCrate(userID string, storeCrate *boiler.StorefrontMys
 	}
 
 	//register
-	assignedCrateServer := server.MysteryCrateFromBoiler(copiedMC, collectionItem)
+	assignedCrateServer := server.MysteryCrateFromBoiler(copiedMC, collectionItem, null.String{})
 	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, faction.Label)
 
 	err = api.Passport.AssetRegister(xsynAsset)

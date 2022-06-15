@@ -29,6 +29,24 @@ var NumKeycardsOnMarketplaceSQL = fmt.Sprintf(`
 	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.DeletedAt),
 )
 
+var ActiveItemSaleSQL = fmt.Sprintf(`
+	(
+		SELECT array_agg(%s)
+		FROM %s
+		WHERE %s = %s 
+			AND %s > NOW()
+			AND %s IS NULL
+			AND %s IS NULL
+	)`,
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ID),
+	boiler.TableNames.ItemKeycardSales,
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+	qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt),
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.SoldAt),
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.DeletedAt),
+)
+
 var keycardQueryMods = []qm.QueryMod{
 	qm.Select(
 		qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
@@ -46,6 +64,7 @@ var keycardQueryMods = []qm.QueryMod{
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.KeycardGroup),
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Syndicate),
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.CreatedAt),
+		ActiveItemSaleSQL+" AS item_sale_ids",
 		NumKeycardsOnMarketplaceSQL+" AS market_listed_count",
 	),
 	qm.From(boiler.TableNames.PlayerKeycards),
@@ -106,7 +125,6 @@ func UpdateKeycardReductionAmount(ownerID string, tokenID int) error {
 		WHERE pk.player_id = $1 AND pk.blueprint_keycard_id = (
 			SELECT id FROM blueprint_keycards WHERE keycard_token_id = $2
 		);`
-
 	_, err := boiler.NewQuery(qm.SQL(q, ownerID, tokenID)).Exec(gamedb.StdConn)
 	if err != nil {
 		return err
@@ -134,6 +152,7 @@ func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
 		&item.Blueprints.Syndicate,
 		&item.Blueprints.CreatedAt,
 		&item.MarketListedCount,
+		&item.ItemSaleIDs,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

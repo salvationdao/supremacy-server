@@ -5,9 +5,11 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -44,7 +46,7 @@ func PlayerMysteryCrate(id uuid.UUID) (*server.MysteryCrate, error) {
 		return nil, terror.Error(err)
 	}
 
-	return server.MysteryCrateFromBoiler(crate, collection), nil
+	return server.MysteryCrateFromBoiler(crate, collection, null.String{}), nil
 }
 
 func PlayerMysteryCrateList(
@@ -132,9 +134,11 @@ func PlayerMysteryCrateList(
 		return total, nil, terror.Error(err)
 	}
 
+	collectionItemIDs := []string{}
 	mysteryCrateIDs := []string{}
 	for _, ci := range collectionItems {
 		mysteryCrateIDs = append(mysteryCrateIDs, ci.ItemID)
+		collectionItemIDs = append(collectionItemIDs, ci.ID)
 	}
 
 	mysteryCrates, err := boiler.MysteryCrates(boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs)).All(gamedb.StdConn)
@@ -142,19 +146,41 @@ func PlayerMysteryCrateList(
 		return total, nil, terror.Error(err)
 	}
 
+	itemSales, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.CollectionItemID.IN(collectionItemIDs),
+		boiler.ItemSaleWhere.SoldAt.IsNull(),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return total, nil, terror.Error(err)
+	}
+
 	output := []*server.MysteryCrate{}
 	for _, collectionItem := range collectionItems {
-		var mysteryCrate *boiler.MysteryCrate
+		var (
+			mysteryCrate *boiler.MysteryCrate
+			itemSale     *boiler.ItemSale
+		)
 		for _, mc := range mysteryCrates {
 			if mc.ID == collectionItem.ItemID {
 				mysteryCrate = mc
 				break
 			}
 		}
+		for _, is := range itemSales {
+			if is.CollectionItemID == collectionItem.ID {
+				itemSale = is
+			}
+		}
 		if mysteryCrate == nil {
 			return total, nil, terror.Error(fmt.Errorf("unable to find mystery crate from collection item %s", collectionItem.ItemID))
 		}
-		item := server.MysteryCrateFromBoiler(mysteryCrate, collectionItem)
+		itemSaleID := null.String{}
+		if itemSale != nil {
+			itemSaleID = null.StringFrom(itemSale.ID)
+		}
+		item := server.MysteryCrateFromBoiler(mysteryCrate, collectionItem, itemSaleID)
 		output = append(output, item)
 	}
 	return total, output, nil
