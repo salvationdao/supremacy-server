@@ -318,7 +318,6 @@ func MarketplaceItemSaleList(
 
 	queryMods := append(
 		ItemSaleQueryMods,
-		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
 		boiler.CollectionItemWhere.MarketLocked.EQ(false),
@@ -405,7 +404,7 @@ func MarketplaceItemSaleList(
 	if sold {
 		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNotNull())
 	} else {
-		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNull())
+		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNull(), boiler.ItemSaleWhere.EndAt.GT(time.Now()))
 	}
 
 	// Search
@@ -486,8 +485,6 @@ func MarketplaceItemKeycardSaleList(
 
 	queryMods := append(
 		ItemKeycardSaleQueryMods,
-		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
-		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
 
@@ -497,6 +494,8 @@ func MarketplaceItemKeycardSaleList(
 
 	if sold {
 		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldAt.IsNotNull())
+	} else {
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldBy.IsNull(), boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()))
 	}
 
 	// Filters
