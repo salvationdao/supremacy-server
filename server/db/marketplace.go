@@ -593,16 +593,19 @@ func MarketplaceSaleArchive(conn boil.Executor, id uuid.UUID) error {
 
 // MarketplaceSaleArchiveByItemID archives as sale item.
 func MarketplaceSaleArchiveByItemID(conn boil.Executor, id uuid.UUID) error {
-	_, err := boiler.ItemSales(
+	asset, err := boiler.ItemSales(
 		boiler.ItemSaleWhere.CollectionItemID.EQ(id.String()),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
-	).UpdateAll(conn, boiler.M{
-		"deleted_at": time.Now(),
-	})
+	).One(conn)
 	if err != nil {
 		return terror.Error(err)
 	}
+	_, err = asset.Delete(conn, false)
+	if err != nil {
+		return terror.Error(err)
+	}
+
 	return nil
 }
 
