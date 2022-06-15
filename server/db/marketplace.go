@@ -927,7 +927,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 
 	for _, w := range mech.Weapons {
 		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(w.ItemID),
+			boiler.CollectionItemWhere.ItemID.EQ(w.ID),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldBy,
 		})
@@ -942,7 +942,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 
 	for _, u := range mech.Utility {
 		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(u.ItemID),
+			boiler.CollectionItemWhere.ItemID.EQ(u.ID),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldBy,
 		})
