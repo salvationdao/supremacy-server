@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"server"
 	"server/battle"
@@ -419,6 +420,18 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 
 	reply(true)
 
+	// update instant vote count
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(req.Payload.PunishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote/%s/command_override", factionID, req.Payload.PunishVoteID), HubKeyPunishVoteCommandOverrideCountSubscribe, fmt.Sprintf("%d/%d", count, requiredAmount))
+
 	return nil
 }
 
@@ -672,6 +685,26 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	}
 
 	reply(true)
+
+	return nil
+}
+
+const HubKeyPunishVoteCommandOverrideCountSubscribe = "PUNISH:VOTE:COMMAND:OVERRIDE:COUNT:SUBSCRIBE"
+
+func (pc *PlayerController) PunishVoteCommandOverrideCountSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	punishVoteID := cctx.URLParam("punish_vote_id")
+
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(punishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	reply(fmt.Sprintf("%d/%d", count, requiredAmount))
 
 	return nil
 }
