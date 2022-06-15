@@ -119,6 +119,14 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 	colItem.OwnerID = te.ToUserID
 	colItem.XsynLocked = xsynLocked
 
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to start tx HandleTransferEvent")
+		return
+	}
+
+	defer tx.Rollback()
+
 	if colItem.ItemType == boiler.ItemTypeMech {
 		mech, err := db.Mech(colItem.ItemID)
 		if err != nil {
@@ -133,7 +141,7 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 		if mech.ChassisSkin != nil {
 			_, err = boiler.CollectionItems(
 				boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
-			).UpdateAll(gamedb.StdConn, boiler.M{
+			).UpdateAll(tx, boiler.M{
 				"owner_id":    te.ToUserID,
 				"xsyn_locked": xsynLocked,
 			})
@@ -150,7 +158,7 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 		if mech.PowerCoreID.Valid {
 			_, err = boiler.CollectionItems(
 				boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
-			).UpdateAll(gamedb.StdConn, boiler.M{
+			).UpdateAll(tx, boiler.M{
 				"owner_id":    te.ToUserID,
 				"xsyn_locked": xsynLocked,
 			})
@@ -166,8 +174,8 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 
 		for _, w := range mech.Weapons {
 			_, err = boiler.CollectionItems(
-				boiler.CollectionItemWhere.ItemID.EQ(w.ItemID),
-			).UpdateAll(gamedb.StdConn, boiler.M{
+				boiler.CollectionItemWhere.ItemID.EQ(w.ID),
+			).UpdateAll(tx, boiler.M{
 				"owner_id":    te.ToUserID,
 				"xsyn_locked": xsynLocked,
 			})
@@ -183,8 +191,8 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 
 		for _, u := range mech.Utility {
 			_, err = boiler.CollectionItems(
-				boiler.CollectionItemWhere.ItemID.EQ(u.ItemID),
-			).UpdateAll(gamedb.StdConn, boiler.M{
+				boiler.CollectionItemWhere.ItemID.EQ(u.ID),
+			).UpdateAll(tx, boiler.M{
 				"owner_id":    te.ToUserID,
 				"xsyn_locked": xsynLocked,
 			})
@@ -199,9 +207,15 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 
 	}
 
-	_, err = colItem.Update(gamedb.StdConn, boil.Infer())
+	_, err = colItem.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("tx failed collection item")
 		return
 	}
 	db.PutInt(db.KeyLastTransferEventID, int(te.TransferEventID))
