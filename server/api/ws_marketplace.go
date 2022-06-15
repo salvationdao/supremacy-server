@@ -1125,7 +1125,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	rpcAssetTrasferRollback := func() {
-		err = mp.API.Passport.TransferAsset(
+		err := mp.API.Passport.TransferAsset(
 			userID.String(),
 			saleItem.OwnerID,
 			saleItem.CollectionItem.Hash,
