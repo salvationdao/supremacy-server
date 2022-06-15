@@ -165,13 +165,13 @@ func PlayerKeycardList(
 		}
 	}
 
-	if !includeMarketListed {
-		queryMods = append(queryMods, qm.And(fmt.Sprintf(
-			`%s - %s > 0`,
-			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.Count),
-			NumKeycardsOnMarketplaceSQL,
-		)))
-	}
+	//if !includeMarketListed {
+	//	queryMods = append(queryMods, qm.And(fmt.Sprintf(
+	//		`%s - %s > 0`,
+	//		qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.Count),
+	//		NumKeycardsOnMarketplaceSQL,
+	//	)))
+	//}
 
 	if userID != nil {
 		queryMods = append(

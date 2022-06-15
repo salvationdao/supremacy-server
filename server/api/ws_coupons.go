@@ -5,6 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"server"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"server/rpctypes"
+	"server/xsyn_rpcclient"
+	"time"
+
 	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -16,14 +25,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"server"
-	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"server/rpctypes"
-	"server/xsyn_rpcclient"
-	"time"
 )
 
 type CouponController struct {
@@ -123,9 +124,12 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			rollbackRedeem()
+			gamelog.L.Error().Err(err).Interface("coupon code: ", couponCode).Msg("failed to find coupon code")
+			return terror.Error(err, "Issue finding coupon code, try again or contact support.")
+
+		} else {
+			return terror.Error(fmt.Errorf("unable to find unclaimed coupon"))
 		}
-		gamelog.L.Error().Err(err).Interface("coupon code: ", couponCode).Msg("failed to find coupon code")
-		return terror.Error(err, "Issue finding coupon code, try again or contact support.")
 	}
 
 	err = coupon.L.LoadCouponItems(gamedb.StdConn, true, coupon,

@@ -1884,7 +1884,9 @@ func (btl *Battle) Load() error {
 
 	btl.warMachineIDs = uuids
 
-	go BroadcastQueuePositions()
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 
 	return nil
 }

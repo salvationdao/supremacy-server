@@ -132,3 +132,18 @@ type MarketplaceSaleItem1155 struct {
 	Owner          MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
 	Keycard        AssetKeycardBlueprint    `json:"keycard,omitempty" boil:",bind"`
 }
+
+type MechArenaStatus string
+
+const (
+	MechArenaStatusQueue  MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket MechArenaStatus = "MARKET"
+	MechArenaStatusIdle   MechArenaStatus = "IDLE"
+	MechArenaStatusSold   MechArenaStatus = "SOLD"
+)
+
+type MechArenaInfo struct {
+	Status        MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
+	QueuePosition int64           `json:"queue_position"`
+}
