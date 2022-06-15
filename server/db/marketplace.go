@@ -561,6 +561,8 @@ func MarketplaceItemKeycardSaleList(
 	var orderBy qm.QueryMod
 	if sortBy == "alphabetical" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label), sortDir))
+	} else if sortBy == "time" {
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.EndAt), sortDir))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
 	}
