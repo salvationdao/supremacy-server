@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -56,7 +55,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 		gameMap.DisabledCells,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -64,11 +63,27 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 
 // GameMapGetRandom return a game map by given id
 func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
+
 	mapQueries := []qm.QueryMod{
 		qm.Select(
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
 		),
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	}
+
+	mapCount, err := boiler.GameMaps(mapQueries...).Count(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if mapCount == 1 {
+		gameMap, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		return gameMap[0], nil
 	}
 
 	if !allowLastMap {
@@ -81,7 +96,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 			qm.OrderBy("ended_at desc"),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 
 		if lastBattle != nil {
@@ -91,11 +106,10 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 
 	maps, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	rand.Seed(time.Now().UnixNano())
-
 	gameMap := maps[rand.Intn(len(maps))]
 
 	return gameMap, nil

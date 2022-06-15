@@ -1,21 +1,16 @@
 package battle
 
 import (
-	"encoding/json"
-	"fmt"
-	"server"
-	"server/gamelog"
 	"server/multipliers"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
 
 type usersMap struct {
-	deadlock.RWMutex
+	sync.RWMutex
 	m map[uuid.UUID]*BattleUser
 }
 
@@ -33,25 +28,6 @@ func (u *usersMap) Range(fn func(user *BattleUser) bool) {
 		}
 	}
 	u.RUnlock()
-}
-
-func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.UUID) error {
-	u.RLock()
-	if len(ids) == 0 {
-		for _, user := range u.m {
-			user.Send(key, payload)
-		}
-	} else {
-		for _, id := range ids {
-			if user, ok := u.m[id]; ok {
-				user.Send(key, payload)
-			} else {
-				gamelog.L.Warn().Str("user_id", id.String()).Msg("tried to send user a msg but not in online map")
-			}
-		}
-	}
-	u.RUnlock()
-	return nil
 }
 
 func (u *usersMap) OnlineUserIDs() []string {
@@ -97,13 +73,10 @@ type Started struct {
 }
 
 type BattleUser struct {
-	ID            uuid.UUID `json:"id"`
-	Username      string    `json:"username"`
-	FactionColour string    `json:"faction_colour"`
-	FactionID     string    `json:"faction_id"`
-	FactionLogoID string    `json:"faction_logo_id"`
-	wsClient      map[*hub.Client]bool
-	deadlock.RWMutex
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	FactionID string    `json:"faction_id"`
+	sync.RWMutex
 }
 
 var FactionNames = map[string]string{
@@ -120,27 +93,6 @@ var FactionLogos = map[string]string{
 
 func (bu *BattleUser) AvatarID() string {
 	return FactionLogos[bu.FactionID]
-}
-
-func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
-	bu.Lock()
-	defer bu.Unlock()
-	if bu.wsClient == nil || len(bu.wsClient) == 0 {
-		return fmt.Errorf("user does not have a websocket client")
-	}
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     key,
-		Payload: payload,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	for wsc := range bu.wsClient {
-		go wsc.Send(b)
-	}
-	return nil
 }
 
 type BattleEndDetail struct {
@@ -167,39 +119,60 @@ type MultiplierUpdateBattles struct {
 	UserMultipliers  []*multipliers.PlayerMultiplier `json:"multipliers"`
 }
 
-type WarMachine struct {
-	ID                 string          `json:"id"`
-	Hash               string          `json:"hash"`
-	ParticipantID      byte            `json:"participantID"`
-	FactionID          string          `json:"factionID"`
-	MaxHealth          uint32          `json:"maxHealth"`
-	Health             uint32          `json:"health"`
-	MaxShield          uint32          `json:"maxShield"`
-	Shield             uint32          `json:"shield"`
-	Energy             uint32          `json:"energy"`
-	Stat               *Stat           `json:"stat"`
-	ImageAvatar        string          `json:"imageAvatar"`
-	Position           *server.Vector3 `json:"position"`
-	Rotation           int             `json:"rotation"`
-	OwnedByID          string          `json:"ownedByID"`
-	Name               string          `json:"name"`
-	Description        *string         `json:"description"`
-	ExternalUrl        string          `json:"externalUrl"`
-	Image              string          `json:"image"`
-	Model              string          `json:"model"`
-	Skin               string          `json:"skin"`
-	ShieldRechargeRate float64         `json:"shieldRechargeRate"`
-	Speed              int             `json:"speed"`
-	Durability         int             `json:"durability"`
-	PowerGrid          int             `json:"powerGrid"`
-	CPU                int             `json:"cpu"`
-	WeaponHardpoint    int             `json:"weaponHardpoint"`
-	TurretHardpoint    int             `json:"turretHardpoint"`
-	UtilitySlots       int             `json:"utilitySlots"`
-	Faction            *Faction        `json:"faction"`
-	WeaponNames        []string        `json:"weaponNames"`
-	Abilities          []GameAbility   `json:"abilities"`
-	Tier               string          `json:"tier"`
+type Faction struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Theme *Theme `json:"theme"`
+}
+
+type Theme struct {
+	PrimaryColor    string `json:"primary"`
+	SecondaryColor  string `json:"secondary"`
+	BackgroundColor string `json:"background"`
+}
+
+type Stat struct {
+	X        uint32 `json:"x"`
+	Y        uint32 `json:"y"`
+	Rotation uint32 `json:"rotation"`
+}
+
+type DamageRecord struct {
+	Amount             int              `json:"amount"` // The total amount of damage taken from this source
+	CausedByWarMachine *WarMachineBrief `json:"caused_by_war_machine,omitempty"`
+	SourceName         string           `json:"source_name,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
+}
+
+type WMDestroyedRecord struct {
+	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
+	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine,omitempty"`
+	KilledBy            string           `json:"killed_by"`
+	DamageRecords       []*DamageRecord  `json:"damage_records"`
+}
+
+type DamageHistory struct {
+	Amount         int    `json:"amount"`          // The total amount of damage taken from this source
+	InstigatorHash string `json:"instigator_hash"` // The Hash of the WarMachine that caused the damage (0 if none, ie: an Airstrike)
+	SourceHash     string `json:"source_hash"`     // The Hash of the weapon
+	SourceName     string `json:"source_name"`     // The name of the weapon / damage causer (in-case of now Hash)
+}
+
+type WarMachineBrief struct {
+	ParticipantID byte   `json:"participantID"`
+	Hash          string `json:"hash"`
+	ImageUrl      string `json:"imageUrl"`
+	ImageAvatar   string `json:"imageAvatar"`
+	Name          string `json:"name"`
+	FactionID     string `json:"factionID"`
+}
+
+type FactionBrief struct {
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	LogoBlobID string `json:"logo_blob_id,omitempty"`
+	Primary    string `json:"primary_color"`
+	Secondary  string `json:"secondary_color"`
+	Background string `json:"background_color"`
 }
 
 type GameAbility struct {
@@ -229,6 +202,8 @@ type GameAbility struct {
 	CooldownDurationSecond int `json:"cooldown_duration_second"`
 
 	OfferingID uuid.UUID `json:"ability_offering_id"` // for tracking ability trigger
+
+	sync.RWMutex
 }
 
 type GameAbilityPrice struct {

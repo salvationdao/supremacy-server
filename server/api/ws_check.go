@@ -2,8 +2,7 @@ package api
 
 import (
 	"context"
-
-	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"
@@ -28,15 +27,15 @@ func NewCheckController(api *API) *CheckControllerWS {
 }
 
 // HubKeyCheck is used to route to the  handler
-const HubKeyCheck = hub.HubCommandKey("CHECK")
+const HubKeyCheck = "CHECK"
 
 type CheckResponse struct {
 	Check string `json:"check"`
 }
 
-func (ch *CheckControllerWS) Handler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ch *CheckControllerWS) Handler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	response := CheckResponse{Check: "ok"}
-	err := check(ctx, ch.Conn)
+	err := check()
 	if err != nil {
 		response.Check = err.Error()
 	}

@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"server/battle"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -26,19 +28,39 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
+	// commands from battle
+
+	// faction queue
+	api.SecureUserFactionCommand(battle.WSQueueJoin, api.BattleArena.QueueJoinHandler)
+	api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
+	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.BattleArena.AssetUpdateRequest)
+
+	// TODO: handle insurance and repair
+	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
+	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
+
+	// TODO: handle player ability use
+	//api.SecureUserCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+
+	// battle ability related (bribing)
+	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
+	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
+
+	// faction unique ability related (sup contribution)
+	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
+
 	return bc
 }
 
 type BattleMechHistoryRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"payload"`
 }
 
 type BattleDetailed struct {
-	*boiler.Battle
-	GameMap *boiler.GameMap `json:"game_map"`
+	*boiler.Battle `json:"battle"`
+	GameMap        *boiler.GameMap `json:"game_map"`
 }
 
 type BattleMechDetailed struct {
@@ -51,9 +73,9 @@ type BattleMechHistoryResponse struct {
 	BattleHistory []BattleMechDetailed `json:"battle_history"`
 }
 
-const HubKeyBattleMechHistoryList = hub.HubCommandKey("BATTLE:MECH:HISTORY:LIST")
+const HubKeyBattleMechHistoryList = "BATTLE:MECH:HISTORY:LIST"
 
-func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -87,7 +109,6 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 }
 
 type BattleMechStatsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"mech_id"`
@@ -105,9 +126,9 @@ type BattleMechStatsResponse struct {
 	ExtraStats BattleMechExtraStats `json:"extra_stats"`
 }
 
-const HubKeyBattleMechStats = hub.HubCommandKey("BATTLE:MECH:STATS")
+const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 
-func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -120,7 +141,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 		return nil
 	}
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	var total int
@@ -128,7 +149,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	var minKills int
 	var maxSurvives int
 	var minSurvives int
-	err = gamedb.Conn.QueryRow(context.Background(), `
+	err = gamedb.StdConn.QueryRow(`
 	SELECT
 		count(mech_id),
 		max(total_kills),

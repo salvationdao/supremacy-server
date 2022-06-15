@@ -3,8 +3,10 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"server/gamelog"
 
 	"github.com/ninja-software/terror/v2"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
@@ -59,10 +61,33 @@ func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request
 	return fn
 }
 
-// check passport http request secret
+func WithCookie(api *API, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		token := ""
+		cookie, err := r.Cookie("xsyn-token")
+		if err != nil {
+			fmt.Fprintf(w, "cookie not found: %v", err)
+			return
+		}
+		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+			fmt.Fprintf(w, "decryption error: %v", err)
+			return
+		}
+		_, err = api.TokenLogin(token)
+		if err != nil {
+			fmt.Fprintf(w, "authentication error: %v", err)
+			return
+		}
+		next(w, r)
+	}
+	return fn
+}
+
+// WithPassportSecret check passport http request secret
 func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Passport-Authorization") != secret {
+			gamelog.L.Warn().Str("header secret", r.Header.Get("Passport-Authorization")).Str("webhook secret", secret).Msg("authentication failed")
 			http.Error(w, "unauthorized", http.StatusForbidden)
 			return
 		}

@@ -7,7 +7,6 @@ import (
 	"server/gamedb"
 	"strings"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/jackc/pgconn"
@@ -88,7 +87,7 @@ func UpsertPlayer(p *boiler.Player) error {
 		boil.Infer(),
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }

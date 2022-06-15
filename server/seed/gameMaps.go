@@ -6,7 +6,6 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/terror/v2"
 )
 
 // To get the location in game its
@@ -124,7 +123,7 @@ func GameMapCreate(ctx context.Context, conn *pgxpool.Pool, gameMap *GameMap) er
 		gameMap.MaxSpawns,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil

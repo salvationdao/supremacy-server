@@ -3,6 +3,7 @@ package server
 import "server/db/boiler"
 
 type Telegram interface {
-	Notify(id string, message string) error
-	NotificationCreate(mechID string, notification *boiler.BattleQueueNotification) (*boiler.TelegramNotification, error)
+	PreferencesUpdate(playerID string) (*boiler.PlayerSettingsPreference, error)
+	NotifyDEPRECATED(id string, message string) error
+	Notify(telegramID int64, message string) error
 }

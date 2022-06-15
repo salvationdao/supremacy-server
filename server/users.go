@@ -1,11 +1,12 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -40,6 +41,14 @@ type User struct {
 
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
+}
+
+func (b *User) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 type PassportUser struct {
@@ -108,16 +117,10 @@ func (i IssueToken) TokenID() uuid.UUID {
 }
 
 type UserBrief struct {
-	ID       uuid.UUID     `json:"id"`
-	Username string        `json:"username"`
-	Gid      int           `json:"gid"`
-	Faction  *FactionBrief `json:"faction"`
-}
-
-type UserSupsMultiplierSend struct {
-	ToUserID        UserID            `json:"to_user_id"`
-	ToUserSessionID *hub.SessionID    `json:"to_user_session_id,omitempty"`
-	SupsMultipliers []*SupsMultiplier `json:"sups_multiplier"`
+	ID       uuid.UUID       `json:"id"`
+	Username string          `json:"username"`
+	Gid      int             `json:"gid"`
+	Faction  *boiler.Faction `json:"faction"`
 }
 
 type SupsMultiplier struct {
@@ -135,6 +138,6 @@ var (
 )
 
 type UserStat struct {
-	*boiler.UserStat
+	*boiler.PlayerStat
 	LastSevenDaysKills int `json:"last_seven_days_kills"`
 }

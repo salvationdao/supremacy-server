@@ -445,45 +445,45 @@ VALUES ('6537f960-aa85-4e68-80b1-fe6e754a1436', 'ad124964-e062-4ab8-9cce-e0309fd
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('3abd79cb-9e7b-40e4-987f-85d9b82c7f28', '2b203c87-ad8c-4ce2-af17-e079835fdbcb', 'Zaibatsu WREX Black Chassis',
-        'zaibatsu_wrex_black', 'WREX', 'Black', 100, 2, 2, 1, 2500, 1100, 1100, 1100);
+        'zaibatsu_wrex_black', 'WREX', 'Black', 80, 2, 2, 1, 2500, 1000, 1000, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('4c0aec4f-215e-4dee-889f-ac39fb74c75d', '2b203c87-ad8c-4ce2-af17-e079835fdbcb', 'Zaibatsu WREX Black Chassis',
-        'zaibatsu_wrex_black', 'WREX', 'Black', 100, 2, 2, 1, 2500, 1100, 1100, 1100);
+        'zaibatsu_wrex_black', 'WREX', 'Black', 80, 2, 2, 1, 2500, 1000, 1000, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('b5892cc1-5fc9-4106-8b00-b9f20e7febed', '2b203c87-ad8c-4ce2-af17-e079835fdbcb', 'Zaibatsu WREX Black Chassis',
-        'zaibatsu_wrex_black', 'WREX', 'Black', 100, 2, 2, 1, 2500, 1100, 1100, 1100);
+        'zaibatsu_wrex_black', 'WREX', 'Black', 80, 2, 2, 1, 2500, 1000, 1000, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('0511e9e4-7b1f-426d-9d2a-9667be38ff9b', '953ad4fc-3aa9-471f-a852-f39e9f36cd04',
-        'Red Mountain BXSD Red_Steel Chassis', 'red_mountain_bxsd_red_steel', 'BXSD', 'Red_Steel', 100, 2, 2, 1, 1900,
-        1600, 1600, 1050);
+        'Red Mountain BXSD Red_Steel Chassis', 'red_mountain_bxsd_red_steel', 'BXSD', 'Red_Steel', 80, 2, 2, 1, 1750,
+        1500, 1500, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('4b7f8a7b-68c6-45f9-8054-c082c5a5e8c9', '953ad4fc-3aa9-471f-a852-f39e9f36cd04',
-        'Red Mountain BXSD Pink Chassis', 'red_mountain_bxsd_pink', 'BXSD', 'Pink', 100, 2, 2, 1, 1900, 1600, 1600,
-        1050);
+        'Red Mountain BXSD Pink Chassis', 'red_mountain_bxsd_pink', 'BXSD', 'Pink', 80, 2, 2, 1, 1750, 1500, 1500,
+        1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('c638ee34-81ef-410a-8f5d-e10e4a973966', '953ad4fc-3aa9-471f-a852-f39e9f36cd04',
-        'Red Mountain BXSD Pink Chassis', 'red_mountain_bxsd_pink', 'BXSD', 'Pink', 100, 2, 2, 1, 1900, 1600, 1600,
-        1050);
+        'Red Mountain BXSD Pink Chassis', 'red_mountain_bxsd_pink', 'BXSD', 'Pink', 80, 2, 2, 1, 1750, 1500, 1500,
+        1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('088132f5-ee2f-47f7-bd18-9b7dfb466ff5', '009f71fc-3594-4d24-a6e2-f05070d66f40',
         'Boston Cybernetics XFVS BlueWhite Chassis', 'boston_cybernetics_xfvs_blue_white', 'XFVS', 'BlueWhite', 80, 2,
-        0, 1, 2750, 1000, 1000, 1300);
+        0, 1, 2750, 1000, 1000, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('67c04307-4f9f-44bb-9bfc-d22f46905e2e', '009f71fc-3594-4d24-a6e2-f05070d66f40',
         'Boston Cybernetics XFVS Police_DarkBlue Chassis', 'boston_cybernetics_xfvs_police_dark_blue', 'XFVS',
-        'Police_DarkBlue', 80, 2, 0, 1, 2750, 1000, 1000, 1300);
+        'Police_DarkBlue', 80, 2, 0, 1, 2750, 1000, 1000, 1000);
 INSERT INTO chassis (id, brand_id, label, slug, model, skin, shield_recharge_rate, weapon_hardpoints, turret_hardpoints,
                      utility_slots, speed, max_hitpoints, health_remaining, max_shield)
 VALUES ('4b14cba5-eaaa-4f7b-aa24-34b4072c3589', '009f71fc-3594-4d24-a6e2-f05070d66f40',
         'Boston Cybernetics XFVS Police_DarkBlue Chassis', 'boston_cybernetics_xfvs_police_dark_blue', 'XFVS',
-        'Police_DarkBlue', 80, 2, 0, 1, 2750, 1000, 1000, 1300);
+        'Police_DarkBlue', 80, 2, 0, 1, 2750, 1000, 1000, 1000);
 
 INSERT INTO mechs (id, owner_id, template_id, chassis_id, external_token_id, tier, image_url, animation_url,
                    card_animation_url, avatar_url, is_default, hash, name, label, slug, asset_type)

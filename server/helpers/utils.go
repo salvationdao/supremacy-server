@@ -73,3 +73,9 @@ func PackBooleansIntoByte(booleans []bool) byte {
 	}
 	return packedByte
 }
+
+// Converts byte array to int32
+func BytesToInt(bytes []byte) int32 {
+	_ = bytes[3] // bounds check hint to compiler
+	return int32(bytes[3]) | int32(bytes[2])<<8 | int32(bytes[1])<<16 | int32(bytes[0])<<24
+}

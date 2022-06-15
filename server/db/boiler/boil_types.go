@@ -72,10 +72,82 @@ const (
 	BattleEventPickup           = "pickup"
 )
 
+// Enum values for WeaponType
+const (
+	WeaponTypeGrenadeLauncher = "Grenade Launcher"
+	WeaponTypeCannon          = "Cannon"
+	WeaponTypeMinigun         = "Minigun"
+	WeaponTypePlasmaGun       = "Plasma Gun"
+	WeaponTypeFlak            = "Flak"
+	WeaponTypeMachineGun      = "Machine Gun"
+	WeaponTypeFlamethrower    = "Flamethrower"
+	WeaponTypeMissileLauncher = "Missile Launcher"
+	WeaponTypeLaserBeam       = "Laser Beam"
+	WeaponTypeLightningGun    = "Lightning Gun"
+	WeaponTypeBFG             = "BFG"
+	WeaponTypeRifle           = "Rifle"
+	WeaponTypeSniperRifle     = "Sniper Rifle"
+	WeaponTypeSword           = "Sword"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for UtilityType
+const (
+	UtilityTypeSHIELD      = "SHIELD"
+	UtilityTypeATTACKDRONE = "ATTACK DRONE"
+	UtilityTypeREPAIRDRONE = "REPAIR DRONE"
+	UtilityTypeANTIMISSILE = "ANTI MISSILE"
+	UtilityTypeACCELERATOR = "ACCELERATOR"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for DamageType
+const (
+	DamageTypeKinetic   = "Kinetic"
+	DamageTypeEnergy    = "Energy"
+	DamageTypeExplosive = "Explosive"
+)
+
 // Enum values for ChatMSGTypeEnum
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
 	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for ItemType
+const (
+	ItemTypeUtility       = "utility"
+	ItemTypeWeapon        = "weapon"
+	ItemTypeMech          = "mech"
+	ItemTypeMechSkin      = "mech_skin"
+	ItemTypeMechAnimation = "mech_animation"
+	ItemTypePowerCore     = "power_core"
+	ItemTypeMysteryCrate  = "mystery_crate"
+)
+
+// Enum values for CouponItemType
+const (
+	CouponItemTypeSUPS         = "SUPS"
+	CouponItemTypeWEAPON_CRATE = "WEAPON_CRATE"
+	CouponItemTypeMECH_CRATE   = "MECH_CRATE"
+	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
 )
 
 // Enum values for AbilityLevel
@@ -95,6 +167,25 @@ const (
 	MultiplierTypeEnumHoursOnline  = "hours_online"
 	MultiplierTypeEnumSyndicateWin = "syndicate_win"
 	MultiplierTypeEnumContribute   = "contribute"
+)
+
+// Enum values for CrateType
+const (
+	CrateTypeMECH   = "MECH"
+	CrateTypeWEAPON = "WEAPON"
+)
+
+// Enum values for TemplateItemType
+const (
+	TemplateItemTypeMECH           = "MECH"
+	TemplateItemTypeMECH_ANIMATION = "MECH_ANIMATION"
+	TemplateItemTypeMECH_SKIN      = "MECH_SKIN"
+	TemplateItemTypeUTILITY        = "UTILITY"
+	TemplateItemTypeWEAPON         = "WEAPON"
+	TemplateItemTypeAMMO           = "AMMO"
+	TemplateItemTypePOWER_CORE     = "POWER_CORE"
+	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
+	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
 // Enum values for PlayerRankEnum
