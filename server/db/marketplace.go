@@ -317,7 +317,6 @@ func MarketplaceItemSaleList(
 
 	queryMods := append(
 		ItemSaleQueryMods,
-		boiler.ItemSaleWhere.SoldBy.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
 		boiler.CollectionItemWhere.XsynLocked.EQ(false),
@@ -404,6 +403,8 @@ func MarketplaceItemSaleList(
 	}
 	if sold {
 		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNotNull())
+	} else {
+		queryMods = append(queryMods, boiler.ItemSaleWhere.SoldAt.IsNull())
 	}
 
 	// Search
