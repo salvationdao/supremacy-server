@@ -136,6 +136,7 @@ type MarketplaceSalesKeycardListRequest struct {
 		Search        string                `json:"search"`
 		PageSize      int                   `json:"page_size"`
 		Page          int                   `json:"page"`
+		Sold          bool                  `json:"sold"`
 	} `json:"payload"`
 }
 
@@ -192,6 +193,7 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 		req.Payload.PageSize,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
+		req.Payload.Sold,
 	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
@@ -1276,6 +1278,19 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	bids, err := db.MarketplaceSaleCancelBids(gamedb.StdConn, uuid.Must(uuid.FromString(saleItem.ID)), "Item bought out")
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("MarketplaceSaleCancelBids error refunding bids")
+		return err
+	}
+
+	for _, b := range bids {
+		_, err = mp.API.Passport.RefundSupsMessage(b)
+		if err != nil {
+			gamelog.L.Error().Str("txID", b).Err(err).Msg("error refunding bids")
+		}
+	}
+
 	// broadcast status change if item is a mech
 	if saleItem.CollectionItemType == boiler.ItemTypeMech {
 		ci, err := boiler.CollectionItems(
@@ -1664,7 +1679,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	defer tx.Rollback()
 
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID)
+	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().

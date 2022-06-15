@@ -473,6 +473,7 @@ func MarketplaceItemKeycardSaleList(
 	pageSize int,
 	sortBy string,
 	sortDir SortByDir,
+	sold bool,
 ) (int64, []*server.MarketplaceSaleItem1155, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
@@ -487,6 +488,10 @@ func MarketplaceItemKeycardSaleList(
 
 	if factionID != "" {
 		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.FactionID.EQ(factionID))
+	}
+
+	if sold {
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldAt.IsNotNull())
 	}
 
 	// Filters
@@ -717,14 +722,14 @@ func MarketplaceSaleCreate(
 }
 
 // MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
-func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID) ([]string, error) {
+func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string) ([]string, error) {
 	q := `
 		UPDATE item_sales_bid_history
 		SET cancelled_at = NOW(),
-			cancelled_reason = 'New Bid Placed'
+			cancelled_reason = $2
 		WHERE item_sale_id = $1 AND cancelled_at IS NULL
 		RETURNING bid_tx_id`
-	rows, err := conn.Query(q, itemID)
+	rows, err := conn.Query(q, itemID, msg)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
