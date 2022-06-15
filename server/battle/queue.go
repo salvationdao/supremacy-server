@@ -1,14 +1,8 @@
 package battle
 
 import (
-	"fmt"
 	"math"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-
-	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
 )
@@ -44,28 +38,5 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 
 		// the reward, player will get if their mech won the battle
 		ContractReward: contractReward,
-	}
-}
-
-func BroadcastQueuePositions() {
-	// get each faction queue
-	factions, err := boiler.Factions().All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to get factions to broadcast queue positions")
-		return
-	}
-
-	for _, fac := range factions {
-		go func() {
-			factionQueue, err := db.FactionQueue(fac.ID)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("failed to get faction queue to broadcast queue positions")
-				return
-			}
-
-			for _, fc := range factionQueue {
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fac.ID, fc.MechID.String()), WSPlayerAssetMechQueueSubscribe, fc.QueuePosition)
-			}
-		}()
 	}
 }
