@@ -30,6 +30,7 @@ type ItemSaleAuction struct {
 	ItemType             string              `boil:"item_type"`
 	ItemLocked           bool                `boil:"item_locked"`
 	OwnerID              uuid.UUID           `boil:"owner_id"`
+	Auction              bool                `boil:"auction"`
 	AuctionReservedPrice decimal.NullDecimal `boil:"auction_reserved_price"`
 	BuyoutPrice          decimal.NullDecimal `boil:"buyout_price"`
 	DutchAuction         bool                `boil:"dutch_auction"`
@@ -256,6 +257,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				item_sales.collection_item_id,
 				collection_items.item_type,
 				item_sales.owner_id,
+				item_sales.auction,
 				item_sales.auction_reserved_price,
 				item_sales.buyout_price,
 				item_sales.dutch_auction,
@@ -295,8 +297,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 	numProcessed := 0
 	for _, auctionItem := range auctions {
-		// Check if current bid is below reserved price and issue refunds.
-		if auctionItem.ItemLocked || (auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
+		// Check if current bid on an auction is below reserved price and issue refunds.
+		if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
 			rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 			if err != nil {
 				gamelog.L.Error().
