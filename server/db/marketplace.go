@@ -606,6 +606,24 @@ func MarketplaceSaleArchiveByItemID(conn boil.Executor, id uuid.UUID) error {
 	return nil
 }
 
+// MarketplaceSaleItemUnlock removes the locked to marketplace on an archived item.
+func MarketplaceSaleItemUnlock(conn boil.Executor, id uuid.UUID) error {
+	q := `
+		UPDATE collection_items
+		SET locked_to_marketplace = false
+		WHERE locked_to_marketplace = true AND id IN (
+			SELECT _s.collection_item_id
+			FROM item_sales _s
+			WHERE _s.id = $1
+				AND _s.deleted_at IS NOT NULL
+		)`
+	_, err := conn.Exec(q, id)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 // MarketplaceKeycardSaleArchive archives as sale item.
 func MarketplaceKeycardSaleArchive(conn boil.Executor, id uuid.UUID) error {
 	obj := &boiler.ItemKeycardSale{

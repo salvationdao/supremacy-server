@@ -41,6 +41,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 	}
 
 	collectionItem.XsynLocked = true
+	collectionItem.LockedToMarketplace = false
 	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
