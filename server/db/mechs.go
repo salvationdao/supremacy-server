@@ -504,9 +504,15 @@ type MechListOpts struct {
 	PageSize            int
 	Page                int
 	OwnerID             string
+	QueueSort           *MechListQueueSortOpts
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+}
+
+type MechListQueueSortOpts struct {
+	FactionID string
+	SortDir   SortByDir
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -637,6 +643,23 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)),
 	)
 
+	if opts.QueueSort != nil {
+		queryMods = append(queryMods,
+			qm.Select("coalesce(_bq.queue_position, 0) AS queue_position"),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(`(
+					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
+						from battle_queue _bq
+						where _bq.faction_id = ?
+							AND _bq.battle_id IS NULL
+					) _bq ON _bq.mech_id = %s`,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				),
+				opts.QueueSort.FactionID,
+			),
+		)
+	}
+
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -649,7 +672,8 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		mc := &server.Mech{
 			CollectionItem: &server.CollectionItem{},
 		}
-		err = rows.Scan(
+
+		scanArgs := []interface{}{
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -679,7 +703,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
-		)
+		}
+		if opts.QueueSort != nil {
+			scanArgs = append(scanArgs, &mc.QueuePosition)
+		}
+		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return total, mechs, err
 		}
