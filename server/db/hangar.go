@@ -23,7 +23,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	q := `
 	SELECT 	ci.item_type    as type,
 			ci.id           as ownership_id,
-       		m.blueprint_id  as mech_id,
+       		m.model_id  	as mech_id,
        		ms.blueprint_id as skin_id
 	FROM collection_items ci
          	INNER JOIN mechs m on
