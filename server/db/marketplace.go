@@ -447,6 +447,28 @@ func MarketplaceItemSaleList(
 		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name) %s", sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt), sortDir))
+	} else if sortBy == "price" {
+		extractPriceFunc := "least"
+		if sortDir == SortByDirDesc {
+			extractPriceFunc = "greatest"
+		}
+		orderBy = qm.OrderBy(fmt.Sprintf(
+			`%[1]s(
+				%[2]s,
+				CASE
+					WHEN %[4]s = TRUE THEN %[3]s - (%[5]s * floor(extract(epoch FROM (least(%[6]s, now()) - %[7]s)) / 60))
+					ELSE %[3]s
+				END
+			) %[8]s`,
+			extractPriceFunc,
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.AuctionCurrentPrice),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.BuyoutPrice),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DutchAuction),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.DutchAuctionDropRate),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt),
+			sortDir,
+		))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
 	}
@@ -568,6 +590,8 @@ func MarketplaceItemKeycardSaleList(
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label), sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.EndAt), sortDir))
+	} else if sortBy == "price" {
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.BuyoutPrice), sortDir))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
 	}
