@@ -4,16 +4,18 @@ import (
 	"time"
 
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 // AssetKeycard is a keycard asset struct
 type AssetKeycard struct {
-	ID                 string    `json:"id" boil:"player_keycards.id"`
-	PlayerID           string    `json:"player_id" boil:"player_keycards.player_id"`
-	BlueprintKeycardID string    `json:"blueprint_keycard_id" boil:"player_keycards.blueprint_keycard_id"`
-	Count              int64     `json:"count" boil:"player_keycards.count"`
-	CreatedAt          time.Time `json:"created_at" boil:"player_keycards.created_at"`
-	MarketListedCount  int64     `json:"market_listed_count" boil:"market_listed_count"`
+	ID                 string            `json:"id" boil:"player_keycards.id"`
+	PlayerID           string            `json:"player_id" boil:"player_keycards.player_id"`
+	BlueprintKeycardID string            `json:"blueprint_keycard_id" boil:"player_keycards.blueprint_keycard_id"`
+	Count              int64             `json:"count" boil:"player_keycards.count"`
+	CreatedAt          time.Time         `json:"created_at" boil:"player_keycards.created_at"`
+	MarketListedCount  int64             `json:"market_listed_count" boil:"market_listed_count"`
+	ItemSaleIDs        types.StringArray `json:"item_sale_ids" boil:"item_sale_ids"`
 
 	Blueprints AssetKeycardBlueprint `json:"blueprints" boil:"blueprint_keycards,bind"`
 }

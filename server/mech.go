@@ -84,6 +84,8 @@ type Mech struct {
 	Weapons WeaponSlice  `json:"weapons"`
 	Utility UtilitySlice `json:"utility"`
 
+	ItemSaleID null.String `json:"item_sale_id"`
+
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }

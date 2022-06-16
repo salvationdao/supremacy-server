@@ -69,7 +69,16 @@ SELECT
 	mechs.power_core_id,
 	to_json(ec) as power_core,
 	w.weapons,
-	u.utility
+	u.utility,
+	(
+		SELECT _i.id
+		FROM item_sales _i
+		WHERE _i.collection_item_id = collection_items.id
+			AND _i.sold_at IS NULL
+			AND _i.deleted_at IS NULL
+			AND _i.end_at > NOW()
+		LIMIT 1
+	) AS item_sale_id
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
@@ -214,6 +223,7 @@ func Mech(mechID string) (*server.Mech, error) {
 			&mc.PowerCore,
 			&mc.Weapons,
 			&mc.Utility,
+			&mc.ItemSaleID,
 		)
 		if err != nil {
 			return nil, err
@@ -303,6 +313,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.PowerCore,
 			&mc.Weapons,
 			&mc.Utility,
+			&mc.ItemSaleID,
 		)
 		if err != nil {
 			return nil, err

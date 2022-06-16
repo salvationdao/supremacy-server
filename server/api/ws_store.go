@@ -342,7 +342,7 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 	}
 
 	//register
-	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, collectionItem)
+	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, collectionItem, null.String{})
 	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, faction.Label)
 
 	err = api.Passport.AssetRegister(xsynAsset)
