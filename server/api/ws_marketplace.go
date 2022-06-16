@@ -323,7 +323,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		hasDutchAuction = true
 		hasBuyout = false
 	}
-	if req.Payload.AuctionCurrentPrice.Valid || req.Payload.AuctionReservedPrice.Valid {
+	if req.Payload.AuctionCurrentPrice.Valid || (req.Payload.AuctionReservedPrice.Valid && !req.Payload.DutchAuctionDropRate.Valid) {
 		if req.Payload.AuctionCurrentPrice.Valid && req.Payload.AuctionCurrentPrice.Decimal.LessThan(decimal.Zero) {
 			return terror.Error(fmt.Errorf("invalid auction current price"), "Invalid auction current price received.")
 		}
