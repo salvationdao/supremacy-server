@@ -20,17 +20,20 @@ type SiloType struct {
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	q := `
-	SELECT 	
-			ci.item_type as type,
-			ci.id as ownership_id,
-			m.model_id as mech_id,
-			COALESCE(
-				m.chassis_skin_id::TEXT,
-				(SELECT mm.default_chassis_skin_id::TEXT FROM mech_models mm WHERE mm.id = m.model_id)
-			) as skin_id
-		FROM collection_items ci
-		INNER JOIN mechs m ON m.id = ci.item_id
-		WHERE ci.owner_id = $1 AND (ci.item_type = 'mech')
+	SELECT 	ci.id           as ownership_id,
+       		ci.item_type    as type,
+       		m.blueprint_id  as mech_id,
+       		ms.blueprint_id as skin_id
+	FROM collection_items ci
+         	INNER JOIN mechs m on
+    m.id = ci.item_id
+         	INNER JOIN mech_skin ms on
+        	ms.id = coalesce(
+            	m.chassis_skin_id,
+            	(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
+        	)
+	WHERE ci.owner_id = $1
+  	AND (ci.item_type = 'mech');
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -58,12 +61,17 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	q := `
-	SELECT 	ci.id as ownership_id,
-            ci.item_type as type,
-			mc.locked_until as can_open_on
-	FROM collection_items ci
-	INNER JOIN mystery_crate mc ON mc.id = ci.item_id
-	WHERE ci.owner_id = $1 AND (ci.item_type = 'mystery_crate')
+	SELECT 	smc.id    				as ownership_id,
+			smc.mystery_crate_type 	as type,
+			mc.locked_until        	as can_open_on
+	FROM 	collection_items ci
+         	INNER JOIN mystery_crate mc on
+    			mc.id = ci.item_id
+         	INNER JOIN storefront_mystery_crates smc on
+            	smc.mystery_crate_type = mc."type"
+        	AND smc.faction_id = mc.faction_id
+	WHERE ci.owner_id = $1
+  			AND ci.item_type = 'mystery_crate';
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
