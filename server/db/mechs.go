@@ -688,3 +688,21 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	return total, mechs, nil
 }
+
+func MechRename(mechID string, name string) (string, error) {
+
+	// get mech
+	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	// update mech name
+	mech.Name = name
+	_, err = mech.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	return name, nil
+}

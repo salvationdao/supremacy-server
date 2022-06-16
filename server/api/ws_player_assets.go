@@ -39,6 +39,8 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
+
 	return pac
 }
 
@@ -389,6 +391,34 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 	}
 
 	reply(keycard)
+
+	return nil
+}
+
+const (
+	HubKeyPlayerAssetRename = "PLAYER:MECH:RENAME"
+)
+
+type PlayerMechRenameRequest struct {
+	Payload struct {
+		MechID  uuid.UUID `json:"mech_id"`
+		NewName string    `json:"new_name"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerMechRenameHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerMechRenameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	newName, err := db.MechRename(req.Payload.MechID.String(), req.Payload.NewName)
+	if err != nil {
+		return terror.Error(err, "Failed to rename mech")
+	}
+
+	reply(newName)
 
 	return nil
 }
