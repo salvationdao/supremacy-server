@@ -378,6 +378,7 @@ func (as *AbilitiesSystem) LiveBroadcaster() {
 
 		if as.liveCount.IsClosed() {
 			liveVoteTicker.Stop()
+			gamelog.L.Debug().Msg("Close live data broadcaster")
 			return
 		}
 
@@ -1919,6 +1920,7 @@ func (as *AbilitiesSystem) ProgressBarBroadcaster() {
 				shouldBroadcast = true
 				progressBarData = data
 			case <-updaterCloseChan:
+				gamelog.L.Debug().Msg("Close battle ability broadcaster")
 				return
 			}
 		}
@@ -1956,6 +1958,7 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 	abilityLevel := ability.Level
 	identity := ability.Identity
 	factionID := ability.FactionID
+	label := ability.Label
 	var participantID byte
 	if abilityLevel == boiler.AbilityLevelMECH {
 		participantID = *ability.ParticipantID
@@ -1987,6 +1990,7 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 				shouldBroadcast = true
 				gameAbilityPrice = data
 			case <-updaterCloseChan:
+				gamelog.L.Debug().Str("faction_id", factionID).Str("ability", label).Msg("Close game ability broadcaster")
 				return
 			}
 		}
