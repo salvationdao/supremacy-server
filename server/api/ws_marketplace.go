@@ -363,6 +363,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	if collectionItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+
 	if collectionItem.MarketLocked {
 		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
 	}
@@ -630,6 +634,10 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
+	}
+
+	if keycard.PlayerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
 
 	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(keycard.BlueprintKeycardID)).One(gamedb.StdConn)
