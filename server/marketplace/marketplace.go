@@ -428,7 +428,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 			err = m.Passport.TransferAsset(
 				saleItemRecord.OwnerID,
-				saleItemRecord.SoldBy.String,
+				auctionItem.AuctionBidUserID.String(),
 				auctionItem.Hash,
 				null.StringFrom(txid),
 				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -448,8 +448,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 			rpcAssetTransferRollback := func() {
 				err := m.Passport.TransferAsset(
-					saleItemRecord.OwnerID,
 					auctionItem.AuctionBidUserID.String(),
+					saleItemRecord.OwnerID,
 					auctionItem.Hash,
 					null.String{},
 					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
