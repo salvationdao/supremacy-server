@@ -588,13 +588,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	// Sort
-	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
-	} else {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
-	}
-
 	// Limit/Offset
 	if opts.PageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(opts.PageSize))
@@ -603,6 +596,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
+	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
@@ -643,9 +637,10 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)),
 	)
 
+	// Sort
 	if opts.QueueSort != nil {
 		queryMods = append(queryMods,
-			qm.Select("coalesce(_bq.queue_position, 0) AS queue_position"),
+			qm.Select("_bq.queue_position AS queue_position"),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(`(
 					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
@@ -657,12 +652,22 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				),
 				opts.QueueSort.FactionID,
 			),
+			qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST", opts.QueueSort.SortDir)),
 		)
+	} else {
+		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+		} else {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+		}
+
 	}
 
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}
