@@ -663,11 +663,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	}
 
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}
