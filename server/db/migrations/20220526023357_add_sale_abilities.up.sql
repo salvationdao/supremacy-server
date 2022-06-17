@@ -40,6 +40,3 @@ VALUES ((SELECT id FROM blueprint_player_abilities bpa WHERE bpa.game_client_abi
         NOW()),
        ((SELECT id FROM blueprint_player_abilities bpa WHERE bpa.game_client_ability_id = 16), 100000000000000000000,
         NOW());
-
-
-CREATE INDEX IF NOT EXISTS user_multi_index ON user_multipliers (player_id, from_battle_number, until_battle_number)

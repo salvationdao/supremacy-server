@@ -1801,6 +1801,9 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		return false
 	})
+
+	// broadcast the progress bar
+	as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {

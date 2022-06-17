@@ -37,9 +37,12 @@ jobs:
       - name: Setup go private repos access
         run: |
           mkdir -p ~/.ssh
+          echo -e "Host ws.github.com\n  HostName github.com\n IdentityFile ~/.ssh/id_ed25519_ws\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host hub.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host bridge.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host loghelpers.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_loghelpers\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo '${{ secrets.GH_DEPLOY_WS_PK }}' > ~/.ssh/id_ed25519_ws
+          chmod 600 ~/.ssh/id_ed25519_ws
           echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
           chmod 600 ~/.ssh/id_ed25519_hub
           echo '${{ secrets.GH_DEPLOY_BRIDGE_PK }}' > ~/.ssh/id_ed25519_bridge
@@ -48,6 +51,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_loghelpers
           git config --global user.name "Github CI"
           git config --global user.email "team@syndicate.ninja"
+          git config --global --add url."git@ws.github.com:ninja-syndicate/ws".insteadOf "https://github.com/ninja-syndicate/ws"
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
           git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
