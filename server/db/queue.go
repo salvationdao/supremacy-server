@@ -2,12 +2,13 @@ package db
 
 import (
 	"database/sql"
-	"github.com/friendsofgo/errors"
-	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"time"
+
+	"github.com/friendsofgo/errors"
+	"github.com/ninja-software/terror/v2"
 )
 
 // MechArenaStatus return mech arena status from given collection item
@@ -52,7 +53,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 
 	// if mech is in battle
 	if bq != nil {
-		resp.Status = server.MechArenaStatusMarket
+		resp.Status = server.MechArenaStatusBattle
 		return resp, nil
 	}
 
