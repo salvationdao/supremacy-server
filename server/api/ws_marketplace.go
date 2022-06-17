@@ -239,6 +239,10 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed to get item.")
 	}
 
+	if resp.FactionID != factionID {
+		return terror.Error(fmt.Errorf("you can only access your syndicates marketplace"))
+	}
+
 	reply(resp)
 
 	return nil
@@ -624,17 +628,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
-	numKeycardsSelling, err := db.MarketplaceCountKeycards(req.Payload.ItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Str("player_id", user.ID).
-			Str("faction_id", req.Payload.ItemID.String()).
-			Str("faction_id", user.FactionID.String).
-			Err(err).
-			Msg("unable to check number of keycards in marketplace")
-		return terror.Error(err, errMsg)
-	}
-	if keycard.Count <= numKeycardsSelling {
+	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
 	}
 
