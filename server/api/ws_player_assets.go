@@ -413,12 +413,10 @@ func (pac *PlayerAssetsControllerWS) PlayerMechRenameHandler(tx context.Context,
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	newName, err := db.MechRename(req.Payload.MechID.String(), req.Payload.NewName)
+	mech, err := db.MechRename(req.Payload.MechID.String(), req.Payload.NewName)
 	if err != nil {
 		return terror.Error(err, "Failed to rename mech")
 	}
-
-	reply(newName)
-
+	reply(mech)
 	return nil
 }

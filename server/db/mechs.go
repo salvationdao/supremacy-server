@@ -705,4 +705,5 @@ func MechRename(mechID string, name string) (string, error) {
 	}
 
 	return name, nil
+
 }
