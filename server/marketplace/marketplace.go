@@ -302,7 +302,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 	for _, auctionItem := range auctions {
 		func() {
 			// Check if current bid is below reserved price and issue refunds.
-			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
+			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.GreaterThan(auctionItem.AuctionBidPrice)) {
 				rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 				if err != nil {
 					gamelog.L.Error().
