@@ -1445,6 +1445,24 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
+	removeKeycardFunc := func() {
+		_, err := mp.API.Passport.UpdateKeycardCountXSYN(&xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+			ApiKey:         mp.API.Passport.ApiKey,
+			TokenID:        keycardUpdate.TokenID,
+			Address:        user.PublicAddress.String,
+			CollectionSlug: keycardUpdate.CollectionSlug,
+			Amount:         keycardUpdate.Amount,
+			ImageURL:       keycardUpdate.ImageURL,
+			AnimationURL:   keycardUpdate.AnimationURL,
+			KeycardGroup:   keycardUpdate.KeycardGroup,
+			Attributes:     keycardUpdate.Attributes,
+			IsAdd:          false,
+		})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("keycardUpdate", keycardUpdate).Msg("retract of keycard failed")
+		}
+	}
+
 	// Give sales cut amount to seller
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
@@ -1458,6 +1476,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	})
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
+		removeKeycardFunc()
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1475,6 +1494,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1524,6 +1544,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1540,6 +1561,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
