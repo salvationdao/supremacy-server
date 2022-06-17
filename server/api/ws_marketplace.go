@@ -363,6 +363,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	if collectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
+	}
+
 	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
 
 	if ciUUID.IsNil() {
