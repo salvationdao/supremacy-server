@@ -42,6 +42,7 @@ const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auctio
 const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
