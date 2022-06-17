@@ -5,13 +5,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strings"
 	"time"
+	"unicode"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -413,10 +417,86 @@ func (pac *PlayerAssetsControllerWS) PlayerMechRenameHandler(tx context.Context,
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// check valid name
+	err = IsValidMechName(req.Payload.NewName)
+	if err != nil {
+		return terror.Error(err, "Invalid mech name")
+	}
+
 	mech, err := db.MechRename(req.Payload.MechID.String(), req.Payload.NewName)
 	if err != nil {
 		return terror.Error(err, "Failed to rename mech")
 	}
+
 	reply(mech)
 	return nil
+}
+
+// PrintableLen counts how many printable characters are in a string.
+func PrintableLen(s string) int {
+	sLen := 0
+	runes := []rune(s)
+	for _, r := range runes {
+		if unicode.IsPrint(r) {
+			sLen += 1
+		}
+	}
+	return sLen
+}
+
+var UsernameRegExp = regexp.MustCompile("[`~!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
+
+func IsValidMechName(name string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 15 characters
+	// Cannot contain profanity
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(name)) {
+		hasDisallowedSymbol = true
+	}
+
+	//err := fmt.Errorf("username does not meet requirements")
+	if TrimName(name) == "" {
+		return terror.Error(fmt.Errorf("name cannot be empty"), "Invalid name. Your name cannot be empty.")
+	}
+	if PrintableLen(TrimName(name)) < 3 {
+		return terror.Error(fmt.Errorf("name must be at least characters long"), "Invalid name. Your name must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimName(name)) > 30 {
+		return terror.Error(fmt.Errorf("name cannot be more than 30 characters long"), "Invalid name. Your name cannot be more than 30 characters long.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(fmt.Errorf("name cannot contain disallowed symbols"), "Invalid name. Your name contains a disallowed symbol.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(name) {
+		return terror.Error(fmt.Errorf("name contains profanity"), "Invalid name. Your name contains profanity.")
+	}
+
+	return nil
+}
+
+// TrimName removes misuse of invisible characters.
+func TrimName(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	return output
 }
