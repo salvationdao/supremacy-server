@@ -299,7 +299,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
 			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
 			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
-			//BroadcastRateMilliseconds:        time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 250)) * time.Millisecond,
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
