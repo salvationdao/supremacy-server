@@ -25,5 +25,3 @@ UPDATE mechs
 SET label = REPLACE(label, ' Chassis', '');
 UPDATE blueprint_mechs
 SET label = REPLACE(label, ' Chassis', '');
-
-
