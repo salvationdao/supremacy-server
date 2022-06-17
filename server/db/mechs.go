@@ -689,11 +689,22 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	return total, mechs, nil
 }
 
-func MechRename(mechID string, name string) (string, error) {
+func MechRename(mechID string, ownerID string, name string) (string, error) {
 
 	// get mech
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
 	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ID)).One(gamedb.StdConn)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	// check owner
+	if item.OwnerID != ownerID {
+		err = fmt.Errorf("failed to update mech name, must be the owner of the mech")
 		return "", terror.Error(err)
 	}
 
