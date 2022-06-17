@@ -239,6 +239,10 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed to get item.")
 	}
 
+	if resp.FactionID != factionID {
+		return terror.Error(fmt.Errorf("you can only access your syndicates marketplace"))
+	}
+
 	reply(resp)
 
 	return nil
@@ -357,6 +361,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			return terror.Error(err, "Item not found.")
 		}
 		return terror.Error(err, errMsg)
+	}
+
+	if collectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
 	}
 
 	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
