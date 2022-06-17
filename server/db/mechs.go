@@ -660,7 +660,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		} else {
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
 		}
-
 	}
 
 	rows, err := boiler.NewQuery(
