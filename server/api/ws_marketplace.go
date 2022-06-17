@@ -239,6 +239,10 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed to get item.")
 	}
 
+	if resp.FactionID != factionID {
+		return terror.Error(fmt.Errorf("you can only access your syndicates marketplace"))
+	}
+
 	reply(resp)
 
 	return nil
