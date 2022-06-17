@@ -134,7 +134,12 @@ func UpdateKeycardReductionAmount(ownerID string, tokenID int) error {
 
 func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
 	item := &server.AssetKeycard{}
-	err := boiler.NewQuery(append(keycardQueryMods, boiler.PlayerKeycardWhere.ID.EQ(id.String()))...).QueryRow(gamedb.StdConn).Scan(
+	err := boiler.NewQuery(
+		append(
+			keycardQueryMods,
+			boiler.PlayerKeycardWhere.ID.EQ(id.String()),
+		)...,
+	).QueryRow(gamedb.StdConn).Scan(
 		&item.ID,
 		&item.PlayerID,
 		&item.BlueprintKeycardID,

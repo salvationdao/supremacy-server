@@ -446,10 +446,10 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			rpcAssetTrasferRollback := func() {
+			rpcAssetTransferRollback := func() {
 				err := m.Passport.TransferAsset(
-					saleItemRecord.SoldBy.String,
 					saleItemRecord.OwnerID,
+					auctionItem.AuctionBidUserID.String(),
 					auctionItem.Hash,
 					null.String{},
 					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -471,7 +471,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				err = db.ChangeMechOwner(tx, auctionItem.ID)
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTrasferRollback()
+					rpcAssetTransferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -484,7 +484,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				err = db.ChangeMysteryCrateOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTrasferRollback()
+					rpcAssetTransferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -506,7 +506,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			))
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
-				rpcAssetTrasferRollback()
+				rpcAssetTransferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -520,7 +520,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			err = tx.Commit()
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
-				rpcAssetTrasferRollback()
+				rpcAssetTransferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
