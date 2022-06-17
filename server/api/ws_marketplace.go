@@ -27,7 +27,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -139,6 +138,7 @@ type MarketplaceSalesKeycardListRequest struct {
 		Search        string                `json:"search"`
 		PageSize      int                   `json:"page_size"`
 		Page          int                   `json:"page"`
+		Sold          bool                  `json:"sold"`
 	} `json:"payload"`
 }
 
@@ -195,6 +195,7 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 		req.Payload.PageSize,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
+		req.Payload.Sold,
 	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
@@ -236,6 +237,10 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get of items for sale")
 		return terror.Error(err, "Failed to get item.")
+	}
+
+	if resp.FactionID != factionID {
+		return terror.Error(fmt.Errorf("you can only access your syndicates marketplace"))
 	}
 
 	reply(resp)
@@ -340,12 +345,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
 		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
 	}
-	var collectionItemID uuid.UUID
-	err = boiler.CollectionItems(
-		qm.Select(boiler.CollectionItemColumns.ID),
+
+	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.ItemID.String()),
 		boiler.CollectionItemWhere.ItemType.EQ(req.Payload.ItemType),
-	).QueryRow(gamedb.StdConn).Scan(&collectionItemID)
+	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -358,7 +362,14 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		}
 		return terror.Error(err, errMsg)
 	}
-	if collectionItemID == uuid.Nil {
+
+	if collectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
+	}
+
+	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
+
+	if ciUUID.IsNil() {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -368,7 +379,24 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	alreadySelling, err := db.MarketplaceCheckCollectionItem(collectionItemID)
+	// check if queue
+	if collectionItem.ItemType == boiler.ItemTypeMech {
+		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to get queue pos")
+			return err
+		}
+		if position != nil && position.QueuePosition >= 0 {
+			return fmt.Errorf("cannot sell war machine in battle queue")
+		}
+	}
+
+	alreadySelling, err := db.MarketplaceCheckCollectionItem(ciUUID)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -469,7 +497,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		factionID,
 		txid,
 		endAt,
-		collectionItemID,
+		ciUUID,
 		hasBuyout,
 		req.Payload.AskingPrice,
 		hasAuction,
@@ -490,10 +518,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Unlock Item
-	collectionItem := boiler.CollectionItem{
-		ID:                  collectionItemID.String(),
-		LockedToMarketplace: true,
-	}
+	collectionItem.LockedToMarketplace = true
 	_, err = collectionItem.Update(tx, boil.Whitelist(
 		boiler.CollectionItemColumns.ID,
 		boiler.CollectionItemColumns.LockedToMarketplace,
@@ -525,10 +550,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	reply(obj)
 
 	ci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID.String()),
+		boiler.CollectionItemWhere.ID.EQ(ciUUID.String()),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("collection item id", collectionItemID.String()).Err(err).Msg("Failed to get collection item from db")
+		gamelog.L.Error().Str("collection item id", ciUUID.String()).Err(err).Msg("Failed to get collection item from db")
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
@@ -603,17 +628,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
-	numKeycardsSelling, err := db.MarketplaceCountKeycards(req.Payload.ItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Str("player_id", user.ID).
-			Str("faction_id", req.Payload.ItemID.String()).
-			Str("faction_id", user.FactionID.String).
-			Err(err).
-			Msg("unable to check number of keycards in marketplace")
-		return terror.Error(err, errMsg)
-	}
-	if keycard.Count <= numKeycardsSelling {
+	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
 	}
 
@@ -1204,7 +1219,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			return terror.Error(err, errMsg)
 		}
 	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
-		err = db.ChangeMysteryCrateOwner(tx, req.Payload.ID)
+		err = db.ChangeMysteryCrateOwner(tx, saleItem.CollectionItemID, user.ID)
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
@@ -1261,6 +1276,19 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, errMsg)
+	}
+
+	bids, err := db.MarketplaceSaleCancelBids(gamedb.StdConn, uuid.Must(uuid.FromString(saleItem.ID)), "Item bought out")
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("MarketplaceSaleCancelBids error refunding bids")
+		return err
+	}
+
+	for _, b := range bids {
+		_, err = mp.API.Passport.RefundSupsMessage(b)
+		if err != nil {
+			gamelog.L.Error().Str("txID", b).Err(err).Msg("error refunding bids")
+		}
 	}
 
 	// broadcast status change if item is a mech
@@ -1651,7 +1679,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	defer tx.Rollback()
 
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID)
+	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().

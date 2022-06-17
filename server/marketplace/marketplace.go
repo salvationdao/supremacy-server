@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/asset"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -29,6 +30,7 @@ type ItemSaleAuction struct {
 	CollectionItemID     uuid.UUID           `boil:"collection_item_id"`
 	ItemType             string              `boil:"item_type"`
 	ItemLocked           bool                `boil:"item_locked"`
+	Hash                 string              `boil:"hash"`
 	OwnerID              uuid.UUID           `boil:"owner_id"`
 	Auction              bool                `boil:"auction"`
 	AuctionReservedPrice decimal.NullDecimal `boil:"auction_reserved_price"`
@@ -256,6 +258,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			SELECT item_sales.id AS id,
 				item_sales.collection_item_id,
 				collection_items.item_type,
+				collection_items.hash,
 				item_sales.owner_id,
 				item_sales.auction,
 				item_sales.auction_reserved_price,
@@ -297,134 +300,141 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 	numProcessed := 0
 	for _, auctionItem := range auctions {
-		// Check if current bid on an auction is below reserved price and issue refunds.
-		if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
-			rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
-			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Str("bid_tx_id", auctionItem.AuctionBidTXID).
-					Err(err).
-					Msg("unable to refund cancelled auction bid transaction")
-				continue
-			}
-			err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, auctionItem.ID, auctionItem.AuctionBidTXID, rtxid, true)
-			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Str("bid_tx_id", auctionItem.AuctionBidTXID).
-					Str("refund_tx_id", rtxid).
-					Err(err).
-					Msg("unable to update refund tx id on bid record")
-				continue
-			}
-			numProcessed++
-			continue
-		}
-
-		// Check if Dutch Auction and is below the bidder's price, bidder wins
-		if auctionItem.DutchAuction {
-			minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(auctionItem.CreatedAt).Minutes()))
-			dutchAuctionAmount := auctionItem.BuyoutPrice.Decimal.Sub(auctionItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
-
-			if auctionItem.AuctionReservedPrice.Valid {
-				if dutchAuctionAmount.LessThan(auctionItem.AuctionReservedPrice.Decimal) {
-					dutchAuctionAmount = auctionItem.AuctionReservedPrice.Decimal
+		func() {
+			// Check if current bid is below reserved price and issue refunds.
+			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
+				rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Str("bid_tx_id", auctionItem.AuctionBidTXID).
+						Err(err).
+						Msg("unable to refund cancelled auction bid transaction")
+					return
 				}
-			} else {
-				if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
-					dutchAuctionAmount = decimal.New(1, 18)
+				err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, auctionItem.ID, auctionItem.AuctionBidTXID, rtxid, true)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Str("bid_tx_id", auctionItem.AuctionBidTXID).
+						Str("refund_tx_id", rtxid).
+						Err(err).
+						Msg("unable to update refund tx id on bid record")
+					return
 				}
-			}
-
-			if dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice) {
 				numProcessed++
 				return
 			}
-		}
 
-		// Get Faction Account sending bid amount to
-		factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
-		if !ok {
-			err = fmt.Errorf("failed to get hard coded syndicate player id")
-			gamelog.L.Error().
-				Str("owner_id", auctionItem.OwnerID.String()).
-				Str("faction_id", auctionItem.FactionID.String()).
-				Err(err).
-				Msg("unable to get hard coded syndicate player ID from faction ID")
-			continue
-		}
+			// Check if Dutch Auction and is below the bidder's price, bidder wins
+			if auctionItem.DutchAuction {
+				minutesLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(auctionItem.CreatedAt).Minutes()))
+				dutchAuctionAmount := auctionItem.BuyoutPrice.Decimal.Sub(auctionItem.DutchAuctionDropRate.Decimal.Mul(minutesLapse))
 
-		// Transfer Sups to Owner
-		salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
-		txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
-			ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
-			Amount:               auctionItem.AuctionBidPrice.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupMarketplace),
-			Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
-			NotSafe:              true,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Str("item_id", auctionItem.ID.String()).
-				Str("user_id", auctionItem.AuctionBidUserID.String()).
-				Str("cost", auctionItem.AuctionBidPrice.String()).
-				Err(err).
-				Msg("Failed to send sups to item seller.")
-			continue
-		}
+				if auctionItem.AuctionReservedPrice.Valid {
+					if dutchAuctionAmount.LessThan(auctionItem.AuctionReservedPrice.Decimal) {
+						dutchAuctionAmount = auctionItem.AuctionReservedPrice.Decimal
+					}
+				} else {
+					if dutchAuctionAmount.LessThanOrEqual(decimal.Zero) {
+						dutchAuctionAmount = decimal.New(1, 18)
+					}
+				}
 
-		// Begin Transaction
-		tx, err := gamedb.StdConn.Begin()
-		if err != nil {
-			gamelog.L.Error().
-				Str("item_id", auctionItem.ID.String()).
-				Str("user_id", auctionItem.AuctionBidUserID.String()).
-				Str("cost", auctionItem.AuctionBidPrice.String()).
-				Err(err).
-				Msg("Failed to start db transaction.")
-			continue
-		}
-		defer tx.Rollback()
+				if dutchAuctionAmount.GreaterThan(auctionItem.AuctionBidPrice) {
+					numProcessed++
+					return
+				}
+			}
 
-		// Update Item Sale Record
-		saleItemRecord := &boiler.ItemSale{
-			ID:        auctionItem.ID.String(),
-			SoldAt:    null.TimeFrom(time.Now()),
-			SoldFor:   decimal.NewNullDecimal(auctionItem.AuctionBidPrice),
-			SoldTXID:  null.StringFrom(txid),
-			SoldBy:    null.StringFrom(auctionItem.AuctionBidUserID.String()),
-			UpdatedAt: time.Now(),
-		}
-		_, err = saleItemRecord.Update(tx, boil.Whitelist(
-			boiler.ItemSaleColumns.SoldAt,
-			boiler.ItemSaleColumns.SoldFor,
-			boiler.ItemSaleColumns.SoldTXID,
-			boiler.ItemSaleColumns.SoldBy,
-			boiler.ItemSaleColumns.UpdatedAt,
-		))
-		if err != nil {
-			m.Passport.RefundSupsMessage(txid)
-			err = fmt.Errorf("failed to complete payment transaction")
-			gamelog.L.Error().
-				Str("item_id", auctionItem.ID.String()).
-				Str("user_id", auctionItem.AuctionBidUserID.String()).
-				Str("cost", auctionItem.AuctionBidPrice.String()).
-				Err(err).
-				Msg("Failed to process transaction for Purchase Sale Item.")
-			continue
-		}
+			// Get Faction Account sending bid amount to
+			factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
+			if !ok {
+				err = fmt.Errorf("failed to get hard coded syndicate player id")
+				gamelog.L.Error().
+					Str("owner_id", auctionItem.OwnerID.String()).
+					Str("faction_id", auctionItem.FactionID.String()).
+					Err(err).
+					Msg("unable to get hard coded syndicate player ID from faction ID")
+				return
+			}
 
-		// Transfer ownership of asset
-		if auctionItem.ItemType == boiler.ItemTypeMech {
-			err = db.ChangeMechOwner(tx, auctionItem.ID)
+			// Transfer Sups to Owner
+			salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
+			txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+				ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
+				Amount:               auctionItem.AuctionBidPrice.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupMarketplace),
+				Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
+				NotSafe:              true,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to send sups to item seller.")
+				return
+			}
+
+			// Begin Transaction
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to start db transaction.")
+				return
+			}
+			defer tx.Rollback()
+
+			// Update Item Sale Record
+			saleItemRecord := &boiler.ItemSale{
+				ID:        auctionItem.ID.String(),
+				SoldAt:    null.TimeFrom(time.Now()),
+				SoldFor:   decimal.NewNullDecimal(auctionItem.AuctionBidPrice),
+				SoldTXID:  null.StringFrom(txid),
+				SoldBy:    null.StringFrom(auctionItem.AuctionBidUserID.String()),
+				UpdatedAt: time.Now(),
+			}
+			_, err = saleItemRecord.Update(tx, boil.Whitelist(
+				boiler.ItemSaleColumns.SoldAt,
+				boiler.ItemSaleColumns.SoldFor,
+				boiler.ItemSaleColumns.SoldTXID,
+				boiler.ItemSaleColumns.SoldBy,
+				boiler.ItemSaleColumns.UpdatedAt,
+			))
+			if err != nil {
+				m.Passport.RefundSupsMessage(txid)
+				err = fmt.Errorf("failed to complete payment transaction")
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to process transaction for Purchase Sale Item.")
+				return
+			}
+
+			err = m.Passport.TransferAsset(
+				saleItemRecord.OwnerID,
+				saleItemRecord.SoldBy.String,
+				auctionItem.Hash,
+				null.StringFrom(txid),
+				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+					asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+				},
+			)
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				gamelog.L.Error().
@@ -432,60 +442,98 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
 					Str("cost", auctionItem.AuctionBidPrice.String()).
 					Err(err).
-					Msg("Failed to Transfer Mech to New Owner")
-				continue
+					Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
+				return
 			}
-		} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate {
-			err = db.ChangeMysteryCrateOwner(tx, auctionItem.ID)
+
+			rpcAssetTransferRollback := func() {
+				err := m.Passport.TransferAsset(
+					saleItemRecord.OwnerID,
+					auctionItem.AuctionBidUserID.String(),
+					auctionItem.Hash,
+					null.String{},
+					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+						asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+					},
+				)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Err(err).
+						Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
+				}
+			}
+
+			// Transfer ownership of asset
+			if auctionItem.ItemType == boiler.ItemTypeMech {
+				err = db.ChangeMechOwner(tx, auctionItem.ID)
+				if err != nil {
+					m.Passport.RefundSupsMessage(txid)
+					rpcAssetTransferRollback()
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Err(err).
+						Msg("Failed to Transfer Mech to New Owner")
+					return
+				}
+			} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate {
+				err = db.ChangeMysteryCrateOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
+				if err != nil {
+					m.Passport.RefundSupsMessage(txid)
+					rpcAssetTransferRollback()
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Err(err).
+						Msg("Failed to Transfer Mystery Crate to New Owner")
+					return
+				}
+			}
+
+			// Unlock Listed Item
+			collectionItem := boiler.CollectionItem{
+				ID:                  auctionItem.CollectionItemID.String(),
+				LockedToMarketplace: false,
+			}
+			_, err = collectionItem.Update(tx, boil.Whitelist(
+				boiler.CollectionItemColumns.ID,
+				boiler.CollectionItemColumns.LockedToMarketplace,
+			))
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
+				rpcAssetTransferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
 					Str("cost", auctionItem.AuctionBidPrice.String()).
 					Err(err).
-					Msg("Failed to Transfer Mystery Crate to New Owner")
-				continue
+					Msg("Failed to unlock marketplace listed collection item.")
+				return
 			}
-		}
 
-		// Unlock Listed Item
-		collectionItem := boiler.CollectionItem{
-			ID:                  auctionItem.CollectionItemID.String(),
-			LockedToMarketplace: false,
-		}
-		_, err = collectionItem.Update(tx, boil.Whitelist(
-			boiler.CollectionItemColumns.ID,
-			boiler.CollectionItemColumns.LockedToMarketplace,
-		))
-		if err != nil {
-			m.Passport.RefundSupsMessage(txid)
-			gamelog.L.Error().
-				Str("item_id", auctionItem.ID.String()).
-				Str("user_id", auctionItem.AuctionBidUserID.String()).
-				Str("cost", auctionItem.AuctionBidPrice.String()).
-				Err(err).
-				Msg("Failed to unlock marketplace listed collection item.")
-			continue
-		}
-
-		// Commit Transaction
-		err = tx.Commit()
-		if err != nil {
-			m.Passport.RefundSupsMessage(txid)
-			gamelog.L.Error().
-				Str("item_id", auctionItem.ID.String()).
-				Str("user_id", auctionItem.AuctionBidUserID.String()).
-				Str("cost", auctionItem.AuctionBidPrice.String()).
-				Err(err).
-				Msg("Failed to commit db transaction")
-			continue
-		}
-
-		numProcessed++
+			// Commit Transaction
+			err = tx.Commit()
+			if err != nil {
+				m.Passport.RefundSupsMessage(txid)
+				rpcAssetTransferRollback()
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to commit db transaction")
+				return
+			}
+			numProcessed++
+		}()
 	}
 
-	gamelog.L.Trace().
+	gamelog.L.Info().
 		Int("num_processed", numProcessed).
 		Int("num_failed", len(auctions)-numProcessed).
 		Int("num_pending", len(auctions)).

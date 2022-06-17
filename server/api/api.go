@@ -194,7 +194,7 @@ func NewAPI(
 		//TODO ALEX reimplement handlers
 
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
-		r.Get("/video_server", WithCookie(api, WithError(api.GetStreamsHandler)))
+		r.Get("/video_server", WithError(api.GetStreamsHandler))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Mount("/faction", FactionRouter(api))
