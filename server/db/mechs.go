@@ -641,7 +641,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if opts.QueueSort != nil {
 		queryMods = append(queryMods,
 			qm.Select("_bq.queue_position AS queue_position"),
-			qm.InnerJoin(
+			qm.LeftOuterJoin(
 				fmt.Sprintf(`(
 					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
 						from battle_queue _bq
