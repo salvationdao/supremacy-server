@@ -760,30 +760,36 @@ func MarketplaceSaleCreate(
 	return output, nil
 }
 
+// CancelBidResponse contains the txid and amount on cancelled bids.
+type CancelBidResponse struct {
+	TXID   string
+	Amount decimal.Decimal
+}
+
 // MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
-func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string) ([]string, error) {
+func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string) ([]CancelBidResponse, error) {
 	q := `
 		UPDATE item_sales_bid_history
 		SET cancelled_at = NOW(),
 			cancelled_reason = $2
 		WHERE item_sale_id = $1 AND cancelled_at IS NULL
-		RETURNING bid_tx_id`
+		RETURNING bid_tx_id, bid_price`
 	rows, err := conn.Query(q, itemID, msg)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 	defer rows.Close()
 
-	txidRefunds := []string{}
+	cancelBidList := []CancelBidResponse{}
 	for rows.Next() {
-		var txid string
-		err := rows.Scan(&txid)
+		var outputItem CancelBidResponse
+		err := rows.Scan(&outputItem.TXID, &outputItem.Amount)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
-		txidRefunds = append(txidRefunds, txid)
+		cancelBidList = append(cancelBidList, outputItem)
 	}
-	return txidRefunds, nil
+	return cancelBidList, nil
 }
 
 // MarketplaceSaleBidHistoryRefund adds in refund details to a specific bid.

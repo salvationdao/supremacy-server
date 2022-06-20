@@ -1315,17 +1315,17 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return err
 	}
 	for _, b := range bids {
-		_, err = mp.API.Passport.RefundSupsMessage(b)
+		_, err = mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
-			gamelog.L.Error().Str("txID", b).Err(err).Msg("error refunding bids")
+			gamelog.L.Error().Str("txID", b.TXID).Err(err).Msg("error refunding bids")
 		}
-		// err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
-		// if err != nil {
-		// 	gamelog.L.Error().
-		// 		Str("txID", b).
-		// 		Err(err).
-		// 		Msg("Failed to log bid refund event.")
-		// }
+		err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(b.Amount), saleItem.ID, boiler.TableNames.ItemSales)
+		if err != nil {
+			gamelog.L.Error().
+				Str("txID", b.TXID).
+				Err(err).
+				Msg("Failed to log bid refund event.")
+		}
 	}
 
 	// broadcast status change if item is a mech
@@ -1740,7 +1740,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	defer tx.Rollback()
 
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
+	refundBids, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -1780,35 +1780,35 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 
 	// Refund other bids
-	for _, bidTxID := range refundTxnIDs {
-		refundTxID, err := mp.API.Passport.RefundSupsMessage(bidTxID)
+	for _, b := range refundBids {
+		refundTxID, err := mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_sale_id", req.Payload.ID.String()).
-				Str("txid", bidTxID).
+				Str("txid", b.TXID).
 				Err(err).
 				Msg("Unable to refund cancelled bid.")
 			continue
 		}
-		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, bidTxID, refundTxID, false)
+		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, b.TXID, refundTxID, false)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_sale_id", req.Payload.ID.String()).
-				Str("txid", bidTxID).
+				Str("txid", b.TXID).
 				Str("refund_tx_id", refundTxID).
 				Err(err).
 				Msg("Unable to update cancelled bid refund tx id.")
 			continue
 		}
-		// err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
-		// if err != nil {
-		// 	gamelog.L.Error().
-		// 		Str("item_sale_id", req.Payload.ID.String()).
-		// 		Str("txid", bidTxID).
-		// 		Str("refund_tx_id", refundTxID).
-		// 		Err(err).
-		// 		Msg("Failed to log bid refund event.")
-		// }
+		err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(b.Amount), saleItem.ID, boiler.TableNames.ItemSales)
+		if err != nil {
+			gamelog.L.Error().
+				Str("item_sale_id", req.Payload.ID.String()).
+				Str("txid", b.TXID).
+				Str("refund_tx_id", refundTxID).
+				Err(err).
+				Msg("Failed to log bid refund event.")
+		}
 	}
 
 	// Commit Transaction
