@@ -81,7 +81,7 @@ type PlayerAssetMech struct {
 	MarketLocked        bool        `json:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
-	QueuePosition       int         `json:"queue_position"`
+	QueuePosition       null.Int    `json:"queue_position"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
