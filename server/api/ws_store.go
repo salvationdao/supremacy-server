@@ -149,34 +149,34 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(terror.ErrForbidden, "User must be enlisted in correct faction to purchase faction crate.")
 	}
 
-	//// check keycards
-	//allowedToBuy := 0
-	//keycards, err := boiler.PlayerKeycards(
-	//	boiler.PlayerKeycardWhere.PlayerID.EQ(user.ID),
-	//	qm.Load(boiler.PlayerKeycardRels.BlueprintKeycard),
-	//).All(gamedb.StdConn)
-	//if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	//	return terror.Error(err)
-	//}
-	//
-	//for _, kc := range keycards {
-	//	if kc.R.BlueprintKeycard.KeycardGroup == "KEYCARD" {
-	//		allowedToBuy += kc.Count * 10
-	//	}
-	//}
-	//
-	////check owned mystery crates
-	//mysteryCrateCount, err := boiler.CollectionItems(
-	//	boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-	//	boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	//).Count(gamedb.StdConn)
-	//if err != nil {
-	//	return terror.Error(err)
-	//}
-	//
-	//if int64(allowedToBuy) <= mysteryCrateCount {
-	//	return terror.Error(fmt.Errorf("unable to purchase more mystery crates, owned: %d, allowed: %d", mysteryCrateCount, allowedToBuy))
-	//}
+	// check keycards
+	allowedToBuy := 0
+	keycards, err := boiler.PlayerKeycards(
+		boiler.PlayerKeycardWhere.PlayerID.EQ(user.ID),
+		qm.Load(boiler.PlayerKeycardRels.BlueprintKeycard),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err)
+	}
+
+	for _, kc := range keycards {
+		if kc.R.BlueprintKeycard.KeycardGroup == "KEYCARD" {
+			allowedToBuy += kc.Count * 10
+		}
+	}
+
+	//check owned mystery crates
+	mysteryCrateCount, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if int64(allowedToBuy) <= mysteryCrateCount {
+		return terror.Error(fmt.Errorf("unable to purchase more mystery crates, owned: %d, allowed: %d", mysteryCrateCount, allowedToBuy))
+	}
 
 	//double check there are still crates available on storefront, user should not be able to buy it though
 	storeCrate, err := boiler.StorefrontMysteryCrates(
