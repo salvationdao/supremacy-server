@@ -1,12 +1,14 @@
 package db
 
 import (
-	"errors"
+	"database/sql"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
 	"time"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -34,21 +36,27 @@ const KeyBattleAbilityPriceDropRate KVKey = "battle_ability_price_drop_rate"
 const KeyFactionAbilityFloorPrice KVKey = "faction_ability_floor_price"
 const KeyFactionAbilityPriceDropRate KVKey = "faction_ability_price_drop_rate"
 
+const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
+const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
+const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auction_reserve_fee"
+const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
+
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
+const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
+
+const KeyLastTransferEventID KVKey = "last_transfer_event_id"
+
+const KeyInstantPassRequiredAmount KVKey = "instant_pass_required_amount"
 
 func get(key KVKey) string {
-	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Msg("could not check kv exists")
-		return ""
-	}
-	if !exists {
-		gamelog.L.Err(errors.New("kv does not exist")).Str("key", string(key)).Msg("kv does not exist")
-		return ""
-	}
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Msg("could not get kv")
+		if errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Err(errors.New("kv does not exist")).Str("key", string(key)).Msg("kv does not exist")
+		} else {
+			gamelog.L.Err(err).Str("key", string(key)).Msg("could not get kv")
+		}
 		return ""
 	}
 	return kv.Value
@@ -66,10 +74,6 @@ func put(key KVKey, value string) {
 	}
 }
 
-func GetStr(key KVKey) string {
-	return get(key)
-
-}
 func GetStrWithDefault(key KVKey, defaultValue string) string {
 	vStr := get(key)
 	if vStr == "" {
@@ -77,19 +81,10 @@ func GetStrWithDefault(key KVKey, defaultValue string) string {
 		return defaultValue
 	}
 
-	return GetStr(key)
+	return vStr
 }
 func PutStr(key KVKey, value string) {
 	put(key, value)
-}
-func GetBool(key KVKey) bool {
-	v := get(key)
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Str("val", v).Msg("could not parse boolean")
-		return false
-	}
-	return b
 }
 
 func GetBoolWithDefault(key KVKey, defaultValue bool) bool {
@@ -99,20 +94,15 @@ func GetBoolWithDefault(key KVKey, defaultValue bool) bool {
 		return defaultValue
 	}
 
-	return GetBool(key)
+	b, err := strconv.ParseBool(vStr)
+	if err != nil {
+		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse boolean")
+		return false
+	}
+	return b
 }
 func PutBool(key KVKey, value bool) {
 	put(key, strconv.FormatBool(value))
-}
-
-func GetInt(key KVKey) int {
-	vStr := get(key)
-	v, err := strconv.Atoi(vStr)
-	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse int")
-		return 0
-	}
-	return v
 }
 
 func GetIntWithDefault(key KVKey, defaultValue int) int {
@@ -122,22 +112,19 @@ func GetIntWithDefault(key KVKey, defaultValue int) int {
 		return defaultValue
 	}
 
-	return GetInt(key)
+	v, err := strconv.Atoi(vStr)
+	if err != nil {
+		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse int")
+		return 0
+	}
+
+	return v
 }
 
 func PutInt(key KVKey, value int) {
 	put(key, strconv.Itoa(value))
 }
 
-func GetDecimal(key KVKey) decimal.Decimal {
-	vStr := get(key)
-	v, err := decimal.NewFromString(vStr)
-	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse decimal")
-		return decimal.Zero
-	}
-	return v
-}
 func GetDecimalWithDefault(key KVKey, defaultValue decimal.Decimal) decimal.Decimal {
 	vStr := get(key)
 
@@ -145,21 +132,19 @@ func GetDecimalWithDefault(key KVKey, defaultValue decimal.Decimal) decimal.Deci
 		PutDecimal(key, defaultValue)
 		return defaultValue
 	}
-	return GetDecimal(key)
+
+	v, err := decimal.NewFromString(vStr)
+	if err != nil {
+		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse decimal")
+		return decimal.Zero
+	}
+	return v
 }
 
 func PutDecimal(key KVKey, value decimal.Decimal) {
 	put(key, value.String())
 }
-func GetTime(key KVKey) time.Time {
-	vStr := get(key)
-	t, err := time.Parse(time.RFC3339, vStr)
-	if err != nil {
-		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse time")
-		return time.Time{}
-	}
-	return t
-}
+
 func GetTimeWithDefault(key KVKey, defaultValue time.Time) time.Time {
 	vStr := get(key)
 	if vStr == "" {
@@ -167,7 +152,12 @@ func GetTimeWithDefault(key KVKey, defaultValue time.Time) time.Time {
 		return defaultValue
 	}
 
-	return GetTime(key)
+	t, err := time.Parse(time.RFC3339, vStr)
+	if err != nil {
+		gamelog.L.Err(err).Str("key", string(key)).Str("val", vStr).Msg("could not parse time")
+		return time.Time{}
+	}
+	return t
 }
 func PutTime(key KVKey, value time.Time) {
 	put(key, value.Format(time.RFC3339))

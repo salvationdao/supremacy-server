@@ -2,13 +2,12 @@ package comms
 
 import (
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"net"
 	"net/rpc"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sync"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // S holds all the listeners together
@@ -21,10 +20,10 @@ type XrpcServer struct {
 // S holds all the RPC answer functions, remote rpc caller must use same naming.
 // Keep seperate from XrpcServer so it wont cause issue and complain about Listen and Shutdown being invalid length and trigger by remotely
 type S struct {
-	passportRPC *rpcclient.PassportXrpcClient // rpc client to call passport server
+	passportRPC *xsyn_rpcclient.XsynXrpcClient // rpc client to call passport server
 }
 
-func (s *XrpcServer) Listen(passportRPC *rpcclient.PassportXrpcClient, startPort, numPorts int) error {
+func (s *XrpcServer) Listen(passportRPC *xsyn_rpcclient.XsynXrpcClient, startPort, numPorts int) error {
 	if passportRPC == nil {
 		return terror.Error(fmt.Errorf("passportRPC is nil"))
 	}

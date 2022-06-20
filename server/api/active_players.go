@@ -2,16 +2,15 @@ package api
 
 import (
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sync"
 	"time"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -20,12 +19,10 @@ import (
 type ActivePlayers struct {
 	FactionID string
 	Map       map[string]*ActiveStat
-	deadlock.RWMutex
+	sync.RWMutex
 
 	// channel for debounce broadcast
 	ActivePlayerListChan chan *ActivePlayerBroadcast
-
-	MessageBus *messagebus.MessageBus
 }
 
 type ActiveStat struct {
@@ -50,7 +47,6 @@ func (api *API) FactionActivePlayerSetup() {
 			FactionID:            f.ID,
 			Map:                  make(map[string]*ActiveStat),
 			ActivePlayerListChan: make(chan *ActivePlayerBroadcast),
-			MessageBus:           api.MessageBus,
 		}
 
 		go ap.Run()

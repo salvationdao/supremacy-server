@@ -14,20 +14,20 @@ type PlayerContribution struct {
 	DidTrigger bool            `db:"did_trigger"`
 }
 
-func GetPlayerContributions(abilityOfferingID string) ([]*boiler.BattleContribution, error) {
+func GetPlayerContributions(battleID, abilityOfferingID string) ([]*boiler.BattleContribution, error) {
 	q := `SELECT * from (
 	 SELECT bc.player_id, sum(bc.amount) AS amount from battle_contributions bc 
-	 WHERE bc.ability_offering_id = $1 
+	 WHERE bc.ability_offering_id = $1 and bc.battle_id = $2
 	 GROUP BY bc.player_id
 	 ) bc1 LEFT JOIN LATERAL (
  	 SELECT bc.did_trigger from battle_contributions bc 
- 	 WHERE bc.player_id = bc1.player_id and bc.ability_offering_id = $1
+ 	 WHERE bc.player_id = bc1.player_id and bc.ability_offering_id = $1 and bc.battle_id = $2
  	 ORDER BY bc.did_trigger DESC
  	 LIMIT 1
 	 ) bc2 ON TRUE;
 	`
 
-	rows, err := gamedb.StdConn.Query(q, abilityOfferingID)
+	rows, err := gamedb.StdConn.Query(q, abilityOfferingID, battleID)
 	if err != nil {
 		gamelog.L.Error().Str("ability_offering_id", abilityOfferingID).Err(err).Msg("Failed to get players contribution")
 		return nil, err

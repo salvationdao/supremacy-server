@@ -2,7 +2,6 @@ package battle
 
 import (
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
@@ -11,6 +10,8 @@ import (
 	"server/gamelog"
 	"sort"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -36,15 +37,15 @@ func (arena *Arena) PlayerRankUpdater() {
 		// calculate player rank of each syndicate
 		err := calcSyndicatePlayerRank(server.RedMountainFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("faction id", server.RedMountainFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 		err = calcSyndicatePlayerRank(server.BostonCyberneticsFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.BostonCyberneticsFactionID.String()).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("faction id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 		err = calcSyndicatePlayerRank(server.ZaibatsuFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.ZaibatsuFactionID.String()).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("faction id", server.ZaibatsuFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 
 		bus := arena.currentBattleUsersCopy()
@@ -103,10 +104,10 @@ func (arena *Arena) PlayerRankUpdater() {
 	updateTickle.Start()
 }
 
-func calcSyndicatePlayerRank(factionID server.FactionID) error {
+func calcSyndicatePlayerRank(factionID string) error {
 	playerAbilityKills, err := db.GetPositivePlayerAbilityKillByFactionID(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("faction id", factionID.String()).Err(err).Msg("Failed to get player ability kill from db")
+		gamelog.L.Error().Str("faction id", factionID).Err(err).Msg("Failed to get player ability kill from db")
 		return terror.Error(err, "Failed to get player ability kill from db")
 	}
 
@@ -131,7 +132,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update general players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.IN(generalPlayerIDs),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)), // should be created more than a day
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankGeneral})
 	if err != nil {
@@ -142,16 +143,16 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update corporal players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
 		qm.Where(
 			fmt.Sprintf(
 				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s > 0)",
-				boiler.TableNames.UserStats,
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
+				boiler.TableNames.PlayerStats,
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankCorporal})
@@ -163,16 +164,16 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update private players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
 		qm.Where(
 			fmt.Sprintf(
 				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s <= 0)",
-				boiler.TableNames.UserStats,
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
+				boiler.TableNames.PlayerStats,
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankPrivate})

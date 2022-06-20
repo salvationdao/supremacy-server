@@ -6,8 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/null/v8"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"server"
 	"server/battle"
@@ -16,17 +15,17 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -46,10 +45,14 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
+	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
+	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
+
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
+	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
 	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
 	api.SecureUserFactionCommand(HubKeyIssuePunishVote, pc.IssuePunishVote)
@@ -65,7 +68,6 @@ func NewPlayerController(api *API) *PlayerController {
 }
 
 type UserUpdatedRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID string `json:"id"`
 	} `json:"payload"`
@@ -129,7 +131,6 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 }
 
 type PlayerUpdateSettingsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Key   string     `json:"key"`
 		Value types.JSON `json:"value,omitempty"`
@@ -193,7 +194,6 @@ type PlayerNotificationPreferences struct {
 }
 
 type PlayerGetSettingsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Key string `json:"key"`
 	} `json:"payload"`
@@ -249,18 +249,6 @@ func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *h
 	return helpers.EncodeJSON(w, false)
 }
 
-const HubKeyPlayerBattleQueueBrowserSubscribe = "PLAYER:BROWSER_NOTIFICATION_SUBSCRIBE"
-
-func (pc *PlayerController) PlayerBattleQueueBrowserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, wsc.Identifier())), nil
-}
-
 type PlayerPunishment struct {
 	*boiler.PunishedPlayer
 	RelatedPunishVote *boiler.PunishVote   `json:"related_punish_vote"`
@@ -301,7 +289,6 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 }
 
 type PlayerActiveCheckRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Fruit string `json:"fruit"`
 	} `json:"payload"`
@@ -349,7 +336,6 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 }
 
 type PlayerSearchRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Search string `json:"search"`
 	} `json:"payload"`
@@ -396,8 +382,60 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 	return nil
 }
 
+type PunishVoteInstantPassRequest struct {
+	Payload struct {
+		PunishVoteID string `json:"punish_vote_id"`
+	} `json:"payload"`
+}
+
+const HubKeyInstantPassPunishVote = "PUNISH:VOTE:INSTANT:PASS"
+
+func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PunishVoteInstantPassRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check player is available vote
+	player, err := boiler.FindPlayer(gamedb.StdConn, user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get current player from db")
+	}
+
+	if player.Rank != boiler.PlayerRankEnumGENERAL {
+		return terror.Error(terror.ErrInvalidInput, "Only players with rank 'GENERAL' can instantly pass a punish vote.")
+	}
+
+	// check punish vote is finalised
+	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
+	if !ok {
+		return terror.Error(fmt.Errorf("player faction id does not exist"))
+	}
+
+	err = fpv.InstantPass(pc.API.Passport, req.Payload.PunishVoteID, user.ID)
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
+
+	reply(true)
+
+	// update instant vote count
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(req.Payload.PunishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote/%s/command_override", factionID, req.Payload.PunishVoteID), HubKeyPunishVoteCommandOverrideCountSubscribe, fmt.Sprintf("%d/%d", count, requiredAmount))
+
+	return nil
+}
+
 type PunishVoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		PunishVoteID string `json:"punish_vote_id"`
 		IsAgreed     bool   `json:"is_agreed"`
@@ -452,7 +490,6 @@ func (pc *PlayerController) PunishOptions(ctx context.Context, user *boiler.Play
 }
 
 type PunishVotePriceQuoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
 	} `json:"payload"`
@@ -490,7 +527,6 @@ func (pc *PlayerController) PunishVotePriceQuote(ctx context.Context, user *boil
 }
 
 type IssuePunishVoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
 		PunishOptionID         string    `json:"punish_option_id"`
@@ -611,6 +647,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		ReportedPlayerUsername: intendToBenPlayer.Username.String,
 		ReportedPlayerGid:      intendToBenPlayer.Gid,
 		Status:                 string(PunishVoteStatusPending),
+		InstantPassFee:         price.Mul(decimal.New(1, 18)),
 	}
 	err = punishVote.Insert(tx, boil.Infer())
 	if err != nil {
@@ -626,7 +663,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	}
 
 	// pay fee to syndicate
-	_, err = pc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	txid, err := pc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               price.Mul(decimal.New(1, 18)).String(),
@@ -643,10 +680,31 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 
 	err = tx.Commit()
 	if err != nil {
+		pc.API.Passport.RefundSupsMessage(txid)
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
 	reply(true)
+
+	return nil
+}
+
+const HubKeyPunishVoteCommandOverrideCountSubscribe = "PUNISH:VOTE:COMMAND:OVERRIDE:COUNT:SUBSCRIBE"
+
+func (pc *PlayerController) PunishVoteCommandOverrideCountSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	punishVoteID := cctx.URLParam("punish_vote_id")
+
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(punishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	reply(fmt.Sprintf("%d/%d", count, requiredAmount))
 
 	return nil
 }
@@ -661,8 +719,9 @@ const (
 
 type PunishVoteResponse struct {
 	*boiler.PunishVote
-	PunishOption *boiler.PunishOption `json:"punish_option"`
-	Decision     *PunishVoteDecision  `json:"decision,omitempty"`
+	PunishOption       *boiler.PunishOption `json:"punish_option"`
+	Decision           *PunishVoteDecision  `json:"decision,omitempty"`
+	InstantPassUserIDs []string             `json:"instant_pass_user_ids"`
 }
 
 type PunishVoteDecision struct {
@@ -680,14 +739,20 @@ func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, user
 			bv, err := boiler.PunishVotes(
 				boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
 				qm.Load(boiler.PunishVoteRels.PunishOption),
+				qm.Load(boiler.PunishVoteRels.PunishVoteInstantPassRecords),
 			).One(gamedb.StdConn)
 			if err != nil {
 				return terror.Error(err, "Failed to get punish vote from db")
 			}
 
 			pvr := &PunishVoteResponse{
-				PunishVote:   bv,
-				PunishOption: bv.R.PunishOption,
+				PunishVote:         bv,
+				PunishOption:       bv.R.PunishOption,
+				InstantPassUserIDs: []string{},
+			}
+
+			for _, ipr := range bv.R.PunishVoteInstantPassRecords {
+				pvr.InstantPassUserIDs = append(pvr.InstantPassUserIDs, ipr.VoteByPlayerID)
 			}
 
 			// check user has voted
@@ -746,7 +811,9 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		if !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		}
 	}
 
 	if us != nil {
@@ -831,5 +898,140 @@ func (pc *PlayerController) UserOnline(ctx context.Context, user *boiler.Player,
 
 	reply(pc.API.BattleArena.CurrentBattle().UserOnline(battleUser))
 
+	return nil
+}
+
+const HubKeyPlayerPreferencesGet = "PLAYER:PREFERENCES_GET"
+
+// PlayerPreferencesGetHandler gets player's preferences
+func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue getting player preferences, try again or contact support."
+
+	// try get player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if there are no results, create new player preferences
+	if errors.Is(err, sql.ErrNoRows) {
+		_prefs := &boiler.PlayerSettingsPreference{
+			PlayerID: user.ID,
+		}
+
+		err := _prefs.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		reply(_prefs)
+		return nil
+	}
+
+	reply(prefs)
+	return nil
+
+}
+
+const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
+
+type PlayerPreferencesUpdateRequest struct {
+	Payload struct {
+		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
+		EnableSMSNotifications      bool   `json:"enable_sms_notifications"`
+		EnablePushNotifications     bool   `json:"enable_push_notifications"`
+		MobileNumber                string `json:"mobile_number"`
+	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerPreferencesUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// getting player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if player doesnt have preferences saved, create a new one
+	if errors.Is(err, sql.ErrNoRows) {
+		_prefs := &boiler.PlayerSettingsPreference{
+			PlayerID:                    user.ID,
+			EnableTelegramNotifications: req.Payload.EnableTelegramNotifications,
+			EnableSMSNotifications:      req.Payload.EnableSMSNotifications,
+			EnablePushNotifications:     req.Payload.EnablePushNotifications,
+		}
+
+		// check mobile number
+		if req.Payload.MobileNumber != "" && req.Payload.EnableSMSNotifications {
+			mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+				return terror.Error(err, "Invalid phone number")
+			}
+
+			// set the verified mobile number
+			_prefs.MobileNumber = null.StringFrom(mobileNumber)
+		}
+
+		err = _prefs.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		// if new preferences and has telegram notifications enabled, must register to telebot
+		if _prefs.EnableTelegramNotifications {
+			_, err = pc.API.Telegram.PreferencesUpdate(user.ID)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+		reply(_prefs)
+
+		return nil
+	}
+
+	// update preferences
+	prefs.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
+	prefs.EnableSMSNotifications = req.Payload.EnableSMSNotifications
+	prefs.EnablePushNotifications = req.Payload.EnablePushNotifications
+	if !prefs.EnableTelegramNotifications {
+		prefs.Shortcode = ""
+	}
+
+	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
+		// check mobile number
+		mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err, "Invalid phone number")
+		}
+
+		// set the verified mobile number
+		prefs.MobileNumber = null.StringFrom(mobileNumber)
+	}
+
+	if req.Payload.MobileNumber == "" {
+		prefs.MobileNumber = null.String{}
+	}
+
+	_, err = prefs.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// if telegram enabled but is not registered
+	if prefs.EnableTelegramNotifications && (!prefs.TelegramID.Valid && prefs.Shortcode == "") {
+		prefs, err = pc.API.Telegram.PreferencesUpdate(user.ID)
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	reply(prefs)
 	return nil
 }

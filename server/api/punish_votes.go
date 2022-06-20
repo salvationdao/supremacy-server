@@ -4,13 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"net/http"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
+	"sync"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/tickle"
 
@@ -18,8 +22,6 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -43,14 +45,12 @@ type PunishVoteTracker struct {
 	// punish vote tracker
 	Stage *PunishVoteStage
 
-	// message bus
-	MessageBus *messagebus.MessageBus
 	// broadcast result
 	broadcastResult chan *PunishVoteResult
 
 	// mutex lock for issue vote
 	CurrentPunishVote *PunishVoteInstance
-	deadlock.RWMutex
+	sync.RWMutex
 
 	api *API
 }
@@ -60,6 +60,7 @@ type PunishVoteInstance struct {
 	PlayerPool         map[string]bool
 	AgreedPlayerIDs    map[string]bool
 	DisagreedPlayerIDs map[string]bool
+	IssueFee           decimal.Decimal
 	StartedAt          time.Time
 	EndedAt            time.Time
 }
@@ -82,7 +83,6 @@ func (api *API) PunishVoteTrackerSetup() error {
 		// initialise
 		pvt := &PunishVoteTracker{
 			FactionID:       f.ID,
-			MessageBus:      api.MessageBus,
 			broadcastResult: make(chan *PunishVoteResult),
 			Stage:           &PunishVoteStage{PunishVotePhaseHold, time.Now().AddDate(1, 0, 0)},
 			api:             api,
@@ -106,7 +106,7 @@ func (api *API) PunishVoteTrackerSetup() error {
 	})
 	playerPunishVoteCostUpdater.Log = gamelog.L
 
-	err = playerPunishVoteCostUpdater.SetIntervalAt(24*time.Hour, 1, 0)
+	err = playerPunishVoteCostUpdater.SetIntervalAt(time.Duration(db.GetIntWithDefault(db.KeyPunishVoteCooldownHour, 12))*time.Hour, 1, 0)
 	if err != nil {
 		return terror.Error(err, "Failed to setup player punish vote cost updater")
 	}
@@ -154,8 +154,8 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 
 	// get active player with positive ability kill count
 	if len(dbSearchList) > 0 {
-		uss, err := boiler.UserStats(
-			boiler.UserStatWhere.ID.IN(dbSearchList),
+		uss, err := boiler.PlayerStats(
+			boiler.PlayerStatWhere.ID.IN(dbSearchList),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player stat from db")
@@ -295,8 +295,9 @@ func (pvt *PunishVoteTracker) HoldingPhaseProcess() {
 
 	// broadcast new vote to online faction users
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote", pvt.FactionID), HubKeyPunishVoteSubscribe, &PunishVoteResponse{
-		PunishVote:   punishVote,
-		PunishOption: punishVote.R.PunishOption,
+		PunishVote:         punishVote,
+		PunishOption:       punishVote.R.PunishOption,
+		InstantPassUserIDs: []string{},
 	})
 }
 
@@ -364,6 +365,161 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 		AgreedPlayerNumber:    len(pvt.CurrentPunishVote.AgreedPlayerIDs),
 		DisagreedPlayerNumber: len(pvt.CurrentPunishVote.DisagreedPlayerIDs),
 	}
+
+	return nil
+}
+
+func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClient, punishVoteID string, playerID string) error {
+	pvt.Lock()
+	defer pvt.Unlock()
+
+	requiredInstantPassAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	// check voting phase and targeted vote is available
+	if pvt.Stage.Phase != PunishVotePhaseVoting || pvt.Stage.EndTime.Before(time.Now()) {
+		return terror.Error(terror.ErrInvalidInput, "invalid voting phase")
+	}
+
+	if pvt.CurrentPunishVote == nil || pvt.CurrentPunishVote.ID != punishVoteID {
+		return terror.Error(terror.ErrInvalidInput, "Punish vote id is mismatched")
+	}
+
+	// check instant pass records
+	punishVote, err := boiler.PunishVotes(
+		boiler.PunishVoteWhere.ID.EQ(pvt.CurrentPunishVote.ID),
+		qm.Load(boiler.PunishVoteRels.PunishVoteInstantPassRecords),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to retrieve punish vote")
+	}
+
+	// indicate whether this instant vote will pass the current punish vote
+	willPass := false
+
+	if punishVote.R.PunishVoteInstantPassRecords != nil {
+		// error out if there is already 2 instant votes
+		if len(punishVote.R.PunishVoteInstantPassRecords) >= 2 {
+			return terror.Error(fmt.Errorf("instant pass vote"), "Instance pass vote limit is reached")
+		}
+
+		// check player has voted
+		for _, ir := range punishVote.R.PunishVoteInstantPassRecords {
+			if ir.VoteByPlayerID == playerID {
+				return terror.Error(fmt.Errorf("already voted"), "You have already voted")
+			}
+		}
+
+		if len(punishVote.R.PunishVoteInstantPassRecords) == requiredInstantPassAmount-1 {
+			willPass = true
+		}
+	}
+
+	// get faction user id
+	factionAccountID, ok := server.FactionUsers[pvt.FactionID]
+	if !ok {
+		return terror.Error(terror.ErrInvalidInput, "Failed to retrieve syndicate account")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to process instant pass punish vote")
+	}
+
+	defer tx.Rollback()
+
+	// insert new instant pass record
+	ipr := boiler.PunishVoteInstantPassRecord{
+		PunishVoteID:   punishVoteID,
+		VoteByPlayerID: playerID,
+	}
+
+	err = ipr.Insert(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert new punish vote record")
+	}
+
+	if willPass {
+		punishVote.EndedAt = null.TimeFrom(time.Now())
+		punishVote.Status = string(PunishVoteStatusPassed)
+		_, err = punishVote.Update(tx, boil.Whitelist(
+			boiler.PunishVoteColumns.InstantPassByID,
+			boiler.PunishVoteColumns.EndedAt,
+			boiler.PunishVoteColumns.Status,
+		))
+		if err != nil {
+			return terror.Error(err, "Failed to update punish vote")
+		}
+	}
+
+	// pay fee to syndicate
+	txid, err := rpcClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		Amount:               punishVote.InstantPassFee.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("instant_pass_punish_vote|%s|%d", punishVote.ID, time.Now().UnixNano())),
+		Group:                "punish vote",
+		SubGroup:             "instant passing",
+		Description:          "general rank player passes a punish vote instantly",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Str("punish vote id", punishVote.ID).Str("amount", punishVote.InstantPassFee.String()).Err(err).Msg("Failed to pay sups for instantly passing a punish vote")
+		return terror.Error(err, "Failed to pay sups for instantly passing a punish vote")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to process instant pass punish vote")
+	}
+
+	// update txid
+	ipr.TXID = null.StringFrom(txid)
+	_, err = ipr.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteInstantPassRecordColumns.TXID))
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("player_id", playerID).Str("punish vote id", punishVote.ID).Str("tx id", txid).Msg("Failed to update instant pass punish vote transaction id")
+	}
+
+	// if vote will not pass, skip the reset
+	if !willPass {
+		return nil
+	}
+
+	// process punish against reported user
+	punishOption, err := boiler.FindPunishOption(gamedb.StdConn, punishVote.PunishOptionID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("punish type id", punishVote.PunishOptionID).
+			Err(err).Msg("Failed to get punish type from db")
+		return terror.Error(err, "Failed to get punish type from db")
+	}
+
+	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour)
+
+	if pvt.api.Config.Address == "staging" || pvt.api.Config.Address == "development" {
+		punishDuration = time.Now().Add(time.Duration(5) * time.Minute)
+	}
+
+	// punish user
+	bp := &boiler.PunishedPlayer{
+		PlayerID:            punishVote.ReportedPlayerID,
+		PunishOptionID:      punishOption.ID,
+		PunishUntil:         punishDuration,
+		RelatedPunishVoteID: null.StringFrom(punishVote.ID),
+	}
+	err = bp.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Interface("punish player", bp).
+			Err(err).Msg("Failed to insert player into punish list")
+		return terror.Error(err, "Failed to insert player into punish list")
+	}
+
+	// broadcast success punish notification on chat
+	pvt.BroadcastPunishVoteResult(true)
+
+	// switch phase
+	pvt.Stage.Phase = PunishVotePhaseHold
+	pvt.Stage.EndTime = time.Now().AddDate(1, 0, 0)
 
 	return nil
 }
@@ -498,7 +654,19 @@ func (pvt *PunishVoteTracker) debounceBroadcastResult() {
 
 func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	// get punish vote
-	punishVote, err := boiler.FindPunishVote(gamedb.StdConn, pvt.CurrentPunishVote.ID)
+	punishVote, err := boiler.PunishVotes(
+		boiler.PunishVoteWhere.ID.EQ(pvt.CurrentPunishVote.ID),
+		qm.Load(boiler.PunishVoteRels.PunishVoteInstantPassRecords),
+		qm.Load(
+			qm.Rels(boiler.PunishVoteRels.PunishVoteInstantPassRecords, boiler.PunishVoteInstantPassRecordRels.VoteByPlayer),
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.Gid,
+				boiler.PlayerColumns.Rank,
+			),
+		),
+	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get current punish vote from db")
 		return
@@ -514,30 +682,38 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote", pvt.FactionID), HubKeyPunishVoteSubscribe, nil)
 
 	// construct punish vote message
+	message := MessagePunishVote{
+		IssuedByUser: boiler.Player{
+			ID:        punishVote.IssuedByID,
+			Username:  null.StringFrom(punishVote.IssuedByUsername),
+			FactionID: null.StringFrom(punishVote.FactionID),
+			Gid:       punishVote.IssuedByGid,
+		},
+		ReportedUser: boiler.Player{
+			ID:        punishVote.ReportedPlayerID,
+			Username:  null.StringFrom(punishVote.ReportedPlayerUsername),
+			FactionID: null.StringFrom(punishVote.FactionID),
+			Gid:       punishVote.ReportedPlayerGid,
+		},
+		// vote result
+		IsPassed:              isPassed,
+		TotalPlayerNumber:     len(pvt.CurrentPunishVote.PlayerPool),
+		AgreedPlayerNumber:    len(pvt.CurrentPunishVote.AgreedPlayerIDs),
+		DisagreedPlayerNumber: len(pvt.CurrentPunishVote.DisagreedPlayerIDs),
+		PunishOption:          *punishOption,
+		PunishReason:          punishVote.Reason,
+		InstantPassByUsers:    []*boiler.Player{},
+	}
+
+	// append instant vote player
+	for _, ipr := range punishVote.R.PunishVoteInstantPassRecords {
+		message.InstantPassByUsers = append(message.InstantPassByUsers, ipr.R.VoteByPlayer)
+	}
+
 	chatMessage := &ChatMessage{
 		Type:   ChatMessageTypePunishVote,
 		SentAt: time.Now(),
-		Data: MessagePunishVote{
-			IssuedByUser: boiler.Player{
-				ID:        punishVote.IssuedByID,
-				Username:  null.StringFrom(punishVote.IssuedByUsername),
-				FactionID: null.StringFrom(punishVote.FactionID),
-				Gid:       punishVote.IssuedByGid,
-			},
-			ReportedUser: boiler.Player{
-				ID:        punishVote.ReportedPlayerID,
-				Username:  null.StringFrom(punishVote.ReportedPlayerUsername),
-				FactionID: null.StringFrom(punishVote.FactionID),
-				Gid:       punishVote.ReportedPlayerGid,
-			},
-			// vote result
-			IsPassed:              isPassed,
-			TotalPlayerNumber:     len(pvt.CurrentPunishVote.PlayerPool),
-			AgreedPlayerNumber:    len(pvt.CurrentPunishVote.AgreedPlayerIDs),
-			DisagreedPlayerNumber: len(pvt.CurrentPunishVote.DisagreedPlayerIDs),
-			PunishOption:          *punishOption,
-			PunishReason:          punishVote.Reason,
-		},
+		Data:   message,
 	}
 
 	// store message to the chat
@@ -545,7 +721,6 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	// broadcast
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", pvt.FactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
-	//pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
 
 	if isPassed {
 		// get current player's punishment

@@ -1,67 +1,46 @@
 package comms
 
 import (
-	"server"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-
-	"github.com/gofrs/uuid"
+	"server/gamelog"
+	"server/rpctypes"
 )
 
-type TemplatesReq struct {
-}
-type TemplatesResp struct {
-	TemplateContainers []*server.TemplateContainer
-}
+func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpctypes.TemplateRegisterResp) error {
+	gamelog.L.Debug().Msg("comms.TemplateRegisterHandler")
 
-// Templates is a heavy func, do not use on a running server
-func (s *S) Templates(req TemplatesReq, resp *TemplatesResp) error {
-	templates, err := boiler.Templates().All(gamedb.StdConn)
+	mechs, mechAnimations, mechSkins, powerCores, weapons, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to register template")
 		return err
 	}
-	result := []*server.TemplateContainer{}
-	for _, tpl := range templates {
-		template, err := db.Template(uuid.Must(uuid.FromString(tpl.ID)))
-		if err != nil {
-			return err
-		}
-		result = append(result, template)
 
+	var assets []*rpctypes.XsynAsset
+
+	var mechIDs []string
+	for _, m := range mechs {
+		mechIDs = append(mechIDs, m.ID)
 	}
-	resp.TemplateContainers = result
-	return nil
-}
 
-type TemplateReq struct {
-	TemplateID uuid.UUID
-}
-type TemplateResp struct {
-	TemplateContainer *server.TemplateContainer
-}
-
-func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
-	template, err := db.Template(req.TemplateID)
+	loadedMechs, err := db.Mechs(mechIDs...)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed loading mechs")
 		return err
 	}
-	resp.TemplateContainer = template
-	return nil
-}
 
-type TemplatePurchasedCountReq struct {
-	TemplateID uuid.UUID
-}
-type TemplatePurchasedCountResp struct {
-	Count int
-}
-
-func (s *S) TemplatePurchasedCount(req TemplatePurchasedCountReq, resp *TemplatePurchasedCountResp) error {
-	count, err := db.TemplatePurchasedCount(req.TemplateID)
-	if err != nil {
-		return err
+	for _, m := range loadedMechs {
+		m.CheckAndSetAsGenesisOrLimited()
 	}
-	resp.Count = count
+
+	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
+	if loadedMechs != nil && !loadedMechs[0].GenesisTokenID.Valid && !loadedMechs[0].LimitedReleaseTokenID.Valid {
+		assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
+		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
+		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
+		assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
+		assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
+	}
+
+	resp.Assets = assets
 	return nil
 }

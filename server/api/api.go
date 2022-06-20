@@ -11,9 +11,15 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/player_abilities"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
+	"sync"
 	"time"
+
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
+	"github.com/pemistahl/lingua-go"
+	"github.com/volatiletech/null/v8"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -21,17 +27,10 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/meehow/securebytes"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/auth"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
-	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/sasha-s/go-deadlock"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -39,13 +38,8 @@ type WelcomePayload struct {
 	Message string `json:"message"`
 }
 
-type BroadcastPayload struct {
-	Key     hub.HubCommandKey `json:"key"`
-	Payload interface{}       `json:"payload"`
-}
-
 type LiveVotingData struct {
-	deadlock.Mutex
+	sync.Mutex
 	TotalVote server.BigInt
 }
 
@@ -61,9 +55,9 @@ type VotePriceSystem struct {
 
 type FactionVotePrice struct {
 	// priority lock
-	OuterLock      deadlock.Mutex
-	NextAccessLock deadlock.Mutex
-	DataLock       deadlock.Mutex
+	OuterLock      sync.Mutex
+	NextAccessLock sync.Mutex
+	DataLock       sync.Mutex
 
 	// price
 	CurrentVotePriceSups server.BigInt
@@ -72,16 +66,13 @@ type FactionVotePrice struct {
 
 // API server
 type API struct {
-	ctx    context.Context
-	server *http.Server
-	*auth.Auth
+	ctx                       context.Context
+	server                    *http.Server
 	Routes                    chi.Router
 	BattleArena               *battle.Arena
 	HTMLSanitize              *bluemonday.Policy
-	Hub                       *hub.Hub
-	MessageBus                *messagebus.MessageBus
 	SMS                       server.SMS
-	Passport                  *rpcclient.PassportXrpcClient
+	Passport                  *xsyn_rpcclient.XsynXrpcClient
 	Telegram                  server.Telegram
 	LanguageDetector          lingua.LanguageDetector
 	Cookie                    *securebytes.SecureBytes
@@ -90,13 +81,14 @@ type API struct {
 	Commander                 *ws.Commander
 	SecureUserCommander       *ws.Commander
 	SecureFactionCommander    *ws.Commander
-	// ring check auth
-	RingCheckAuthMap *RingCheckAuthMap
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	// Marketplace
+	MarketplaceController *marketplace.MarketplaceController
 
 	// chatrooms
 	GlobalChat      *Chatroom
@@ -111,11 +103,9 @@ type API struct {
 func NewAPI(
 	ctx context.Context,
 	battleArenaClient *battle.Arena,
-	pp *rpcclient.PassportXrpcClient,
+	pp *xsyn_rpcclient.XsynXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
 	config *server.Config,
-	messageBus *messagebus.MessageBus,
-	gsHub *hub.Hub,
 	sms server.SMS,
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
@@ -126,38 +116,36 @@ func NewAPI(
 		Config:                    config,
 		ctx:                       ctx,
 		Routes:                    chi.NewRouter(),
-		MessageBus:                messageBus,
 		HTMLSanitize:              HTMLSanitize,
 		BattleArena:               battleArenaClient,
-		Hub:                       gsHub,
-		RingCheckAuthMap:          NewRingCheckMap(),
 		Passport:                  pp,
 		SMS:                       sms,
 		Telegram:                  telegram,
 		LanguageDetector:          languageDetector,
 		IsCookieSecure:            config.CookieSecure,
-		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(messageBus),
+		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
-		// chatroom
-		GlobalChat:      NewChatroom(nil),
-		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
-		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
-		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
-	}
+		// marketplace
+		MarketplaceController: marketplace.NewMarketplaceController(pp),
 
-	battleArenaClient.SetMessageBus(messageBus)
+		// chatroom
+		GlobalChat:      NewChatroom(""),
+		RedMountainChat: NewChatroom(server.RedMountainFactionID),
+		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
+	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
 	api.SecureUserCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
-	}, "user commander")
+	})
 	api.SecureFactionCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
@@ -170,8 +158,13 @@ func NewAPI(
 	sc := NewStreamController(api)
 	pc := NewPlayerController(api)
 	cc := NewChatController(api)
+	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
+	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
+	_ = NewPlayerAssetsController(api)
+	_ = NewHangarController(api)
+	_ = NewCouponsController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -183,6 +176,7 @@ func NewAPI(
 			AllowCredentials: true,
 		}).Handler,
 	)
+	// TODO: Create new tracer not using HUB
 	api.Routes.Use(DatadogTracer.Middleware())
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -200,7 +194,7 @@ func NewAPI(
 		//TODO ALEX reimplement handlers
 
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
-		r.Get("/video_server", WithCookie(api, WithError(api.GetStreamsHandler)))
+		r.Get("/video_server", WithError(api.GetStreamsHandler))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Mount("/faction", FactionRouter(api))
@@ -209,15 +203,28 @@ func NewAPI(
 		r.Mount("/battle", BattleRouter(battleArenaClient))
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
 		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
+
+		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
+		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
+		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
+
+			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 				s.Mount("/commander", api.Commander)
-				s.WS("/*", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
+
+				// endpoint for demoing battle ability showcase to non-login player
+				s.WS("/battle_ability", battle.HubKeyPublicBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
+
+				// come from battle
+				s.WS("/notification", battle.HubKeyGameNotification, nil)
+				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
 			}))
 
 			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
@@ -225,25 +232,47 @@ func NewAPI(
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))
 			}))
 
-			// battle arena route
-			r.Mount("/battle", ws.NewServer(battleArenaClient.Route(api.AuthWS, api.AuthUserFactionWS)))
+			// battle arena route ws
+			r.Mount("/battle", ws.NewServer(func(s *ws.Server) {
+				s.WS("/*", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
+				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
+				s.WS("/live_data", "", nil)
+			}))
 
-			// secured user route
+			// secured user route ws
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(api.BattleArena.MultiplierUpdate))
+				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
+				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+
 			}))
 
-			// secured faction route
+			// secured faction route ws
 			r.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthUserFactionWS(true))
 				s.WS("/*", HubKeyFactionActivePlayersSubscribe, server.MustSecureFaction(pc.FactionActivePlayersSubscribeHandler))
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
+				s.WS("/punish_vote/{punish_vote_id}/command_override", HubKeyPunishVoteCommandOverrideCountSubscribe, server.MustSecureFaction(pc.PunishVoteCommandOverrideCountSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
+
+				// subscription from battle
+				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
+				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(battleArenaClient.PlayerAssetMechQueueSubscribeHandler))
+				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
+				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+			}))
+
+			// handle abilities ws
+			r.Mount("/ability/{faction_id}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthUserFactionWS(true))
+				s.WS("/*", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
+				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
+				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 			}))
 		})
 	})
@@ -251,24 +280,24 @@ func NewAPI(
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
 		// set red mountain mvp player
-		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID.String()).Msg("Recalculate Red Mountain mvp player")
-		err := db.FactionStatMVPUpdate(server.RedMountainFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID).Msg("Recalculate Red Mountain mvp player")
+		err := db.FactionStatMVPUpdate(server.RedMountainFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
+			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
 		}
 
 		// set boston mvp player
-		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID.String()).Msg("Recalculate Boston mvp player")
-		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID).Msg("Recalculate Boston mvp player")
+		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID.String()).Err(err).Msg("Failed to recalculate Boston mvp player")
+			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to recalculate Boston mvp player")
 		}
 
 		// set Zaibatsu mvp player
-		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID.String()).Msg("Recalculate Zaibatsu mvp player")
-		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID).Msg("Recalculate Zaibatsu mvp player")
+		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID.String()).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
+			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
 		}
 
 		return http.StatusOK, nil
@@ -308,6 +337,8 @@ func (api *API) Run(ctx context.Context) error {
 		api.Close()
 	}()
 
+	api.BattleArena.Serve()
+
 	return api.server.ListenAndServe()
 }
 
@@ -321,57 +352,27 @@ func (api *API) Close() {
 	}
 }
 
-/**********************
-* Auth Ring Check Map *
-**********************/
-
-type RingCheckAuthMap struct {
-	deadlock.Map
-}
-
-func NewRingCheckMap() *RingCheckAuthMap {
-	return &RingCheckAuthMap{
-		deadlock.Map{},
-	}
-}
-
-func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
-	rcm.Store(key, cl)
-}
-
-func (rcm *RingCheckAuthMap) Remove(key string) {
-	rcm.Delete(key)
-}
-
-func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
-	value, ok := rcm.Load(key)
-	if !ok {
-		gamelog.L.Error().Str("key", key).Msg("hub client not found")
-		return nil, terror.Error(fmt.Errorf("hub client not found"))
-	}
-
-	hubc, ok := value.(*hub.Client)
-	if !ok {
-		return nil, terror.Error(fmt.Errorf("hub client not found"))
-	}
-
-	return hubc, nil
-}
-
 func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
+			var ok bool
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
-				return
-			}
-
-			if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-				fmt.Fprintf(w, "decryption error: %v", err)
-				return
+				token = r.URL.Query().Get("token")
+				if token == "" {
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
+				}
+			} else {
+				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+					gamelog.L.Error().Err(err).Msg("decrypting cookie error")
+					return
+				}
 			}
 
 			user, err := api.TokenLogin(token)
@@ -381,14 +382,14 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			}
 
 			if !user.FactionID.Valid {
-				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the faction")
+				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
 				return
 			}
 
 			if factionIDMustMatch {
 				factionID := chi.URLParam(r, "faction_id")
 				if factionID == "" || factionID != user.FactionID.String {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
 					return
 				}
 			}
@@ -407,18 +408,22 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
+			var ok bool
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
 				token = r.URL.Query().Get("token")
 				if token == "" {
-					return
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					fmt.Fprintf(w, "decryption error: %v", err)
 					if required {
+						gamelog.L.Error().Err(err).Msg("decrypting cookie error")
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -428,8 +433,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 			user, err := api.TokenLogin(token)
 			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
 				if required {
+					gamelog.L.Error().Err(err).Msg("authentication error")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -439,7 +444,11 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					gamelog.L.Error().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
 					return
 				}
 			}
@@ -455,12 +464,17 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 // TokenLogin gets a user from the token
 func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
-	useResp, err := api.Passport.TokenLogin(tokenBase64)
+	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
-
 		return nil, err
 	}
 
-	return boiler.FindPlayer(gamedb.StdConn, useResp.ID)
+	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update player detail")
+		return nil, err
+	}
+
+	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
 }

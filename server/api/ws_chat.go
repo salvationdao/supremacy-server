@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"html"
 	"server"
 	"server/db"
@@ -13,7 +12,13 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"sort"
+	"sync"
 	"time"
+
+	"github.com/gofrs/uuid"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
 
@@ -22,25 +27,14 @@ import (
 	"github.com/friendsofgo/errors"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/sasha-s/go-deadlock"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgx/v4/pgxpool"
-	leakybucket "github.com/kevinms/leakybucket-go"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
-
-var Profanities = []string{
-	"fag",
-	"fuck",
-	"nigga",
-	"nigger",
-	"rape",
-	"retard",
-}
 
 const PersistChatMessageLimit = 50
 
@@ -83,11 +77,12 @@ type MessagePunishVote struct {
 	DisagreedPlayerNumber int                 `json:"disagreed_player_number"`
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
+	InstantPassByUsers    []*boiler.Player    `json:"instant_pass_by_users"`
 }
 
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	deadlock.RWMutex
+	sync.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }
@@ -111,10 +106,38 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RUnlock()
 }
 
-func NewChatroom(factionID *server.FactionID) *Chatroom {
+func isFingerPrintBanned(playerID string) bool {
+	// get fingerprints from player
+	fps, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
+		return false
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("player has no fingerprints")
+		return false
+	}
+
+	ids := []string{}
+	for _, f := range fps {
+		ids = append(ids, f.FingerprintID)
+	}
+	// check if any of the players fingerprints are banned
+	bannedFingerprints, err := boiler.ChatBannedFingerprints(boiler.ChatBannedFingerprintWhere.FingerprintID.IN(ids)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue checking if player is banned")
+		return false
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+	return len(bannedFingerprints) > 0
+}
+
+func NewChatroom(factionID string) *Chatroom {
 	stream := "global"
-	if factionID != nil {
-		stream = factionID.String()
+	if factionID != "" {
+		stream = factionID
 	}
 	msgs, _ := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
@@ -127,6 +150,7 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 
 	cms := make([]*ChatMessage, len(msgs))
 	for i, msg := range msgs {
+
 		player, ok := players[msg.PlayerID]
 		if !ok {
 			var err error
@@ -169,8 +193,14 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 		}
 	}
 
+	// sort the messages to the correct order
+	sort.Slice(cms, func(i, j int) bool {
+		return cms[i].SentAt.Before(cms[j].SentAt)
+	})
+
+	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
-		factionID: factionID,
+		factionID: &factionUUID,
 		messages:  cms,
 	}
 	return chatroom
@@ -196,7 +226,6 @@ func NewChatController(api *API) *ChatController {
 
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		FactionID    server.FactionID `json:"faction_id"`
 		MessageColor string           `json:"message_color"`
@@ -267,6 +296,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	// if chat banned just return
 	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
+	}
+
+	// user's fingerprint banned (shadow ban)
+	fingerprintBanned := isFingerPrintBanned(user.ID)
+	if fingerprintBanned {
+		reply(true)
+		return nil
 	}
 
 	// update player sent message count
@@ -445,11 +481,11 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 		return true
 	}
 	switch factionID {
-	case server.RedMountainFactionID.String():
+	case server.RedMountainFactionID:
 		fc.API.RedMountainChat.Range(chatRangeHandler)
-	case server.BostonCyberneticsFactionID.String():
+	case server.BostonCyberneticsFactionID:
 		fc.API.BostonChat.Range(chatRangeHandler)
-	case server.ZaibatsuFactionID.String():
+	case server.ZaibatsuFactionID:
 		fc.API.ZaibatsuChat.Range(chatRangeHandler)
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
@@ -474,11 +510,11 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 
 func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 	switch factionID {
-	case server.RedMountainFactionID.String():
+	case server.RedMountainFactionID:
 		api.RedMountainChat.AddMessage(msg)
-	case server.BostonCyberneticsFactionID.String():
+	case server.BostonCyberneticsFactionID:
 		api.BostonChat.AddMessage(msg)
-	case server.ZaibatsuFactionID.String():
+	case server.ZaibatsuFactionID:
 		api.ZaibatsuChat.AddMessage(msg)
 	}
 }

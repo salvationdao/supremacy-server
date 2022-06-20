@@ -282,13 +282,13 @@ func (id *RoleID) Scan(src interface{}) error {
 	return err
 }
 
-func (f FactionID) IsValid() bool {
-	switch f {
-	case BostonCyberneticsFactionID, RedMountainFactionID, ZaibatsuFactionID, FactionID(uuid.Nil):
-		return true
-	}
-	return false
-}
+//func (f FactionID) IsValid() bool {
+//	switch f {
+//	case BostonCyberneticsFactionID, RedMountainFactionID, ZaibatsuFactionID, FactionID(uuid.Nil):
+//		return true
+//	}
+//	return false
+//}
 
 // FactionID aliases uuid.UUID.
 // Doing this prevents situations where you use FactionID where it doesn't belong.

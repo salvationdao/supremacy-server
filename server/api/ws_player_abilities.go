@@ -11,7 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/player_abilities"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -21,7 +21,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -42,39 +41,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	return pac
 }
 
-//func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListUpdatedHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-//	req := &hub.HubCommandRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return "", "", terror.Error(err, "Invalid request received.")
-//	}
-//
-//	userID, err := uuid.FromString(client.Identifier())
-//	if err != nil {
-//		gamelog.L.Error().Str("client.Identifier()", client.Identifier()).Err(err).Msg("failed to convert hub id to user id")
-//		return "", "", err
-//	} else if userID.IsNil() {
-//		gamelog.L.Error().Str("client.Identifier()", client.Identifier()).Err(err).Msg("failed to convert hub id to user id, user id is nil")
-//		return "", "", terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
-//	}
-//
-//	reply(true)
-//	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), nil
-//}
-
-//func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListUpdatedHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-//	req := &hub.HubCommandRequest{}
-//	err := json.Unmarshal(payload, req)
-//	if err != nil {
-//		return "", "", terror.Error(err, "Invalid request received.")
-//	}
-//
-//	reply(true)
-//	return req.TransactionID, messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), nil
-//}
-
 type PlayerAbilitySubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		BlueprintAbilityID string `json:"blueprint_ability_id"` // blueprint ability id
 	} `json:"payload"`
@@ -131,7 +98,6 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 }
 
 type SaleAbilitiesPurchaseRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID string `json:"ability_id"` // sale ability id
 		Amount    string `json:"amount"`
@@ -183,7 +149,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Charge player for ability
-	supTransactionID, err := pac.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := pac.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
 		ToUserID:             battle.SupremacyUserID,

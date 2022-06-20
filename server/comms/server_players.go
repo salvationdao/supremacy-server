@@ -17,7 +17,7 @@ type PlayerRegisterResp struct {
 	ID uuid.UUID
 }
 
-func (s *S) PlayerRegister(req PlayerRegisterReq, resp *PlayerRegisterResp) error {
+func (s *S) PlayerRegisterHandler(req PlayerRegisterReq, resp *PlayerRegisterResp) error {
 	result, err := db.PlayerRegister(req.ID, req.Username, req.FactionID, req.PublicAddress)
 	if err != nil {
 		return err

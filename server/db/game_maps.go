@@ -63,11 +63,27 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 
 // GameMapGetRandom return a game map by given id
 func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
+
 	mapQueries := []qm.QueryMod{
 		qm.Select(
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
 		),
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	}
+
+	mapCount, err := boiler.GameMaps(mapQueries...).Count(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if mapCount == 1 {
+		gameMap, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		return gameMap[0], nil
 	}
 
 	if !allowLastMap {
@@ -94,7 +110,6 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-
 	gameMap := maps[rand.Intn(len(maps))]
 
 	return gameMap, nil
