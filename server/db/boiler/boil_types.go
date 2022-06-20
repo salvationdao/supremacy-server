@@ -157,6 +157,13 @@ const (
 	AbilityLevelPLAYER  = "PLAYER"
 )
 
+// Enum values for MarketplaceEvent
+const (
+	MarketplaceEventBid       = "bid"
+	MarketplaceEventBidRefund = "bid_refund"
+	MarketplaceEventPurchase  = "purchase"
+)
+
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"

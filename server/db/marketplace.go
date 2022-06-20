@@ -35,7 +35,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		item_sales.end_at AS end_at,
 		item_sales.sold_at AS sold_at,
 		item_sales.sold_for AS sold_for,
-		item_sales.sold_by AS sold_by,
+		item_sales.sold_to AS sold_to,
 		item_sales.sold_tx_id AS sold_tx_id,
 		item_sales.sold_fee_tx_id AS sold_fee_tx_id,
 		item_sales.deleted_at AS deleted_at,
@@ -207,7 +207,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.EndAt,
 		&output.SoldAt,
 		&output.SoldFor,
-		&output.SoldBy,
+		&output.SoldTo,
 		&output.SoldTXID,
 		&output.SoldFeeTXID,
 		&output.DeletedAt,
@@ -267,7 +267,7 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.EndAt,
 		&output.SoldAt,
 		&output.SoldFor,
-		&output.SoldBy,
+		&output.SoldTo,
 		&output.SoldTXID,
 		&output.SoldFeeTXID,
 		&output.DeletedAt,
@@ -524,7 +524,7 @@ func MarketplaceItemKeycardSaleList(
 	if sold {
 		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldAt.IsNotNull())
 	} else {
-		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldBy.IsNull(), boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()))
+		queryMods = append(queryMods, boiler.ItemKeycardSaleWhere.SoldTo.IsNull(), boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()))
 	}
 
 	// Filters
@@ -929,7 +929,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(colItem.ItemID),
 	).UpdateAll(conn, boiler.M{
-		"owner_id": itemSale.SoldBy,
+		"owner_id": itemSale.SoldTo,
 	})
 	if err != nil {
 		gamelog.L.Error().
@@ -943,7 +943,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
 		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldBy,
+			"owner_id": itemSale.SoldTo,
 		})
 		if err != nil {
 			gamelog.L.Error().
@@ -958,7 +958,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
 		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldBy,
+			"owner_id": itemSale.SoldTo,
 		})
 		if err != nil {
 			gamelog.L.Error().
@@ -973,7 +973,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(w.ID),
 		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldBy,
+			"owner_id": itemSale.SoldTo,
 		})
 		if err != nil {
 			gamelog.L.Error().
@@ -988,7 +988,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(u.ID),
 		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldBy,
+			"owner_id": itemSale.SoldTo,
 		})
 		if err != nil {
 			gamelog.L.Error().
@@ -1060,13 +1060,13 @@ func ChangeKeycardOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	q := `
 		INSERT INTO player_keycards (player_id, blueprint_keycard_id, count)
 
-		SELECT iks.sold_by as player_id, pk.blueprint_keycard_id, 1 AS count
+		SELECT iks.sold_to AS player_id, pk.blueprint_keycard_id, 1 AS count
 		FROM item_keycard_sales iks
 			INNER JOIN player_keycards pk ON pk.id = iks.item_id
-		WHERE iks.id = $1 AND iks.sold_by IS NOT NULL
+		WHERE iks.id = $1 AND iks.sold_to IS NOT NULL
 		ON CONFLICT (player_id, blueprint_keycard_id)
 		DO UPDATE 
-		SET COUNT = excluded.count + 1`
+		SET count = excluded.count + 1`
 	_, err := conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)

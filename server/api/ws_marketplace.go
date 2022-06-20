@@ -824,7 +824,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -901,7 +901,7 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1001,7 +1001,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
@@ -1190,7 +1190,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		SoldFor:     decimal.NewNullDecimal(saleItemCost),
 		SoldTXID:    null.StringFrom(txid),
 		SoldFeeTXID: null.StringFrom(feeTXID),
-		SoldBy:      null.StringFrom(user.ID),
+		SoldTo:      null.StringFrom(user.ID),
 		UpdatedAt:   time.Now(),
 	}
 	_, err = saleItemRecord.Update(tx,
@@ -1199,7 +1199,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			boiler.ItemSaleColumns.SoldFor,
 			boiler.ItemSaleColumns.SoldTXID,
 			boiler.ItemSaleColumns.SoldFeeTXID,
-			boiler.ItemSaleColumns.SoldBy,
+			boiler.ItemSaleColumns.SoldTo,
 			boiler.ItemSaleColumns.UpdatedAt,
 		))
 	if err != nil {
@@ -1351,7 +1351,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1523,7 +1523,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		SoldFor:     decimal.NewNullDecimal(saleItemCost),
 		SoldTXID:    null.StringFrom(txid),
 		SoldFeeTXID: null.StringFrom(feeTXID),
-		SoldBy:      null.StringFrom(user.ID),
+		SoldTo:      null.StringFrom(user.ID),
 	}
 
 	_, err = saleItemRecord.Update(tx, boil.Whitelist(
@@ -1531,7 +1531,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		boiler.ItemKeycardSaleColumns.SoldFor,
 		boiler.ItemKeycardSaleColumns.SoldTXID,
 		boiler.ItemKeycardSaleColumns.SoldFeeTXID,
-		boiler.ItemKeycardSaleColumns.SoldBy,
+		boiler.ItemKeycardSaleColumns.SoldTo,
 	))
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1639,7 +1639,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if !saleItem.Auction {
 		return terror.Error(fmt.Errorf("item is not up for auction"), "Item is not up for auction.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.FactionID != fID {
