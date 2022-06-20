@@ -646,6 +646,20 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 	return nil
 }
 
+const HubKeyPublicBattleAbilityUpdated = "PUBLIC:BATTLE:ABILITY:UPDATED"
+
+func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// get a random faction id
+	if arena.CurrentBattle() != nil {
+		btl := arena.CurrentBattle()
+		if btl.abilities() != nil {
+			ability, _ := btl.abilities().FactionBattleAbilityGet(server.RedMountainFactionID)
+			reply(ability)
+		}
+	}
+	return nil
+}
+
 const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
 
 func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
