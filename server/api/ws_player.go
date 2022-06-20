@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"server"
 	"server/battle"
@@ -396,8 +397,7 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check punish vote is finalised
-	// check player is available to be punished
+	// check player is available vote
 	player, err := boiler.FindPlayer(gamedb.StdConn, user.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
@@ -407,6 +407,7 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 		return terror.Error(terror.ErrInvalidInput, "Only players with rank 'GENERAL' can instantly pass a punish vote.")
 	}
 
+	// check punish vote is finalised
 	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
 	if !ok {
 		return terror.Error(fmt.Errorf("player faction id does not exist"))
@@ -418,6 +419,18 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, us
 	}
 
 	reply(true)
+
+	// update instant vote count
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(req.Payload.PunishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote/%s/command_override", factionID, req.Payload.PunishVoteID), HubKeyPunishVoteCommandOverrideCountSubscribe, fmt.Sprintf("%d/%d", count, requiredAmount))
 
 	return nil
 }
@@ -676,6 +689,26 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	return nil
 }
 
+const HubKeyPunishVoteCommandOverrideCountSubscribe = "PUNISH:VOTE:COMMAND:OVERRIDE:COUNT:SUBSCRIBE"
+
+func (pc *PlayerController) PunishVoteCommandOverrideCountSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	punishVoteID := cctx.URLParam("punish_vote_id")
+
+	requiredAmount := db.GetIntWithDefault(db.KeyInstantPassRequiredAmount, 2)
+
+	count, err := boiler.PunishVoteInstantPassRecords(
+		boiler.PunishVoteInstantPassRecordWhere.PunishVoteID.EQ(punishVoteID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get punish vote count")
+	}
+
+	reply(fmt.Sprintf("%d/%d", count, requiredAmount))
+
+	return nil
+}
+
 type PunishVoteStatus string
 
 const (
@@ -686,8 +719,9 @@ const (
 
 type PunishVoteResponse struct {
 	*boiler.PunishVote
-	PunishOption *boiler.PunishOption `json:"punish_option"`
-	Decision     *PunishVoteDecision  `json:"decision,omitempty"`
+	PunishOption       *boiler.PunishOption `json:"punish_option"`
+	Decision           *PunishVoteDecision  `json:"decision,omitempty"`
+	InstantPassUserIDs []string             `json:"instant_pass_user_ids"`
 }
 
 type PunishVoteDecision struct {
@@ -705,14 +739,20 @@ func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, user
 			bv, err := boiler.PunishVotes(
 				boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
 				qm.Load(boiler.PunishVoteRels.PunishOption),
+				qm.Load(boiler.PunishVoteRels.PunishVoteInstantPassRecords),
 			).One(gamedb.StdConn)
 			if err != nil {
 				return terror.Error(err, "Failed to get punish vote from db")
 			}
 
 			pvr := &PunishVoteResponse{
-				PunishVote:   bv,
-				PunishOption: bv.R.PunishOption,
+				PunishVote:         bv,
+				PunishOption:       bv.R.PunishOption,
+				InstantPassUserIDs: []string{},
+			}
+
+			for _, ipr := range bv.R.PunishVoteInstantPassRecords {
+				pvr.InstantPassUserIDs = append(pvr.InstantPassUserIDs, ipr.VoteByPlayerID)
 			}
 
 			// check user has voted

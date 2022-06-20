@@ -302,7 +302,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 	for _, auctionItem := range auctions {
 		func() {
 			// Check if current bid is below reserved price and issue refunds.
-			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
+			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.GreaterThan(auctionItem.AuctionBidPrice)) {
 				rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 				if err != nil {
 					gamelog.L.Error().
@@ -427,8 +427,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			}
 
 			err = m.Passport.TransferAsset(
-				saleItemRecord.OwnerID,
-				saleItemRecord.SoldBy.String,
+				auctionItem.OwnerID.String(),
+				auctionItem.AuctionBidUserID.String(),
 				auctionItem.Hash,
 				null.StringFrom(txid),
 				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -448,8 +448,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 			rpcAssetTransferRollback := func() {
 				err := m.Passport.TransferAsset(
-					saleItemRecord.OwnerID,
 					auctionItem.AuctionBidUserID.String(),
+					auctionItem.OwnerID.String(),
 					auctionItem.Hash,
 					null.String{},
 					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
