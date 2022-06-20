@@ -1295,17 +1295,37 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// Log events
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log purchase event.")
+	}
+
+	// Refund bids
 	bids, err := db.MarketplaceSaleCancelBids(gamedb.StdConn, uuid.Must(uuid.FromString(saleItem.ID)), "Item bought out")
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("MarketplaceSaleCancelBids error refunding bids")
 		return err
 	}
-
 	for _, b := range bids {
 		_, err = mp.API.Passport.RefundSupsMessage(b)
 		if err != nil {
 			gamelog.L.Error().Str("txID", b).Err(err).Msg("error refunding bids")
 		}
+		// err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
+		// if err != nil {
+		// 	gamelog.L.Error().
+		// 		Str("txID", b).
+		// 		Err(err).
+		// 		Msg("Failed to log bid refund event.")
+		// }
 	}
 
 	// broadcast status change if item is a mech
@@ -1580,6 +1600,19 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	}
+
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log purchase event.")
 	}
 
 	// Success

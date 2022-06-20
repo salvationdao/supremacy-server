@@ -1099,3 +1099,23 @@ func IncrementPlayerKeycardCount(conn boil.Executor, playerKeycardID uuid.UUID) 
 	}
 	return nil
 }
+
+// MarketplaceAddEvent adds an event to marketplace logs.
+func MarketplaceAddEvent(eventType string, amount decimal.NullDecimal, itemSaleID string, table string) error {
+	obj := &boiler.MarketplaceEvent{
+		EventType: eventType,
+		Amount:    amount,
+	}
+	if table == boiler.TableNames.ItemKeycardSales {
+		obj.RelatedSaleItemKeycardID = null.StringFrom(itemSaleID)
+	} else if table == boiler.TableNames.ItemSales {
+		obj.RelatedSaleItemID = null.StringFrom(itemSaleID)
+	} else {
+		return terror.Error(fmt.Errorf("invalid item sale table"))
+	}
+	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
