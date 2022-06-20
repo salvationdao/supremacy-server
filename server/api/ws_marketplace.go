@@ -1800,6 +1800,15 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 				Msg("Unable to update cancelled bid refund tx id.")
 			continue
 		}
+		// err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
+		// if err != nil {
+		// 	gamelog.L.Error().
+		// 		Str("item_sale_id", req.Payload.ID.String()).
+		// 		Str("txid", bidTxID).
+		// 		Str("refund_tx_id", refundTxID).
+		// 		Err(err).
+		// 		Msg("Failed to log bid refund event.")
+		// }
 	}
 
 	// Commit Transaction
@@ -1842,6 +1851,17 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		},
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
+
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventBid, decimal.NewNullDecimal(req.Payload.Amount.Mul(decimal.New(1, 18))), saleItem.ID, boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
+			Err(err).
+			Msg("Failed to log bid event.")
+	}
 
 	return nil
 }
