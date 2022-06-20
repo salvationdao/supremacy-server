@@ -60,6 +60,7 @@ type PlayerAssetMechListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		QueueSort           db.SortByDir          `json:"queue_sort"`
 	} `json:"payload"`
 }
 
@@ -80,6 +81,7 @@ type PlayerAssetMech struct {
 	MarketLocked        bool        `json:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
+	QueuePosition       null.Int    `json:"queue_position"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -125,7 +127,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
 	}
 
-	total, mechs, err := db.MechList(&db.MechListOpts{
+	listOpts := &db.MechListOpts{
 		Search:              req.Payload.Search,
 		Filter:              req.Payload.Filter,
 		Sort:                req.Payload.Sort,
@@ -135,7 +137,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
-	})
+	}
+	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
+		listOpts.QueueSort = &db.MechListQueueSortOpts{
+			FactionID: user.FactionID.String,
+			SortDir:   req.Payload.QueueSort,
+		}
+	}
+
+	total, mechs, err := db.MechList(listOpts)
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
@@ -177,6 +187,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
 			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+			QueuePosition:         m.QueuePosition,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,

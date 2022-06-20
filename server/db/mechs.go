@@ -504,9 +504,15 @@ type MechListOpts struct {
 	PageSize            int
 	Page                int
 	OwnerID             string
+	QueueSort           *MechListQueueSortOpts
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+}
+
+type MechListQueueSortOpts struct {
+	FactionID string
+	SortDir   SortByDir
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -582,13 +588,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	// Sort
-	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
-	} else {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
-	}
-
 	// Limit/Offset
 	if opts.PageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(opts.PageSize))
@@ -597,6 +596,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
+	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
@@ -637,6 +637,31 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)),
 	)
 
+	// Sort
+	if opts.QueueSort != nil {
+		queryMods = append(queryMods,
+			qm.Select("_bq.queue_position AS queue_position"),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(`(
+					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
+						from battle_queue _bq
+						where _bq.faction_id = ?
+							AND _bq.battle_id IS NULL
+					) _bq ON _bq.mech_id = %s`,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				),
+				opts.QueueSort.FactionID,
+			),
+			qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST", opts.QueueSort.SortDir)),
+		)
+	} else {
+		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+		} else {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+		}
+	}
+
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -649,7 +674,8 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		mc := &server.Mech{
 			CollectionItem: &server.CollectionItem{},
 		}
-		err = rows.Scan(
+
+		scanArgs := []interface{}{
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -679,7 +705,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
-		)
+		}
+		if opts.QueueSort != nil {
+			scanArgs = append(scanArgs, &mc.QueuePosition)
+		}
+		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return total, mechs, err
 		}
