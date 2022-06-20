@@ -187,6 +187,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
 			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+			QueuePosition:         m.QueuePosition,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,
