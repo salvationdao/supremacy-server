@@ -114,7 +114,9 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 					limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3) // default 3
-					allSaleAbilities, err := boiler.SalePlayerAbilities().All(gamedb.StdConn)
+					allSaleAbilities, err := boiler.SalePlayerAbilities(
+						qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+					).All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
 						break
