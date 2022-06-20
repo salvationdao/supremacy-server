@@ -646,8 +646,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 	return nil
 }
 
-const HubKeyPublicBattleAbilityUpdated = "PUBLIC:BATTLE:ABILITY:UPDATED"
-
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get a random faction id
