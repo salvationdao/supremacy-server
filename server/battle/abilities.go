@@ -1909,14 +1909,14 @@ func (as *AbilitiesSystem) ProgressBarBroadcaster() {
 	}()
 
 	// date updater
-	shouldBroadcast := false
+	shouldBroadcast := atomic.NewBool(false)
 	progressBarData := []AbilityBattleProgress{}
 	updaterCloseChan := make(chan bool)
 	go func() {
 		for {
 			select {
 			case data := <-as.abilityConfig.Broadcaster.battleAbilityBroadcastChan:
-				shouldBroadcast = true
+				shouldBroadcast.Store(true)
 				progressBarData = data
 			case <-updaterCloseChan:
 				gamelog.L.Debug().Msg("Close battle ability broadcaster")
@@ -1931,13 +1931,13 @@ func (as *AbilitiesSystem) ProgressBarBroadcaster() {
 		for {
 			select {
 			case <-ticker.C:
-				if shouldBroadcast {
+				if shouldBroadcast.Load() {
 					ws.PublishMessage("/battle/live_data", HubKeyBattleAbilityProgressBarUpdated, progressBarData)
-					shouldBroadcast = false
+					shouldBroadcast.Store(false)
 				}
 			case <-as.abilityConfig.Broadcaster.battleAbilityCloseChan:
 				ticker.Stop()
-				shouldBroadcast = false
+				shouldBroadcast.Store(false)
 				updaterCloseChan <- true
 				return
 			}
@@ -1964,7 +1964,7 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 	}
 
 	// data listener
-	shouldBroadcast := false
+	shouldBroadcast := atomic.NewBool(false)
 	gameAbilityPrice := GameAbilityPriceResponse{}
 	updaterCloseChan := make(chan bool)
 
@@ -1981,12 +1981,12 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 					case boiler.AbilityLevelMECH:
 						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
 					}
-					shouldBroadcast = false
+					shouldBroadcast.Store(false)
 					continue
 				}
 
 				// otherwise, change the data and let broadcaster take care of it
-				shouldBroadcast = true
+				shouldBroadcast.Store(true)
 				gameAbilityPrice = data
 			case <-updaterCloseChan:
 				gamelog.L.Debug().Str("faction_id", factionID).Str("ability", label).Msg("Close game ability broadcaster")
@@ -2002,18 +2002,18 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 		for {
 			select {
 			case <-ticker.C:
-				if shouldBroadcast {
+				if shouldBroadcast.Load() {
 					switch abilityLevel {
 					case boiler.AbilityLevelFACTION:
 						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					case boiler.AbilityLevelMECH:
 						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					}
-					shouldBroadcast = false
+					shouldBroadcast.Store(false)
 				}
 			case <-closeChan:
 				ticker.Stop()
-				shouldBroadcast = false
+				shouldBroadcast.Store(false)
 				updaterCloseChan <- true
 				return
 			}
