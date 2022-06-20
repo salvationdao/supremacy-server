@@ -19,7 +19,6 @@ import (
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
