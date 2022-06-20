@@ -1618,6 +1618,26 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		ws.PublishMessage(fmt.Sprintf("/ability/%s", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
+	// broadcast battle ability to non-login or non-faction players
+	if ga, ok := as.battleAbilityPool.Abilities.Load(server.RedMountainFactionID); ok {
+		ws.PublishMessage("/public/ability", HubKeyPublicBattleAbilityUpdated, GameAbility{
+			ID:                     ga.ID,
+			GameClientAbilityID:    byte(ga.GameClientAbilityID),
+			ImageUrl:               ga.ImageUrl,
+			Description:            ga.Description,
+			FactionID:              ga.FactionID,
+			Label:                  ga.Label,
+			SupsCost:               ga.SupsCost,
+			CurrentSups:            ga.CurrentSups,
+			Colour:                 ga.Colour,
+			TextColour:             ga.TextColour,
+			CooldownDurationSecond: ga.CooldownDurationSecond,
+			OfferingID:             uuid.Nil, // remove offering id to disable bribing
+		})
+	}
+
+	as.battleAbilityPool.Abilities.Load(server.RedMountainFactionID)
+
 	as.BroadcastAbilityProgressBar()
 
 	return ba.CooldownDurationSecond, nil
