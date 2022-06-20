@@ -283,6 +283,7 @@ type MarketplaceSalesCreateRequest struct {
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
 		DutchAuctionDropRate decimal.NullDecimal `json:"dutch_auction_drop_rate"`
+		ListingLength        time.Duration       `json:"listing_length"`
 	} `json:"payload"`
 }
 
@@ -488,12 +489,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	defer tx.Rollback()
 
 	// Create Sales Item
-	// TODO: Add listing hours option back with fee rates applied
 	endAt := time.Now()
 	if mp.API.Config.Environment == "staging" {
 		endAt = endAt.Add(time.Minute * 5)
 	} else {
-		endAt = endAt.Add(time.Hour * 24)
+		endAt = endAt.Add(time.Hour * req.Payload.ListingLength)
 	}
 	obj, err := db.MarketplaceSaleCreate(
 		tx,
@@ -574,8 +574,9 @@ const HubKeyMarketplaceSalesKeycardCreate = "MARKETPLACE:SALES:KEYCARD:CREATE"
 type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemID      uuid.UUID       `json:"item_id"`
-		AskingPrice decimal.Decimal `json:"asking_price"`
+		ItemID        uuid.UUID       `json:"item_id"`
+		AskingPrice   decimal.Decimal `json:"asking_price"`
+		ListingLength time.Duration   `json:"listing_length"`
 	} `json:"payload"`
 }
 
@@ -741,8 +742,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 
 	// Create Sales Item
-	// TODO: Add listing hours option back with fee rates applied
-	endAt := time.Now().Add(time.Hour * 24)
+	endAt := time.Now().Add(time.Hour * req.Payload.ListingLength)
 	obj, err := db.MarketplaceKeycardSaleCreate(
 		tx,
 		userID,
