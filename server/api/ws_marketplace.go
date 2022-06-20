@@ -239,6 +239,10 @@ func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed to get item.")
 	}
 
+	if resp.FactionID != factionID {
+		return terror.Error(fmt.Errorf("you can only access your syndicates marketplace"))
+	}
+
 	reply(resp)
 
 	return nil
@@ -357,6 +361,14 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			return terror.Error(err, "Item not found.")
 		}
 		return terror.Error(err, errMsg)
+	}
+
+	if collectionItem.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
+	}
+
+	if collectionItem.MarketLocked {
+		return terror.Error(fmt.Errorf("unable to list assets staked with old staking contract"))
 	}
 
 	ciUUID := uuid.FromStringOrNil(collectionItem.ID)
@@ -622,6 +634,10 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 	if keycard.Count < 1 {
 		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
+	}
+
+	if keycard.PlayerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
 
 	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(keycard.BlueprintKeycardID)).One(gamedb.StdConn)
@@ -1429,6 +1445,24 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, "Failed to update XSYN asset count")
 	}
 
+	removeKeycardFunc := func() {
+		_, err := mp.API.Passport.UpdateKeycardCountXSYN(&xsyn_rpcclient.Asset1155CountUpdateSupremacyReq{
+			ApiKey:         mp.API.Passport.ApiKey,
+			TokenID:        keycardUpdate.TokenID,
+			Address:        user.PublicAddress.String,
+			CollectionSlug: keycardUpdate.CollectionSlug,
+			Amount:         keycardUpdate.Amount,
+			ImageURL:       keycardUpdate.ImageURL,
+			AnimationURL:   keycardUpdate.AnimationURL,
+			KeycardGroup:   keycardUpdate.KeycardGroup,
+			Attributes:     keycardUpdate.Attributes,
+			IsAdd:          false,
+		})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("keycardUpdate", keycardUpdate).Msg("retract of keycard failed")
+		}
+	}
+
 	// Give sales cut amount to seller
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
@@ -1442,6 +1476,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	})
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
+		removeKeycardFunc()
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1459,6 +1494,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1508,6 +1544,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1524,6 +1561,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
+		removeKeycardFunc()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).

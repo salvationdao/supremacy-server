@@ -302,7 +302,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 	for _, auctionItem := range auctions {
 		func() {
 			// Check if current bid is below reserved price and issue refunds.
-			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.LessThan(auctionItem.AuctionBidPrice)) {
+			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.GreaterThan(auctionItem.AuctionBidPrice)) {
 				rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 				if err != nil {
 					gamelog.L.Error().
@@ -427,8 +427,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			}
 
 			err = m.Passport.TransferAsset(
-				saleItemRecord.OwnerID,
-				saleItemRecord.SoldBy.String,
+				auctionItem.OwnerID.String(),
+				auctionItem.AuctionBidUserID.String(),
 				auctionItem.Hash,
 				null.StringFrom(txid),
 				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -446,10 +446,10 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			rpcAssetTrasferRollback := func() {
+			rpcAssetTransferRollback := func() {
 				err := m.Passport.TransferAsset(
-					saleItemRecord.SoldBy.String,
-					saleItemRecord.OwnerID,
+					auctionItem.AuctionBidUserID.String(),
+					auctionItem.OwnerID.String(),
 					auctionItem.Hash,
 					null.String{},
 					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -471,7 +471,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				err = db.ChangeMechOwner(tx, auctionItem.ID)
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTrasferRollback()
+					rpcAssetTransferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -484,7 +484,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				err = db.ChangeMysteryCrateOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTrasferRollback()
+					rpcAssetTransferRollback()
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -506,7 +506,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			))
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
-				rpcAssetTrasferRollback()
+				rpcAssetTransferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
@@ -520,7 +520,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			err = tx.Commit()
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
-				rpcAssetTrasferRollback()
+				rpcAssetTransferRollback()
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
 					Str("user_id", auctionItem.AuctionBidUserID.String()).
