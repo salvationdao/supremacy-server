@@ -1668,20 +1668,6 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 			return terror.Error(fmt.Errorf("bid amount is less than dutch auction dropped price"), "Bid Amount is cheaper than Dutch Auction Dropped Price, buy the item instead.")
 		}
 	}
-
-	// Pay bid amount
-	balance := mp.API.Passport.UserBalanceGet(userID)
-	if balance.Sub(req.Payload.Amount).LessThan(decimal.Zero) {
-		err = fmt.Errorf("insufficient funds")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Str("balance", balance.String()).
-			Str("cost", req.Payload.Amount.String()).
-			Err(err).
-			Msg("Player does not have enough sups.")
-		return terror.Error(err, "You do not have enough sups.")
-	}
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
@@ -1692,6 +1678,9 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		Description:          fmt.Sprintf("Marketplace Bid Item: %s", saleItem.ID),
 		NotSafe:              true,
 	})
+	if err != nil {
+		return terror.Error(err, "Issue making bid transaction.")
+	}
 
 	// Start Transaction
 	tx, err := gamedb.StdConn.Begin()
