@@ -805,10 +805,11 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 }
 
 type WarMachineStat struct {
-	Position *server.Vector3 `json:"position"`
-	Rotation int             `json:"rotation"`
-	Health   uint32          `json:"health"`
-	Shield   uint32          `json:"shield"`
+	ParticipantID int             `json:"participant_id"`
+	Position      *server.Vector3 `json:"position"`
+	Rotation      int             `json:"rotation"`
+	Health        uint32          `json:"health"`
+	Shield        uint32          `json:"shield"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
@@ -831,10 +832,11 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 		wm.RLock()
 		defer wm.RUnlock()
 		reply(WarMachineStat{
-			Position: wm.Position,
-			Rotation: wm.Rotation,
-			Health:   wm.Health,
-			Shield:   wm.Shield,
+			ParticipantID: participantID,
+			Position:      wm.Position,
+			Rotation:      wm.Rotation,
+			Health:        wm.Health,
+			Shield:        wm.Shield,
 		})
 	}
 

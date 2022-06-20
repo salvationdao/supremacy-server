@@ -47,7 +47,8 @@ type LocationDeciders struct {
 
 type LiveCount struct {
 	sync.Mutex
-	TotalVotes decimal.Decimal `json:"total_votes"`
+	TotalVotes  decimal.Decimal `json:"total_votes"`
+	shouldClose bool
 }
 
 func (lc *LiveCount) AddSups(amount decimal.Decimal) {
@@ -66,12 +67,39 @@ func (lc *LiveCount) ReadTotal() string {
 	return value
 }
 
+func (lc *LiveCount) Close() {
+	lc.Lock()
+	defer lc.Unlock()
+	lc.shouldClose = true
+}
+
+func (lc *LiveCount) IsClosed() bool {
+	lc.Lock()
+	defer lc.Unlock()
+	return lc.shouldClose
+}
+
 type AbilityConfig struct {
 	FirstBattleAbilityCooldownSecond int
 	BattleAbilityFloorPrice          decimal.Decimal
 	BattleAbilityDropRate            decimal.Decimal
 	FactionAbilityFloorPrice         decimal.Decimal
 	FActionAbilityDropRate           decimal.Decimal
+
+	Broadcaster *AbilityBroadcast
+}
+
+type AbilityBroadcast struct {
+	BroadcastRateMilliseconds  time.Duration
+	battleAbilityBroadcastChan chan []AbilityBattleProgress // battle ability only
+	battleAbilityCloseChan     chan bool                    // battle ability only
+
+	gameAbilityBroadcastChanMap map[string]*GameAbilityBroadcast // faction ability and mech abilities
+}
+
+type GameAbilityBroadcast struct {
+	dataChan  chan GameAbilityPriceResponse
+	closeChan chan bool
 }
 
 type AbilitiesSystem struct {
@@ -271,7 +299,31 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
 			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
 			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
+			Broadcaster: &AbilityBroadcast{
+				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
+				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
+				battleAbilityCloseChan:      make(chan bool),
+				gameAbilityBroadcastChanMap: make(map[string]*GameAbilityBroadcast),
+			},
 		},
+	}
+
+	go as.ProgressBarBroadcaster()
+	// setup game ability broadcast channel map
+	for _, fab := range factionAbilities {
+		for _, ability := range fab {
+			as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity] = &GameAbilityBroadcast{
+				dataChan:  make(chan GameAbilityPriceResponse, 100),
+				closeChan: make(chan bool),
+			}
+		}
+	}
+
+	// run all the game ability broadcasters separately to avoid concurrent read write map panic
+	for _, fab := range factionAbilities {
+		for _, ability := range fab {
+			go as.GameAbilityBroadcaster(ability)
+		}
 	}
 
 	as.contributeMultiplier.value = as.calculateUserContributeMultiplier()
@@ -308,7 +360,53 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// bribe cycle
 	go as.StartGabsAbilityPoolCycle(false)
 
+	// start live data broadcaster
+	go as.LiveBroadcaster()
+
 	return as
+}
+
+func (as *AbilitiesSystem) LiveBroadcaster() {
+	liveVoteTicker := time.NewTicker(1 * time.Second)
+
+	for {
+		<-liveVoteTicker.C
+		if as.liveCount == nil {
+			continue
+		}
+
+		if as.liveCount.IsClosed() {
+			liveVoteTicker.Stop()
+			gamelog.L.Debug().Msg("Close live data broadcaster")
+			return
+		}
+
+		// broadcast current total
+		ws.PublishMessage("/public/live_data", HubKeyLiveVoteCountUpdated, as.liveCount.ReadTotal())
+
+		if as.battle() == nil || as.battle().stage == nil {
+			continue
+		}
+
+		if as.battle().stage.Load() != BattleStageStart {
+			continue
+		}
+
+		// get spoil of war
+		sows, err := db.LastTwoSpoilOfWarAmount()
+		if err != nil || len(sows) == 0 {
+			gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+			continue
+		}
+
+		// broadcast the spoil of war
+		spoilOfWars := []string{}
+		for _, sow := range sows {
+			spoilOfWars = append(spoilOfWars, sow.String())
+		}
+
+		ws.PublishMessage("/public/live_data", HubKeySpoilOfWarUpdated, spoilOfWars)
+	}
 }
 
 // ***********************************
@@ -320,9 +418,6 @@ const BattleContributorUpdateKey = "BATTLE:CONTRIBUTOR:UPDATE"
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	main_ticker := time.NewTicker(1 * time.Second)
-
-	live_vote_ticker := time.NewTicker(1 * time.Second)
-
 	mismatchCount := atomic.NewInt32(0)
 
 	defer func() {
@@ -338,7 +433,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 	defer func() {
 		main_ticker.Stop()
-		live_vote_ticker.Stop()
 		as.closed.Store(true)
 	}()
 
@@ -475,18 +569,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						}
 
 						// broadcast new ability price
-						resp := GameAbilityPriceResponse{
+						as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity].dataChan <- GameAbilityPriceResponse{
 							ability.Identity,
 							ability.OfferingID.String(),
 							ability.SupsCost.String(),
 							ability.CurrentSups.String(),
 							isTriggered,
-						}
-						switch ability.Level {
-						case boiler.AbilityLevelFACTION:
-							ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
-						case boiler.AbilityLevelMECH:
-							ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 						}
 					}
 				}
@@ -691,60 +779,16 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						ability.OfferingID = uuid.Must(uuid.NewV4())
 					}
 
-					resp := GameAbilityPriceResponse{
+					as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity].dataChan <- GameAbilityPriceResponse{
 						ability.Identity,
 						ability.OfferingID.String(),
 						ability.SupsCost.String(),
 						ability.CurrentSups.String(),
 						isTriggered,
 					}
-
-					// broadcast new ability price
-					switch ability.Level {
-					case boiler.AbilityLevelFACTION:
-						bm.Start("broadcast_faction_ability_price")
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
-						bm.End("broadcast_faction_ability_price")
-					case boiler.AbilityLevelMECH:
-						bm.Start("broadcast_mech_ability_price")
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
-						bm.End("broadcast_mech_ability_price")
-					}
-
 					bm.Alert(100)
 				}
 			}
-
-		case <-live_vote_ticker.C:
-			if as.liveCount == nil {
-				continue
-			}
-
-			// broadcast current total
-			ws.PublishMessage("/public/live_data", HubKeyLiveVoteCountUpdated, as.liveCount.ReadTotal())
-
-			if as.battle() == nil || as.battle().stage == nil {
-				continue
-			}
-
-			if as.battle().stage.Load() != BattleStageStart {
-				continue
-			}
-
-			// get spoil of war
-			sows, err := db.LastTwoSpoilOfWarAmount()
-			if err != nil || len(sows) == 0 {
-				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
-				continue
-			}
-
-			// broadcast the spoil of war
-			spoilOfWars := []string{}
-			for _, sow := range sows {
-				spoilOfWars = append(spoilOfWars, sow.String())
-			}
-
-			ws.PublishMessage("/public/live_data", HubKeySpoilOfWarUpdated, spoilOfWars)
 		}
 	}
 }
@@ -1853,7 +1897,129 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 		return true
 	})
 
-	ws.PublishMessage("/battle/live_data", HubKeyBattleAbilityProgressBarUpdated, abilityBattleProgresses)
+	as.abilityConfig.Broadcaster.battleAbilityBroadcastChan <- abilityBattleProgresses
+}
+
+// ProgressBarBroadcaster broadcast progress bar
+func (as *AbilitiesSystem) ProgressBarBroadcaster() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the ProgressBarBroadcaster!", r)
+		}
+	}()
+
+	// date updater
+	shouldBroadcast := atomic.NewBool(false)
+	progressBarData := []AbilityBattleProgress{}
+	updaterCloseChan := make(chan bool)
+	go func() {
+		for {
+			select {
+			case data := <-as.abilityConfig.Broadcaster.battleAbilityBroadcastChan:
+				shouldBroadcast.Store(true)
+				progressBarData = data
+			case <-updaterCloseChan:
+				gamelog.L.Debug().Msg("Close battle ability broadcaster")
+				return
+			}
+		}
+	}()
+
+	// data broadcaster
+	ticker := time.NewTicker(as.abilityConfig.Broadcaster.BroadcastRateMilliseconds)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if shouldBroadcast.Load() {
+					ws.PublishMessage("/battle/live_data", HubKeyBattleAbilityProgressBarUpdated, progressBarData)
+					shouldBroadcast.Store(false)
+				}
+			case <-as.abilityConfig.Broadcaster.battleAbilityCloseChan:
+				ticker.Stop()
+				shouldBroadcast.Store(false)
+				updaterCloseChan <- true
+				return
+			}
+		}
+	}()
+
+}
+
+// GameAbilityBroadcaster broadcast ability price
+func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the GameAbilityBroadcaster!", r)
+		}
+	}()
+
+	abilityLevel := ability.Level
+	identity := ability.Identity
+	factionID := ability.FactionID
+	label := ability.Label
+	var participantID byte
+	if abilityLevel == boiler.AbilityLevelMECH {
+		participantID = *ability.ParticipantID
+	}
+
+	// data listener
+	shouldBroadcast := atomic.NewBool(false)
+	gameAbilityPrice := GameAbilityPriceResponse{}
+	updaterCloseChan := make(chan bool)
+
+	dataChan := as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[identity].dataChan
+	go func() {
+		for {
+			select {
+			case data := <-dataChan:
+				// if data should reset, broadcast it straight away
+				if data.ShouldReset {
+					switch abilityLevel {
+					case boiler.AbilityLevelFACTION:
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, data)
+					case boiler.AbilityLevelMECH:
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
+					}
+					shouldBroadcast.Store(false)
+					continue
+				}
+
+				// otherwise, change the data and let broadcaster take care of it
+				shouldBroadcast.Store(true)
+				gameAbilityPrice = data
+			case <-updaterCloseChan:
+				gamelog.L.Debug().Str("faction_id", factionID).Str("ability", label).Msg("Close game ability broadcaster")
+				return
+			}
+		}
+	}()
+
+	// data broadcaster
+	ticker := time.NewTicker(as.abilityConfig.Broadcaster.BroadcastRateMilliseconds)
+	closeChan := as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[identity].closeChan
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if shouldBroadcast.Load() {
+					switch abilityLevel {
+					case boiler.AbilityLevelFACTION:
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+					case boiler.AbilityLevelMECH:
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+					}
+					shouldBroadcast.Store(false)
+				}
+			case <-closeChan:
+				ticker.Stop()
+				shouldBroadcast.Store(false)
+				updaterCloseChan <- true
+				return
+			}
+		}
+	}()
+
 }
 
 // *********************
@@ -2127,6 +2293,15 @@ func (as *AbilitiesSystem) End() {
 			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic at the abilities.End!", r)
 		}
 	}()
+
+	// close live count
+	as.liveCount.Close()
+
+	// stop all the broadcaster
+	as.abilityConfig.Broadcaster.battleAbilityCloseChan <- true
+	for _, c := range as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap {
+		c.closeChan <- true
+	}
 
 	as.end <- true
 	as.endGabs <- true
