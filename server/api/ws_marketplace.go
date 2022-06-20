@@ -437,6 +437,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if req.Payload.AuctionReservedPrice.Valid {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
 	}
+	if req.Payload.ListingDuration > 24 {
+		listingDurationFee := (req.Payload.ListingDuration/24 - 1) * 5
+		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	}
+
 	feePrice = feePrice.Mul(decimal.New(1, 18))
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
@@ -683,6 +688,10 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
+	if req.Payload.ListingDuration > 24 {
+		listingDurationFee := (req.Payload.ListingDuration/24 - 1) * 5
+		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
+	}
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
