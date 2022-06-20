@@ -93,7 +93,7 @@ func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
 	return arena._currentBattle.warMachineIDs
 }
 
-func (arena *Arena) currentBattleWarMachine(participantID int) *WarMachine {
+func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
 
@@ -796,7 +796,7 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return fmt.Errorf("invalid participant id")
 	}
 
-	wm := arena.currentBattleWarMachine(participantID)
+	wm := arena.CurrentBattleWarMachine(participantID)
 
 	if wm == nil {
 		return nil
@@ -840,7 +840,7 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 		return fmt.Errorf("invalid participant id")
 	}
 
-	wm := arena.currentBattleWarMachine(participantID)
+	wm := arena.CurrentBattleWarMachine(participantID)
 
 	if wm != nil {
 		wm.RLock()

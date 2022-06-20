@@ -45,6 +45,9 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 
 	api.SecureUserCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
 
+	//
+	api.SecureUserCommand(HubKeyMechMoveCommand, pac.MechMoveCommandHandler)
+
 	return pac
 }
 
