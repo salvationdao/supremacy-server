@@ -42,9 +42,12 @@ const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auctio
 const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
+
+const KeyInstantPassRequiredAmount KVKey = "instant_pass_required_amount"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

@@ -1306,6 +1306,9 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
+	// collect ws message
+	wsMessages := []ws.Message{}
+
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := payload[1]
 	var c byte
@@ -1357,10 +1360,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 		warmachine.Lock()
 		wms := WarMachineStat{
-			Position: warmachine.Position,
-			Rotation: warmachine.Rotation,
-			Health:   warmachine.Health,
-			Shield:   warmachine.Shield,
+			ParticipantID: int(warmachine.ParticipantID),
+			Position:      warmachine.Position,
+			Rotation:      warmachine.Rotation,
+			Health:        warmachine.Health,
+			Shield:        warmachine.Shield,
 		}
 		// Position + Yaw
 		if booleans[0] {
@@ -1402,10 +1406,17 @@ func (btl *Battle) Tick(payload []byte) {
 		if booleans[3] {
 			offset += 4
 		}
-
 		if participantID < 100 {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, wms)
+			wsMessages = append(wsMessages, ws.Message{
+				URI:     fmt.Sprintf("/public/mech/%d", participantID),
+				Key:     HubKeyWarMachineStatUpdated,
+				Payload: wms,
+			})
 		}
+	}
+
+	if len(wsMessages) > 0 {
+		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
 	}
 }
 

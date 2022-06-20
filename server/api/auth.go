@@ -346,6 +346,18 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
+
+	cookie = &http.Cookie{
+		Name:     "xsyn-token",
+		Value:    "",
+		Expires:  time.Now().AddDate(-1, 0, 0),
+		Path:     "/",
+		Secure:   api.IsCookieSecure,
+		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+	}
+	http.SetCookie(w, cookie)
+
 	return nil
 }
 
