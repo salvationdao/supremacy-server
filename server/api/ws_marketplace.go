@@ -283,7 +283,7 @@ type MarketplaceSalesCreateRequest struct {
 		AuctionReservedPrice decimal.NullDecimal `json:"auction_reserved_price"`
 		AuctionCurrentPrice  decimal.NullDecimal `json:"auction_current_price"`
 		DutchAuctionDropRate decimal.NullDecimal `json:"dutch_auction_drop_rate"`
-		ListingDuration      time.Duration       `json:"listing_duration"`
+		ListingDurationHours time.Duration       `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -437,8 +437,8 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if req.Payload.AuctionReservedPrice.Valid {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingAuctionReserveFee, decimal.NewFromInt(5)))
 	}
-	if req.Payload.ListingDuration > 24 {
-		listingDurationFee := (req.Payload.ListingDuration/24 - 1) * 5
+	if req.Payload.ListingDurationHours > 24 {
+		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
 		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
 	}
 
@@ -498,7 +498,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if mp.API.Config.Environment == "staging" {
 		endAt = endAt.Add(time.Minute * 5)
 	} else {
-		endAt = endAt.Add(time.Hour * req.Payload.ListingDuration)
+		endAt = endAt.Add(time.Hour * req.Payload.ListingDurationHours)
 	}
 	obj, err := db.MarketplaceSaleCreate(
 		tx,
@@ -579,9 +579,9 @@ const HubKeyMarketplaceSalesKeycardCreate = "MARKETPLACE:SALES:KEYCARD:CREATE"
 type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemID          uuid.UUID       `json:"item_id"`
-		AskingPrice     decimal.Decimal `json:"asking_price"`
-		ListingDuration time.Duration   `json:"listing_duration"`
+		ItemID               uuid.UUID       `json:"item_id"`
+		AskingPrice          decimal.Decimal `json:"asking_price"`
+		ListingDurationHours time.Duration   `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -688,8 +688,8 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10)).Mul(decimal.New(1, 18))
-	if req.Payload.ListingDuration > 24 {
-		listingDurationFee := (req.Payload.ListingDuration/24 - 1) * 5
+	if req.Payload.ListingDurationHours > 24 {
+		listingDurationFee := (req.Payload.ListingDurationHours/24 - 1) * 5
 		feePrice = feePrice.Add(decimal.NewFromInt(int64(listingDurationFee)))
 	}
 
@@ -751,7 +751,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	}
 
 	// Create Sales Item
-	endAt := time.Now().Add(time.Hour * req.Payload.ListingDuration)
+	endAt := time.Now().Add(time.Hour * req.Payload.ListingDurationHours)
 	obj, err := db.MarketplaceKeycardSaleCreate(
 		tx,
 		userID,
