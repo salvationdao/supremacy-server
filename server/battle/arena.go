@@ -648,13 +648,29 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 
 const HubKeyPublicBattleAbilityUpdated = "PUBLIC:BATTLE:ABILITY:UPDATED"
 
+// PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get a random faction id
 	if arena.CurrentBattle() != nil {
 		btl := arena.CurrentBattle()
 		if btl.abilities() != nil {
-			ability, _ := btl.abilities().FactionBattleAbilityGet(server.RedMountainFactionID)
-			reply(ability)
+			ga, _ := btl.abilities().FactionBattleAbilityGet(server.RedMountainFactionID)
+			if ga != nil {
+				reply(GameAbility{
+					ID:                     ga.ID,
+					GameClientAbilityID:    byte(ga.GameClientAbilityID),
+					ImageUrl:               ga.ImageUrl,
+					Description:            ga.Description,
+					FactionID:              ga.FactionID,
+					Label:                  ga.Label,
+					SupsCost:               ga.SupsCost,
+					CurrentSups:            ga.CurrentSups,
+					Colour:                 ga.Colour,
+					TextColour:             ga.TextColour,
+					CooldownDurationSecond: ga.CooldownDurationSecond,
+					OfferingID:             uuid.Nil, // remove offering id to disable bribing
+				})
+			}
 		}
 	}
 	return nil
