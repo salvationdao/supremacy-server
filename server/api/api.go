@@ -221,7 +221,7 @@ func NewAPI(
 				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
 
 				// endpoint for demoing battle ability showcase to non-login player
-				s.WS("/battle_ability", battle.HubKeyPublicBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
+				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
