@@ -421,7 +421,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	bpms := mechModel.R.BlueprintMechSkins[0]
+	bpms := mechModel.R.DefaultChassisSkin
 
 	// first insert the mech
 	newMech := boiler.Mech{
