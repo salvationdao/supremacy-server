@@ -16,6 +16,7 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/friendsofgo/errors"
@@ -831,6 +832,10 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	// Refund Item if auction
 	if saleItem.Auction && saleItem.LastBid.ID.Valid {
 		lastBid, err := boiler.ItemSalesBidHistories(
+			qm.Select(
+				boiler.ItemSalesBidHistoryColumns.BidTXID,
+				boiler.ItemSalesBidHistoryColumns.BidPrice,
+			),
 			boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(saleItem.ID),
 			boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
 		).One(gamedb.StdConn)
@@ -845,6 +850,15 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, req.Payload.ID, lastBid.BidTXID, rtxid, true)
 			if err != nil {
 				return terror.Error(err, errMsg)
+			}
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(lastBid.BidPrice), saleItem.ID, boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_sale_id", saleItem.ID).
+					Str("txid", lastBid.BidTXID).
+					Str("refund_tx_id", rtxid).
+					Err(err).
+					Msg("Failed to log bid refund event.")
 			}
 		}
 	}

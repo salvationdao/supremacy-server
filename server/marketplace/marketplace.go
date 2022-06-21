@@ -326,6 +326,17 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						Msg("unable to update refund tx id on bid record")
 					return
 				}
+				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Str("bid_tx_id", auctionItem.AuctionBidTXID).
+						Str("refund_tx_id", rtxid).
+						Err(err).
+						Msg("Failed to log bid refund event.")
+				}
 				numProcessed++
 				return
 			}
