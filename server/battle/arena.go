@@ -73,6 +73,20 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena._currentBattle = btl
 }
 
+func (arena *Arena) currentBattleState() int32 {
+	arena.RLock()
+	arena.RUnlock()
+	if arena._currentBattle == nil {
+		return BattleStageEnd
+	}
+
+	arena._currentBattle.RLock()
+	stage := arena._currentBattle.stage.Load()
+	arena._currentBattle.RUnlock()
+
+	return stage
+}
+
 func (arena *Arena) currentBattleNumber() int {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -91,6 +105,19 @@ func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
 	}
 
 	return arena._currentBattle.warMachineIDs
+}
+
+func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
 }
 
 func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {

@@ -23,14 +23,17 @@ import (
 
 // MechMoveCommandLog is an object representing the database table.
 type MechMoveCommandLog struct {
-	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID        string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	TriggeredByID string    `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
-	X             int       `boiler:"x" boil:"x" json:"x" toml:"x" yaml:"x"`
-	Y             int       `boiler:"y" boil:"y" json:"y" toml:"y" yaml:"y"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID        string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	TriggeredByID string      `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
+	X             int         `boiler:"x" boil:"x" json:"x" toml:"x" yaml:"x"`
+	Y             int         `boiler:"y" boil:"y" json:"y" toml:"y" yaml:"y"`
+	TXID          string      `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
+	RefundTXID    null.String `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
+	CancelledAt   null.Time   `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *mechMoveCommandLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechMoveCommandLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +45,9 @@ var MechMoveCommandLogColumns = struct {
 	TriggeredByID string
 	X             string
 	Y             string
+	TXID          string
+	RefundTXID    string
+	CancelledAt   string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
@@ -51,6 +57,9 @@ var MechMoveCommandLogColumns = struct {
 	TriggeredByID: "triggered_by_id",
 	X:             "x",
 	Y:             "y",
+	TXID:          "tx_id",
+	RefundTXID:    "refund_tx_id",
+	CancelledAt:   "cancelled_at",
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
@@ -62,6 +71,9 @@ var MechMoveCommandLogTableColumns = struct {
 	TriggeredByID string
 	X             string
 	Y             string
+	TXID          string
+	RefundTXID    string
+	CancelledAt   string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
@@ -71,6 +83,9 @@ var MechMoveCommandLogTableColumns = struct {
 	TriggeredByID: "mech_move_command_logs.triggered_by_id",
 	X:             "mech_move_command_logs.x",
 	Y:             "mech_move_command_logs.y",
+	TXID:          "mech_move_command_logs.tx_id",
+	RefundTXID:    "mech_move_command_logs.refund_tx_id",
+	CancelledAt:   "mech_move_command_logs.cancelled_at",
 	CreatedAt:     "mech_move_command_logs.created_at",
 	UpdatedAt:     "mech_move_command_logs.updated_at",
 	DeletedAt:     "mech_move_command_logs.deleted_at",
@@ -84,6 +99,9 @@ var MechMoveCommandLogWhere = struct {
 	TriggeredByID whereHelperstring
 	X             whereHelperint
 	Y             whereHelperint
+	TXID          whereHelperstring
+	RefundTXID    whereHelpernull_String
+	CancelledAt   whereHelpernull_Time
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
@@ -93,6 +111,9 @@ var MechMoveCommandLogWhere = struct {
 	TriggeredByID: whereHelperstring{field: "\"mech_move_command_logs\".\"triggered_by_id\""},
 	X:             whereHelperint{field: "\"mech_move_command_logs\".\"x\""},
 	Y:             whereHelperint{field: "\"mech_move_command_logs\".\"y\""},
+	TXID:          whereHelperstring{field: "\"mech_move_command_logs\".\"tx_id\""},
+	RefundTXID:    whereHelpernull_String{field: "\"mech_move_command_logs\".\"refund_tx_id\""},
+	CancelledAt:   whereHelpernull_Time{field: "\"mech_move_command_logs\".\"cancelled_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"deleted_at\""},
@@ -122,9 +143,9 @@ func (*mechMoveCommandLogR) NewStruct() *mechMoveCommandLogR {
 type mechMoveCommandLogL struct{}
 
 var (
-	mechMoveCommandLogAllColumns            = []string{"id", "mech_id", "triggered_by_id", "x", "y", "created_at", "updated_at", "deleted_at"}
-	mechMoveCommandLogColumnsWithoutDefault = []string{"mech_id", "triggered_by_id", "x", "y"}
-	mechMoveCommandLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogAllColumns            = []string{"id", "mech_id", "triggered_by_id", "x", "y", "tx_id", "refund_tx_id", "cancelled_at", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogColumnsWithoutDefault = []string{"mech_id", "triggered_by_id", "x", "y", "tx_id"}
+	mechMoveCommandLogColumnsWithDefault    = []string{"id", "refund_tx_id", "cancelled_at", "created_at", "updated_at", "deleted_at"}
 	mechMoveCommandLogPrimaryKeyColumns     = []string{"id"}
 	mechMoveCommandLogGeneratedColumns      = []string{}
 )
