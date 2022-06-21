@@ -162,6 +162,8 @@ const (
 	MarketplaceEventBid       = "bid"
 	MarketplaceEventBidRefund = "bid_refund"
 	MarketplaceEventPurchase  = "purchase"
+	MarketplaceEventCreated   = "created"
+	MarketplaceEventCancelled = "cancelled"
 )
 
 // Enum values for MultiplierTypeEnum

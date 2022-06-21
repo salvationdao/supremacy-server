@@ -3,6 +3,8 @@ ALTER TABLE item_keycard_sales RENAME COLUMN sold_by TO sold_to;
 
 DROP TYPE IF EXISTS MARKETPLACE_EVENT;
 CREATE TYPE MARKETPLACE_EVENT AS ENUM (
+	'created',
+	'cancelled',
 	'bid',
 	'bid_refund',
 	'purchase'
