@@ -102,11 +102,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		return nil, terror.Error(err)
 	}
 
-	fmt.Println("_______________________________")
-	fmt.Println("core", result.BlueprintPowerCore[0].AvatarURL)
-	fmt.Println("skin", result.BlueprintMechSkin[0].AvatarURL)
-	fmt.Println("_______________________________")
-
 	return result, nil
 }
 

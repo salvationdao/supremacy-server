@@ -414,6 +414,15 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
+	mechModel, err := boiler.MechModels(
+		boiler.WeaponModelWhere.ID.EQ(mechBlueprint.ModelID),
+		qm.Load(boiler.MechModelRels.BlueprintMechSkins),
+	).One(tx)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	bpms := mechModel.R.BlueprintMechSkins[0]
+
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
@@ -443,13 +452,13 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		newMech.ID,
 		mechBlueprint.Tier,
 		ownerID.String(),
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
+		bpms.ImageURL,
+		bpms.CardAnimationURL,
+		bpms.AvatarURL,
+		bpms.LargeImageURL,
+		bpms.BackgroundColor,
+		bpms.AnimationURL,
+		bpms.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
