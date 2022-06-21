@@ -147,3 +147,11 @@ type MechArenaInfo struct {
 	Status        MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
 	QueuePosition int64           `json:"queue_position"`
 }
+
+type MarketplaceEvent struct {
+	ID              string                   `json:"id" boil:"id"`
+	EventType       string                   `json:"event_type" boil:"event_type"`
+	Amount          decimal.NullDecimal      `json:"amount" boil:"amount"`
+	ItemSale        *MarketplaceSaleItem     `json:"item_sale"`
+	ItemKeycardSale *MarketplaceSaleItem1155 `json:"item_keycard_sale"`
+}

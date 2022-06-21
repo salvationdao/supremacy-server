@@ -43,6 +43,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardList, marketplaceHub.SalesListKeycardHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceEventList, marketplaceHub.EventListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesGet, marketplaceHub.SalesGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
@@ -204,6 +205,58 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	}
 
 	resp := &MarketplaceSalesListKeycardResponse{
+		Total:   total,
+		Records: records,
+	}
+	reply(resp)
+
+	return nil
+}
+
+const HubKeyMarketplaceEventList = "MARKETPLACE:EVENT:LIST"
+
+type MarketplaceEventListRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SortDir  db.SortByDir `json:"sort_dir"`
+		SortBy   string       `json:"sort_by"`
+		Search   string       `json:"search"`
+		PageSize int          `json:"page_size"`
+		Page     int          `json:"page"`
+	} `json:"payload"`
+}
+
+type MarketplaceEventListResponse struct {
+	Total   int64                      `json:"total"`
+	Records []*server.MarketplaceEvent `json:"records"`
+}
+
+func (fc *MarketplaceController) EventListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &MarketplaceEventListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, records, err := db.MarketplaceEventList(
+		user.ID,
+		req.Payload.Search,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
+		return terror.Error(err, "Failed to get list of items for sale")
+	}
+
+	resp := &MarketplaceEventListResponse{
 		Total:   total,
 		Records: records,
 	}

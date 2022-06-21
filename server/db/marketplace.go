@@ -183,6 +183,16 @@ var ItemKeycardSaleQueryMods = []qm.QueryMod{
 	),
 }
 
+var MarketplaceEventQueryMods = []qm.QueryMod{
+	qm.Select(
+		`marketplace_events.id,
+		marketplace_events.event_type,
+		marketplace_events.amount,
+		marketplace_events.related_sale_item_id,
+		marketplace_events.related_sale_item_keycard_id`,
+	),
+}
+
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	output := &server.MarketplaceSaleItem{}
@@ -621,6 +631,208 @@ func MarketplaceItemKeycardSaleList(
 	}
 
 	return total, records, nil
+}
+
+// MarketplaceEventList lists all events involving the user.
+func MarketplaceEventList(
+	userID string,
+	search string,
+	offset int,
+	pageSize int,
+	sortBy string,
+	sortDir SortByDir,
+) (int64, []*server.MarketplaceEvent, error) {
+	if !sortDir.IsValid() {
+		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
+	}
+
+	queryMods := append(MarketplaceEventQueryMods,
+		// Item Sales
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.ItemSales,
+				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ID),
+				qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.RelatedSaleItemID),
+			),
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.CollectionItems,
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
+			),
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s AND %s = ?",
+				boiler.TableNames.Mechs,
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			),
+			boiler.ItemTypeMech,
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.MechSkin,
+				qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			),
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s AND %s = ?",
+				boiler.TableNames.MysteryCrate,
+				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			),
+			boiler.ItemTypeMysteryCrate,
+		),
+
+		// Keycards
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.ItemKeycardSales,
+				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ID),
+				qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.RelatedSaleItemKeycardID),
+			),
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.PlayerKeycards,
+				qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
+				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+			),
+		),
+		qm.LeftOuterJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.BlueprintKeycards,
+				qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.ID),
+				qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.BlueprintKeycardID),
+			),
+		),
+
+		// Item Seller owner
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = COALESCE(%s, %s)",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
+				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+			),
+		),
+
+		// Check if owner of any
+		qm.Where(
+			fmt.Sprintf(
+				`(
+					%s = ?
+					OR %s = ?
+					OR EXISTS (
+						SELECT 1
+						FROM item_sales_bid_history _b
+						WHERE _b.item_sale_id = marketplace_events.related_sale_item_id
+							AND _b.bidder_id = ?
+						LIMIT 1
+					)
+				)`,
+				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+			),
+			userID,
+			userID,
+			userID,
+		),
+	)
+
+	// Search
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		if len(xsearch) > 0 {
+			queryMods = append(queryMods, qm.And(
+				fmt.Sprintf(
+					`(
+						(to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+					)`,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				),
+				xsearch,
+				xsearch,
+				xsearch,
+				xsearch,
+				xsearch,
+			))
+		}
+	}
+
+	// Get total rows
+	total, err := boiler.MarketplaceEvents(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if total == 0 {
+		return 0, []*server.MarketplaceEvent{}, nil
+	}
+
+	// TODO: Sort
+	queryMods = append(
+		queryMods,
+		qm.OrderBy(qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.CreatedAt)+" "+string(sortDir)),
+	)
+
+	// Limit/Offset
+	if pageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
+	}
+
+	records, err := boiler.MarketplaceEvents(
+		append(
+			queryMods,
+			qm.Load(boiler.MarketplaceEventRels.RelatedSaleItem),
+			qm.Load(boiler.MarketplaceEventRels.RelatedSaleItemKeycard),
+		)...).All(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
+	output := []*server.MarketplaceEvent{}
+	for _, r := range records {
+		row := &server.MarketplaceEvent{
+			ID:        r.ID,
+			EventType: r.EventType,
+			Amount:    r.Amount,
+		}
+		if r.R != nil {
+			if r.R.RelatedSaleItem != nil {
+				item := &server.MarketplaceSaleItem{}
+				row.ItemSale = item
+			} else if r.R.RelatedSaleItemKeycard != nil {
+				item := &server.MarketplaceSaleItem1155{
+					// ID:
+				}
+				row.ItemKeycardSale = item
+			}
+		}
+		output = append(output, row)
+	}
+
+	return 0, output, nil
 }
 
 // MarketplaceSaleArchive archives as sale item.
