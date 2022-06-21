@@ -1309,7 +1309,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// Log events
+	// Log event
 	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
 	if err != nil {
 		gamelog.L.Error().

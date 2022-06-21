@@ -540,6 +540,18 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Msg("Failed to commit db transaction")
 				return
 			}
+
+			// Log Event
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to log purchase event.")
+			}
+
 			numProcessed++
 		}()
 	}
