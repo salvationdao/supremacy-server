@@ -501,7 +501,8 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
 	}
-
+	
+	reply(true)
 	return nil
 }
 
