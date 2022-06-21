@@ -33,6 +33,19 @@ WHERE bws.tier = 'MEGA'
 UPDATE blueprint_power_cores
 SET avatar_url = 'https://afiles.ninja-cdn.com/passport/nexus/utility/utility_power-core.png';
 
+update collection_items as ci
+set image_url          = bms.image_url,
+    card_animation_url = bms.card_animation_url,
+    avatar_url         = bms.avatar_url,
+    large_image_url    = bms.large_image_url,
+    background_color   = bms.background_color,
+    animation_url      = bms.animation_url,
+    youtube_url        = bms.youtube_url
+from mechs m
+         inner join mech_models mm on mm.id = m.model_id
+         inner join blueprint_mech_skin bms on bms.id = mm.default_chassis_skin_id
+where ci.item_id = m.id
+  and ci.item_type = 'mech';
 
 --copied and pasted from add_weapon_images.up.sql to re-update admin given mechs
 WITH su AS
