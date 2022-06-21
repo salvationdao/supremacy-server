@@ -646,6 +646,34 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 	return nil
 }
 
+// PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
+func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// get a random faction id
+	if arena.CurrentBattle() != nil {
+		btl := arena.CurrentBattle()
+		if btl.abilities() != nil {
+			ga, _ := btl.abilities().FactionBattleAbilityGet(server.RedMountainFactionID)
+			if ga != nil {
+				reply(GameAbility{
+					ID:                     ga.ID,
+					GameClientAbilityID:    byte(ga.GameClientAbilityID),
+					ImageUrl:               ga.ImageUrl,
+					Description:            ga.Description,
+					FactionID:              ga.FactionID,
+					Label:                  ga.Label,
+					SupsCost:               ga.SupsCost,
+					CurrentSups:            ga.CurrentSups,
+					Colour:                 ga.Colour,
+					TextColour:             ga.TextColour,
+					CooldownDurationSecond: ga.CooldownDurationSecond,
+					OfferingID:             uuid.Nil, // remove offering id to disable bribing
+				})
+			}
+		}
+	}
+	return nil
+}
+
 const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
 
 func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -791,10 +819,11 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 }
 
 type WarMachineStat struct {
-	Position *server.Vector3 `json:"position"`
-	Rotation int             `json:"rotation"`
-	Health   uint32          `json:"health"`
-	Shield   uint32          `json:"shield"`
+	ParticipantID int             `json:"participant_id"`
+	Position      *server.Vector3 `json:"position"`
+	Rotation      int             `json:"rotation"`
+	Health        uint32          `json:"health"`
+	Shield        uint32          `json:"shield"`
 }
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
@@ -817,10 +846,11 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 		wm.RLock()
 		defer wm.RUnlock()
 		reply(WarMachineStat{
-			Position: wm.Position,
-			Rotation: wm.Rotation,
-			Health:   wm.Health,
-			Shield:   wm.Shield,
+			ParticipantID: participantID,
+			Position:      wm.Position,
+			Rotation:      wm.Rotation,
+			Health:        wm.Health,
+			Shield:        wm.Shield,
 		})
 	}
 

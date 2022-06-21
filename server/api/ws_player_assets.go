@@ -5,13 +5,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strings"
 	"time"
+	"unicode"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -39,6 +43,8 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
+
 	return pac
 }
 
@@ -54,6 +60,7 @@ type PlayerAssetMechListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		QueueSort           db.SortByDir          `json:"queue_sort"`
 	} `json:"payload"`
 }
 
@@ -74,6 +81,7 @@ type PlayerAssetMech struct {
 	MarketLocked        bool        `json:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
+	QueuePosition       null.Int    `json:"queue_position"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -119,7 +127,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
 	}
 
-	total, mechs, err := db.MechList(&db.MechListOpts{
+	listOpts := &db.MechListOpts{
 		Search:              req.Payload.Search,
 		Filter:              req.Payload.Filter,
 		Sort:                req.Payload.Sort,
@@ -129,7 +137,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
-	})
+	}
+	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
+		listOpts.QueueSort = &db.MechListQueueSortOpts{
+			FactionID: user.FactionID.String,
+			SortDir:   req.Payload.QueueSort,
+		}
+	}
+
+	total, mechs, err := db.MechList(listOpts)
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
@@ -171,6 +187,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
 			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+			QueuePosition:         m.QueuePosition,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,
@@ -391,4 +408,106 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardGetHandler(tx context.Con
 	reply(keycard)
 
 	return nil
+}
+
+const (
+	HubKeyPlayerAssetRename = "PLAYER:MECH:RENAME"
+)
+
+type PlayerMechRenameRequest struct {
+	Payload struct {
+		MechID  uuid.UUID `json:"mech_id"`
+		NewName string    `json:"new_name"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerMechRenameHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerMechRenameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// check valid name
+	err = IsValidMechName(req.Payload.NewName)
+	if err != nil {
+		return terror.Error(err, "Invalid mech name")
+	}
+
+	mech, err := db.MechRename(req.Payload.MechID.String(), user.ID, req.Payload.NewName)
+	if err != nil {
+		return terror.Error(err, "Failed to rename mech")
+	}
+
+	reply(mech)
+	return nil
+}
+
+// PrintableLen counts how many printable characters are in a string.
+func PrintableLen(s string) int {
+	sLen := 0
+	runes := []rune(s)
+	for _, r := range runes {
+		if unicode.IsPrint(r) {
+			sLen += 1
+		}
+	}
+	return sLen
+}
+
+var UsernameRegExp = regexp.MustCompile("[`~!@#$%^&*()+=\\[\\]{};':\"\\|,.<>\\/?]")
+
+func IsValidMechName(name string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 15 characters
+	// Cannot contain profanity
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(name)) {
+		hasDisallowedSymbol = true
+	}
+
+	//err := fmt.Errorf("username does not meet requirements")
+	if TrimName(name) == "" {
+		return terror.Error(fmt.Errorf("name cannot be empty"), "Invalid name. Your name cannot be empty.")
+	}
+	if PrintableLen(TrimName(name)) < 3 {
+		return terror.Error(fmt.Errorf("name must be at least characters long"), "Invalid name. Your name must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimName(name)) > 30 {
+		return terror.Error(fmt.Errorf("name cannot be more than 30 characters long"), "Invalid name. Your name cannot be more than 30 characters long.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(fmt.Errorf("name cannot contain disallowed symbols"), "Invalid name. Your name contains a disallowed symbol.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(name) {
+		return terror.Error(fmt.Errorf("name contains profanity"), "Invalid name. Your name contains profanity.")
+	}
+
+	return nil
+}
+
+// TrimName removes misuse of invisible characters.
+func TrimName(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	return output
 }

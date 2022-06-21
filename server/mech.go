@@ -50,6 +50,7 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	PowerCoreSize         string     `json:"power_core_size"`
 	CollectionItemID      string     `json:"-"`
+	QueuePosition         null.Int   `json:"queue_position"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
