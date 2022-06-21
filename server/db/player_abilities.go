@@ -90,12 +90,10 @@ func CurrentSaleAbilitiesList() ([]*SaleAbilityDetailed, error) {
 }
 
 type TalliedPlayerAbility struct {
+	BlueprintID     string                         `json:"blueprint_id" boil:"blueprint_id"`
 	Count           int                            `json:"count" boil:"count"`
 	LastPurchasedAt time.Time                      `json:"last_purchased_at" boil:"last_purchased_at"`
 	Ability         *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
-	R               *struct {
-		Blueprint *boiler.BlueprintPlayerAbility `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	} `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 // TalliedPlayerAbilitiesList returns a list of tallied player abilities, ordered by last purchased date from the player_abilities table.
@@ -110,14 +108,30 @@ func TalliedPlayerAbilitiesList(
 		qm.GroupBy(boiler.PlayerAbilityColumns.BlueprintID),
 		boiler.PlayerAbilityWhere.OwnerID.EQ(userID),
 		qm.OrderBy("last_purchased_at desc"),
-		qm.Load(boiler.PlayerAbilityRels.Blueprint),
 	).Bind(nil, gamedb.StdConn, &talliedPlayerAbilities)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, p := range talliedPlayerAbilities {
-		talliedPlayerAbilities[i].Ability = p.R.Blueprint
+	abilityIDs := []string{}
+	for _, p := range talliedPlayerAbilities {
+		abilityIDs = append(abilityIDs, p.BlueprintID)
+	}
+
+	bpas, err := boiler.BlueprintPlayerAbilities(
+		boiler.BlueprintPlayerAbilityWhere.ID.IN(abilityIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range talliedPlayerAbilities {
+		for _, b := range bpas {
+			if b.ID == t.BlueprintID {
+				t.Ability = b
+				break
+			}
+		}
 	}
 
 	return talliedPlayerAbilities, nil
