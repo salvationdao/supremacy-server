@@ -63,7 +63,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	q := `
 	SELECT 	ci.item_type		 	as type,
-			smc.id    				as ownership_id,
+			ci.id    				as ownership_id,
 			smc.id 					as mystery_crate_id,
 			mc.locked_until        	as can_open_on
 	FROM 	collection_items ci
