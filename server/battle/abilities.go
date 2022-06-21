@@ -1620,7 +1620,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 
 	// broadcast battle ability to non-login or non-faction players
 	if ga, ok := as.battleAbilityPool.Abilities.Load(server.RedMountainFactionID); ok {
-		ws.PublishMessage("/public/ability", HubKeyPublicBattleAbilityUpdated, GameAbility{
+		ws.PublishMessage("/public/battle_ability", HubKeyBattleAbilityUpdated, GameAbility{
 			ID:                     ga.ID,
 			GameClientAbilityID:    byte(ga.GameClientAbilityID),
 			ImageUrl:               ga.ImageUrl,
