@@ -415,7 +415,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 	}
 
 	mechModel, err := boiler.MechModels(
-		boiler.WeaponModelWhere.ID.EQ(mechBlueprint.ModelID),
+		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
 		qm.Load(boiler.MechModelRels.BlueprintMechSkins),
 	).One(tx)
 	if err != nil {
