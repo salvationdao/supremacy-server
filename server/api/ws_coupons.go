@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -187,7 +185,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			ci.TransactionID = null.StringFrom(txID)
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeMECH_CRATE:
-			assignedMechCrate, err := assignAndRegisterClaimCrate(user.ID, storeMechCrate, tx, cc.API)
+			assignedMechCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeMechCrate, tx, cc.API)
 			if err != nil {
 				rollbackRedeem()
 				return terror.Error(err, "Issue claiming mech crate, please try again or contact support.")
@@ -200,9 +198,14 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 				Amount:      ci.Amount,
 			}
 
+			serverMechCrate := server.StoreFrontMysteryCrateFromBoiler(storeMechCrate)
+
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, assignedMechCrate.ID), HubKeyMysteryCrateSubscribe, serverMechCrate)
+			go BroadcastCrateOwnershipUpdate(user.ID)
+
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeWEAPON_CRATE:
-			assignedWeaponCrate, err := assignAndRegisterClaimCrate(user.ID, storeWeaponCrate, tx, cc.API)
+			assignedWeaponCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeWeaponCrate, tx, cc.API)
 			if err != nil {
 				rollbackRedeem()
 				return terror.Error(err, "Issue claiming weapon crate, please try again or contact support.")
@@ -214,6 +217,12 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 				LockedUntil: null.TimeFrom(assignedWeaponCrate.LockedUntil),
 				Amount:      ci.Amount,
 			}
+
+			serverWeaponCrate := server.StoreFrontMysteryCrateFromBoiler(storeWeaponCrate)
+
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, assignedWeaponCrate.ID), HubKeyMysteryCrateSubscribe, serverWeaponCrate)
+			go BroadcastCrateOwnershipUpdate(user.ID)
+
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeGENESIS_MECH:
 			//	TODO: genesis mech handle
@@ -260,83 +269,4 @@ func transferSups(userID string, amount string, api *API, code string) (string, 
 		return "", terror.Error(err, "Could not transfer user SUPS from Supremacy Game User, try again or contact support")
 	}
 	return txID, nil
-}
-
-func assignAndRegisterClaimCrate(userID string, storeCrate *boiler.StorefrontMysteryCrate, tx *sql.Tx, api *API) (*server.MysteryCrate, error) {
-	assignedCrate, err := boiler.MysteryCrates(
-		boiler.MysteryCrateWhere.FactionID.EQ(storeCrate.FactionID),
-		boiler.MysteryCrateWhere.Type.EQ(storeCrate.MysteryCrateType),
-		qm.Load(boiler.MysteryCrateRels.MysteryCrateBlueprints),
-		qm.OrderBy("RANDOM()"),
-	).One(tx)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get available crates, please try again or contact support.")
-	}
-	faction, err := boiler.FindFaction(tx, storeCrate.FactionID)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to find faction, please try again or contact support.")
-	}
-
-	//copy assigned crate
-	copiedMC := &boiler.MysteryCrate{
-		Type:        assignedCrate.Type,
-		FactionID:   assignedCrate.FactionID,
-		Label:       assignedCrate.Label,
-		Opened:      assignedCrate.Opened,
-		LockedUntil: assignedCrate.LockedUntil,
-		Purchased:   true,
-		UpdatedAt:   time.Now(),
-		CreatedAt:   time.Now(),
-		Description: "",
-	}
-	err = copiedMC.Insert(tx, boil.Infer())
-	if err != nil {
-		return nil, terror.Error(err, "Failed to copy mystery crate, please try again or contact support.")
-	}
-
-	for _, bpmc := range assignedCrate.R.MysteryCrateBlueprints {
-		copiedBPMC := &boiler.MysteryCrateBlueprint{
-			MysteryCrateID: copiedMC.ID,
-			BlueprintType:  bpmc.BlueprintType,
-			BlueprintID:    bpmc.BlueprintID,
-			UpdatedAt:      time.Now(),
-			CreatedAt:      time.Now(),
-		}
-
-		err = copiedBPMC.Insert(tx, boil.Infer())
-		if err != nil {
-			return nil, terror.Error(err, "Failed to copy mystery crate blueprints, please try again or contact support.")
-		}
-	}
-
-	collectionItem, err := db.InsertNewCollectionItem(tx,
-		"supremacy-general",
-		boiler.ItemTypeMysteryCrate,
-		copiedMC.ID,
-		"",
-		userID,
-		storeCrate.ImageURL,
-		storeCrate.CardAnimationURL,
-		storeCrate.AvatarURL,
-		storeCrate.LargeImageURL,
-		storeCrate.BackgroundColor,
-		storeCrate.AnimationURL,
-		storeCrate.YoutubeURL,
-	)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("mystery crate", copiedMC).Msg("failed to insert into collection items")
-		return nil, terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
-
-	//register
-	assignedCrateServer := server.MysteryCrateFromBoiler(copiedMC, collectionItem, null.String{})
-	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(assignedCrateServer, faction.Label)
-
-	err = api.Passport.AssetRegister(xsynAsset)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("mystery crate", copiedMC).Msg("failed to register to XSYN")
-		return nil, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
-	}
-
-	return assignedCrateServer, nil
 }
