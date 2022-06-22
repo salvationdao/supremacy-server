@@ -128,3 +128,6 @@ WHERE rkt.item_id = ci.item_id;
 UPDATE collection_items
 SET avatar_url = 'https://afiles.ninja-cdn.com/passport/nexus/utility/genesis_zai_utility_orb-shield.png'
 WHERE "item_type" = 'utility';
+
+ALTER TABLE weapon_models
+    ADD CONSTRAINT fk_weapon_model_default_skin FOREIGN KEY (default_skin_id) references blueprint_weapon_skin (id);

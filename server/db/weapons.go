@@ -25,13 +25,18 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 	//getting weapon model to get default skin id to get image url on blueprint weapon skins
 	weaponModel, err := boiler.WeaponModels(
 		boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
-		qm.Load(boiler.WeaponModelRels.BlueprintWeaponSkins),
+		qm.Load(boiler.WeaponModelRels.DefaultSkin),
 	).One(tx)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if weaponModel.R == nil || weaponModel.R.DefaultSkin == nil {
+		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to weapon"), "Could not find weapon default skin relationship, try again or contact support")
+	}
+
 	//should only have one in the arr
-	bpws := weaponModel.R.BlueprintWeaponSkins[0]
+	bpws := weaponModel.R.DefaultSkin
 
 	newWeapon := boiler.Weapon{
 		BrandID:               weapon.BrandID,

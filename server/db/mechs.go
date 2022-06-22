@@ -421,6 +421,11 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if mechModel.R == nil || mechModel.R.DefaultChassisSkin == nil {
+		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to mech"), "Could not find mech default skin relationship, try again or contact support")
+	}
+
 	bpms := mechModel.R.DefaultChassisSkin
 
 	// first insert the mech
