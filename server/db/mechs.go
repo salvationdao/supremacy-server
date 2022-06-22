@@ -414,6 +414,20 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
+	mechModel, err := boiler.MechModels(
+		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
+		qm.Load(boiler.MechModelRels.DefaultChassisSkin),
+	).One(tx)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	if mechModel.R == nil || mechModel.R.DefaultChassisSkin == nil {
+		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to mech"), "Could not find mech default skin relationship, try again or contact support")
+	}
+
+	bpms := mechModel.R.DefaultChassisSkin
+
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
@@ -443,13 +457,13 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		newMech.ID,
 		mechBlueprint.Tier,
 		ownerID.String(),
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
+		bpms.ImageURL,
+		bpms.CardAnimationURL,
+		bpms.AvatarURL,
+		bpms.LargeImageURL,
+		bpms.BackgroundColor,
+		bpms.AnimationURL,
+		bpms.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

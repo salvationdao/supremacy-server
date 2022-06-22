@@ -503,7 +503,6 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -693,8 +692,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	return nil
 }
-
-const HubKeyPublicBattleAbilityUpdated = "PUBLIC:BATTLE:ABILITY:UPDATED"
 
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {

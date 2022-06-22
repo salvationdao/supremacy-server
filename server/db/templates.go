@@ -101,6 +101,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
 	return result, nil
 }
 

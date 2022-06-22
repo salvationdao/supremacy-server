@@ -70,6 +70,7 @@ type BlueprintWeapon struct {
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	Collection          string              `json:"collection"`
 	Tier                string              `json:"tier,omitempty"`
+	WeaponModelID       string              `json:"weapon_model_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -120,6 +121,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		EnergyCost:          weapon.EnergyCost,
 		Collection:          weapon.Collection,
 		Tier:                weapon.Tier,
+		WeaponModelID:       weapon.WeaponModelID,
 	}
 }
 
