@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -130,21 +131,26 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	event := &server.GameAbilityEvent{
 		IsTriggered:         true,
-		GameClientAbilityID: MechMoveCommandCreateCode,
+		GameClientAbilityID: MechMoveCommandCreateCode, // 8
+		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID, // trigger on war machine
 		TriggeredOnCellX:    &req.Payload.X,
 		TriggeredOnCellY:    &req.Payload.Y,
+		EventID:             uuid.Must(uuid.NewV4()),
 	}
 	arena.CurrentBattle().calcTriggeredLocation(event)
 
-	arena.Message("MECH_MOVE_COMMAND", event)
+	spew.Dump(event)
+
+	// check mech command
+	arena.Message("BATTLE:ABILITY", event)
 
 	// log mech move command
 	mmc = &boiler.MechMoveCommandLog{
 		MechID:        wm.ID,
 		TriggeredByID: user.ID,
-		X:             req.Payload.X,
-		Y:             req.Payload.Y,
+		CellX:         req.Payload.X,
+		CellY:         req.Payload.Y,
 		TXID:          txid,
 		CreatedAt:     now,
 	}
@@ -157,7 +163,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: int(now.Sub(time.Now()).Seconds()),
+		RemainCooldownSeconds: 30,
 	})
 
 	reply(true)
@@ -228,15 +234,16 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	}
 
 	// send mech move command to game client
-	arena.Message("MECH_MOVE_COMMAND", &server.GameAbilityEvent{
+	arena.Message("BATTLE:ABILITY", &server.GameAbilityEvent{
 		IsTriggered:         true,
 		GameClientAbilityID: MechMoveCommandCancelCode,
+		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID, // trigger on war machine
 	})
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: int(mmc.CreatedAt.Sub(time.Now()).Seconds()),
+		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
 
 	reply(true)

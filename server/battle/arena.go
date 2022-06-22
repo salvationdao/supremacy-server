@@ -528,7 +528,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
 	}
-	
+
 	reply(true)
 	return nil
 }
@@ -968,6 +968,11 @@ type BattleEndPayload struct {
 	WinCondition string `json:"winCondition"`
 }
 
+type AbilityMoveCommandCompletePayload struct {
+	BattleID       string `json:"battleID"`
+	WarMachineHash string `json:"warMachineHash"`
+}
+
 type BattleWMDestroyedPayload struct {
 	DestroyedWarMachineEvent struct {
 		DestroyedWarMachineHash string    `json:"destroyedWarMachineHash"`
@@ -1124,6 +1129,13 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Err(err)
 				}
 
+			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
+				var dataPayload *AbilityMoveCommandCompletePayload
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal ability move command complete payload")
+					continue
+				}
+
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -1269,6 +1281,48 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.spawnedAIMux.Lock()
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 	btl.spawnedAIMux.Unlock()
+
+	return nil
+}
+
+func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+	if payload.BattleID != btl.BattleID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	}
+
+	// check battle state
+	if btl.arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(fmt.Errorf("current battle is ended"))
+	}
+
+	// get mech
+	wm := btl.arena.CurrentBattleWarMachineByHash(payload.WarMachineHash)
+	if wm == nil {
+		return terror.Error(fmt.Errorf("war machine not exists"))
+	}
+
+	// get the last move command of the mech
+	mmc, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-1*time.Minute)),
+		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech move command from db.")
+	}
+
+	// update completed_at
+	mmc.ReachedAt = null.TimeFrom(time.Now())
+
+	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+	if err != nil {
+		return terror.Error(err, "Failed to update mech move command")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		MechMoveCommandLog:    mmc,
+		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+	})
 
 	return nil
 }

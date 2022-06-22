@@ -936,7 +936,6 @@ func (o *Player) TriggeredByMechMoveCommandLogs(mods ...qm.QueryMod) mechMoveCom
 
 	queryMods = append(queryMods,
 		qm.Where("\"mech_move_command_logs\".\"triggered_by_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mech_move_command_logs\".\"deleted_at\""),
 	)
 
 	query := MechMoveCommandLogs(queryMods...)
@@ -3355,7 +3354,6 @@ func (playerL) LoadTriggeredByMechMoveCommandLogs(e boil.Executor, singular bool
 	query := NewQuery(
 		qm.From(`mech_move_command_logs`),
 		qm.WhereIn(`mech_move_command_logs.triggered_by_id in ?`, args...),
-		qmhelper.WhereIsNull(`mech_move_command_logs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

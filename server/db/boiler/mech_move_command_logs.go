@@ -23,17 +23,16 @@ import (
 
 // MechMoveCommandLog is an object representing the database table.
 type MechMoveCommandLog struct {
-	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID        string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	TriggeredByID string      `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
-	X             int         `boiler:"x" boil:"x" json:"x" toml:"x" yaml:"x"`
-	Y             int         `boiler:"y" boil:"y" json:"y" toml:"y" yaml:"y"`
-	TXID          string      `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
-	RefundTXID    null.String `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
-	CancelledAt   null.Time   `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID        string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	TriggeredByID string    `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
+	CellX         int       `boiler:"cell_x" boil:"cell_x" json:"cell_x" toml:"cell_x" yaml:"cell_x"`
+	CellY         int       `boiler:"cell_y" boil:"cell_y" json:"cell_y" toml:"cell_y" yaml:"cell_y"`
+	TXID          string    `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
+	CancelledAt   null.Time `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
+	ReachedAt     null.Time `boiler:"reached_at" boil:"reached_at" json:"reached_at,omitempty" toml:"reached_at" yaml:"reached_at,omitempty"`
+	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 
 	R *mechMoveCommandLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechMoveCommandLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,52 +42,48 @@ var MechMoveCommandLogColumns = struct {
 	ID            string
 	MechID        string
 	TriggeredByID string
-	X             string
-	Y             string
+	CellX         string
+	CellY         string
 	TXID          string
-	RefundTXID    string
 	CancelledAt   string
+	ReachedAt     string
 	CreatedAt     string
 	UpdatedAt     string
-	DeletedAt     string
 }{
 	ID:            "id",
 	MechID:        "mech_id",
 	TriggeredByID: "triggered_by_id",
-	X:             "x",
-	Y:             "y",
+	CellX:         "cell_x",
+	CellY:         "cell_y",
 	TXID:          "tx_id",
-	RefundTXID:    "refund_tx_id",
 	CancelledAt:   "cancelled_at",
+	ReachedAt:     "reached_at",
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
-	DeletedAt:     "deleted_at",
 }
 
 var MechMoveCommandLogTableColumns = struct {
 	ID            string
 	MechID        string
 	TriggeredByID string
-	X             string
-	Y             string
+	CellX         string
+	CellY         string
 	TXID          string
-	RefundTXID    string
 	CancelledAt   string
+	ReachedAt     string
 	CreatedAt     string
 	UpdatedAt     string
-	DeletedAt     string
 }{
 	ID:            "mech_move_command_logs.id",
 	MechID:        "mech_move_command_logs.mech_id",
 	TriggeredByID: "mech_move_command_logs.triggered_by_id",
-	X:             "mech_move_command_logs.x",
-	Y:             "mech_move_command_logs.y",
+	CellX:         "mech_move_command_logs.cell_x",
+	CellY:         "mech_move_command_logs.cell_y",
 	TXID:          "mech_move_command_logs.tx_id",
-	RefundTXID:    "mech_move_command_logs.refund_tx_id",
 	CancelledAt:   "mech_move_command_logs.cancelled_at",
+	ReachedAt:     "mech_move_command_logs.reached_at",
 	CreatedAt:     "mech_move_command_logs.created_at",
 	UpdatedAt:     "mech_move_command_logs.updated_at",
-	DeletedAt:     "mech_move_command_logs.deleted_at",
 }
 
 // Generated where
@@ -97,26 +92,24 @@ var MechMoveCommandLogWhere = struct {
 	ID            whereHelperstring
 	MechID        whereHelperstring
 	TriggeredByID whereHelperstring
-	X             whereHelperint
-	Y             whereHelperint
+	CellX         whereHelperint
+	CellY         whereHelperint
 	TXID          whereHelperstring
-	RefundTXID    whereHelpernull_String
 	CancelledAt   whereHelpernull_Time
+	ReachedAt     whereHelpernull_Time
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
-	DeletedAt     whereHelpernull_Time
 }{
 	ID:            whereHelperstring{field: "\"mech_move_command_logs\".\"id\""},
 	MechID:        whereHelperstring{field: "\"mech_move_command_logs\".\"mech_id\""},
 	TriggeredByID: whereHelperstring{field: "\"mech_move_command_logs\".\"triggered_by_id\""},
-	X:             whereHelperint{field: "\"mech_move_command_logs\".\"x\""},
-	Y:             whereHelperint{field: "\"mech_move_command_logs\".\"y\""},
+	CellX:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_x\""},
+	CellY:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_y\""},
 	TXID:          whereHelperstring{field: "\"mech_move_command_logs\".\"tx_id\""},
-	RefundTXID:    whereHelpernull_String{field: "\"mech_move_command_logs\".\"refund_tx_id\""},
 	CancelledAt:   whereHelpernull_Time{field: "\"mech_move_command_logs\".\"cancelled_at\""},
+	ReachedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"reached_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"updated_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"deleted_at\""},
 }
 
 // MechMoveCommandLogRels is where relationship names are stored.
@@ -143,9 +136,9 @@ func (*mechMoveCommandLogR) NewStruct() *mechMoveCommandLogR {
 type mechMoveCommandLogL struct{}
 
 var (
-	mechMoveCommandLogAllColumns            = []string{"id", "mech_id", "triggered_by_id", "x", "y", "tx_id", "refund_tx_id", "cancelled_at", "created_at", "updated_at", "deleted_at"}
-	mechMoveCommandLogColumnsWithoutDefault = []string{"mech_id", "triggered_by_id", "x", "y", "tx_id"}
-	mechMoveCommandLogColumnsWithDefault    = []string{"id", "refund_tx_id", "cancelled_at", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogAllColumns            = []string{"id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "tx_id", "cancelled_at", "reached_at", "created_at", "updated_at"}
+	mechMoveCommandLogColumnsWithoutDefault = []string{"mech_id", "triggered_by_id", "cell_x", "cell_y", "tx_id"}
+	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at"}
 	mechMoveCommandLogPrimaryKeyColumns     = []string{"id"}
 	mechMoveCommandLogGeneratedColumns      = []string{}
 )
@@ -726,7 +719,7 @@ func (o *MechMoveCommandLog) SetTriggeredBy(exec boil.Executor, insert bool, rel
 
 // MechMoveCommandLogs retrieves all the records using an executor.
 func MechMoveCommandLogs(mods ...qm.QueryMod) mechMoveCommandLogQuery {
-	mods = append(mods, qm.From("\"mech_move_command_logs\""), qmhelper.WhereIsNull("\"mech_move_command_logs\".\"deleted_at\""))
+	mods = append(mods, qm.From("\"mech_move_command_logs\""))
 	return mechMoveCommandLogQuery{NewQuery(mods...)}
 }
 
@@ -740,7 +733,7 @@ func FindMechMoveCommandLog(exec boil.Executor, iD string, selectCols ...string)
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mech_move_command_logs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"mech_move_command_logs\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1099,7 +1092,7 @@ func (o *MechMoveCommandLog) Upsert(exec boil.Executor, updateOnConflict bool, c
 
 // Delete deletes a single MechMoveCommandLog record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *MechMoveCommandLog) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *MechMoveCommandLog) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no MechMoveCommandLog provided for delete")
 	}
@@ -1108,26 +1101,8 @@ func (o *MechMoveCommandLog) Delete(exec boil.Executor, hardDelete bool) (int64,
 		return 0, err
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechMoveCommandLogPrimaryKeyMapping)
-		sql = "DELETE FROM \"mech_move_command_logs\" WHERE \"id\"=$1"
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		o.DeletedAt = null.TimeFrom(currTime)
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_move_command_logs\" SET %s WHERE \"id\"=$2",
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		valueMapping, err := queries.BindMapping(mechMoveCommandLogType, mechMoveCommandLogMapping, append(wl, mechMoveCommandLogPrimaryKeyColumns...))
-		if err != nil {
-			return 0, err
-		}
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
-	}
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechMoveCommandLogPrimaryKeyMapping)
+	sql := "DELETE FROM \"mech_move_command_logs\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1151,17 +1126,12 @@ func (o *MechMoveCommandLog) Delete(exec boil.Executor, hardDelete bool) (int64,
 }
 
 // DeleteAll deletes all matching rows.
-func (q mechMoveCommandLogQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q mechMoveCommandLogQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no mechMoveCommandLogQuery provided for delete all")
 	}
 
-	if hardDelete {
-		queries.SetDelete(q.Query)
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
-	}
+	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1177,7 +1147,7 @@ func (q mechMoveCommandLogQuery) DeleteAll(exec boil.Executor, hardDelete bool) 
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o MechMoveCommandLogSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o MechMoveCommandLogSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1190,31 +1160,14 @@ func (o MechMoveCommandLogSlice) DeleteAll(exec boil.Executor, hardDelete bool) 
 		}
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechMoveCommandLogPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-		}
-		sql = "DELETE FROM \"mech_move_command_logs\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechMoveCommandLogPrimaryKeyColumns, len(o))
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechMoveCommandLogPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-			obj.DeletedAt = null.TimeFrom(currTime)
-		}
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_move_command_logs\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, mechMoveCommandLogPrimaryKeyColumns, len(o)),
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		args = append([]interface{}{currTime}, args...)
+	var args []interface{}
+	for _, obj := range o {
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechMoveCommandLogPrimaryKeyMapping)
+		args = append(args, pkeyArgs...)
 	}
+
+	sql := "DELETE FROM \"mech_move_command_logs\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechMoveCommandLogPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1268,8 +1221,7 @@ func (o *MechMoveCommandLogSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"mech_move_command_logs\".* FROM \"mech_move_command_logs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechMoveCommandLogPrimaryKeyColumns, len(*o)) +
-		"and \"deleted_at\" is null"
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechMoveCommandLogPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
@@ -1286,7 +1238,7 @@ func (o *MechMoveCommandLogSlice) ReloadAll(exec boil.Executor) error {
 // MechMoveCommandLogExists checks if the MechMoveCommandLog row exists.
 func MechMoveCommandLogExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mech_move_command_logs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"mech_move_command_logs\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
