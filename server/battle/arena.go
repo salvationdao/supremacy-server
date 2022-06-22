@@ -616,8 +616,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.StartCoords),
-			GameLocationEnd:     getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.EndCoords),
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
 		}
 
 		break
@@ -653,7 +653,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.StartCoords),
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 		}
 		break
 	case boiler.LocationSelectTypeEnumGLOBAL:

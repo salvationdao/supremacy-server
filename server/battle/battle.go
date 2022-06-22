@@ -378,7 +378,8 @@ func (btl *Battle) start() {
 }
 
 // getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
-func getGameWorldCoordinatesFromCellXY(gameMap *server.GameMap, cell *server.CellLocation) *server.GameLocation {
+func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) *server.GameLocation {
+	gameMap := btl.gameMap
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels

@@ -2244,7 +2244,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		FactionID:           &faction.ID,
 	}
 
-	event.GameLocation = getGameWorldCoordinatesFromCellXY(as.battle().gameMap, &server.CellLocation{
+	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
 		X: *event.TriggeredOnCellX,
 		Y: *event.TriggeredOnCellY,
 	})

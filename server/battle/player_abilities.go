@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -137,10 +136,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		TriggeredOnCellX:    &req.Payload.X,
 		TriggeredOnCellY:    &req.Payload.Y,
 		EventID:             uuid.Must(uuid.NewV4()),
+		GameLocation: arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
+			X: req.Payload.X,
+			Y: req.Payload.Y,
+		}),
 	}
-	arena.CurrentBattle().calcTriggeredLocation(event)
-
-	spew.Dump(event)
 
 	// check mech command
 	arena.Message("BATTLE:ABILITY", event)
