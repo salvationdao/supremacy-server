@@ -159,7 +159,7 @@ func (s *S) KeycardTransferToXsynHandler(req Asset1155LockToSupremacyReq, resp *
 		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
 	}
 
-	err := db.UpdateKeycardReductionAmount(req.OwnerID, req.TokenID)
+	err := db.UpdateKeycardReductionAmount(req.OwnerID, req.TokenID, req.Amount)
 	if err != nil {
 		return terror.Error(err, "Failed to update amount")
 	}
