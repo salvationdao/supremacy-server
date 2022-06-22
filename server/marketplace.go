@@ -26,13 +26,13 @@ type MarketplaceSaleItem struct {
 	EndAt                time.Time                       `json:"end_at" boil:"end_at"`
 	SoldAt               null.Time                       `json:"sold_at" boil:"sold_at"`
 	SoldFor              decimal.NullDecimal             `json:"sold_for" boil:"sold_for"`
-	SoldTo               null.String                     `json:"sold_to" boil:"sold_to"`
+	SoldTo               MarketplaceUser                 `json:"sold_to" boil:"sold_to,bind"`
 	SoldTXID             null.String                     `json:"sold_tx_id" boil:"sold_tx_id"`
 	SoldFeeTXID          null.String                     `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
 	DeletedAt            null.Time                       `json:"deleted_at" boil:"deleted_at"`
 	UpdatedAt            time.Time                       `json:"updated_at" boil:"updated_at"`
 	CreatedAt            time.Time                       `json:"created_at" boil:"created_at"`
-	Owner                MarketplaceSaleItemOwner        `json:"owner,omitempty" boil:",bind"`
+	Owner                MarketplaceUser                 `json:"owner,omitempty" boil:"players,bind"`
 	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
 	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
 	CollectionItem       MarketplaceSaleCollectionItem   `json:"collection_item,omitempty" boil:",bind"`
@@ -55,12 +55,20 @@ func (b MarketplaceBidder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(localMarketplaceBidder(b))
 }
 
-type MarketplaceSaleItemOwner struct {
-	ID            string      `json:"id" boil:"players.id"`
-	Username      null.String `json:"username" boil:"players.username"`
-	FactionID     null.String `json:"faction_id" boil:"players.faction_id"`
-	PublicAddress null.String `json:"public_address" boil:"players.public_address"`
-	Gid           int         `json:"gid" boil:"players.gid"`
+type MarketplaceUser struct {
+	ID            null.String `json:"id" boil:"id"`
+	Username      null.String `json:"username" boil:"username"`
+	FactionID     null.String `json:"faction_id" boil:"faction_id"`
+	PublicAddress null.String `json:"public_address" boil:"public_address"`
+	Gid           null.Int    `json:"gid" boil:"gid"`
+}
+
+func (u MarketplaceUser) MarshalJSON() ([]byte, error) {
+	if !u.ID.Valid {
+		return null.NullBytes, nil
+	}
+	type localMarketplaceUser MarketplaceUser
+	return json.Marshal(localMarketplaceUser(u))
 }
 
 type MarketplaceSaleCollectionItem struct {
@@ -114,23 +122,23 @@ func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleItem1155 struct {
-	ID             string                   `json:"id" boil:"id"`
-	FactionID      string                   `json:"faction_id" boil:"faction_id"`
-	ItemID         string                   `json:"item_id" boil:"item_id"`
-	ListingFeeTXID string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
-	OwnerID        string                   `json:"owner_id" boil:"owner_id"`
-	BuyoutPrice    decimal.Decimal          `json:"buyout_price" boil:"buyout_price"`
-	EndAt          time.Time                `json:"end_at" boil:"end_at"`
-	SoldAt         null.Time                `json:"sold_at" boil:"sold_at"`
-	SoldFor        decimal.NullDecimal      `json:"sold_for" boil:"sold_for"`
-	SoldTo         null.String              `json:"sold_to" boil:"sold_to"`
-	SoldTXID       null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
-	SoldFeeTXID    null.String              `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
-	DeletedAt      null.Time                `json:"deleted_at" boil:"deleted_at"`
-	UpdatedAt      time.Time                `json:"updated_at" boil:"updated_at"`
-	CreatedAt      time.Time                `json:"created_at" boil:"created_at"`
-	Owner          MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
-	Keycard        AssetKeycardBlueprint    `json:"keycard,omitempty" boil:",bind"`
+	ID             string                `json:"id" boil:"id"`
+	FactionID      string                `json:"faction_id" boil:"faction_id"`
+	ItemID         string                `json:"item_id" boil:"item_id"`
+	ListingFeeTXID string                `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	OwnerID        string                `json:"owner_id" boil:"owner_id"`
+	BuyoutPrice    decimal.Decimal       `json:"buyout_price" boil:"buyout_price"`
+	EndAt          time.Time             `json:"end_at" boil:"end_at"`
+	SoldAt         null.Time             `json:"sold_at" boil:"sold_at"`
+	SoldFor        decimal.NullDecimal   `json:"sold_for" boil:"sold_for"`
+	SoldTXID       null.String           `json:"sold_tx_id" boil:"sold_tx_id"`
+	SoldFeeTXID    null.String           `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
+	DeletedAt      null.Time             `json:"deleted_at" boil:"deleted_at"`
+	UpdatedAt      time.Time             `json:"updated_at" boil:"updated_at"`
+	CreatedAt      time.Time             `json:"created_at" boil:"created_at"`
+	Owner          MarketplaceUser       `json:"owner,omitempty" boil:"players,bind"`
+	SoldTo         MarketplaceUser       `json:"sold_to" boil:"sold_to,bind"`
+	Keycard        AssetKeycardBlueprint `json:"keycard,omitempty" boil:",bind"`
 }
 
 type MechArenaStatus string
@@ -149,9 +157,9 @@ type MechArenaInfo struct {
 }
 
 type MarketplaceEvent struct {
-	ID              string                   `json:"id" boil:"id"`
-	EventType       string                   `json:"event_type" boil:"event_type"`
-	Amount          decimal.NullDecimal      `json:"amount" boil:"amount"`
-	ItemSale        *MarketplaceSaleItem     `json:"item_sale"`
-	ItemKeycardSale *MarketplaceSaleItem1155 `json:"item_keycard_sale"`
+	ID        string              `json:"id" boil:"id"`
+	EventType string              `json:"event_type" boil:"event_type"`
+	Amount    decimal.NullDecimal `json:"amount" boil:"amount"`
+	// ItemSale        *MarketplaceSaleItem     `json:"item_sale"`
+	// ItemKeycardSale *MarketplaceSaleItem1155 `json:"item_keycard_sale"`
 }

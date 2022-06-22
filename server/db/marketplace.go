@@ -35,7 +35,11 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		item_sales.end_at AS end_at,
 		item_sales.sold_at AS sold_at,
 		item_sales.sold_for AS sold_for,
-		item_sales.sold_to AS sold_to,
+		st.id AS "sold_to.id",
+		st.username AS "sold_to.username",
+		st.faction_id AS "sold_to.faction_id",
+		st.public_address AS "sold_to.public_address",
+		st.gid AS "sold_to.gid",
 		item_sales.sold_tx_id AS sold_tx_id,
 		item_sales.sold_fee_tx_id AS sold_fee_tx_id,
 		item_sales.deleted_at AS deleted_at,
@@ -116,6 +120,14 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
 		),
 	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s AS st ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels("st", boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.SoldTo),
+		),
+	),
 
 	// Last Auction Bidder
 	qm.LeftOuterJoin(
@@ -140,12 +152,30 @@ var ItemSaleQueryMods = []qm.QueryMod{
 
 var ItemKeycardSaleQueryMods = []qm.QueryMod{
 	qm.Select(
-		`item_keycard_sales.*,
+		`item_keycard_sales.id,
+		item_keycard_sales.faction_id,
+		item_keycard_sales.item_id,
+		item_keycard_sales.listing_fee_tx_id,
+		item_keycard_sales.owner_id,
+		item_keycard_sales.buyout_price,
+		item_keycard_sales.end_at,
+		item_keycard_sales.sold_at,
+		item_keycard_sales.sold_for,
+		item_keycard_sales.sold_tx_id,
+		item_keycard_sales.sold_fee_tx_id,
+		item_keycard_sales.deleted_at,
+		item_keycard_sales.updated_at,
+		item_keycard_sales.created_at,
 		players.id AS "players.id",
 		players.faction_id AS "players.faction_id",
 		players.username AS "players.username",
 		players.public_address AS "players.public_address",
 		players.gid AS "players.gid",
+		st.id AS "sold_to.id",
+		st.username AS "sold_to.username",
+		st.faction_id AS "sold_to.faction_id",
+		st.public_address AS "sold_to.public_address",
+		st.gid AS "sold_to.gid",
 		blueprint_keycards.id AS "blueprint_keycards.id",
 		blueprint_keycards.label AS "blueprint_keycards.label",
 		blueprint_keycards.description AS "blueprint_keycards.description",
@@ -179,6 +209,14 @@ var ItemKeycardSaleQueryMods = []qm.QueryMod{
 			boiler.TableNames.Players,
 			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
 			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s AS st ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels("st", boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.SoldTo),
 		),
 	),
 }
@@ -217,7 +255,11 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.EndAt,
 		&output.SoldAt,
 		&output.SoldFor,
-		&output.SoldTo,
+		&output.SoldTo.ID,
+		&output.SoldTo.Username,
+		&output.SoldTo.FactionID,
+		&output.SoldTo.PublicAddress,
+		&output.SoldTo.Gid,
 		&output.SoldTXID,
 		&output.SoldFeeTXID,
 		&output.DeletedAt,
@@ -277,7 +319,6 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.EndAt,
 		&output.SoldAt,
 		&output.SoldFor,
-		&output.SoldTo,
 		&output.SoldTXID,
 		&output.SoldFeeTXID,
 		&output.DeletedAt,
@@ -288,6 +329,11 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 		&output.Owner.Username,
 		&output.Owner.PublicAddress,
 		&output.Owner.Gid,
+		&output.SoldTo.ID,
+		&output.SoldTo.Username,
+		&output.SoldTo.FactionID,
+		&output.SoldTo.PublicAddress,
+		&output.SoldTo.Gid,
 		&output.Keycard.ID,
 		&output.Keycard.Label,
 		&output.Keycard.Description,
@@ -804,7 +850,7 @@ func MarketplaceEventList(
 	records, err := boiler.MarketplaceEvents(
 		append(
 			queryMods,
-			qm.Load(boiler.MarketplaceEventRels.RelatedSaleItem),
+			qm.Load(qm.Rels(boiler.MarketplaceEventRels.RelatedSaleItem, boiler.ItemSaleRels.CollectionItem)),
 			qm.Load(boiler.MarketplaceEventRels.RelatedSaleItemKeycard),
 		)...).All(gamedb.StdConn)
 	if err != nil {
@@ -818,17 +864,53 @@ func MarketplaceEventList(
 			EventType: r.EventType,
 			Amount:    r.Amount,
 		}
-		if r.R != nil {
-			if r.R.RelatedSaleItem != nil {
-				item := &server.MarketplaceSaleItem{}
-				row.ItemSale = item
-			} else if r.R.RelatedSaleItemKeycard != nil {
-				item := &server.MarketplaceSaleItem1155{
-					// ID:
-				}
-				row.ItemKeycardSale = item
-			}
-		}
+		// if r.R != nil {
+		// 	if r.R.RelatedSaleItem != nil {
+		// 		item := &server.MarketplaceSaleItem{
+		// 			ID:                   r.R.RelatedSaleItem.ID,
+		// 			FactionID:            r.R.RelatedSaleItem.FactionID,
+		// 			CollectionItemID:     r.R.RelatedSaleItem.CollectionItemID,
+		// 			CollectionItemType:   r.R.RelatedSaleItem.R.CollectionItem.ItemType,
+		// 			ListingFeeTXID:       r.R.RelatedSaleItem.ListingFeeTXID,
+		// 			OwnerID:              r.R.RelatedSaleItem.OwnerID,
+		// 			Auction:              r.R.RelatedSaleItem.Auction,
+		// 			AuctionCurrentPrice:  r.R.RelatedSaleItem.AuctionCurrentPrice,
+		// 			AuctionReservedPrice: r.R.RelatedSaleItem.AuctionReservedPrice,
+		// 			Buyout:               r.R.RelatedSaleItem.Buyout,
+		// 			BuyoutPrice:          r.R.RelatedSaleItem.BuyoutPrice,
+		// 			DutchAuction:         r.R.RelatedSaleItem.DutchAuction,
+		// 			DutchAuctionDropRate: r.R.RelatedSaleItem.DutchAuctionDropRate,
+		// 			EndAt:                r.R.RelatedSaleItem.EndAt,
+		// 			SoldAt:               r.R.RelatedSaleItem.SoldAt,
+		// 			SoldFor:              r.R.RelatedSaleItem.SoldFor,
+		// 			SoldTo:               r.R.RelatedSaleItem.SoldTo,
+		// 			SoldTXID:             r.R.RelatedSaleItem.SoldTXID,
+		// 			SoldFeeTXID:          r.R.RelatedSaleItem.SoldFeeTXID,
+		// 			DeletedAt:            r.R.RelatedSaleItem.DeletedAt,
+		// 			UpdatedAt:            r.R.RelatedSaleItem.UpdatedAt,
+		// 			CreatedAt:            r.R.RelatedSaleItem.CreatedAt,
+		// 		}
+		// 		row.ItemSale = item
+		// 	} else if r.R.RelatedSaleItemKeycard != nil {
+		// 		item := &server.MarketplaceSaleItem1155{
+		// 			ID:             r.R.RelatedSaleItemKeycard.ID,
+		// 			FactionID:      r.R.RelatedSaleItemKeycard.FactionID,
+		// 			ItemID:         r.R.RelatedSaleItemKeycard.ItemID,
+		// 			ListingFeeTXID: r.R.RelatedSaleItemKeycard.ListingFeeTXID,
+		// 			OwnerID:        r.R.RelatedSaleItemKeycard.OwnerID,
+		// 			BuyoutPrice:    r.R.RelatedSaleItemKeycard.BuyoutPrice,
+		// 			EndAt:          r.R.RelatedSaleItemKeycard.EndAt,
+		// 			SoldAt:         r.R.RelatedSaleItemKeycard.SoldAt,
+		// 			SoldFor:        r.R.RelatedSaleItemKeycard.SoldFor,
+		// 			SoldTo:         r.R.RelatedSaleItemKeycard.SoldTo,
+		// 			SoldTXID:       r.R.RelatedSaleItemKeycard.SoldTXID,
+		// 			SoldFeeTXID:    r.R.RelatedSaleItemKeycard.SoldFeeTXID,
+		// 			DeletedAt:      r.R.RelatedSaleItemKeycard.DeletedAt,
+		// 			UpdatedAt:      r.R.RelatedSaleItemKeycard.UpdatedAt,
+		// 		}
+		// 		row.ItemKeycardSale = item
+		// 	}
+		// }
 		output = append(output, row)
 	}
 

@@ -901,7 +901,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldTo.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1002,7 +1002,7 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldTo.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1112,7 +1112,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
 	}
-	if saleItem.SoldTo.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
@@ -1482,7 +1482,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
-	if saleItem.SoldTo.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1783,7 +1783,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if !saleItem.Auction {
 		return terror.Error(fmt.Errorf("item is not up for auction"), "Item is not up for auction.")
 	}
-	if saleItem.SoldTo.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.FactionID != fID {
