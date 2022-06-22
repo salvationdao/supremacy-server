@@ -160,6 +160,7 @@ type MarketplaceEvent struct {
 	ID        string                `json:"id" boil:"id"`
 	EventType string                `json:"event_type" boil:"event_type"`
 	Amount    decimal.NullDecimal   `json:"amount" boil:"amount"`
+	CreatedAt time.Time             `json:"created_at" boil:"created_at"`
 	Item      *MarketplaceEventItem `json:"item"`
 }
 

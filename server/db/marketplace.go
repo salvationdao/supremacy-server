@@ -901,6 +901,7 @@ func MarketplaceEventList(
 			ID:        r.ID,
 			EventType: r.EventType,
 			Amount:    r.Amount,
+			CreatedAt: r.CreatedAt,
 		}
 
 		if r.R != nil {
