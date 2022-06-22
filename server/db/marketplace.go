@@ -777,7 +777,7 @@ func MarketplaceEventList(
 						LIMIT 1
 					)
 				)`,
-				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
 				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
 			),
 			userID,
@@ -1049,58 +1049,10 @@ func MarketplaceEventList(
 				}
 			}
 		}
-
-		// if r.R != nil {
-		// 	if r.R.RelatedSaleItem != nil {
-		// 		item := &server.MarketplaceSaleItem{
-		// 			ID:                   r.R.RelatedSaleItem.ID,
-		// 			FactionID:            r.R.RelatedSaleItem.FactionID,
-		// 			CollectionItemID:     r.R.RelatedSaleItem.CollectionItemID,
-		// 			CollectionItemType:   r.R.RelatedSaleItem.R.CollectionItem.ItemType,
-		// 			ListingFeeTXID:       r.R.RelatedSaleItem.ListingFeeTXID,
-		// 			OwnerID:              r.R.RelatedSaleItem.OwnerID,
-		// 			Auction:              r.R.RelatedSaleItem.Auction,
-		// 			AuctionCurrentPrice:  r.R.RelatedSaleItem.AuctionCurrentPrice,
-		// 			AuctionReservedPrice: r.R.RelatedSaleItem.AuctionReservedPrice,
-		// 			Buyout:               r.R.RelatedSaleItem.Buyout,
-		// 			BuyoutPrice:          r.R.RelatedSaleItem.BuyoutPrice,
-		// 			DutchAuction:         r.R.RelatedSaleItem.DutchAuction,
-		// 			DutchAuctionDropRate: r.R.RelatedSaleItem.DutchAuctionDropRate,
-		// 			EndAt:                r.R.RelatedSaleItem.EndAt,
-		// 			SoldAt:               r.R.RelatedSaleItem.SoldAt,
-		// 			SoldFor:              r.R.RelatedSaleItem.SoldFor,
-		// 			SoldTo:               r.R.RelatedSaleItem.SoldTo,
-		// 			SoldTXID:             r.R.RelatedSaleItem.SoldTXID,
-		// 			SoldFeeTXID:          r.R.RelatedSaleItem.SoldFeeTXID,
-		// 			DeletedAt:            r.R.RelatedSaleItem.DeletedAt,
-		// 			UpdatedAt:            r.R.RelatedSaleItem.UpdatedAt,
-		// 			CreatedAt:            r.R.RelatedSaleItem.CreatedAt,
-		// 		}
-		// 		row.ItemSale = item
-		// 	} else if r.R.RelatedSaleItemKeycard != nil {
-		// 		item := &server.MarketplaceSaleItem1155{
-		// 			ID:             r.R.RelatedSaleItemKeycard.ID,
-		// 			FactionID:      r.R.RelatedSaleItemKeycard.FactionID,
-		// 			ItemID:         r.R.RelatedSaleItemKeycard.ItemID,
-		// 			ListingFeeTXID: r.R.RelatedSaleItemKeycard.ListingFeeTXID,
-		// 			OwnerID:        r.R.RelatedSaleItemKeycard.OwnerID,
-		// 			BuyoutPrice:    r.R.RelatedSaleItemKeycard.BuyoutPrice,
-		// 			EndAt:          r.R.RelatedSaleItemKeycard.EndAt,
-		// 			SoldAt:         r.R.RelatedSaleItemKeycard.SoldAt,
-		// 			SoldFor:        r.R.RelatedSaleItemKeycard.SoldFor,
-		// 			SoldTo:         r.R.RelatedSaleItemKeycard.SoldTo,
-		// 			SoldTXID:       r.R.RelatedSaleItemKeycard.SoldTXID,
-		// 			SoldFeeTXID:    r.R.RelatedSaleItemKeycard.SoldFeeTXID,
-		// 			DeletedAt:      r.R.RelatedSaleItemKeycard.DeletedAt,
-		// 			UpdatedAt:      r.R.RelatedSaleItemKeycard.UpdatedAt,
-		// 		}
-		// 		row.ItemKeycardSale = item
-		// 	}
-		// }
 		output = append(output, row)
 	}
 
-	return 0, output, nil
+	return total, output, nil
 }
 
 // MarketplaceSaleArchive archives as sale item.
