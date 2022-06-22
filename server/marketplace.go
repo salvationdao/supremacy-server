@@ -161,8 +161,6 @@ type MarketplaceEvent struct {
 	EventType string                `json:"event_type" boil:"event_type"`
 	Amount    decimal.NullDecimal   `json:"amount" boil:"amount"`
 	Item      *MarketplaceEventItem `json:"item"`
-	// ItemSale        *MarketplaceSaleItem     `json:"item_sale"`
-	// ItemKeycardSale *MarketplaceSaleItem1155 `json:"item_keycard_sale"`
 }
 
 type MarketplaceEventItem struct {
