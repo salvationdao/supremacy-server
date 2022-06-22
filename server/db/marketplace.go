@@ -836,9 +836,9 @@ func MarketplaceEventList(
 		sortBy = "date"
 	}
 
-	if sortBy == "date" {
+	if sortBy == boiler.MarketplaceEventColumns.CreatedAt {
 		sortBy = qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.CreatedAt)
-	} else if sortBy == "name" {
+	} else if sortBy == "alphabetical" {
 		sortBy = fmt.Sprintf(
 			`CASE
 				WHEN %[1]s = '%[2]s' THEN COALESCE(%[3]s, %[4]s)
@@ -853,6 +853,8 @@ func MarketplaceEventList(
 			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label),
 		)
+	} else {
+		return 0, nil, terror.Error(fmt.Errorf("invalid sort column name"))
 	}
 
 	queryMods = append(
