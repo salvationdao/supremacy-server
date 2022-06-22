@@ -871,9 +871,17 @@ func MarketplaceEventList(
 			boiler.ItemSaleRels.CollectionItem,
 		)),
 		qm.Load(qm.Rels(
+			boiler.MarketplaceEventRels.RelatedSaleItem,
+			boiler.ItemSaleRels.SoldToPlayer,
+		)),
+		qm.Load(qm.Rels(
 			boiler.MarketplaceEventRels.RelatedSaleItemKeycard,
 			boiler.ItemKeycardSaleRels.Item,
 			boiler.PlayerKeycardRels.BlueprintKeycard,
+		)),
+		qm.Load(qm.Rels(
+			boiler.MarketplaceEventRels.RelatedSaleItemKeycard,
+			boiler.ItemKeycardSaleRels.SoldToPlayer,
 		)),
 	)
 	records, err := boiler.MarketplaceEvents(queryMods...).All(gamedb.StdConn)
@@ -918,6 +926,15 @@ func MarketplaceEventList(
 					UpdatedAt:            r.R.RelatedSaleItem.UpdatedAt,
 					CreatedAt:            r.R.RelatedSaleItem.CreatedAt,
 				}
+				if r.R.RelatedSaleItem.R.SoldToPlayer != nil {
+					row.Item.SoldTo = server.MarketplaceUser{
+						ID:            null.StringFrom(r.R.RelatedSaleItem.R.SoldToPlayer.ID),
+						Username:      r.R.RelatedSaleItem.R.SoldToPlayer.Username,
+						FactionID:     r.R.RelatedSaleItem.R.SoldToPlayer.FactionID,
+						PublicAddress: r.R.RelatedSaleItem.R.SoldToPlayer.PublicAddress,
+						Gid:           null.IntFrom(r.R.RelatedSaleItem.R.SoldToPlayer.Gid),
+					}
+				}
 				switch r.R.RelatedSaleItem.R.CollectionItem.ItemType {
 				case boiler.ItemTypeMech:
 					mechIDs = append(mechIDs, r.R.RelatedSaleItem.CollectionItemID)
@@ -959,6 +976,15 @@ func MarketplaceEventList(
 						Syndicate:      r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.Syndicate,
 						CreatedAt:      r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.CreatedAt,
 					},
+				}
+				if r.R.RelatedSaleItemKeycard.R.SoldToPlayer != nil {
+					row.Item.SoldTo = server.MarketplaceUser{
+						ID:            null.StringFrom(r.R.RelatedSaleItemKeycard.R.SoldToPlayer.ID),
+						Username:      r.R.RelatedSaleItemKeycard.R.SoldToPlayer.Username,
+						FactionID:     r.R.RelatedSaleItemKeycard.R.SoldToPlayer.FactionID,
+						PublicAddress: r.R.RelatedSaleItemKeycard.R.SoldToPlayer.PublicAddress,
+						Gid:           null.IntFrom(r.R.RelatedSaleItemKeycard.R.SoldToPlayer.Gid),
+					}
 				}
 			}
 		}
