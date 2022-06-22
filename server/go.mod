@@ -17,7 +17,7 @@ require (
 	github.com/ninja-syndicate/ws v0.13.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
-	github.com/urfave/cli/v2 v2.8.1
+	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/net v0.0.0-20211020060615-d418f374d309
 	nhooyr.io/websocket v1.8.7
 )
@@ -85,7 +85,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.10.14
 	github.com/fatih/color v1.13.0 // indirect
@@ -128,5 +128,5 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/DataDog/dd-trace-go.v1 v1.37.1
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

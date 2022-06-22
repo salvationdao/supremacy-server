@@ -19,6 +19,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
 )
 
@@ -105,12 +106,17 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			if len(pas.salePlayerAbilities) < 1 {
 				gamelog.L.Debug().Msg("repopulating sale abilities since there aren't any more")
 				// If no abilities are on sale, refill sale abilities
-				saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
+				saleAbilities, err := boiler.SalePlayerAbilities(
+					boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
+					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+				).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 					limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3) // default 3
-					allSaleAbilities, err := boiler.SalePlayerAbilities().All(gamedb.StdConn)
+					allSaleAbilities, err := boiler.SalePlayerAbilities(
+						qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+					).All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
 						break
@@ -120,7 +126,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
-					oneHourFromNow := time.Now().Add(time.Hour)
+					oneHourFromNow := time.Now().Add(time.Minute)
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(allSaleAbilities))
 					for _, i := range randomIndexes[:limit] {
@@ -135,8 +141,17 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
 						continue
 					}
+
+					detailedSaleAbilities := []*db.SaleAbilityDetailed{}
+					for _, s := range saleAbilities {
+						detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
+							SalePlayerAbility: s,
+							Ability:           s.R.Blueprint,
+						})
+					}
+
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/public/live_data", server.HubKeySaleAbilitiesListUpdated, true)
+					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, detailedSaleAbilities)
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
@@ -160,7 +175,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				ws.PublishMessage("/public/live_data", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
@@ -175,7 +190,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				ws.PublishMessage("/public/live_data", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
 				})

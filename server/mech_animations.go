@@ -62,14 +62,19 @@ func (b *BlueprintMechAnimation) Scan(value interface{}) error {
 
 func BlueprintMechAnimationFromBoiler(animation *boiler.BlueprintMechAnimation) *BlueprintMechAnimation {
 	return &BlueprintMechAnimation{
-		ID:             animation.ID,
-		Collection:     animation.Collection,
-		Label:          animation.Label,
-		MechModel:      animation.MechModel,
-		Tier:           animation.Tier,
-		IntroAnimation: animation.IntroAnimation,
-		OutroAnimation: animation.OutroAnimation,
-		CreatedAt:      animation.CreatedAt,
+		ID:               animation.ID,
+		Collection:       animation.Collection,
+		Label:            animation.Label,
+		MechModel:        animation.MechModel,
+		Tier:             animation.Tier,
+		IntroAnimation:   animation.IntroAnimation,
+		OutroAnimation:   animation.OutroAnimation,
+		CreatedAt:        animation.CreatedAt,
+		ImageURL:         animation.ImageURL,
+		AnimationURL:     animation.AnimationURL,
+		CardAnimationURL: animation.CardAnimationURL,
+		LargeImageURL:    animation.LargeImageURL,
+		AvatarURL:        animation.AvatarURL,
 	}
 }
 
