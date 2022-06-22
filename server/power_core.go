@@ -69,17 +69,22 @@ func (b *BlueprintPowerCore) Scan(value interface{}) error {
 
 func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPowerCore {
 	return &BlueprintPowerCore{
-		ID:           core.ID,
-		Collection:   core.Collection,
-		Label:        core.Label,
-		Size:         core.Size,
-		Capacity:     core.Capacity,
-		MaxDrawRate:  core.MaxDrawRate,
-		RechargeRate: core.RechargeRate,
-		Armour:       core.Armour,
-		MaxHitpoints: core.MaxHitpoints,
-		Tier:         core.Tier,
-		CreatedAt:    core.CreatedAt,
+		ID:               core.ID,
+		Collection:       core.Collection,
+		Label:            core.Label,
+		Size:             core.Size,
+		Capacity:         core.Capacity,
+		MaxDrawRate:      core.MaxDrawRate,
+		RechargeRate:     core.RechargeRate,
+		Armour:           core.Armour,
+		MaxHitpoints:     core.MaxHitpoints,
+		Tier:             core.Tier,
+		ImageURL:         core.ImageURL,
+		AnimationURL:     core.AnimationURL,
+		CardAnimationURL: core.CardAnimationURL,
+		LargeImageURL:    core.LargeImageURL,
+		AvatarURL:        core.AvatarURL,
+		CreatedAt:        core.CreatedAt,
 	}
 }
 
