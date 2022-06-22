@@ -218,11 +218,12 @@ const HubKeyMarketplaceEventList = "MARKETPLACE:EVENT:LIST"
 type MarketplaceEventListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir `json:"sort_dir"`
-		SortBy   string       `json:"sort_by"`
-		Search   string       `json:"search"`
-		PageSize int          `json:"page_size"`
-		Page     int          `json:"page"`
+		SortDir   db.SortByDir `json:"sort_dir"`
+		SortBy    string       `json:"sort_by"`
+		EventType string       `json:"event_type"`
+		Search    string       `json:"search"`
+		PageSize  int          `json:"page_size"`
+		Page      int          `json:"page"`
 	} `json:"payload"`
 }
 
@@ -246,6 +247,7 @@ func (fc *MarketplaceController) EventListHandler(ctx context.Context, user *boi
 	total, records, err := db.MarketplaceEventList(
 		user.ID,
 		req.Payload.Search,
+		req.Payload.EventType,
 		offset,
 		req.Payload.PageSize,
 		req.Payload.SortBy,

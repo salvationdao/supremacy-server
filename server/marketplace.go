@@ -157,9 +157,42 @@ type MechArenaInfo struct {
 }
 
 type MarketplaceEvent struct {
-	ID        string              `json:"id" boil:"id"`
-	EventType string              `json:"event_type" boil:"event_type"`
-	Amount    decimal.NullDecimal `json:"amount" boil:"amount"`
+	ID        string                `json:"id" boil:"id"`
+	EventType string                `json:"event_type" boil:"event_type"`
+	Amount    decimal.NullDecimal   `json:"amount" boil:"amount"`
+	Item      *MarketplaceEventItem `json:"item"`
 	// ItemSale        *MarketplaceSaleItem     `json:"item_sale"`
 	// ItemKeycardSale *MarketplaceSaleItem1155 `json:"item_keycard_sale"`
+}
+
+type MarketplaceEventItem struct {
+	ID                   string                          `json:"id" boil:"id"`
+	FactionID            string                          `json:"faction_id" boil:"faction_id"`
+	CollectionItemID     string                          `json:"collection_item_id" boil:"collection_item_id"`
+	CollectionItemType   string                          `json:"collection_item_type" boil:"collection_item_type"`
+	ListingFeeTXID       string                          `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	OwnerID              string                          `json:"owner_id" boil:"owner_id"`
+	Auction              bool                            `json:"auction" boil:"auction"`
+	AuctionCurrentPrice  decimal.NullDecimal             `json:"auction_current_price,omitempty" boil:"auction_current_price"`
+	AuctionReservedPrice decimal.NullDecimal             `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
+	TotalBids            int64                           `json:"total_bids" boil:"total_bids"`
+	Buyout               bool                            `json:"buyout" boil:"buyout"`
+	BuyoutPrice          decimal.NullDecimal             `json:"buyout_price" boil:"buyout_price"`
+	DutchAuction         bool                            `json:"dutch_auction" boil:"dutch_auction"`
+	DutchAuctionDropRate decimal.NullDecimal             `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
+	EndAt                time.Time                       `json:"end_at" boil:"end_at"`
+	SoldAt               null.Time                       `json:"sold_at" boil:"sold_at"`
+	SoldFor              decimal.NullDecimal             `json:"sold_for" boil:"sold_for"`
+	SoldTo               MarketplaceUser                 `json:"sold_to" boil:"sold_to,bind"`
+	SoldTXID             null.String                     `json:"sold_tx_id" boil:"sold_tx_id"`
+	SoldFeeTXID          null.String                     `json:"sold_fee_tx_id" boil:"sold_fee_tx_id"`
+	DeletedAt            null.Time                       `json:"deleted_at" boil:"deleted_at"`
+	UpdatedAt            time.Time                       `json:"updated_at" boil:"updated_at"`
+	CreatedAt            time.Time                       `json:"created_at" boil:"created_at"`
+	Owner                MarketplaceUser                 `json:"owner,omitempty" boil:"players,bind"`
+	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
+	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
+	Keycard              AssetKeycardBlueprint           `json:"keycard,omitempty" boil:",bind"`
+	CollectionItem       MarketplaceSaleCollectionItem   `json:"collection_item,omitempty" boil:",bind"`
+	LastBid              MarketplaceBidder               `json:"last_bid,omitempty" boil:",bind"`
 }

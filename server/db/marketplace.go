@@ -221,16 +221,6 @@ var ItemKeycardSaleQueryMods = []qm.QueryMod{
 	),
 }
 
-var MarketplaceEventQueryMods = []qm.QueryMod{
-	qm.Select(
-		`marketplace_events.id,
-		marketplace_events.event_type,
-		marketplace_events.amount,
-		marketplace_events.related_sale_item_id,
-		marketplace_events.related_sale_item_keycard_id`,
-	),
-}
-
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	output := &server.MarketplaceSaleItem{}
@@ -683,16 +673,13 @@ func MarketplaceItemKeycardSaleList(
 func MarketplaceEventList(
 	userID string,
 	search string,
+	eventType string,
 	offset int,
 	pageSize int,
 	sortBy string,
 	sortDir SortByDir,
 ) (int64, []*server.MarketplaceEvent, error) {
-	if !sortDir.IsValid() {
-		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
-	}
-
-	queryMods := append(MarketplaceEventQueryMods,
+	queryMods := []qm.QueryMod{
 		// Item Sales
 		qm.LeftOuterJoin(
 			fmt.Sprintf(
@@ -797,7 +784,12 @@ func MarketplaceEventList(
 			userID,
 			userID,
 		),
-	)
+	}
+
+	// Filters
+	if eventType != "" {
+		queryMods = append(queryMods, boiler.MarketplaceEventWhere.EventType.EQ(eventType))
+	}
 
 	// Search
 	if search != "" {
@@ -836,10 +828,36 @@ func MarketplaceEventList(
 		return 0, []*server.MarketplaceEvent{}, nil
 	}
 
-	// TODO: Sort
+	// Sort
+	if !sortDir.IsValid() {
+		sortDir = SortByDirDesc
+	}
+	if sortBy == "" {
+		sortBy = "date"
+	}
+
+	if sortBy == "date" {
+		sortBy = qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.CreatedAt)
+	} else if sortBy == "name" {
+		sortBy = fmt.Sprintf(
+			`CASE
+				WHEN %[1]s = '%[2]s' THEN COALESCE(%[3]s, %[4]s)
+				WHEN %[1]s = '%[5]s' THEN %[6]s
+				ELSE %[7]s
+			END`,
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			boiler.ItemTypeMech,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			boiler.ItemTypeMysteryCrate,
+			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label),
+		)
+	}
+
 	queryMods = append(
 		queryMods,
-		qm.OrderBy(qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.CreatedAt)+" "+string(sortDir)),
+		qm.OrderBy(sortBy+" "+string(sortDir)),
 	)
 
 	// Limit/Offset
@@ -847,15 +865,25 @@ func MarketplaceEventList(
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	records, err := boiler.MarketplaceEvents(
-		append(
-			queryMods,
-			qm.Load(qm.Rels(boiler.MarketplaceEventRels.RelatedSaleItem, boiler.ItemSaleRels.CollectionItem)),
-			qm.Load(boiler.MarketplaceEventRels.RelatedSaleItemKeycard),
-		)...).All(gamedb.StdConn)
+	queryMods = append(queryMods,
+		qm.Load(qm.Rels(
+			boiler.MarketplaceEventRels.RelatedSaleItem,
+			boiler.ItemSaleRels.CollectionItem,
+		)),
+		qm.Load(qm.Rels(
+			boiler.MarketplaceEventRels.RelatedSaleItemKeycard,
+			boiler.ItemKeycardSaleRels.Item,
+			boiler.PlayerKeycardRels.BlueprintKeycard,
+		)),
+	)
+	records, err := boiler.MarketplaceEvents(queryMods...).All(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
+
+	// Populate reasons
+	mechIDs := []string{}
+	mysteryCrateIDs := []string{}
 
 	output := []*server.MarketplaceEvent{}
 	for _, r := range records {
@@ -864,6 +892,138 @@ func MarketplaceEventList(
 			EventType: r.EventType,
 			Amount:    r.Amount,
 		}
+
+		if r.R != nil {
+			if r.R.RelatedSaleItem != nil {
+				row.Item = &server.MarketplaceEventItem{
+					ID:                   r.R.RelatedSaleItem.ID,
+					FactionID:            r.R.RelatedSaleItem.FactionID,
+					CollectionItemID:     r.R.RelatedSaleItem.CollectionItemID,
+					CollectionItemType:   r.R.RelatedSaleItem.R.CollectionItem.ItemType,
+					ListingFeeTXID:       r.R.RelatedSaleItem.ListingFeeTXID,
+					OwnerID:              r.R.RelatedSaleItem.OwnerID,
+					Auction:              r.R.RelatedSaleItem.Auction,
+					AuctionCurrentPrice:  r.R.RelatedSaleItem.AuctionCurrentPrice,
+					AuctionReservedPrice: r.R.RelatedSaleItem.AuctionReservedPrice,
+					Buyout:               r.R.RelatedSaleItem.Buyout,
+					BuyoutPrice:          r.R.RelatedSaleItem.BuyoutPrice,
+					DutchAuction:         r.R.RelatedSaleItem.DutchAuction,
+					DutchAuctionDropRate: r.R.RelatedSaleItem.DutchAuctionDropRate,
+					EndAt:                r.R.RelatedSaleItem.EndAt,
+					SoldAt:               r.R.RelatedSaleItem.SoldAt,
+					SoldFor:              r.R.RelatedSaleItem.SoldFor,
+					SoldTXID:             r.R.RelatedSaleItem.SoldTXID,
+					SoldFeeTXID:          r.R.RelatedSaleItem.SoldFeeTXID,
+					DeletedAt:            r.R.RelatedSaleItem.DeletedAt,
+					UpdatedAt:            r.R.RelatedSaleItem.UpdatedAt,
+					CreatedAt:            r.R.RelatedSaleItem.CreatedAt,
+				}
+				switch r.R.RelatedSaleItem.R.CollectionItem.ItemType {
+				case boiler.ItemTypeMech:
+					mechIDs = append(mechIDs, r.R.RelatedSaleItem.CollectionItemID)
+				case boiler.ItemTypeMysteryCrate:
+					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.CollectionItemID)
+				}
+			} else if r.R.RelatedSaleItemKeycard != nil {
+				row.Item = &server.MarketplaceEventItem{
+					ID:                   r.R.RelatedSaleItemKeycard.ID,
+					FactionID:            r.R.RelatedSaleItemKeycard.FactionID,
+					CollectionItemID:     r.R.RelatedSaleItemKeycard.ItemID,
+					CollectionItemType:   "keycard",
+					ListingFeeTXID:       r.R.RelatedSaleItemKeycard.ListingFeeTXID,
+					OwnerID:              r.R.RelatedSaleItemKeycard.OwnerID,
+					Auction:              false,
+					AuctionCurrentPrice:  decimal.NullDecimal{},
+					AuctionReservedPrice: decimal.NullDecimal{},
+					Buyout:               true,
+					BuyoutPrice:          decimal.NewNullDecimal(r.R.RelatedSaleItemKeycard.BuyoutPrice),
+					DutchAuction:         false,
+					DutchAuctionDropRate: decimal.NullDecimal{},
+					EndAt:                r.R.RelatedSaleItemKeycard.EndAt,
+					SoldAt:               r.R.RelatedSaleItemKeycard.SoldAt,
+					SoldFor:              r.R.RelatedSaleItemKeycard.SoldFor,
+					SoldTXID:             r.R.RelatedSaleItemKeycard.SoldTXID,
+					SoldFeeTXID:          r.R.RelatedSaleItemKeycard.SoldFeeTXID,
+					DeletedAt:            r.R.RelatedSaleItemKeycard.DeletedAt,
+					UpdatedAt:            r.R.RelatedSaleItemKeycard.UpdatedAt,
+					CreatedAt:            r.R.RelatedSaleItemKeycard.CreatedAt,
+					Keycard: server.AssetKeycardBlueprint{
+						ID:             r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.ID,
+						Label:          r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.Label,
+						Description:    r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.Description,
+						Collection:     r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.Collection,
+						KeycardTokenID: r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.KeycardTokenID,
+						ImageURL:       r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.ImageURL,
+						AnimationURL:   r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.AnimationURL,
+						KeycardGroup:   r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.KeycardGroup,
+						Syndicate:      r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.Syndicate,
+						CreatedAt:      r.R.RelatedSaleItemKeycard.R.Item.R.BlueprintKeycard.CreatedAt,
+					},
+				}
+			}
+		}
+
+		// Load in collection item details
+		if len(mechIDs) > 0 {
+			mechs := []*server.MarketplaceSaleItemMech{}
+			err = boiler.Mechs(
+				qm.Select(
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.AvatarURL),
+				),
+				qm.InnerJoin(
+					fmt.Sprintf(
+						"%s ON %s = %s",
+						boiler.TableNames.MechSkin,
+						qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+						qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+					),
+				),
+				boiler.MechWhere.ID.IN(mechIDs),
+			).Bind(nil, gamedb.StdConn, &mechs)
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+			for i := range output {
+				if output[i].Item.CollectionItemType != boiler.ItemTypeMech {
+					continue
+				}
+				for _, m := range mechs {
+					if m.ID.String == output[i].Item.CollectionItemID {
+						output[i].Item.Mech = *m
+						break
+					}
+				}
+			}
+		}
+		if len(mysteryCrateIDs) > 0 {
+			mysteryCrates := []*server.MarketplaceSaleItemMysteryCrate{}
+			err = boiler.MysteryCrates(
+				qm.Select(
+					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
+					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
+					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Description),
+				),
+				boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
+			).Bind(nil, gamedb.StdConn, &mysteryCrates)
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+			for i := range output {
+				if output[i].Item.CollectionItemType != boiler.ItemTypeMysteryCrate {
+					continue
+				}
+				for _, m := range mysteryCrates {
+					if m.ID.String == output[i].Item.CollectionItemID {
+						output[i].Item.MysteryCrate = *m
+						break
+					}
+				}
+			}
+		}
+
 		// if r.R != nil {
 		// 	if r.R.RelatedSaleItem != nil {
 		// 		item := &server.MarketplaceSaleItem{
