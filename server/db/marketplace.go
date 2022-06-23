@@ -952,7 +952,7 @@ func MarketplaceEventList(
 				}
 				switch r.R.RelatedSaleItem.R.CollectionItem.ItemType {
 				case boiler.ItemTypeMech:
-					mechIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
+					mechIDs = append(mechIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
 					collectionToMechID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
 				case boiler.ItemTypeMysteryCrate:
 					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
