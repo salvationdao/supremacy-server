@@ -866,23 +866,25 @@ func MarketplaceEventList(
 	}
 
 	queryMods = append(queryMods,
+		qm.Load(boiler.MarketplaceEventRels.RelatedSaleItem, qm.WithDeleted()),
 		qm.Load(qm.Rels(
 			boiler.MarketplaceEventRels.RelatedSaleItem,
 			boiler.ItemSaleRels.CollectionItem,
-		)),
+		), qm.WithDeleted()),
 		qm.Load(qm.Rels(
 			boiler.MarketplaceEventRels.RelatedSaleItem,
 			boiler.ItemSaleRels.SoldToPlayer,
-		)),
+		), qm.WithDeleted()),
+		qm.Load(boiler.MarketplaceEventRels.RelatedSaleItemKeycard, qm.WithDeleted()),
 		qm.Load(qm.Rels(
 			boiler.MarketplaceEventRels.RelatedSaleItemKeycard,
 			boiler.ItemKeycardSaleRels.Item,
 			boiler.PlayerKeycardRels.BlueprintKeycard,
-		)),
+		), qm.WithDeleted()),
 		qm.Load(qm.Rels(
 			boiler.MarketplaceEventRels.RelatedSaleItemKeycard,
 			boiler.ItemKeycardSaleRels.SoldToPlayer,
-		)),
+		), qm.WithDeleted()),
 	)
 	records, err := boiler.MarketplaceEvents(queryMods...).All(gamedb.StdConn)
 	if err != nil {
@@ -905,6 +907,7 @@ func MarketplaceEventList(
 		}
 
 		if r.R != nil {
+			fmt.Println("Test", r.ID, r.R.RelatedSaleItem, r.R.RelatedSaleItemKeycard)
 			if r.R.RelatedSaleItem != nil {
 				row.Item = &server.MarketplaceEventItem{
 					ID:                   r.R.RelatedSaleItem.ID,
