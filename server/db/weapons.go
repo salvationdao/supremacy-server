@@ -22,6 +22,22 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
+	//getting weapon model to get default skin id to get image url on blueprint weapon skins
+	weaponModel, err := boiler.WeaponModels(
+		boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
+		qm.Load(boiler.WeaponModelRels.DefaultSkin),
+	).One(tx)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	if weaponModel.R == nil || weaponModel.R.DefaultSkin == nil {
+		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to weapon"), "Could not find weapon default skin relationship, try again or contact support")
+	}
+
+	//should only have one in the arr
+	bpws := weaponModel.R.DefaultSkin
+
 	newWeapon := boiler.Weapon{
 		BrandID:               weapon.BrandID,
 		Label:                 weapon.Label,
@@ -48,19 +64,20 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
+	//change img, avatar etc. here but have to get it from blueprint weapon skins
 	_, err = InsertNewCollectionItem(tx,
 		weapon.Collection,
 		boiler.ItemTypeWeapon,
 		newWeapon.ID,
 		weapon.Tier,
 		ownerID.String(),
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
+		bpws.ImageURL,
+		bpws.CardAnimationURL,
+		bpws.AvatarURL,
+		bpws.LargeImageURL,
+		bpws.BackgroundColor,
+		bpws.AnimationURL,
+		bpws.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

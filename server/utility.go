@@ -237,6 +237,11 @@ func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *
 			RechargeEnergyCost: shield.RechargeEnergyCost,
 			CreatedAt:          shield.CreatedAt,
 		},
+		ImageURL:         utility.ImageURL,
+		AnimationURL:     utility.AnimationURL,
+		CardAnimationURL: utility.CardAnimationURL,
+		LargeImageURL:    utility.LargeImageURL,
+		AvatarURL:        utility.AvatarURL,
 	}
 }
 
@@ -260,6 +265,11 @@ func BlueprintUtilityAttackDroneFromBoiler(utility *boiler.BlueprintUtility, dro
 			DeployEnergyCost:   drone.DeployEnergyCost,
 			CreatedAt:          drone.CreatedAt,
 		},
+		ImageURL:         utility.ImageURL,
+		AnimationURL:     utility.AnimationURL,
+		CardAnimationURL: utility.CardAnimationURL,
+		LargeImageURL:    utility.LargeImageURL,
+		AvatarURL:        utility.AvatarURL,
 	}
 }
 
@@ -282,6 +292,11 @@ func BlueprintUtilityRepairDroneFromBoiler(utility *boiler.BlueprintUtility, dro
 			LifespanSeconds:    drone.LifespanSeconds,
 			CreatedAt:          drone.CreatedAt,
 		},
+		ImageURL:         utility.ImageURL,
+		AnimationURL:     utility.AnimationURL,
+		CardAnimationURL: utility.CardAnimationURL,
+		LargeImageURL:    utility.LargeImageURL,
+		AvatarURL:        utility.AvatarURL,
 	}
 }
 
@@ -302,6 +317,11 @@ func BlueprintUtilityAntiMissileFromBoiler(utility *boiler.BlueprintUtility, ant
 			FireEnergyCost:     anti.FireEnergyCost,
 			CreatedAt:          anti.CreatedAt,
 		},
+		ImageURL:         utility.ImageURL,
+		AnimationURL:     utility.AnimationURL,
+		CardAnimationURL: utility.CardAnimationURL,
+		LargeImageURL:    utility.LargeImageURL,
+		AvatarURL:        utility.AvatarURL,
 	}
 }
 
@@ -323,6 +343,11 @@ func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, ant
 			BoostAmount:        anti.BoostAmount,
 			CreatedAt:          anti.CreatedAt,
 		},
+		ImageURL:         utility.ImageURL,
+		AnimationURL:     utility.AnimationURL,
+		CardAnimationURL: utility.CardAnimationURL,
+		LargeImageURL:    utility.LargeImageURL,
+		AvatarURL:        utility.AvatarURL,
 	}
 }
 
