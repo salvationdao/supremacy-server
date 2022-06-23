@@ -100,12 +100,14 @@ var WeaponModelWhere = struct {
 
 // WeaponModelRels is where relationship names are stored.
 var WeaponModelRels = struct {
+	DefaultSkin          string
 	Brand                string
 	BlueprintWeaponSkins string
 	BlueprintWeapons     string
 	WeaponSkins          string
 	Weapons              string
 }{
+	DefaultSkin:          "DefaultSkin",
 	Brand:                "Brand",
 	BlueprintWeaponSkins: "BlueprintWeaponSkins",
 	BlueprintWeapons:     "BlueprintWeapons",
@@ -115,6 +117,7 @@ var WeaponModelRels = struct {
 
 // weaponModelR is where relationships are stored.
 type weaponModelR struct {
+	DefaultSkin          *BlueprintWeaponSkin     `boiler:"DefaultSkin" boil:"DefaultSkin" json:"DefaultSkin" toml:"DefaultSkin" yaml:"DefaultSkin"`
 	Brand                *Brand                   `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	BlueprintWeaponSkins BlueprintWeaponSkinSlice `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
 	BlueprintWeapons     BlueprintWeaponSlice     `boiler:"BlueprintWeapons" boil:"BlueprintWeapons" json:"BlueprintWeapons" toml:"BlueprintWeapons" yaml:"BlueprintWeapons"`
@@ -380,6 +383,20 @@ func (q weaponModelQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// DefaultSkin pointed to by the foreign key.
+func (o *WeaponModel) DefaultSkin(mods ...qm.QueryMod) blueprintWeaponSkinQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.DefaultSkinID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintWeaponSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_weapon_skin\"")
+
+	return query
+}
+
 // Brand pointed to by the foreign key.
 func (o *WeaponModel) Brand(mods ...qm.QueryMod) brandQuery {
 	queryMods := []qm.QueryMod{
@@ -479,6 +496,110 @@ func (o *WeaponModel) Weapons(mods ...qm.QueryMod) weaponQuery {
 	}
 
 	return query
+}
+
+// LoadDefaultSkin allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (weaponModelL) LoadDefaultSkin(e boil.Executor, singular bool, maybeWeaponModel interface{}, mods queries.Applicator) error {
+	var slice []*WeaponModel
+	var object *WeaponModel
+
+	if singular {
+		object = maybeWeaponModel.(*WeaponModel)
+	} else {
+		slice = *maybeWeaponModel.(*[]*WeaponModel)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponModelR{}
+		}
+		args = append(args, object.DefaultSkinID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponModelR{}
+			}
+
+			for _, a := range args {
+				if a == obj.DefaultSkinID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.DefaultSkinID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_weapon_skin`),
+		qm.WhereIn(`blueprint_weapon_skin.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintWeaponSkin")
+	}
+
+	var resultSlice []*BlueprintWeaponSkin
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintWeaponSkin")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_weapon_skin")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_weapon_skin")
+	}
+
+	if len(weaponModelAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.DefaultSkin = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintWeaponSkinR{}
+		}
+		foreign.R.DefaultSkinWeaponModels = append(foreign.R.DefaultSkinWeaponModels, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.DefaultSkinID == foreign.ID {
+				local.R.DefaultSkin = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintWeaponSkinR{}
+				}
+				foreign.R.DefaultSkinWeaponModels = append(foreign.R.DefaultSkinWeaponModels, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBrand allows an eager lookup of values, cached into the
@@ -979,6 +1100,52 @@ func (weaponModelL) LoadWeapons(e boil.Executor, singular bool, maybeWeaponModel
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetDefaultSkin of the weaponModel to the related item.
+// Sets o.R.DefaultSkin to related.
+// Adds o to related.R.DefaultSkinWeaponModels.
+func (o *WeaponModel) SetDefaultSkin(exec boil.Executor, insert bool, related *BlueprintWeaponSkin) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"weapon_models\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"default_skin_id"}),
+		strmangle.WhereClause("\"", "\"", 2, weaponModelPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.DefaultSkinID = related.ID
+	if o.R == nil {
+		o.R = &weaponModelR{
+			DefaultSkin: related,
+		}
+	} else {
+		o.R.DefaultSkin = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintWeaponSkinR{
+			DefaultSkinWeaponModels: WeaponModelSlice{o},
+		}
+	} else {
+		related.R.DefaultSkinWeaponModels = append(related.R.DefaultSkinWeaponModels, o)
 	}
 
 	return nil

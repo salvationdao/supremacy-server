@@ -8,6 +8,7 @@ import (
 
 func BlueprintPowerCores(ids []string) ([]*server.BlueprintPowerCore, error) {
 	var bluePrintPowerCores []*server.BlueprintPowerCore
+
 	blueprintPowerCores, err := boiler.BlueprintPowerCores(boiler.BlueprintPowerCoreWhere.ID.IN(ids)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
