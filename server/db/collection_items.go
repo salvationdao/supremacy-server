@@ -142,3 +142,24 @@ func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {
 		MarketLocked:   ci.MarketLocked,
 	}, nil
 }
+
+func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem {
+	return &server.CollectionItem{
+		CollectionSlug:   ci.CollectionSlug,
+		Hash:             ci.Hash,
+		TokenID:          ci.TokenID,
+		ItemType:         ci.ItemType,
+		ItemID:           ci.ItemID,
+		Tier:             ci.Tier,
+		OwnerID:          ci.OwnerID,
+		XsynLocked:       ci.XsynLocked,
+		MarketLocked:     ci.MarketLocked,
+		ImageURL:         ci.ImageURL,
+		CardAnimationURL: ci.CardAnimationURL,
+		AvatarURL:        ci.AvatarURL,
+		LargeImageURL:    ci.LargeImageURL,
+		BackgroundColor:  ci.BackgroundColor,
+		AnimationURL:     ci.AnimationURL,
+		YoutubeURL:       ci.YoutubeURL,
+	}
+}

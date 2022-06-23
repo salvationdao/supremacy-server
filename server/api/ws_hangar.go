@@ -8,6 +8,7 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -67,13 +68,12 @@ func (hc *HangarController) GetUserHangarItems(ctx context.Context, user *boiler
 
 type OpenCrateRequest struct {
 	Payload struct {
-		id string `json:"id"`
+		Id string `json:"id"`
 	} `json:"payload"`
 }
 
 type OpenCrateResponse struct {
-	Faction null.String    `json:"faction"`
-	Silos   []*db.SiloType `json:"silos"`
+	CrateItems []*server.CollectionItem `json:"collection_items"`
 }
 
 const HubKeyOpenCrate = "CRATE:OPEN"
@@ -86,7 +86,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 	}
 
 	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.id),
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
 	).One(gamedb.StdConn)
 	if err != nil {
@@ -95,13 +95,13 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 
 	//checks
 	if collectionItem.OwnerID != user.ID {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s belonging to owner: %s", user.ID, req.Payload.id, collectionItem.OwnerID), "This crate does not belong to this user, try again or contact support.")
+		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s belonging to owner: %s", user.ID, req.Payload.Id, collectionItem.OwnerID), "This crate does not belong to this user, try again or contact support.")
 	}
 	if collectionItem.MarketLocked {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while market locked", user.ID, req.Payload.id), "This crate is still on Marketplace, try again or contact support.")
+		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while market locked", user.ID, req.Payload.Id), "This crate is still on Marketplace, try again or contact support.")
 	}
 	if collectionItem.XsynLocked {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while XSYN locked", user.ID, req.Payload.id), "This crate is locked to XSYN, move asset to Supremacy and try again.")
+		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while XSYN locked", user.ID, req.Payload.Id), "This crate is locked to XSYN, move asset to Supremacy and try again.")
 	}
 
 	crate, err := boiler.MysteryCrates(
@@ -112,6 +112,10 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Could not find crate, try again or contact support.")
+	}
+
+	resp := OpenCrateResponse{
+		CrateItems: make([]*server.CollectionItem, 0),
 	}
 
 	tx, err := gamedb.StdConn.Begin()
@@ -126,25 +130,149 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 
 	for _, blueprintItem := range crate.R.MysteryCrateBlueprints {
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH {
+			bp, err := boiler.BlueprintMechs(
+				boiler.BlueprintMechWhere.ID.EQ(blueprintItem.BlueprintID),
+				qm.Load(boiler.BlueprintMechRels.Model),
+				qm.Load(boiler.MechModelRels.DefaultChassisSkin),
+			).One(tx)
+			if err != nil {
+				return err
+			}
 
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
+			ci, err := db.InsertNewCollectionItem(
+				tx,
+				collectionItem.CollectionSlug,
+				blueprintItem.BlueprintType,
+				bp.ID,
+				bp.Tier,
+				user.ID,
+				bp.R.Model.R.DefaultChassisSkin.ImageURL,
+				bp.R.Model.R.DefaultChassisSkin.CardAnimationURL,
+				bp.R.Model.R.DefaultChassisSkin.AvatarURL,
+				bp.R.Model.R.DefaultChassisSkin.LargeImageURL,
+				null.String{},
+				bp.R.Model.R.DefaultChassisSkin.AnimationURL,
+				bp.R.Model.R.DefaultChassisSkin.YoutubeURL,
+			)
 
+			serverCI := db.CollectionItemFromBoiler(ci)
+			resp.CrateItems = append(resp.CrateItems, serverCI)
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON {
+			bp, err := boiler.BlueprintWeapons(
+				boiler.BlueprintWeaponWhere.ID.EQ(blueprintItem.BlueprintID),
+				qm.Load(boiler.BlueprintWeaponRels.WeaponModel),
+				qm.Load(boiler.WeaponModelRels.DefaultSkin),
+			).One(tx)
+			if err != nil {
+				return err
+			}
 
+			ci, err := db.InsertNewCollectionItem(
+				tx,
+				collectionItem.CollectionSlug,
+				blueprintItem.BlueprintType,
+				bp.ID,
+				bp.Tier,
+				user.ID,
+				bp.R.WeaponModel.R.DefaultSkin.ImageURL,
+				bp.R.WeaponModel.R.DefaultSkin.CardAnimationURL,
+				bp.R.WeaponModel.R.DefaultSkin.AvatarURL,
+				bp.R.WeaponModel.R.DefaultSkin.LargeImageURL,
+				null.String{},
+				bp.R.WeaponModel.R.DefaultSkin.AnimationURL,
+				bp.R.WeaponModel.R.DefaultSkin.YoutubeURL,
+			)
+
+			serverCI := db.CollectionItemFromBoiler(ci)
+			resp.CrateItems = append(resp.CrateItems, serverCI)
 		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
 
+		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
+			bp, err := boiler.BlueprintMechSkins(
+				boiler.BlueprintMechSkinWhere.ID.EQ(blueprintItem.BlueprintID),
+			).One(tx)
+			if err != nil {
+				return err
+			}
+
+			ci, err := db.InsertNewCollectionItem(
+				tx,
+				collectionItem.CollectionSlug,
+				blueprintItem.BlueprintType,
+				bp.ID,
+				bp.Tier,
+				user.ID,
+				bp.ImageURL,
+				bp.CardAnimationURL,
+				bp.AvatarURL,
+				bp.LargeImageURL,
+				null.String{},
+				bp.AnimationURL,
+				bp.YoutubeURL,
+			)
+
+			serverCI := db.CollectionItemFromBoiler(ci)
+			resp.CrateItems = append(resp.CrateItems, serverCI)
+		}
+
+		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
+			bp, err := boiler.BlueprintWeaponSkins(
+				boiler.BlueprintWeaponSkinWhere.ID.EQ(blueprintItem.BlueprintID),
+			).One(tx)
+			if err != nil {
+				return err
+			}
+
+			ci, err := db.InsertNewCollectionItem(
+				tx,
+				collectionItem.CollectionSlug,
+				blueprintItem.BlueprintType,
+				bp.ID,
+				bp.Tier,
+				user.ID,
+				bp.ImageURL,
+				bp.CardAnimationURL,
+				bp.AvatarURL,
+				bp.LargeImageURL,
+				null.String{},
+				bp.AnimationURL,
+				bp.YoutubeURL,
+			)
+
+			serverCI := db.CollectionItemFromBoiler(ci)
+			resp.CrateItems = append(resp.CrateItems, serverCI)
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypePOWER_CORE {
+			bp, err := boiler.BlueprintPowerCores(
+				boiler.BlueprintPowerCoreWhere.ID.EQ(blueprintItem.BlueprintID),
+			).One(tx)
+			if err != nil {
+				return err
+			}
 
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH {
+			ci, err := db.InsertNewCollectionItem(
+				tx,
+				collectionItem.CollectionSlug,
+				blueprintItem.BlueprintType,
+				bp.ID,
+				bp.Tier,
+				user.ID,
+				bp.ImageURL,
+				bp.CardAnimationURL,
+				bp.AvatarURL,
+				bp.LargeImageURL,
+				null.String{},
+				bp.AnimationURL,
+				bp.YoutubeURL,
+			)
 
+			serverCI := db.CollectionItemFromBoiler(ci)
+			resp.CrateItems = append(resp.CrateItems, serverCI)
 		}
 	}
 
+	fmt.Println(resp)
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
@@ -152,7 +280,6 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
-	resp := OpenCrateResponse{}
 	reply(resp)
 
 	return nil
