@@ -930,14 +930,16 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			if err != nil {
 				return terror.Error(err, errMsg)
 			}
-			err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, lastBid.BidderID, decimal.NewNullDecimal(lastBid.BidPrice), saleItem.ID, boiler.TableNames.ItemSales)
-			if err != nil {
-				gamelog.L.Error().
-					Str("item_sale_id", saleItem.ID).
-					Str("txid", lastBid.BidTXID).
-					Str("refund_tx_id", rtxid).
-					Err(err).
-					Msg("Failed to log bid refund event.")
+			if lastBid.BidderID != user.ID {
+				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, lastBid.BidderID, decimal.NewNullDecimal(lastBid.BidPrice), saleItem.ID, boiler.TableNames.ItemSales)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_sale_id", saleItem.ID).
+						Str("txid", lastBid.BidTXID).
+						Str("refund_tx_id", rtxid).
+						Err(err).
+						Msg("Failed to log bid refund event.")
+				}
 			}
 		}
 	}
