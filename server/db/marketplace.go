@@ -928,6 +928,18 @@ func MarketplaceEventList(
 					DeletedAt:            r.R.RelatedSaleItem.DeletedAt,
 					UpdatedAt:            r.R.RelatedSaleItem.UpdatedAt,
 					CreatedAt:            r.R.RelatedSaleItem.CreatedAt,
+					CollectionItem: server.MarketplaceSaleCollectionItem{
+						Hash:             r.R.RelatedSaleItem.R.CollectionItem.Hash,
+						Tier:             null.StringFrom(r.R.RelatedSaleItem.R.CollectionItem.Tier),
+						ImageURL:         r.R.RelatedSaleItem.R.CollectionItem.ImageURL,
+						CardAnimationURL: r.R.RelatedSaleItem.R.CollectionItem.CardAnimationURL,
+						AvatarURL:        r.R.RelatedSaleItem.R.CollectionItem.AvatarURL,
+						LargeImageURL:    r.R.RelatedSaleItem.R.CollectionItem.LargeImageURL,
+						BackgroundColor:  r.R.RelatedSaleItem.R.CollectionItem.BackgroundColor,
+						YoutubeURL:       r.R.RelatedSaleItem.R.CollectionItem.YoutubeURL,
+						XsynLocked:       r.R.RelatedSaleItem.R.CollectionItem.XsynLocked,
+						MarketLocked:     r.R.RelatedSaleItem.R.CollectionItem.MarketLocked,
+					},
 				}
 				if r.R.RelatedSaleItem.R.SoldToPlayer != nil {
 					row.Item.SoldTo = server.MarketplaceUser{
