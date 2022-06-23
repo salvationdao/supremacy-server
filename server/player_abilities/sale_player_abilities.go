@@ -142,7 +142,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						continue
 					}
 
-					detailedSaleAbilities := []*db.SaleAbilityDetailed{}
+					detailedSaleAbilities := make([]*db.SaleAbilityDetailed, 0)
 					for _, s := range saleAbilities {
 						detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
 							SalePlayerAbility: s,
@@ -151,7 +151,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, detailedSaleAbilities)
+					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
+						NextRefreshTime *time.Time                `json:"next_refresh_time"`
+						SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
+					}{
+						NextRefreshTime: &oneHourFromNow,
+						SaleAbilities:   detailedSaleAbilities,
+					})
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break

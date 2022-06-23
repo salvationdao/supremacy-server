@@ -86,6 +86,11 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 	return nil
 }
 
+type SaleAbilitiesListResponse struct {
+	NextRefreshTime *time.Time                `json:"next_refresh_time"`
+	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
+}
+
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	dspas, err := db.CurrentSaleAbilitiesList()
 	if err != nil {
@@ -93,7 +98,9 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(dspas)
+	reply(&SaleAbilitiesListResponse{
+		SaleAbilities: dspas,
+	})
 	return nil
 }
 
