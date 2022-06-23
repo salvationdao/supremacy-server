@@ -220,7 +220,7 @@ type MarketplaceEventListRequest struct {
 	Payload struct {
 		SortDir   db.SortByDir `json:"sort_dir"`
 		SortBy    string       `json:"sort_by"`
-		EventType string       `json:"event_type"`
+		EventType []string     `json:"event_type"`
 		Search    string       `json:"search"`
 		PageSize  int          `json:"page_size"`
 		Page      int          `json:"page"`

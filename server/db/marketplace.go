@@ -673,7 +673,7 @@ func MarketplaceItemKeycardSaleList(
 func MarketplaceEventList(
 	userID string,
 	search string,
-	eventType string,
+	eventType []string,
 	offset int,
 	pageSize int,
 	sortBy string,
@@ -785,8 +785,8 @@ func MarketplaceEventList(
 	}
 
 	// Filters
-	if eventType != "" {
-		queryMods = append(queryMods, boiler.MarketplaceEventWhere.EventType.EQ(eventType))
+	if len(eventType) > 0 {
+		queryMods = append(queryMods, boiler.MarketplaceEventWhere.EventType.IN(eventType))
 	}
 
 	// Search
