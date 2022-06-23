@@ -905,7 +905,6 @@ func MarketplaceEventList(
 		}
 
 		if r.R != nil {
-			fmt.Println("Test", r.ID, r.R.RelatedSaleItem)
 			if r.R.RelatedSaleItem != nil {
 				row.Item = &server.MarketplaceEventItem{
 					ID:                   r.R.RelatedSaleItem.ID,
@@ -1026,7 +1025,6 @@ func MarketplaceEventList(
 				continue
 			}
 			for _, m := range mechs {
-				fmt.Println("Test Cakes", m.ID.String)
 				if m.ID.String == itemID {
 					output[i].Item.Mech = *m
 					break
