@@ -1000,7 +1000,6 @@ func MarketplaceEventList(
 	// Load in collection item details
 	if len(mechIDs) > 0 {
 		mechs := []*server.MarketplaceSaleItemMech{}
-		boil.DebugMode = true
 		err = boiler.Mechs(
 			qm.Select(
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
@@ -1018,7 +1017,6 @@ func MarketplaceEventList(
 			),
 			boiler.MechWhere.ID.IN(mechIDs),
 		).Bind(nil, gamedb.StdConn, &mechs)
-		boil.DebugMode = false
 		if err != nil {
 			return 0, nil, terror.Error(err)
 		}
