@@ -7,6 +7,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
@@ -130,19 +131,21 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 
 	for _, blueprintItem := range crate.R.MysteryCrateBlueprints {
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH {
+			boil.DebugMode = true
 			bp, err := boiler.BlueprintMechs(
 				boiler.BlueprintMechWhere.ID.EQ(blueprintItem.BlueprintID),
 				qm.Load(boiler.BlueprintMechRels.Model),
-				qm.Load(boiler.MechModelRels.DefaultChassisSkin),
+				qm.Load(qm.Rels(boiler.BlueprintMechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
 			).One(tx)
 			if err != nil {
+				boil.DebugMode = false
 				return err
 			}
-
+			boil.DebugMode = false
 			ci, err := db.InsertNewCollectionItem(
 				tx,
 				collectionItem.CollectionSlug,
-				blueprintItem.BlueprintType,
+				boiler.ItemTypeMech,
 				bp.ID,
 				bp.Tier,
 				user.ID,
@@ -162,7 +165,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			bp, err := boiler.BlueprintWeapons(
 				boiler.BlueprintWeaponWhere.ID.EQ(blueprintItem.BlueprintID),
 				qm.Load(boiler.BlueprintWeaponRels.WeaponModel),
-				qm.Load(boiler.WeaponModelRels.DefaultSkin),
+				qm.Load(qm.Rels(boiler.BlueprintWeaponRels.WeaponModel, boiler.WeaponModelRels.DefaultSkin)),
 			).One(tx)
 			if err != nil {
 				return err
@@ -171,7 +174,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			ci, err := db.InsertNewCollectionItem(
 				tx,
 				collectionItem.CollectionSlug,
-				blueprintItem.BlueprintType,
+				boiler.ItemTypeWeapon,
 				bp.ID,
 				bp.Tier,
 				user.ID,
@@ -199,7 +202,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			ci, err := db.InsertNewCollectionItem(
 				tx,
 				collectionItem.CollectionSlug,
-				blueprintItem.BlueprintType,
+				boiler.ItemTypeMechSkin,
 				bp.ID,
 				bp.Tier,
 				user.ID,
@@ -227,7 +230,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			ci, err := db.InsertNewCollectionItem(
 				tx,
 				collectionItem.CollectionSlug,
-				blueprintItem.BlueprintType,
+				boiler.TemplateItemTypeWEAPON_SKIN,
 				bp.ID,
 				bp.Tier,
 				user.ID,
@@ -254,7 +257,7 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			ci, err := db.InsertNewCollectionItem(
 				tx,
 				collectionItem.CollectionSlug,
-				blueprintItem.BlueprintType,
+				boiler.ItemTypePowerCore,
 				bp.ID,
 				bp.Tier,
 				user.ID,
@@ -270,6 +273,11 @@ func (hc *HangarController) OpenCrateHandler(ctx context.Context, user *boiler.P
 			serverCI := db.CollectionItemFromBoiler(ci)
 			resp.CrateItems = append(resp.CrateItems, serverCI)
 		}
+	}
+
+	_, err = crate.Update(tx, boil.Infer())
+	if err != nil {
+		return err
 	}
 
 	fmt.Println(resp)
