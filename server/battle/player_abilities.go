@@ -18,12 +18,49 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/xsyn_rpcclient"
 	"time"
 )
 
 const MechMoveCommandCreateCode = 8
 const MechMoveCommandCancelCode = 9
+
+const HubKeyMechCommandsSubscribe = "MECH:COMMANDS:SUBSCRIBE"
+
+func (arena *Arena) MechCommandsSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	err := arena.BroadcastFactionMechCommands(factionID)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech command logs")
+	}
+	return nil
+}
+
+func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
+	if arena.currentBattleState() != BattleStageStart {
+		return nil
+	}
+
+	ids := arena.currentBattleWarMachineIDs(factionID)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	mmc, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.MechID.IN(helpers.UUIDArray2StrArray(ids)),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get mech command logs from db")
+		return terror.Error(err, "Failed to get mech command logs")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_commands", factionID), HubKeyMechCommandsSubscribe, mmc)
+
+	return nil
+}
 
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
@@ -41,10 +78,12 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 		return terror.Error(terror.ErrInvalidInput, "Current mech is not on the battlefield")
 	}
 
-	// query mech move command log in last 30 seconds
+	// query unfinished mech move command
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
@@ -57,7 +96,10 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 
 	if mmc != nil {
 		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = int(mmc.CreatedAt.Sub(time.Now()).Seconds())
+		resp.RemainCooldownSeconds = 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+		if resp.RemainCooldownSeconds < 0 {
+			resp.RemainCooldownSeconds = 0
+		}
 	}
 
 	reply(resp)
@@ -68,9 +110,8 @@ const HubKeyMechMoveCommandCreate = "MECH:MOVE:COMMAND:CREATE"
 
 type MechMoveCommandCreateRequest struct {
 	Payload struct {
-		Hash string `json:"hash"`
-		X    int    `json:"x"`
-		Y    int    `json:"y"`
+		Hash        string               `json:"mech_hash"`
+		StartCoords *server.CellLocation `json:"start_coords"`
 	} `json:"payload"`
 }
 
@@ -87,6 +128,10 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Invalid request received")
 	}
 
+	if req.Payload.StartCoords == nil {
+		return terror.Error(fmt.Errorf("missing location"), "Missing location")
+	}
+
 	// check ownership
 	wm := arena.CurrentBattleWarMachineByHash(req.Payload.Hash)
 	if wm == nil {
@@ -98,9 +143,10 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(terror.ErrForbidden, "The mech is not owned by current user.")
 	}
 
-	// get mech move command
+	// check mech move command is triggered within 30 seconds
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
 		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -133,12 +179,12 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		GameClientAbilityID: MechMoveCommandCreateCode, // 8
 		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID, // trigger on war machine
-		TriggeredOnCellX:    &req.Payload.X,
-		TriggeredOnCellY:    &req.Payload.Y,
+		TriggeredOnCellX:    &req.Payload.StartCoords.X,
+		TriggeredOnCellY:    &req.Payload.StartCoords.Y,
 		EventID:             uuid.Must(uuid.NewV4()),
 		GameLocation: arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
-			X: req.Payload.X,
-			Y: req.Payload.Y,
+			X: req.Payload.StartCoords.X,
+			Y: req.Payload.StartCoords.Y,
 		}),
 	}
 
@@ -149,8 +195,9 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	mmc = &boiler.MechMoveCommandLog{
 		MechID:        wm.ID,
 		TriggeredByID: user.ID,
-		CellX:         req.Payload.X,
-		CellY:         req.Payload.Y,
+		CellX:         req.Payload.StartCoords.X,
+		CellY:         req.Payload.StartCoords.Y,
+		BattleID:      arena.CurrentBattle().ID,
 		TXID:          txid,
 		CreatedAt:     now,
 	}
@@ -165,6 +212,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		MechMoveCommandLog:    mmc,
 		RemainCooldownSeconds: 30,
 	})
+
+	err = arena.BroadcastFactionMechCommands(factionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+	}
 
 	reply(true)
 
@@ -207,7 +259,8 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	// get mech move command
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ID.EQ(req.Payload.MoveCommandID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
 		qm.Load(boiler.MechMoveCommandLogRels.Mech),
 	).One(gamedb.StdConn)
 	if err != nil {
@@ -223,6 +276,10 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	if mmc.CancelledAt.Valid {
 		return terror.Error(fmt.Errorf("move command is already cancelled"), "Mech move command is already cancelled.")
+	}
+
+	if mmc.ReachedAt.Valid {
+		return terror.Error(fmt.Errorf("mech already reach the place"), "Mech already reach the commanded spot")
 	}
 
 	// cancel command
@@ -245,6 +302,11 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 		MechMoveCommandLog:    mmc,
 		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
+
+	err = arena.BroadcastFactionMechCommands(factionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+	}
 
 	reply(true)
 

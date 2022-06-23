@@ -96,15 +96,30 @@ func (arena *Arena) currentBattleNumber() int {
 	return arena._currentBattle.BattleNumber
 }
 
-func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
+func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID {
 	arena.RLock()
 	defer arena.RUnlock()
 
+	ids := []uuid.UUID{}
+
 	if arena._currentBattle == nil {
-		return []uuid.UUID{}
+		return ids
 	}
 
-	return arena._currentBattle.warMachineIDs
+	if factionIDs != nil && len(factionIDs) > 0 {
+		// only return war machines' id from the faction
+		for _, wm := range arena._currentBattle.WarMachines {
+			if wm.FactionID == factionIDs[0] {
+				ids = append(ids, uuid.FromStringOrNil(wm.ID))
+			}
+		}
+	} else {
+		// return all the war machines' id
+		ids = arena._currentBattle.warMachineIDs
+
+	}
+
+	return ids
 }
 
 func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
@@ -559,6 +574,10 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Invalid request received")
 	}
 
+	if req.Payload.LocationSelectType == "MECH_COMMAND" {
+		return arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
+	}
+
 	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(user.ID), qm.Load(boiler.PlayerRels.Faction)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("userID", user.ID).Msg("could not find player from given user ID")
@@ -620,7 +639,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
 		}
 
-		break
 	case boiler.LocationSelectTypeEnumMECH_SELECT:
 		if req.Payload.MechHash == "" {
 			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
@@ -636,7 +654,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			WarMachineHash:      &req.Payload.MechHash,
 		}
 
-		break
 	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
@@ -655,9 +672,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			FactionID:           &player.FactionID.String,
 			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 		}
-		break
 	case boiler.LocationSelectTypeEnumGLOBAL:
-		break
 	default:
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("no location select type was provided when activating a player ability")
 		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
@@ -1181,6 +1196,10 @@ func (arena *Arena) start() {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal ability move command complete payload")
 					continue
 				}
+				err = btl.UpdateWarMachineMoveCommand(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Err(err)
+				}
 
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
@@ -1350,7 +1369,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	// get the last move command of the mech
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-1*time.Minute)),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
 		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
 	).One(gamedb.StdConn)
 	if err != nil {
@@ -1369,6 +1388,11 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 		MechMoveCommandLog:    mmc,
 		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
+
+	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+	}
 
 	return nil
 }

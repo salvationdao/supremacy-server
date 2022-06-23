@@ -136,6 +136,7 @@ var BattleRels = struct {
 	BattleWins               string
 	ChatHistories            string
 	ConsumedAbilities        string
+	MechMoveCommandLogs      string
 	PlayerKillLogs           string
 	PlayerSpoilsOfWars       string
 }{
@@ -155,6 +156,7 @@ var BattleRels = struct {
 	BattleWins:               "BattleWins",
 	ChatHistories:            "ChatHistories",
 	ConsumedAbilities:        "ConsumedAbilities",
+	MechMoveCommandLogs:      "MechMoveCommandLogs",
 	PlayerKillLogs:           "PlayerKillLogs",
 	PlayerSpoilsOfWars:       "PlayerSpoilsOfWars",
 }
@@ -177,6 +179,7 @@ type battleR struct {
 	BattleWins               BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	ChatHistories            ChatHistorySlice             `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	ConsumedAbilities        ConsumedAbilitySlice         `boiler:"ConsumedAbilities" boil:"ConsumedAbilities" json:"ConsumedAbilities" toml:"ConsumedAbilities" yaml:"ConsumedAbilities"`
+	MechMoveCommandLogs      MechMoveCommandLogSlice      `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
 	PlayerKillLogs           PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerSpoilsOfWars       PlayerSpoilsOfWarSlice       `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 }
@@ -750,6 +753,27 @@ func (o *Battle) ConsumedAbilities(mods ...qm.QueryMod) consumedAbilityQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"consumed_abilities\".*"})
+	}
+
+	return query
+}
+
+// MechMoveCommandLogs retrieves all the mech_move_command_log's MechMoveCommandLogs with an executor.
+func (o *Battle) MechMoveCommandLogs(mods ...qm.QueryMod) mechMoveCommandLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mech_move_command_logs\".\"battle_id\"=?", o.ID),
+	)
+
+	query := MechMoveCommandLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_move_command_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mech_move_command_logs\".*"})
 	}
 
 	return query
@@ -2396,6 +2420,104 @@ func (battleL) LoadConsumedAbilities(e boil.Executor, singular bool, maybeBattle
 	return nil
 }
 
+// LoadMechMoveCommandLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadMechMoveCommandLogs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_move_command_logs`),
+		qm.WhereIn(`mech_move_command_logs.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mech_move_command_logs")
+	}
+
+	var resultSlice []*MechMoveCommandLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_move_command_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mech_move_command_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_move_command_logs")
+	}
+
+	if len(mechMoveCommandLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechMoveCommandLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechMoveCommandLogR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.MechMoveCommandLogs = append(local.R.MechMoveCommandLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechMoveCommandLogR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayerKillLogs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (battleL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
@@ -3860,6 +3982,58 @@ func (o *Battle) AddConsumedAbilities(exec boil.Executor, insert bool, related .
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &consumedAbilityR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// AddMechMoveCommandLogs adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.MechMoveCommandLogs.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddMechMoveCommandLogs(exec boil.Executor, insert bool, related ...*MechMoveCommandLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mech_move_command_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechMoveCommandLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			MechMoveCommandLogs: related,
+		}
+	} else {
+		o.R.MechMoveCommandLogs = append(o.R.MechMoveCommandLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechMoveCommandLogR{
 				Battle: o,
 			}
 		} else {
