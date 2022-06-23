@@ -890,6 +890,8 @@ func MarketplaceEventList(
 	}
 
 	// Populate reasons
+	collectionToMechID := map[string]string{}
+	collectionToMysteryCrateID := map[string]string{}
 	mechIDs := []string{}
 	mysteryCrateIDs := []string{}
 
@@ -903,6 +905,7 @@ func MarketplaceEventList(
 		}
 
 		if r.R != nil {
+			fmt.Println("Test", r.ID, r.R.RelatedSaleItem)
 			if r.R.RelatedSaleItem != nil {
 				row.Item = &server.MarketplaceEventItem{
 					ID:                   r.R.RelatedSaleItem.ID,
@@ -938,9 +941,11 @@ func MarketplaceEventList(
 				}
 				switch r.R.RelatedSaleItem.R.CollectionItem.ItemType {
 				case boiler.ItemTypeMech:
-					mechIDs = append(mechIDs, r.R.RelatedSaleItem.CollectionItemID)
+					mechIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
+					collectionToMechID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
 				case boiler.ItemTypeMysteryCrate:
-					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.CollectionItemID)
+					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
+					collectionToMysteryCrateID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
 				}
 			} else if r.R.RelatedSaleItemKeycard != nil {
 				row.Item = &server.MarketplaceEventItem{
@@ -989,68 +994,73 @@ func MarketplaceEventList(
 				}
 			}
 		}
-
-		// Load in collection item details
-		if len(mechIDs) > 0 {
-			mechs := []*server.MarketplaceSaleItemMech{}
-			err = boiler.Mechs(
-				qm.Select(
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
-					qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.AvatarURL),
-				),
-				qm.InnerJoin(
-					fmt.Sprintf(
-						"%s ON %s = %s",
-						boiler.TableNames.MechSkin,
-						qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
-						qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
-					),
-				),
-				boiler.MechWhere.ID.IN(mechIDs),
-			).Bind(nil, gamedb.StdConn, &mechs)
-			if err != nil {
-				return 0, nil, terror.Error(err)
-			}
-			for i := range output {
-				if output[i].Item.CollectionItemType != boiler.ItemTypeMech {
-					continue
-				}
-				for _, m := range mechs {
-					if m.ID.String == output[i].Item.CollectionItemID {
-						output[i].Item.Mech = *m
-						break
-					}
-				}
-			}
-		}
-		if len(mysteryCrateIDs) > 0 {
-			mysteryCrates := []*server.MarketplaceSaleItemMysteryCrate{}
-			err = boiler.MysteryCrates(
-				qm.Select(
-					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
-					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
-					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Description),
-				),
-				boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
-			).Bind(nil, gamedb.StdConn, &mysteryCrates)
-			if err != nil {
-				return 0, nil, terror.Error(err)
-			}
-			for i := range output {
-				if output[i].Item.CollectionItemType != boiler.ItemTypeMysteryCrate {
-					continue
-				}
-				for _, m := range mysteryCrates {
-					if m.ID.String == output[i].Item.CollectionItemID {
-						output[i].Item.MysteryCrate = *m
-						break
-					}
-				}
-			}
-		}
 		output = append(output, row)
+	}
+
+	// Load in collection item details
+	if len(mechIDs) > 0 {
+		mechs := []*server.MarketplaceSaleItemMech{}
+		boil.DebugMode = true
+		err = boiler.Mechs(
+			qm.Select(
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+				qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.AvatarURL),
+			),
+			qm.InnerJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.MechSkin,
+					qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+				),
+			),
+			boiler.MechWhere.ID.IN(mechIDs),
+		).Bind(nil, gamedb.StdConn, &mechs)
+		boil.DebugMode = false
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i := range output {
+			itemID, ok := collectionToMechID[output[i].Item.CollectionItemID]
+			if output[i].Item.CollectionItemType != boiler.ItemTypeMech || !ok {
+				continue
+			}
+			for _, m := range mechs {
+				fmt.Println("Test Cakes", m.ID.String)
+				if m.ID.String == itemID {
+					output[i].Item.Mech = *m
+					break
+				}
+			}
+		}
+	}
+	if len(mysteryCrateIDs) > 0 {
+		mysteryCrates := []*server.MarketplaceSaleItemMysteryCrate{}
+		err = boiler.MysteryCrates(
+			qm.Select(
+				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
+				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
+				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Description),
+			),
+			boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
+		).Bind(nil, gamedb.StdConn, &mysteryCrates)
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i := range output {
+			itemID, ok := collectionToMysteryCrateID[output[i].Item.CollectionItemID]
+			if output[i].Item.CollectionItemType != boiler.ItemTypeMysteryCrate || !ok {
+				continue
+			}
+			for _, m := range mysteryCrates {
+				if m.ID.String == itemID {
+					output[i].Item.MysteryCrate = *m
+					break
+				}
+			}
+		}
 	}
 
 	return total, output, nil
