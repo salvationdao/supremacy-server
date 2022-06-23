@@ -764,25 +764,23 @@ func MarketplaceEventList(
 		),
 
 		// Check if owner of any
-		qm.Where(
-			fmt.Sprintf(
-				`(
-					%s = ?
-					OR %s = ?
-					OR EXISTS (
+		qm.Expr(
+			boiler.MarketplaceEventWhere.UserID.EQ(userID),
+			qm.Or2(qm.Expr(
+				boiler.MarketplaceEventWhere.EventType.EQ(boiler.MarketplaceEventCancelled),
+				boiler.MarketplaceEventWhere.RelatedSaleItemID.IsNotNull(),
+				qm.And(fmt.Sprintf(
+					`EXISTS (
 						SELECT 1
-						FROM item_sales_bid_history _b
-						WHERE _b.item_sale_id = marketplace_events.related_sale_item_id
-							AND _b.bidder_id = ?
+						FROM %s _b
+						WHERE _b.item_sale_id = %s
+							_b.bidder_id = ?
 						LIMIT 1
-					)
-				)`,
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
-				qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
-			),
-			userID,
-			userID,
-			userID,
+					)`,
+					boiler.TableNames.ItemSalesBidHistory,
+					qm.Rels(boiler.TableNames.MarketplaceEvents, boiler.MarketplaceEventColumns.RelatedSaleItemID),
+				), userID),
+			)),
 		),
 	}
 
