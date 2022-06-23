@@ -774,7 +774,7 @@ func MarketplaceEventList(
 						SELECT 1
 						FROM %s _b
 						WHERE _b.item_sale_id = %s
-							_b.bidder_id = ?
+							AND _b.bidder_id = ?
 						LIMIT 1
 					)`,
 					boiler.TableNames.ItemSalesBidHistory,
