@@ -1989,7 +1989,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
 
 	// Log Event
-	err = db.MarketplaceAddEvent(boiler.MarketplaceEventBid, user.ID, decimal.NewNullDecimal(req.Payload.Amount.Mul(decimal.New(1, 18))), saleItem.ID, boiler.TableNames.ItemKeycardSales)
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventBid, user.ID, decimal.NewNullDecimal(req.Payload.Amount.Mul(decimal.New(1, 18))), saleItem.ID, boiler.TableNames.ItemSales)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
