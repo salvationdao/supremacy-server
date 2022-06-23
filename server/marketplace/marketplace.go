@@ -326,7 +326,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						Msg("unable to update refund tx id on bid record")
 					return
 				}
-				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 				if err != nil {
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID.String()).
@@ -542,7 +542,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			}
 
 			// Log Event
-			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 			if err != nil {
 				gamelog.L.Error().
 					Str("item_id", auctionItem.ID.String()).
@@ -550,6 +550,15 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Str("cost", auctionItem.AuctionBidPrice.String()).
 					Err(err).
 					Msg("Failed to log purchase event.")
+			}
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventSold, auctionItem.OwnerID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to log sold event.")
 			}
 
 			numProcessed++

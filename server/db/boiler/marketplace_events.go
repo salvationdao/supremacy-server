@@ -25,6 +25,7 @@ import (
 // MarketplaceEvent is an object representing the database table.
 type MarketplaceEvent struct {
 	ID                       string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	UserID                   string              `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
 	EventType                string              `boiler:"event_type" boil:"event_type" json:"event_type" toml:"event_type" yaml:"event_type"`
 	Amount                   decimal.NullDecimal `boiler:"amount" boil:"amount" json:"amount,omitempty" toml:"amount" yaml:"amount,omitempty"`
 	RelatedSaleItemID        null.String         `boiler:"related_sale_item_id" boil:"related_sale_item_id" json:"related_sale_item_id,omitempty" toml:"related_sale_item_id" yaml:"related_sale_item_id,omitempty"`
@@ -37,6 +38,7 @@ type MarketplaceEvent struct {
 
 var MarketplaceEventColumns = struct {
 	ID                       string
+	UserID                   string
 	EventType                string
 	Amount                   string
 	RelatedSaleItemID        string
@@ -44,6 +46,7 @@ var MarketplaceEventColumns = struct {
 	CreatedAt                string
 }{
 	ID:                       "id",
+	UserID:                   "user_id",
 	EventType:                "event_type",
 	Amount:                   "amount",
 	RelatedSaleItemID:        "related_sale_item_id",
@@ -53,6 +56,7 @@ var MarketplaceEventColumns = struct {
 
 var MarketplaceEventTableColumns = struct {
 	ID                       string
+	UserID                   string
 	EventType                string
 	Amount                   string
 	RelatedSaleItemID        string
@@ -60,6 +64,7 @@ var MarketplaceEventTableColumns = struct {
 	CreatedAt                string
 }{
 	ID:                       "marketplace_events.id",
+	UserID:                   "marketplace_events.user_id",
 	EventType:                "marketplace_events.event_type",
 	Amount:                   "marketplace_events.amount",
 	RelatedSaleItemID:        "marketplace_events.related_sale_item_id",
@@ -71,6 +76,7 @@ var MarketplaceEventTableColumns = struct {
 
 var MarketplaceEventWhere = struct {
 	ID                       whereHelperstring
+	UserID                   whereHelperstring
 	EventType                whereHelperstring
 	Amount                   whereHelperdecimal_NullDecimal
 	RelatedSaleItemID        whereHelpernull_String
@@ -78,6 +84,7 @@ var MarketplaceEventWhere = struct {
 	CreatedAt                whereHelpertime_Time
 }{
 	ID:                       whereHelperstring{field: "\"marketplace_events\".\"id\""},
+	UserID:                   whereHelperstring{field: "\"marketplace_events\".\"user_id\""},
 	EventType:                whereHelperstring{field: "\"marketplace_events\".\"event_type\""},
 	Amount:                   whereHelperdecimal_NullDecimal{field: "\"marketplace_events\".\"amount\""},
 	RelatedSaleItemID:        whereHelpernull_String{field: "\"marketplace_events\".\"related_sale_item_id\""},
@@ -89,15 +96,18 @@ var MarketplaceEventWhere = struct {
 var MarketplaceEventRels = struct {
 	RelatedSaleItem        string
 	RelatedSaleItemKeycard string
+	User                   string
 }{
 	RelatedSaleItem:        "RelatedSaleItem",
 	RelatedSaleItemKeycard: "RelatedSaleItemKeycard",
+	User:                   "User",
 }
 
 // marketplaceEventR is where relationships are stored.
 type marketplaceEventR struct {
 	RelatedSaleItem        *ItemSale        `boiler:"RelatedSaleItem" boil:"RelatedSaleItem" json:"RelatedSaleItem" toml:"RelatedSaleItem" yaml:"RelatedSaleItem"`
 	RelatedSaleItemKeycard *ItemKeycardSale `boiler:"RelatedSaleItemKeycard" boil:"RelatedSaleItemKeycard" json:"RelatedSaleItemKeycard" toml:"RelatedSaleItemKeycard" yaml:"RelatedSaleItemKeycard"`
+	User                   *Player          `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
 // NewStruct creates a new relationship struct
@@ -109,8 +119,8 @@ func (*marketplaceEventR) NewStruct() *marketplaceEventR {
 type marketplaceEventL struct{}
 
 var (
-	marketplaceEventAllColumns            = []string{"id", "event_type", "amount", "related_sale_item_id", "related_sale_item_keycard_id", "created_at"}
-	marketplaceEventColumnsWithoutDefault = []string{"event_type"}
+	marketplaceEventAllColumns            = []string{"id", "user_id", "event_type", "amount", "related_sale_item_id", "related_sale_item_keycard_id", "created_at"}
+	marketplaceEventColumnsWithoutDefault = []string{"user_id", "event_type"}
 	marketplaceEventColumnsWithDefault    = []string{"id", "amount", "related_sale_item_id", "related_sale_item_keycard_id", "created_at"}
 	marketplaceEventPrimaryKeyColumns     = []string{"id"}
 	marketplaceEventGeneratedColumns      = []string{}
@@ -388,6 +398,21 @@ func (o *MarketplaceEvent) RelatedSaleItemKeycard(mods ...qm.QueryMod) itemKeyca
 	return query
 }
 
+// User pointed to by the foreign key.
+func (o *MarketplaceEvent) User(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.UserID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // LoadRelatedSaleItem allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (marketplaceEventL) LoadRelatedSaleItem(e boil.Executor, singular bool, maybeMarketplaceEvent interface{}, mods queries.Applicator) error {
@@ -606,6 +631,111 @@ func (marketplaceEventL) LoadRelatedSaleItemKeycard(e boil.Executor, singular bo
 	return nil
 }
 
+// LoadUser allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (marketplaceEventL) LoadUser(e boil.Executor, singular bool, maybeMarketplaceEvent interface{}, mods queries.Applicator) error {
+	var slice []*MarketplaceEvent
+	var object *MarketplaceEvent
+
+	if singular {
+		object = maybeMarketplaceEvent.(*MarketplaceEvent)
+	} else {
+		slice = *maybeMarketplaceEvent.(*[]*MarketplaceEvent)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &marketplaceEventR{}
+		}
+		args = append(args, object.UserID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &marketplaceEventR{}
+			}
+
+			for _, a := range args {
+				if a == obj.UserID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.UserID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(marketplaceEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.User = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.UserMarketplaceEvents = append(foreign.R.UserMarketplaceEvents, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.UserID == foreign.ID {
+				local.R.User = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.UserMarketplaceEvents = append(foreign.R.UserMarketplaceEvents, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetRelatedSaleItem of the marketplaceEvent to the related item.
 // Sets o.R.RelatedSaleItem to related.
 // Adds o to related.R.RelatedSaleItemMarketplaceEvents.
@@ -761,6 +891,52 @@ func (o *MarketplaceEvent) RemoveRelatedSaleItemKeycard(exec boil.Executor, rela
 		related.R.RelatedSaleItemKeycardMarketplaceEvents = related.R.RelatedSaleItemKeycardMarketplaceEvents[:ln-1]
 		break
 	}
+	return nil
+}
+
+// SetUser of the marketplaceEvent to the related item.
+// Sets o.R.User to related.
+// Adds o to related.R.UserMarketplaceEvents.
+func (o *MarketplaceEvent) SetUser(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"marketplace_events\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
+		strmangle.WhereClause("\"", "\"", 2, marketplaceEventPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.UserID = related.ID
+	if o.R == nil {
+		o.R = &marketplaceEventR{
+			User: related,
+		}
+	} else {
+		o.R.User = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			UserMarketplaceEvents: MarketplaceEventSlice{o},
+		}
+	} else {
+		related.R.UserMarketplaceEvents = append(related.R.UserMarketplaceEvents, o)
+	}
+
 	return nil
 }
 

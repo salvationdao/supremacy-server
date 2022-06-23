@@ -18,6 +18,7 @@ CREATE TYPE MARKETPLACE_EVENT AS ENUM (
 
 CREATE TABLE marketplace_events (
 	id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+	user_id uuid NOT NULL REFERENCES players (id),
 	event_type MARKETPLACE_EVENT NOT NULL,
 	amount DECIMAL,
 	related_sale_item_id UUID REFERENCES item_sales (id),
