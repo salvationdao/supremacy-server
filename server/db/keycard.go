@@ -117,14 +117,14 @@ func CreateOrGetKeycard(ownerID string, tokenID int) (*boiler.PlayerKeycard, err
 	return keycard, nil
 }
 
-func UpdateKeycardReductionAmount(ownerID string, tokenID int) error {
+func UpdateKeycardReductionAmount(ownerID string, tokenID, amount int) error {
 	q := `
 		UPDATE player_keycards pk 
-		SET count = count - 1 
+		SET count = count - $3
 		WHERE pk.player_id = $1 AND pk.blueprint_keycard_id = (
 			SELECT id FROM blueprint_keycards WHERE keycard_token_id = $2
 		);`
-	_, err := boiler.NewQuery(qm.SQL(q, ownerID, tokenID)).Exec(gamedb.StdConn)
+	_, err := boiler.NewQuery(qm.SQL(q, ownerID, tokenID, amount)).Exec(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
