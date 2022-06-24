@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -15,10 +16,14 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewMechSkin(trx *sql.Tx, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		tx = tix
 	}
 
 	// first insert the skin
@@ -35,7 +40,7 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		LargeImageURL:         skin.LargeImageURL,
 	}
 
-	err = newSkin.Insert(tx, boil.Infer())
+	err := newSkin.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -58,9 +63,11 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
 	}
 
 	return MechSkin(newSkin.ID)

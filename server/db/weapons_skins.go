@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -14,10 +15,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewWeaponSkin(ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin) (*server.WeaponSkin, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewWeaponSkin(trx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin) (*server.WeaponSkin, error) {
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		tx = tix
 	}
 
 	//getting blueprintWeaponSkin model to get default skin id to get image url on blueprint blueprintWeaponSkin skins
@@ -71,9 +76,11 @@ func InsertNewWeaponSkin(ownerID uuid.UUID, blueprintWeaponSkin *server.Blueprin
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
 	}
 
 	return WeaponSkin(newWeaponSkin.ID)

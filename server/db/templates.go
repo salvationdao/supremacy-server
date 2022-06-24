@@ -250,7 +250,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 		mechBluePrint.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		mechBluePrint.GenesisTokenID = tokenIDs.GenesisTokenID
-		insertedMech, err := InsertNewMech(ownerID, mechBluePrint)
+		insertedMech, err := InsertNewMech(nil, ownerID, mechBluePrint)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("mechBluePrint", mechBluePrint).
@@ -279,7 +279,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	for _, mechSkin := range tmpl.BlueprintMechSkin {
 		mechSkin.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		mechSkin.GenesisTokenID = tokenIDs.GenesisTokenID
-		insertedMechSkin, err := InsertNewMechSkin(ownerID, mechSkin)
+		insertedMechSkin, err := InsertNewMechSkin(nil, ownerID, mechSkin)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("mechSkin", mechSkin).
@@ -294,7 +294,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	for _, powerCore := range tmpl.BlueprintPowerCore {
 		powerCore.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		powerCore.GenesisTokenID = tokenIDs.GenesisTokenID
-		insertedPowerCore, err := InsertNewPowerCore(ownerID, powerCore)
+		insertedPowerCore, err := InsertNewPowerCore(nil, ownerID, powerCore)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("powerCore", powerCore).
@@ -309,7 +309,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	for _, weapon := range tmpl.BlueprintWeapon {
 		weapon.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
-		insertedWeapon, err := InsertNewWeapon(ownerID, weapon)
+		insertedWeapon, err := InsertNewWeapon(nil, ownerID, weapon)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("weapon", weapon).

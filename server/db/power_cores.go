@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -14,12 +15,15 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewPowerCore(trx *sql.Tx, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		tx = tix
 	}
-
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
 		Label:                 ec.Label,
@@ -33,7 +37,7 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		LimitedReleaseTokenID: ec.LimitedReleaseTokenID,
 	}
 
-	err = newPowerCore.Insert(tx, boil.Infer())
+	err := newPowerCore.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -56,9 +60,11 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			return nil, terror.Error(err)
+		}
 	}
 
 	return PowerCore(newPowerCore.ID)
