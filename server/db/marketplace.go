@@ -907,7 +907,6 @@ func MarketplaceEventList(
 		}
 
 		if r.R != nil {
-			fmt.Println("Test", r.ID, r.R.RelatedSaleItem, r.R.RelatedSaleItemKeycard)
 			if r.R.RelatedSaleItem != nil {
 				row.Item = &server.MarketplaceEventItem{
 					ID:                   r.R.RelatedSaleItem.ID,
