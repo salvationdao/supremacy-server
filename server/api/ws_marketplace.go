@@ -1087,7 +1087,8 @@ const (
 type MarketplaceSalesBuyRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ID uuid.UUID `json:"id"`
+		ID     uuid.UUID       `json:"id"`
+		Amount decimal.Decimal `json:"amount"`
 	} `json:"payload"`
 }
 
@@ -1158,6 +1159,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				saleItemCost = dutchAuctionAmount
 			}
 		}
+	}
+	if !saleItemCost.Equal(req.Payload.Amount.Mul(decimal.New(1, 18))) {
+		return terror.Error(fmt.Errorf("amount does not match current price"), "Prices do not match up, please try again.")
 	}
 
 	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
@@ -1512,6 +1516,9 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	saleItemCost := saleItem.BuyoutPrice
+	if !saleItemCost.Equal(req.Payload.Amount.Mul(decimal.New(1, 18))) {
+		return terror.Error(fmt.Errorf("amount does not match current price"), "Prices do not match up, please try again.")
+	}
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
