@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -31,4 +32,12 @@ type AssetKeycardBlueprint struct {
 	KeycardGroup   string      `boil:"blueprint_keycards.keycard_group" json:"keycard_group"`
 	Syndicate      null.String `boil:"blueprint_keycards.syndicate" json:"syndicate"`
 	CreatedAt      time.Time   `boil:"blueprint_keycards.created_at" json:"created_at"`
+}
+
+func (b AssetKeycardBlueprint) MarshalJSON() ([]byte, error) {
+	if b.ID == "" {
+		return null.NullBytes, nil
+	}
+	type localAssetKeycardBlueprint AssetKeycardBlueprint
+	return json.Marshal(localAssetKeycardBlueprint(b))
 }
