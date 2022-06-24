@@ -33,15 +33,7 @@ func (p PlayerAbilityColumn) IsValid() error {
 	switch string(p) {
 	case
 		boiler.PlayerAbilityColumns.ID,
-		boiler.PlayerAbilityColumns.OwnerID,
-		boiler.PlayerAbilityColumns.GameClientAbilityID,
-		boiler.PlayerAbilityColumns.Label,
-		boiler.PlayerAbilityColumns.Colour,
-		boiler.PlayerAbilityColumns.ImageURL,
-		boiler.PlayerAbilityColumns.Description,
-		boiler.PlayerAbilityColumns.TextColour,
-		boiler.PlayerAbilityColumns.LocationSelectType,
-		boiler.PlayerAbilityColumns.PurchasedAt:
+		boiler.PlayerAbilityColumns.OwnerID:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid player ability column"))
@@ -89,50 +81,33 @@ func CurrentSaleAbilitiesList() ([]*SaleAbilityDetailed, error) {
 	return detailedSaleAbilities, nil
 }
 
-type TalliedPlayerAbility struct {
-	BlueprintID     string                         `json:"blueprint_id" boil:"blueprint_id"`
-	Count           int                            `json:"count" boil:"count"`
-	LastPurchasedAt time.Time                      `json:"last_purchased_at" boil:"last_purchased_at"`
-	Ability         *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
+type DetailedPlayerAbility struct {
+	*boiler.PlayerAbility
+	Ability boiler.BlueprintPlayerAbility `json:"ability"`
 }
 
-// TalliedPlayerAbilitiesList returns a list of tallied player abilities, ordered by last purchased date from the player_abilities table.
-func TalliedPlayerAbilitiesList(
+// PlayerAbilitiesList returns a list of tallied player abilities, ordered by last purchased date from the player_abilities table.
+// It excludes player abilities with a count of 0
+func PlayerAbilitiesList(
 	userID string,
-) ([]*TalliedPlayerAbility, error) {
-	talliedPlayerAbilities := []*TalliedPlayerAbility{}
-	err := boiler.PlayerAbilities(
-		qm.Select(boiler.PlayerAbilityColumns.BlueprintID,
-			fmt.Sprintf("count(%s)", boiler.PlayerAbilityColumns.BlueprintID),
-			fmt.Sprintf("max(%s) as last_purchased_at", boiler.PlayerAbilityColumns.PurchasedAt)),
-		qm.GroupBy(boiler.PlayerAbilityColumns.BlueprintID),
+) ([]*DetailedPlayerAbility, error) {
+	pas, err := boiler.PlayerAbilities(
 		boiler.PlayerAbilityWhere.OwnerID.EQ(userID),
-		qm.OrderBy("last_purchased_at desc"),
-	).Bind(nil, gamedb.StdConn, &talliedPlayerAbilities)
-	if err != nil {
-		return nil, err
-	}
-
-	abilityIDs := []string{}
-	for _, p := range talliedPlayerAbilities {
-		abilityIDs = append(abilityIDs, p.BlueprintID)
-	}
-
-	bpas, err := boiler.BlueprintPlayerAbilities(
-		boiler.BlueprintPlayerAbilityWhere.ID.IN(abilityIDs),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.BlueprintID)),
+		qm.Load(boiler.PlayerAbilityRels.Blueprint),
+		boiler.PlayerAbilityWhere.Count.GT(0),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, t := range talliedPlayerAbilities {
-		for _, b := range bpas {
-			if b.ID == t.BlueprintID {
-				t.Ability = b
-				break
-			}
-		}
+	result := []*DetailedPlayerAbility{}
+	for _, p := range pas {
+		result = append(result, &DetailedPlayerAbility{
+			PlayerAbility: p,
+			Ability:       *p.R.Blueprint,
+		})
 	}
 
-	return talliedPlayerAbilities, nil
+	return result, nil
 }
