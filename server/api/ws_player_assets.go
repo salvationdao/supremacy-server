@@ -547,13 +547,13 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	//checks
 	if collectionItem.OwnerID != user.ID {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s belonging to owner: %s", user.ID, req.Payload.Id, collectionItem.OwnerID), "This crate does not belong to this user, try again or contact support.")
+		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s belonging to owner: %s", user.ID, req.Payload.Id, collectionItem.OwnerID), "This crate does not belong to this user, try again or contact support.")
 	}
 	if collectionItem.MarketLocked {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while market locked", user.ID, req.Payload.Id), "This crate is still on Marketplace, try again or contact support.")
+		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s while market locked", user.ID, req.Payload.Id), "This crate is still on Marketplace, try again or contact support.")
 	}
 	if collectionItem.XsynLocked {
-		return terror.Error(fmt.Errorf("user: %s attempted to claim crate: %s while XSYN locked", user.ID, req.Payload.Id), "This crate is locked to XSYN, move asset to Supremacy and try again.")
+		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s while XSYN locked", user.ID, req.Payload.Id), "This crate is locked to XSYN, move asset to Supremacy and try again.")
 	}
 
 	crate, err := boiler.MysteryCrates(
@@ -626,6 +626,35 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 			powerCore, err := db.InsertNewPowerCore(uuid.FromStringOrNil(user.ID), bp)
 			resp.PowerCore = powerCore
+		}
+	}
+
+	if crate.Type == boiler.CrateTypeMECH {
+		//attach mech_skin to mech - mech
+		err = db.AttachMechSkinToMech(user.ID, resp.Mech.ID, resp.MechSkin.ID, false)
+		if err != nil {
+			return err
+		}
+
+		//attach mech_skin to weapon if no weapon skin -mech
+
+		//attach weapons to mech -mech
+		for _, weapon := range resp.Weapons {
+			err = db.AttachWeaponToMech(user.ID, resp.Mech.ID, weapon.ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if crate.Type == boiler.CrateTypeWEAPON {
+		//attach weapon_skin to weapon -weapon
+		if len(resp.Weapons) != 1 {
+			return fmt.Errorf("too many weapons in weapon crate")
+		}
+		err = db.AttachWeaponSkinToWeapon(user.ID, resp.Weapons[0].ID, resp.WeaponSkin.ID)
+		if err != nil {
+			return err
 		}
 	}
 

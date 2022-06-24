@@ -7,6 +7,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -107,4 +108,95 @@ func WeaponSkins(id ...string) ([]*server.WeaponSkin, error) {
 	}
 
 	return weaponSkins, nil
+}
+
+func AttachWeaponSkinToWeapon(ownerID, weaponID, weaponSkinID string) error {
+	// check owner
+	weaponCI, err := CollectionItemFromItemID(weaponID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to weapon collection item")
+		return terror.Error(err)
+	}
+	wsCI, err := CollectionItemFromItemID(weaponSkinID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponSkinID", weaponSkinID).Msg("failed to weapon skin collection item")
+		return terror.Error(err)
+	}
+
+	if weaponCI.OwnerID != ownerID {
+		err := fmt.Errorf("owner id mismatch")
+		gamelog.L.Error().Err(err).Str("weaponCI.OwnerID", weaponCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
+		return terror.Error(err, "You need to be the owner of the weapon to equip skins to it.")
+	}
+	if wsCI.OwnerID != ownerID {
+		err := fmt.Errorf("owner id mismatch")
+		gamelog.L.Error().Err(err).Str("wsCI.OwnerID", wsCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
+		return terror.Error(err, "You need to be the owner of the skin to equip it to a war machine.")
+	}
+
+	// get weapon
+	weapon, err := boiler.FindWeapon(gamedb.StdConn, weaponID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to find weapon")
+		return terror.Error(err)
+	}
+
+	// get weapon skin
+	weaponSkin, err := boiler.FindWeaponSkin(gamedb.StdConn, weaponSkinID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponSkinID", weaponSkinID).Msg("failed to find weapon skin")
+		return terror.Error(err)
+	}
+
+	// wrong model
+	if weapon.WeaponModelID != null.StringFrom(weaponSkin.WeaponModelID) {
+		err := fmt.Errorf("weaponSkin model mismatch")
+		gamelog.L.Error().Err(err).Str("weapon.WeaponModelID", weapon.WeaponModelID.String).Str("weaponSkin.WeaponModelID", weaponSkin.WeaponModelID).Msg("weapon skin doesn't fit this weapon")
+		return terror.Error(err, "This weapon skin doesn't fit this weapon.")
+	}
+
+	// error out, already has a weapon skin
+	if weapon.EquippedWeaponSkinID.Valid && weapon.EquippedWeaponSkinID.String != "" {
+		err := fmt.Errorf("weapon already has a weapon skin")
+		// also check weaponSkin.EquippedOn on, if that doesn't match, update it, so it does.
+		if !weaponSkin.EquippedOn.Valid {
+			weaponSkin.EquippedOn = null.StringFrom(weapon.ID)
+			_, err = weaponSkin.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("weapon.ID", weapon.ID).Str("weaponSkin.ID", weaponSkin.ID).Msg("failed to update weapon skin equipped on")
+				return terror.Error(err, "Weapon already has a skin equipped.")
+			}
+		}
+		gamelog.L.Error().Err(err).Str("weapon.EquippedWeaponSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg(err.Error())
+		return terror.Error(err, "Weapon already has a skin equipped.")
+	}
+
+	// lets join
+	weapon.EquippedWeaponSkinID = null.StringFrom(weaponSkin.ID)
+	weaponSkin.EquippedOn = null.StringFrom(weapon.ID)
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weapon.EquippedWeaponSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue creating tx")
+		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
+	}
+
+	_, err = weapon.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue weapon update")
+		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
+	}
+	_, err = weaponSkin.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue weapon skin update")
+		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue committing tx")
+		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	}
+
+	return nil
 }
