@@ -267,6 +267,7 @@ func NewAPI(
 
 				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
+				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 			}))
 
 			// handle abilities ws

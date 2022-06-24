@@ -1394,5 +1394,12 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
+	btl.arena.BroadcastMechCommandNotification(&MechCommandNotification{
+		MechID:    wm.ID,
+		MechLabel: wm.Name,
+		FactionID: wm.FactionID,
+		Action:    MechCommandActionComplete,
+	})
+
 	return nil
 }
