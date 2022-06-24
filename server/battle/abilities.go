@@ -81,11 +81,13 @@ func (lc *LiveCount) IsClosed() bool {
 }
 
 type AbilityConfig struct {
-	FirstBattleAbilityCooldownSecond int
-	BattleAbilityFloorPrice          decimal.Decimal
-	BattleAbilityDropRate            decimal.Decimal
-	FactionAbilityFloorPrice         decimal.Decimal
-	FActionAbilityDropRate           decimal.Decimal
+	FirstBattleAbilityCooldownSeconds          int
+	BattleAbilityBribeDurationSeconds          time.Duration
+	BattleAbilityLocationSelectDurationSeconds time.Duration
+	BattleAbilityFloorPrice                    decimal.Decimal
+	BattleAbilityDropRate                      decimal.Decimal
+	FactionAbilityFloorPrice                   decimal.Decimal
+	FActionAbilityDropRate                     decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
@@ -295,11 +297,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		startedAt:            time.Now(),
 		contributeMultiplier: &UserContributeMultiplier{},
 		abilityConfig: &AbilityConfig{
-			FirstBattleAbilityCooldownSecond: db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
-			BattleAbilityFloorPrice:          db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
-			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
-			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
-			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
+			FirstBattleAbilityCooldownSeconds:          db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
+			BattleAbilityBribeDurationSeconds:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 30)) * time.Second,
+			BattleAbilityLocationSelectDurationSeconds: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+			BattleAbilityFloorPrice:                    db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
+			BattleAbilityDropRate:                      db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
+			FactionAbilityFloorPrice:                   db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
+			FActionAbilityDropRate:                     db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
@@ -910,13 +914,6 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 // ***************************
 
 const (
-	// BribeDurationSecond the amount of second players can bribe GABS
-	BribeDurationSecond = 30
-	// LocationSelectDurationSecond the amount of second the winner user can select the location
-	LocationSelectDurationSecond = 15
-)
-
-const (
 	BribeStageHold           int32 = 0
 	BribeStageBribe          int32 = 1
 	BribeStageLocationSelect int32 = 2
@@ -1263,7 +1260,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// extend location select phase duration
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -1281,7 +1278,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// change bribing phase
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageBribe)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(BribeDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityBribeDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -1442,7 +1439,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 
 					// broadcast stage change
 					bm.Start("broadcast_bribe_stage")
@@ -1505,7 +1502,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	}
 
 	if isFirstAbility {
-		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSecond
+		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSeconds
 	}
 	as.battleAbilityPool.BattleAbility = ba
 
@@ -1792,7 +1789,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if there is user, assign location decider and exit the loop
 		// change bribing phase to location select
 		as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 		// broadcast stage change
 		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
