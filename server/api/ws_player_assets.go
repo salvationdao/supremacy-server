@@ -521,7 +521,11 @@ type OpenCrateRequest struct {
 }
 
 type OpenCrateResponse struct {
-	CrateItems []*server.CollectionItem `json:"collection_items"`
+	Mech       *server.Mech       `json:"mech,omitempty"`
+	MechSkin   *server.MechSkin   `json:"mech_skin,omitempty"`
+	Weapons    []*server.Weapon   `json:"weapon,omitempty"`
+	WeaponSkin *server.WeaponSkin `json:"weapon_skin,omitempty"`
+	PowerCore  *server.PowerCore  `json:"power_core,omitempty"`
 }
 
 const HubKeyOpenCrate = "CRATE:OPEN"
@@ -563,7 +567,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	}
 
 	resp := OpenCrateResponse{
-		CrateItems: make([]*server.CollectionItem, 0),
+		Weapons: make([]*server.Weapon, 0),
 	}
 
 	tx, err := gamedb.StdConn.Begin()
@@ -578,145 +582,52 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	for _, blueprintItem := range crate.R.MysteryCrateBlueprints {
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH {
-			bp, err := boiler.BlueprintMechs(
-				boiler.BlueprintMechWhere.ID.EQ(blueprintItem.BlueprintID),
-				qm.Load(boiler.BlueprintMechRels.Model),
-				qm.Load(qm.Rels(boiler.BlueprintMechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
-			).One(tx)
+			bp, err := db.BlueprintMech(blueprintItem.BlueprintID)
 			if err != nil {
 				return err
 			}
 
-			ci, err := db.InsertNewCollectionItem(
-				tx,
-				collectionItem.CollectionSlug,
-				boiler.ItemTypeMech,
-				bp.ID,
-				bp.Tier,
-				user.ID,
-				bp.R.Model.R.DefaultChassisSkin.ImageURL,
-				bp.R.Model.R.DefaultChassisSkin.CardAnimationURL,
-				bp.R.Model.R.DefaultChassisSkin.AvatarURL,
-				bp.R.Model.R.DefaultChassisSkin.LargeImageURL,
-				null.String{},
-				bp.R.Model.R.DefaultChassisSkin.AnimationURL,
-				bp.R.Model.R.DefaultChassisSkin.YoutubeURL,
-			)
-
-			serverCI := db.CollectionItemFromBoiler(ci)
-			resp.CrateItems = append(resp.CrateItems, serverCI)
+			mech, err := db.InsertNewMech(uuid.FromStringOrNil(user.ID), bp)
+			resp.Mech = mech
 		}
+
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON {
-			bp, err := boiler.BlueprintWeapons(
-				boiler.BlueprintWeaponWhere.ID.EQ(blueprintItem.BlueprintID),
-				qm.Load(boiler.BlueprintWeaponRels.WeaponModel),
-				qm.Load(qm.Rels(boiler.BlueprintWeaponRels.WeaponModel, boiler.WeaponModelRels.DefaultSkin)),
-			).One(tx)
+			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
 			if err != nil {
 				return err
 			}
 
-			ci, err := db.InsertNewCollectionItem(
-				tx,
-				collectionItem.CollectionSlug,
-				boiler.ItemTypeWeapon,
-				bp.ID,
-				bp.Tier,
-				user.ID,
-				bp.R.WeaponModel.R.DefaultSkin.ImageURL,
-				bp.R.WeaponModel.R.DefaultSkin.CardAnimationURL,
-				bp.R.WeaponModel.R.DefaultSkin.AvatarURL,
-				bp.R.WeaponModel.R.DefaultSkin.LargeImageURL,
-				null.String{},
-				bp.R.WeaponModel.R.DefaultSkin.AnimationURL,
-				bp.R.WeaponModel.R.DefaultSkin.YoutubeURL,
-			)
-
-			serverCI := db.CollectionItemFromBoiler(ci)
-			resp.CrateItems = append(resp.CrateItems, serverCI)
+			weapon, err := db.InsertNewWeapon(uuid.FromStringOrNil(user.ID), bp)
+			resp.Weapons = append(resp.Weapons, weapon)
 		}
 
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
-			bp, err := boiler.BlueprintMechSkins(
-				boiler.BlueprintMechSkinWhere.ID.EQ(blueprintItem.BlueprintID),
-			).One(tx)
+			bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
 			if err != nil {
 				return err
 			}
 
-			ci, err := db.InsertNewCollectionItem(
-				tx,
-				collectionItem.CollectionSlug,
-				boiler.ItemTypeMechSkin,
-				bp.ID,
-				bp.Tier,
-				user.ID,
-				bp.ImageURL,
-				bp.CardAnimationURL,
-				bp.AvatarURL,
-				bp.LargeImageURL,
-				null.String{},
-				bp.AnimationURL,
-				bp.YoutubeURL,
-			)
-
-			serverCI := db.CollectionItemFromBoiler(ci)
-			resp.CrateItems = append(resp.CrateItems, serverCI)
+			mechSkin, err := db.InsertNewMechSkin(uuid.FromStringOrNil(user.ID), bp)
+			resp.MechSkin = mechSkin
 		}
 
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
-			bp, err := boiler.BlueprintWeaponSkins(
-				boiler.BlueprintWeaponSkinWhere.ID.EQ(blueprintItem.BlueprintID),
-			).One(tx)
+			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
 				return err
 			}
 
-			ci, err := db.InsertNewCollectionItem(
-				tx,
-				collectionItem.CollectionSlug,
-				boiler.TemplateItemTypeWEAPON_SKIN,
-				bp.ID,
-				bp.Tier,
-				user.ID,
-				bp.ImageURL,
-				bp.CardAnimationURL,
-				bp.AvatarURL,
-				bp.LargeImageURL,
-				null.String{},
-				bp.AnimationURL,
-				bp.YoutubeURL,
-			)
-
-			serverCI := db.CollectionItemFromBoiler(ci)
-			resp.CrateItems = append(resp.CrateItems, serverCI)
+			weaponSkin, err := db.InsertNewWeaponSkin(uuid.FromStringOrNil(user.ID), bp)
+			resp.WeaponSkin = weaponSkin
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypePOWER_CORE {
-			bp, err := boiler.BlueprintPowerCores(
-				boiler.BlueprintPowerCoreWhere.ID.EQ(blueprintItem.BlueprintID),
-			).One(tx)
+			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
 				return err
 			}
 
-			ci, err := db.InsertNewCollectionItem(
-				tx,
-				collectionItem.CollectionSlug,
-				boiler.ItemTypePowerCore,
-				bp.ID,
-				bp.Tier,
-				user.ID,
-				bp.ImageURL,
-				bp.CardAnimationURL,
-				bp.AvatarURL,
-				bp.LargeImageURL,
-				null.String{},
-				bp.AnimationURL,
-				bp.YoutubeURL,
-			)
-
-			serverCI := db.CollectionItemFromBoiler(ci)
-			resp.CrateItems = append(resp.CrateItems, serverCI)
+			powerCore, err := db.InsertNewPowerCore(uuid.FromStringOrNil(user.ID), bp)
+			resp.PowerCore = powerCore
 		}
 	}
 
