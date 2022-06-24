@@ -191,6 +191,18 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	// check mech command
 	arena.Message("BATTLE:ABILITY", event)
 
+	// cancel any unfinished move commands of the mech
+	_, err = boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: time.Now()})
+	if err != nil {
+		gamelog.L.Error().Str("mech id", wm.ID).Str("battle id", arena.CurrentBattle().ID).Err(err).Msg("Failed to cancel unfinished mech move command in db")
+		return terror.Error(err, "Failed to update mech move command.")
+	}
+
 	// log mech move command
 	mmc = &boiler.MechMoveCommandLog{
 		MechID:        wm.ID,

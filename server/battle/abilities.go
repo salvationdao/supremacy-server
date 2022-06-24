@@ -501,81 +501,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isTriggered := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
-						if isTriggered {
-							event := &server.GameAbilityEvent{
-								EventID:             ability.OfferingID,
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-							}
+						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
 
-							// send message to game client, if ability trigger
-							as.battle().arena.Message(
-								"BATTLE:ABILITY",
-								event,
-							)
-
-							bat := boiler.BattleAbilityTrigger{
-								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle().ID,
-								FactionID:         ability.FactionID,
-								IsAllSyndicates:   false,
-								AbilityLabel:      ability.Label,
-								GameAbilityID:     ability.ID,
-								AbilityOfferingID: ability.OfferingID.String(),
-							}
-							err := bat.Insert(gamedb.StdConn, boil.Infer())
-							if err != nil {
-								gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
-							}
-
-							// get ability faction
-							//build notification
-							gameNotification := &GameNotificationWarMachineAbility{
-								Ability: &AbilityBrief{
-									Label:    ability.Label,
-									ImageUrl: ability.ImageUrl,
-									Colour:   ability.Colour,
-								},
-							}
-
-							// broadcast notification
-							if ability.ParticipantID == nil {
-								as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
-									Ability: gameNotification.Ability,
-								})
-
-							} else {
-								// filled war machine detail
-								for _, wm := range as.battle().WarMachines {
-									if wm.ParticipantID == *ability.ParticipantID {
-										gameNotification.WarMachine = &WarMachineBrief{
-											ParticipantID: wm.ParticipantID,
-											Hash:          wm.Hash,
-											ImageUrl:      wm.Image,
-											ImageAvatar:   wm.ImageAvatar,
-											Name:          wm.Name,
-											FactionID:     wm.FactionID,
-										}
-										break
-									}
-								}
-
-								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
-							}
-							// generate new offering id for current ability
-							ability.OfferingID = uuid.Must(uuid.NewV4())
+						// skip, if price is not changed
+						if !isChanged {
+							continue
 						}
 
-						// broadcast new ability price
+						// broadcast changed price
 						as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity].dataChan <- GameAbilityPriceResponse{
 							ability.Identity,
 							ability.OfferingID.String(),
 							ability.SupsCost.String(),
 							ability.CurrentSups.String(),
-							isTriggered,
+							false,
 						}
 					}
 				}
@@ -798,6 +737,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal, dropRate decimal.Decimal) bool {
 	ga.Lock()
 	defer ga.Unlock()
+
+	originalPrice := ga.SupsCost
+
+	// price drop
 	ga.SupsCost = ga.SupsCost.Mul(dropRate).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -805,19 +748,13 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 		ga.SupsCost = minPrice
 	}
 
-	isTriggered := false
-
 	// if the target price hit current price
-	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups) {
-		// trigger the ability
-		isTriggered = true
+	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups.Add(decimal.New(5, 17))) {
+		// reset the price
+		ga.SupsCost = originalPrice
 
-		// double the target price
-		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
-
-		// reset current sups to zero
-		ga.CurrentSups = decimal.Zero
-
+		// return not changed
+		return false
 	}
 
 	// store updated price to db
@@ -828,10 +765,11 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 			Str("sups_cost", ga.SupsCost.String()).
 			Str("current_sups", ga.CurrentSups.String()).
 			Err(err).Msg("could not update faction ability cost")
-		return isTriggered
+		return false
 	}
 
-	return isTriggered
+	// return price is changed
+	return true
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered

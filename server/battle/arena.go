@@ -513,7 +513,13 @@ type LocationSelectRequest struct {
 
 const HubKeyAbilityLocationSelect = "ABILITY:LOCATION:SELECT"
 
+var locationSelectBucket = leakybucket.NewCollector(1, 1, true)
+
 func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if locationSelectBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Msg("no current battle")
@@ -533,7 +539,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	if arena.CurrentBattle().abilities == nil {
+	if arena.CurrentBattle().abilities() == nil {
 		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
