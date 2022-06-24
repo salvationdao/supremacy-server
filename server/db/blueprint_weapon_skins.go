@@ -25,7 +25,7 @@ func BlueprintWeaponSkins(ids []string) ([]*server.BlueprintWeaponSkin, error) {
 }
 
 func BlueprintWeaponSkin(ids string) (*server.BlueprintWeaponSkin, error) {
-	blueprintWeaponSkin, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponWhere.ID.EQ(ids)).One(gamedb.StdConn)
+	blueprintWeaponSkin, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponSkinWhere.ID.EQ(ids)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

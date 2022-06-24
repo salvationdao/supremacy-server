@@ -560,6 +560,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
 		boiler.MysteryCrateWhere.FactionID.EQ(factionID),
 		boiler.MysteryCrateWhere.LockedUntil.LTE(time.Now()),
+		boiler.MysteryCrateWhere.Opened.EQ(false),
 		qm.Load(boiler.MysteryCrateRels.MysteryCrateBlueprints),
 	).One(gamedb.StdConn)
 	if err != nil {
@@ -590,7 +591,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			mech, err := db.InsertNewMech(uuid.FromStringOrNil(user.ID), bp)
 			resp.Mech = mech
 		}
-
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON {
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
 			if err != nil {
@@ -600,7 +600,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			weapon, err := db.InsertNewWeapon(uuid.FromStringOrNil(user.ID), bp)
 			resp.Weapons = append(resp.Weapons, weapon)
 		}
-
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
 			bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -610,7 +609,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			mechSkin, err := db.InsertNewMechSkin(uuid.FromStringOrNil(user.ID), bp)
 			resp.MechSkin = mechSkin
 		}
-
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
