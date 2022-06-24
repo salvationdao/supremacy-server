@@ -140,6 +140,7 @@ const (
 	ItemTypeMechAnimation = "mech_animation"
 	ItemTypePowerCore     = "power_core"
 	ItemTypeMysteryCrate  = "mystery_crate"
+	ItemTypeWeaponSkin    = "weapon_skin"
 )
 
 // Enum values for CouponItemType

@@ -54,7 +54,7 @@ func InsertNewWeaponSkin(ownerID uuid.UUID, blueprintWeaponSkin *server.Blueprin
 	//change img, avatar etc. here but have to get it from blueprint blueprintWeaponSkin skins
 	_, err = InsertNewCollectionItem(tx,
 		blueprintWeaponSkin.Collection,
-		boiler.ItemTypeWeapon,
+		boiler.ItemTypeWeaponSkin,
 		newWeaponSkin.ID,
 		blueprintWeaponSkin.Tier,
 		ownerID.String(),
