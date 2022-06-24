@@ -589,6 +589,10 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 
 			mech, err := db.InsertNewMech(uuid.FromStringOrNil(user.ID), bp)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to insert new mech")
+				return err
+			}
 			resp.Mech = mech
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON {
@@ -598,6 +602,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 
 			weapon, err := db.InsertNewWeapon(uuid.FromStringOrNil(user.ID), bp)
+			if err != nil {
+				return err
+			}
 			resp.Weapons = append(resp.Weapons, weapon)
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
@@ -607,6 +614,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 
 			mechSkin, err := db.InsertNewMechSkin(uuid.FromStringOrNil(user.ID), bp)
+			if err != nil {
+				return err
+			}
 			resp.MechSkin = mechSkin
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
@@ -616,6 +626,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 
 			weaponSkin, err := db.InsertNewWeaponSkin(uuid.FromStringOrNil(user.ID), bp)
+			if err != nil {
+				return err
+			}
 			resp.WeaponSkin = weaponSkin
 		}
 		if blueprintItem.BlueprintType == boiler.TemplateItemTypePOWER_CORE {
@@ -625,6 +638,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 
 			powerCore, err := db.InsertNewPowerCore(uuid.FromStringOrNil(user.ID), bp)
+			if err != nil {
+				return err
+			}
 			resp.PowerCore = powerCore
 		}
 	}
@@ -645,6 +661,13 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return err
 			}
 		}
+
+		mech, err := db.Mech(resp.Mech.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to get mech")
+		}
+		jsn, _ := json.Marshal(mech)
+		fmt.Println(string(jsn))
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {

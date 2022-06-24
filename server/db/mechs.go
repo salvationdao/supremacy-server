@@ -111,9 +111,14 @@ LEFT OUTER JOIN (
 	FROM mech_weapons mw
 	INNER JOIN
 		(
-			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url, to_json(_ws) as weapon_skin
 			FROM weapons _w
 			INNER JOIN collection_items _ci on _ci.item_id = _w.id
+			LEFT OUTER JOIN (
+					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+					FROM weapon_skin __ws
+					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
+			) _ws ON _ws.id = _w.equipped_weapon_skin_id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id
@@ -140,7 +145,7 @@ LEFT OUTER JOIN (
 ) u on u.chassis_id = mechs.id `
 
 func DefaultMechs() ([]*server.Mech, error) {
-	idq := `SELECT id FROM mechs WHERE is_default=true`
+	idq := `SELECT id FROM mechs WHERE is_default=TRUE`
 
 	result, err := gamedb.StdConn.Query(idq)
 	if err != nil {

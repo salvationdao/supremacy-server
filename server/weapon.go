@@ -34,6 +34,7 @@ type Weapon struct {
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
+	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 

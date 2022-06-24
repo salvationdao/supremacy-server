@@ -46,6 +46,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		BlueprintID:           weapon.ID,
 		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:        weapon.GenesisTokenID,
+		WeaponModelID:         null.StringFrom(weapon.WeaponModelID),
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		WeaponType:            weapon.WeaponType,
 		DamageFalloff:         weapon.DamageFalloff,
