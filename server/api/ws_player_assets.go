@@ -656,7 +656,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	if crate.Type == boiler.CrateTypeMECH {
 		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
@@ -666,7 +666,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		//attach weapons to mech -mech
 		for _, weapon := range items.Weapons {
-			err = db.AttachWeaponToMech(user.ID, items.Mech.ID, weapon.ID)
+			err = db.AttachWeaponToMech(tx, user.ID, items.Mech.ID, weapon.ID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach weapons to mech during CRATE:OPEN crate: %s", crate.ID))
 				return terror.Error(err, "Could not open crate, try again or contact support.")
@@ -687,7 +687,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		err = db.AttachWeaponSkinToWeapon(user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
+		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")

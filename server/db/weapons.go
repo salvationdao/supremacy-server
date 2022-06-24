@@ -131,13 +131,17 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 }
 
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
-func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
+func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
-		return terror.Error(err)
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
+			return terror.Error(err)
+		}
+		tx = tix
 	}
 	defer tx.Rollback()
 
@@ -219,10 +223,12 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachWeaponToMech")
-		return terror.Error(err)
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachWeaponToMech")
+			return terror.Error(err)
+		}
 	}
 
 	return nil

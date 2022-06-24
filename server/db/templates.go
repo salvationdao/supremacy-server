@@ -351,7 +351,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 				Msg("failed to join powercore to mech")
 		}
 		// join skin
-		err = AttachMechSkinToMech(ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
+		err = AttachMechSkinToMech(nil, ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Str("ownerID.String()", ownerID.String()).
@@ -364,7 +364,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		// join weapons
 		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
 			if len(weapons) > i {
-				err = AttachWeaponToMech(ownerID.String(), mechs[0].ID, weapons[i].ID)
+				err = AttachWeaponToMech(nil, ownerID.String(), mechs[0].ID, weapons[i].ID)
 				if err != nil {
 					gamelog.L.Error().Err(err).
 						Str("ownerID.String()", ownerID.String()).

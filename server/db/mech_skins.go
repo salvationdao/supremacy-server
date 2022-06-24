@@ -105,9 +105,10 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 
 // AttachMechSkinToMech attaches a mech skin to a mech // TODO: create tests.
 // If lockedToMech == true this asset is forever locked to that mech and cannon be removed (used when inserting genesis or limited mechs
-func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bool) error {
+func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner
+
 	mechCI, err := CollectionItemFromItemID(mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to mech collection item")
@@ -172,10 +173,14 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 	mechSkin.EquippedOn = null.StringFrom(mech.ID)
 	mechSkin.LockedToMech = lockedToMech
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue creating tx")
-		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
+		tx = tix
 	}
 
 	_, err = mech.Update(tx, boil.Infer())
@@ -189,10 +194,12 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue committing tx")
-		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue committing tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
 	}
 
 	return nil

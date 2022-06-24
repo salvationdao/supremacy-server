@@ -117,7 +117,7 @@ func WeaponSkins(id ...string) ([]*server.WeaponSkin, error) {
 	return weaponSkins, nil
 }
 
-func AttachWeaponSkinToWeapon(ownerID, weaponID, weaponSkinID string) error {
+func AttachWeaponSkinToWeapon(trx *sql.Tx, ownerID, weaponID, weaponSkinID string) error {
 	// check owner
 	weaponCI, err := CollectionItemFromItemID(weaponID)
 	if err != nil {
@@ -182,10 +182,14 @@ func AttachWeaponSkinToWeapon(ownerID, weaponID, weaponSkinID string) error {
 	weapon.EquippedWeaponSkinID = null.StringFrom(weaponSkin.ID)
 	weaponSkin.EquippedOn = null.StringFrom(weapon.ID)
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("weapon.EquippedWeaponSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue creating tx")
-		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("weapon.EquippedWeaponSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
+		}
+		tx = tix
 	}
 
 	_, err = weapon.Update(tx, boil.Infer())
@@ -199,10 +203,12 @@ func AttachWeaponSkinToWeapon(ownerID, weaponID, weaponSkinID string) error {
 		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue committing tx")
-		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue committing tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
 	}
 
 	return nil
