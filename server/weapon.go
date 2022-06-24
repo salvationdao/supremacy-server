@@ -33,6 +33,7 @@ type Weapon struct {
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
+	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 
@@ -145,26 +146,27 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 			AnimationURL:     collection.AnimationURL,
 			YoutubeURL:       collection.YoutubeURL,
 		},
-		ID:                  weapon.ID,
-		BrandID:             weapon.BrandID,
-		Label:               weapon.Label,
-		Slug:                weapon.Slug,
-		Damage:              weapon.Damage,
-		BlueprintID:         weapon.BlueprintID,
-		DefaultDamageType:   weapon.DefaultDamageType,
-		GenesisTokenID:      weapon.GenesisTokenID,
-		WeaponType:          weapon.WeaponType,
-		DamageFalloff:       weapon.DamageFalloff,
-		DamageFalloffRate:   weapon.DamageFalloffRate,
-		Spread:              weapon.Spread,
-		RateOfFire:          weapon.RateOfFire,
-		Radius:              weapon.Radius,
-		RadiusDamageFalloff: weapon.RadiusDamageFalloff,
-		ProjectileSpeed:     weapon.ProjectileSpeed,
-		EnergyCost:          weapon.EnergyCost,
-		MaxAmmo:             weapon.MaxAmmo,
-		UpdatedAt:           weapon.UpdatedAt,
-		CreatedAt:           weapon.CreatedAt,
-		EquippedOn:          weapon.EquippedOn,
+		ID:                   weapon.ID,
+		BrandID:              weapon.BrandID,
+		Label:                weapon.Label,
+		Slug:                 weapon.Slug,
+		Damage:               weapon.Damage,
+		BlueprintID:          weapon.BlueprintID,
+		DefaultDamageType:    weapon.DefaultDamageType,
+		GenesisTokenID:       weapon.GenesisTokenID,
+		WeaponType:           weapon.WeaponType,
+		DamageFalloff:        weapon.DamageFalloff,
+		DamageFalloffRate:    weapon.DamageFalloffRate,
+		Spread:               weapon.Spread,
+		RateOfFire:           weapon.RateOfFire,
+		Radius:               weapon.Radius,
+		RadiusDamageFalloff:  weapon.RadiusDamageFalloff,
+		ProjectileSpeed:      weapon.ProjectileSpeed,
+		EnergyCost:           weapon.EnergyCost,
+		MaxAmmo:              weapon.MaxAmmo,
+		UpdatedAt:            weapon.UpdatedAt,
+		CreatedAt:            weapon.CreatedAt,
+		EquippedOn:           weapon.EquippedOn,
+		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
 	}
 }

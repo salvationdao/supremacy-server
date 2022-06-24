@@ -200,3 +200,64 @@ func AttachWeaponSkinToWeapon(ownerID, weaponID, weaponSkinID string) error {
 
 	return nil
 }
+
+func AttachMechSkinToWeapon(ownerID, mechChassisSkinID, weaponID string) error {
+	// check owner
+	weaponCI, err := CollectionItemFromItemID(weaponID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to weapon collection item")
+		return terror.Error(err)
+	}
+	if weaponCI.OwnerID != ownerID {
+		err := fmt.Errorf("owner id mismatch")
+		gamelog.L.Error().Err(err).Str("msCI.OwnerID", weaponCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
+		return terror.Error(err, "You need to be the owner of the weapon to equip skins on it.")
+	}
+
+	// get mech skin
+	mechSkin, err := boiler.MechSkins(
+		boiler.MechSkinWhere.ID.EQ(mechChassisSkinID),
+		qm.Load(boiler.MechSkinRels.Blueprint),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("chassisSkinID", mechChassisSkinID).Msg("failed to find mech skin")
+		return terror.Error(err)
+	}
+
+	weapon, err := boiler.FindWeapon(gamedb.StdConn, weaponID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to find weapon")
+		return terror.Error(err)
+	}
+
+	weaponSkinFromMech, err :=
+
+	// lets join
+	mech.ChassisSkinID = null.StringFrom(mechSkin.ID)
+	mechSkin.EquippedOn = null.StringFrom(mech.ID)
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue creating tx")
+		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	}
+
+	_, err = mech.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue mech update")
+		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	}
+	_, err = mechSkin.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue mech skin update")
+		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue committing tx")
+		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	}
+
+	return nil
+}
