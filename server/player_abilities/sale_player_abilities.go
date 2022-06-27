@@ -132,7 +132,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
-					oneHourFromNow := time.Now().Add(time.Duration(timeBetweenRefreshInSeconds * int(time.Second)))
+					oneHourFromNow := time.Now().Add(time.Duration(timeBetweenRefreshInSeconds) * time.Second)
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(allSaleAbilities))
 					for _, i := range randomIndexes[:limit] {
