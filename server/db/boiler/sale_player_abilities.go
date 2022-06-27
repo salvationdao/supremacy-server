@@ -28,6 +28,8 @@ type SalePlayerAbility struct {
 	BlueprintID    string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	CurrentPrice   decimal.Decimal `boiler:"current_price" boil:"current_price" json:"current_price" toml:"current_price" yaml:"current_price"`
 	AvailableUntil null.Time       `boiler:"available_until" boil:"available_until" json:"available_until,omitempty" toml:"available_until" yaml:"available_until,omitempty"`
+	SaleLimit      int             `boiler:"sale_limit" boil:"sale_limit" json:"sale_limit" toml:"sale_limit" yaml:"sale_limit"`
+	AmountSold     int             `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
 
 	R *salePlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L salePlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -38,11 +40,15 @@ var SalePlayerAbilityColumns = struct {
 	BlueprintID    string
 	CurrentPrice   string
 	AvailableUntil string
+	SaleLimit      string
+	AmountSold     string
 }{
 	ID:             "id",
 	BlueprintID:    "blueprint_id",
 	CurrentPrice:   "current_price",
 	AvailableUntil: "available_until",
+	SaleLimit:      "sale_limit",
+	AmountSold:     "amount_sold",
 }
 
 var SalePlayerAbilityTableColumns = struct {
@@ -50,11 +56,15 @@ var SalePlayerAbilityTableColumns = struct {
 	BlueprintID    string
 	CurrentPrice   string
 	AvailableUntil string
+	SaleLimit      string
+	AmountSold     string
 }{
 	ID:             "sale_player_abilities.id",
 	BlueprintID:    "sale_player_abilities.blueprint_id",
 	CurrentPrice:   "sale_player_abilities.current_price",
 	AvailableUntil: "sale_player_abilities.available_until",
+	SaleLimit:      "sale_player_abilities.sale_limit",
+	AmountSold:     "sale_player_abilities.amount_sold",
 }
 
 // Generated where
@@ -64,11 +74,15 @@ var SalePlayerAbilityWhere = struct {
 	BlueprintID    whereHelperstring
 	CurrentPrice   whereHelperdecimal_Decimal
 	AvailableUntil whereHelpernull_Time
+	SaleLimit      whereHelperint
+	AmountSold     whereHelperint
 }{
 	ID:             whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
 	BlueprintID:    whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
 	CurrentPrice:   whereHelperdecimal_Decimal{field: "\"sale_player_abilities\".\"current_price\""},
 	AvailableUntil: whereHelpernull_Time{field: "\"sale_player_abilities\".\"available_until\""},
+	SaleLimit:      whereHelperint{field: "\"sale_player_abilities\".\"sale_limit\""},
+	AmountSold:     whereHelperint{field: "\"sale_player_abilities\".\"amount_sold\""},
 }
 
 // SalePlayerAbilityRels is where relationship names are stored.
@@ -92,9 +106,9 @@ func (*salePlayerAbilityR) NewStruct() *salePlayerAbilityR {
 type salePlayerAbilityL struct{}
 
 var (
-	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until"}
+	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until", "sale_limit", "amount_sold"}
 	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id", "current_price"}
-	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until"}
+	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until", "sale_limit", "amount_sold"}
 	salePlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	salePlayerAbilityGeneratedColumns      = []string{}
 )

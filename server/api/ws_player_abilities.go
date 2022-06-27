@@ -112,8 +112,15 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if spa.AvailableUntil.Time.Before(time.Now()) {
 		// If sale of player ability has already expired
 		gamelog.L.Debug().
-			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("playerAbility", spa).Msg("forbid player from purchasing expired ability")
+			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing expired ability")
 		return terror.Error(fmt.Errorf("sale of player ability has already expired"), "Purchase failed. This ability is no longer available for purchase.")
+	}
+
+	if spa.AmountSold == spa.SaleLimit {
+		// If sale of player ability limit has been reached
+		gamelog.L.Debug().
+			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing ability that has had its sale limit reached")
+		return terror.Error(fmt.Errorf("sale of player ability limit has already been reached"), "Purchase failed. This ability has been sold out and is no longer available for purchase.")
 	}
 
 	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
