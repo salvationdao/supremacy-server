@@ -77,17 +77,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
 
 	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic at the SalePlayerAbilitiesUpdater!", r)
-
-			// re-run ability updater if ability system has not been cleaned up yet
-			if pas != nil {
-				pas.SalePlayerAbilitiesUpdater()
-			}
-		}
-	}()
-
-	defer func() {
 		priceTicker.Stop()
 		pas.closed.Store(true)
 	}()
