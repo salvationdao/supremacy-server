@@ -93,7 +93,7 @@ func PlayerAbilitiesList(
 ) ([]*DetailedPlayerAbility, error) {
 	pas, err := boiler.PlayerAbilities(
 		boiler.PlayerAbilityWhere.OwnerID.EQ(userID),
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.BlueprintID)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.Count)),
 		qm.Load(boiler.PlayerAbilityRels.Blueprint),
 		boiler.PlayerAbilityWhere.Count.GT(0),
 	).All(gamedb.StdConn)
