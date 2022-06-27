@@ -678,7 +678,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	// Update the count of the player_abilities entry
 	pa.Count = pa.Count - 1
-	_, err = pa.Update(gamedb.StdConn, boil.Infer())
+	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
