@@ -170,6 +170,7 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
 		}
 		tx = tix
+		defer tix.Rollback()
 	}
 
 	_, err = mech.Update(tx, boil.Infer())

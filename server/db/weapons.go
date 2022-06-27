@@ -151,8 +151,8 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 			return terror.Error(err)
 		}
 		tx = tix
+		defer tix.Rollback()
 	}
-	defer tx.Rollback()
 
 	// get mech
 	mech, err := boiler.Mechs(
