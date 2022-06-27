@@ -197,7 +197,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	pa.Count = pa.Count + 1
-	_, err = pa.Update(gamedb.StdConn, boil.Infer())
+	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
