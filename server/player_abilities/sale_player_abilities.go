@@ -98,7 +98,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		case <-priceTicker.C:
 			reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)) // default 1%
 			floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                         // default 10 sups
-			timeBetweenRefresh := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefresh, int(time.Hour))                  // default 1 hour
+			timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600)            // default 1 hour (3600 seconds)
 
 			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
@@ -132,7 +132,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
-					oneHourFromNow := time.Now().Add(time.Duration(timeBetweenRefresh))
+					oneHourFromNow := time.Now().Add(time.Duration(timeBetweenRefreshInSeconds * int(time.Second)))
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(allSaleAbilities))
 					for _, i := range randomIndexes[:limit] {
