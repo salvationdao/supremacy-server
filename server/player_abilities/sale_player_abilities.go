@@ -138,7 +138,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						continue
 					}
 
-					detailedSaleAbilities := make([]*db.SaleAbilityDetailed, 0)
+					detailedSaleAbilities := make([]*db.SaleAbilityDetailed, len(saleAbilities))
 					for _, s := range saleAbilities {
 						detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
 							SalePlayerAbility: s,
