@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -89,15 +90,26 @@ func PowerCores(id ...string) ([]*server.PowerCore, error) {
 }
 
 // AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
-func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
+func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner
-	mechCI, err := CollectionItemFromItemID(mechID)
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("powercore ID", powerCoreID).Msg("failed to equip powercore to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this powercore to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
+
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to mech collection item")
 		return terror.Error(err)
 	}
-	pcCI, err := CollectionItemFromItemID(powerCoreID)
+	pcCI, err := CollectionItemFromItemID(tx, powerCoreID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("powerCoreID", powerCoreID).Msg("failed to power core collection item")
 		return terror.Error(err)
@@ -156,12 +168,6 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 	mech.PowerCoreID = null.StringFrom(powerCore.ID)
 	powerCore.EquippedOn = null.StringFrom(mech.ID)
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue creating tx")
-		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
-	}
-
 	_, err = mech.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue mech update")
@@ -173,10 +179,12 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue committing tx")
-		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue committing tx")
+			return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
+		}
 	}
 
 	return nil

@@ -695,6 +695,13 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
+		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach powercore to mech during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach weapons to mech -mech
 		for _, weapon := range items.Weapons {
 			err = db.AttachWeaponToMech(tx, user.ID, items.Mech.ID, weapon.ID)

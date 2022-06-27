@@ -248,12 +248,12 @@ func AttachUtilityToMech(ownerID, mechID, utilityID string, lockedToMech bool) e
 	}
 	defer tx.Rollback()
 
-	mechCI, err := CollectionItemFromItemID(mechID)
+	mechCI, err := CollectionItemFromItemID(nil, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
 		return terror.Error(err)
 	}
-	utilityCI, err := CollectionItemFromItemID(utilityID)
+	utilityCI, err := CollectionItemFromItemID(nil, utilityID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to get utility collection item")
 		return terror.Error(err)

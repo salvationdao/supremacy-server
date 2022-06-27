@@ -342,7 +342,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			lockedToMech = true
 		}
 		// join power core
-		err = AttachPowerCoreToMech(ownerID.String(), mechs[0].ID, powerCores[0].ID)
+		err = AttachPowerCoreToMech(nil, ownerID.String(), mechs[0].ID, powerCores[0].ID)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Str("ownerID.String()", ownerID.String()).

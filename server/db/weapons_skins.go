@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -69,15 +68,20 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		return nil, terror.Error(err)
 	}
 
-	return WeaponSkin(newWeaponSkin.ID)
+	return WeaponSkin(tx, newWeaponSkin.ID)
 }
 
-func WeaponSkin(id string) (*server.WeaponSkin, error) {
-	boilerWeaponSkin, err := boiler.FindWeaponSkin(gamedb.StdConn, id)
+func WeaponSkin(trx boil.Executor, id string) (*server.WeaponSkin, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerWeaponSkin, err := boiler.FindWeaponSkin(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -103,14 +107,14 @@ func WeaponSkins(id ...string) ([]*server.WeaponSkin, error) {
 	return weaponSkins, nil
 }
 
-func AttachWeaponSkinToWeapon(tx *sql.Tx, ownerID, weaponID, weaponSkinID string) error {
+func AttachWeaponSkinToWeapon(tx boil.Executor, ownerID, weaponID, weaponSkinID string) error {
 	// check owner
-	weaponCI, err := CollectionItemFromItemID(weaponID)
+	weaponCI, err := CollectionItemFromItemID(tx, weaponID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to weapon collection item")
 		return terror.Error(err)
 	}
-	wsCI, err := CollectionItemFromItemID(weaponSkinID)
+	wsCI, err := CollectionItemFromItemID(tx, weaponSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponSkinID", weaponSkinID).Msg("failed to weapon skin collection item")
 		return terror.Error(err)
@@ -128,14 +132,14 @@ func AttachWeaponSkinToWeapon(tx *sql.Tx, ownerID, weaponID, weaponSkinID string
 	}
 
 	// get weapon
-	weapon, err := boiler.FindWeapon(gamedb.StdConn, weaponID)
+	weapon, err := boiler.FindWeapon(tx, weaponID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to find weapon")
 		return terror.Error(err)
 	}
 
 	// get weapon skin
-	weaponSkin, err := boiler.FindWeaponSkin(gamedb.StdConn, weaponSkinID)
+	weaponSkin, err := boiler.FindWeaponSkin(tx, weaponSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponSkinID", weaponSkinID).Msg("failed to find weapon skin")
 		return terror.Error(err)
@@ -154,7 +158,7 @@ func AttachWeaponSkinToWeapon(tx *sql.Tx, ownerID, weaponID, weaponSkinID string
 		// also check weaponSkin.EquippedOn on, if that doesn't match, update it, so it does.
 		if !weaponSkin.EquippedOn.Valid {
 			weaponSkin.EquippedOn = null.StringFrom(weapon.ID)
-			_, err = weaponSkin.Update(gamedb.StdConn, boil.Infer())
+			_, err = weaponSkin.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("weapon.ID", weapon.ID).Str("weaponSkin.ID", weaponSkin.ID).Msg("failed to update weapon skin equipped on")
 				return terror.Error(err, "Weapon already has a skin equipped.")

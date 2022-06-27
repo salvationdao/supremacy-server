@@ -41,7 +41,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		item = obj
 		name = obj.Label
 	case boiler.ItemTypeWeapon:
-		obj, err := db.Weapon(ci.ItemID)
+		obj, err := db.Weapon(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon in Asset rpc call ")
 			return terror.Error(err)

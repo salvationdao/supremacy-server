@@ -97,13 +97,23 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("chassisSkinID", chassisSkinID).Msg("failed to equip mech skin to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
 
-	mechCI, err := CollectionItemFromItemID(mechID)
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to mech collection item")
 		return terror.Error(err)
 	}
-	msCI, err := CollectionItemFromItemID(chassisSkinID)
+	msCI, err := CollectionItemFromItemID(tx, chassisSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("chassisSkinID", chassisSkinID).Msg("failed to mech skin collection item")
 		return terror.Error(err)
@@ -161,17 +171,6 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 	mech.ChassisSkinID = null.StringFrom(mechSkin.ID)
 	mechSkin.EquippedOn = null.StringFrom(mech.ID)
 	mechSkin.LockedToMech = lockedToMech
-
-	tx := trx
-	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue creating tx")
-			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
-		}
-		tx = tix
-		defer tix.Rollback()
-	}
 
 	_, err = mech.Update(tx, boil.Infer())
 	if err != nil {
