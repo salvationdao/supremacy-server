@@ -94,7 +94,7 @@ func (m *MarketplaceController) unlockCollectionItems() {
 			WHERE locked_to_marketplace = true AND id IN (
 				SELECT _s.collection_item_id
 				FROM item_sales _s
-				WHERE _s.sold_by IS NULL
+				WHERE _s.sold_to IS NULL
 					AND (
 						_s.end_at <= NOW()
 						AND NOW() - _s.end_at < INTERVAL '2 MINUTE' 
@@ -119,7 +119,7 @@ func (m *MarketplaceController) processExpiredKeycardItemListings() {
 			`(%[1]s <= NOW() AND NOW() - %[1]s <= INTERVAL '2 MINUTE')`,
 			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt),
 		)),
-		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
+		boiler.ItemKeycardSaleWhere.SoldTo.IsNull(),
 		boiler.ItemKeycardSaleWhere.DeletedAt.IsNull(),
 	)
 
@@ -278,7 +278,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				INNER JOIN players ON players.id = item_sales.owner_id 
 				INNER JOIN collection_items ON collection_items.id = item_sales.collection_item_id
 			WHERE item_sales.auction = TRUE
-				AND item_sales.sold_by IS NULL
+				AND item_sales.sold_to IS NULL
 				AND item_sales_bid_history.bid_price > 0
 				AND item_sales.deleted_at IS NULL
 				AND (
@@ -325,6 +325,17 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						Err(err).
 						Msg("unable to update refund tx id on bid record")
 					return
+				}
+				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID.String()).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice.String()).
+						Str("bid_tx_id", auctionItem.AuctionBidTXID).
+						Str("refund_tx_id", rtxid).
+						Err(err).
+						Msg("Failed to log bid refund event.")
 				}
 				numProcessed++
 				return
@@ -404,14 +415,14 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				SoldAt:    null.TimeFrom(time.Now()),
 				SoldFor:   decimal.NewNullDecimal(auctionItem.AuctionBidPrice),
 				SoldTXID:  null.StringFrom(txid),
-				SoldBy:    null.StringFrom(auctionItem.AuctionBidUserID.String()),
+				SoldTo:    null.StringFrom(auctionItem.AuctionBidUserID.String()),
 				UpdatedAt: time.Now(),
 			}
 			_, err = saleItemRecord.Update(tx, boil.Whitelist(
 				boiler.ItemSaleColumns.SoldAt,
 				boiler.ItemSaleColumns.SoldFor,
 				boiler.ItemSaleColumns.SoldTXID,
-				boiler.ItemSaleColumns.SoldBy,
+				boiler.ItemSaleColumns.SoldTo,
 				boiler.ItemSaleColumns.UpdatedAt,
 			))
 			if err != nil {
@@ -529,6 +540,27 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Msg("Failed to commit db transaction")
 				return
 			}
+
+			// Log Event
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to log purchase event.")
+			}
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventSold, auctionItem.OwnerID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to log sold event.")
+			}
+
 			numProcessed++
 		}()
 	}
