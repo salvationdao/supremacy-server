@@ -1298,6 +1298,11 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
+	// return, if any war machines have 0 as their participant id
+	if btl.WarMachines[0].ParticipantID == 0 {
+		return
+	}
+
 	// collect ws message
 	wsMessages := []ws.Message{}
 
@@ -1811,6 +1816,26 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		KilledByUser:        killedByUser,
 		KilledBy:            wmd.KilledBy,
 	})
+
+	// clear up unfinished mech move command of the destroyed mech
+	impactedRowCount, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: time.Now()})
+	if err != nil {
+		gamelog.L.Error().Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
+	}
+
+	// broadcast changes
+	if impactedRowCount > 0 {
+		err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+		}
+	}
 
 }
 

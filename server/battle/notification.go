@@ -107,11 +107,12 @@ const (
 )
 
 type MechCommandNotification struct {
-	MechID      string     `json:"mech_id"`
-	MechLabel   string     `json:"mech_label"`
-	FactionID   string     `json:"faction_id"`
-	Action      string     `json:"action"`
-	FiredByUser *UserBrief `json:"fired_by_user,omitempty"`
+	MechID       string     `json:"mech_id"`
+	MechLabel    string     `json:"mech_label"`
+	MechImageUrl string     `json:"mech_image_url"`
+	FactionID    string     `json:"faction_id"`
+	Action       string     `json:"action"`
+	FiredByUser  *UserBrief `json:"fired_by_user,omitempty"`
 }
 
 const HubKeyMultiplierSubscribe = "USER:MULTIPLIERS:SUBSCRIBE"

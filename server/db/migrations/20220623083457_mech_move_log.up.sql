@@ -9,9 +9,11 @@ CREATE TABLE mech_move_command_logs(
     cancelled_at timestamptz,
     reached_at timestamptz,
     created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+    updated_at timestamptz not null default now(),
+    deleted_at timestamptz
 );
 
 CREATE INDEX mech_move_command_logs_mech_id ON mech_move_command_logs(mech_id);
-CREATE INDEX mech_move_command_logs_record_search ON mech_move_command_logs(mech_id, battle_id, cancelled_at, reached_at);
+CREATE INDEX mech_move_command_logs_record_search ON mech_move_command_logs(mech_id, battle_id, cancelled_at, reached_at, deleted_at);
+CREATE INDEX mech_move_command_logs_available ON mech_move_command_logs(cancelled_at, reached_at, deleted_at);
 CREATE INDEX mech_move_command_logs_created_at_descending ON mech_move_command_logs(created_at DESC);

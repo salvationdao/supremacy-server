@@ -767,6 +767,7 @@ func (o *Battle) MechMoveCommandLogs(mods ...qm.QueryMod) mechMoveCommandLogQuer
 
 	queryMods = append(queryMods,
 		qm.Where("\"mech_move_command_logs\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mech_move_command_logs\".\"deleted_at\""),
 	)
 
 	query := MechMoveCommandLogs(queryMods...)
@@ -2462,6 +2463,7 @@ func (battleL) LoadMechMoveCommandLogs(e boil.Executor, singular bool, maybeBatt
 	query := NewQuery(
 		qm.From(`mech_move_command_logs`),
 		qm.WhereIn(`mech_move_command_logs.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_move_command_logs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

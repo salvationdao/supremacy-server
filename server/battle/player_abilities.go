@@ -82,8 +82,9 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
@@ -106,7 +107,19 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 	return nil
 }
 
-const HubKeyMechMoveCommandCreate = "MECH:MOVE:COMMAND:CREATE"
+func (arena *Arena) mechCommandAuthorisedCheck(userID string, wm *WarMachine) error {
+	// check ownership
+	if wm.OwnedByID != userID {
+		gamelog.L.Warn().Str("mech id", wm.ID).Str("mech owner id", wm.OwnedByID).Str("current user id", userID).Msg("Unauthorised mech move command.")
+		return terror.Error(terror.ErrForbidden, "The mech is not owned by current user.")
+	}
+
+	// TODO: check is general?
+
+	// TODO: check is renter?
+
+	return nil
+}
 
 type MechMoveCommandCreateRequest struct {
 	Payload struct {
@@ -132,15 +145,29 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(fmt.Errorf("missing location"), "Missing location")
 	}
 
-	// check ownership
+	// get mech
 	wm := arena.CurrentBattleWarMachineByHash(req.Payload.Hash)
 	if wm == nil {
 		return terror.Error(fmt.Errorf("required mech not found"), "Targeted mech is not on the battlefield.")
 	}
 
-	if wm.OwnedByID != user.ID {
-		gamelog.L.Warn().Str("mech id", wm.ID).Str("mech owner id", wm.OwnedByID).Str("current user id", user.ID).Msg("Unauthorised mech move command.")
-		return terror.Error(terror.ErrForbidden, "The mech is not owned by current user.")
+	err = arena.mechCommandAuthorisedCheck(user.ID, wm)
+	if err != nil {
+		gamelog.L.Warn().Str("mech id", wm.ID).Str("user id", user.ID).Msg("Unauthorised mech command - create")
+		return terror.Error(err, err.Error())
+	}
+
+	// check cell is disabled or not
+	disableCells := arena.currentDisableCells()
+	if disableCells == nil {
+		return terror.Error(fmt.Errorf("no disabeld cells provided"), "The selected cell is disabled.")
+	}
+
+	selectedCell := int64(req.Payload.StartCoords.X + req.Payload.StartCoords.Y*arena.CurrentBattle().gameMap.CellsX)
+	for _, dc := range disableCells {
+		if dc == selectedCell {
+			return terror.Error(fmt.Errorf("cell disabled"), "The selected cell is disabled.")
+		}
 	}
 
 	// check mech move command is triggered within 30 seconds
@@ -231,10 +258,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	}
 
 	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:    wm.ID,
-		MechLabel: wm.Name,
-		FactionID: wm.FactionID,
-		Action:    MechCommandActionFired,
+		MechID:       wm.ID,
+		MechLabel:    wm.Name,
+		MechImageUrl: wm.ImageAvatar,
+		FactionID:    wm.FactionID,
+		Action:       MechCommandActionFired,
 		FiredByUser: &UserBrief{
 			ID:        uuid.FromStringOrNil(user.ID),
 			Username:  user.Username.String,
@@ -279,6 +307,12 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	if wm.OwnedByID != user.ID {
 		gamelog.L.Warn().Str("mech owner id", wm.OwnedByID).Str("player id", user.ID).Msg("Invalid mech move cancel request")
 		return terror.Error(terror.ErrForbidden, "This mech is not owned by the player.")
+	}
+
+	err = arena.mechCommandAuthorisedCheck(user.ID, wm)
+	if err != nil {
+		gamelog.L.Warn().Str("mech id", wm.ID).Str("user id", user.ID).Msg("Unauthorised mech command - cancel")
+		return terror.Error(err, err.Error())
 	}
 
 	// get mech move command
@@ -334,10 +368,11 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	}
 
 	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:    wm.ID,
-		MechLabel: wm.Name,
-		FactionID: wm.FactionID,
-		Action:    MechCommandActionCancel,
+		MechID:       wm.ID,
+		MechLabel:    wm.Name,
+		MechImageUrl: wm.ImageAvatar,
+		FactionID:    wm.FactionID,
+		Action:       MechCommandActionCancel,
 		FiredByUser: &UserBrief{
 			ID:        uuid.FromStringOrNil(user.ID),
 			Username:  user.Username.String,

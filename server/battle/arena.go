@@ -152,6 +152,19 @@ func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	return nil
 }
 
+func (arena *Arena) currentDisableCells() []int64 {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	if arena._currentBattle == nil {
+		return nil
+	}
+
+	arena._currentBattle.RLock()
+	defer arena._currentBattle.RUnlock()
+	return arena._currentBattle.gameMap.DisabledCells
+}
+
 func checkWarMachineByParticipantID(wm *WarMachine, participantID int) bool {
 	wm.RLock()
 	defer wm.RUnlock()
@@ -580,8 +593,14 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// mech command handler
 	if req.Payload.LocationSelectType == "MECH_COMMAND" {
-		return arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
+		err := arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
+		if err != nil {
+			return terror.Error(err, "Failed to fire mech command")
+		}
+
+		return nil
 	}
 
 	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(user.ID), qm.Load(boiler.PlayerRels.Faction)).One(gamedb.StdConn)
@@ -1219,6 +1238,16 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) beginBattle() {
+	// delete all the unfinished mech command
+	_, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to clean up unfinished mech move command")
+	}
+
 	gm, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
@@ -1401,10 +1430,11 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	}
 
 	btl.arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:    wm.ID,
-		MechLabel: wm.Name,
-		FactionID: wm.FactionID,
-		Action:    MechCommandActionComplete,
+		MechID:       wm.ID,
+		MechLabel:    wm.Name,
+		MechImageUrl: wm.ImageAvatar,
+		FactionID:    wm.FactionID,
+		Action:       MechCommandActionComplete,
 	})
 
 	return nil
