@@ -36,7 +36,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	if api.Config.Environment == "development" {
+	if api.Config.Environment == "development" || api.Config.Environment == "staging" {
 		api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 	}
 
