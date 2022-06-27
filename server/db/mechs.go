@@ -171,14 +171,19 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(mechID string) (*server.Mech, error) {
+func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := gamedb.StdConn.Query(query, mechID)
+	result, err := tx.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +479,7 @@ func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.B
 		return nil, terror.Error(err)
 	}
 
-	mech, err := Mech(newMech.ID)
+	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

@@ -240,7 +240,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	// get mech
-	mech, err := db.Mech(collectionItem.ItemID)
+	mech, err := db.Mech(nil, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
@@ -712,7 +712,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
-		mech, err := db.Mech(items.Mech.ID)
+		mech, err := db.Mech(tx, items.Mech.ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))

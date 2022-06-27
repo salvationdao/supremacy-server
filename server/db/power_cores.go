@@ -56,15 +56,20 @@ func InsertNewPowerCore(trx boil.Executor, ownerID uuid.UUID, ec *server.Bluepri
 		return nil, terror.Error(err)
 	}
 
-	return PowerCore(newPowerCore.ID)
+	return PowerCore(tx, newPowerCore.ID)
 }
 
-func PowerCore(id string) (*server.PowerCore, error) {
-	boilerMech, err := boiler.FindPowerCore(gamedb.StdConn, id)
+func PowerCore(trx boil.Executor, id string) (*server.PowerCore, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerMech, err := boiler.FindPowerCore(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -128,14 +133,14 @@ func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) err
 	}
 
 	// get mech
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	mech, err := boiler.FindMech(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get power core
-	powerCore, err := boiler.FindPowerCore(gamedb.StdConn, powerCoreID)
+	powerCore, err := boiler.FindPowerCore(tx, powerCoreID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("powerCoreID", powerCoreID).Msg("failed to find power core")
 		return terror.Error(err)
@@ -154,7 +159,7 @@ func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) err
 		// also check powerCore.EquippedOn on, if that doesn't match, update it, so it does.
 		if !powerCore.EquippedOn.Valid {
 			powerCore.EquippedOn = null.StringFrom(mech.ID)
-			_, err = powerCore.Update(gamedb.StdConn, boil.Infer())
+			_, err = powerCore.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech.ID", mech.ID).Str("powerCore.ID", powerCore.ID).Msg("failed to update power core equipped on")
 				return terror.Error(err, "War machine already has a power core.")

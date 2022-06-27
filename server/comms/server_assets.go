@@ -49,7 +49,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		item = obj
 		name = obj.Label
 	case boiler.ItemTypeMech:
-		obj, err := db.Mech(ci.ItemID)
+		obj, err := db.Mech(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Mech in Asset rpc call ")
 			return terror.Error(err)
@@ -57,7 +57,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		item = obj
 		name = obj.Label
 	case boiler.ItemTypeMechSkin:
-		obj, err := db.MechSkin(ci.ItemID)
+		obj, err := db.MechSkin(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)
@@ -73,7 +73,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		item = obj
 		name = obj.Label
 	case boiler.ItemTypePowerCore:
-		obj, err := db.PowerCore(ci.ItemID)
+		obj, err := db.PowerCore(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get PowerCore in Asset rpc call ")
 			return terror.Error(err)

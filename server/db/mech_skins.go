@@ -59,15 +59,20 @@ func InsertNewMechSkin(trx boil.Executor, ownerID uuid.UUID, skin *server.Bluepr
 		return nil, terror.Error(err)
 	}
 
-	return MechSkin(newSkin.ID)
+	return MechSkin(tx, newSkin.ID)
 }
 
-func MechSkin(id string) (*server.MechSkin, error) {
-	boilerMech, err := boiler.FindMechSkin(gamedb.StdConn, id)
+func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerMech, err := boiler.FindMechSkin(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -131,14 +136,14 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 	}
 
 	// get mech
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	mech, err := boiler.FindMech(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get mech skin
-	mechSkin, err := boiler.FindMechSkin(gamedb.StdConn, chassisSkinID)
+	mechSkin, err := boiler.FindMechSkin(tx, chassisSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("chassisSkinID", chassisSkinID).Msg("failed to find mech skin")
 		return terror.Error(err)
@@ -157,7 +162,7 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 		// also check mechSkin.EquippedOn on, if that doesn't match, update it, so it does.
 		if !mechSkin.EquippedOn.Valid {
 			mechSkin.EquippedOn = null.StringFrom(mech.ID)
-			_, err = mechSkin.Update(gamedb.StdConn, boil.Infer())
+			_, err = mechSkin.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech.ID", mech.ID).Str("mechSkin.ID", mechSkin.ID).Msg("failed to update mech skin equipped on")
 				return terror.Error(err, "War machine already has a skin equipped.")
