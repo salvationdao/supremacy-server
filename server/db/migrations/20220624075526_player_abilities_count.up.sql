@@ -1,10 +1,12 @@
-BEGIN;
+DELETE FROM
+    player_abilities;
 
-DELETE FROM player_abilities;
-
-ALTER TABLE player_abilities 
-    ADD COLUMN IF NOT EXISTS count INT NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS last_purchased_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ALTER TABLE
+    player_abilities
+ADD
+    COLUMN IF NOT EXISTS count INT NOT NULL DEFAULT 0,
+ADD
+    COLUMN IF NOT EXISTS last_purchased_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     DROP COLUMN IF EXISTS purchased_at,
     DROP COLUMN IF EXISTS game_client_ability_id,
     DROP COLUMN IF EXISTS label,
@@ -13,5 +15,3 @@ ALTER TABLE player_abilities
     DROP COLUMN IF EXISTS description,
     DROP COLUMN IF EXISTS text_colour,
     DROP COLUMN IF EXISTS location_select_type;
-
-COMMIT;
