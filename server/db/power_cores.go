@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -15,14 +14,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewPowerCore(trx *sql.Tx, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
+func InsertNewPowerCore(trx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	tx := trx
 	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		tx = tix
+		tx = gamedb.StdConn
 	}
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
@@ -58,13 +53,6 @@ func InsertNewPowerCore(trx *sql.Tx, ownerID uuid.UUID, ec *server.BlueprintPowe
 	)
 	if err != nil {
 		return nil, terror.Error(err)
-	}
-
-	if trx == nil {
-		err = tx.Commit()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
 	}
 
 	return PowerCore(newPowerCore.ID)

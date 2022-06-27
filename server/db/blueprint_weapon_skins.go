@@ -7,7 +7,7 @@ import (
 )
 
 func BlueprintWeaponSkins(ids []string) ([]*server.BlueprintWeaponSkin, error) {
-	var bluePrintWeaponSkins []*server.BlueprintWeaponSkin
+	var serverBlueprintWeaponSkins []*server.BlueprintWeaponSkin
 	blueprintWeaponSkins, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponWhere.ID.IN(ids)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -16,12 +16,12 @@ func BlueprintWeaponSkins(ids []string) ([]*server.BlueprintWeaponSkin, error) {
 	for _, id := range ids {
 		for _, bp := range blueprintWeaponSkins {
 			if bp.ID == id {
-				bluePrintWeaponSkins = append(bluePrintWeaponSkins, server.BlueprintWeaponSkinFromBoiler(bp))
+				serverBlueprintWeaponSkins = append(serverBlueprintWeaponSkins, server.BlueprintWeaponSkinFromBoiler(bp))
 			}
 		}
 	}
 
-	return bluePrintWeaponSkins, nil
+	return serverBlueprintWeaponSkins, nil
 }
 
 func BlueprintWeaponSkin(ids string) (*server.BlueprintWeaponSkin, error) {

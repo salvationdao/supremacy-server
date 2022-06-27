@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"server"
@@ -414,14 +413,10 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(trx *sql.Tx, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
+func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	tx := trx
 	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		tx = tix
+		tx = gamedb.StdConn
 	}
 
 	mechModel, err := boiler.MechModels(
@@ -477,13 +472,6 @@ func InsertNewMech(trx *sql.Tx, ownerID uuid.UUID, mechBlueprint *server.Bluepri
 	)
 	if err != nil {
 		return nil, terror.Error(err)
-	}
-
-	if trx == nil {
-		err = tx.Commit()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
 	}
 
 	mech, err := Mech(newMech.ID)

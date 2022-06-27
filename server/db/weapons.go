@@ -17,14 +17,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewWeapon(trx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
+func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	tx := trx
 	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		tx = tix
+		tx = gamedb.StdConn
 	}
 
 	//getting weapon model to get default skin id to get image url on blueprint weapon skins
@@ -89,13 +85,6 @@ func InsertNewWeapon(trx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWea
 		return nil, terror.Error(err)
 	}
 
-	if trx == nil {
-		err = tx.Commit()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-	}
-
 	return Weapon(newWeapon.ID)
 }
 
@@ -132,19 +121,6 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
 func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
-	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
-
-	tx := trx
-	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
-			return terror.Error(err)
-		}
-		tx = tix
-	}
-	defer tx.Rollback()
-
 	mechCI, err := CollectionItemFromItemID(mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
@@ -166,6 +142,17 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		gamelog.L.Error().Err(err).Str("weaponCI.OwnerID", weaponCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
 		return terror.Error(err, "You need to be the owner of the weapon to equip it to a war machine.")
 	}
+
+	tx := trx
+	if trx == nil {
+		tix, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
+			return terror.Error(err)
+		}
+		tx = tix
+	}
+	defer tx.Rollback()
 
 	// get mech
 	mech, err := boiler.Mechs(

@@ -15,14 +15,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewWeaponSkin(trx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin) (*server.WeaponSkin, error) {
+func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin) (*server.WeaponSkin, error) {
 	tx := trx
 	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		tx = tix
+		tx = gamedb.StdConn
 	}
 
 	//getting blueprintWeaponSkin model to get default skin id to get image url on blueprint blueprintWeaponSkin skins
@@ -37,9 +33,6 @@ func InsertNewWeaponSkin(trx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *se
 	if weaponModel.R == nil || weaponModel.R.DefaultSkin == nil {
 		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to blueprintWeaponSkin"), "Could not find blueprintWeaponSkin default skin relationship, try again or contact support")
 	}
-
-	//should only have one in the arr
-	bpws := weaponModel.R.DefaultSkin
 
 	newWeaponSkin := boiler.WeaponSkin{
 		BlueprintID:   blueprintWeaponSkin.ID,
@@ -64,23 +57,16 @@ func InsertNewWeaponSkin(trx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *se
 		newWeaponSkin.ID,
 		blueprintWeaponSkin.Tier,
 		ownerID.String(),
-		bpws.ImageURL,
-		bpws.CardAnimationURL,
-		bpws.AvatarURL,
-		bpws.LargeImageURL,
-		bpws.BackgroundColor,
-		bpws.AnimationURL,
-		bpws.YoutubeURL,
+		weaponModel.R.DefaultSkin.ImageURL,
+		weaponModel.R.DefaultSkin.CardAnimationURL,
+		weaponModel.R.DefaultSkin.AvatarURL,
+		weaponModel.R.DefaultSkin.LargeImageURL,
+		weaponModel.R.DefaultSkin.BackgroundColor,
+		weaponModel.R.DefaultSkin.AnimationURL,
+		weaponModel.R.DefaultSkin.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
-	}
-
-	if trx == nil {
-		err = tx.Commit()
-		if err != nil {
-			return nil, terror.Error(err)
-		}
 	}
 
 	return WeaponSkin(newWeaponSkin.ID)
@@ -117,7 +103,7 @@ func WeaponSkins(id ...string) ([]*server.WeaponSkin, error) {
 	return weaponSkins, nil
 }
 
-func AttachWeaponSkinToWeapon(trx *sql.Tx, ownerID, weaponID, weaponSkinID string) error {
+func AttachWeaponSkinToWeapon(tx *sql.Tx, ownerID, weaponID, weaponSkinID string) error {
 	// check owner
 	weaponCI, err := CollectionItemFromItemID(weaponID)
 	if err != nil {
@@ -182,16 +168,6 @@ func AttachWeaponSkinToWeapon(trx *sql.Tx, ownerID, weaponID, weaponSkinID strin
 	weapon.EquippedWeaponSkinID = null.StringFrom(weaponSkin.ID)
 	weaponSkin.EquippedOn = null.StringFrom(weapon.ID)
 
-	tx := trx
-	if trx == nil {
-		tix, err := gamedb.StdConn.Begin()
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("weapon.EquippedWeaponSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue creating tx")
-			return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
-		}
-		tx = tix
-	}
-
 	_, err = weapon.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue weapon update")
@@ -201,14 +177,6 @@ func AttachWeaponSkinToWeapon(trx *sql.Tx, ownerID, weaponID, weaponSkinID strin
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue weapon skin update")
 		return terror.Error(err, "Issue preventing equipping this weapon skin to the war machine, try again or contact support.")
-	}
-
-	if trx == nil {
-		err = tx.Commit()
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("weapon.ChassisSkinID.String", weapon.EquippedWeaponSkinID.String).Str("new weaponSkin.ID", weaponSkin.ID).Msg("failed to equip weapon skin to weapon, issue committing tx")
-			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
-		}
 	}
 
 	return nil

@@ -1,9 +1,9 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -14,7 +14,7 @@ import (
 
 // InsertNewCollectionItem inserts a collection item,
 // It takes a TX and DOES NOT COMMIT, commit needs to be called in the parent function.
-func InsertNewCollectionItem(tx *sql.Tx,
+func InsertNewCollectionItem(tx boil.Executor,
 	collectionSlug,
 	itemType,
 	itemID,

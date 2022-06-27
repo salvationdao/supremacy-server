@@ -558,7 +558,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	crate, err := boiler.MysteryCrates(
 		boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
-		boiler.MysteryCrateWhere.FactionID.EQ(factionID),
 		boiler.MysteryCrateWhere.LockedUntil.LTE(time.Now()),
 		boiler.MysteryCrateWhere.Opened.EQ(false),
 		qm.Load(boiler.MysteryCrateRels.MysteryCrateBlueprints),
@@ -567,14 +566,10 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not find crate, try again or contact support.")
 	}
 
-	items := OpenCrateResponse{
-		Weapons: make([]*server.Weapon, 0),
-	}
-
 	crate.Opened = true
 	_, err = crate.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed update crate opened: %s", crate.ID))
+		gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed update crate opened: %s", crate.ID))
 		return terror.Error(err, "Could not open crate, try again or contact support.")
 	}
 
@@ -582,100 +577,107 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		crate.Opened = false
 		_, err = crate.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed rollback crate opened: %s", crate.ID))
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed rollback crate opened: %s", crate.ID))
 			return terror.Error(err, "Could not rollback crate, try again or contact support.")
 		}
 		return nil
 	}
 
+	items := OpenCrateResponse{}
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return fmt.Errorf("start tx: %w", err)
 	}
-	defer func() {
-		tx.Rollback()
-	}()
+	defer tx.Rollback()
 
 	for _, blueprintItem := range crate.R.MysteryCrateBlueprints {
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH {
-			bp, err := db.BlueprintMech(blueprintItem.BlueprintID)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get mech blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
-			}
+		switch blueprintItem.BlueprintType {
+		case boiler.TemplateItemTypeMECH:
+			{
+				bp, err := db.BlueprintMech(blueprintItem.BlueprintID)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to get mech blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+				}
 
-			mech, err := db.InsertNewMech(tx, uuid.FromStringOrNil(user.ID), bp)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to insert new mech from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+				mech, err := db.InsertNewMech(tx, uuid.FromStringOrNil(user.ID), bp)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+				}
+				items.Mech = mech
 			}
-			items.Mech = mech
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON {
-			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get weapon blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
-			}
+		case boiler.TemplateItemTypeWEAPON:
+			{
+				bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to get weapon blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
+				}
 
-			weapon, err := db.InsertNewWeapon(tx, uuid.FromStringOrNil(user.ID), bp)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to insert new weapon from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get weapon during crate opening, try again or contact support.")
+				weapon, err := db.InsertNewWeapon(tx, uuid.FromStringOrNil(user.ID), bp)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new weapon from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get weapon during crate opening, try again or contact support.")
+				}
+				items.Weapons = append(items.Weapons, weapon)
 			}
-			items.Weapons = append(items.Weapons, weapon)
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeMECH_SKIN {
-			bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get mech skin blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get mech skin blueprint during crate opening, try again or contact support.")
-			}
+		case boiler.TemplateItemTypeMECH_SKIN:
+			{
+				bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to get mech skin blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get mech skin blueprint during crate opening, try again or contact support.")
+				}
 
-			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), bp)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
+				mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), bp)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
+				}
+				items.MechSkin = mechSkin
 			}
-			items.MechSkin = mechSkin
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypeWEAPON_SKIN {
-			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get weapon skin blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get weapon skin blueprint during crate opening, try again or contact support.")
-			}
+		case boiler.TemplateItemTypeWEAPON_SKIN:
+			{
+				bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to get weapon skin blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get weapon skin blueprint during crate opening, try again or contact support.")
+				}
 
-			weaponSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), bp)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
+				weaponSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), bp)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
+				}
+				items.WeaponSkin = weaponSkin
 			}
-			items.WeaponSkin = weaponSkin
-		}
-		if blueprintItem.BlueprintType == boiler.TemplateItemTypePOWER_CORE {
-			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get powercore blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get powercore blueprint during crate opening, try again or contact support.")
-			}
+		case boiler.TemplateItemTypePOWER_CORE:
+			{
+				bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to get powercore blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get powercore blueprint during crate opening, try again or contact support.")
+				}
 
-			powerCore, err := db.InsertNewPowerCore(tx, uuid.FromStringOrNil(user.ID), bp)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to insert new powercore from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get powercore during crate opening, try again or contact support.")
+				powerCore, err := db.InsertNewPowerCore(tx, uuid.FromStringOrNil(user.ID), bp)
+				if err != nil {
+					crateRollback()
+					gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new powercore from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
+					return terror.Error(err, "Could not get powercore during crate opening, try again or contact support.")
+				}
+				items.PowerCore = powerCore
 			}
-			items.PowerCore = powerCore
 		}
 	}
 
@@ -684,7 +686,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
 		if err != nil {
 			crateRollback()
-			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
@@ -693,7 +695,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			err = db.AttachWeaponToMech(tx, user.ID, items.Mech.ID, weapon.ID)
 			if err != nil {
 				crateRollback()
-				gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach weapons to mech during CRATE:OPEN crate: %s", crate.ID))
+				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapons to mech during CRATE:OPEN crate: %s", crate.ID))
 				return terror.Error(err, "Could not open crate, try again or contact support.")
 			}
 		}
@@ -701,7 +703,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		mech, err := db.Mech(items.Mech.ID)
 		if err != nil {
 			crateRollback()
-			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		items.Mech = mech
@@ -711,21 +713,21 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		//attach weapon_skin to weapon -weapon
 		if len(items.Weapons) != 1 {
 			crateRollback()
-			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
 		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
 		if err != nil {
 			crateRollback()
-			gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
-		gamelog.L.Error().Err(err).Msg("failed to open mystery crate")
+		crateRollback()
+		gamelog.L.Error().Err(err).Interface("crate", crate).Msg("failed to open mystery crate")
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
