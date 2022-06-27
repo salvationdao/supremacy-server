@@ -558,6 +558,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
 	}
 
+	if pa.Count < 1 {
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
+		return terror.Error(err, "You do not have any more of this ability to use.")
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the PlayerAbilityUse!", r)
@@ -672,10 +677,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	}
 
 	// Update the count of the player_abilities entry
-	if pa.Count < 1 {
-		gamelog.L.Error().Err(err).Interface("consumedAbility", ca).Msg("failed to created consumed ability entry")
-		return terror.Error(err, "You do not have any more of this ability to use.")
-	}
 	pa.Count = pa.Count - 1
 	_, err = pa.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
