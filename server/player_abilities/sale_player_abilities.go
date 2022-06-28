@@ -133,6 +133,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
 						"available_until": oneHourFromNow,
+						"amount_sold":     0,
 					})
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
@@ -150,7 +151,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					// Broadcast trigger of sale abilities list update
 					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
 						NextRefreshTime *time.Time                `json:"next_refresh_time"`
-						SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
+						SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
 					}{
 						NextRefreshTime: &oneHourFromNow,
 						SaleAbilities:   detailedSaleAbilities,
