@@ -247,7 +247,6 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
-
 			}))
 
 			// secured faction route ws
@@ -265,6 +264,10 @@ func NewAPI(
 				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(battleArenaClient.PlayerAssetMechQueueSubscribeHandler))
 				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+
+				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
+				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
+				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 			}))
 
 			// handle abilities ws

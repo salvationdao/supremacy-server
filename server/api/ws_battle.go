@@ -48,6 +48,8 @@ func NewBattleController(api *API) *BattleControllerWS {
 	// faction unique ability related (sup contribution)
 	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
 
+	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
+
 	return bc
 }
 
