@@ -5,7 +5,6 @@ import (
 	"server/gamedb"
 
 	goaway "github.com/TwiN/go-away"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -24,8 +23,6 @@ func NewProfanityManager() (*ProfanityManager, error) {
 	for _, p := range profanities {
 		dictionary = append(dictionary, p.Phrase)
 	}
-
-	spew.Dump(dictionary)
 
 	return &ProfanityManager{
 		Detector: goaway.NewProfanityDetector().WithCustomDictionary(dictionary, []string{}, []string{}),
