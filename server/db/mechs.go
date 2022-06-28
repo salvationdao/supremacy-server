@@ -111,9 +111,14 @@ LEFT OUTER JOIN (
 	FROM mech_weapons mw
 	INNER JOIN
 		(
-			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url, to_json(_ws) as weapon_skin
 			FROM weapons _w
 			INNER JOIN collection_items _ci on _ci.item_id = _w.id
+			LEFT OUTER JOIN (
+					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+					FROM weapon_skin __ws
+					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
+			) _ws ON _ws.id = _w.equipped_weapon_skin_id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id
@@ -140,7 +145,7 @@ LEFT OUTER JOIN (
 ) u on u.chassis_id = mechs.id `
 
 func DefaultMechs() ([]*server.Mech, error) {
-	idq := `SELECT id FROM mechs WHERE is_default=true`
+	idq := `SELECT id FROM mechs WHERE is_default=TRUE`
 
 	result, err := gamedb.StdConn.Query(idq)
 	if err != nil {
@@ -166,14 +171,19 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(mechID string) (*server.Mech, error) {
+func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := gamedb.StdConn.Query(query, mechID)
+	result, err := tx.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -408,10 +418,10 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
 	}
 
 	mechModel, err := boiler.MechModels(
@@ -469,12 +479,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	mech, err := Mech(newMech.ID)
+	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

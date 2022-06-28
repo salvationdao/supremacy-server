@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -15,10 +16,10 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewMechSkin(trx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
 	}
 
 	// first insert the skin
@@ -35,7 +36,7 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		LargeImageURL:         skin.LargeImageURL,
 	}
 
-	err = newSkin.Insert(tx, boil.Infer())
+	err := newSkin.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -58,20 +59,20 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return MechSkin(newSkin.ID)
+	return MechSkin(tx, newSkin.ID)
 }
 
-func MechSkin(id string) (*server.MechSkin, error) {
-	boilerMech, err := boiler.FindMechSkin(gamedb.StdConn, id)
+func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerMech, err := boiler.FindMechSkin(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,15 +99,26 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 
 // AttachMechSkinToMech attaches a mech skin to a mech // TODO: create tests.
 // If lockedToMech == true this asset is forever locked to that mech and cannon be removed (used when inserting genesis or limited mechs
-func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bool) error {
+func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner
-	mechCI, err := CollectionItemFromItemID(mechID)
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("chassisSkinID", chassisSkinID).Msg("failed to equip mech skin to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
+
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to mech collection item")
 		return terror.Error(err)
 	}
-	msCI, err := CollectionItemFromItemID(chassisSkinID)
+	msCI, err := CollectionItemFromItemID(tx, chassisSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("chassisSkinID", chassisSkinID).Msg("failed to mech skin collection item")
 		return terror.Error(err)
@@ -124,14 +136,14 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 	}
 
 	// get mech
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	mech, err := boiler.FindMech(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get mech skin
-	mechSkin, err := boiler.FindMechSkin(gamedb.StdConn, chassisSkinID)
+	mechSkin, err := boiler.FindMechSkin(tx, chassisSkinID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("chassisSkinID", chassisSkinID).Msg("failed to find mech skin")
 		return terror.Error(err)
@@ -150,7 +162,7 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 		// also check mechSkin.EquippedOn on, if that doesn't match, update it, so it does.
 		if !mechSkin.EquippedOn.Valid {
 			mechSkin.EquippedOn = null.StringFrom(mech.ID)
-			_, err = mechSkin.Update(gamedb.StdConn, boil.Infer())
+			_, err = mechSkin.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech.ID", mech.ID).Str("mechSkin.ID", mechSkin.ID).Msg("failed to update mech skin equipped on")
 				return terror.Error(err, "War machine already has a skin equipped.")
@@ -165,12 +177,6 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 	mechSkin.EquippedOn = null.StringFrom(mech.ID)
 	mechSkin.LockedToMech = lockedToMech
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue creating tx")
-		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
-	}
-
 	_, err = mech.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue mech update")
@@ -182,10 +188,12 @@ func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string, lockedToMech bo
 		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue committing tx")
-		return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ChassisSkinID.String", mech.ChassisSkinID.String).Str("new mechSkin.ID", mechSkin.ID).Msg("failed to equip mech skin to mech, issue committing tx")
+			return terror.Error(err, "Issue preventing equipping this mech skin to the war machine, try again or contact support.")
+		}
 	}
 
 	return nil
