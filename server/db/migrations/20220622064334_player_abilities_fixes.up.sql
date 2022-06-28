@@ -1,3 +1,58 @@
+UPDATE
+    consumed_abilities ca
+SET
+    location_select_type = (
+        SELECT
+            location_select_type
+        FROM
+            blueprint_player_abilities bpa
+        WHERE
+            bpa.id = ca.blueprint_id
+    )
+WHERE
+    location_select_type IS NULL;
+
+ALTER TABLE
+    consumed_abilities
+ALTER COLUMN
+    location_select_type
+SET
+    NOT NULL;
+
+-- New location_select_ability type
+DROP TYPE IF EXISTS LOCATION_SELECT_TYPE_ENUM;
+
+CREATE TYPE LOCATION_SELECT_TYPE_ENUM AS ENUM (
+    'LINE_SELECT',
+    'MECH_SELECT',
+    'LOCATION_SELECT',
+    'GLOBAL'
+);
+
+ALTER TABLE
+    blueprint_player_abilities DROP CONSTRAINT blueprint_player_abilities_location_select_type_check;
+
+ALTER TABLE
+    blueprint_player_abilities
+ALTER COLUMN
+    location_select_type TYPE LOCATION_SELECT_TYPE_ENUM USING location_select_type :: LOCATION_SELECT_TYPE_ENUM;
+
+ALTER TABLE
+    player_abilities DROP CONSTRAINT player_abilities_location_select_type_check;
+
+ALTER TABLE
+    player_abilities
+ALTER COLUMN
+    location_select_type TYPE LOCATION_SELECT_TYPE_ENUM USING location_select_type :: LOCATION_SELECT_TYPE_ENUM;
+
+ALTER TABLE
+    consumed_abilities DROP CONSTRAINT consumed_abilities_location_select_type_check;
+
+ALTER TABLE
+    consumed_abilities
+ALTER COLUMN
+    location_select_type TYPE LOCATION_SELECT_TYPE_ENUM USING location_select_type :: LOCATION_SELECT_TYPE_ENUM;
+
 -- Update Landmine
 UPDATE
     blueprint_player_abilities
