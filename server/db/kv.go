@@ -18,6 +18,7 @@ const SaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_i
 const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const SaleAbilityLimit KVKey = "sale_ability_limit"
+const SaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
 
 type KVKey string

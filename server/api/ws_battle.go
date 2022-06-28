@@ -39,8 +39,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
-	// TODO: handle player ability use
-	//api.SecureUserCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
 
 	// battle ability related (bribing)
 	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)

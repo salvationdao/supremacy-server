@@ -16,8 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -2243,7 +2244,10 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		FactionID:           &faction.ID,
 	}
 
-	as.battle().calcTriggeredLocation(event)
+	event.GameLocation = getGameWorldCoordinatesFromCellXY(as.battle().gameMap, &server.CellLocation{
+		X: *event.TriggeredOnCellX,
+		Y: *event.TriggeredOnCellY,
+	})
 
 	// trigger location select
 	as.battle().arena.Message("BATTLE:ABILITY", event)

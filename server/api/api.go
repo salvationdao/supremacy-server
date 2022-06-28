@@ -161,7 +161,7 @@ func NewAPI(
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
-	_ = NewPlayerAbilitiesController(api)
+	pac := NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
@@ -218,7 +218,6 @@ func NewAPI(
 				s.Mount("/commander", api.Commander)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
-				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
@@ -226,6 +225,11 @@ func NewAPI(
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+			}))
+
+			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, false))
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))
 			}))
 
 			// battle arena route ws
@@ -242,6 +246,7 @@ func NewAPI(
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
+				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 
 			}))
 

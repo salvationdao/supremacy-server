@@ -377,18 +377,15 @@ func (btl *Battle) start() {
 	}
 }
 
-// calcTriggeredLocation convert picked cell to the location in game
-func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
+// getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
+func getGameWorldCoordinatesFromCellXY(gameMap *server.GameMap, cell *server.CellLocation) *server.GameLocation {
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
-	if abilityEvent.TriggeredOnCellX == nil || abilityEvent.TriggeredOnCellY == nil {
-		return
+	return &server.GameLocation{
+		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.LeftPixels,
+		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.TopPixels,
 	}
-
-	abilityEvent.GameLocation.X = ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels
-	abilityEvent.GameLocation.Y = ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels
-
 }
 
 type WarMachinePosition struct {
@@ -443,10 +440,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 		// set cell
 		abilityEvent.TriggeredOnCellX = &wm.X
 		abilityEvent.TriggeredOnCellY = &wm.Y
-		abilityEvent.GameLocation = struct {
-			X int `json:"x"`
-			Y int `json:"y"`
-		}{
+		abilityEvent.GameLocation = &server.GameLocation{
 			X: wm.X,
 			Y: wm.Y,
 		}
@@ -459,10 +453,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 	abilityEvent.TriggeredOnCellX = &wm.X
 	abilityEvent.TriggeredOnCellY = &wm.Y
 
-	abilityEvent.GameLocation = struct {
-		X int `json:"x"`
-		Y int `json:"y"`
-	}{
+	abilityEvent.GameLocation = &server.GameLocation{
 		X: wm.X,
 		Y: wm.Y,
 	}
