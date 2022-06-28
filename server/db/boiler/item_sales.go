@@ -39,7 +39,7 @@ type ItemSale struct {
 	EndAt                time.Time           `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	SoldAt               null.Time           `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
 	SoldFor              decimal.NullDecimal `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
-	SoldBy               null.String         `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
+	SoldTo               null.String         `boiler:"sold_to" boil:"sold_to" json:"sold_to,omitempty" toml:"sold_to" yaml:"sold_to,omitempty"`
 	SoldTXID             null.String         `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
 	SoldFeeTXID          null.String         `boiler:"sold_fee_tx_id" boil:"sold_fee_tx_id" json:"sold_fee_tx_id,omitempty" toml:"sold_fee_tx_id" yaml:"sold_fee_tx_id,omitempty"`
 	DeletedAt            null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -66,7 +66,7 @@ var ItemSaleColumns = struct {
 	EndAt                string
 	SoldAt               string
 	SoldFor              string
-	SoldBy               string
+	SoldTo               string
 	SoldTXID             string
 	SoldFeeTXID          string
 	DeletedAt            string
@@ -88,7 +88,7 @@ var ItemSaleColumns = struct {
 	EndAt:                "end_at",
 	SoldAt:               "sold_at",
 	SoldFor:              "sold_for",
-	SoldBy:               "sold_by",
+	SoldTo:               "sold_to",
 	SoldTXID:             "sold_tx_id",
 	SoldFeeTXID:          "sold_fee_tx_id",
 	DeletedAt:            "deleted_at",
@@ -112,7 +112,7 @@ var ItemSaleTableColumns = struct {
 	EndAt                string
 	SoldAt               string
 	SoldFor              string
-	SoldBy               string
+	SoldTo               string
 	SoldTXID             string
 	SoldFeeTXID          string
 	DeletedAt            string
@@ -134,7 +134,7 @@ var ItemSaleTableColumns = struct {
 	EndAt:                "item_sales.end_at",
 	SoldAt:               "item_sales.sold_at",
 	SoldFor:              "item_sales.sold_for",
-	SoldBy:               "item_sales.sold_by",
+	SoldTo:               "item_sales.sold_to",
 	SoldTXID:             "item_sales.sold_tx_id",
 	SoldFeeTXID:          "item_sales.sold_fee_tx_id",
 	DeletedAt:            "item_sales.deleted_at",
@@ -160,7 +160,7 @@ var ItemSaleWhere = struct {
 	EndAt                whereHelpertime_Time
 	SoldAt               whereHelpernull_Time
 	SoldFor              whereHelperdecimal_NullDecimal
-	SoldBy               whereHelpernull_String
+	SoldTo               whereHelpernull_String
 	SoldTXID             whereHelpernull_String
 	SoldFeeTXID          whereHelpernull_String
 	DeletedAt            whereHelpernull_Time
@@ -182,7 +182,7 @@ var ItemSaleWhere = struct {
 	EndAt:                whereHelpertime_Time{field: "\"item_sales\".\"end_at\""},
 	SoldAt:               whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
 	SoldFor:              whereHelperdecimal_NullDecimal{field: "\"item_sales\".\"sold_for\""},
-	SoldBy:               whereHelpernull_String{field: "\"item_sales\".\"sold_by\""},
+	SoldTo:               whereHelpernull_String{field: "\"item_sales\".\"sold_to\""},
 	SoldTXID:             whereHelpernull_String{field: "\"item_sales\".\"sold_tx_id\""},
 	SoldFeeTXID:          whereHelpernull_String{field: "\"item_sales\".\"sold_fee_tx_id\""},
 	DeletedAt:            whereHelpernull_Time{field: "\"item_sales\".\"deleted_at\""},
@@ -192,26 +192,29 @@ var ItemSaleWhere = struct {
 
 // ItemSaleRels is where relationship names are stored.
 var ItemSaleRels = struct {
-	CollectionItem        string
-	Faction               string
-	Owner                 string
-	SoldByPlayer          string
-	ItemSalesBidHistories string
+	CollectionItem                   string
+	Faction                          string
+	Owner                            string
+	SoldToPlayer                     string
+	ItemSalesBidHistories            string
+	RelatedSaleItemMarketplaceEvents string
 }{
-	CollectionItem:        "CollectionItem",
-	Faction:               "Faction",
-	Owner:                 "Owner",
-	SoldByPlayer:          "SoldByPlayer",
-	ItemSalesBidHistories: "ItemSalesBidHistories",
+	CollectionItem:                   "CollectionItem",
+	Faction:                          "Faction",
+	Owner:                            "Owner",
+	SoldToPlayer:                     "SoldToPlayer",
+	ItemSalesBidHistories:            "ItemSalesBidHistories",
+	RelatedSaleItemMarketplaceEvents: "RelatedSaleItemMarketplaceEvents",
 }
 
 // itemSaleR is where relationships are stored.
 type itemSaleR struct {
-	CollectionItem        *CollectionItem          `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
-	Faction               *Faction                 `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Owner                 *Player                  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	SoldByPlayer          *Player                  `boiler:"SoldByPlayer" boil:"SoldByPlayer" json:"SoldByPlayer" toml:"SoldByPlayer" yaml:"SoldByPlayer"`
-	ItemSalesBidHistories ItemSalesBidHistorySlice `boiler:"ItemSalesBidHistories" boil:"ItemSalesBidHistories" json:"ItemSalesBidHistories" toml:"ItemSalesBidHistories" yaml:"ItemSalesBidHistories"`
+	CollectionItem                   *CollectionItem          `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
+	Faction                          *Faction                 `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Owner                            *Player                  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	SoldToPlayer                     *Player                  `boiler:"SoldToPlayer" boil:"SoldToPlayer" json:"SoldToPlayer" toml:"SoldToPlayer" yaml:"SoldToPlayer"`
+	ItemSalesBidHistories            ItemSalesBidHistorySlice `boiler:"ItemSalesBidHistories" boil:"ItemSalesBidHistories" json:"ItemSalesBidHistories" toml:"ItemSalesBidHistories" yaml:"ItemSalesBidHistories"`
+	RelatedSaleItemMarketplaceEvents MarketplaceEventSlice    `boiler:"RelatedSaleItemMarketplaceEvents" boil:"RelatedSaleItemMarketplaceEvents" json:"RelatedSaleItemMarketplaceEvents" toml:"RelatedSaleItemMarketplaceEvents" yaml:"RelatedSaleItemMarketplaceEvents"`
 }
 
 // NewStruct creates a new relationship struct
@@ -223,9 +226,9 @@ func (*itemSaleR) NewStruct() *itemSaleR {
 type itemSaleL struct{}
 
 var (
-	itemSaleAllColumns            = []string{"id", "faction_id", "collection_item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleAllColumns            = []string{"id", "faction_id", "collection_item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "end_at", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSaleColumnsWithoutDefault = []string{"faction_id", "collection_item_id", "listing_fee_tx_id", "owner_id", "end_at"}
-	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "sold_at", "sold_for", "sold_by", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "sold_at", "sold_for", "sold_to", "sold_tx_id", "sold_fee_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
 )
@@ -516,10 +519,10 @@ func (o *ItemSale) Owner(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// SoldByPlayer pointed to by the foreign key.
-func (o *ItemSale) SoldByPlayer(mods ...qm.QueryMod) playerQuery {
+// SoldToPlayer pointed to by the foreign key.
+func (o *ItemSale) SoldToPlayer(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.SoldBy),
+		qm.Where("\"id\" = ?", o.SoldTo),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -547,6 +550,27 @@ func (o *ItemSale) ItemSalesBidHistories(mods ...qm.QueryMod) itemSalesBidHistor
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"item_sales_bid_history\".*"})
+	}
+
+	return query
+}
+
+// RelatedSaleItemMarketplaceEvents retrieves all the marketplace_event's MarketplaceEvents with an executor via related_sale_item_id column.
+func (o *ItemSale) RelatedSaleItemMarketplaceEvents(mods ...qm.QueryMod) marketplaceEventQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"marketplace_events\".\"related_sale_item_id\"=?", o.ID),
+	)
+
+	query := MarketplaceEvents(queryMods...)
+	queries.SetFrom(query.Query, "\"marketplace_events\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"marketplace_events\".*"})
 	}
 
 	return query
@@ -866,9 +890,9 @@ func (itemSaleL) LoadOwner(e boil.Executor, singular bool, maybeItemSale interfa
 	return nil
 }
 
-// LoadSoldByPlayer allows an eager lookup of values, cached into the
+// LoadSoldToPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (itemSaleL) LoadSoldByPlayer(e boil.Executor, singular bool, maybeItemSale interface{}, mods queries.Applicator) error {
+func (itemSaleL) LoadSoldToPlayer(e boil.Executor, singular bool, maybeItemSale interface{}, mods queries.Applicator) error {
 	var slice []*ItemSale
 	var object *ItemSale
 
@@ -883,8 +907,8 @@ func (itemSaleL) LoadSoldByPlayer(e boil.Executor, singular bool, maybeItemSale 
 		if object.R == nil {
 			object.R = &itemSaleR{}
 		}
-		if !queries.IsNil(object.SoldBy) {
-			args = append(args, object.SoldBy)
+		if !queries.IsNil(object.SoldTo) {
+			args = append(args, object.SoldTo)
 		}
 
 	} else {
@@ -895,13 +919,13 @@ func (itemSaleL) LoadSoldByPlayer(e boil.Executor, singular bool, maybeItemSale 
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.SoldBy) {
+				if queries.Equal(a, obj.SoldTo) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.SoldBy) {
-				args = append(args, obj.SoldBy)
+			if !queries.IsNil(obj.SoldTo) {
+				args = append(args, obj.SoldTo)
 			}
 
 		}
@@ -951,22 +975,22 @@ func (itemSaleL) LoadSoldByPlayer(e boil.Executor, singular bool, maybeItemSale 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.SoldByPlayer = foreign
+		object.R.SoldToPlayer = foreign
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.SoldByItemSales = append(foreign.R.SoldByItemSales, object)
+		foreign.R.SoldToItemSales = append(foreign.R.SoldToItemSales, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.SoldBy, foreign.ID) {
-				local.R.SoldByPlayer = foreign
+			if queries.Equal(local.SoldTo, foreign.ID) {
+				local.R.SoldToPlayer = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.SoldByItemSales = append(foreign.R.SoldByItemSales, local)
+				foreign.R.SoldToItemSales = append(foreign.R.SoldToItemSales, local)
 				break
 			}
 		}
@@ -1065,6 +1089,104 @@ func (itemSaleL) LoadItemSalesBidHistories(e boil.Executor, singular bool, maybe
 					foreign.R = &itemSalesBidHistoryR{}
 				}
 				foreign.R.ItemSale = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadRelatedSaleItemMarketplaceEvents allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (itemSaleL) LoadRelatedSaleItemMarketplaceEvents(e boil.Executor, singular bool, maybeItemSale interface{}, mods queries.Applicator) error {
+	var slice []*ItemSale
+	var object *ItemSale
+
+	if singular {
+		object = maybeItemSale.(*ItemSale)
+	} else {
+		slice = *maybeItemSale.(*[]*ItemSale)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &itemSaleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &itemSaleR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`marketplace_events`),
+		qm.WhereIn(`marketplace_events.related_sale_item_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load marketplace_events")
+	}
+
+	var resultSlice []*MarketplaceEvent
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice marketplace_events")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on marketplace_events")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for marketplace_events")
+	}
+
+	if len(marketplaceEventAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RelatedSaleItemMarketplaceEvents = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &marketplaceEventR{}
+			}
+			foreign.R.RelatedSaleItem = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.RelatedSaleItemID) {
+				local.R.RelatedSaleItemMarketplaceEvents = append(local.R.RelatedSaleItemMarketplaceEvents, foreign)
+				if foreign.R == nil {
+					foreign.R = &marketplaceEventR{}
+				}
+				foreign.R.RelatedSaleItem = local
 				break
 			}
 		}
@@ -1211,10 +1333,10 @@ func (o *ItemSale) SetOwner(exec boil.Executor, insert bool, related *Player) er
 	return nil
 }
 
-// SetSoldByPlayer of the itemSale to the related item.
-// Sets o.R.SoldByPlayer to related.
-// Adds o to related.R.SoldByItemSales.
-func (o *ItemSale) SetSoldByPlayer(exec boil.Executor, insert bool, related *Player) error {
+// SetSoldToPlayer of the itemSale to the related item.
+// Sets o.R.SoldToPlayer to related.
+// Adds o to related.R.SoldToItemSales.
+func (o *ItemSale) SetSoldToPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1224,7 +1346,7 @@ func (o *ItemSale) SetSoldByPlayer(exec boil.Executor, insert bool, related *Pla
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"item_sales\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"sold_by"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"sold_to"}),
 		strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -1237,54 +1359,54 @@ func (o *ItemSale) SetSoldByPlayer(exec boil.Executor, insert bool, related *Pla
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.SoldBy, related.ID)
+	queries.Assign(&o.SoldTo, related.ID)
 	if o.R == nil {
 		o.R = &itemSaleR{
-			SoldByPlayer: related,
+			SoldToPlayer: related,
 		}
 	} else {
-		o.R.SoldByPlayer = related
+		o.R.SoldToPlayer = related
 	}
 
 	if related.R == nil {
 		related.R = &playerR{
-			SoldByItemSales: ItemSaleSlice{o},
+			SoldToItemSales: ItemSaleSlice{o},
 		}
 	} else {
-		related.R.SoldByItemSales = append(related.R.SoldByItemSales, o)
+		related.R.SoldToItemSales = append(related.R.SoldToItemSales, o)
 	}
 
 	return nil
 }
 
-// RemoveSoldByPlayer relationship.
-// Sets o.R.SoldByPlayer to nil.
+// RemoveSoldToPlayer relationship.
+// Sets o.R.SoldToPlayer to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *ItemSale) RemoveSoldByPlayer(exec boil.Executor, related *Player) error {
+func (o *ItemSale) RemoveSoldToPlayer(exec boil.Executor, related *Player) error {
 	var err error
 
-	queries.SetScanner(&o.SoldBy, nil)
-	if _, err = o.Update(exec, boil.Whitelist("sold_by")); err != nil {
+	queries.SetScanner(&o.SoldTo, nil)
+	if _, err = o.Update(exec, boil.Whitelist("sold_to")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.SoldByPlayer = nil
+		o.R.SoldToPlayer = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
-	for i, ri := range related.R.SoldByItemSales {
-		if queries.Equal(o.SoldBy, ri.SoldBy) {
+	for i, ri := range related.R.SoldToItemSales {
+		if queries.Equal(o.SoldTo, ri.SoldTo) {
 			continue
 		}
 
-		ln := len(related.R.SoldByItemSales)
+		ln := len(related.R.SoldToItemSales)
 		if ln > 1 && i < ln-1 {
-			related.R.SoldByItemSales[i] = related.R.SoldByItemSales[ln-1]
+			related.R.SoldToItemSales[i] = related.R.SoldToItemSales[ln-1]
 		}
-		related.R.SoldByItemSales = related.R.SoldByItemSales[:ln-1]
+		related.R.SoldToItemSales = related.R.SoldToItemSales[:ln-1]
 		break
 	}
 	return nil
@@ -1339,6 +1461,131 @@ func (o *ItemSale) AddItemSalesBidHistories(exec boil.Executor, insert bool, rel
 			rel.R.ItemSale = o
 		}
 	}
+	return nil
+}
+
+// AddRelatedSaleItemMarketplaceEvents adds the given related objects to the existing relationships
+// of the item_sale, optionally inserting them as new records.
+// Appends related to o.R.RelatedSaleItemMarketplaceEvents.
+// Sets related.R.RelatedSaleItem appropriately.
+func (o *ItemSale) AddRelatedSaleItemMarketplaceEvents(exec boil.Executor, insert bool, related ...*MarketplaceEvent) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.RelatedSaleItemID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"marketplace_events\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"related_sale_item_id"}),
+				strmangle.WhereClause("\"", "\"", 2, marketplaceEventPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.RelatedSaleItemID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &itemSaleR{
+			RelatedSaleItemMarketplaceEvents: related,
+		}
+	} else {
+		o.R.RelatedSaleItemMarketplaceEvents = append(o.R.RelatedSaleItemMarketplaceEvents, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &marketplaceEventR{
+				RelatedSaleItem: o,
+			}
+		} else {
+			rel.R.RelatedSaleItem = o
+		}
+	}
+	return nil
+}
+
+// SetRelatedSaleItemMarketplaceEvents removes all previously related items of the
+// item_sale replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.RelatedSaleItem's RelatedSaleItemMarketplaceEvents accordingly.
+// Replaces o.R.RelatedSaleItemMarketplaceEvents with related.
+// Sets related.R.RelatedSaleItem's RelatedSaleItemMarketplaceEvents accordingly.
+func (o *ItemSale) SetRelatedSaleItemMarketplaceEvents(exec boil.Executor, insert bool, related ...*MarketplaceEvent) error {
+	query := "update \"marketplace_events\" set \"related_sale_item_id\" = null where \"related_sale_item_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.RelatedSaleItemMarketplaceEvents {
+			queries.SetScanner(&rel.RelatedSaleItemID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.RelatedSaleItem = nil
+		}
+
+		o.R.RelatedSaleItemMarketplaceEvents = nil
+	}
+	return o.AddRelatedSaleItemMarketplaceEvents(exec, insert, related...)
+}
+
+// RemoveRelatedSaleItemMarketplaceEvents relationships from objects passed in.
+// Removes related items from R.RelatedSaleItemMarketplaceEvents (uses pointer comparison, removal does not keep order)
+// Sets related.R.RelatedSaleItem.
+func (o *ItemSale) RemoveRelatedSaleItemMarketplaceEvents(exec boil.Executor, related ...*MarketplaceEvent) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.RelatedSaleItemID, nil)
+		if rel.R != nil {
+			rel.R.RelatedSaleItem = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("related_sale_item_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.RelatedSaleItemMarketplaceEvents {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.RelatedSaleItemMarketplaceEvents)
+			if ln > 1 && i < ln-1 {
+				o.R.RelatedSaleItemMarketplaceEvents[i] = o.R.RelatedSaleItemMarketplaceEvents[ln-1]
+			}
+			o.R.RelatedSaleItemMarketplaceEvents = o.R.RelatedSaleItemMarketplaceEvents[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
