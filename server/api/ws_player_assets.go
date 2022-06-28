@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"regexp"
 	"server"
@@ -530,7 +531,14 @@ type OpenCrateResponse struct {
 
 const HubKeyOpenCrate = "CRATE:OPEN"
 
+var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
+
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	v := openCrateBucket.Add(1)
+	if v == 0 {
+		return terror.Error(fmt.Errorf("too many code redemption requests"), "Currently handling request, please try again.")
+	}
+
 	req := &OpenCrateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -560,8 +568,8 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	q := `
 		UPDATE mystery_crate
-		SET opened = true
-		WHERE id = $1 AND opened = false AND locked_until <= NOW()
+		SET opened = TRUE
+		WHERE id = $1 AND opened = FALSE AND locked_until <= NOW()
 		RETURNING id, type, faction_id, label, opened, locked_until, purchased, deleted_at, updated_at, created_at, description`
 	err = gamedb.StdConn.
 		QueryRow(q, collectionItem.ItemID).
