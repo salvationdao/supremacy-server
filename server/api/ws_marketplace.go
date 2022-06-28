@@ -57,9 +57,11 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 
 func WithMarketLockCheck(fn server.SecureFactionCommandFunc) server.SecureFactionCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-		locked, err := boiler.BlockMarketplaces().One(gamedb.StdConn)
+		locked, err := boiler.BlockMarketplaces(
+			boiler.BlockMarketplaceWhere.PublicAddress.EQ(user.PublicAddress.String),
+		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			// handle
+			return fmt.Errorf("error checking market lock: %s", err)
 		}
 		if locked == nil {
 			return fn(ctx, user, user.FactionID.String, key, payload, reply)
