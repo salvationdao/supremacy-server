@@ -44,15 +44,33 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardList, marketplaceHub.SalesListKeycardHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesGet, marketplaceHub.SalesGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, marketplaceHub.SalesKeycardCreateHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, WithMarketLockCheck(marketplaceHub.SalesCreateHandler))
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, WithMarketLockCheck(marketplaceHub.SalesKeycardCreateHandler))
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesArchive, marketplaceHub.SalesArchiveHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardArchive, marketplaceHub.SalesKeycardArchiveHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardBuy, marketplaceHub.SalesKeycardBuyHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, marketplaceHub.SalesBidHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, WithMarketLockCheck(marketplaceHub.SalesBuyHandler))
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardBuy, WithMarketLockCheck(marketplaceHub.SalesKeycardBuyHandler))
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, WithMarketLockCheck(marketplaceHub.SalesBidHandler))
 
 	return marketplaceHub
+}
+
+func WithMarketLockCheck(fn server.SecureFactionCommandFunc) server.SecureFactionCommandFunc {
+	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+		locked, err := boiler.BlockMarketplaces().One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			// handle
+		}
+		if locked == nil {
+			return fn(ctx, user, user.FactionID.String, key, payload, reply)
+		}
+
+		if locked.BlockedUntil.After(time.Now()) {
+			return fmt.Errorf("you are market locked until %s", locked.BlockedUntil.Format("02-01-2006"))
+		}
+
+		return fn(ctx, user, user.FactionID.String, key, payload, reply)
+	}
 }
 
 const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"

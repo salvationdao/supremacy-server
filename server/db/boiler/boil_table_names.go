@@ -24,6 +24,7 @@ var TableNames = struct {
 	BattleWins                                         string
 	Battles                                            string
 	Blobs                                              string
+	BlockMarketplace                                   string
 	BlueprintAmmo                                      string
 	BlueprintKeycards                                  string
 	BlueprintMechAnimation                             string
@@ -130,6 +131,7 @@ var TableNames = struct {
 	BattleWins:                   "battle_wins",
 	Battles:                      "battles",
 	Blobs:                        "blobs",
+	BlockMarketplace:             "block_marketplace",
 	BlueprintAmmo:                "blueprint_ammo",
 	BlueprintKeycards:            "blueprint_keycards",
 	BlueprintMechAnimation:       "blueprint_mech_animation",
