@@ -41,24 +41,25 @@ const (
 )
 
 type Battle struct {
-	arena          *Arena
-	stage          *atomic.Int32
-	BattleID       string        `json:"battleID"`
-	MapName        string        `json:"mapName"`
-	WarMachines    []*WarMachine `json:"warMachines"`
-	spawnedAIMux   sync.RWMutex
-	SpawnedAI      []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs  []uuid.UUID   `json:"ids"`
-	lastTick       *[]byte
-	gameMap        *server.GameMap
-	_abilities     *AbilitiesSystem
-	users          usersMap
-	factions       map[uuid.UUID]*boiler.Faction
-	multipliers    *MultiplierSystem
-	spoils         *SpoilsOfWar
-	rpcClient      *xsyn_rpcclient.XrpcClient
-	battleMechData []*db.BattleMechData
-	startedAt      time.Time
+	arena                  *Arena
+	stage                  *atomic.Int32
+	BattleID               string        `json:"battleID"`
+	MapName                string        `json:"mapName"`
+	WarMachines            []*WarMachine `json:"warMachines"`
+	spawnedAIMux           sync.RWMutex
+	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
+	warMachineIDs          []uuid.UUID   `json:"ids"`
+	lastTick               *[]byte
+	gameMap                *server.GameMap
+	_abilities             *AbilitiesSystem
+	users                  usersMap
+	factions               map[uuid.UUID]*boiler.Faction
+	multipliers            *MultiplierSystem
+	spoils                 *SpoilsOfWar
+	rpcClient              *xsyn_rpcclient.XrpcClient
+	battleMechData         []*db.BattleMechData
+	startedAt              time.Time
+	incognitoWarMachineIDs map[uuid.UUID]struct{}
 
 	destroyedWarMachineMap map[string]*WMDestroyedRecord
 	*boiler.Battle
@@ -67,6 +68,32 @@ type Battle struct {
 
 	viewerCountInputChan chan *ViewerLiveCount
 	sync.RWMutex
+}
+
+func (btl *Battle) AddHiddenWarMachineUUID(id uuid.UUID) error {
+	btl.RLock()
+	defer btl.RUnlock()
+
+	_, ok := btl.incognitoWarMachineIDs[id]
+	if ok {
+		return fmt.Errorf("War machine is already hidden")
+	}
+	btl.incognitoWarMachineIDs[id] = struct{}{}
+
+	return nil
+}
+
+func (btl *Battle) RemoveHiddenWarMachineUUID(id uuid.UUID) error {
+	btl.RLock()
+	defer btl.RUnlock()
+
+	_, ok := btl.incognitoWarMachineIDs[id]
+	if !ok {
+		return fmt.Errorf("War machine is not hidden")
+	}
+	delete(btl.incognitoWarMachineIDs, id)
+
+	return nil
 }
 
 func (btl *Battle) abilities() *AbilitiesSystem {

@@ -687,6 +687,12 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			WarMachineHash:      &req.Payload.MechHash,
 		}
 
+		// If player ability is "Incognito"
+		if bpa.GameClientAbilityID == 15 {
+			// arena._currentBattle.AddHiddenWarMachineUUID()
+			return nil
+		}
+
 	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
