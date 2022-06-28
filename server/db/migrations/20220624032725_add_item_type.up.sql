@@ -4,5 +4,4 @@ ALTER TABLE weapon_skin
     DROP CONSTRAINT weapon_skin_equipped_on_fkey;
 
 ALTER TABLE weapon_skin
-    ADD CONSTRAINT weapon_skin_weapon_model_fkey FOREIGN KEY (weapon_model_id) REFERENCES weapon_models (id),
     ADD CONSTRAINT weapon_skin_equipped_on_fkey FOREIGN KEY (equipped_on) REFERENCES weapons (id);
