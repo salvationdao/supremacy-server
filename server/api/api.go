@@ -13,6 +13,7 @@ import (
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
+	"server/profanities"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -91,10 +92,11 @@ type API struct {
 	MarketplaceController *marketplace.MarketplaceController
 
 	// chatrooms
-	GlobalChat      *Chatroom
-	RedMountainChat *Chatroom
-	BostonChat      *Chatroom
-	ZaibatsuChat    *Chatroom
+	GlobalChat       *Chatroom
+	RedMountainChat  *Chatroom
+	BostonChat       *Chatroom
+	ZaibatsuChat     *Chatroom
+	ProfanityManager *profanities.ProfanityManager
 
 	Config *server.Config
 }
@@ -109,6 +111,7 @@ func NewAPI(
 	sms server.SMS,
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
+	pm *profanities.ProfanityManager,
 ) *API {
 
 	// initialise api
@@ -134,10 +137,11 @@ func NewAPI(
 		MarketplaceController: marketplace.NewMarketplaceController(pp),
 
 		// chatroom
-		GlobalChat:      NewChatroom(""),
-		RedMountainChat: NewChatroom(server.RedMountainFactionID),
-		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
-		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
+		GlobalChat:       NewChatroom(""),
+		RedMountainChat:  NewChatroom(server.RedMountainFactionID),
+		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
+		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
+		ProfanityManager: pm,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -209,6 +213,8 @@ func NewAPI(
 		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
 		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
+
+		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
