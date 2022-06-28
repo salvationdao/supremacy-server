@@ -75,6 +75,11 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTickerInterval := db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
+	reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0))  // default 1%
+	floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                          // default 10 sups
+	timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600)             // default 1 hour (3600 seconds)
+	limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3)                                                          // default 3
+	inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 
 	defer func() {
 		priceTicker.Stop()
@@ -85,9 +90,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	for {
 		select {
 		case <-priceTicker.C:
-			reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)) // default 1%
-			floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                         // default 10 sups
-			timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600)            // default 1 hour (3600 seconds)
 
 			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
@@ -108,7 +110,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3) // default 3
 					allSaleAbilities, err := boiler.SalePlayerAbilities(
 						qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 					).All(gamedb.StdConn)
@@ -185,7 +186,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
-				inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
 				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
