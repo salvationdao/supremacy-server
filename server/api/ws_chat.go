@@ -28,7 +28,6 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 
-	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/kevinms/leakybucket-go"
 	"github.com/microcosm-cc/bluemonday"
@@ -38,7 +37,6 @@ import (
 
 const PersistChatMessageLimit = 50
 
-var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
 
 // ChatMessage contains chat message data to send.
@@ -351,7 +349,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 	}()
 
-	msg = profanityDetector.Censor(msg)
+	msg = fc.API.ProfanityManager.Detector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
