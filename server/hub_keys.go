@@ -2,6 +2,7 @@ package server
 
 // player_abilities
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
+const HubKeySaleAbilitiesAmountSubscribe = "SALE:ABILITIES:AMOUNT:SUBSCRIBE"
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
 const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST:SUBSCRIBE"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"

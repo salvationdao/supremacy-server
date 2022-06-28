@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server"
@@ -14,6 +15,7 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
@@ -34,7 +36,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	if api.Config.Environment == "development" {
+	if api.Config.Environment == "development" || api.Config.Environment == "staging" {
 		api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 	}
 
@@ -47,43 +49,20 @@ type PlayerAbilitySubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAbilitySubscribeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if req.Payload.BlueprintAbilityID == "" {
-		gamelog.L.Error().
-			Str("handler", "PlayerAbilitySubscribeHandler").Msg("empty ability ID provided")
-		return terror.Error(fmt.Errorf("ability ID was not provided in request payload"), "Unable to retrieve player ability, please try again or contact support.")
-	}
-
-	userID := user.ID
-	bpAbility, err := boiler.PlayerAbilities(
-		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
-		boiler.PlayerAbilityWhere.OwnerID.EQ(userID),
-		qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().
-			Str("db func", "boiler.PlayerAbilities").Str("req.Payload.BlueprintAbilityID", req.Payload.BlueprintAbilityID).Str("userID", userID).Err(err).Msg("unable to get blueprint ability details")
-		return terror.Error(err, "Unable to retrieve player ability, please try again or contact support.")
-	}
-
-	reply(bpAbility)
-	return nil
-}
-
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
+	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "TalliedPlayerAbilitiesList").Str("userID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(tpas)
+	reply(pas)
 	return nil
+}
+
+type SaleAbilitiesListResponse struct {
+	NextRefreshTime *time.Time                `json:"next_refresh_time"`
+	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -93,7 +72,9 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(dspas)
+	reply(&SaleAbilitiesListResponse{
+		SaleAbilities: dspas,
+	})
 	return nil
 }
 
@@ -131,8 +112,15 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if spa.AvailableUntil.Time.Before(time.Now()) {
 		// If sale of player ability has already expired
 		gamelog.L.Debug().
-			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("playerAbility", spa).Msg("forbid player from purchasing expired ability")
+			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing expired ability")
 		return terror.Error(fmt.Errorf("sale of player ability has already expired"), "Purchase failed. This ability is no longer available for purchase.")
+	}
+
+	if spa.AmountSold == spa.SaleLimit {
+		// If sale of player ability limit has been reached
+		gamelog.L.Debug().
+			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing ability that has had its sale limit reached")
+		return terror.Error(fmt.Errorf("sale of player ability limit has already been reached"), "Purchase failed. This ability has been sold out and is no longer available for purchase.")
 	}
 
 	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
@@ -184,23 +172,35 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 	defer tx.Rollback()
 
-	bpa := spa.R.Blueprint
-	pa := boiler.PlayerAbility{
-		OwnerID:             userID.String(),
-		BlueprintID:         bpa.ID,
-		GameClientAbilityID: bpa.GameClientAbilityID,
-		Label:               bpa.Label,
-		Colour:              bpa.Colour,
-		ImageURL:            bpa.ImageURL,
-		Description:         bpa.Description,
-		TextColour:          bpa.TextColour,
-		LocationSelectType:  bpa.LocationSelectType,
-	}
-	err = pa.Insert(tx, boil.Infer())
-	if err != nil {
+	// Update player ability count
+	pa, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(spa.BlueprintID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(userID.String()),
+	).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		pa = &boiler.PlayerAbility{
+			OwnerID:         userID.String(),
+			BlueprintID:     spa.BlueprintID,
+			LastPurchasedAt: time.Now(),
+		}
+
+		err = pa.Insert(tx, boil.Infer())
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to insert PlayerAbility")
+			return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
+		}
+	} else if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to insert PlayerAbility")
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
+	}
+
+	pa.Count = pa.Count + 1
+	_, err = pa.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
+		return err
 	}
 
 	err = tx.Commit()
@@ -212,12 +212,12 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	reply(true)
 
 	// Tell client to update their player abilities list
-	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
+	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, tpas)
+	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
 	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{

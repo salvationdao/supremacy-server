@@ -1377,7 +1377,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		return err
 	}
 
-	mech, err := Mech(colItem.ItemID)
+	mech, err := Mech(nil, colItem.ItemID)
 	if err != nil {
 		gamelog.L.Error().
 			Err(err).

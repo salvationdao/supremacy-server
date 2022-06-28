@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -14,12 +15,11 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
+func InsertNewPowerCore(trx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
 	}
-
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
 		Label:                 ec.Label,
@@ -33,7 +33,7 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		LimitedReleaseTokenID: ec.LimitedReleaseTokenID,
 	}
 
-	err = newPowerCore.Insert(tx, boil.Infer())
+	err := newPowerCore.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -56,20 +56,20 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return PowerCore(newPowerCore.ID)
+	return PowerCore(tx, newPowerCore.ID)
 }
 
-func PowerCore(id string) (*server.PowerCore, error) {
-	boilerMech, err := boiler.FindPowerCore(gamedb.StdConn, id)
+func PowerCore(trx boil.Executor, id string) (*server.PowerCore, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerMech, err := boiler.FindPowerCore(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,15 +95,26 @@ func PowerCores(id ...string) ([]*server.PowerCore, error) {
 }
 
 // AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
-func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
+func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner
-	mechCI, err := CollectionItemFromItemID(mechID)
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("powercore ID", powerCoreID).Msg("failed to equip powercore to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this powercore to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
+
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to mech collection item")
 		return terror.Error(err)
 	}
-	pcCI, err := CollectionItemFromItemID(powerCoreID)
+	pcCI, err := CollectionItemFromItemID(tx, powerCoreID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("powerCoreID", powerCoreID).Msg("failed to power core collection item")
 		return terror.Error(err)
@@ -122,14 +133,14 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 	}
 
 	// get mech
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	mech, err := boiler.FindMech(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get power core
-	powerCore, err := boiler.FindPowerCore(gamedb.StdConn, powerCoreID)
+	powerCore, err := boiler.FindPowerCore(tx, powerCoreID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("powerCoreID", powerCoreID).Msg("failed to find power core")
 		return terror.Error(err)
@@ -148,7 +159,7 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 		// also check powerCore.EquippedOn on, if that doesn't match, update it, so it does.
 		if !powerCore.EquippedOn.Valid {
 			powerCore.EquippedOn = null.StringFrom(mech.ID)
-			_, err = powerCore.Update(gamedb.StdConn, boil.Infer())
+			_, err = powerCore.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech.ID", mech.ID).Str("powerCore.ID", powerCore.ID).Msg("failed to update power core equipped on")
 				return terror.Error(err, "War machine already has a power core.")
@@ -162,12 +173,6 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 	mech.PowerCoreID = null.StringFrom(powerCore.ID)
 	powerCore.EquippedOn = null.StringFrom(mech.ID)
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue creating tx")
-		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
-	}
-
 	_, err = mech.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue mech update")
@@ -179,10 +184,12 @@ func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue committing tx")
-		return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.PowerCoreID.String", mech.PowerCoreID.String).Str("new powerCore.ID", powerCore.ID).Msg("failed to equip power core to mech, issue committing tx")
+			return terror.Error(err, "Issue preventing equipping this power core to the war machine, try again or contact support.")
+		}
 	}
 
 	return nil

@@ -612,7 +612,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	pa, err := boiler.PlayerAbilities(
 		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
 		boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID),
-		qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
+		qm.Load(boiler.PlayerAbilityRels.Blueprint),
+	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
@@ -628,6 +629,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
 	}
 
+	if pa.Count < 1 {
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
+		return terror.Error(err, "You do not have any more of this ability to use.")
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the PlayerAbilityUse!", r)
@@ -640,6 +646,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
 		return nil
 	}
+
+	bpa := pa.R.Blueprint
 
 	userID := uuid.FromStringOrNil(user.ID)
 	var event *server.GameAbilityEvent
@@ -655,7 +663,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 		event = &server.GameAbilityEvent{
 			IsTriggered:         true,
-			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
@@ -671,7 +679,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 		event = &server.GameAbilityEvent{
 			IsTriggered:         true,
-			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
@@ -690,7 +698,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 		event = &server.GameAbilityEvent{
 			IsTriggered:         true,
-			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
@@ -720,13 +728,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		BattleID:            currentBattle.BattleID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
-		GameClientAbilityID: pa.GameClientAbilityID,
-		Label:               pa.Label,
-		Colour:              pa.Colour,
-		ImageURL:            pa.ImageURL,
-		Description:         pa.Description,
-		TextColour:          pa.TextColour,
-		LocationSelectType:  pa.LocationSelectType,
+		GameClientAbilityID: bpa.GameClientAbilityID,
+		Label:               bpa.Label,
+		Colour:              bpa.Colour,
+		ImageURL:            bpa.ImageURL,
+		Description:         bpa.Description,
+		TextColour:          bpa.TextColour,
+		LocationSelectType:  bpa.LocationSelectType,
 		ConsumedAt:          time.Now(),
 	}
 	err = ca.Insert(tx, boil.Infer())
@@ -735,10 +743,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	// Delete player_abilities entry
-	_, err = pa.Delete(tx)
+	// Update the count of the player_abilities entry
+	pa.Count = pa.Count - 1
+	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to delete player ability")
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
 	}
 
@@ -750,12 +759,12 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	reply(true)
 
 	currentBattle.arena.Message("BATTLE:ABILITY", event)
-	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
+	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, tpas)
+	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	return nil
 }

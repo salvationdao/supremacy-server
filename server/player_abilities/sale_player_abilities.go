@@ -33,6 +33,11 @@ type SaleAbilityPriceResponse struct {
 	CurrentPrice string `json:"current_price"`
 }
 
+type SaleAbilityAmountResponse struct {
+	ID         string `json:"id"`
+	AmountSold int    `json:"amount_sold"`
+}
+
 // Used for sale abilities
 type SalePlayerAbilitiesSystem struct {
 	// player abilities
@@ -70,17 +75,11 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTickerInterval := db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
-
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic at the SalePlayerAbilitiesUpdater!", r)
-
-			// re-run ability updater if ability system has not been cleaned up yet
-			if pas != nil {
-				pas.SalePlayerAbilitiesUpdater()
-			}
-		}
-	}()
+	reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0))  // default 1%
+	floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                          // default 10 sups
+	timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600)             // default 1 hour (3600 seconds)
+	limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3)                                                          // default 3
+	inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 
 	defer func() {
 		priceTicker.Stop()
@@ -91,10 +90,8 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	for {
 		select {
 		case <-priceTicker.C:
-			reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)) // default 1%
-			floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                         // default 10 sups
 
-			// Check each ability that is on sale, remove them if expired
+			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
 				if s.AvailableUntil.Time.After(time.Now()) {
 					continue
@@ -113,7 +110,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3) // default 3
 					allSaleAbilities, err := boiler.SalePlayerAbilities(
 						qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 					).All(gamedb.StdConn)
@@ -126,11 +122,12 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
-					oneHourFromNow := time.Now().Add(time.Minute)
+					oneHourFromNow := time.Now().Add(time.Duration(timeBetweenRefreshInSeconds) * time.Second)
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(allSaleAbilities))
 					for _, i := range randomIndexes[:limit] {
 						allSaleAbilities[i].AvailableUntil = null.TimeFrom(oneHourFromNow)
+						allSaleAbilities[i].AmountSold = 0 // reset amount sold
 						saleAbilities = append(saleAbilities, allSaleAbilities[i])
 					}
 
@@ -142,7 +139,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						continue
 					}
 
-					detailedSaleAbilities := []*db.SaleAbilityDetailed{}
+					detailedSaleAbilities := make([]*db.SaleAbilityDetailed, len(saleAbilities))
 					for _, s := range saleAbilities {
 						detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
 							SalePlayerAbility: s,
@@ -151,7 +148,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, detailedSaleAbilities)
+					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
+						NextRefreshTime *time.Time                `json:"next_refresh_time"`
+						SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
+					}{
+						NextRefreshTime: &oneHourFromNow,
+						SaleAbilities:   detailedSaleAbilities,
+					})
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
@@ -183,16 +186,24 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
-				inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
+				saleAbility.AmountSold = saleAbility.AmountSold + 1
 				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
+
+				// Broadcast updated sale ability price
 				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
+				})
+
+				// Broadcast updated sale ability sold amount
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
+					ID:         saleAbility.ID,
+					AmountSold: saleAbility.AmountSold,
 				})
 			}
 			break
