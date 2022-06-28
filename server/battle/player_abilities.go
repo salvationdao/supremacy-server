@@ -14,6 +14,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"os"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -70,6 +71,11 @@ type MechMoveCommandResponse struct {
 }
 
 func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// check environment
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		return nil
+	}
+
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
@@ -130,6 +136,12 @@ type MechMoveCommandCreateRequest struct {
 
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// check environment
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
+		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
+	}
+
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -287,6 +299,12 @@ type MechMoveCommandCancelRequest struct {
 
 // MechMoveCommandCancelHandler send cancel mech move command to game client
 func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// check environment
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
+		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
+	}
+
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
