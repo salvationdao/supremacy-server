@@ -1,6 +1,0 @@
-ALTER TABLE
-    sale_player_abilities
-ADD
-    COLUMN IF NOT EXISTS amount_sold INT NOT NULL DEFAULT 0,
-ADD
-    COLUMN IF NOT EXISTS sale_limit INT NOT NULL DEFAULT 10;
