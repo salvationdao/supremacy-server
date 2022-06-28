@@ -536,7 +536,7 @@ var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	v := openCrateBucket.Add(1)
 	if v == 0 {
-		return terror.Error(fmt.Errorf("too many code redemption requests"), "Currently handling request, please try again.")
+		return terror.Error(fmt.Errorf("too many requests"), "Currently handling request, please try again.")
 	}
 
 	req := &OpenCrateRequest{}
