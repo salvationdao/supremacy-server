@@ -171,7 +171,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					s.CurrentPrice = floorPrice
 				}
 
-				_, err := s.Update(gamedb.StdConn, boil.Infer())
+				_, err := s.Update(gamedb.StdConn, boil.Whitelist(boiler.SalePlayerAbilityColumns.CurrentPrice))
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Interface("sale ability", s).Msg("failed to update sale ability price")
 					continue
@@ -188,7 +188,10 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
-				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
+				_, err := saleAbility.Update(gamedb.StdConn, boil.Whitelist(
+					boiler.SalePlayerAbilityColumns.CurrentPrice,
+					boiler.SalePlayerAbilityColumns.AmountSold,
+				))
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
