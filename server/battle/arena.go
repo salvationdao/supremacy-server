@@ -75,7 +75,7 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 
 func (arena *Arena) currentBattleState() int32 {
 	arena.RLock()
-	arena.RUnlock()
+	defer arena.RUnlock()
 	if arena._currentBattle == nil {
 		return BattleStageEnd
 	}
