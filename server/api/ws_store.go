@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -131,7 +132,8 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 
 type MysteryCratePurchaseRequest struct {
 	Payload struct {
-		Type string `json:"type"`
+		Type     string `json:"type"`
+		Quantity int    `json:"quantity"`
 	} `json:"payload"`
 }
 
@@ -174,8 +176,8 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err)
 	}
 
-	if int64(allowedToBuy) <= mysteryCrateCount {
-		return terror.Error(fmt.Errorf("unable to purchase more mystery crates, owned: %d, allowed: %d", mysteryCrateCount, allowedToBuy))
+	if int64(allowedToBuy) < (mysteryCrateCount + int64(req.Payload.Quantity)) {
+		return terror.Error(fmt.Errorf("Unable to purchase %d mystery crates, owned: %d, allowed: %d", req.Payload.Quantity, mysteryCrateCount, allowedToBuy))
 	}
 
 	//double check there are still crates available on storefront, user should not be able to buy it though
@@ -188,14 +190,14 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to get crate for purchase, please try again or contact support.")
 	}
 
-	if storeCrate.AmountSold >= storeCrate.Amount {
+	if (storeCrate.AmountSold + req.Payload.Quantity) >= storeCrate.Amount {
 		return terror.Error(fmt.Errorf("player ID: %s, attempted to purchase sold out mystery crate", user.ID), "This mystery crate is sold out!")
 	}
 	//check user SUPS is more than crate.price
 
 	// -------------------------------------
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		Amount:               storeCrate.Price.String(),
+		Amount:               storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
 		ToUserID:             battle.SupremacyUserID,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", storeCrate.ID, time.Now().UnixNano())),
@@ -221,7 +223,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price,
+			Amount:      storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
 			ItemType:    "mystery_crate",
 			ItemID:      storeCrate.ID,
 			Description: "refunding mystery crate due to failed transaction",
@@ -236,49 +238,54 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		}
 	}
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Msg("unable to begin tx")
-		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
-	}
-	defer tx.Rollback()
+	// Assign multiple crate purchases
+	var resp []Reward
+	for i := 0; i < req.Payload.Quantity; i++ {
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Msg("unable to begin tx")
+			return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
+		}
+		defer tx.Rollback()
 
-	assignedCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeCrate, tx, sc.API)
-	if err != nil {
-		refundFunc()
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
+		assignedCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeCrate, tx, sc.API)
+		if err != nil {
+			refundFunc()
+			return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+		}
 
-	txItem := &boiler.StorePurchaseHistory{
-		PlayerID:    user.ID,
-		Amount:      storeCrate.Price,
-		ItemType:    "mystery_crate",
-		ItemID:      assignedCrate.ID,
-		Description: "purchased mystery crate",
-		TXID:        supTransactionID,
-	}
+		txItem := &boiler.StorePurchaseHistory{
+			PlayerID:    user.ID,
+			Amount:      storeCrate.Price,
+			ItemType:    "mystery_crate",
+			ItemID:      assignedCrate.ID,
+			Description: "purchased mystery crate",
+			TXID:        supTransactionID,
+		}
 
-	err = txItem.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
+		err = txItem.Insert(tx, boil.Infer())
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
+			return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+		}
 
-	err = tx.Commit()
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
-		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
-	}
+		err = tx.Commit()
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
+			return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
+		}
 
+		resp = append(resp, Reward{
+			Label:       storeCrate.MysteryCrateType,
+			ImageURL:    storeCrate.ImageURL,
+			LockedUntil: null.TimeFrom(assignedCrate.LockedUntil),
+		})
+
+	}
 	serverStoreCrate := server.StoreFrontMysteryCrateFromBoiler(storeCrate)
-
-	resp := &Reward{
-		Label:       storeCrate.MysteryCrateType,
-		ImageURL:    storeCrate.ImageURL,
-		LockedUntil: null.TimeFrom(assignedCrate.LockedUntil),
-	}
 
 	//update mysterycrate subscribers and update player
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, serverStoreCrate)

@@ -39,8 +39,13 @@ func NewBattleController(api *API) *BattleControllerWS {
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
-	// player ability related
-	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+	if api.Config.Environment == "development" || api.Config.Environment == "staging" {
+		// player ability related
+		api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+
+		// mech move command related
+		api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
+	}
 
 	// battle ability related (bribing)
 	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
@@ -48,9 +53,6 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// faction unique ability related (sup contribution)
 	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
-
-	// mech move command related
-	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
 
 	return bc
 }
