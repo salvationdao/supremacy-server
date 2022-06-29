@@ -102,6 +102,15 @@ const (
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for LocationSelectTypeEnum
+const (
+	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
+)
+
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for UtilityType
@@ -140,6 +149,7 @@ const (
 	ItemTypeMechAnimation = "mech_animation"
 	ItemTypePowerCore     = "power_core"
 	ItemTypeMysteryCrate  = "mystery_crate"
+	ItemTypeWeaponSkin    = "weapon_skin"
 )
 
 // Enum values for CouponItemType

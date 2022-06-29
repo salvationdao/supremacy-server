@@ -13,6 +13,7 @@ import (
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
+	"server/profanities"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -91,10 +92,11 @@ type API struct {
 	MarketplaceController *marketplace.MarketplaceController
 
 	// chatrooms
-	GlobalChat      *Chatroom
-	RedMountainChat *Chatroom
-	BostonChat      *Chatroom
-	ZaibatsuChat    *Chatroom
+	GlobalChat       *Chatroom
+	RedMountainChat  *Chatroom
+	BostonChat       *Chatroom
+	ZaibatsuChat     *Chatroom
+	ProfanityManager *profanities.ProfanityManager
 
 	Config *server.Config
 }
@@ -109,6 +111,7 @@ func NewAPI(
 	sms server.SMS,
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
+	pm *profanities.ProfanityManager,
 ) *API {
 
 	// initialise api
@@ -134,10 +137,11 @@ func NewAPI(
 		MarketplaceController: marketplace.NewMarketplaceController(pp),
 
 		// chatroom
-		GlobalChat:      NewChatroom(""),
-		RedMountainChat: NewChatroom(server.RedMountainFactionID),
-		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
-		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
+		GlobalChat:       NewChatroom(""),
+		RedMountainChat:  NewChatroom(server.RedMountainFactionID),
+		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
+		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
+		ProfanityManager: pm,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -161,7 +165,7 @@ func NewAPI(
 	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
-	_ = NewPlayerAbilitiesController(api)
+	pac := NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
@@ -210,6 +214,8 @@ func NewAPI(
 		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
+		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
+
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
 
@@ -218,7 +224,6 @@ func NewAPI(
 				s.Mount("/commander", api.Commander)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
-				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
@@ -226,6 +231,11 @@ func NewAPI(
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+			}))
+
+			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, false))
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))
 			}))
 
 			// battle arena route ws
@@ -242,7 +252,7 @@ func NewAPI(
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
-
+				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 			}))
 
 			// secured faction route ws
@@ -260,6 +270,10 @@ func NewAPI(
 				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(battleArenaClient.PlayerAssetMechQueueSubscribeHandler))
 				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+
+				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
+				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
+				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 			}))
 
 			// handle abilities ws

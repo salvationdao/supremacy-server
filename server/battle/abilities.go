@@ -16,8 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -80,11 +81,13 @@ func (lc *LiveCount) IsClosed() bool {
 }
 
 type AbilityConfig struct {
-	FirstBattleAbilityCooldownSecond int
-	BattleAbilityFloorPrice          decimal.Decimal
-	BattleAbilityDropRate            decimal.Decimal
-	FactionAbilityFloorPrice         decimal.Decimal
-	FActionAbilityDropRate           decimal.Decimal
+	FirstBattleAbilityCooldownSeconds          int
+	BattleAbilityBribeDurationSeconds          time.Duration
+	BattleAbilityLocationSelectDurationSeconds time.Duration
+	BattleAbilityFloorPrice                    decimal.Decimal
+	BattleAbilityDropRate                      decimal.Decimal
+	FactionAbilityFloorPrice                   decimal.Decimal
+	FActionAbilityDropRate                     decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
@@ -294,11 +297,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		startedAt:            time.Now(),
 		contributeMultiplier: &UserContributeMultiplier{},
 		abilityConfig: &AbilityConfig{
-			FirstBattleAbilityCooldownSecond: db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
-			BattleAbilityFloorPrice:          db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
-			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
-			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
-			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
+			FirstBattleAbilityCooldownSeconds:          db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
+			BattleAbilityBribeDurationSeconds:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 30)) * time.Second,
+			BattleAbilityLocationSelectDurationSeconds: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+			BattleAbilityFloorPrice:                    db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
+			BattleAbilityDropRate:                      db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
+			FactionAbilityFloorPrice:                   db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
+			FActionAbilityDropRate:                     db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
@@ -500,81 +505,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isTriggered := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
-						if isTriggered {
-							event := &server.GameAbilityEvent{
-								EventID:             ability.OfferingID,
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-							}
+						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
 
-							// send message to game client, if ability trigger
-							as.battle().arena.Message(
-								"BATTLE:ABILITY",
-								event,
-							)
-
-							bat := boiler.BattleAbilityTrigger{
-								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle().ID,
-								FactionID:         ability.FactionID,
-								IsAllSyndicates:   false,
-								AbilityLabel:      ability.Label,
-								GameAbilityID:     ability.ID,
-								AbilityOfferingID: ability.OfferingID.String(),
-							}
-							err := bat.Insert(gamedb.StdConn, boil.Infer())
-							if err != nil {
-								gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
-							}
-
-							// get ability faction
-							//build notification
-							gameNotification := &GameNotificationWarMachineAbility{
-								Ability: &AbilityBrief{
-									Label:    ability.Label,
-									ImageUrl: ability.ImageUrl,
-									Colour:   ability.Colour,
-								},
-							}
-
-							// broadcast notification
-							if ability.ParticipantID == nil {
-								as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
-									Ability: gameNotification.Ability,
-								})
-
-							} else {
-								// filled war machine detail
-								for _, wm := range as.battle().WarMachines {
-									if wm.ParticipantID == *ability.ParticipantID {
-										gameNotification.WarMachine = &WarMachineBrief{
-											ParticipantID: wm.ParticipantID,
-											Hash:          wm.Hash,
-											ImageUrl:      wm.Image,
-											ImageAvatar:   wm.ImageAvatar,
-											Name:          wm.Name,
-											FactionID:     wm.FactionID,
-										}
-										break
-									}
-								}
-
-								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
-							}
-							// generate new offering id for current ability
-							ability.OfferingID = uuid.Must(uuid.NewV4())
+						// skip, if price is not changed
+						if !isChanged {
+							continue
 						}
 
-						// broadcast new ability price
+						// broadcast changed price
 						as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity].dataChan <- GameAbilityPriceResponse{
 							ability.Identity,
 							ability.OfferingID.String(),
 							ability.SupsCost.String(),
 							ability.CurrentSups.String(),
-							isTriggered,
+							false,
 						}
 					}
 				}
@@ -797,6 +741,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal, dropRate decimal.Decimal) bool {
 	ga.Lock()
 	defer ga.Unlock()
+
+	originalPrice := ga.SupsCost
+
+	// price drop
 	ga.SupsCost = ga.SupsCost.Mul(dropRate).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -804,19 +752,13 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 		ga.SupsCost = minPrice
 	}
 
-	isTriggered := false
-
 	// if the target price hit current price
-	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups) {
-		// trigger the ability
-		isTriggered = true
+	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups.Add(decimal.New(5, 17))) {
+		// reset the price
+		ga.SupsCost = originalPrice
 
-		// double the target price
-		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
-
-		// reset current sups to zero
-		ga.CurrentSups = decimal.Zero
-
+		// return not changed
+		return false
 	}
 
 	// store updated price to db
@@ -827,10 +769,11 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 			Str("sups_cost", ga.SupsCost.String()).
 			Str("current_sups", ga.CurrentSups.String()).
 			Err(err).Msg("could not update faction ability cost")
-		return isTriggered
+		return false
 	}
 
-	return isTriggered
+	// return price is changed
+	return true
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
@@ -969,13 +912,6 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 // ***************************
 // Gabs Abilities Voting Cycle
 // ***************************
-
-const (
-	// BribeDurationSecond the amount of second players can bribe GABS
-	BribeDurationSecond = 30
-	// LocationSelectDurationSecond the amount of second the winner user can select the location
-	LocationSelectDurationSecond = 15
-)
 
 const (
 	BribeStageHold           int32 = 0
@@ -1324,7 +1260,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// extend location select phase duration
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -1342,7 +1278,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// change bribing phase
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageBribe)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(BribeDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityBribeDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -1503,7 +1439,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 
 					// broadcast stage change
 					bm.Start("broadcast_bribe_stage")
@@ -1566,7 +1502,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	}
 
 	if isFirstAbility {
-		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSecond
+		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSeconds
 	}
 	as.battleAbilityPool.BattleAbility = ba
 
@@ -1853,7 +1789,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if there is user, assign location decider and exit the loop
 		// change bribing phase to location select
 		as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 		// broadcast stage change
 		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -2243,7 +2179,10 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		FactionID:           &faction.ID,
 	}
 
-	as.battle().calcTriggeredLocation(event)
+	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
+		X: *event.TriggeredOnCellX,
+		Y: *event.TriggeredOnCellY,
+	})
 
 	// trigger location select
 	as.battle().arena.Message("BATTLE:ABILITY", event)
