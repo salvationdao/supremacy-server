@@ -491,7 +491,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						Msg("Failed to Transfer Mech to New Owner")
 					return
 				}
-			} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate || auctionItem.ItemType == boiler.ItemTypeWeapon {
+			} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate || auctionItem.ItemType == boiler.ItemTypeWeapon || auctionItem.ItemType == boiler.ItemTypeMechSkin || auctionItem.ItemType == boiler.ItemTypeWeaponSkin {
 				err = db.ChangeCollectionItemOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
 				if err != nil {
 					m.Passport.RefundSupsMessage(txid)

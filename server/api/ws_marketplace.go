@@ -1373,7 +1373,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Msg("Failed to Transfer Mech to New Owner")
 			return terror.Error(err, errMsg)
 		}
-	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate || saleItem.CollectionItemType == boiler.ItemTypeWeapon {
+	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate || saleItem.CollectionItemType == boiler.ItemTypeWeapon || saleItem.CollectionItemType == boiler.ItemTypeMechSkin || saleItem.CollectionItemType == boiler.ItemTypeWeaponSkin {
 		err = db.ChangeCollectionItemOwner(tx, saleItem.CollectionItemID, user.ID)
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
