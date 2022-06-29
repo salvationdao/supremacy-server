@@ -24,6 +24,7 @@ var TableNames = struct {
 	BattleWins                                         string
 	Battles                                            string
 	Blobs                                              string
+	BlockMarketplace                                   string
 	BlueprintAmmo                                      string
 	BlueprintKeycards                                  string
 	BlueprintMechAnimation                             string
@@ -62,6 +63,7 @@ var TableNames = struct {
 	MarketplaceEvents                                  string
 	MechAnimation                                      string
 	MechModels                                         string
+	MechMoveCommandLogs                                string
 	MechRepair                                         string
 	MechSkin                                           string
 	MechStats                                          string
@@ -86,6 +88,7 @@ var TableNames = struct {
 	Players                                            string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
+	Profanities                                        string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
@@ -131,6 +134,7 @@ var TableNames = struct {
 	BattleWins:                   "battle_wins",
 	Battles:                      "battles",
 	Blobs:                        "blobs",
+	BlockMarketplace:             "block_marketplace",
 	BlueprintAmmo:                "blueprint_ammo",
 	BlueprintKeycards:            "blueprint_keycards",
 	BlueprintMechAnimation:       "blueprint_mech_animation",
@@ -169,6 +173,7 @@ var TableNames = struct {
 	MarketplaceEvents:            "marketplace_events",
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
+	MechMoveCommandLogs:          "mech_move_command_logs",
 	MechRepair:                   "mech_repair",
 	MechSkin:                     "mech_skin",
 	MechStats:                    "mech_stats",
@@ -193,6 +198,7 @@ var TableNames = struct {
 	Players:                      "players",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
+	Profanities:                  "profanities",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",

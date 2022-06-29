@@ -54,7 +54,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	mech, err := db.Mech(mechID.String())
+	mech, err := db.Mech(nil, mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return err
@@ -316,7 +316,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	mech, err := db.Mech(mechID.String())
+	mech, err := db.Mech(nil, mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")

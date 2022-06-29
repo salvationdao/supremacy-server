@@ -73,6 +73,20 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena._currentBattle = btl
 }
 
+func (arena *Arena) currentBattleState() int32 {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return BattleStageEnd
+	}
+
+	arena._currentBattle.RLock()
+	stage := arena._currentBattle.stage.Load()
+	arena._currentBattle.RUnlock()
+
+	return stage
+}
+
 func (arena *Arena) currentBattleNumber() int {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -82,18 +96,46 @@ func (arena *Arena) currentBattleNumber() int {
 	return arena._currentBattle.BattleNumber
 }
 
-func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
+func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID {
 	arena.RLock()
 	defer arena.RUnlock()
 
+	ids := []uuid.UUID{}
+
 	if arena._currentBattle == nil {
-		return []uuid.UUID{}
+		return ids
 	}
 
-	return arena._currentBattle.warMachineIDs
+	if factionIDs != nil && len(factionIDs) > 0 {
+		// only return war machines' id from the faction
+		for _, wm := range arena._currentBattle.WarMachines {
+			if wm.FactionID == factionIDs[0] {
+				ids = append(ids, uuid.FromStringOrNil(wm.ID))
+			}
+		}
+	} else {
+		// return all the war machines' id
+		ids = arena._currentBattle.warMachineIDs
+
+	}
+
+	return ids
 }
 
-func (arena *Arena) currentBattleWarMachine(participantID int) *WarMachine {
+func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
+}
+
+func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
 
@@ -108,6 +150,19 @@ func (arena *Arena) currentBattleWarMachine(participantID int) *WarMachine {
 	}
 
 	return nil
+}
+
+func (arena *Arena) currentDisableCells() []int64 {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	if arena._currentBattle == nil {
+		return nil
+	}
+
+	arena._currentBattle.RLock()
+	defer arena._currentBattle.RUnlock()
+	return arena._currentBattle.gameMap.DisabledCells
 }
 
 func checkWarMachineByParticipantID(wm *WarMachine, participantID int) bool {
@@ -471,7 +526,13 @@ type LocationSelectRequest struct {
 
 const HubKeyAbilityLocationSelect = "ABILITY:LOCATION:SELECT"
 
+var locationSelectBucket = leakybucket.NewCollector(1, 1, true)
+
 func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if locationSelectBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Msg("no current battle")
@@ -491,7 +552,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	if arena.CurrentBattle().abilities == nil {
+	if arena.CurrentBattle().abilities() == nil {
 		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -501,28 +562,28 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
 	}
-	
+
 	reply(true)
 	return nil
 }
 
 type PlayerAbilityUseRequest struct {
 	Payload struct {
-		AbilityID          string                `json:"ability_id"` // player ability id
-		LocationSelectType db.LocationSelectType `json:"location_select_type"`
-		XIndex             int                   `json:"x"`
-		YIndex             int                   `json:"y"`
-		MechID             string                `json:"mech_id"`
+		BlueprintAbilityID string               `json:"blueprint_ability_id"`
+		LocationSelectType string               `json:"location_select_type"`
+		StartCoords        *server.CellLocation `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
+		EndCoords          *server.CellLocation `json:"end_coords"`   // used only for LINE_SELECT abilities
+		MechHash           string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return nil
+		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
 	}
 
 	req := &PlayerAbilityUseRequest{}
@@ -532,7 +593,15 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userUUID := uuid.FromStringOrNil(user.ID)
+	// mech command handler
+	if req.Payload.LocationSelectType == "MECH_COMMAND" {
+		err := arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
+		if err != nil {
+			return terror.Error(err, "Failed to fire mech command")
+		}
+
+		return nil
+	}
 
 	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(user.ID), qm.Load(boiler.PlayerRels.Faction)).One(gamedb.StdConn)
 	if err != nil {
@@ -540,15 +609,29 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
-	pa, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
+	pa, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID),
+		qm.Load(boiler.PlayerAbilityRels.Blueprint),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("abilityID", req.Payload.AbilityID).Msg("failed to get player ability")
+		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
 	if pa.OwnerID != player.ID {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("abilityID", req.Payload.AbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
 		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
+	}
+
+	if !player.FactionID.Valid || player.FactionID.String == "" {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability but they aren't part of a faction", player.ID)
+		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
+	}
+
+	if pa.Count < 1 {
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
+		return terror.Error(err, "You do not have any more of this ability to use.")
 	}
 
 	defer func() {
@@ -564,17 +647,74 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 		return nil
 	}
 
-	event := &server.GameAbilityEvent{
-		IsTriggered:         true,
-		GameClientAbilityID: byte(pa.GameClientAbilityID),
-		TriggeredOnCellX:    &req.Payload.XIndex,
-		TriggeredOnCellY:    &req.Payload.YIndex,
-		TriggeredByUserID:   &userUUID,
-		TriggeredByUsername: &player.Username.String,
-		EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
-		FactionID:           &player.FactionID.String,
+	bpa := pa.R.Blueprint
+
+	userID := uuid.FromStringOrNil(user.ID)
+	var event *server.GameAbilityEvent
+	switch req.Payload.LocationSelectType {
+	case boiler.LocationSelectTypeEnumLINE_SELECT:
+		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
+		}
+		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
+		}
+
+	case boiler.LocationSelectTypeEnumMECH_SELECT:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+
+	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
+		if req.Payload.StartCoords == nil {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
+		}
+		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+		}
+	case boiler.LocationSelectTypeEnumGLOBAL:
+	default:
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("no location select type was provided when activating a player ability")
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
 	}
-	currentBattle.calcTriggeredLocation(event)
+
+	if event == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("game ability event is nil for some reason")
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
+	}
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -588,13 +728,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 		BattleID:            currentBattle.BattleID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
-		GameClientAbilityID: pa.GameClientAbilityID,
-		Label:               pa.Label,
-		Colour:              pa.Colour,
-		ImageURL:            pa.ImageURL,
-		Description:         pa.Description,
-		TextColour:          pa.TextColour,
-		LocationSelectType:  null.StringFrom(pa.LocationSelectType),
+		GameClientAbilityID: bpa.GameClientAbilityID,
+		Label:               bpa.Label,
+		Colour:              bpa.Colour,
+		ImageURL:            bpa.ImageURL,
+		Description:         bpa.Description,
+		TextColour:          bpa.TextColour,
+		LocationSelectType:  bpa.LocationSelectType,
 		ConsumedAt:          time.Now(),
 	}
 	err = ca.Insert(tx, boil.Infer())
@@ -603,10 +743,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 		return err
 	}
 
-	// Delete player_abilities entry
-	_, err = pa.Delete(tx)
+	// Update the count of the player_abilities entry
+	pa.Count = pa.Count - 1
+	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to delete player ability")
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
 	}
 
@@ -617,32 +758,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 	}
 	reply(true)
 
-	faction := player.R.Faction
-	arena.CurrentBattle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-		Type: LocationSelectTypeTrigger,
-		X:    &req.Payload.XIndex,
-		Y:    &req.Payload.YIndex,
-		Ability: &AbilityBrief{
-			Label:    pa.Label,
-			ImageUrl: pa.ImageURL,
-			Colour:   pa.Colour,
-		},
-		CurrentUser: &UserBrief{
-			ID:        userUUID,
-			Username:  player.Username.String,
-			FactionID: player.FactionID.String,
-			Gid:       player.Gid,
-			Faction: &Faction{
-				ID:    faction.ID,
-				Label: faction.Label,
-				Theme: &Theme{
-					PrimaryColor:    faction.PrimaryColor,
-					SecondaryColor:  faction.SecondaryColor,
-					BackgroundColor: faction.BackgroundColor,
-				},
-			},
-		},
-	})
+	currentBattle.arena.Message("BATTLE:ABILITY", event)
+	pas, err := db.PlayerAbilitiesList(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	return nil
 }
@@ -797,7 +919,7 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return fmt.Errorf("invalid participant id")
 	}
 
-	wm := arena.currentBattleWarMachine(participantID)
+	wm := arena.CurrentBattleWarMachine(participantID)
 
 	if wm == nil {
 		return nil
@@ -841,7 +963,7 @@ func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key stri
 		return fmt.Errorf("invalid participant id")
 	}
 
-	wm := arena.currentBattleWarMachine(participantID)
+	wm := arena.CurrentBattleWarMachine(participantID)
 
 	if wm != nil {
 		wm.RLock()
@@ -939,6 +1061,11 @@ type BattleEndPayload struct {
 	} `json:"winningWarMachines"`
 	BattleID     string `json:"battleID"`
 	WinCondition string `json:"winCondition"`
+}
+
+type AbilityMoveCommandCompletePayload struct {
+	BattleID       string `json:"battleID"`
+	WarMachineHash string `json:"warMachineHash"`
 }
 
 type BattleWMDestroyedPayload struct {
@@ -1097,6 +1224,17 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Err(err)
 				}
 
+			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
+				var dataPayload *AbilityMoveCommandCompletePayload
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal ability move command complete payload")
+					continue
+				}
+				err = btl.UpdateWarMachineMoveCommand(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Err(err)
+				}
+
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -1109,6 +1247,16 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) beginBattle() {
+	// delete all the unfinished mech command
+	_, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to clean up unfinished mech move command")
+	}
+
 	gm, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
@@ -1242,6 +1390,61 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.spawnedAIMux.Lock()
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 	btl.spawnedAIMux.Unlock()
+
+	return nil
+}
+
+func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+	if payload.BattleID != btl.BattleID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	}
+
+	// check battle state
+	if btl.arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(fmt.Errorf("current battle is ended"))
+	}
+
+	// get mech
+	wm := btl.arena.CurrentBattleWarMachineByHash(payload.WarMachineHash)
+	if wm == nil {
+		return terror.Error(fmt.Errorf("war machine not exists"))
+	}
+
+	// get the last move command of the mech
+	mmc, err := boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
+		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech move command from db.")
+	}
+
+	// update completed_at
+	mmc.ReachedAt = null.TimeFrom(time.Now())
+
+	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+	if err != nil {
+		return terror.Error(err, "Failed to update mech move command")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		MechMoveCommandLog:    mmc,
+		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+	})
+
+	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+	}
+
+	btl.arena.BroadcastMechCommandNotification(&MechCommandNotification{
+		MechID:       wm.ID,
+		MechLabel:    wm.Name,
+		MechImageUrl: wm.ImageAvatar,
+		FactionID:    wm.FactionID,
+		Action:       MechCommandActionComplete,
+	})
 
 	return nil
 }

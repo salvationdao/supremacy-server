@@ -1,9 +1,9 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -14,7 +14,7 @@ import (
 
 // InsertNewCollectionItem inserts a collection item,
 // It takes a TX and DOES NOT COMMIT, commit needs to be called in the parent function.
-func InsertNewCollectionItem(tx *sql.Tx,
+func InsertNewCollectionItem(tx boil.Executor,
 	collectionSlug,
 	itemType,
 	itemID,
@@ -124,8 +124,13 @@ func InsertNewCollectionItem(tx *sql.Tx,
 	return item, nil
 }
 
-func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {
-	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+func CollectionItemFromItemID(trx boil.Executor, id string) (*server.CollectionItem, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -141,4 +146,25 @@ func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {
 		XsynLocked:     ci.XsynLocked,
 		MarketLocked:   ci.MarketLocked,
 	}, nil
+}
+
+func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem {
+	return &server.CollectionItem{
+		CollectionSlug:   ci.CollectionSlug,
+		Hash:             ci.Hash,
+		TokenID:          ci.TokenID,
+		ItemType:         ci.ItemType,
+		ItemID:           ci.ItemID,
+		Tier:             ci.Tier,
+		OwnerID:          ci.OwnerID,
+		XsynLocked:       ci.XsynLocked,
+		MarketLocked:     ci.MarketLocked,
+		ImageURL:         ci.ImageURL,
+		CardAnimationURL: ci.CardAnimationURL,
+		AvatarURL:        ci.AvatarURL,
+		LargeImageURL:    ci.LargeImageURL,
+		BackgroundColor:  ci.BackgroundColor,
+		AnimationURL:     ci.AnimationURL,
+		YoutubeURL:       ci.YoutubeURL,
+	}
 }

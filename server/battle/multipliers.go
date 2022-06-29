@@ -236,7 +236,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
-			ci, err := db.CollectionItemFromItemID(repairEvent.R.WarMachineOne.ID)
+			ci, err := db.CollectionItemFromItemID(nil, repairEvent.R.WarMachineOne.ID)
 			if err != nil {
 				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
@@ -337,7 +337,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 			for _, sameKilledEvent := range sameKilledEvents {
-				ci, err := db.CollectionItemFromItemID(sameKilledEvent.R.WarMachineOne.ID)
+				ci, err := db.CollectionItemFromItemID(nil, sameKilledEvent.R.WarMachineOne.ID)
 				if err != nil {
 					gamelog.L.Error().Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
 					continue

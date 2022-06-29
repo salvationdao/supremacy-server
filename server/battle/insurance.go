@@ -116,7 +116,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	ci, err := db.CollectionItemFromItemID(mech.ID)
+	ci, err := db.CollectionItemFromItemID(nil, mech.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get mech from db")
 	}
@@ -235,7 +235,7 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	ci, err := db.CollectionItemFromItemID(mech.ID)
+	ci, err := db.CollectionItemFromItemID(nil, mech.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get mech from db")
 	}

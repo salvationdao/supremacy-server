@@ -42,6 +42,7 @@ const (
 	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
 	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
 	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
+	GameNotificationTypeWarMachineCommand   GameNotificationType = "WAR_MACHINE_COMMAND"
 )
 
 type GameNotificationKill struct {
@@ -97,6 +98,21 @@ type UserBrief struct {
 type GameNotification struct {
 	Type GameNotificationType `json:"type"`
 	Data interface{}          `json:"data"`
+}
+
+const (
+	MechCommandActionFired    = "MECH_COMMAND_FIRED"
+	MechCommandActionCancel   = "MECH_COMMAND_CANCEL"
+	MechCommandActionComplete = "MECH_COMMAND_COMPLETE"
+)
+
+type MechCommandNotification struct {
+	MechID       string     `json:"mech_id"`
+	MechLabel    string     `json:"mech_label"`
+	MechImageUrl string     `json:"mech_image_url"`
+	FactionID    string     `json:"faction_id"`
+	Action       string     `json:"action"`
+	FiredByUser  *UserBrief `json:"fired_by_user,omitempty"`
 }
 
 const HubKeyMultiplierSubscribe = "USER:MULTIPLIERS:SUBSCRIBE"
@@ -177,6 +193,13 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
 	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
+		Data: data,
+	})
+}
+
+func (arena *Arena) BroadcastMechCommandNotification(data *MechCommandNotification) {
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command_notification", data.FactionID), HubKeyGameNotification, &GameNotification{
+		Type: GameNotificationTypeWarMachineCommand,
 		Data: data,
 	})
 }

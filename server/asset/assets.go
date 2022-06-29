@@ -70,7 +70,7 @@ func SyncAssetOwners(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
 			defer tx.Rollback()
 
 			if colItem.ItemType == boiler.ItemTypeMech {
-				mech, err := db.Mech(colItem.ItemID)
+				mech, err := db.Mech(nil, colItem.ItemID)
 				if err != nil {
 					gamelog.L.Error().
 						Err(err).
@@ -225,7 +225,7 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 	defer tx.Rollback()
 
 	if colItem.ItemType == boiler.ItemTypeMech {
-		mech, err := db.Mech(colItem.ItemID)
+		mech, err := db.Mech(nil, colItem.ItemID)
 		if err != nil {
 			gamelog.L.Error().
 				Err(err).

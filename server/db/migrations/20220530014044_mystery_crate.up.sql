@@ -654,7 +654,7 @@ VALUES ('supremacy-general', 'Medium Energy Core', 'MEDIUM', 1500, 150, 100, 0, 
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..5000 --change to 5000
+        FOR COUNT IN 1..1000 --change to 5000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
@@ -672,7 +672,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..13000 -- change to 13000
+        FOR COUNT IN 1..2600 -- change to 13000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',
