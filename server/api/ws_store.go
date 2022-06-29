@@ -223,7 +223,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		txItem := &boiler.StorePurchaseHistory{
 			PlayerID:    user.ID,
-			Amount:      storeCrate.Price,
+			Amount:      storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))),
 			ItemType:    "mystery_crate",
 			ItemID:      storeCrate.ID,
 			Description: "refunding mystery crate due to failed transaction",
@@ -266,6 +266,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 		err = txItem.Insert(tx, boil.Infer())
 		if err != nil {
+			refundFunc()
 			gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
 			return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 		}
