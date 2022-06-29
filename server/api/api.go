@@ -175,7 +175,6 @@ func NewAPI(
 			AllowCredentials: true,
 		}).Handler,
 	)
-	// TODO: Create new tracer not using HUB
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -193,6 +192,7 @@ func NewAPI(
 
 		r.Group(func(r chi.Router) {
 			if config.Environment != "development" {
+				// TODO: Create new tracer not using HUB
 				r.Use(DatadogTracer.Middleware())
 			}
 
