@@ -331,8 +331,6 @@ func (btl *Battle) start() {
 	}
 
 	// set up the abilities for current battle
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
-	btl.storeIncognitoManager(NewIncognitoManager())
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")

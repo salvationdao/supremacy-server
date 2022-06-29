@@ -1120,6 +1120,8 @@ func (arena *Arena) beginBattle() {
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
+	btl.storeIncognitoManager(NewIncognitoManager())
 
 	err = btl.Load()
 	if err != nil {
