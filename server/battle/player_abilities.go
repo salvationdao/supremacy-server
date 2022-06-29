@@ -192,23 +192,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			FactionID:           &player.FactionID.String,
 			WarMachineHash:      &req.Payload.MechHash,
 		}
-
-		// If player ability is "Incognito"
-		if bpa.GameClientAbilityID == IncognitoGameAbilityID {
-			wm, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(req.Payload.MechHash)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
-				return terror.Error(err, "Failed to get war machine from hash")
-			}
-
-			im := arena.CurrentBattle().incognitoManager()
-			err = im.AddHiddenWarMachineHash(wm.Hash)
-			if err != nil {
-				return terror.Error(err, "Failed to execute Incognito player ability")
-			}
-			return nil
-		}
-
 	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
@@ -280,7 +263,24 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	}
 	reply(true)
 
-	currentBattle.arena.Message("BATTLE:ABILITY", event)
+	// If player ability is "Incognito"
+	if bpa.GameClientAbilityID == IncognitoGameAbilityID {
+		wm, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(req.Payload.MechHash)).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
+			return terror.Error(err, "Failed to get war machine from hash")
+		}
+
+		im := arena.CurrentBattle().incognitoManager()
+		err = im.AddHiddenWarMachineHash(wm.Hash)
+		if err != nil {
+			return terror.Error(err, "Failed to execute Incognito player ability")
+		}
+	} else {
+		// Tell gameclient to execute ability
+		currentBattle.arena.Message("BATTLE:ABILITY", event)
+	}
+
 	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
 		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
