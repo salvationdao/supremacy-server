@@ -11,7 +11,10 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	ql := float64(length + 1)
 	queueLength := decimal.NewFromFloat(ql)
 
-	// min cost will be one forth of the queue length
+	// min cost will be one forth of the queue length or the floor
+	queueFloor := db.GetDecimalWithDefault(db.QueueFeeFloor, decimal.New(50, 18))
+	rewardFloor := db.GetDecimalWithDefault(db.RewardFeeFloor, decimal.New(250, 18))
+
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
 	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
@@ -27,6 +30,14 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	// fee never get under queue length
 	if queueCost.LessThan(minQueueCost) {
 		queueCost = minQueueCost
+	}
+
+	if queueCost.LessThan(queueFloor) {
+		queueCost = queueFloor
+	}
+
+	if contractReward.LessThan(rewardFloor) {
+		contractReward = rewardFloor
 	}
 
 	// length * 2 sups
