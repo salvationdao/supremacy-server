@@ -113,7 +113,6 @@ func NewAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 ) *API {
-
 	// initialise api
 	api := &API{
 		Config:                    config,
@@ -180,8 +179,6 @@ func NewAPI(
 			AllowCredentials: true,
 		}).Handler,
 	)
-	// TODO: Create new tracer not using HUB
-	api.Routes.Use(DatadogTracer.Middleware())
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -197,22 +194,29 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		//TODO ALEX reimplement handlers
 
-		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
-		r.Get("/video_server", WithError(api.GetStreamsHandler))
-		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
-		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
-		r.Mount("/faction", FactionRouter(api))
-		r.Mount("/auth", AuthRouter(api))
+		r.Group(func(r chi.Router) {
+			if config.Environment != "development" {
+				// TODO: Create new tracer not using HUB
+				r.Use(DatadogTracer.Middleware())
+			}
 
-		r.Mount("/battle", BattleRouter(battleArenaClient))
-		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
-		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
+			r.Get("/video_server", WithError(api.GetStreamsHandler))
+			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
+			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
+			r.Mount("/faction", FactionRouter(api))
+			r.Mount("/auth", AuthRouter(api))
 
-		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
+			r.Mount("/battle", BattleRouter(battleArenaClient))
+			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+			r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
 
-		r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
-		r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
-		r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
+			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
+
+			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
+			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
+			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
+		})
 
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
