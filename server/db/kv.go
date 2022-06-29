@@ -19,6 +19,7 @@ const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const SaleAbilityLimit KVKey = "sale_ability_limit"
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
+const QueueLengthAdd KVKey = "queue_length_add"
 
 type KVKey string
 
