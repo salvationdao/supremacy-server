@@ -20,7 +20,7 @@ const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const SaleAbilityLimit KVKey = "sale_ability_limit"
 const SaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
-const QueueLengthFloor KVKey = "queue_length_floor"
+const QueueLengthAdd KVKey = "queue_length_Add"
 
 type KVKey string
 

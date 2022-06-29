@@ -9,11 +9,8 @@ import (
 
 func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	ql := float64(length + 1)
-	queueLengthFloor := db.GetIntWithDefault(db.QueueLengthFloor, 100)
-
-	if ql < float64(queueLengthFloor) {
-		ql = float64(queueLengthFloor)
-	}
+	queueAddage := db.GetIntWithDefault(db.QueueLengthAdd, 100)
+	ql = ql + float64(queueAddage)
 
 	queueLength := decimal.NewFromFloat(ql)
 
