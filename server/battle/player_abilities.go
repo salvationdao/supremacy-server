@@ -256,15 +256,9 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction")
-		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
-	}
-	reply(true)
-
+	isIncognito := bpa.GameClientAbilityID == IncognitoGameAbilityID
 	// If player ability is "Incognito"
-	if bpa.GameClientAbilityID == IncognitoGameAbilityID {
+	if isIncognito {
 		wm, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(req.Payload.MechHash)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
@@ -274,9 +268,19 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		im := arena.CurrentBattle().incognitoManager()
 		err = im.AddHiddenWarMachineHash(wm.Hash)
 		if err != nil {
-			return terror.Error(err, "Failed to execute Incognito player ability")
+			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
+			return err
 		}
-	} else {
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to commit transaction")
+		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
+	}
+	reply(true)
+
+	if !isIncognito {
 		// Tell gameclient to execute ability
 		currentBattle.arena.Message("BATTLE:ABILITY", event)
 	}
