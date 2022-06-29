@@ -567,6 +567,26 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 	return nil
 }
 
+type MinimapUpdatesSubscribeResponse struct {
+	Duration int                 `json:"duration"`
+	Radius   int                 `json:"radius"`
+	Coords   server.CellLocation `json:"coords"`
+}
+
+const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
+
+func (arena *Arena) MinimapUpdatesSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// skip, if current not battle
+	if arena.CurrentBattle() == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
+	}
+
+	reply(nil)
+
+	return nil
+}
+
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get a random faction id

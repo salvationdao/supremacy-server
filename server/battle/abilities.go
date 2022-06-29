@@ -29,6 +29,13 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+type AbilityRadius int
+
+const (
+	NukeRadius     AbilityRadius = 5200
+	BlackoutRadius AbilityRadius = 20000
+)
+
 //*******************************
 // Voting Options
 //*******************************

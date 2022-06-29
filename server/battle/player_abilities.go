@@ -82,6 +82,7 @@ type PlayerAbilityUseRequest struct {
 }
 
 const IncognitoGameAbilityID = 15
+const BlackoutGameAbilityID = 16
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
@@ -291,6 +292,14 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+
+	if bpa.GameClientAbilityID == BlackoutGameAbilityID {
+		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, MinimapUpdatesSubscribeResponse{
+			Duration: 3000,
+			Radius:   int(BlackoutRadius),
+			Coords:   *req.Payload.StartCoords,
+		})
+	}
 
 	return nil
 }
