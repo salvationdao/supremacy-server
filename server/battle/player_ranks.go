@@ -37,15 +37,15 @@ func (arena *Arena) PlayerRankUpdater() {
 		// calculate player rank of each syndicate
 		err := calcSyndicatePlayerRank(server.RedMountainFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.RedMountainFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("faction id", server.RedMountainFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 		err = calcSyndicatePlayerRank(server.BostonCyberneticsFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("faction id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 		err = calcSyndicatePlayerRank(server.ZaibatsuFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction id", server.ZaibatsuFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("faction id", server.ZaibatsuFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 
 		bus := arena.currentBattleUsersCopy()
@@ -81,7 +81,7 @@ func (arena *Arena) PlayerRankUpdater() {
 							// broadcast user stat (player_last_seven_days_kills)
 							us, err := db.UserStatsGet(player.ID)
 							if err != nil {
-								gamelog.L.Error().Err(err).Msg("failed to get user stat")
+								gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to get user stat")
 							}
 
 							if us != nil {
@@ -107,7 +107,7 @@ func (arena *Arena) PlayerRankUpdater() {
 func calcSyndicatePlayerRank(factionID string) error {
 	playerAbilityKills, err := db.GetPositivePlayerAbilityKillByFactionID(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("faction id", factionID).Err(err).Msg("Failed to get player ability kill from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("faction id", factionID).Err(err).Msg("Failed to get player ability kill from db")
 		return terror.Error(err, "Failed to get player ability kill from db")
 	}
 
@@ -136,7 +136,7 @@ func calcSyndicatePlayerRank(factionID string) error {
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)), // should be created more than a day
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankGeneral})
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update general rank player")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to update general rank player")
 		return terror.Error(err, "Failed to update general rank player")
 	}
 
@@ -157,7 +157,7 @@ func calcSyndicatePlayerRank(factionID string) error {
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankCorporal})
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update corporal rank player")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to update corporal rank player")
 		return terror.Error(err, "Failed to update corporal rank player")
 	}
 
@@ -178,7 +178,7 @@ func calcSyndicatePlayerRank(factionID string) error {
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankPrivate})
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update private rank player")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to update private rank player")
 		return terror.Error(err, "Failed to update private rank player")
 	}
 
