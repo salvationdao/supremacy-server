@@ -720,13 +720,12 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
-		mech, err := db.Mech(tx, items.Mech.ID)
+		_, err := db.Mech(tx, items.Mech.ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.Mech = mech
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
