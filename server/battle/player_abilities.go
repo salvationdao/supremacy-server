@@ -30,25 +30,32 @@ import (
 
 // IncognitoManager tracks all war machines that are currently hidden from the map
 type IncognitoManager struct {
-	incognitoWarMachineIDs map[string]struct{}
+	incognitoWarMachineIDs map[string]time.Time
 
 	sync.RWMutex
 }
 
 func NewIncognitoManager() *IncognitoManager {
 	return &IncognitoManager{
-		incognitoWarMachineIDs: make(map[string]struct{}),
+		incognitoWarMachineIDs: make(map[string]time.Time), // id, expiry timestamp
 	}
 }
 
+// IsWarMachineHidden is called on frequently and will remove mechs from the map if their hidden
+// duration is up
 func (iwmm *IncognitoManager) IsWarMachineHidden(hash string) bool {
-	iwmm.RLock()
-	defer iwmm.RUnlock()
-	_, ok := iwmm.incognitoWarMachineIDs[hash]
-	return ok
+	iwmm.Lock()
+	defer iwmm.Unlock()
+	t, exists := iwmm.incognitoWarMachineIDs[hash]
+	if exists && time.Now().After(t) {
+		delete(iwmm.incognitoWarMachineIDs, hash)
+		return false
+	}
+
+	return exists
 }
 
-func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string) error {
+func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string, duration time.Duration) error {
 	iwmm.Lock()
 	defer iwmm.Unlock()
 
@@ -56,7 +63,7 @@ func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string) error {
 	if ok {
 		return fmt.Errorf("War machine is already hidden")
 	}
-	iwmm.incognitoWarMachineIDs[hash] = struct{}{}
+	iwmm.incognitoWarMachineIDs[hash] = time.Now().Add(duration)
 
 	return nil
 }
@@ -263,8 +270,10 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			return terror.Error(err, "Failed to get war machine from hash")
 		}
 
+		incognitoDurationSeconds := db.GetIntWithDefault(db.KeyPlayerAbilityIncognitoDurationSeconds, 20) // default 20 seconds
+
 		im := arena.CurrentBattle().incognitoManager()
-		err = im.AddHiddenWarMachineHash(wm.Hash)
+		err = im.AddHiddenWarMachineHash(wm.Hash, time.Second*time.Duration(incognitoDurationSeconds))
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
 			return err
