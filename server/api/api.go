@@ -263,6 +263,8 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+
 			}))
 
 			// secured faction route ws

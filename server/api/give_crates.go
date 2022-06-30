@@ -230,7 +230,6 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 
 	err = tx2.Commit()
 	if err != nil {
-		// gamelog.L.Error().Err(err).Interface("crate", crate).Msg("failed to open mystery crate")
 		return http.StatusInternalServerError, terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
