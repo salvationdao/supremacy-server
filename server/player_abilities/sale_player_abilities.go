@@ -73,13 +73,13 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 }
 
 func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
-	priceTickerInterval := db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
+	priceTickerInterval := db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
-	reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0))  // default 1%
-	floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                          // default 10 sups
-	timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600)             // default 1 hour (3600 seconds)
-	limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3)                                                          // default 3
-	inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
+	reductionPercentage := db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0))  // default 1%
+	floorPrice := db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18))                          // default 10 sups
+	timeBetweenRefreshInSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 3600)             // default 1 hour (3600 seconds)
+	limit := db.GetIntWithDefault(db.KeySaleAbilityLimit, 3)                                                          // default 3
+	inflationPercentage := db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 
 	defer func() {
 		priceTicker.Stop()
