@@ -136,9 +136,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 	}()
 
-	currentBattle := arena.CurrentBattle()
 	// check battle end
-	if currentBattle.stage.Load() == BattleStageEnd {
+	if arena.CurrentBattle().stage.Load() == BattleStageEnd {
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
 		return nil
 	}
@@ -164,8 +163,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
-			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocationEnd:     arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
 		}
 
 	case boiler.LocationSelectTypeEnumMECH_SELECT:
@@ -198,7 +197,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 		}
 	case boiler.LocationSelectTypeEnumGLOBAL:
 	default:
@@ -220,7 +219,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
-		BattleID:            currentBattle.BattleID,
+		BattleID:            arena.CurrentBattle().BattleID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
@@ -272,7 +271,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	if !isIncognito {
 		// Tell gameclient to execute ability
-		currentBattle.arena.Message("BATTLE:ABILITY", event)
+		arena.CurrentBattle().arena.Message("BATTLE:ABILITY", event)
 	}
 
 	pas, err := db.PlayerAbilitiesList(user.ID)
