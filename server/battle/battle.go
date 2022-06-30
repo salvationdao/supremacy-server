@@ -1419,7 +1419,14 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		// Hidden/Incognito
-		wms.IsHidden = btl.incognitoManager().IsWarMachineHidden(warmachine.Hash)
+		if btl.incognitoManager().IsWarMachineHidden(warmachine.Hash) {
+			wms.IsHidden = true
+			wms.Position = &server.Vector3{
+				X: -1,
+				Y: -1,
+				Z: -1,
+			}
+		}
 
 		if participantID < 100 {
 			wsMessages = append(wsMessages, ws.Message{
