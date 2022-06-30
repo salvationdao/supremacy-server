@@ -310,7 +310,7 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		gamelog.L.Fatal().Interface("payload", payload).Err(err).Msg("unable to marshal data for battle arena")
 	}
 
-	gamelog.L.Debug().Str("message data", string(b)).Msg("sending packet to game client")
+	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
 
 	arena.socket.Write(ctx, websocket.MessageBinary, b)
 }
@@ -947,7 +947,7 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message")
+			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message received")
 
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
