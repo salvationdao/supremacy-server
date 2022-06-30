@@ -24,7 +24,7 @@ import (
 // Feature is an object representing the database table.
 type Feature struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label     string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Type      string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -35,13 +35,13 @@ type Feature struct {
 
 var FeatureColumns = struct {
 	ID        string
-	Label     string
+	Type      string
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
 }{
 	ID:        "id",
-	Label:     "label",
+	Type:      "type",
 	DeletedAt: "deleted_at",
 	UpdatedAt: "updated_at",
 	CreatedAt: "created_at",
@@ -49,13 +49,13 @@ var FeatureColumns = struct {
 
 var FeatureTableColumns = struct {
 	ID        string
-	Label     string
+	Type      string
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
 }{
 	ID:        "features.id",
-	Label:     "features.label",
+	Type:      "features.type",
 	DeletedAt: "features.deleted_at",
 	UpdatedAt: "features.updated_at",
 	CreatedAt: "features.created_at",
@@ -65,13 +65,13 @@ var FeatureTableColumns = struct {
 
 var FeatureWhere = struct {
 	ID        whereHelperstring
-	Label     whereHelperstring
+	Type      whereHelperstring
 	DeletedAt whereHelpernull_Time
 	UpdatedAt whereHelpertime_Time
 	CreatedAt whereHelpertime_Time
 }{
 	ID:        whereHelperstring{field: "\"features\".\"id\""},
-	Label:     whereHelperstring{field: "\"features\".\"label\""},
+	Type:      whereHelperstring{field: "\"features\".\"type\""},
 	DeletedAt: whereHelpernull_Time{field: "\"features\".\"deleted_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"features\".\"updated_at\""},
 	CreatedAt: whereHelpertime_Time{field: "\"features\".\"created_at\""},
@@ -98,8 +98,8 @@ func (*featureR) NewStruct() *featureR {
 type featureL struct{}
 
 var (
-	featureAllColumns            = []string{"id", "label", "deleted_at", "updated_at", "created_at"}
-	featureColumnsWithoutDefault = []string{"label"}
+	featureAllColumns            = []string{"id", "type", "deleted_at", "updated_at", "created_at"}
+	featureColumnsWithoutDefault = []string{"type"}
 	featureColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	featurePrimaryKeyColumns     = []string{"id"}
 	featureGeneratedColumns      = []string{}
