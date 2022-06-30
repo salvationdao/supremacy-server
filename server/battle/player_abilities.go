@@ -125,16 +125,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
-	if pa.OwnerID != player.ID {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
-		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
-	}
-
-	if !player.FactionID.Valid || player.FactionID.String == "" {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability but they aren't part of a faction", player.ID)
-		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
-	}
-
 	if pa.Count < 1 {
 		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
 		return terror.Error(err, "You do not have any more of this ability to use.")
