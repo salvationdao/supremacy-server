@@ -112,6 +112,23 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeMysteryCrate,
 	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		),
+	),
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -467,12 +484,15 @@ func MarketplaceItemSaleList(
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
 				xsearch,
 				xsearch,
 				xsearch,
@@ -493,7 +513,7 @@ func MarketplaceItemSaleList(
 	// Sort
 	var orderBy qm.QueryMod
 	if sortBy == "alphabetical" {
-		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name) %s", sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name, weapons.label) %s", sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt), sortDir))
 	} else if sortBy == "price" && sold {
@@ -645,11 +665,11 @@ func MarketplaceItemKeycardSaleList(
 	if sortBy == "alphabetical" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label), sortDir))
 	} else if sortBy == "time" {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.EndAt), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt), sortDir))
 	} else if sortBy == "price" && sold {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.SoldFor), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.SoldFor), sortDir))
 	} else if sortBy == "price" && !sold {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.BuyoutPrice), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.BuyoutPrice), sortDir))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
 	}
