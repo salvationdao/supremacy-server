@@ -50,6 +50,7 @@ var TableNames = struct {
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
+	Features                                           string
 	FingerprintIps                                     string
 	Fingerprints                                       string
 	GameAbilities                                      string
@@ -86,6 +87,7 @@ var TableNames = struct {
 	PlayerSpoilsOfWar                                  string
 	PlayerStats                                        string
 	Players                                            string
+	PlayersFeatures                                    string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
 	Profanities                                        string
@@ -160,6 +162,7 @@ var TableNames = struct {
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
+	Features:                     "features",
 	FingerprintIps:               "fingerprint_ips",
 	Fingerprints:                 "fingerprints",
 	GameAbilities:                "game_abilities",
@@ -196,6 +199,7 @@ var TableNames = struct {
 	PlayerSpoilsOfWar:            "player_spoils_of_war",
 	PlayerStats:                  "player_stats",
 	Players:                      "players",
+	PlayersFeatures:              "players_features",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
