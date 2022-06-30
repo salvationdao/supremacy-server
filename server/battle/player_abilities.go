@@ -19,6 +19,7 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
+	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -85,7 +86,14 @@ const IncognitoGameAbilityID = 15
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
+var playerAbilityBucket = leakybucket.NewCollector(1, 1, true)
+
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	b := playerAbilityBucket.Add(user.ID, 1)
+	if b == 0 {
+		return nil
+	}
+
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
