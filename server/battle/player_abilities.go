@@ -19,6 +19,7 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
+	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -29,46 +30,46 @@ import (
 
 // IncognitoManager tracks all war machines that are currently hidden from the map
 type IncognitoManager struct {
-	_incognitoWarMachineIDs map[string]struct{}
+	incognitoWarMachineIDs map[string]struct{}
 
 	sync.RWMutex
 }
 
 func NewIncognitoManager() *IncognitoManager {
 	return &IncognitoManager{
-		_incognitoWarMachineIDs: make(map[string]struct{}),
+		incognitoWarMachineIDs: make(map[string]struct{}),
 	}
 }
 
 func (iwmm *IncognitoManager) IsWarMachineHidden(hash string) bool {
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	iwmm.RLock()
+	defer iwmm.RUnlock()
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	return ok
 }
 
 func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string) error {
-	iwmm.RLock()
-	defer iwmm.RUnlock()
+	iwmm.Lock()
+	defer iwmm.Unlock()
 
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	if ok {
 		return fmt.Errorf("War machine is already hidden")
 	}
-	iwmm._incognitoWarMachineIDs[hash] = struct{}{}
+	iwmm.incognitoWarMachineIDs[hash] = struct{}{}
 
 	return nil
 }
 
-func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) error {
-	iwmm.RLock()
-	defer iwmm.RUnlock()
+func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) {
+	iwmm.Lock()
+	defer iwmm.Unlock()
 
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	if !ok {
-		return fmt.Errorf("Cannot unhide war machine that is not already hidden")
+		return
 	}
-	delete(iwmm._incognitoWarMachineIDs, hash)
-
-	return nil
+	delete(iwmm.incognitoWarMachineIDs, hash)
 }
 
 type PlayerAbilityUseRequest struct {
@@ -86,11 +87,18 @@ const BlackoutGameAbilityID = 16
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
+var playerAbilityBucket = leakybucket.NewCollector(1, 1, true)
+
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	b := playerAbilityBucket.Add(user.ID, 1)
+	if b == 0 {
+		return nil
+	}
+
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
+		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
 	req := &PlayerAbilityUseRequest{}
@@ -126,16 +134,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
-	if pa.OwnerID != player.ID {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
-		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
-	}
-
-	if !player.FactionID.Valid || player.FactionID.String == "" {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability but they aren't part of a faction", player.ID)
-		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
-	}
-
 	if pa.Count < 1 {
 		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
 		return terror.Error(err, "You do not have any more of this ability to use.")
@@ -147,9 +145,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 	}()
 
-	currentBattle := arena.CurrentBattle()
 	// check battle end
-	if currentBattle.stage.Load() == BattleStageEnd {
+	if arena.CurrentBattle().stage.Load() == BattleStageEnd {
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
 		return nil
 	}
@@ -175,8 +172,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
-			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocationEnd:     arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
 		}
 
 	case boiler.LocationSelectTypeEnumMECH_SELECT:
@@ -209,7 +206,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
+			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 		}
 	case boiler.LocationSelectTypeEnumGLOBAL:
 	default:
@@ -231,7 +228,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
-		BattleID:            currentBattle.BattleID,
+		BattleID:            arena.CurrentBattle().BattleID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
@@ -283,7 +280,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	if !isIncognito {
 		// Tell gameclient to execute ability
-		currentBattle.arena.Message("BATTLE:ABILITY", event)
+		arena.CurrentBattle().arena.Message("BATTLE:ABILITY", event)
 	}
 
 	pas, err := db.PlayerAbilitiesList(user.ID)
