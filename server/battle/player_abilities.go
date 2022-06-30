@@ -41,8 +41,10 @@ type BlackoutEntry struct {
 
 // PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
 type PlayerAbilityManager struct {
-	hiddenWarMachines map[string]time.Time     // mech hash, expiry timestamp
-	blackouts         map[string]BlackoutEntry //  timestamp-player_ability_id-owner_id, ability info
+	hiddenWarMachines map[string]time.Time // mech hash, expiry timestamp
+
+	blackouts           map[string]BlackoutEntry //  timestamp-player_ability_id-owner_id, ability info
+	hasBlackoutsUpdated bool
 
 	sync.RWMutex
 }
@@ -54,6 +56,27 @@ func NewPlayerAbilityManager() *PlayerAbilityManager {
 	}
 }
 
+func (pam *PlayerAbilityManager) ResetHasBlackoutsUpdated() {
+	pam.Lock()
+	defer pam.Unlock()
+
+	pam.hasBlackoutsUpdated = false
+}
+
+func (pam *PlayerAbilityManager) HasBlackoutsUpdated() bool {
+	pam.RLock()
+	defer pam.RUnlock()
+
+	return pam.hasBlackoutsUpdated
+}
+
+func (pam *PlayerAbilityManager) Blackouts() map[string]BlackoutEntry {
+	pam.RLock()
+	defer pam.RUnlock()
+
+	return pam.blackouts
+}
+
 func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLocation) bool {
 	pam.Lock()
 	defer pam.Unlock()
@@ -61,6 +84,7 @@ func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLoca
 		// Check if blackout is currently active, if not then delete it
 		if time.Now().After(b.ExpiresAt) {
 			delete(pam.blackouts, id)
+			pam.hasBlackoutsUpdated = true
 			continue
 		}
 
@@ -86,6 +110,7 @@ func (pam *PlayerAbilityManager) AddBlackout(id string, location server.GameLoca
 		Coords:    location,
 		ExpiresAt: time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),
 	}
+	pam.hasBlackoutsUpdated = true
 
 	return nil
 }

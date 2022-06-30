@@ -567,10 +567,12 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 	return nil
 }
 
-type MinimapUpdatesSubscribeResponse struct {
-	Duration int                 `json:"duration"`
-	Radius   int                 `json:"radius"`
-	Coords   server.CellLocation `json:"coords"`
+type MinimapEvent struct {
+	ID            string              `json:"id"`
+	GameAbilityID int                 `json:"game_ability_id"`
+	Duration      int                 `json:"duration"`
+	Radius        int                 `json:"radius"`
+	Coords        server.CellLocation `json:"coords"`
 }
 
 const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"

@@ -402,6 +402,15 @@ func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) 
 	}
 }
 
+// getCellCoordinatesFromGameWorldXY converts location in game to a cell location
+func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocation) *server.CellLocation {
+	gameMap := btl.gameMap
+	return &server.CellLocation{
+		X: (location.X - gameMap.LeftPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+		Y: (location.Y - gameMap.TopPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+	}
+}
+
 type WarMachinePosition struct {
 	X int
 	Y int
@@ -1449,6 +1458,21 @@ func (btl *Battle) Tick(payload []byte) {
 
 	if len(wsMessages) > 0 {
 		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
+	}
+
+	if btl.playerAbilityManager().HasBlackoutsUpdated() {
+		minimapUpdates := []MinimapEvent{}
+		for id, b := range btl.playerAbilityManager().Blackouts() {
+			minimapUpdates = append(minimapUpdates, MinimapEvent{
+				ID:            id,
+				GameAbilityID: BlackoutGameAbilityID,
+				Duration:      BlackoutDurationSeconds,
+				Radius:        int(BlackoutRadius),
+				Coords:        *btl.getCellCoordinatesFromGameWorldXY(&b.Coords),
+			})
+		}
+		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
+		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
 }
 
