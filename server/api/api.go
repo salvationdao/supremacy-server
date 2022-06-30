@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/pemistahl/lingua-go"
 	"github.com/volatiletech/null/v8"
@@ -490,4 +491,16 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 	}
 
 	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+}
+
+func (api *API) DevSendCrates(w http.ResponseWriter, r *http.Request) (int, error) {
+	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	user, err := boiler.Players(boiler.PlayerWhere.PublicAddress.EQ(null.StringFrom(publicAddress.String()))).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
+
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
 }
