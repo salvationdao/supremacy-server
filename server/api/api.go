@@ -516,17 +516,6 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 	return fn
 }
 
-func printThing(thing interface{}) {
-	fmt.Println()
-	fmt.Println()
-
-	fmt.Printf("%+v", thing)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-}
 func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
 	user, err := boiler.Players(boiler.PlayerWhere.PublicAddress.EQ(null.StringFrom(publicAddress.String()))).One(gamedb.StdConn)
@@ -536,14 +525,13 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, err
 	}
 
-	//////////////////////// purchase crate
+	// purchase crate
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("start tx2: %w", err)
 	}
 	defer tx.Rollback()
 
-	// get crate
 	storeCrate, err := boiler.StorefrontMysteryCrates(
 		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ("WEAPON"),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
@@ -558,24 +546,17 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
-	printThing(assignedCrate.ItemID)
-	printThing(assignedCrate.CollectionItem.ItemID)
-
 	err = tx.Commit()
 	if err != nil {
-		// gamelog.L.Error().Err(err).Interface("crate", crate).Msg("failed to open mystery crate")
 		return http.StatusInternalServerError, terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
-	/////////////////// open crate
-
+	// open crate
 	tx2, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("start tx2: %w", err)
 	}
 	defer tx2.Rollback()
-	// // get collection item
-
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(assignedCrate.ItemID),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
@@ -586,10 +567,6 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 
 	// update mystery crate
 	crate := boiler.MysteryCrate{}
-	fmt.Println("ahhhhhhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhhhhhh")
-
-	printThing(collectionItem.ItemID)
 	q := `
 	UPDATE mystery_crate
 	SET opened = TRUE
