@@ -1461,8 +1461,8 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	return nil
 }
 
-// ChangeCollectionItemOwner transfers a collection item to a new owner.
-func ChangeCollectionItemOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
+// ChangeMysteryCrateOwner transfers a collection item to a new owner.
+func ChangeMysteryCrateOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
 	_, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
 	).UpdateAll(conn,
@@ -1472,6 +1472,45 @@ func ChangeCollectionItemOwner(conn boil.Executor, collectionItemID string, newO
 	if err != nil {
 		return terror.Error(err)
 	}
+	return nil
+}
+
+// ChangeWeaponOwner transfers a weapon to a new owner.
+func ChangeWeaponOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
+	// Transfer Weapon
+	colItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+	).One(conn)
+	if err != nil {
+		return err
+	}
+	colItem.OwnerID = newOwnerID
+	_, err = colItem.Update(conn, boil.Whitelist(boiler.CollectionItemColumns.OwnerID))
+	if err != nil {
+		return err
+	}
+
+	// Transfer Weapon Skin
+	weaponSkin, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(colItem.ItemID)),
+	).One(conn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if weaponSkin != nil {
+		_, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeaponSkin),
+		).UpdateAll(conn,
+			boiler.M{
+				boiler.CollectionItemColumns.OwnerID: newOwnerID,
+			})
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
 	return nil
 }
 

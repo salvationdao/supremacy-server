@@ -1390,8 +1390,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Msg("Failed to Transfer Mech to New Owner")
 			return terror.Error(err, errMsg)
 		}
-	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate || saleItem.CollectionItemType == boiler.ItemTypeWeapon || saleItem.CollectionItemType == boiler.ItemTypeMechSkin || saleItem.CollectionItemType == boiler.ItemTypeWeaponSkin {
-		err = db.ChangeCollectionItemOwner(tx, saleItem.CollectionItemID, user.ID)
+	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
+		err = db.ChangeMysteryCrateOwner(tx, saleItem.CollectionItemID, user.ID)
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
@@ -1404,6 +1404,22 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Str("item_sale_id", req.Payload.ID.String()).
 				Err(err).
 				Msg("Failed to Transfer Mystery Crate to New Owner")
+			return terror.Error(err, errMsg)
+		}
+	} else if saleItem.CollectionItemType == boiler.ItemTypeWeapon {
+		err = db.ChangeWeaponOwner(tx, saleItem.CollectionItemID, user.ID)
+		if err != nil {
+			mp.API.Passport.RefundSupsMessage(feeTXID)
+			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTrasferRollback()
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to Transfer Weapon to New Owner")
 			return terror.Error(err, errMsg)
 		}
 	}
