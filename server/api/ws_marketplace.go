@@ -460,6 +460,23 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	// check if weapon is equipped
+	if collectionItem.ItemType == boiler.ItemTypeWeapon {
+		equipped, err := db.CheckWeaponAttached(collectionItem.ItemID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to check whether weapon is attached")
+			return err
+		}
+		if equipped {
+			return fmt.Errorf("cannot sell weapons attached to a war machine")
+		}
+	}
+
 	// check if queue
 	if collectionItem.ItemType == boiler.ItemTypeMech {
 		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
