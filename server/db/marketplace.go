@@ -114,6 +114,31 @@ var ItemSaleQueryMods = []qm.QueryMod{
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponSkin,
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.EquippedOn),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
 			"%s ON %s = %s",
 			boiler.TableNames.BlueprintWeapons,
 			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
@@ -122,11 +147,11 @@ var ItemSaleQueryMods = []qm.QueryMod{
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
-			"%s ON %s = %s AND %s = ?",
-			boiler.TableNames.Weapons,
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			"%s ON %s = COALECE(%s, %s)",
+			boiler.TableNames.BlueprintWeaponSkin,
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.DefaultSkinID),
 		),
 	),
 	qm.InnerJoin(
