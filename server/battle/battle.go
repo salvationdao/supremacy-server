@@ -1468,7 +1468,7 @@ func (btl *Battle) Tick(payload []byte) {
 				GameAbilityID: BlackoutGameAbilityID,
 				Duration:      BlackoutDurationSeconds,
 				Radius:        int(BlackoutRadius),
-				Coords:        *btl.getCellCoordinatesFromGameWorldXY(&b.Coords),
+				Coords:        b.CellCoords,
 			})
 		}
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()

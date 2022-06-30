@@ -35,8 +35,9 @@ const BlackoutGameAbilityID = 16
 const BlackoutDurationSeconds = 15 // has to match duration specified in supremacy-gameclient/abilities.json
 
 type BlackoutEntry struct {
-	Coords    server.GameLocation
-	ExpiresAt time.Time
+	GameCoords server.GameLocation
+	CellCoords server.CellLocation
+	ExpiresAt  time.Time
 }
 
 // PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
@@ -89,7 +90,7 @@ func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLoca
 		}
 
 		c1 := position
-		c2 := b.Coords
+		c2 := b.GameCoords
 		d := math.Sqrt(math.Pow(float64(c2.X)-float64(c1.X), 2) + math.Pow(float64(c2.Y)-float64(c1.Y), 2))
 		if d < float64(BlackoutRadius) {
 			return true
@@ -98,7 +99,7 @@ func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLoca
 	return false
 }
 
-func (pam *PlayerAbilityManager) AddBlackout(id string, location server.GameLocation) error {
+func (pam *PlayerAbilityManager) AddBlackout(id string, cellCoords server.CellLocation, gameCoords server.GameLocation) error {
 	pam.Lock()
 	defer pam.Unlock()
 
@@ -107,8 +108,9 @@ func (pam *PlayerAbilityManager) AddBlackout(id string, location server.GameLoca
 		return fmt.Errorf("Blackout has already been cast")
 	}
 	pam.blackouts[id] = BlackoutEntry{
-		Coords:    location,
-		ExpiresAt: time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),
+		CellCoords: cellCoords,
+		GameCoords: gameCoords,
+		ExpiresAt:  time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),
 	}
 	pam.hasBlackoutsUpdated = true
 
@@ -370,8 +372,9 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	if bpa.GameClientAbilityID == BlackoutGameAbilityID {
-		gameLocation := arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords)
-		err = arena.CurrentBattle().playerAbilityManager().AddBlackout(fmt.Sprintf("%d-%s-%s", time.Now().UnixNano(), pa.ID, pa.OwnerID), *gameLocation)
+		cellCoords := req.Payload.StartCoords
+		gameCoords := arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords)
+		err = arena.CurrentBattle().playerAbilityManager().AddBlackout(fmt.Sprintf("%d-%s-%s", time.Now().UnixNano(), pa.ID, pa.OwnerID), *cellCoords, *gameCoords)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
 			return err
