@@ -215,3 +215,11 @@ db-restore:
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
 		psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+.PHONE: dev-give-crate
+dev-give-crate:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/${public_address}
+
+.PHONE: dev-give-crates
+dev-give-crates:
+	make dev-give-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
