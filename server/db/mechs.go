@@ -692,7 +692,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				),
 				opts.QueueSort.FactionID,
 			),
-			qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST", opts.QueueSort.SortDir)),
+			qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, %s, %s",
+				opts.QueueSort.SortDir,
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				)),
 		)
 	} else {
 		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
