@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -62,8 +63,21 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
+func GetPlayerWithFeature(playerID string) (*boiler.Player, error) {
+	player, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(playerID),
+		qm.Load(boiler.PlayerRels.PlayersFeatures),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to find player")
+		return nil, err
+	}
+
+	return player, nil
+}
+
 func GetUserLanguage(playerID string) string {
-	q := `SELECT mode() within group (order by lang) from chat_history WHERE player_id = $1 LIMIT 10;`
+	q := `SELECT MODE() WITHIN GROUP (ORDER BY lang) FROM chat_history WHERE player_id = $1 LIMIT 10;`
 	row := gamedb.StdConn.QueryRow(q, playerID)
 	lang := "English"
 	switch err := row.Scan(&lang); err {
@@ -228,10 +242,10 @@ func UserStatCreate(playerID string) (*boiler.PlayerStat, error) {
 func PlayerFactionContributionList(battleID string, factionID string, abilityOfferingID string) ([]uuid.UUID, error) {
 	playerList := []uuid.UUID{}
 	q := `
-		select bc.player_id from battle_contributions bc 
-			where bc.battle_id = $1 and bc.faction_id = $2 and bc.ability_offering_id = $3
-			group by player_id
-		order by sum(amount) desc 
+		SELECT bc.player_id FROM battle_contributions bc 
+			WHERE bc.battle_id = $1 AND bc.faction_id = $2 AND bc.ability_offering_id = $3
+			GROUP BY player_id
+		ORDER BY SUM(amount) DESC 
 	`
 
 	result, err := gamedb.StdConn.Query(q, battleID, factionID, abilityOfferingID)

@@ -122,7 +122,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
-
+	
 	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")

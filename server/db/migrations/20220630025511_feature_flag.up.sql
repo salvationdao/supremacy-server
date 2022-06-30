@@ -1,3 +1,4 @@
+DROP TYPE feature_type;
 CREATE TYPE FEATURE_TYPE AS ENUM ('foo', 'bar');
 CREATE TABLE features
 (
@@ -17,3 +18,5 @@ CREATE TABLE players_features
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+INSERT INTO features (type) VALUES ('foo');

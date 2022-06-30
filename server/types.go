@@ -4,18 +4,12 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math/big"
-	"server/db/boiler"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
 )
-
-type Player struct {
-	*boiler.Player
-	Faction *boiler.Faction `json:"faction"`
-}
 
 // HubClientID aliases uuid.UUID.
 // Doing this prevents situations where you use HubClientID where it doesn't belong.

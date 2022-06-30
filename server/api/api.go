@@ -8,8 +8,6 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
@@ -476,7 +474,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 }
 
 // TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
+func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
@@ -489,5 +487,19 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 		return nil, err
 	}
 
-	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+	player, err := db.GetPlayerWithFeature(userResp.ID)
+
+	features, err := db.GetPlayerFeatures(player.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		return nil, err
+	}
+
+	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		return nil, err
+	}
+
+	return serverPlayer, nil
 }
