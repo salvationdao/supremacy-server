@@ -305,14 +305,15 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		Command string      `json:"battleCommand"`
 		Payload interface{} `json:"payload"`
 	}{Payload: payload, Command: cmd})
-
 	if err != nil {
 		gamelog.L.Fatal().Interface("payload", payload).Err(err).Msg("unable to marshal data for battle arena")
 	}
-
+	err = arena.socket.Write(ctx, websocket.MessageBinary, b)
+	if err != nil {
+		gamelog.L.Error().Interface("payload", payload).Err(err).Msg("failed to write websocket message to game client")
+		return
+	}
 	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
-
-	arena.socket.Write(ctx, websocket.MessageBinary, b)
 }
 
 func (btl *Battle) QueueDefaultMechs() error {
