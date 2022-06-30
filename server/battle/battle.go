@@ -60,7 +60,7 @@ type Battle struct {
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
-	_incognitoManager *IncognitoManager
+	_playerAbilityManager *PlayerAbilityManager
 
 	destroyedWarMachineMap map[string]*WMDestroyedRecord
 	*boiler.Battle
@@ -77,10 +77,10 @@ func (btl *Battle) abilities() *AbilitiesSystem {
 	return btl._abilities
 }
 
-func (btl *Battle) incognitoManager() *IncognitoManager {
+func (btl *Battle) playerAbilityManager() *PlayerAbilityManager {
 	btl.RLock()
 	defer btl.RUnlock()
-	return btl._incognitoManager
+	return btl._playerAbilityManager
 }
 
 func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
@@ -104,10 +104,10 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.DisabledCells = gm.DisabledCells
 }
 
-func (btl *Battle) storeIncognitoManager(im *IncognitoManager) {
+func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
 	btl.Lock()
 	defer btl.Unlock()
-	btl._incognitoManager = im
+	btl._playerAbilityManager = im
 }
 
 func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
@@ -1419,7 +1419,17 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		// Hidden/Incognito
-		if btl.incognitoManager().IsWarMachineHidden(warmachine.Hash) {
+		if btl.playerAbilityManager().IsWarMachineHidden(warmachine.Hash) {
+			wms.IsHidden = true
+			wms.Position = &server.Vector3{
+				X: -1,
+				Y: -1,
+				Z: -1,
+			}
+		} else if btl.playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+			X: wms.Position.X,
+			Y: wms.Position.Y,
+		}) {
 			wms.IsHidden = true
 			wms.Position = &server.Vector3{
 				X: -1,
