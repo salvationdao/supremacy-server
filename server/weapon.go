@@ -33,6 +33,8 @@ type Weapon struct {
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
+	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
+	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 
@@ -70,6 +72,7 @@ type BlueprintWeapon struct {
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	Collection          string              `json:"collection"`
 	Tier                string              `json:"tier,omitempty"`
+	WeaponModelID       string              `json:"weapon_model_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -120,6 +123,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		EnergyCost:          weapon.EnergyCost,
 		Collection:          weapon.Collection,
 		Tier:                weapon.Tier,
+		WeaponModelID:       weapon.WeaponModelID,
 	}
 }
 
@@ -143,26 +147,27 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 			AnimationURL:     collection.AnimationURL,
 			YoutubeURL:       collection.YoutubeURL,
 		},
-		ID:                  weapon.ID,
-		BrandID:             weapon.BrandID,
-		Label:               weapon.Label,
-		Slug:                weapon.Slug,
-		Damage:              weapon.Damage,
-		BlueprintID:         weapon.BlueprintID,
-		DefaultDamageType:   weapon.DefaultDamageType,
-		GenesisTokenID:      weapon.GenesisTokenID,
-		WeaponType:          weapon.WeaponType,
-		DamageFalloff:       weapon.DamageFalloff,
-		DamageFalloffRate:   weapon.DamageFalloffRate,
-		Spread:              weapon.Spread,
-		RateOfFire:          weapon.RateOfFire,
-		Radius:              weapon.Radius,
-		RadiusDamageFalloff: weapon.RadiusDamageFalloff,
-		ProjectileSpeed:     weapon.ProjectileSpeed,
-		EnergyCost:          weapon.EnergyCost,
-		MaxAmmo:             weapon.MaxAmmo,
-		UpdatedAt:           weapon.UpdatedAt,
-		CreatedAt:           weapon.CreatedAt,
-		EquippedOn:          weapon.EquippedOn,
+		ID:                   weapon.ID,
+		BrandID:              weapon.BrandID,
+		Label:                weapon.Label,
+		Slug:                 weapon.Slug,
+		Damage:               weapon.Damage,
+		BlueprintID:          weapon.BlueprintID,
+		DefaultDamageType:    weapon.DefaultDamageType,
+		GenesisTokenID:       weapon.GenesisTokenID,
+		WeaponType:           weapon.WeaponType,
+		DamageFalloff:        weapon.DamageFalloff,
+		DamageFalloffRate:    weapon.DamageFalloffRate,
+		Spread:               weapon.Spread,
+		RateOfFire:           weapon.RateOfFire,
+		Radius:               weapon.Radius,
+		RadiusDamageFalloff:  weapon.RadiusDamageFalloff,
+		ProjectileSpeed:      weapon.ProjectileSpeed,
+		EnergyCost:           weapon.EnergyCost,
+		MaxAmmo:              weapon.MaxAmmo,
+		UpdatedAt:            weapon.UpdatedAt,
+		CreatedAt:            weapon.CreatedAt,
+		EquippedOn:           weapon.EquippedOn,
+		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
 	}
 }

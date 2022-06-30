@@ -16,8 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -80,11 +81,13 @@ func (lc *LiveCount) IsClosed() bool {
 }
 
 type AbilityConfig struct {
-	FirstBattleAbilityCooldownSecond int
-	BattleAbilityFloorPrice          decimal.Decimal
-	BattleAbilityDropRate            decimal.Decimal
-	FactionAbilityFloorPrice         decimal.Decimal
-	FActionAbilityDropRate           decimal.Decimal
+	FirstBattleAbilityCooldownSeconds          int
+	BattleAbilityBribeDurationSeconds          time.Duration
+	BattleAbilityLocationSelectDurationSeconds time.Duration
+	BattleAbilityFloorPrice                    decimal.Decimal
+	BattleAbilityDropRate                      decimal.Decimal
+	FactionAbilityFloorPrice                   decimal.Decimal
+	FActionAbilityDropRate                     decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
@@ -170,7 +173,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			boiler.GameAbilityWhere.Level.NEQ(boiler.AbilityLevelMECH),
 		).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for other faction unique abilities
@@ -180,7 +183,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			// get the cost of the ability
 			supsCost, err := decimal.NewFromString(ability.SupsCost)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 				// set sups cost to initial price
 				supsCost = decimal.New(100, 18)
@@ -188,7 +191,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 			currentSups, err := decimal.NewFromString(ability.CurrentSups)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability current sups to decimal")
 
 				// set current sups to initial price
 				currentSups = decimal.Zero
@@ -228,14 +231,14 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				boiler.GameAbilityWhere.Level.EQ(boiler.AbilityLevelMECH),
 			).All(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 			}
 
 			for _, ability := range mechFactionAbilities {
 				// get the ability cost
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
 				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 					// set sups cost to initial price
 					supsCost = decimal.New(100, 18)
@@ -243,7 +246,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 				currentSups, err := decimal.NewFromString(ability.CurrentSups)
 				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability current sups to decimal")
 					// set current sups to initial price
 					currentSups = decimal.Zero
 				}
@@ -294,11 +297,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		startedAt:            time.Now(),
 		contributeMultiplier: &UserContributeMultiplier{},
 		abilityConfig: &AbilityConfig{
-			FirstBattleAbilityCooldownSecond: db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
-			BattleAbilityFloorPrice:          db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
-			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
-			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
-			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
+			FirstBattleAbilityCooldownSeconds:          db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
+			BattleAbilityBribeDurationSeconds:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 30)) * time.Second,
+			BattleAbilityLocationSelectDurationSeconds: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+			BattleAbilityFloorPrice:                    db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
+			BattleAbilityDropRate:                      db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
+			FactionAbilityFloorPrice:                   db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
+			FActionAbilityDropRate:                     db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
@@ -350,7 +355,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// init battle ability
 	_, err := as.SetNewBattleAbility(true)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to set up battle ability")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set up battle ability")
 		return nil
 	}
 
@@ -395,7 +400,7 @@ func (as *AbilitiesSystem) LiveBroadcaster() {
 		// get spoil of war
 		sows, err := db.LastTwoSpoilOfWarAmount()
 		if err != nil || len(sows) == 0 {
-			gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get last two spoil of war amount")
 			continue
 		}
 
@@ -446,7 +451,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			// get spoil of war
 			sows, err := db.LastTwoSpoilOfWarAmount()
 			if err != nil || len(sows) == 0 {
-				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get last two spoil of war amount")
 				return
 			}
 
@@ -500,81 +505,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isTriggered := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
-						if isTriggered {
-							event := &server.GameAbilityEvent{
-								EventID:             ability.OfferingID,
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-							}
+						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
 
-							// send message to game client, if ability trigger
-							as.battle().arena.Message(
-								"BATTLE:ABILITY",
-								event,
-							)
-
-							bat := boiler.BattleAbilityTrigger{
-								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle().ID,
-								FactionID:         ability.FactionID,
-								IsAllSyndicates:   false,
-								AbilityLabel:      ability.Label,
-								GameAbilityID:     ability.ID,
-								AbilityOfferingID: ability.OfferingID.String(),
-							}
-							err := bat.Insert(gamedb.StdConn, boil.Infer())
-							if err != nil {
-								gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
-							}
-
-							// get ability faction
-							//build notification
-							gameNotification := &GameNotificationWarMachineAbility{
-								Ability: &AbilityBrief{
-									Label:    ability.Label,
-									ImageUrl: ability.ImageUrl,
-									Colour:   ability.Colour,
-								},
-							}
-
-							// broadcast notification
-							if ability.ParticipantID == nil {
-								as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
-									Ability: gameNotification.Ability,
-								})
-
-							} else {
-								// filled war machine detail
-								for _, wm := range as.battle().WarMachines {
-									if wm.ParticipantID == *ability.ParticipantID {
-										gameNotification.WarMachine = &WarMachineBrief{
-											ParticipantID: wm.ParticipantID,
-											Hash:          wm.Hash,
-											ImageUrl:      wm.Image,
-											ImageAvatar:   wm.ImageAvatar,
-											Name:          wm.Name,
-											FactionID:     wm.FactionID,
-										}
-										break
-									}
-								}
-
-								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
-							}
-							// generate new offering id for current ability
-							ability.OfferingID = uuid.Must(uuid.NewV4())
+						// skip, if price is not changed
+						if !isChanged {
+							continue
 						}
 
-						// broadcast new ability price
+						// broadcast changed price
 						as.abilityConfig.Broadcaster.gameAbilityBroadcastChanMap[ability.Identity].dataChan <- GameAbilityPriceResponse{
 							ability.Identity,
 							ability.OfferingID.String(),
 							ability.SupsCost.String(),
 							ability.CurrentSups.String(),
-							isTriggered,
+							false,
 						}
 					}
 				}
@@ -591,7 +535,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					// check contribute is for the current offered ability
 					abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
 					if err != nil || abilityOfferingID.IsNil() {
-						gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("invalid ability offer id received")
 						cont.reply(false)
 						continue
 					}
@@ -610,7 +554,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					// calculate amount from percentage of current sups
 					minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
 					if !ok {
-						gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("invalid offer percentage received")
 						cont.reply(false)
 						continue
 					}
@@ -626,7 +570,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 					bm.End("sup_contribution")
 					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to contribute sups to faction ability")
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to contribute sups to faction ability")
 						cont.reply(false)
 						continue
 					}
@@ -646,7 +590,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						bm.End("update_ability_sups_cost")
 
 						if err != nil {
-							gamelog.L.Error().
+							gamelog.L.Error().Str("log_name", "battle arena").
 								Str("ability_id", ability.ID).
 								Str("sups_cost", ability.SupsCost.String()).
 								Str("current_sups", ability.CurrentSups.String()).
@@ -694,14 +638,14 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						err := bat.Insert(gamedb.StdConn, boil.Infer())
 						bm.End("insert_battle_ability_trigger")
 						if err != nil {
-							gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+							gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to record ability triggered")
 						}
 
 						bm.Start("update_user_stat")
 						_, err = db.UserStatAddTotalAbilityTriggered(cont.userID.String())
 						bm.End("update_user_stat")
 						if err != nil {
-							gamelog.L.Error().Str("player_id", cont.userID.String()).Err(err).Msg("failed to update user ability triggered amount")
+							gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", cont.userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 						}
 
 						// get player
@@ -709,7 +653,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						player, err := boiler.FindPlayer(gamedb.StdConn, cont.userID.String())
 						bm.End("get_player")
 						if err != nil {
-							gamelog.L.Error().Err(err).Msg("failed to get player")
+							gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to get player")
 						} else {
 
 							// get user faction
@@ -717,7 +661,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 							faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(player.FactionID.String)).One(gamedb.StdConn)
 							bm.End("get_player_faction")
 							if err != nil {
-								gamelog.L.Error().Err(err).Msg("failed to get player faction")
+								gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to get player faction")
 							} else {
 
 								//build notification
@@ -797,6 +741,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal, dropRate decimal.Decimal) bool {
 	ga.Lock()
 	defer ga.Unlock()
+
+	originalPrice := ga.SupsCost
+
+	// price drop
 	ga.SupsCost = ga.SupsCost.Mul(dropRate).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -804,33 +752,28 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 		ga.SupsCost = minPrice
 	}
 
-	isTriggered := false
-
 	// if the target price hit current price
-	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups) {
-		// trigger the ability
-		isTriggered = true
+	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups.Add(decimal.New(5, 17))) {
+		// reset the price
+		ga.SupsCost = originalPrice
 
-		// double the target price
-		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
-
-		// reset current sups to zero
-		ga.CurrentSups = decimal.Zero
-
+		// return not changed
+		return false
 	}
 
 	// store updated price to db
 	err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Str("ability_id", ga.ID).
 			Str("sups_cost", ga.SupsCost.String()).
 			Str("current_sups", ga.CurrentSups.String()).
 			Err(err).Msg("could not update faction ability cost")
-		return isTriggered
+		return false
 	}
 
-	return isTriggered
+	// return price is changed
+	return true
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
@@ -869,7 +812,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	txid, err := ppClient.SpendSupMessage(supSpendReq)
 	bm.End("send_sup_message")
 	if err != nil {
-		gamelog.L.Error().Interface("sups spend detail", supSpendReq).Err(err).Msg("Failed to pay sups")
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("sups spend detail", supSpendReq).Err(err).Msg("Failed to pay sups")
 		return decimal.Zero, decimal.Zero, false, err
 	}
 
@@ -899,7 +842,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 		err = battleContrib.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 		}
 	}()
 
@@ -907,7 +850,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		// update faction contribute
 		err = db.FactionAddContribute(ga.FactionID, amount)
 		if err != nil {
-			gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("txid", txid).Err(err).Msg("unable to update faction contribution")
 		}
 	}()
 
@@ -929,22 +872,22 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 				}
 				err = spoil.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Err(err).Msg("unable to insert spoils")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to insert spoils")
 				}
 			} else {
 				spoil.Amount = spoil.Amount.Add(amount)
 				_, err = spoil.Update(tx, boil.Whitelist(boiler.SpoilsOfWarColumns.Amount))
 				if err != nil {
-					gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to insert spoil of war")
 				}
 			}
 			err = tx.Commit()
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to create tx")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to create tx")
 				tx.Rollback()
 			}
 		} else {
-			gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to create tx to create spoil of war")
 		}
 	}()
 
@@ -956,7 +899,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 		bm.End("update_faction_ability_price")
 		if err != nil {
-			gamelog.L.Error().Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
 			return amount, multiAmount, false, err
 		}
 
@@ -969,13 +912,6 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 // ***************************
 // Gabs Abilities Voting Cycle
 // ***************************
-
-const (
-	// BribeDurationSecond the amount of second players can bribe GABS
-	BribeDurationSecond = 30
-	// LocationSelectDurationSecond the amount of second the winner user can select the location
-	LocationSelectDurationSecond = 15
-)
 
 const (
 	BribeStageHold           int32 = 0
@@ -1225,7 +1161,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				// set new battle ability
 				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 				}
 
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
@@ -1241,16 +1177,16 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				if !ok {
 
 					if as == nil {
-						gamelog.L.Error().Msg("abilities are nil")
+						gamelog.L.Error().Str("log_name", "battle arena").Msg("abilities are nil")
 						continue
 					}
 					if as.battleAbilityPool == nil {
-						gamelog.L.Error().Msg("ability pool is nil")
+						gamelog.L.Error().Str("log_name", "battle arena").Msg("ability pool is nil")
 						continue
 					}
 
 					if as.battleAbilityPool.Abilities == nil {
-						gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+						gamelog.L.Error().Str("log_name", "battle arena").Msg("abilities map in battle ability pool is nil")
 						continue
 					}
 
@@ -1269,7 +1205,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					// set new battle ability
 					cooldownSecond, err := as.SetNewBattleAbility(false)
 					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 					}
 
 					// enter cooldown phase, if there is no user left for location select
@@ -1280,21 +1216,21 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				if as == nil {
-					gamelog.L.Error().Msg("abilities are nil")
+					gamelog.L.Error().Str("log_name", "battle arena").Msg("abilities are nil")
 					continue
 				}
 				if as.battleAbilityPool == nil {
-					gamelog.L.Error().Msg("ability pool is nil")
+					gamelog.L.Error().Str("log_name", "battle arena").Msg("ability pool is nil")
 					continue
 				}
 				if as.battleAbilityPool.Abilities == nil {
-					gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+					gamelog.L.Error().Str("log_name", "battle arena").Msg("abilities map in battle ability pool is nil")
 					continue
 				}
 
 				ab, ok := as.battleAbilityPool.Abilities.Load(as.battleAbilityPool.TriggeredFactionID.Load())
 				if !ok {
-					gamelog.L.Error().
+					gamelog.L.Error().Str("log_name", "battle arena").
 						Str("triggered faction id", as.battleAbilityPool.TriggeredFactionID.Load()).
 						Msg("nothing for triggered faction id")
 					continue
@@ -1324,7 +1260,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// extend location select phase duration
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -1342,13 +1278,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// change bribing phase
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageBribe)
-				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(BribeDurationSecond) * time.Second))
+				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityBribeDurationSeconds))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 				continue
 			default:
-				gamelog.L.Error().Msg("hit default case switch on abilities loop")
+				gamelog.L.Error().Str("log_name", "battle arena").Msg("hit default case switch on abilities loop")
 			}
 		case <-priceTicker.C:
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil || as.battle().arena.CurrentBattle().BattleNumber != bn {
@@ -1394,7 +1330,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				// check contribute is for the current offered ability
 				abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
 				if err != nil || abilityOfferingID.IsNil() {
-					gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("invalid ability offer id received")
 					cont.reply(false)
 					continue
 				}
@@ -1409,7 +1345,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
 				if !ok {
-					gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("invalid offer percentage received")
 					cont.reply(false)
 					continue
 				}
@@ -1424,7 +1360,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				bm.End("sup_contribution")
 				// tell frontend the contribution is success
 				if err != nil {
-					gamelog.L.Error().Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
 					cont.reply(false)
 					continue
 				}
@@ -1448,7 +1384,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					err := db.FactionAbilitiesSupsCostUpdate(factionAbility.ID, factionAbility.SupsCost, factionAbility.CurrentSups)
 					bm.End("ability_sups_update")
 					if err != nil {
-						gamelog.L.Error().
+						gamelog.L.Error().Str("log_name", "battle arena").
 							Str("factionAbility_id", factionAbility.ID).
 							Str("sups_cost", factionAbility.SupsCost.String()).
 							Str("current_sups", factionAbility.CurrentSups.String()).
@@ -1489,7 +1425,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						cooldownSecond, err := as.SetNewBattleAbility(false)
 						bm.End("set_new_ability")
 						if err != nil {
-							gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+							gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 						}
 
 						// enter cooldown phase, if there is no user left for location select
@@ -1503,7 +1439,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 
 					// broadcast stage change
 					bm.Start("broadcast_bribe_stage")
@@ -1561,12 +1497,12 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	// initialise new gabs ability pool
 	ba, err := db.BattleAbilityGetRandom()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get battle ability from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 0, err
 	}
 
 	if isFirstAbility {
-		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSecond
+		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSeconds
 	}
 	as.battleAbilityPool.BattleAbility = ba
 
@@ -1575,7 +1511,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("FactionBattleAbilityGet failed to retrieve shit")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("FactionBattleAbilityGet failed to retrieve shit")
 		return ba.CooldownDurationSecond, err
 	}
 
@@ -1583,7 +1519,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	for _, ga := range gabsAbilities {
 		supsCost, err := decimal.NewFromString(ga.SupsCost)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 			// set sups cost to initial price
 			supsCost = decimal.New(100, 18)
@@ -1592,7 +1528,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 
 		currentSups, err := decimal.NewFromString(ga.CurrentSups)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability current sups to decimal")
 
 			// set current sups to initial price
 			currentSups = decimal.Zero
@@ -1664,7 +1600,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 
 	playerList, err := db.PlayerFactionContributionList(battleID, factionID, abilityOfferingID)
 	if err != nil {
-		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
 	}
 
 	// sort the order of the list
@@ -1701,7 +1637,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get limited select players from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get limited select players from db")
 	}
 	// initialise location select list
 	as.locationDeciders.list = []uuid.UUID{}
@@ -1732,14 +1668,14 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool)
 		}
 	}()
 	if as.locationDeciders == nil {
-		gamelog.L.Error().Msg("nil check failed as.locationDeciders")
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("nil check failed as.locationDeciders")
 
 		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}
 
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
-		gamelog.L.Error().Msg("no as.locationDeciders <= 1")
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("no as.locationDeciders <= 1")
 		as.locationDeciders.list = []uuid.UUID{}
 		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}
@@ -1796,7 +1732,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 				boiler.BattleContributionWhere.AbilityOfferingID.EQ(ability.OfferingID.String()),
 			).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("ability offering id", ability.OfferingID.String()).Err(err).Msg("Failed to check battle contributions from db")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", ability.OfferingID.String()).Err(err).Msg("Failed to check battle contributions from db")
 			}
 
 			// reset the ability price if there is no contribution to the ability, and skip rest of the process
@@ -1811,7 +1747,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			// store updated price to db
 			err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
-				gamelog.L.Error().
+				gamelog.L.Error().Str("log_name", "battle arena").
 					Str("ability_id", ability.ID).
 					Str("sups_cost", ability.SupsCost.String()).
 					Str("current_sups", ability.CurrentSups.String()).
@@ -1826,7 +1762,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		ability.CurrentSups = decimal.Zero
 		err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Str("ability_id", ability.ID).
 				Str("sups_cost", ability.SupsCost.String()).
 				Str("current_sups", ability.CurrentSups.String()).
@@ -1853,7 +1789,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if there is user, assign location decider and exit the loop
 		// change bribing phase to location select
 		as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
-		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
+		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 		// broadcast stage change
 		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
@@ -2106,11 +2042,11 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	}()
 	abilities := []*GameAbility{}
 	if as == nil {
-		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
 		return abilities
 	}
 	if as.factionUniqueAbilities == nil {
-		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as.factionUniqueAbilities")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as.factionUniqueAbilities")
 		return abilities
 	}
 	// NOTE: just pass down the faction unique abilities for now
@@ -2137,7 +2073,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 	}()
 
 	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStageStart {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Bool("nil checks as", as == nil).
 			Int32("battle stage", as.battle().stage.Load()).
 			Int32("bribe phase", as.battleAbilityPool.Stage.Phase.Load()).
@@ -2243,7 +2179,10 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		FactionID:           &faction.ID,
 	}
 
-	as.battle().calcTriggeredLocation(event)
+	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
+		X: *event.TriggeredOnCellX,
+		Y: *event.TriggeredOnCellY,
+	})
 
 	// trigger location select
 	as.battle().arena.Message("BATTLE:ABILITY", event)
@@ -2259,12 +2198,12 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	}
 	err = bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
 	}
 
 	_, err = db.UserStatAddTotalAbilityTriggered(userID.String())
 	if err != nil {
-		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to update user ability triggered amount")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 	}
 
 	as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
@@ -2296,7 +2235,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	//// enter the cooldown phase
 	cooldownSecond, err := as.SetNewBattleAbility(false)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 	}
 
 	as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
@@ -2341,7 +2280,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
 	if err != nil {
-		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
 		return nil, err
 	}
 
@@ -2357,7 +2296,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(user.FactionID.String)).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
 		return userBrief, nil
 	}
 

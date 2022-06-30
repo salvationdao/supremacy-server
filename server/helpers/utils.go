@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"errors"
+	"github.com/gofrs/uuid"
 	"net/http"
 	"runtime"
 	"server/gamelog"
@@ -78,4 +79,13 @@ func PackBooleansIntoByte(booleans []bool) byte {
 func BytesToInt(bytes []byte) int32 {
 	_ = bytes[3] // bounds check hint to compiler
 	return int32(bytes[3]) | int32(bytes[2])<<8 | int32(bytes[1])<<16 | int32(bytes[0])<<24
+}
+
+func UUIDArray2StrArray(uids []uuid.UUID) []string {
+	result := []string{}
+	for _, uid := range uids {
+		result = append(result, uid.String())
+	}
+
+	return result
 }

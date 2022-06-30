@@ -234,29 +234,32 @@ var WeaponWhere = struct {
 
 // WeaponRels is where relationship names are stored.
 var WeaponRels = struct {
-	WeaponModel    string
-	Blueprint      string
-	Brand          string
-	EquippedOnMech string
-	MechWeapon     string
-	WeaponAmmos    string
+	WeaponModel           string
+	Blueprint             string
+	Brand                 string
+	EquippedOnMech        string
+	MechWeapon            string
+	WeaponAmmos           string
+	EquippedOnWeaponSkins string
 }{
-	WeaponModel:    "WeaponModel",
-	Blueprint:      "Blueprint",
-	Brand:          "Brand",
-	EquippedOnMech: "EquippedOnMech",
-	MechWeapon:     "MechWeapon",
-	WeaponAmmos:    "WeaponAmmos",
+	WeaponModel:           "WeaponModel",
+	Blueprint:             "Blueprint",
+	Brand:                 "Brand",
+	EquippedOnMech:        "EquippedOnMech",
+	MechWeapon:            "MechWeapon",
+	WeaponAmmos:           "WeaponAmmos",
+	EquippedOnWeaponSkins: "EquippedOnWeaponSkins",
 }
 
 // weaponR is where relationships are stored.
 type weaponR struct {
-	WeaponModel    *WeaponModel     `boiler:"WeaponModel" boil:"WeaponModel" json:"WeaponModel" toml:"WeaponModel" yaml:"WeaponModel"`
-	Blueprint      *BlueprintWeapon `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	Brand          *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	EquippedOnMech *Mech            `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	MechWeapon     *MechWeapon      `boiler:"MechWeapon" boil:"MechWeapon" json:"MechWeapon" toml:"MechWeapon" yaml:"MechWeapon"`
-	WeaponAmmos    WeaponAmmoSlice  `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
+	WeaponModel           *WeaponModel     `boiler:"WeaponModel" boil:"WeaponModel" json:"WeaponModel" toml:"WeaponModel" yaml:"WeaponModel"`
+	Blueprint             *BlueprintWeapon `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	Brand                 *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	EquippedOnMech        *Mech            `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	MechWeapon            *MechWeapon      `boiler:"MechWeapon" boil:"MechWeapon" json:"MechWeapon" toml:"MechWeapon" yaml:"MechWeapon"`
+	WeaponAmmos           WeaponAmmoSlice  `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
+	EquippedOnWeaponSkins WeaponSkinSlice  `boiler:"EquippedOnWeaponSkins" boil:"EquippedOnWeaponSkins" json:"EquippedOnWeaponSkins" toml:"EquippedOnWeaponSkins" yaml:"EquippedOnWeaponSkins"`
 }
 
 // NewStruct creates a new relationship struct
@@ -608,6 +611,27 @@ func (o *Weapon) WeaponAmmos(mods ...qm.QueryMod) weaponAmmoQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"weapon_ammo\".*"})
+	}
+
+	return query
+}
+
+// EquippedOnWeaponSkins retrieves all the weapon_skin's WeaponSkins with an executor via equipped_on column.
+func (o *Weapon) EquippedOnWeaponSkins(mods ...qm.QueryMod) weaponSkinQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"weapon_skin\".\"equipped_on\"=?", o.ID),
+	)
+
+	query := WeaponSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"weapon_skin\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"weapon_skin\".*"})
 	}
 
 	return query
@@ -1245,6 +1269,104 @@ func (weaponL) LoadWeaponAmmos(e boil.Executor, singular bool, maybeWeapon inter
 	return nil
 }
 
+// LoadEquippedOnWeaponSkins allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (weaponL) LoadEquippedOnWeaponSkins(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+	var slice []*Weapon
+	var object *Weapon
+
+	if singular {
+		object = maybeWeapon.(*Weapon)
+	} else {
+		slice = *maybeWeapon.(*[]*Weapon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`weapon_skin`),
+		qm.WhereIn(`weapon_skin.equipped_on in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load weapon_skin")
+	}
+
+	var resultSlice []*WeaponSkin
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice weapon_skin")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on weapon_skin")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapon_skin")
+	}
+
+	if len(weaponSkinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.EquippedOnWeaponSkins = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &weaponSkinR{}
+			}
+			foreign.R.EquippedOnWeapon = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.EquippedOn) {
+				local.R.EquippedOnWeaponSkins = append(local.R.EquippedOnWeaponSkins, foreign)
+				if foreign.R == nil {
+					foreign.R = &weaponSkinR{}
+				}
+				foreign.R.EquippedOnWeapon = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetWeaponModel of the weapon to the related item.
 // Sets o.R.WeaponModel to related.
 // Adds o to related.R.Weapons.
@@ -1627,6 +1749,131 @@ func (o *Weapon) AddWeaponAmmos(exec boil.Executor, insert bool, related ...*Wea
 			rel.R.Weapon = o
 		}
 	}
+	return nil
+}
+
+// AddEquippedOnWeaponSkins adds the given related objects to the existing relationships
+// of the weapon, optionally inserting them as new records.
+// Appends related to o.R.EquippedOnWeaponSkins.
+// Sets related.R.EquippedOnWeapon appropriately.
+func (o *Weapon) AddEquippedOnWeaponSkins(exec boil.Executor, insert bool, related ...*WeaponSkin) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.EquippedOn, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"weapon_skin\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"equipped_on"}),
+				strmangle.WhereClause("\"", "\"", 2, weaponSkinPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.EquippedOn, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &weaponR{
+			EquippedOnWeaponSkins: related,
+		}
+	} else {
+		o.R.EquippedOnWeaponSkins = append(o.R.EquippedOnWeaponSkins, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &weaponSkinR{
+				EquippedOnWeapon: o,
+			}
+		} else {
+			rel.R.EquippedOnWeapon = o
+		}
+	}
+	return nil
+}
+
+// SetEquippedOnWeaponSkins removes all previously related items of the
+// weapon replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.EquippedOnWeapon's EquippedOnWeaponSkins accordingly.
+// Replaces o.R.EquippedOnWeaponSkins with related.
+// Sets related.R.EquippedOnWeapon's EquippedOnWeaponSkins accordingly.
+func (o *Weapon) SetEquippedOnWeaponSkins(exec boil.Executor, insert bool, related ...*WeaponSkin) error {
+	query := "update \"weapon_skin\" set \"equipped_on\" = null where \"equipped_on\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.EquippedOnWeaponSkins {
+			queries.SetScanner(&rel.EquippedOn, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.EquippedOnWeapon = nil
+		}
+
+		o.R.EquippedOnWeaponSkins = nil
+	}
+	return o.AddEquippedOnWeaponSkins(exec, insert, related...)
+}
+
+// RemoveEquippedOnWeaponSkins relationships from objects passed in.
+// Removes related items from R.EquippedOnWeaponSkins (uses pointer comparison, removal does not keep order)
+// Sets related.R.EquippedOnWeapon.
+func (o *Weapon) RemoveEquippedOnWeaponSkins(exec boil.Executor, related ...*WeaponSkin) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.EquippedOn, nil)
+		if rel.R != nil {
+			rel.R.EquippedOnWeapon = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("equipped_on")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.EquippedOnWeaponSkins {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.EquippedOnWeaponSkins)
+			if ln > 1 && i < ln-1 {
+				o.R.EquippedOnWeaponSkins[i] = o.R.EquippedOnWeaponSkins[ln-1]
+			}
+			o.R.EquippedOnWeaponSkins = o.R.EquippedOnWeaponSkins[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

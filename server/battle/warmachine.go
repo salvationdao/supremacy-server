@@ -38,6 +38,7 @@ type WarMachine struct {
 	ImageAvatar string          `json:"imageAvatar"`
 	Position    *server.Vector3 `json:"position"`
 	Rotation    int             `json:"rotation"`
+	IsHidden    bool            `json:"isHidden"`
 	//Durability         int             `json:"durability"`
 	//PowerGrid          int             `json:"powerGrid"`
 	//CPU                int             `json:"cpu"`

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -16,11 +17,27 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
-	tx, err := gamedb.StdConn.Begin()
+func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	//getting weapon model to get default skin id to get image url on blueprint weapon skins
+	weaponModel, err := boiler.WeaponModels(
+		boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
+		qm.Load(boiler.WeaponModelRels.DefaultSkin),
+	).One(tx)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	if weaponModel.R == nil || weaponModel.R.DefaultSkin == nil {
+		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to weapon"), "Could not find weapon default skin relationship, try again or contact support")
+	}
+
+	//should only have one in the arr
+	bpws := weaponModel.R.DefaultSkin
 
 	newWeapon := boiler.Weapon{
 		BrandID:               weapon.BrandID,
@@ -30,6 +47,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		BlueprintID:           weapon.ID,
 		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:        weapon.GenesisTokenID,
+		WeaponModelID:         null.StringFrom(weapon.WeaponModelID),
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		WeaponType:            weapon.WeaponType,
 		DamageFalloff:         weapon.DamageFalloff,
@@ -48,38 +66,39 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
+	//change img, avatar etc. here but have to get it from blueprint weapon skins
 	_, err = InsertNewCollectionItem(tx,
 		weapon.Collection,
 		boiler.ItemTypeWeapon,
 		newWeapon.ID,
 		weapon.Tier,
 		ownerID.String(),
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
-		null.String{},
+		bpws.ImageURL,
+		bpws.CardAnimationURL,
+		bpws.AvatarURL,
+		bpws.LargeImageURL,
+		bpws.BackgroundColor,
+		bpws.AnimationURL,
+		bpws.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return Weapon(newWeapon.ID)
+	return Weapon(tx, newWeapon.ID)
 }
 
-func Weapon(id string) (*server.Weapon, error) {
-	boilerMech, err := boiler.FindWeapon(gamedb.StdConn, id)
+func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	boilerMech, err := boiler.FindWeapon(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -106,22 +125,24 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 }
 
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
-func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
-	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
-		return terror.Error(err)
+func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("weapon ID", weaponID).Msg("failed to equip weapon to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
 	}
-	defer tx.Rollback()
 
-	mechCI, err := CollectionItemFromItemID(mechID)
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
 		return terror.Error(err)
 	}
-	weaponCI, err := CollectionItemFromItemID(weaponID)
+	weaponCI, err := CollectionItemFromItemID(tx, weaponID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to get weapon collection item")
 		return terror.Error(err)
@@ -194,10 +215,12 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachWeaponToMech")
-		return terror.Error(err)
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachWeaponToMech")
+			return terror.Error(err)
+		}
 	}
 
 	return nil

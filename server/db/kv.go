@@ -18,8 +18,11 @@ const SaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_i
 const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const SaleAbilityLimit KVKey = "sale_ability_limit"
+const SaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
 const QueueLengthAdd KVKey = "queue_length_add"
+
+const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
 type KVKey string
 
@@ -43,6 +46,8 @@ const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auctio
 const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
+const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
 const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 

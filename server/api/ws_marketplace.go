@@ -16,6 +16,7 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/friendsofgo/errors"
@@ -42,6 +43,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardList, marketplaceHub.SalesListKeycardHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceEventList, marketplaceHub.EventListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesGet, marketplaceHub.SalesGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesKeycardGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, WithMarketLockCheck(marketplaceHub.SalesCreateHandler))
@@ -223,6 +225,60 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	}
 
 	resp := &MarketplaceSalesListKeycardResponse{
+		Total:   total,
+		Records: records,
+	}
+	reply(resp)
+
+	return nil
+}
+
+const HubKeyMarketplaceEventList = "MARKETPLACE:EVENT:LIST"
+
+type MarketplaceEventListRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SortDir   db.SortByDir `json:"sort_dir"`
+		SortBy    string       `json:"sort_by"`
+		EventType []string     `json:"event_type"`
+		Search    string       `json:"search"`
+		PageSize  int          `json:"page_size"`
+		Page      int          `json:"page"`
+	} `json:"payload"`
+}
+
+type MarketplaceEventListResponse struct {
+	Total   int64                      `json:"total"`
+	Records []*server.MarketplaceEvent `json:"records"`
+}
+
+func (fc *MarketplaceController) EventListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &MarketplaceEventListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, records, err := db.MarketplaceEventList(
+		user.ID,
+		req.Payload.Search,
+		req.Payload.EventType,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
+		return terror.Error(err, "Failed to get list of items for sale")
+	}
+
+	resp := &MarketplaceEventListResponse{
 		Total:   total,
 		Records: records,
 	}
@@ -426,6 +482,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
+			Str("item_type", req.Payload.ItemType).
 			Err(err).
 			Msg("Failed to check if already selling collection item.")
 		if errors.Is(err, sql.ErrNoRows) {
@@ -469,7 +526,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Player does not have enough sups.")
@@ -492,7 +549,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Marketplace Fee.")
@@ -505,7 +562,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to start db transaction (new sale item).")
@@ -539,7 +596,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to create new sale item.")
@@ -556,7 +613,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to create new sale item.")
@@ -569,7 +626,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_type", req.Payload.ItemType).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Unable to commit db transaction (new sale item).")
@@ -578,6 +635,18 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	reply(obj)
 
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventCreated, user.ID, decimal.NullDecimal{}, obj.ID, boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_type", req.Payload.ItemType).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg(fmt.Sprintf("Failed to log create sale item event (%s).", req.Payload.ItemType))
+	}
+
+	// Broadcast Queue Status Market
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ID.EQ(ciUUID.String()),
 	).One(gamedb.StdConn)
@@ -805,6 +874,16 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 
 	reply(obj)
 
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventCreated, user.ID, decimal.NullDecimal{}, obj.ID, boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to log create sale item event (keycards).")
+	}
+
 	return nil
 }
 
@@ -844,13 +923,18 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
 	// Refund Item if auction
 	if saleItem.Auction && saleItem.LastBid.ID.Valid {
 		lastBid, err := boiler.ItemSalesBidHistories(
+			qm.Select(
+				boiler.ItemSalesBidHistoryColumns.BidderID,
+				boiler.ItemSalesBidHistoryColumns.BidTXID,
+				boiler.ItemSalesBidHistoryColumns.BidPrice,
+			),
 			boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(saleItem.ID),
 			boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
 		).One(gamedb.StdConn)
@@ -865,6 +949,15 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, req.Payload.ID, lastBid.BidTXID, rtxid, true)
 			if err != nil {
 				return terror.Error(err, errMsg)
+			}
+			err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, lastBid.BidderID, decimal.NewNullDecimal(lastBid.BidPrice), saleItem.ID, boiler.TableNames.ItemSales)
+			if err != nil {
+				gamelog.L.Error().
+					Str("item_sale_id", saleItem.ID).
+					Str("txid", lastBid.BidTXID).
+					Str("refund_tx_id", rtxid).
+					Err(err).
+					Msg("Failed to log bid refund event.")
 			}
 		}
 	}
@@ -881,6 +974,17 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 
 	reply(true)
 
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventCancelled, user.ID, decimal.NullDecimal{}, req.Payload.ID.String(), boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log cancelled sale item event.")
+	}
+
+	// Broadcast Queue Status Market
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ID.EQ(saleItem.CollectionItemID),
 	).One(gamedb.StdConn)
@@ -921,7 +1025,7 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 	if saleItem.OwnerID != user.ID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -982,6 +1086,16 @@ func (mp *MarketplaceController) SalesKeycardArchiveHandler(ctx context.Context,
 
 	reply(true)
 
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventCancelled, user.ID, decimal.NullDecimal{}, req.Payload.ID.String(), boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log cancelled sale item event (keycards).")
+	}
+
 	return nil
 }
 
@@ -993,7 +1107,8 @@ const (
 type MarketplaceSalesBuyRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ID uuid.UUID `json:"id"`
+		ID     uuid.UUID       `json:"id"`
+		Amount decimal.Decimal `json:"amount"`
 	} `json:"payload"`
 }
 
@@ -1021,7 +1136,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.CollectionItem.XsynLocked || saleItem.CollectionItem.MarketLocked {
@@ -1064,6 +1179,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				saleItemCost = dutchAuctionAmount
 			}
 		}
+	}
+	if !saleItemCost.Equal(req.Payload.Amount.Mul(decimal.New(1, 18))) {
+		return terror.Error(fmt.Errorf("amount does not match current price"), "Prices do not match up, please try again.")
 	}
 
 	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
@@ -1210,7 +1328,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		SoldFor:     decimal.NewNullDecimal(saleItemCost),
 		SoldTXID:    null.StringFrom(txid),
 		SoldFeeTXID: null.StringFrom(feeTXID),
-		SoldBy:      null.StringFrom(user.ID),
+		SoldTo:      null.StringFrom(user.ID),
 		UpdatedAt:   time.Now(),
 	}
 	_, err = saleItemRecord.Update(tx,
@@ -1219,7 +1337,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			boiler.ItemSaleColumns.SoldFor,
 			boiler.ItemSaleColumns.SoldTXID,
 			boiler.ItemSaleColumns.SoldFeeTXID,
-			boiler.ItemSaleColumns.SoldBy,
+			boiler.ItemSaleColumns.SoldTo,
 			boiler.ItemSaleColumns.UpdatedAt,
 		))
 	if err != nil {
@@ -1315,16 +1433,47 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// Log event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, user.ID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log purchase event.")
+	}
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventSold, saleItem.OwnerID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log sold event.")
+	}
+
+	// Refund bids
 	bids, err := db.MarketplaceSaleCancelBids(gamedb.StdConn, uuid.Must(uuid.FromString(saleItem.ID)), "Item bought out")
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("MarketplaceSaleCancelBids error refunding bids")
 		return err
 	}
-
 	for _, b := range bids {
-		_, err = mp.API.Passport.RefundSupsMessage(b)
+		_, err = mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
-			gamelog.L.Error().Str("txID", b).Err(err).Msg("error refunding bids")
+			gamelog.L.Error().Str("txID", b.TXID).Err(err).Msg("error refunding bids")
+		}
+		err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, b.BidderID, decimal.NewNullDecimal(b.Amount), saleItem.ID, boiler.TableNames.ItemSales)
+		if err != nil {
+			gamelog.L.Error().
+				Str("txID", b.TXID).
+				Err(err).
+				Msg("Failed to log bid refund event.")
 		}
 	}
 
@@ -1371,7 +1520,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 
@@ -1387,6 +1536,9 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	saleItemCost := saleItem.BuyoutPrice
+	if !saleItemCost.Equal(req.Payload.Amount.Mul(decimal.New(1, 18))) {
+		return terror.Error(fmt.Errorf("amount does not match current price"), "Prices do not match up, please try again.")
+	}
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
@@ -1543,7 +1695,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		SoldFor:     decimal.NewNullDecimal(saleItemCost),
 		SoldTXID:    null.StringFrom(txid),
 		SoldFeeTXID: null.StringFrom(feeTXID),
-		SoldBy:      null.StringFrom(user.ID),
+		SoldTo:      null.StringFrom(user.ID),
 	}
 
 	_, err = saleItemRecord.Update(tx, boil.Whitelist(
@@ -1551,7 +1703,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		boiler.ItemKeycardSaleColumns.SoldFor,
 		boiler.ItemKeycardSaleColumns.SoldTXID,
 		boiler.ItemKeycardSaleColumns.SoldFeeTXID,
-		boiler.ItemKeycardSaleColumns.SoldBy,
+		boiler.ItemKeycardSaleColumns.SoldTo,
 	))
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1600,6 +1752,30 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Err(err).
 			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	}
+
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, user.ID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log purchase event.")
+	}
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventSold, saleItem.OwnerID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemKeycardSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to log sold event.")
 	}
 
 	// Success
@@ -1659,7 +1835,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if !saleItem.Auction {
 		return terror.Error(fmt.Errorf("item is not up for auction"), "Item is not up for auction.")
 	}
-	if saleItem.SoldBy.Valid {
+	if saleItem.SoldTo.ID.Valid {
 		return terror.Error(fmt.Errorf("item is sold"), "Item has already being sold.")
 	}
 	if saleItem.FactionID != fID {
@@ -1727,7 +1903,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	defer tx.Rollback()
 
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
+	refundBids, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ID, "New Bid")
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -1767,25 +1943,34 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 
 	// Refund other bids
-	for _, bidTxID := range refundTxnIDs {
-		refundTxID, err := mp.API.Passport.RefundSupsMessage(bidTxID)
+	for _, b := range refundBids {
+		refundTxID, err := mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_sale_id", req.Payload.ID.String()).
-				Str("txid", bidTxID).
+				Str("txid", b.TXID).
 				Err(err).
 				Msg("Unable to refund cancelled bid.")
 			continue
 		}
-		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, bidTxID, refundTxID, false)
+		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ID, b.TXID, refundTxID, false)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_sale_id", req.Payload.ID.String()).
-				Str("txid", bidTxID).
+				Str("txid", b.TXID).
 				Str("refund_tx_id", refundTxID).
 				Err(err).
 				Msg("Unable to update cancelled bid refund tx id.")
 			continue
+		}
+		err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, b.BidderID, decimal.NewNullDecimal(b.Amount), saleItem.ID, boiler.TableNames.ItemSales)
+		if err != nil {
+			gamelog.L.Error().
+				Str("item_sale_id", req.Payload.ID.String()).
+				Str("txid", b.TXID).
+				Str("refund_tx_id", refundTxID).
+				Err(err).
+				Msg("Failed to log bid refund event.")
 		}
 	}
 
@@ -1829,6 +2014,17 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		},
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
+
+	// Log Event
+	err = db.MarketplaceAddEvent(boiler.MarketplaceEventBid, user.ID, decimal.NewNullDecimal(req.Payload.Amount.Mul(decimal.New(1, 18))), saleItem.ID, boiler.TableNames.ItemSales)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Str("bid_amount", req.Payload.Amount.String()).
+			Err(err).
+			Msg("Failed to log bid event.")
+	}
 
 	return nil
 }
