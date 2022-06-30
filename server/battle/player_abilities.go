@@ -29,44 +29,46 @@ import (
 
 // IncognitoManager tracks all war machines that are currently hidden from the map
 type IncognitoManager struct {
-	_incognitoWarMachineIDs map[string]struct{}
+	incognitoWarMachineIDs map[string]struct{}
 
 	sync.RWMutex
 }
 
 func NewIncognitoManager() *IncognitoManager {
 	return &IncognitoManager{
-		_incognitoWarMachineIDs: make(map[string]struct{}),
+		incognitoWarMachineIDs: make(map[string]struct{}),
 	}
 }
 
 func (iwmm *IncognitoManager) IsWarMachineHidden(hash string) bool {
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	iwmm.RLock()
+	defer iwmm.RUnlock()
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	return ok
 }
 
 func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string) error {
-	iwmm.RLock()
-	defer iwmm.RUnlock()
+	iwmm.Lock()
+	defer iwmm.Unlock()
 
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	if ok {
 		return fmt.Errorf("War machine is already hidden")
 	}
-	iwmm._incognitoWarMachineIDs[hash] = struct{}{}
+	iwmm.incognitoWarMachineIDs[hash] = struct{}{}
 
 	return nil
 }
 
 func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) error {
-	iwmm.RLock()
-	defer iwmm.RUnlock()
+	iwmm.Lock()
+	defer iwmm.Unlock()
 
-	_, ok := iwmm._incognitoWarMachineIDs[hash]
+	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	if !ok {
 		return fmt.Errorf("Cannot unhide war machine that is not already hidden")
 	}
-	delete(iwmm._incognitoWarMachineIDs, hash)
+	delete(iwmm.incognitoWarMachineIDs, hash)
 
 	return nil
 }
@@ -89,7 +91,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
+		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
 	req := &PlayerAbilityUseRequest{}
