@@ -111,34 +111,3 @@ func PlayerAbilitiesList(
 
 	return result, nil
 }
-
-// wip
-func PlayerWeaponsList(
-	userID string,
-) ([]*boiler.Weapon, error) {
-
-	// items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ("weapon")).All(gamedb.StdConn)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// // pas, err := boiler.PlayerAbilities(
-	// // 	boiler.PlayerAbilityWhere.OwnerID.EQ(userID),
-	// // 	qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.Count)),
-	// // 	qm.Load(boiler.PlayerAbilityRels.Blueprint),
-	// // 	boiler.PlayerAbilityWhere.Count.GT(0),
-	// // ).All(gamedb.StdConn)
-	// // if err != nil {
-	// // 	return nil, err
-	// // }
-
-	// result := []*DetailedPlayerAbility{}
-	// for _, p := range pas {
-	// 	result = append(result, &DetailedPlayerAbility{
-	// 		PlayerAbility: p,
-	// 		Ability:       *p.R.Blueprint,
-	// 	})
-	// }
-
-	return nil, nil
-}
