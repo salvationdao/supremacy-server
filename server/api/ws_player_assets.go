@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/kevinms/leakybucket-go"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"regexp"
 	"server"
 	"server/db"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/kevinms/leakybucket-go"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/friendsofgo/errors"
@@ -40,6 +41,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
@@ -52,6 +54,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 }
 
 const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
@@ -752,5 +755,143 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	reply(items)
 
+	return nil
+}
+
+type PlayerAssetWeaponListRequest struct {
+	Payload struct {
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
+		QueueSort           db.SortByDir          `json:"queue_sort"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponListResp struct {
+	Total   int64                `json:"total"`
+	Weapons []*PlayerAssetWeapon `json:"weapons"`
+}
+
+type PlayerAssetWeapon struct {
+	// CollectionSlug      string      `json:"collection_slug"`
+	// Hash                string      `json:"hash"`
+	// TokenID             int64       `json:"token_id"`
+	// ItemType            string      `json:"item_type"`
+	// Tier                string      `json:"tier"`
+	// OwnerID             string      `json:"owner_id"`
+	// ImageURL            null.String `json:"image_url,omitempty"`
+	// CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
+	// AvatarURL           null.String `json:"avatar_url,omitempty"`
+	// LargeImageURL       null.String `json:"large_image_url,omitempty"`
+	// BackgroundColor     null.String `json:"background_color,omitempty"`
+	// AnimationURL        null.String `json:"animation_url,omitempty"`
+	// YoutubeURL          null.String `json:"youtube_url,omitempty"`
+	// MarketLocked        bool        `json:"market_locked"`
+	// XsynLocked          bool        `json:"xsyn_locked"`
+	// LockedToMarketplace bool        `json:"locked_to_marketplace"`
+	// QueuePosition       null.Int    `json:"queue_position"`
+
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	// WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	// UtilitySlots          int        `json:"utility_slots"`
+	// Speed                 int        `json:"speed"`
+	// MaxHitpoints          int        `json:"max_hitpoints"`
+	// IsDefault             bool       `json:"is_default"`
+	// IsInsured             bool       `json:"is_insured"`
+	// Name                  string     `json:"name"`
+	// GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	// LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
+	// PowerCoreSize         string     `json:"power_core_size"`
+	// BlueprintID           string     `json:"blueprint_id"`
+	// BrandID               string     `json:"brand_id"`
+	// FactionID             string     `json:"faction_id"`
+	// ModelID               string     `json:"model_id"`
+
+	// // Connected objects
+	// DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
+	// ChassisSkinID        null.String `json:"chassis_skin_id,omitempty"`
+	// IntroAnimationID     null.String `json:"intro_animation_id,omitempty"`
+	// OutroAnimationID     null.String `json:"outro_animation_id,omitempty"`
+	// PowerCoreID          null.String `json:"power_core_id,omitempty"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.MechListOpts{
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             user.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
+	}
+	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
+		listOpts.QueueSort = &db.MechListQueueSortOpts{
+			FactionID: user.FactionID.String,
+			SortDir:   req.Payload.QueueSort,
+		}
+	}
+
+	total, weapons, err := db.WeaponList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssWeapons := []*PlayerAssetWeapon{}
+
+	for _, m := range weapons {
+		playerAssWeapons = append(playerAssWeapons, &PlayerAssetWeapon{
+			ID:    m.ID,
+			Label: m.Label,
+			// GenesisTokenID:        m.GenesisTokenID,
+			// LimitedReleaseTokenID: m.LimitedReleaseTokenID,
+			// BlueprintID: m.BlueprintID,
+			UpdatedAt: m.UpdatedAt,
+			CreatedAt: m.CreatedAt,
+			// CollectionSlug:      m.CollectionItem.CollectionSlug,
+			// Hash:                m.CollectionItem.Hash,
+			// TokenID:             m.CollectionItem.TokenID,
+			// ItemType:            m.CollectionItem.ItemType,
+			// Tier:                m.CollectionItem.Tier,
+			// OwnerID:             m.CollectionItem.OwnerID,
+			// XsynLocked:          m.CollectionItem.XsynLocked,
+			// MarketLocked:        m.CollectionItem.MarketLocked,
+			// LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+			// ImageURL:         m.CollectionItem.ImageURL,
+			// CardAnimationURL: m.CollectionItem.CardAnimationURL,
+			// AvatarURL:        m.CollectionItem.AvatarURL,
+			// LargeImageURL:    m.CollectionItem.LargeImageURL,
+			// BackgroundColor:  m.CollectionItem.BackgroundColor,
+			// AnimationURL:     m.CollectionItem.AnimationURL,
+			// YoutubeURL:       m.CollectionItem.YoutubeURL,
+		})
+	}
+
+	reply(&PlayerAssetWeaponListResp{
+		Total:   total,
+		Weapons: playerAssWeapons,
+	})
 	return nil
 }

@@ -225,3 +225,216 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 
 	return nil
 }
+
+func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
+	var weapons []*server.Weapon
+
+	var queryMods []qm.QueryMod
+
+	// create the where owner id = clause
+	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+		Table:    boiler.TableNames.CollectionItems,
+		Column:   boiler.CollectionItemColumns.OwnerID,
+		Operator: OperatorValueTypeEquals,
+		Value:    opts.OwnerID,
+	}, 0, ""),
+		GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.ItemType,
+			Operator: OperatorValueTypeEquals,
+			Value:    boiler.ItemTypeWeapon,
+		}, 0, "and"),
+	)
+
+	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.MarketLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if !opts.IncludeMarketListed {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+
+		}
+	}
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					boiler.TableNames.Mechs,
+					boiler.MechColumns.Label,
+				),
+					xSearch,
+				))
+		}
+	}
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	fmt.Println("fuckkkkkkkkkkkkkkkkkkk")
+	fmt.Println("fuckkkkkkkkkkkkkkkkkkk")
+	fmt.Println("fuckkkkkkkkkkkkkkkkkkk")
+	fmt.Println("fuckkkkkkkkkkkkkkkkkkk")
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			// qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.MaxHitpoints),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BrandID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ModelID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
+			// qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+	)
+
+	// Sort
+	// if opts.QueueSort != nil {
+	// 	queryMods = append(queryMods,
+	// 		qm.Select("_bq.queue_position AS queue_position"),
+	// 		qm.LeftOuterJoin(
+	// 			fmt.Sprintf(`(
+	// 				SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
+	// 					from battle_queue _bq
+	// 					where _bq.faction_id = ?
+	// 						AND _bq.battle_id IS NULL
+	// 				) _bq ON _bq.mech_id = %s`,
+	// 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+	// 			),
+	// 			opts.QueueSort.FactionID,
+	// 		),
+	// 		qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, %s, %s",
+	// 			opts.QueueSort.SortDir,
+	// 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+	// 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+	// 		)),
+	// 	)
+	// } else {
+	// 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+	// 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+	// 	} else {
+	// 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+	// 	}
+	// }
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		wp := &server.Weapon{
+			CollectionItem: &server.CollectionItem{},
+		}
+
+		scanArgs := []interface{}{
+			// &wp.CollectionItem.CollectionSlug,
+			// &wp.CollectionItem.Hash,
+			// &wp.CollectionItem.TokenID,
+			// &wp.CollectionItem.OwnerID,
+			// &wp.CollectionItem.Tier,
+			// &wp.CollectionItem.ItemType,
+			// &wp.CollectionItem.MarketLocked,
+			// &wp.CollectionItem.XsynLocked,
+			// &wp.CollectionItem.LockedToMarketplace,
+			// &wp.CollectionItemID,
+			&wp.ID,
+			// &wp.Name,
+			&wp.Label,
+			// &wp.WeaponHardpoints,
+			// &wp.UtilitySlots,
+			// &wp.Speed,
+			// &wp.MaxHitpoints,
+			// &wp.IsDefault,
+			// &wp.IsInsured,
+			// &wp.GenesisTokenID,
+			// &wp.LimitedReleaseTokenID,
+			// &wp.PowerCoreSize,
+			// &wp.PowerCoreID,
+			// &wp.BlueprintID,
+			// &wp.BrandID,
+			// &wp.ModelID,
+			// &wp.ChassisSkinID,
+			// // &wp.IntroAnimationID,
+			// &wp.OutroAnimationID,
+		}
+		// if opts.QueueSort != nil {
+		// 	scanArgs = append(scanArgs, &wp.QueuePosition)
+		// }
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, weapons, err
+		}
+		weapons = append(weapons, wp)
+	}
+
+	return total, weapons, nil
+}

@@ -60,6 +60,17 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 	return nil
 }
 
+func (pac *PlayerAbilitiesControllerWS) PlayerWeaponsListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pas, err := db.PlayerWeaponsList(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "TalliedPlayerAbilitiesList").Str("userID", user.ID).Err(err).Msg("unable to get player abilities")
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+
+	reply(pas)
+	return nil
+}
+
 type SaleAbilitiesListResponse struct {
 	NextRefreshTime *time.Time                `json:"next_refresh_time"`
 	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
