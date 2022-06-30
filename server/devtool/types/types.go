@@ -19,6 +19,7 @@ type Brands struct {
 type MechSkin struct {
 	ID               string      `json:"id"`
 	Collection       string      `json:"collection"`
+	MechModel        string      `json:"mech_model"`
 	Label            string      `json:"label"`
 	Tier             string      `json:"tier"`
 	ImageUrl         null.String `json:"image_url"`

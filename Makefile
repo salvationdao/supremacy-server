@@ -225,9 +225,10 @@ dev-give-crates:
 	make dev-give-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
 dev-sync-data-mech:
-	go run ./server/devtool/main.go -sync_mech true
-#	cd ./server/devtool
-#	mkdir temp-sync
-#	cd temp-sync
-#	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	#go run ../*.go -sync_mech true
+	cd ./server/devtool
+	mkdir temp-sync
+	cd temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ../../../server
+	go run ./devtool/main.go -sync_mech
+	rm -rf ./devtool/temp-sync
