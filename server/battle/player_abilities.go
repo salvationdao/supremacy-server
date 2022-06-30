@@ -60,17 +60,15 @@ func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string) error {
 	return nil
 }
 
-func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) error {
+func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) {
 	iwmm.Lock()
 	defer iwmm.Unlock()
 
 	_, ok := iwmm.incognitoWarMachineIDs[hash]
 	if !ok {
-		return fmt.Errorf("Cannot unhide war machine that is not already hidden")
+		return
 	}
 	delete(iwmm.incognitoWarMachineIDs, hash)
-
-	return nil
 }
 
 type PlayerAbilityUseRequest struct {
