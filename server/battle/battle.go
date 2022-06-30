@@ -60,6 +60,8 @@ type Battle struct {
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
+	_incognitoManager *IncognitoManager
+
 	destroyedWarMachineMap map[string]*WMDestroyedRecord
 	*boiler.Battle
 
@@ -73,6 +75,12 @@ func (btl *Battle) abilities() *AbilitiesSystem {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._abilities
+}
+
+func (btl *Battle) incognitoManager() *IncognitoManager {
+	btl.RLock()
+	defer btl.RUnlock()
+	return btl._incognitoManager
 }
 
 func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
@@ -94,6 +102,12 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.LeftPixels = gm.LeftPixels
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
+}
+
+func (btl *Battle) storeIncognitoManager(im *IncognitoManager) {
+	btl.Lock()
+	defer btl.Unlock()
+	btl._incognitoManager = im
 }
 
 func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
@@ -317,7 +331,6 @@ func (btl *Battle) start() {
 	}
 
 	// set up the abilities for current battle
-
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
@@ -1362,6 +1375,7 @@ func (btl *Battle) Tick(payload []byte) {
 			Rotation:      warmachine.Rotation,
 			Health:        warmachine.Health,
 			Shield:        warmachine.Shield,
+			IsHidden:      false,
 		}
 		// Position + Yaw
 		if booleans[0] {
@@ -1403,6 +1417,17 @@ func (btl *Battle) Tick(payload []byte) {
 		if booleans[3] {
 			offset += 4
 		}
+
+		// Hidden/Incognito
+		if btl.incognitoManager().IsWarMachineHidden(warmachine.Hash) {
+			wms.IsHidden = true
+			wms.Position = &server.Vector3{
+				X: -1,
+				Y: -1,
+				Z: -1,
+			}
+		}
+
 		if participantID < 100 {
 			wsMessages = append(wsMessages, ws.Message{
 				URI:     fmt.Sprintf("/public/mech/%d", participantID),
