@@ -22,6 +22,8 @@ const SaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_re
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
 const QueueLengthAdd KVKey = "queue_length_Add"
 
+const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
+
 type KVKey string
 
 // Default contributor formula https://www.desmos.com/calculator/vbfa5llasg
