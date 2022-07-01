@@ -769,6 +769,7 @@ type PlayerAssetWeaponListRequest struct {
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
+		FilterRarities      []string              `json:"rarities"`
 	} `json:"payload"`
 }
 
@@ -778,47 +779,25 @@ type PlayerAssetWeaponListResp struct {
 }
 
 type PlayerAssetWeapon struct {
-	// CollectionSlug      string      `json:"collection_slug"`
-	// Hash                string      `json:"hash"`
-	// TokenID             int64       `json:"token_id"`
-	// ItemType            string      `json:"item_type"`
-	// Tier                string      `json:"tier"`
-	// OwnerID             string      `json:"owner_id"`
-	// ImageURL            null.String `json:"image_url,omitempty"`
-	// CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
-	// AvatarURL           null.String `json:"avatar_url,omitempty"`
-	// LargeImageURL       null.String `json:"large_image_url,omitempty"`
-	// BackgroundColor     null.String `json:"background_color,omitempty"`
-	// AnimationURL        null.String `json:"animation_url,omitempty"`
-	// YoutubeURL          null.String `json:"youtube_url,omitempty"`
-	// MarketLocked        bool        `json:"market_locked"`
-	// XsynLocked          bool        `json:"xsyn_locked"`
-	// LockedToMarketplace bool        `json:"locked_to_marketplace"`
-	// QueuePosition       null.Int    `json:"queue_position"`
+	CollectionSlug      string      `json:"collection_slug"`
+	Hash                string      `json:"hash"`
+	TokenID             int64       `json:"token_id"`
+	Tier                string      `json:"tier"`
+	OwnerID             string      `json:"owner_id"`
+	ImageURL            null.String `json:"image_url,omitempty"`
+	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
+	AvatarURL           null.String `json:"avatar_url,omitempty"`
+	LargeImageURL       null.String `json:"large_image_url,omitempty"`
+	BackgroundColor     null.String `json:"background_color,omitempty"`
+	AnimationURL        null.String `json:"animation_url,omitempty"`
+	YoutubeURL          null.String `json:"youtube_url,omitempty"`
+	MarketLocked        bool        `json:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace"`
 
 	ID    string `json:"id"`
 	Label string `json:"label"`
-	// WeaponHardpoints      int        `json:"weapon_hardpoints"`
-	// UtilitySlots          int        `json:"utility_slots"`
-	// Speed                 int        `json:"speed"`
-	// MaxHitpoints          int        `json:"max_hitpoints"`
-	// IsDefault             bool       `json:"is_default"`
-	// IsInsured             bool       `json:"is_insured"`
-	// Name                  string     `json:"name"`
-	// GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
-	// LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-	// PowerCoreSize         string     `json:"power_core_size"`
-	// BlueprintID           string     `json:"blueprint_id"`
-	// BrandID               string     `json:"brand_id"`
-	// FactionID             string     `json:"faction_id"`
-	// ModelID               string     `json:"model_id"`
-
-	// // Connected objects
-	// DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	// ChassisSkinID        null.String `json:"chassis_skin_id,omitempty"`
-	// IntroAnimationID     null.String `json:"intro_animation_id,omitempty"`
-	// OutroAnimationID     null.String `json:"outro_animation_id,omitempty"`
-	// PowerCoreID          null.String `json:"power_core_id,omitempty"`
+	Name  string `json:"name"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -845,6 +824,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		FilterRarities:      req.Payload.FilterRarities,
 	}
 	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
 		listOpts.QueueSort = &db.MechListQueueSortOpts{
@@ -863,29 +843,21 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 
 	for _, m := range weapons {
 		playerAssWeapons = append(playerAssWeapons, &PlayerAssetWeapon{
-			ID:    m.ID,
-			Label: m.Label,
-			// GenesisTokenID:        m.GenesisTokenID,
-			// LimitedReleaseTokenID: m.LimitedReleaseTokenID,
-			// BlueprintID: m.BlueprintID,
-			UpdatedAt: m.UpdatedAt,
-			CreatedAt: m.CreatedAt,
-			// CollectionSlug:      m.CollectionItem.CollectionSlug,
-			// Hash:                m.CollectionItem.Hash,
-			// TokenID:             m.CollectionItem.TokenID,
-			// ItemType:            m.CollectionItem.ItemType,
-			// Tier:                m.CollectionItem.Tier,
-			// OwnerID:             m.CollectionItem.OwnerID,
-			// XsynLocked:          m.CollectionItem.XsynLocked,
-			// MarketLocked:        m.CollectionItem.MarketLocked,
-			// LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-			// ImageURL:         m.CollectionItem.ImageURL,
-			// CardAnimationURL: m.CollectionItem.CardAnimationURL,
-			// AvatarURL:        m.CollectionItem.AvatarURL,
-			// LargeImageURL:    m.CollectionItem.LargeImageURL,
-			// BackgroundColor:  m.CollectionItem.BackgroundColor,
-			// AnimationURL:     m.CollectionItem.AnimationURL,
-			// YoutubeURL:       m.CollectionItem.YoutubeURL,
+			ID:                  m.ID,
+			Label:               m.Label,
+			UpdatedAt:           m.UpdatedAt,
+			CreatedAt:           m.CreatedAt,
+			CollectionSlug:      m.CollectionItem.CollectionSlug,
+			Hash:                m.CollectionItem.Hash,
+			TokenID:             m.CollectionItem.TokenID,
+			Tier:                m.CollectionItem.Tier,
+			OwnerID:             m.CollectionItem.OwnerID,
+			XsynLocked:          m.CollectionItem.XsynLocked,
+			MarketLocked:        m.CollectionItem.MarketLocked,
+			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+			ImageURL:            m.CollectionItem.ImageURL,
+			AvatarURL:           m.CollectionItem.AvatarURL,
+			BackgroundColor:     m.CollectionItem.BackgroundColor,
 		})
 	}
 
