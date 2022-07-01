@@ -60,6 +60,7 @@ func main() {
 		SyncWeaponSkins(dt)
 	}
 
+	fmt.Println("Finish syncing static data")
 }
 
 func RemoveFKContraints(dt DevTool) error {
@@ -112,7 +113,7 @@ func RemoveFKContraints(dt DevTool) error {
 			`,
 	)
 	if err != nil {
-		fmt.Println("ERROR " + err.Error())
+		fmt.Println(err.Error())
 	}
 
 	fmt.Println("Finished removing constraints")

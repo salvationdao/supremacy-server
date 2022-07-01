@@ -49,3 +49,8 @@ type WeaponSkin struct {
 	Tier          string `json:"tier"`
 	WeaponModelID string `json:"weapon_model_id"`
 }
+
+type BattleAbility struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
