@@ -379,11 +379,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
 			return err
 		}
-		// ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, MinimapUpdatesSubscribeResponse{
-		// 	Duration: 3000,
-		// 	Radius:   int(BlackoutRadius),
-		// 	Coords:   *req.Payload.StartCoords,
-		// })
 	}
 
 	return nil
