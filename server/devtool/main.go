@@ -55,6 +55,7 @@ func main() {
 		SyncMechModels(dt)
 		SyncMechSkins(dt)
 		SyncBrands(dt)
+		SyncMysteryCrates(dt)
 	}
 
 }
@@ -248,5 +249,50 @@ func SyncBrands(dt DevTool) error {
 	}
 
 	fmt.Println("Finish syncing brands")
+	return nil
+}
+
+func SyncMysteryCrates(dt DevTool) error {
+	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mystery_crates.csv", os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var MysteryCrates []types.MysteryCrate
+	for _, record := range records {
+		mysteryCrate := &types.MysteryCrate{
+			ID:               record[0],
+			MysteryCrateType: record[1],
+			Label:            record[9],
+		}
+
+		MysteryCrates = append(MysteryCrates, *mysteryCrate)
+	}
+
+	for _, mysteryCrate := range MysteryCrates {
+		_, err = dt.db.Exec(`UPDATE storefront_mystery_crates SET id=$1 WHERE label=$2 AND mystery_crate_type=$3 `, mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
+		if err != nil {
+			fmt.Println(err.Error()+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
+	}
+
+	fmt.Println("Finish syncing crates")
 	return nil
 }

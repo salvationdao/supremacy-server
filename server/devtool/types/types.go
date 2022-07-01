@@ -29,3 +29,9 @@ type MechSkin struct {
 	AvatarUrl        null.String `json:"avatar_url"`
 	MechType         string      `json:"mech_type"`
 }
+
+type MysteryCrate struct {
+	ID               string `json:"id"`
+	MysteryCrateType string `json:"mystery_crate_type"`
+	Label            string `json:"label"`
+}
