@@ -8,6 +8,8 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
@@ -487,7 +489,7 @@ func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 		return nil, err
 	}
 
-	player, err := db.GetPlayerWithFeature(userResp.ID)
+	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
 
 	features, err := db.GetPlayerFeatures(player.ID)
 	if err != nil {
