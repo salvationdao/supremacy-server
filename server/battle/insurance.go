@@ -54,7 +54,7 @@ func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
 		boiler.MechWhere.ID.IN(requireRepairedWarMachinIDs),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("battle id", btl.ID).Interface("mech id list", requireRepairedWarMachinIDs).Msg("Failed to get mechs from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("battle id", btl.ID).Interface("mech id list", requireRepairedWarMachinIDs).Msg("Failed to get mechs from db")
 		return
 	}
 
@@ -76,7 +76,7 @@ func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
 
 		err := ar.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("mech id", mech.ID).Err(err).Msg("Failed to insert asset repair")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", mech.ID).Err(err).Msg("Failed to insert asset repair")
 		}
 	}
 }
@@ -164,7 +164,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.P
 	// get syndicate account
 	factionAccountID, ok := server.FactionUsers[factionID]
 	if !ok {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Str("player id", playerID.String()).
 			Str("faction ID", factionID).
 			Err(fmt.Errorf("failed to get hard coded syndicate player id")).
@@ -183,7 +183,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.P
 		NotSafe:              true,
 	})
 	if err != nil {
-		gamelog.L.Error().Str("asset repair id", ar.ID).Err(err).Msg("Failed to pay asset repair fee")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", ar.ID).Err(err).Msg("Failed to pay asset repair fee")
 		return terror.Error(err, "Failed to pay asset repair fee")
 	}
 

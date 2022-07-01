@@ -134,7 +134,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
-		gamelog.L.Error().Err(err).Msg("unable to retrieve spoils of war")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
 
@@ -146,7 +146,7 @@ func (sow *SpoilsOfWar) Drip() error {
 			boiler.PlayerSpoilsOfWarWhere.BattleID.EQ(spoils.BattleID),
 		).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(err).
 				Str("spoils.BattleID", spoils.BattleID).
 				Msg("failed to get user spoils for battle")
@@ -171,7 +171,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		if userSpoils == nil || len(userSpoils) == 0 {
 			multipliers, err := multipliers.GetPlayersMultiplierSummaryForBattle(spoils.BattleNumber)
 			if err != nil {
-				gamelog.L.Error().
+				gamelog.L.Error().Str("log_name", "battle arena").
 					Err(err).
 					Int("spoils.BattleNumber", spoils.BattleNumber).
 					Msg("failed to get player multipliers for battle")
@@ -185,7 +185,7 @@ func (sow *SpoilsOfWar) Drip() error {
 				txr := fmt.Sprintf("spoils_of_war_leftovers|%s|%d", spoils.BattleID, time.Now().UnixNano())
 				txID, err := sendSups(SupremacyUserID, amountLeft.String(), txr)
 				if err != nil {
-					gamelog.L.Error().
+					gamelog.L.Error().Str("log_name", "battle arena").
 						Err(err).
 						Str("FromUserID", SupremacyBattleUserID.String()).
 						Str("ToUserID", SupremacyUserID.String()).
@@ -203,7 +203,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 			_, err = spoils.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().
+				gamelog.L.Error().Str("log_name", "battle arena").
 					Err(err).
 					Interface("battle spoils", spoils).
 					Msg("failed to update battle spoils")
@@ -233,7 +233,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		for _, user := range userSpoils {
 			_, err = user.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().
+				gamelog.L.Error().Str("log_name", "battle arena").
 					Err(err).
 					Interface("user spoils", user).
 					Msg("failed to update user spoils")
@@ -243,7 +243,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(err).
 				Interface("battle spoils", spoils).
 				Msg("failed to update battle spoils")
@@ -277,7 +277,7 @@ func flushOutOldSpoils(
 		userAmount := oneMultiWorth.Mul(multi.TotalMultiplier).RoundDown(0)
 		playerUUID, err := uuid.FromString(multi.PlayerID)
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(err).
 				Str("multi.PlayerID", multi.PlayerID).
 				Msg("failed to make uuid from string")
@@ -285,7 +285,7 @@ func flushOutOldSpoils(
 		}
 
 		if spoils.AmountSent.Add(userAmount).GreaterThan(spoils.Amount) {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(err).
 				Str("userAmount", userAmount.String()).
 				Str("spoils.AmountSent", spoils.AmountSent.String()).
@@ -296,7 +296,7 @@ func flushOutOldSpoils(
 
 		_, err = sendSups(playerUUID, userAmount.String(), fmt.Sprintf("spoils_of_war|%s|%d", multi.PlayerID, time.Now().UnixNano()))
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(err).
 				Str("playerUUID", playerUUID.String()).
 				Str("userAmount.", userAmount.String()).
@@ -324,7 +324,7 @@ func payoutUserSpoils(
 ) (*boiler.PlayerSpoilsOfWar, *boiler.SpoilsOfWar) {
 	userID, err := uuid.FromString(user.PlayerID)
 	if err != nil {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Err(err).
 			Str("user.PlayerID", user.PlayerID).
 			Msg("failed to create uuid from player id")
@@ -342,7 +342,7 @@ func payoutUserSpoils(
 		difference := user.TickAmount.Sub(warChestSpoilsLeft)
 		// if difference is > than 1000, throw an error since that is more than a rounding issue.
 		if difference.GreaterThan(decimal.NewFromInt(1000)) {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
 				Str("battle_id", spoils.BattleID).
 				Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
@@ -360,7 +360,7 @@ func payoutUserSpoils(
 		// so check if it's less than a 0.000000000000010000 sup difference and if so just pay them what is left
 		difference := user.TotalSow.Sub(user.PaidSow.Add(user.TickAmount))
 		if difference.GreaterThan(decimal.NewFromInt(1000)) {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Err(fmt.Errorf("user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow)")).
 				Str("battle_id", spoils.BattleID).
 				Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
@@ -377,7 +377,7 @@ func payoutUserSpoils(
 	txr := fmt.Sprintf("spoils_of_war|%s|%d", userID, time.Now().UnixNano())
 	txID, err := sendSups(userID, user.TickAmount.String(), txr)
 	if err != nil {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Err(err).
 			Str("FromUserID", SupremacyBattleUserID.String()).
 			Str("ToUserID", userID.String()).
@@ -405,7 +405,7 @@ func takeRemainingSpoils(
 	txr := fmt.Sprintf("spoils_of_war_leftovers|%s|%d", spoils.BattleID, time.Now().UnixNano())
 	txID, err := sendSups(SupremacyUserID, remainingSpoils.String(), txr)
 	if err != nil {
-		gamelog.L.Error().
+		gamelog.L.Error().Str("log_name", "battle arena").
 			Err(err).
 			Str("FromUserID", SupremacyBattleUserID.String()).
 			Str("ToUserID", SupremacyUserID.String()).
@@ -427,7 +427,7 @@ func takeRemainingSpoils(
 
 	// if lost spoils doesn't match remaining spoils, something is wrong!
 	if !remainingSpoils.Equal(totalLostSpoils) {
-		gamelog.L.Error().Err(fmt.Errorf("remainingSpoils not equal totalLostSpoils")).
+		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("remainingSpoils not equal totalLostSpoils")).
 			Str("remainingSpoils", remainingSpoils.String()).
 			Str("totalLostSpoils", totalLostSpoils.String()).
 			Str("spoils.BattleID", spoils.BattleID).
