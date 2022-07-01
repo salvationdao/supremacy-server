@@ -56,7 +56,7 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 	).One(gamedb.StdConn)
 
 	if err != nil {
-		gamelog.L.Error().Str("m,type", mtype).Err(err).Msgf("unable to retrieve multiplier from database")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("m,type", mtype).Err(err).Msgf("unable to retrieve multiplier from database")
 		return nil, false
 	}
 	return multiplier, true
@@ -167,12 +167,12 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 	citizenMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("citizen")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to get citizen from multipliers table")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to get citizen from multipliers table")
 	}
 
 	contributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("contributor")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to get contributor from multipliers table")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to get contributor from multipliers table")
 	}
 
 	totalLength := len(playerAmountList)
@@ -214,17 +214,17 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		qm.Load(boiler.BattleHistoryRels.WarMachineOne),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
 	}
 
 	repairContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("grease monkey")).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
 	}
 
 	repairTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("field mechanic")).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
 	}
 
 	if repairContributorMultiplier != nil && repairTriggerMultiplier != nil {
@@ -232,19 +232,19 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		for _, repairEvent := range repairEvents {
 			triggeredPlayer, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String)).One(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
 			}
 
 			ci, err := db.CollectionItemFromItemID(nil, repairEvent.R.WarMachineOne.ID)
 			if err != nil {
-				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
 			}
 
 			mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ci.OwnerID)).One(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to get mech owner contributors")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech owner contributors")
 				continue
 			}
 
@@ -294,28 +294,28 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		qm.OrderBy(boiler.BattleHistoryColumns.RelatedID),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("event type", boiler.BattleEventKilled).Str("btlEndInfo.BattleID", btlEndInfo.BattleID).Err(err).Msg("Failed to get airstrike events")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("event type", boiler.BattleEventKilled).Str("btlEndInfo.BattleID", btlEndInfo.BattleID).Err(err).Msg("Failed to get airstrike events")
 
 	}
 
 	airstrikeContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("air support")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get airstrike contributor from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get airstrike contributor from db")
 	}
 
 	airstrikeTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("air marshal")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get airstrike trigger from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get airstrike trigger from db")
 	}
 
 	nukeContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("now i am become death")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get nuke contributor from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get nuke contributor from db")
 	}
 
 	nukeTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("destroyer of worlds")).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get nuke trigger from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get nuke trigger from db")
 	}
 
 	if airstrikeContributorMultiplier != nil && airstrikeTriggerMultiplier != nil && nukeContributorMultiplier != nil && nukeTriggerMultiplier != nil {
@@ -333,19 +333,19 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 			triggeredPlayer, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String)).One(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
 			}
 			for _, sameKilledEvent := range sameKilledEvents {
 				ci, err := db.CollectionItemFromItemID(nil, sameKilledEvent.R.WarMachineOne.ID)
 				if err != nil {
-					gamelog.L.Error().Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
 					continue
 				}
 
 				mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ci.OwnerID)).One(gamedb.StdConn)
 				if err != nil {
-					gamelog.L.Error().Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
 					continue
 				}
 
@@ -376,7 +376,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				}
 
 				if err != nil {
-					gamelog.L.Error().Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
 					continue
 				}
 
@@ -445,7 +445,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("ability_offering_id", abilityID).Err(err).Msg("unable to retrieve trigger event for ability contribution")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("ability_offering_id", abilityID).Err(err).Msg("unable to retrieve trigger event for ability contribution")
 				continue
 			}
 			if abilityTrigger.FactionID != factions[topPlayerID] {
@@ -454,7 +454,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				}
 				m, ok := ms.getMultiplier("most_sups_lost", "", 0)
 				if !ok {
-					gamelog.L.Error().Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
 					continue
 				}
 				if _, ok := newMultipliers[topPlayerID]; !ok {
@@ -471,7 +471,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		qm.Limit(1),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to retrieve last win")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to retrieve last win")
 	}
 
 	lastWins := []struct {
@@ -488,7 +488,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		qm.Limit(3),
 	).Bind(context.Background(), gamedb.StdConn, &lastWins)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to retrieve last wins")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to retrieve last wins")
 	}
 	// set syndicate win
 
@@ -527,7 +527,7 @@ winwar:
 
 		m1, ok := ms.getMultiplier("player_mech", "", 1)
 		if !ok {
-			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
 			continue
 		}
 		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
@@ -537,7 +537,7 @@ winwar:
 
 		if hatTrick {
 			if len(lastWins) < 3 {
-				gamelog.L.Error().Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
+				gamelog.L.Error().Str("log_name", "battle arena").Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
 				continue winwar
 			}
 			foundTimes := 0
@@ -556,7 +556,7 @@ winwar:
 
 		m3, ok := ms.getMultiplier("player_mech", "", 3)
 		if !ok {
-			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x3' from multipliers. maybe this code needs to be removed?")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x3' from multipliers. maybe this code needs to be removed?")
 			continue
 		}
 
@@ -580,7 +580,7 @@ winwar:
 				}
 				err := mlt.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
 					continue
 				}
 			}

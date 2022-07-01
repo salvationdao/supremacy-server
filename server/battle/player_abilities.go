@@ -215,7 +215,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	}
 
 	if pa.Count < 1 {
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("player ability count is 0, cannot be used")
 		return terror.Error(err, "You do not have any more of this ability to use.")
 	}
 
@@ -238,11 +238,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	switch req.Payload.LocationSelectType {
 	case boiler.LocationSelectTypeEnumLINE_SELECT:
 		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -258,7 +258,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	case boiler.LocationSelectTypeEnumMECH_SELECT:
 		if req.Payload.MechHash == "" {
-			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -272,11 +272,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		}
 	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -301,7 +301,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 	defer tx.Rollback()
@@ -322,7 +322,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	}
 	err = ca.Insert(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("consumedAbility", ca).Msg("failed to created consumed ability entry")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("consumedAbility", ca).Msg("failed to created consumed ability entry")
 		return err
 	}
 
@@ -330,7 +330,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	pa.Count = pa.Count - 1
 	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
 	}
 
@@ -339,7 +339,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	if isIncognito {
 		wm, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(req.Payload.MechHash)).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("failed to execute INCOGNITO ability: could not get war machine from hash %s", req.Payload.MechHash)
 			return terror.Error(err, "Failed to get war machine from hash")
 		}
 
@@ -347,14 +347,14 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 		err = arena.CurrentBattle().playerAbilityManager().AddHiddenWarMachineHash(wm.Hash, time.Second*time.Duration(incognitoDurationSeconds))
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to execute Incognito player ability")
 			return err
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to commit transaction")
 		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
 	}
 	reply(true)
@@ -366,7 +366,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
@@ -419,7 +419,7 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get mech command logs from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech command logs from db")
 		return terror.Error(err, "Failed to get mech command logs")
 	}
 
@@ -458,7 +458,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
 		return terror.Error(err, "Failed to get mech move command.")
 	}
 
@@ -554,7 +554,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get mech move command from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech move command from db")
 		return terror.Error(err, "Failed to trigger mech move command")
 	}
 
@@ -603,7 +603,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: time.Now()})
 	if err != nil {
-		gamelog.L.Error().Str("mech id", wm.ID).Str("battle id", arena.CurrentBattle().ID).Err(err).Msg("Failed to cancel unfinished mech move command in db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Str("battle id", arena.CurrentBattle().ID).Err(err).Msg("Failed to cancel unfinished mech move command in db")
 		return terror.Error(err, "Failed to update mech move command.")
 	}
 
@@ -620,7 +620,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	err = mmc.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to insert mech move command")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to insert mech move command")
 		return terror.Error(err, "Failed to trigger mech move command.")
 	}
 
@@ -631,7 +631,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 	arena.BroadcastMechCommandNotification(&MechCommandNotification{
@@ -706,7 +706,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 		qm.Load(boiler.MechMoveCommandLogRels.Mech),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("mech move command id", req.Payload.MoveCommandID).Err(err).Msg("Failed to get mech move command from db")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech move command id", req.Payload.MoveCommandID).Err(err).Msg("Failed to get mech move command from db")
 		return terror.Error(err, "Failed to cancel mech move command.")
 	}
 
@@ -728,7 +728,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	mmc.CancelledAt = null.TimeFrom(time.Now())
 	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.CancelledAt))
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech move command id", mmc.ID).Msg("Failed to up date mech move command in db")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech move command id", mmc.ID).Msg("Failed to up date mech move command in db")
 		return terror.Error(err, "Failed to cancel mech move command")
 	}
 
@@ -747,7 +747,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 	arena.BroadcastMechCommandNotification(&MechCommandNotification{

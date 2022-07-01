@@ -9,9 +9,13 @@ import (
 
 func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	ql := float64(length + 1)
+	queueAddage := db.GetIntWithDefault(db.QueueLengthAdd, 100)
+	ql = ql + float64(queueAddage)
+
 	queueLength := decimal.NewFromFloat(ql)
 
-	// min cost will be one forth of the queue length
+	// min cost will be one forth of the queue length or the floor
+
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
 	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))

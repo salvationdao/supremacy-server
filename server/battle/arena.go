@@ -251,7 +251,7 @@ func NewArena(opts *Opts) *Arena {
 	var err error
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
-		gamelog.L.Fatal().Err(err).Msg("no faction users found")
+		gamelog.L.Fatal().Str("log_name", "battle arena").Err(err).Msg("no faction users found")
 	}
 
 	if arena.timeout == 0 {
@@ -273,14 +273,14 @@ func NewArena(opts *Opts) *Arena {
 func (arena *Arena) Serve() {
 	l, err := net.Listen("tcp", arena.opts.Addr)
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", arena.opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+		gamelog.L.Fatal().Str("log_name", "battle arena").Str("Addr", arena.opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
 	}
 	go func() {
 		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", arena.opts.Addr)
 
 		err := arena.server.Serve(l)
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", arena.opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+			gamelog.L.Fatal().Str("log_name", "battle arena").Str("Addr", arena.opts.Addr).Err(err).Msg("unable to start Battle Arena server")
 		}
 	}()
 }
@@ -305,14 +305,15 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		Command string      `json:"battleCommand"`
 		Payload interface{} `json:"payload"`
 	}{Payload: payload, Command: cmd})
-
 	if err != nil {
-		gamelog.L.Fatal().Interface("payload", payload).Err(err).Msg("unable to marshal data for battle arena")
+		gamelog.L.Fatal().Str("log_name", "battle arena").Interface("payload", payload).Err(err).Msg("unable to marshal data for battle arena")
 	}
-
-	gamelog.L.Debug().Str("message data", string(b)).Msg("sending packet to game client")
-
-	arena.socket.Write(ctx, websocket.MessageBinary, b)
+	err = arena.socket.Write(ctx, websocket.MessageBinary, b)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", payload).Err(err).Msg("failed to write websocket message to game client")
+		return
+	}
+	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
 }
 
 func (btl *Battle) QueueDefaultMechs() error {
@@ -332,13 +333,13 @@ func (btl *Battle) QueueDefaultMechs() error {
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
 		if err != nil {
-			gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
 			return err
 		}
 
 		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("mech_id", mech.ID).Err(err).Msg("check mech exists in queue")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mech.ID).Err(err).Msg("check mech exists in queue")
 			return terror.Error(err, "Failed to check whether mech is in the battle queue")
 		}
 
@@ -348,7 +349,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		result, err := db.QueueLength(uuid.FromStringOrNil(mech.FactionID.String))
 		if err != nil {
-			gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to retrieve queue length")
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", mech.FactionID).Err(err).Msg("unable to retrieve queue length")
 			return err
 		}
 
@@ -356,7 +357,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		tx, err := gamedb.StdConn.Begin()
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("unable to begin tx")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
 			return fmt.Errorf(terror.Echo(err))
 		}
 
@@ -371,7 +372,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 		}
 		err = bc.Insert(tx, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Interface("mech", mech).
 				Str("contractReward", queueStatus.ContractReward.String()).
 				Str("queueFee", queueStatus.QueueCost.String()).
@@ -389,7 +390,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		err = bq.Insert(tx, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Interface("mech", mech).
 				Err(err).Msg("unable to insert mech into queue")
 			return terror.Error(err, "Unable to join queue, contact support or try again.")
@@ -397,7 +398,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		err = tx.Commit()
 		if err != nil {
-			gamelog.L.Error().
+			gamelog.L.Error().Str("log_name", "battle arena").
 				Interface("mech", mech).
 				Err(err).Msg("unable to commit mech insertion into queue")
 			return terror.Error(err, "Unable to join queue, contact support or try again.")
@@ -431,7 +432,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if c != nil {
 			arena.connected.Store(false)
-			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
 
 			btl := arena.CurrentBattle()
@@ -468,13 +469,13 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	req := &BribeGabRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		gamelog.L.Error().Str("json", string(payload)).Msg("json unmarshal failed")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("json", string(payload)).Msg("json unmarshal failed")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	// check percentage amount is valid
 	if _, ok := MinVotePercentageCost[req.Payload.Percentage.String()]; !ok {
-		gamelog.L.Error().Interface("payload", req).
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", req).
 			Str("userID", user.ID).
 			Str("percentage", req.Payload.Percentage.String()).
 			Msg("invalid vote percentage amount received")
@@ -497,7 +498,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 		),
 	).Exists(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
 		return terror.Error(err, "Failed to check player")
 	}
 
@@ -508,7 +509,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 
 	userID := uuid.FromStringOrNil(user.ID)
 	if userID.IsNil() {
-		gamelog.L.Error().Str("user id is nil", user.ID).Msg("cant make users")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("user id is nil", user.ID).Msg("cant make users")
 		return terror.Error(terror.ErrForbidden)
 	}
 
@@ -553,7 +554,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 	}
 
 	if arena.CurrentBattle().abilities() == nil {
-		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
 
@@ -649,7 +650,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	}
 
 	if arena == nil || arena.CurrentBattle() == nil {
-		gamelog.L.Error().Bool("arena", arena == nil).
+		gamelog.L.Error().Str("log_name", "battle arena").Bool("arena", arena == nil).
 			Str("factionID", factionID).
 			Bool("current_battle", arena.CurrentBattle() == nil).
 			Str("userID", user.ID).Msg("unable to find player from user id")
@@ -659,14 +660,14 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		gamelog.L.Error().Interface("payload", req).
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", req).
 			Str("userID", user.ID).Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	// check percentage amount is valid
 	if _, ok := MinVotePercentageCost[req.Payload.Percentage.String()]; !ok {
-		gamelog.L.Error().Interface("payload", req).
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", req).
 			Str("userID", user.ID).
 			Str("percentage", req.Payload.Percentage.String()).
 			Msg("invalid vote percentage amount received")
@@ -689,7 +690,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 		),
 	).Exists(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
 		return terror.Error(err, "Failed to check player")
 	}
 
@@ -700,7 +701,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 
 	userID := uuid.FromStringOrNil(user.ID)
 	if userID.IsNil() {
-		gamelog.L.Error().Str("percentage", req.Payload.Percentage.String()).
+		gamelog.L.Error().Str("log_name", "battle arena").Str("percentage", req.Payload.Percentage.String()).
 			Str("userID", user.ID).Msg("unable to contribute forbidden")
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -834,7 +835,7 @@ const HubKeySpoilOfWarUpdated = "SPOIL:OF:WAR:UPDATED"
 func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {
-		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get last two spoil of war amount")
 		return nil
 	}
 
@@ -945,7 +946,7 @@ func (arena *Arena) start() {
 	for {
 		_, payload, err := arena.socket.Read(ctx)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("empty game client disconnected")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("empty game client disconnected")
 			break
 		}
 		btl := arena.CurrentBattle()
@@ -969,7 +970,7 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message")
+			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message received")
 
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
@@ -1000,7 +1001,7 @@ func (arena *Arena) start() {
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
 
@@ -1043,7 +1044,7 @@ func (arena *Arena) start() {
 				}
 				err = btl.AISpawned(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Err(err)
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
 
 			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
@@ -1054,7 +1055,7 @@ func (arena *Arena) start() {
 				}
 				err = btl.UpdateWarMachineMoveCommand(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Err(err)
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
 
 			default:
@@ -1076,7 +1077,7 @@ func (arena *Arena) beginBattle() {
 		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
 	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: null.TimeFrom(time.Now())})
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to clean up unfinished mech move command")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
 	gm, err := db.GameMapGetRandom(false)
@@ -1103,7 +1104,7 @@ func (arena *Arena) beginBattle() {
 		),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("not able to load previous battle")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
 	}
 
 	// if last battle is ended or does not exist, create a new battle
@@ -1259,7 +1260,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 
 	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to broadcast faction mech commands")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 	btl.arena.BroadcastMechCommandNotification(&MechCommandNotification{
