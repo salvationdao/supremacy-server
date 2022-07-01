@@ -38,7 +38,6 @@ func (b *Player) Scan(value interface{}) error {
 }
 
 func PlayerFromBoiler(player *boiler.Player, features boiler.FeatureSlice) (*Player, error) {
-
 	serverFeatures := FeaturesFromBoiler(features)
 
 	serverPlayer := &Player{

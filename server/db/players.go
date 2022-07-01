@@ -63,19 +63,6 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
-func GetBoilerPlayerWithFeaturesRels(playerID string) (*boiler.Player, error) {
-	player, err := boiler.Players(
-		boiler.PlayerWhere.ID.EQ(playerID),
-		qm.Load(boiler.PlayerRels.PlayersFeatures),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to find player")
-		return nil, err
-	}
-
-	return player, nil
-}
-
 //GetPlayerFeatures finds all Features for a player
 func GetPlayerFeatures(playerID string) (boiler.FeatureSlice, error) {
 	features, err := boiler.Features(

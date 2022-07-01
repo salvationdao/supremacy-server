@@ -1,5 +1,5 @@
 DROP TYPE IF EXISTS FEATURE_TYPE;
-CREATE TYPE FEATURE_TYPE AS ENUM ('foo', 'bar');
+CREATE TYPE FEATURE_TYPE AS ENUM ('MECH_MOVE', 'PLAYER_ABILITY');
 CREATE TABLE features
 (
     id         UUID PRIMARY KEY             DEFAULT gen_random_uuid(),
@@ -20,4 +20,6 @@ CREATE TABLE players_features
 );
 
 INSERT INTO features (type)
-VALUES ('foo');
+VALUES ('MECH_MOVE');
+INSERT INTO features (type)
+VALUES ('PLAYER_ABILITY');

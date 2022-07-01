@@ -162,8 +162,8 @@ const (
 
 // Enum values for FeatureType
 const (
-	FeatureTypeFoo = "foo"
-	FeatureTypeBar = "bar"
+	FeatureTypeMECH_MOVE      = "MECH_MOVE"
+	FeatureTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
 // Enum values for AbilityLevel
