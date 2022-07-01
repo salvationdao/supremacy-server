@@ -40,8 +40,9 @@ type SaleAbilityAmountResponse struct {
 
 // Used for sale abilities
 type SalePlayerAbilitiesSystem struct {
-	// player abilities
+	// sale player abilities
 	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
+	userPurchaseLimits  map[uuid.UUID]map[uuid.UUID]int         // map[player_id]map[sale_ability_id]current purchase count
 
 	// ability purchase
 	Purchase chan *Purchase
@@ -63,6 +64,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities: salePlayerAbilities,
+		userPurchaseLimits:  make(map[uuid.UUID]map[uuid.UUID]int{}),
 		Purchase:            make(chan *Purchase),
 		closed:              atomic.NewBool(false),
 	}
@@ -70,6 +72,16 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	go pas.SalePlayerAbilitiesUpdater()
 
 	return pas
+}
+
+func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, saleAbilityID uuid.UUID) error {
+	pas.Lock()
+	defer pas.Unlock()
+
+	abilitiesMap, ok := pas.userPurchaseLimits[userID]
+	if !ok {
+		// pas.userPurchaseLimits[saleAbilityID] = [saleAbilsaleAbilityID]
+	}
 }
 
 func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
