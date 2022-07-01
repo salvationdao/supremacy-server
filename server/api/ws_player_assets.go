@@ -45,6 +45,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
+	api.SecureUserFactionCommand(HubKeyPlayerAssetWeaponDetail, pac.PlayerAssetWeaponDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
@@ -250,6 +251,48 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+type PlayerAssetWeaponDetailRequest struct {
+	Payload struct {
+		WeaponID string `json:"mech_id"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerAssetWeaponDetail = "PLAYER:ASSET:WEAPON:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponDetailRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find weapon from the collection")
+	}
+
+	// get weapon
+	weapon, err := db.Weapon(nil, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find weapon from db")
+	}
+
+	reply(weapon)
 	return nil
 }
 
