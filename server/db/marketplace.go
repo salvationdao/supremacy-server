@@ -137,8 +137,8 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		fmt.Sprintf(
 			"%s ON %s = %s",
 			boiler.TableNames.WeaponSkin,
-			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.EquippedOn),
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
 		),
 	),
 	qm.LeftOuterJoin(
