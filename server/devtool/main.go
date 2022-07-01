@@ -56,6 +56,8 @@ func main() {
 		SyncMechSkins(dt)
 		SyncBrands(dt)
 		SyncMysteryCrates(dt)
+		SyncWeaponModel(dt)
+		SyncWeaponSkins(dt)
 	}
 
 }
@@ -95,11 +97,25 @@ func RemoveFKContraints(dt DevTool) error {
 
 			ALTER TABLE mech_skin DROP CONSTRAINT chassis_skin_blueprint_id_fkey;
 			ALTER TABLE mech_skin ADD CONSTRAINT chassis_skin_blueprint_id_fkey FOREIGN KEY (blueprint_id) REFERENCES blueprint_mech_skin(id) ON UPDATE CASCADE;
+
+			ALTER TABLE blueprint_weapon_skin DROP CONSTRAINT blueprint_weapon_skin_weapon_model_id_fkey;
+			ALTER TABLE blueprint_weapon_skin ADD CONSTRAINT blueprint_weapon_skin_weapon_model_id_fkey FOREIGN KEY (weapon_model_id) REFERENCES weapon_models(id) ON UPDATE CASCADE;
+
+			ALTER TABLE blueprint_weapons DROP CONSTRAINT blueprint_weapons_weapon_model_id_fkey;
+			ALTER TABLE blueprint_weapons ADD CONSTRAINT  blueprint_weapons_weapon_model_id_fkey FOREIGN KEY (weapon_model_id) REFERENCES weapon_models(id) ON UPDATE CASCADE;
+
+			ALTER TABLE weapons DROP CONSTRAINT fk_weapon_models;
+			ALTER TABLE weapons ADD CONSTRAINT fk_weapon_models FOREIGN KEY (weapon_model_id) REFERENCES weapon_models(id) ON UPDATE CASCADE;
+
+			ALTER TABLE weapon_models DROP CONSTRAINT fk_weapon_model_default_skin;
+			ALTER TABLE weapon_models ADD CONSTRAINT fk_weapon_model_default_skin FOREIGN KEY (default_skin_id) REFERENCES blueprint_weapon_skin(id) ON UPDATE CASCADE;
 			`,
 	)
 	if err != nil {
 		fmt.Println("ERROR " + err.Error())
 	}
+
+	fmt.Println("Finished removing constraints")
 
 	return nil
 }
@@ -294,5 +310,97 @@ func SyncMysteryCrates(dt DevTool) error {
 	}
 
 	fmt.Println("Finish syncing crates")
+	return nil
+}
+
+func SyncWeaponModel(dt DevTool) error {
+	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_models.csv", os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var WeaponModels []types.WeaponModel
+	for _, record := range records {
+		weaponModel := &types.WeaponModel{
+			ID:         record[0],
+			Label:      record[2],
+			WeaponType: record[3],
+		}
+
+		WeaponModels = append(WeaponModels, *weaponModel)
+	}
+
+	for _, weaponModel := range WeaponModels {
+		_, err = dt.db.Exec(`UPDATE weapon_models SET id=$1 WHERE label=$2 AND weapon_type=$3 `, weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
+		if err != nil {
+			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
+	}
+
+	fmt.Println("Finish syncing weapon models")
+	return nil
+}
+
+func SyncWeaponSkins(dt DevTool) error {
+	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_skins.csv", os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var WeaponSkins []types.WeaponSkin
+	for _, record := range records {
+		weaponSkin := &types.WeaponSkin{
+			ID:            record[0],
+			Label:         record[1],
+			WeaponType:    record[2],
+			Tier:          record[3],
+			WeaponModelID: record[13],
+		}
+
+		WeaponSkins = append(WeaponSkins, *weaponSkin)
+	}
+
+	for _, weaponSkin := range WeaponSkins {
+		_, err = dt.db.Exec(`UPDATE blueprint_weapon_skin SET id=$1 WHERE label=$2 AND weapon_type=$3 AND tier=$4 AND weapon_model_id=$5 `, weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
+		if err != nil {
+			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
+	}
+
+	fmt.Println("Finish syncing weapon skins")
 	return nil
 }

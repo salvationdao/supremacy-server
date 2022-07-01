@@ -35,3 +35,17 @@ type MysteryCrate struct {
 	MysteryCrateType string `json:"mystery_crate_type"`
 	Label            string `json:"label"`
 }
+
+type WeaponModel struct {
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	WeaponType string `json:"weapon_type"`
+}
+
+type WeaponSkin struct {
+	ID            string `json:"id"`
+	Label         string `json:"label"`
+	WeaponType    string `json:"weapon_typep"`
+	Tier          string `json:"tier"`
+	WeaponModelID string `json:"weapon_model_id"`
+}
