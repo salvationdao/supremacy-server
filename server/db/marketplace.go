@@ -120,6 +120,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 		),
+		boiler.ItemTypeWeapon,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -147,7 +148,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
-			"%s ON %s = COALECE(%s, %s)",
+			"%s ON %s = COALESCE(%s, %s)",
 			boiler.TableNames.BlueprintWeaponSkin,
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
