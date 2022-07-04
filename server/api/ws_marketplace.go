@@ -1275,6 +1275,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// TODO: Have weapons on Xsyn, it seems to not exist
+
 	err = mp.API.Passport.TransferAsset(
 		saleItem.OwnerID,
 		userID.String(),
