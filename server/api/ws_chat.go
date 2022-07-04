@@ -62,6 +62,7 @@ type MessageText struct {
 	Lang            string           `json:"lang"`
 	TotalMultiplier string           `json:"total_multiplier"`
 	IsCitizen       bool             `json:"is_citizen"`
+	BattleNumber    int              `json:"battle_number"`
 }
 
 type MessagePunishVote struct {
@@ -187,6 +188,7 @@ func NewChatroom(factionID string) *Chatroom {
 				FromUserStat:    stat,
 				TotalMultiplier: msg.TotalMultiplier,
 				IsCitizen:       msg.IsCitizen,
+				BattleNumber:    msg.BattleNumber.Int,
 			},
 		}
 	}
@@ -228,6 +230,7 @@ type FactionChatRequest struct {
 		FactionID    server.FactionID `json:"faction_id"`
 		MessageColor string           `json:"message_color"`
 		Message      string           `json:"message"`
+		BattleNumber int              `json:"battle_number"`
 	} `json:"payload"`
 }
 
@@ -359,7 +362,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	battleNum := 0
+	lastBattleNum := 0
 	lastBattle, err := boiler.Battles(
 		qm.Select(boiler.BattleColumns.BattleNumber),
 		qm.OrderBy(fmt.Sprintf("%s %s", boiler.BattleColumns.BattleNumber, "DESC")),
@@ -369,10 +372,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	if lastBattle != nil {
-		battleNum = lastBattle.BattleNumber
+		lastBattleNum = lastBattle.BattleNumber
 	}
 
-	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, battleNum)
+	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, lastBattleNum)
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -395,6 +398,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 				IsCitizen:       isCitizen,
 				Lang:            language,
+				BattleNumber:    req.Payload.BattleNumber,
 			},
 		}
 
@@ -411,6 +415,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			ChatStream:      player.FactionID.String,
 			IsCitizen:       isCitizen,
 			Lang:            language,
+			BattleNumber:    null.IntFrom(req.Payload.BattleNumber),
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -440,6 +445,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 			IsCitizen:       isCitizen,
 			Lang:            language,
+			BattleNumber:    req.Payload.BattleNumber,
 		},
 	}
 
@@ -456,6 +462,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		ChatStream:      "global",
 		IsCitizen:       isCitizen,
 		Lang:            language,
+		BattleNumber:    null.IntFrom(req.Payload.BattleNumber),
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -467,6 +474,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
 	reply(true)
 
+	fmt.Println(chatMessage.Data)
 	return nil
 }
 
