@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -31,6 +32,7 @@ type BlueprintPlayerAbility struct {
 	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	RarityWeight        null.Int  `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight,omitempty" toml:"rarity_weight" yaml:"rarity_weight,omitempty"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,6 +48,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	TextColour          string
 	LocationSelectType  string
 	CreatedAt           string
+	RarityWeight        string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -56,6 +59,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	TextColour:          "text_colour",
 	LocationSelectType:  "location_select_type",
 	CreatedAt:           "created_at",
+	RarityWeight:        "rarity_weight",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -68,6 +72,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	TextColour          string
 	LocationSelectType  string
 	CreatedAt           string
+	RarityWeight        string
 }{
 	ID:                  "blueprint_player_abilities.id",
 	GameClientAbilityID: "blueprint_player_abilities.game_client_ability_id",
@@ -78,6 +83,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	TextColour:          "blueprint_player_abilities.text_colour",
 	LocationSelectType:  "blueprint_player_abilities.location_select_type",
 	CreatedAt:           "blueprint_player_abilities.created_at",
+	RarityWeight:        "blueprint_player_abilities.rarity_weight",
 }
 
 // Generated where
@@ -92,6 +98,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	TextColour          whereHelperstring
 	LocationSelectType  whereHelperstring
 	CreatedAt           whereHelpertime_Time
+	RarityWeight        whereHelpernull_Int
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -102,6 +109,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	TextColour:          whereHelperstring{field: "\"blueprint_player_abilities\".\"text_colour\""},
 	LocationSelectType:  whereHelperstring{field: "\"blueprint_player_abilities\".\"location_select_type\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
+	RarityWeight:        whereHelpernull_Int{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -131,9 +139,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )
