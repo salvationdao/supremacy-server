@@ -12,7 +12,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/xsyn_rpcclient"
 	"sync"
 	"time"
 
@@ -22,7 +21,6 @@ import (
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -474,20 +472,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
 	}
 
-	txid, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(user.ID),
-		ToUserID:             SupremacyBattleUserID,
-		Amount:               decimal.New(10, 18).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("mech_move_command|%s|%d", wm.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupBattle),
-		SubGroup:             arena.CurrentBattle().ID,
-		Description:          "mech move command: " + wm.ID,
-		NotSafe:              true,
-	})
-	if err != nil {
-		return terror.Error(err, err.Error())
-	}
-
 	now := time.Now()
 
 	event := &server.GameAbilityEvent{
@@ -526,7 +510,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		CellX:         req.Payload.StartCoords.X,
 		CellY:         req.Payload.StartCoords.Y,
 		BattleID:      arena.CurrentBattle().ID,
-		TXID:          txid,
 		CreatedAt:     now,
 	}
 
