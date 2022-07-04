@@ -15,11 +15,13 @@ import (
 )
 
 const SaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
+const SaleAbilitySalePeriodTickerIntervalSeconds KVKey = "sale_ability_sale_ticker_interval_seconds"
 const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const SaleAbilityLimit KVKey = "sale_ability_limit"
 const SaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
+const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
 const QueueLengthAdd KVKey = "queue_length_add"
 
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
