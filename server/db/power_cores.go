@@ -22,6 +22,7 @@ func InsertNewPowerCore(trx boil.Executor, ownerID uuid.UUID, ec *server.Bluepri
 	}
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
+		BlueprintID:           null.StringFrom(ec.ID),
 		Label:                 ec.Label,
 		Size:                  ec.Size,
 		Capacity:              ec.Capacity,
