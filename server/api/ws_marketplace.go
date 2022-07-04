@@ -419,7 +419,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check if allowed to sell item
-	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
+	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate && req.Payload.ItemType != boiler.ItemTypeWeapon {
 		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
 	}
 
