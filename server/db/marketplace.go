@@ -62,7 +62,12 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		weapons.id AS "weapons.id",
 		weapons.label AS "weapons.label",
 		blueprint_weapon_skin.avatar_url AS "weapons.avatar_url",
-		collection_items.tier AS "collection_items.tier",
+		(
+			CASE
+				WHEN collection_items.item_type = 'weapon' THEN COALESCE(wsc.tier, collection_items.tier)
+				ELSE collection_items.tier
+			END
+		) AS "collection_items.tier",
 		collection_items.image_url AS "collection_items.image_url",
 		collection_items.card_animation_url AS "collection_items.card_animation_url",
 		collection_items.avatar_url AS "collection_items.avatar_url",
@@ -143,11 +148,13 @@ var ItemSaleQueryMods = []qm.QueryMod{
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.BlueprintWeapons,
-			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+			"%s wsc ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels("wsc", boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+			qm.Rels("wsc", boiler.CollectionItemColumns.ItemType),
 		),
+		boiler.ItemTypeWeaponSkin,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
