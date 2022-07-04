@@ -246,3 +246,175 @@ func CheckWeaponAttached(weaponID string) (bool, error) {
 	}
 	return exists, nil
 }
+
+func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
+	var weapons []*server.Weapon
+
+	var queryMods []qm.QueryMod
+
+	// create the where owner id = clause
+	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+		Table:    boiler.TableNames.CollectionItems,
+		Column:   boiler.CollectionItemColumns.OwnerID,
+		Operator: OperatorValueTypeEquals,
+		Value:    opts.OwnerID,
+	}, 0, ""),
+		GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.ItemType,
+			Operator: OperatorValueTypeEquals,
+			Value:    boiler.ItemTypeWeapon,
+		}, 0, "and"),
+	)
+
+	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.MarketLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if !opts.IncludeMarketListed {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+
+		}
+	}
+
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+	}
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					boiler.TableNames.Weapons,
+					boiler.WeaponColumns.Label,
+				),
+					xSearch,
+				))
+		}
+	}
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+	)
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		wp := &server.Weapon{
+			CollectionItem: &server.CollectionItem{},
+		}
+
+		scanArgs := []interface{}{
+			&wp.CollectionItem.CollectionSlug,
+			&wp.CollectionItem.Hash,
+			&wp.CollectionItem.TokenID,
+			&wp.CollectionItem.OwnerID,
+			&wp.CollectionItem.Tier,
+			&wp.CollectionItem.ItemType,
+			&wp.CollectionItem.MarketLocked,
+			&wp.CollectionItem.XsynLocked,
+			&wp.CollectionItem.LockedToMarketplace,
+			&wp.ID,
+			&wp.Label,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, weapons, err
+		}
+		weapons = append(weapons, wp)
+	}
+
+	return total, weapons, nil
+}
+
+// PlayerWeaponsList returns a list of tallied player weapons, ordered by last purchased date from the weapons table.
+// It excludes player abilities with a count of 0
+func PlayerWeaponsList(
+	userID string,
+) ([]*boiler.Weapon, error) {
+
+	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+
+	for _, i := range items {
+		ids = append(ids, i.ItemID)
+	}
+
+	// get weapons
+	weapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(ids)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return weapons, nil
+}
