@@ -49,6 +49,21 @@ SET
 WHERE
     game_client_ability_id IN (10, 12, 13, 14, 15, 16);
 
+-- Update rarity of Landmine player ability
+UPDATE
+    blueprint_player_abilities
+SET
+    rarity_weight = 10
+WHERE
+    game_client_ability_id IN (11);
+
+UPDATE
+    consumed_abilities
+SET
+    rarity_weight = 10
+WHERE
+    game_client_ability_id IN (11);
+
 -- Add nuke and airstrike as player abilities
 INSERT INTO
     blueprint_player_abilities (
@@ -58,7 +73,8 @@ INSERT INTO
         image_url,
         description,
         text_colour,
-        location_select_type
+        location_select_type,
+        rarity_weight
     )
 VALUES
     (
@@ -68,7 +84,8 @@ VALUES
         'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-nuke.jpg',
         '#FFFFFF',
         'The show-stopper. A tactical nuke at your fingertips.',
-        'LOCATION_SELECT'
+        'LOCATION_SELECT',
+        5
     ),
     (
         0,
@@ -77,38 +94,28 @@ VALUES
         'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-airstrike.jpg',
         '#FFFFFF',
         'Rain fury on the arena with a targeted airstrike.',
-        'LOCATION_SELECT'
+        'LOCATION_SELECT',
+        10
     );
 
--- Update rarities of Airstrike and Landmine player abilities
-UPDATE
-    blueprint_player_abilities
-SET
-    rarity_weight = 10
-WHERE
-    game_client_ability_id IN (0, 11);
-
-UPDATE
-    consumed_abilities
-SET
-    rarity_weight = 30
-WHERE
-    game_client_ability_id IN (0, 11);
-
--- Update rarity of Nuke ability
-UPDATE
-    blueprint_player_abilities
-SET
-    rarity_weight = 5
-WHERE
-    game_client_ability_id IN (1);
-
-UPDATE
-    consumed_abilities
-SET
-    rarity_weight = 5
-WHERE
-    game_client_ability_id IN (1);
+-- Add nuke and airstrike as sale player abilities
+INSERT INTO
+    sale_player_abilities (
+        blueprint_id,
+        current_price,
+        available_until
+    )
+VALUES
+    (
+        (SELECT id from blueprint_player_abilities WHERE game_client_ability_id = 1),
+        100000000000000000000,
+        now()
+    ),
+    (
+        (SELECT id from blueprint_player_abilities WHERE game_client_ability_id = 0),
+        100000000000000000000,
+        now()
+    );
 
 -- Update all sale abilities rarity weights
 UPDATE
