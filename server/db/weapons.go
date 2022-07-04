@@ -378,7 +378,7 @@ func PlayerWeaponsList(
 	userID string,
 ) ([]*boiler.Weapon, error) {
 
-	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ("weapon")).All(gamedb.StdConn)
+	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

@@ -270,6 +270,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	}
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
 		qm.InnerJoin(
 			fmt.Sprintf(
