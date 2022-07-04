@@ -109,7 +109,7 @@ func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
 	pas.userPurchaseLimits = make(map[uuid.UUID]map[string]int)
 
 	// Update sale period
-	pas.nextSalePeriod = time.Now().Add(time.Duration(pas.SalePeriodTickerIntervalSeconds))
+	pas.nextSalePeriod = time.Now().Add(time.Duration(pas.SalePeriodTickerIntervalSeconds) * time.Second)
 }
 
 func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, saleAbilityID string) error {
