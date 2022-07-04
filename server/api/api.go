@@ -165,7 +165,7 @@ func NewAPI(
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
-	_ = NewPlayerAssetsController(api)
+	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 
@@ -263,7 +263,7 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
-				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pac.PlayerWeaponsListHandler))
+				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 
 			}))
 

@@ -371,3 +371,29 @@ func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
 
 	return total, weapons, nil
 }
+
+// PlayerWeaponsList returns a list of tallied player weapons, ordered by last purchased date from the weapons table.
+// It excludes player abilities with a count of 0
+func PlayerWeaponsList(
+	userID string,
+) ([]*boiler.Weapon, error) {
+
+	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ("weapon")).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []string{}
+
+	for _, i := range items {
+		ids = append(ids, i.ItemID)
+	}
+
+	// get weapons
+	weapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(ids)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return weapons, nil
+}

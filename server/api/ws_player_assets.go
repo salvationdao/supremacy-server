@@ -295,6 +295,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	return nil
 }
 
+func (pac *PlayerAssetsControllerWS) PlayerWeaponsListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pas, err := db.PlayerWeaponsList(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "TalliedPlayerWeaponsList").Str("userID", user.ID).Err(err).Msg("unable to get player weapons")
+		return terror.Error(err, "Unable to retrieve weapons, try again or contact support.")
+	}
+
+	reply(pas)
+	return nil
+}
+
 const HubKeyPlayerAssetMysteryCrateList = "PLAYER:ASSET:MYSTERY_CRATE:LIST"
 
 type PlayerAssetMysteryCrateListRequest struct {
