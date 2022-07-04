@@ -82,8 +82,8 @@ VALUES
         'Nuke',
         '#E86621',
         'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-nuke.jpg',
-        '#FFFFFF',
         'The show-stopper. A tactical nuke at your fingertips.',
+        '#FFFFFF',
         'LOCATION_SELECT',
         5
     ),
@@ -92,8 +92,8 @@ VALUES
         'Airstrike',
         '#173DD1',
         'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-airstrike.jpg',
-        '#FFFFFF',
         'Rain fury on the arena with a targeted airstrike.',
+        '#FFFFFF',
         'LOCATION_SELECT',
         10
     );
