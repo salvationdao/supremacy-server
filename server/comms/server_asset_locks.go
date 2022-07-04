@@ -40,14 +40,6 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 		return nil
 	}
 
-	collectionItem.XsynLocked = true
-	collectionItem.LockedToMarketplace = false
-	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
-		return err
-	}
-
 	// TODO: store transfer event ID
 
 	itemUUID, err := uuid.FromString(collectionItem.ID)
@@ -63,6 +55,15 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 	}
+
+	collectionItem.XsynLocked = true
+	collectionItem.LockedToMarketplace = false
+	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockFromSupremacyHandler")
+		return err
+	}
+
 
 	return nil
 }
