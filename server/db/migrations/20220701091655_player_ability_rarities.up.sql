@@ -12,14 +12,14 @@ ADD
 UPDATE
     blueprint_player_abilities
 SET
-    rarity_weight = 10
+    rarity_weight = 30
 WHERE
     game_client_ability_id IN (10, 12, 13, 14, 15, 16);
 
 UPDATE
     consumed_abilities ca
 SET
-    rarity_weight = 10
+    rarity_weight = 30
 WHERE
     game_client_ability_id IN (10, 12, 13, 14, 15, 16);
 
@@ -54,17 +54,32 @@ VALUES
         'LOCATION_SELECT'
     );
 
--- Update rarities of Nuke, Airstrike and Landmine player abilities
+-- Update rarities of Airstrike and Landmine player abilities
 UPDATE
     blueprint_player_abilities
 SET
-    rarity_weight = 30
+    rarity_weight = 10
 WHERE
-    game_client_ability_id IN (0, 1, 11);
+    game_client_ability_id IN (0, 11);
 
 UPDATE
     consumed_abilities
 SET
     rarity_weight = 30
 WHERE
-    game_client_ability_id IN (0, 1, 11);
+    game_client_ability_id IN (0, 11);
+
+-- Update rarity of Nuke ability
+UPDATE
+    blueprint_player_abilities
+SET
+    rarity_weight = 5
+WHERE
+    game_client_ability_id IN (1);
+
+UPDATE
+    consumed_abilities
+SET
+    rarity_weight = 5
+WHERE
+    game_client_ability_id IN (1);
