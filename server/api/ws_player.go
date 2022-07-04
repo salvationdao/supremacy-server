@@ -51,6 +51,7 @@ func NewPlayerController(api *API) *PlayerController {
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
+	api.SecureUserCommand(HubKeyGlobalPlayerSearch, pc.GlobalPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -363,6 +364,46 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 			boiler.PlayerColumns.Gid,
 		),
 		boiler.PlayerWhere.FactionID.EQ(user.FactionID),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NEQ(user.ID),
+		qm.Where(
+			fmt.Sprintf("LOWER(%s||'#'||%s::TEXT) LIKE ?",
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid),
+			),
+			"%"+strings.ToLower(search)+"%",
+		),
+		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
+	return nil
+}
+
+const HubKeyGlobalPlayerSearch = "GLOBAL:PLAYER:SEARCH"
+
+// GlobalPlayerSearch return up to 5 players base on the given text
+func (pc *PlayerController) GlobalPlayerSearch(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerSearchRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	search := strings.TrimSpace(req.Payload.Search)
+	if search == "" {
+		return terror.Error(terror.ErrInvalidInput, "search key should not be empty")
+	}
+
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+		),
 		boiler.PlayerWhere.IsAi.EQ(false),
 		boiler.PlayerWhere.ID.NEQ(user.ID),
 		qm.Where(
