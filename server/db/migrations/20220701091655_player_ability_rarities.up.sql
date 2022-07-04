@@ -1,12 +1,38 @@
+-- Update player ability tables to include the rarity weight of the ability
 ALTER TABLE
     blueprint_player_abilities
 ADD
-    COLUMN rarity_weight INT;
+    COLUMN rarity_weight INT NOT NULL DEFAULT -1;
 
 ALTER TABLE
     consumed_abilities
 ADD
-    COLUMN rarity_weight INT;
+    COLUMN rarity_weight INT NOT NULL DEFAULT -1;
+
+ALTER TABLE
+    sale_player_abilities
+ADD
+    COLUMN rarity_weight INT NOT NULL DEFAULT -1;
+
+-- New trigger, t_sale_player_abilities_insert for automatically setting the rarity weight of newly-created
+-- sale_player_abilities entries based on the associated blueprint_player_ability
+CREATE
+OR REPLACE FUNCTION set_rarity_weight() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.rarity_weight := (
+    SELECT
+        rarity_weight
+    from
+        blueprint_player_abilities
+    where
+        id = NEW.blueprint_id
+);
+
+RETURN NEW;
+
+END $$;
+
+CREATE TRIGGER "t_sale_player_abilities_insert" BEFORE
+INSERT
+    ON "sale_player_abilities" FOR EACH ROW EXECUTE PROCEDURE set_rarity_weight();
 
 -- Update rarities of all player abilities (except for landmines, 11; is a rarer ability)
 UPDATE
@@ -83,3 +109,16 @@ SET
     rarity_weight = 5
 WHERE
     game_client_ability_id IN (1);
+
+-- Update all sale abilities rarity weights
+UPDATE
+    sale_player_abilities spa
+SET
+    rarity_weight = (
+        SELECT
+            rarity_weight
+        FROM
+            blueprint_player_abilities
+        WHERE
+            id = spa.blueprint_id
+    );

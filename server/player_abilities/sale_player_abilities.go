@@ -169,25 +169,74 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					allSaleAbilities, err := boiler.SalePlayerAbilities(
-						qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
-					).All(gamedb.StdConn)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", pas.Limit))
-						break
+					q := fmt.Sprintf(
+						`
+						with cte as (
+							select random() * (
+								select sum(rarity_weight)
+								from sale_player_abilities
+							) R
+						)
+						select 
+							Q.id,
+							Q.blueprint_id,
+							Q.current_price,
+							Q.available_until,
+							Q.amount_sold,
+							Q.sale_limit
+						from (
+							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, sum(rarity_weight) over (order by id) S, R
+							from sale_player_abilities spa
+							cross join cte
+						) Q
+						where S >= R
+						order by Q.id
+						limit 1;
+					`,
+					)
+
+					// Find 3 random weighted abilities
+					weightedSaleAbilities := []*boiler.SalePlayerAbility{}
+					for {
+						w := &boiler.SalePlayerAbility{}
+						err := boiler.NewQuery(
+							qm.SQL(q),
+							qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+						).Bind(nil, gamedb.StdConn, w)
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities", pas.Limit))
+							return
+						}
+
+						isDuplicate := false
+						for _, wsa := range weightedSaleAbilities {
+							if wsa.ID == w.ID {
+								isDuplicate = true
+								break
+							}
+						}
+						if isDuplicate {
+							continue
+						}
+
+						weightedSaleAbilities = append(weightedSaleAbilities, w)
+
+						if len(weightedSaleAbilities) == pas.Limit {
+							break
+						}
 					}
-					if len(allSaleAbilities) == 0 {
+					if len(weightedSaleAbilities) == 0 {
 						gamelog.L.Warn().Msg("no sale abilities could be found in the db")
 						break
 					}
 
 					oneHourFromNow := time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 					rand.Seed(time.Now().UnixNano())
-					randomIndexes := rand.Perm(len(allSaleAbilities))
+					randomIndexes := rand.Perm(len(weightedSaleAbilities))
 					for _, i := range randomIndexes[:pas.Limit] {
-						allSaleAbilities[i].AvailableUntil = null.TimeFrom(oneHourFromNow)
-						allSaleAbilities[i].AmountSold = 0 // reset amount sold
-						saleAbilities = append(saleAbilities, allSaleAbilities[i])
+						weightedSaleAbilities[i].AvailableUntil = null.TimeFrom(oneHourFromNow)
+						weightedSaleAbilities[i].AmountSold = 0 // reset amount sold
+						saleAbilities = append(saleAbilities, weightedSaleAbilities[i])
 					}
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{

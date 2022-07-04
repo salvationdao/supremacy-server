@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -32,7 +31,7 @@ type BlueprintPlayerAbility struct {
 	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	RarityWeight        null.Int  `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight,omitempty" toml:"rarity_weight" yaml:"rarity_weight,omitempty"`
+	RarityWeight        int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -98,7 +97,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	TextColour          whereHelperstring
 	LocationSelectType  whereHelperstring
 	CreatedAt           whereHelpertime_Time
-	RarityWeight        whereHelpernull_Int
+	RarityWeight        whereHelperint
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -109,7 +108,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	TextColour:          whereHelperstring{field: "\"blueprint_player_abilities\".\"text_colour\""},
 	LocationSelectType:  whereHelperstring{field: "\"blueprint_player_abilities\".\"location_select_type\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
-	RarityWeight:        whereHelpernull_Int{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
+	RarityWeight:        whereHelperint{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
