@@ -73,13 +73,14 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilities[sID] = s
 	}
 
+	salePeriodTickerIntervalSeconds := db.GetIntWithDefault(db.SaleAbilitySalePeriodTickerIntervalSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:             salePlayerAbilities,
 		userPurchaseLimits:              make(map[uuid.UUID]map[string]int),
-		nextSalePeriod:                  time.Now(),
-		UserPurchaseLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),                                 // default 1 purchase per user per ability
-		PriceTickerIntervalSeconds:      db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5),                       // default 5 seconds
-		SalePeriodTickerIntervalSeconds: db.GetIntWithDefault(db.SaleAbilitySalePeriodTickerIntervalSeconds, 600),                // default 10 minutes (600 seconds)
+		nextSalePeriod:                  time.Now().Add(time.Duration(salePeriodTickerIntervalSeconds) * time.Second),
+		UserPurchaseLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),           // default 1 purchase per user per ability
+		PriceTickerIntervalSeconds:      db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
+		SalePeriodTickerIntervalSeconds: salePeriodTickerIntervalSeconds,
 		TimeBetweenRefreshSeconds:       db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600),                     // default 1 hour (3600 seconds)
 		ReductionPercentage:             db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
 		InflationPercentage:             db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
@@ -126,8 +127,7 @@ func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, s
 	if !ok {
 		abilitiesMap[saleAbilityID] = 0
 	} else if count == pas.UserPurchaseLimit {
-		_, minutes, _ := pas.nextSalePeriod.Clock()
-		return fmt.Errorf("User has hit their purchase limit of %d for this ability. Please try again in %d minutes", pas.UserPurchaseLimit, minutes)
+		return fmt.Errorf("User has hit their purchase limit of %d for this ability. Please try again in %d minutes", pas.UserPurchaseLimit, int(time.Until(pas.nextSalePeriod).Minutes()))
 	}
 
 	abilitiesMap[saleAbilityID] = count + 1
