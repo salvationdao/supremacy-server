@@ -1446,39 +1446,40 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-	if btl.ID != dp.BattleID {
-		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-		btl.arena.reset()
-		return
-	}
-
-	// get item id from hash
-	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-		return
-	}
-
-	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-		return
-	}
-
-	btlHistory := boiler.BattleHistory{
-		BattleID:        btl.BattleID,
-		WarMachineOneID: wm.ID,
-		RelatedID:       null.NewString(dp.EventID, true),
-		EventType:       "pickup",
-	}
-
-	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-		return
-	}
-}
+// repair is moved to mech level
+//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
+//	if btl.ID != dp.BattleID {
+//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
+//		btl.arena.reset()
+//		return
+//	}
+//
+//	// get item id from hash
+//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
+//		return
+//	}
+//
+//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
+//		return
+//	}
+//
+//	btlHistory := boiler.BattleHistory{
+//		BattleID:        btl.BattleID,
+//		WarMachineOneID: wm.ID,
+//		RelatedID:       null.NewString(dp.EventID, true),
+//		EventType:       "pickup",
+//	}
+//
+//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
+//	if err != nil {
+//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
+//		return
+//	}
+//}
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
