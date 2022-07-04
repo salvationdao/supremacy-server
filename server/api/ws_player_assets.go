@@ -824,6 +824,7 @@ type PlayerAssetWeaponListRequest struct {
 		IncludeMarketListed bool                  `json:"include_market_listed"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
 		FilterRarities      []string              `json:"rarities"`
+		FilterWeaponTypes   []string              `json:"weapon_types"`
 	} `json:"payload"`
 }
 
@@ -868,7 +869,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
 	}
 
-	listOpts := &db.MechListOpts{
+	listOpts := &db.WeaponListOpts{
 		Search:              req.Payload.Search,
 		Filter:              req.Payload.Filter,
 		Sort:                req.Payload.Sort,
@@ -879,6 +880,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
 		FilterRarities:      req.Payload.FilterRarities,
+		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
 	}
 	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
 		listOpts.QueueSort = &db.MechListQueueSortOpts{
