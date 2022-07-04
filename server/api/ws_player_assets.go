@@ -256,7 +256,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 
 type PlayerAssetWeaponDetailRequest struct {
 	Payload struct {
-		WeaponID string `json:"mech_id"`
+		WeaponID string `json:"weapon_id"`
 	} `json:"payload"`
 }
 
@@ -268,7 +268,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
