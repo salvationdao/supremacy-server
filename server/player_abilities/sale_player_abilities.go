@@ -73,19 +73,19 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilities[sID] = s
 	}
 
-	salePeriodTickerIntervalSeconds := db.GetIntWithDefault(db.SaleAbilitySalePeriodTickerIntervalSeconds, 600) // default 10 minutes (600 seconds)
+	salePeriodTickerIntervalSeconds := db.GetIntWithDefault(db.KeySaleAbilitySalePeriodTickerIntervalSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:             salePlayerAbilities,
 		userPurchaseLimits:              make(map[uuid.UUID]map[string]int),
 		nextSalePeriod:                  time.Now().Add(time.Duration(salePeriodTickerIntervalSeconds) * time.Second),
-		UserPurchaseLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),           // default 1 purchase per user per ability
-		PriceTickerIntervalSeconds:      db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
+		UserPurchaseLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
+		PriceTickerIntervalSeconds:      db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
 		SalePeriodTickerIntervalSeconds: salePeriodTickerIntervalSeconds,
-		TimeBetweenRefreshSeconds:       db.GetIntWithDefault(db.SaleAbilityTimeBetweenRefreshSeconds, 3600),                     // default 1 hour (3600 seconds)
-		ReductionPercentage:             db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
-		InflationPercentage:             db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
-		FloorPrice:                      db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
-		Limit:                           db.GetIntWithDefault(db.SaleAbilityLimit, 3),                                            // default 3
+		TimeBetweenRefreshSeconds:       db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 3600),                     // default 1 hour (3600 seconds)
+		ReductionPercentage:             db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
+		InflationPercentage:             db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
+		FloorPrice:                      db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
+		Limit:                           db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3
 		Purchase:                        make(chan *Purchase),
 		closed:                          atomic.NewBool(false),
 	}
