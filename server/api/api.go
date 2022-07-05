@@ -238,6 +238,8 @@ func NewAPI(
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
 
+				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
+
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
