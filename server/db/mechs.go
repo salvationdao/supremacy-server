@@ -548,6 +548,7 @@ type MechListOpts struct {
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+	FilterRarities      []string `json:"rarities"`
 }
 
 type MechListQueueSortOpts struct {
@@ -696,7 +697,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				opts.QueueSort.SortDir,
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-				)),
+			)),
 		)
 	} else {
 		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
