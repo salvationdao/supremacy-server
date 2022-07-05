@@ -127,10 +127,10 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate
+db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate dev-sync-data
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate
+db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -223,3 +223,13 @@ dev-give-crate:
 .PHONE: dev-give-crates
 dev-give-crates:
 	make dev-give-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
+
+.PHONY: dev-sync-data
+dev-sync-data:
+	cd ./server/devtool
+	mkdir temp-sync
+	cd temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ../../../server
+	go run ./devtool/main.go -sync_mech
+	rm -rf ./devtool/temp-sync
