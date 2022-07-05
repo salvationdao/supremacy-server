@@ -226,10 +226,30 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	return nil
 }
 
-func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
+type WeaponListOpts struct {
+	Search              string
+	Filter              *ListFilterRequest
+	Sort                *ListSortRequest
+	PageSize            int
+	Page                int
+	OwnerID             string
+	DisplayXsynMechs    bool
+	ExcludeMarketLocked bool
+	IncludeMarketListed bool
+	FilterRarities      []string `json:"rarities"`
+	FilterWeaponTypes   []string `json:"weapon_types"`
+}
+
+func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	var weapons []*server.Weapon
 
-	var queryMods []qm.QueryMod
+	queryMods := []qm.QueryMod{
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+	}
 
 	// create the where owner id = clause
 	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
@@ -283,16 +303,21 @@ func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
 	if len(opts.FilterRarities) > 0 {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
 	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
+
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?) OR (to_tsvector('english', %[3]s.%[4]s::text) @@ to_tsquery(?)) ))",
 					boiler.TableNames.Weapons,
 					boiler.WeaponColumns.Label,
+					boiler.TableNames.Weapons,
+					boiler.WeaponColumns.WeaponType,
 				),
+					xSearch,
 					xSearch,
 				))
 		}
@@ -328,12 +353,11 @@ func WeaponList(opts *MechListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Weapons,
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
+
+	if len(opts.FilterWeaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
+	}
 
 	rows, err := boiler.NewQuery(
 		queryMods...,
