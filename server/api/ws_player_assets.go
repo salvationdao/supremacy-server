@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/kevinms/leakybucket-go"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"regexp"
 	"server"
 	"server/db"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/kevinms/leakybucket-go"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/friendsofgo/errors"
@@ -40,9 +41,11 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
+	api.SecureUserFactionCommand(HubKeyPlayerAssetWeaponDetail, pac.PlayerAssetWeaponDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
@@ -52,6 +55,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 }
 
 const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
@@ -247,6 +251,59 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+type PlayerAssetWeaponDetailRequest struct {
+	Payload struct {
+		WeaponID string `json:"weapon_id"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerAssetWeaponDetail = "PLAYER:ASSET:WEAPON:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponDetailRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find weapon from the collection")
+	}
+
+	// get weapon
+	weapon, err := db.Weapon(nil, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find weapon from db")
+	}
+
+	reply(weapon)
+	return nil
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerWeaponsListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pas, err := db.PlayerWeaponsList(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "TalliedPlayerWeaponsList").Str("userID", user.ID).Err(err).Msg("unable to get player weapons")
+		return terror.Error(err, "Unable to retrieve weapons, try again or contact support.")
+	}
+
+	reply(pas)
 	return nil
 }
 
@@ -752,5 +809,110 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	reply(items)
 
+	return nil
+}
+
+type PlayerAssetWeaponListRequest struct {
+	Payload struct {
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
+		FilterRarities      []string              `json:"rarities"`
+		FilterWeaponTypes   []string              `json:"weapon_types"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponListResp struct {
+	Total   int64                `json:"total"`
+	Weapons []*PlayerAssetWeapon `json:"weapons"`
+}
+
+type PlayerAssetWeapon struct {
+	CollectionSlug      string      `json:"collection_slug"`
+	Hash                string      `json:"hash"`
+	TokenID             int64       `json:"token_id"`
+	Tier                string      `json:"tier"`
+	OwnerID             string      `json:"owner_id"`
+	ImageURL            null.String `json:"image_url,omitempty"`
+	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
+	AvatarURL           null.String `json:"avatar_url,omitempty"`
+	LargeImageURL       null.String `json:"large_image_url,omitempty"`
+	BackgroundColor     null.String `json:"background_color,omitempty"`
+	AnimationURL        null.String `json:"animation_url,omitempty"`
+	YoutubeURL          null.String `json:"youtube_url,omitempty"`
+	MarketLocked        bool        `json:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace"`
+
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Name  string `json:"name"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponListOpts{
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             user.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		FilterRarities:      req.Payload.FilterRarities,
+		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
+	}
+
+	total, weapons, err := db.WeaponList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssWeapons := []*PlayerAssetWeapon{}
+
+	for _, m := range weapons {
+		playerAssWeapons = append(playerAssWeapons, &PlayerAssetWeapon{
+			ID:                  m.ID,
+			Label:               m.Label,
+			UpdatedAt:           m.UpdatedAt,
+			CreatedAt:           m.CreatedAt,
+			CollectionSlug:      m.CollectionItem.CollectionSlug,
+			Hash:                m.CollectionItem.Hash,
+			TokenID:             m.CollectionItem.TokenID,
+			Tier:                m.CollectionItem.Tier,
+			OwnerID:             m.CollectionItem.OwnerID,
+			XsynLocked:          m.CollectionItem.XsynLocked,
+			MarketLocked:        m.CollectionItem.MarketLocked,
+			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+			ImageURL:            m.CollectionItem.ImageURL,
+			AvatarURL:           m.CollectionItem.AvatarURL,
+			BackgroundColor:     m.CollectionItem.BackgroundColor,
+		})
+	}
+
+	reply(&PlayerAssetWeaponListResp{
+		Total:   total,
+		Weapons: playerAssWeapons,
+	})
 	return nil
 }

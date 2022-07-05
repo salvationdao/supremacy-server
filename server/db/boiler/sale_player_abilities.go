@@ -30,6 +30,7 @@ type SalePlayerAbility struct {
 	AvailableUntil null.Time       `boiler:"available_until" boil:"available_until" json:"available_until,omitempty" toml:"available_until" yaml:"available_until,omitempty"`
 	AmountSold     int             `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
 	SaleLimit      int             `boiler:"sale_limit" boil:"sale_limit" json:"sale_limit" toml:"sale_limit" yaml:"sale_limit"`
+	RarityWeight   int             `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
 
 	R *salePlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L salePlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +43,7 @@ var SalePlayerAbilityColumns = struct {
 	AvailableUntil string
 	AmountSold     string
 	SaleLimit      string
+	RarityWeight   string
 }{
 	ID:             "id",
 	BlueprintID:    "blueprint_id",
@@ -49,6 +51,7 @@ var SalePlayerAbilityColumns = struct {
 	AvailableUntil: "available_until",
 	AmountSold:     "amount_sold",
 	SaleLimit:      "sale_limit",
+	RarityWeight:   "rarity_weight",
 }
 
 var SalePlayerAbilityTableColumns = struct {
@@ -58,6 +61,7 @@ var SalePlayerAbilityTableColumns = struct {
 	AvailableUntil string
 	AmountSold     string
 	SaleLimit      string
+	RarityWeight   string
 }{
 	ID:             "sale_player_abilities.id",
 	BlueprintID:    "sale_player_abilities.blueprint_id",
@@ -65,6 +69,7 @@ var SalePlayerAbilityTableColumns = struct {
 	AvailableUntil: "sale_player_abilities.available_until",
 	AmountSold:     "sale_player_abilities.amount_sold",
 	SaleLimit:      "sale_player_abilities.sale_limit",
+	RarityWeight:   "sale_player_abilities.rarity_weight",
 }
 
 // Generated where
@@ -76,6 +81,7 @@ var SalePlayerAbilityWhere = struct {
 	AvailableUntil whereHelpernull_Time
 	AmountSold     whereHelperint
 	SaleLimit      whereHelperint
+	RarityWeight   whereHelperint
 }{
 	ID:             whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
 	BlueprintID:    whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
@@ -83,6 +89,7 @@ var SalePlayerAbilityWhere = struct {
 	AvailableUntil: whereHelpernull_Time{field: "\"sale_player_abilities\".\"available_until\""},
 	AmountSold:     whereHelperint{field: "\"sale_player_abilities\".\"amount_sold\""},
 	SaleLimit:      whereHelperint{field: "\"sale_player_abilities\".\"sale_limit\""},
+	RarityWeight:   whereHelperint{field: "\"sale_player_abilities\".\"rarity_weight\""},
 }
 
 // SalePlayerAbilityRels is where relationship names are stored.
@@ -106,9 +113,9 @@ func (*salePlayerAbilityR) NewStruct() *salePlayerAbilityR {
 type salePlayerAbilityL struct{}
 
 var (
-	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until", "amount_sold", "sale_limit"}
+	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until", "amount_sold", "sale_limit", "rarity_weight"}
 	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id", "current_price"}
-	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until", "amount_sold", "sale_limit"}
+	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until", "amount_sold", "sale_limit", "rarity_weight"}
 	salePlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	salePlayerAbilityGeneratedColumns      = []string{}
 )
