@@ -127,7 +127,12 @@ func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, s
 	if !ok {
 		abilitiesMap[saleAbilityID] = 0
 	} else if count == pas.UserPurchaseLimit {
-		return fmt.Errorf("You have hit your purchase limit of %d for this ability during this sale period. Please try again in %d minutes", pas.UserPurchaseLimit, int(time.Until(pas.nextSalePeriod).Minutes()))
+		minutes := int(time.Until(pas.nextSalePeriod).Minutes())
+		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
+		if minutes < 1 {
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextSalePeriod).Seconds()))
+		}
+		return fmt.Errorf("You have hit your purchase limit of %d for this ability during this sale period. %s", pas.UserPurchaseLimit, msg)
 	}
 
 	abilitiesMap[saleAbilityID] = count + 1
