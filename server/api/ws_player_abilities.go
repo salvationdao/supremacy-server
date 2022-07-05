@@ -203,6 +203,14 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return err
 	}
 
+	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID, spa.ID)
+	if err != nil {
+		refundFunc()
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
+
+		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits for this player ability during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextSalePeriod()).Minutes())))
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		refundFunc()
