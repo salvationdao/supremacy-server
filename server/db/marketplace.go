@@ -407,6 +407,7 @@ func MarketplaceItemSaleList(
 	search string,
 	rarities []string,
 	saleTypes []string,
+	weaponTypes []string,
 	ownedBy []string,
 	sold bool,
 	minPrice decimal.NullDecimal,
@@ -433,7 +434,14 @@ func MarketplaceItemSaleList(
 
 	// Filters
 	if len(rarities) > 0 {
-		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(rarities))
+		vals := []interface{}{}
+		for _, v := range rarities {
+			vals = append(vals, v)
+		}
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(rarities),
+			qm.Or2(qm.WhereIn(qm.Rels("wsc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
+		))
 	}
 	if len(saleTypes) > 0 {
 		saleTypeConditions := []qm.QueryMod{}
@@ -467,6 +475,9 @@ func MarketplaceItemSaleList(
 		} else if !isSelf && isOthers {
 			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.NEQ(userID))
 		}
+	}
+	if len(weaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
 	}
 
 	if minPrice.Valid {
