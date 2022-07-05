@@ -16,6 +16,7 @@ type SiloType struct {
 	OwnershipID    string                `db:"ownership_id" json:"ownership_id"`
 	MechID         *string               `db:"mech_id" json:"mech_id,omitempty"`
 	SkinIDStr      *string               `db:"skin_id" json:"skin_id_str,omitempty"`
+	WeaponTypeID   *string               `json:"weapon_type_id,omitempty"`
 	SkinID         *SiloSkin             `json:"skin,omitempty"`
 	MysteryCrateID *string               `db:"mystery_crate_id" json:"mystery_crate_id,omitempty"`
 	CanOpenOn      *string               `db:"can_open_on" json:"can_open_on,omitempty"`
@@ -194,7 +195,7 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
 
-		canOpenOnStr := canOpenOn.Format(time.UnixDate)
+		canOpenOnStr := canOpenOn.Format("2006-01-02T15:04:05.000Z")
 
 		mst.CanOpenOn = &canOpenOnStr
 
@@ -202,4 +203,61 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	}
 
 	return mechSiloType, nil
+}
+
+func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
+	ownedWeapons, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get user owned weapons")
+	}
+
+	var weaponHangarSilo []*SiloType
+	for _, ownedWeapon := range ownedWeapons {
+		weapon, err := Weapon(gamedb.StdConn, ownedWeapon.ItemID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("owned weapon col id", ownedWeapon.ID).Msg("Failed to get weapon")
+			continue
+		}
+
+		if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
+			gamelog.L.Info().Err(err).Msg("Weapon is currently equipped or doesn't have a skin")
+			continue
+		}
+
+		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
+		if err != nil {
+			continue
+		}
+
+		weaponSilo := &SiloType{
+			Type:         ownedWeapon.ItemType,
+			OwnershipID:  ownedWeapon.ID,
+			WeaponTypeID: &weaponBlueprint.WeaponModelID,
+		}
+
+		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(gamedb.StdConn)
+		if err != nil {
+			continue
+		}
+
+		weaponSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID)).One(gamedb.StdConn)
+		if err != nil {
+			continue
+		}
+
+		weaponSkinSilo := &SiloSkin{
+			OwnershipID: &weaponSkinOwnership.ID,
+			SkinID:      &weaponSkin.BlueprintID,
+		}
+
+		weaponSilo.SkinID = weaponSkinSilo
+
+		weaponHangarSilo = append(weaponHangarSilo, weaponSilo)
+
+	}
+
+	return weaponHangarSilo, nil
 }
