@@ -52,6 +52,7 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserCommand(HubKeyGlobalPlayerSearch, pc.GlobalPlayerSearch)
+	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGid)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -416,6 +417,37 @@ func (pc *PlayerController) GlobalPlayerSearch(ctx context.Context, user *boiler
 		qm.Limit(5),
 	).All(gamedb.StdConn)
 	if err != nil {
+		return terror.Error(err, "Failed to search players from db")
+	}
+
+	reply(ps)
+	return nil
+}
+
+type GetPlayerByGidRequest struct {
+	Payload struct {
+		Gid int `json:"gid"`
+	} `json:"payload"`
+}
+
+const HubKeyGetPlayerByGid = "GET:PLAYER:GID"
+
+func (pc *PlayerController) GetPlayerByGid(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &GetPlayerByGidRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	fmt.Println(req.Payload.Gid)
+	ps, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
+	).One(gamedb.StdConn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("NO ROWS")
+			return nil
+		}
 		return terror.Error(err, "Failed to search players from db")
 	}
 
