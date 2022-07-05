@@ -61,6 +61,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		mystery_crate.description AS "mystery_crate.description",
 		weapons.id AS "weapons.id",
 		weapons.label AS "weapons.label",
+		weapon_skin.weapon_type AS "weapons.weapon_type",
 		blueprint_weapon_skin.avatar_url AS "weapons.avatar_url",
 		(
 			CASE
@@ -324,6 +325,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.MysteryCrate.Description,
 		&output.Weapon.ID,
 		&output.Weapon.Label,
+		&output.Weapon.WeaponType,
 		&output.Weapon.AvatarURL,
 		&output.CollectionItem.Tier,
 		&output.CollectionItem.ImageURL,
@@ -522,15 +524,18 @@ func MarketplaceItemSaleList(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
 				xsearch,
 				xsearch,
 				xsearch,

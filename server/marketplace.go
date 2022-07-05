@@ -123,9 +123,10 @@ func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleItemWeapon struct {
-	ID        null.String `json:"id" boil:"weapons.id"`
-	Label     null.String `json:"label" boil:"weapons.label"`
-	AvatarURL null.String `json:"avatar_url" boil:"weapons.avatar_url"`
+	ID         null.String `json:"id" boil:"weapons.id"`
+	Label      null.String `json:"label" boil:"weapons.label"`
+	WeaponType null.String `json:"weapon_type" boil:"weapons.weapon_type"`
+	AvatarURL  null.String `json:"avatar_url" boil:"weapons.avatar_url"`
 }
 
 func (b MarketplaceSaleItemWeapon) MarshalJSON() ([]byte, error) {
