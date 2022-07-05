@@ -34,6 +34,7 @@ type ConsumedAbility struct {
 	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	ConsumedAt          time.Time `boiler:"consumed_at" boil:"consumed_at" json:"consumed_at" toml:"consumed_at" yaml:"consumed_at"`
+	RarityWeight        int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
 
 	R *consumedAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L consumedAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var ConsumedAbilityColumns = struct {
 	TextColour          string
 	LocationSelectType  string
 	ConsumedAt          string
+	RarityWeight        string
 }{
 	ID:                  "id",
 	BattleID:            "battle_id",
@@ -65,6 +67,7 @@ var ConsumedAbilityColumns = struct {
 	TextColour:          "text_colour",
 	LocationSelectType:  "location_select_type",
 	ConsumedAt:          "consumed_at",
+	RarityWeight:        "rarity_weight",
 }
 
 var ConsumedAbilityTableColumns = struct {
@@ -80,6 +83,7 @@ var ConsumedAbilityTableColumns = struct {
 	TextColour          string
 	LocationSelectType  string
 	ConsumedAt          string
+	RarityWeight        string
 }{
 	ID:                  "consumed_abilities.id",
 	BattleID:            "consumed_abilities.battle_id",
@@ -93,6 +97,7 @@ var ConsumedAbilityTableColumns = struct {
 	TextColour:          "consumed_abilities.text_colour",
 	LocationSelectType:  "consumed_abilities.location_select_type",
 	ConsumedAt:          "consumed_abilities.consumed_at",
+	RarityWeight:        "consumed_abilities.rarity_weight",
 }
 
 // Generated where
@@ -110,6 +115,7 @@ var ConsumedAbilityWhere = struct {
 	TextColour          whereHelperstring
 	LocationSelectType  whereHelperstring
 	ConsumedAt          whereHelpertime_Time
+	RarityWeight        whereHelperint
 }{
 	ID:                  whereHelperstring{field: "\"consumed_abilities\".\"id\""},
 	BattleID:            whereHelperstring{field: "\"consumed_abilities\".\"battle_id\""},
@@ -123,6 +129,7 @@ var ConsumedAbilityWhere = struct {
 	TextColour:          whereHelperstring{field: "\"consumed_abilities\".\"text_colour\""},
 	LocationSelectType:  whereHelperstring{field: "\"consumed_abilities\".\"location_select_type\""},
 	ConsumedAt:          whereHelpertime_Time{field: "\"consumed_abilities\".\"consumed_at\""},
+	RarityWeight:        whereHelperint{field: "\"consumed_abilities\".\"rarity_weight\""},
 }
 
 // ConsumedAbilityRels is where relationship names are stored.
@@ -152,9 +159,9 @@ func (*consumedAbilityR) NewStruct() *consumedAbilityR {
 type consumedAbilityL struct{}
 
 var (
-	consumedAbilityAllColumns            = []string{"id", "battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "consumed_at"}
+	consumedAbilityAllColumns            = []string{"id", "battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "consumed_at", "rarity_weight"}
 	consumedAbilityColumnsWithoutDefault = []string{"battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	consumedAbilityColumnsWithDefault    = []string{"id", "consumed_at"}
+	consumedAbilityColumnsWithDefault    = []string{"id", "consumed_at", "rarity_weight"}
 	consumedAbilityPrimaryKeyColumns     = []string{"id"}
 	consumedAbilityGeneratedColumns      = []string{}
 )
