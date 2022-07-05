@@ -305,6 +305,15 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			// Sale period ticker ticks every 10 minutes, resets the user ability purchase counts
 			// Reset user ability purchase counts
 			pas.ResetUserPurchaseCounts()
+
+			// Broadcast sale period time update
+			ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesSalePeriodSubscribe, struct {
+				NextSalePeriodTime        *time.Time `json:"next_sale_period_time"`
+				SalePeriodDurationSeconds int        `json:"sale_period_duration_seconds"`
+			}{
+				NextSalePeriodTime:        &pas.nextSalePeriod,
+				SalePeriodDurationSeconds: pas.SalePeriodTickerIntervalSeconds,
+			})
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
