@@ -41,6 +41,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
@@ -51,11 +52,14 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 
+	// public profile
+	api.Command(HubKeyPlayerPublicAssetMechList, pac.PlayerAssetMechListPublicHandler)
+	api.Command(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetailPublic)
+
 	return pac
 }
 
 const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
-const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
@@ -212,6 +216,117 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	return nil
 }
 
+const HubKeyPlayerPublicAssetMechList = "PLAYER:ASSET:MECH:PUBLIC:LIST"
+
+type PlayerAssetMechListPublicRequest struct {
+	Payload struct {
+		PlayerID            string                `json:"player_id"`
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
+		QueueSort           db.SortByDir          `json:"queue_sort"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMechListPublicRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// get player
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+	if !player.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.MechListOpts{
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             player.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
+	}
+	if req.Payload.QueueSort.IsValid() && player.FactionID.Valid {
+		listOpts.QueueSort = &db.MechListQueueSortOpts{
+			FactionID: player.FactionID.String,
+			SortDir:   req.Payload.QueueSort,
+		}
+	}
+
+	total, mechs, err := db.MechList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssetMechs := []*PlayerAssetMech{}
+
+	for _, m := range mechs {
+		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
+			ID:                    m.ID,
+			Label:                 m.Label,
+			WeaponHardpoints:      m.WeaponHardpoints,
+			UtilitySlots:          m.UtilitySlots,
+			Speed:                 m.Speed,
+			MaxHitpoints:          m.MaxHitpoints,
+			IsDefault:             m.IsDefault,
+			IsInsured:             m.IsInsured,
+			Name:                  m.Name,
+			GenesisTokenID:        m.GenesisTokenID,
+			LimitedReleaseTokenID: m.LimitedReleaseTokenID,
+			PowerCoreSize:         m.PowerCoreSize,
+			BlueprintID:           m.BlueprintID,
+			BrandID:               m.BrandID,
+			FactionID:             m.FactionID.String,
+			ModelID:               m.ModelID,
+			DefaultChassisSkinID:  m.DefaultChassisSkinID,
+			ChassisSkinID:         m.ChassisSkinID,
+			IntroAnimationID:      m.IntroAnimationID,
+			OutroAnimationID:      m.OutroAnimationID,
+			PowerCoreID:           m.PowerCoreID,
+			UpdatedAt:             m.UpdatedAt,
+			CreatedAt:             m.CreatedAt,
+			CollectionSlug:        m.CollectionItem.CollectionSlug,
+			Hash:                  m.CollectionItem.Hash,
+			TokenID:               m.CollectionItem.TokenID,
+			ItemType:              m.CollectionItem.ItemType,
+			Tier:                  m.CollectionItem.Tier,
+			OwnerID:               m.CollectionItem.OwnerID,
+			XsynLocked:            m.CollectionItem.XsynLocked,
+			MarketLocked:          m.CollectionItem.MarketLocked,
+			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+			QueuePosition:         m.QueuePosition,
+			ImageURL:              m.CollectionItem.ImageURL,
+			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
+			AvatarURL:             m.CollectionItem.AvatarURL,
+			LargeImageURL:         m.CollectionItem.LargeImageURL,
+			BackgroundColor:       m.CollectionItem.BackgroundColor,
+			AnimationURL:          m.CollectionItem.AnimationURL,
+			YoutubeURL:            m.CollectionItem.YoutubeURL,
+		})
+	}
+
+	reply(&PlayerAssetMechListResp{
+		Total: total,
+		Mechs: playerAssetMechs,
+	})
+	return nil
+}
+
 type PlayerAssetMechDetailRequest struct {
 	Payload struct {
 		MechID string `json:"mech_id"`
@@ -219,6 +334,42 @@ type PlayerAssetMechDetailRequest struct {
 }
 
 const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
+
+const HubKeyPlayerAssetMechDetailPublic = "PLAYER:ASSET:MECH:DETAIL:PUBLIC"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMechDetailRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		// boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	// get mech
+	mech, err := db.Mech(nil, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
+	}
+
+	reply(mech)
+	return nil
+}
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerAssetMechDetailRequest{}
@@ -811,6 +962,8 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	return nil
 }
+
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {

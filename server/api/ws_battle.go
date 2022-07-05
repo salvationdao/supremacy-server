@@ -9,6 +9,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strconv"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -27,6 +28,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
+	api.Command(HubKeyPlayerProfileGet, bc.PlayerProfileGetHandler)
 
 	// commands from battle
 
@@ -192,5 +194,63 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 		},
 	})
 
+	return nil
+}
+
+type PlayerProfileRequest struct {
+	Payload struct {
+		PlayerGID string `json:"player_gid"`
+	} `json:"payload"`
+}
+
+type PlayerProfileResponse struct {
+	*boiler.Player `json:"player"`
+	Stats          *boiler.PlayerStat `json:"stats"`
+	Faction        *boiler.Faction    `json:"faction"`
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
+
+func (bc *BattleControllerWS) PlayerProfileGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	gid, err := strconv.Atoi(req.Payload.PlayerGID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.ID", req.Payload.PlayerGID).
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
+	}
+	// get player
+	player, err := boiler.Players(boiler.PlayerWhere.Gid.EQ(gid), qm.Load(boiler.PlayerRels.Faction)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
+	}
+
+	// get stats
+	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
+	}
+
+	var faction *boiler.Faction
+	if player.R != nil && player.R.Faction != nil {
+		faction = player.R.Faction
+	}
+	reply(PlayerProfileResponse{
+		Player:  player,
+		Stats:   stats,
+		Faction: faction,
+	})
 	return nil
 }
