@@ -243,10 +243,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 	// get player
 	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
 	if err != nil {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
-	}
-	if !player.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+		return terror.Error(fmt.Errorf("cant find player"), "Failed to fetch player.")
 	}
 
 	listOpts := &db.MechListOpts{
@@ -259,12 +256,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
-	}
-	if req.Payload.QueueSort.IsValid() && player.FactionID.Valid {
-		listOpts.QueueSort = &db.MechListQueueSortOpts{
-			FactionID: player.FactionID.String,
-			SortDir:   req.Payload.QueueSort,
-		}
 	}
 
 	total, mechs, err := db.MechList(listOpts)
