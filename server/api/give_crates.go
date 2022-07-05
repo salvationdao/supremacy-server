@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -18,9 +19,9 @@ import (
 
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		// if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
-		// 	return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
-		// }
+		if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
+		}
 		devPass := r.Header.Get("X-Authorization")
 		if devPass != "NinjaDojo_!" {
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
