@@ -46,12 +46,18 @@ func (hc *HangarController) GetUserHangarItems(ctx context.Context, user *boiler
 		return terror.Error(err, "Failed to get users mystery crate hangar details")
 	}
 
+	weaponItems, err := db.GetUserWeaponHangarItems(user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get users weapon hangar details")
+	}
+
 	hangarResp := &GetHangarItemResponse{
 		Faction: user.FactionID,
 		Silos:   make([]*db.SiloType, 0),
 	}
 
 	hangarResp.Silos = append(hangarResp.Silos, mechItems...)
+	hangarResp.Silos = append(hangarResp.Silos, weaponItems...)
 	hangarResp.Silos = append(hangarResp.Silos, mysteryCrateItems...)
 
 	reply(hangarResp)
