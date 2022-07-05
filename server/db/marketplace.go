@@ -527,14 +527,17 @@ func MarketplaceItemSaleList(
 						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
 				xsearch,
 				xsearch,
 				xsearch,
