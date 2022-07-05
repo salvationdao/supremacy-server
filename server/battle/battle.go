@@ -2038,6 +2038,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
 			}
 		}
+
+		// add owner username
+		if mech.Owner != nil {
+			newWarMachine.OwnerUsername = mech.Owner.Username
+		}
+
 		// check model
 		if mech.Model != nil {
 			model, ok := ModelMap[mech.Model.Label]

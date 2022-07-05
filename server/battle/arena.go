@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"net"
 	"net/http"
 	"server"
@@ -1137,6 +1138,8 @@ func (arena *Arena) beginBattle() {
 	})
 
 	arena.storeCurrentBattle(btl)
+
+	spew.Dump(btl.WarMachines)
 	arena.Message(BATTLEINIT, btl)
 
 	go arena.NotifyUpcomingWarMachines()
