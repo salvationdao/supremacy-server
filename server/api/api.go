@@ -201,9 +201,9 @@ func NewAPI(
 
 			}
 
-			if config.Environment == "development" {
-				r.Get("/give_crates/{public_address}", WithError(WithDev(api.DevGiveCrates)))
-			}
+			// if config.Environment == "development" {
+			r.Get("/give_crates/{public_address}", WithError(WithDev(api.DevGiveCrates)))
+			// }
 
 			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
 			r.Get("/video_server", WithError(api.GetStreamsHandler))
