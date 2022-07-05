@@ -568,6 +568,28 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 	return nil
 }
 
+type MinimapEvent struct {
+	ID            string              `json:"id"`
+	GameAbilityID int                 `json:"game_ability_id"`
+	Duration      int                 `json:"duration"`
+	Radius        int                 `json:"radius"`
+	Coords        server.CellLocation `json:"coords"`
+}
+
+const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
+
+func (arena *Arena) MinimapUpdatesSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// skip, if current not battle
+	if arena.CurrentBattle() == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
+	}
+
+	reply(nil)
+
+	return nil
+}
+
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get a random faction id
@@ -1122,7 +1144,7 @@ func (arena *Arena) beginBattle() {
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
-	btl.storeIncognitoManager(NewIncognitoManager())
+	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 
 	err = btl.Load()
 	if err != nil {
