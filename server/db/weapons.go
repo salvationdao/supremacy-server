@@ -233,7 +233,6 @@ type WeaponListOpts struct {
 	PageSize            int
 	Page                int
 	OwnerID             string
-	QueueSort           *MechListQueueSortOpts
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool

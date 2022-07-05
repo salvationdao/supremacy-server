@@ -822,7 +822,6 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
-		QueueSort           db.SortByDir          `json:"queue_sort"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterWeaponTypes   []string              `json:"weapon_types"`
 	} `json:"payload"`
@@ -881,12 +880,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
-	}
-	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
-		listOpts.QueueSort = &db.MechListQueueSortOpts{
-			FactionID: user.FactionID.String,
-			SortDir:   req.Payload.QueueSort,
-		}
 	}
 
 	total, weapons, err := db.WeaponList(listOpts)
