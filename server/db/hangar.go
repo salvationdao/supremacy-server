@@ -223,7 +223,6 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 		}
 
 		if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
-			gamelog.L.Info().Err(err).Msg("Weapon is currently equipped or doesn't have a skin")
 			continue
 		}
 
