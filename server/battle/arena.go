@@ -1159,6 +1159,7 @@ func (arena *Arena) beginBattle() {
 	})
 
 	arena.storeCurrentBattle(btl)
+
 	arena.Message(BATTLEINIT, btl)
 
 	go arena.NotifyUpcomingWarMachines()
