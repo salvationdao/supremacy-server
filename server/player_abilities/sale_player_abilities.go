@@ -42,7 +42,7 @@ type SaleAbilityAmountResponse struct {
 type SalePlayerAbilitiesSystem struct {
 	// sale player abilities
 	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
-	userPurchaseLimits  map[uuid.UUID]map[string]int            // map[player_id]map[sale_ability_id]purchase count for the current sale period
+	userPurchaseLimits  map[uuid.UUID]int                       // map[player_id]purchase count for the current sale period
 	nextRefresh         time.Time                               // timestamp of when the next sale period will begin
 
 	// KVs
@@ -75,7 +75,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:        salePlayerAbilities,
-		userPurchaseLimits:         make(map[uuid.UUID]map[string]int),
+		userPurchaseLimits:         make(map[uuid.UUID]int),
 		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
 		PriceTickerIntervalSeconds: db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
@@ -105,7 +105,7 @@ func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
 	defer pas.Unlock()
 
 	// Reset map
-	pas.userPurchaseLimits = make(map[uuid.UUID]map[string]int)
+	pas.userPurchaseLimits = make(map[uuid.UUID]int)
 
 	// Update sale period
 	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
@@ -115,26 +115,21 @@ func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, s
 	pas.Lock()
 	defer pas.Unlock()
 
-	abilitiesMap, ok := pas.userPurchaseLimits[userID]
+	count, ok := pas.userPurchaseLimits[userID]
 	if !ok {
-		abilitiesMap = map[string]int{}
-		pas.userPurchaseLimits[userID] = abilitiesMap
+		count = 0
 	}
 
-	count, ok := abilitiesMap[saleAbilityID]
-	if !ok {
-		abilitiesMap[saleAbilityID] = 0
-	} else if count == pas.UserPurchaseLimit {
+	if count == pas.UserPurchaseLimit {
 		minutes := int(time.Until(pas.nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
 			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh).Seconds()))
 		}
-		return fmt.Errorf("You have hit your purchase limit of %d for this ability during this sale period. %s", pas.UserPurchaseLimit, msg)
+		return fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pas.UserPurchaseLimit, msg)
 	}
 
-	abilitiesMap[saleAbilityID] = count + 1
-	pas.userPurchaseLimits[userID] = abilitiesMap
+	pas.userPurchaseLimits[userID] = count + 1
 
 	return nil
 }
