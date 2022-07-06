@@ -913,8 +913,17 @@ type AISpawnedRequest struct {
 	SpawnedAIEvent *SpawnedAIEvent `json:"spawnedAIEvent"`
 }
 
+type AIType string
+
+const (
+	Reinforcement AIType = "Reinforcement"
+	MiniMech      AIType = "Mini Mech"
+	RobotDog      AIType = "Robot Dog"
+)
+
 type SpawnedAIEvent struct {
 	ParticipantID byte            `json:"participantID"`
+	UserID        string          `json:"userID"`
 	Name          string          `json:"name"`
 	Model         string          `json:"model"`
 	Skin          string          `json:"skin"`
@@ -925,6 +934,7 @@ type SpawnedAIEvent struct {
 	FactionID     string          `json:"factionID"`
 	Position      *server.Vector3 `json:"position"`
 	Rotation      int             `json:"rotation"`
+	Type          AIType          `json:"type"`
 }
 
 type BattleWMPickupPayload struct {
@@ -1180,6 +1190,19 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
+func (btl *Battle) IsMechOfType(participantID byte, aiType AIType) bool {
+	btl.spawnedAIMux.RLock()
+	defer btl.spawnedAIMux.RUnlock()
+
+	for _, s := range btl.SpawnedAI {
+		if s.ParticipantID != participantID {
+			continue
+		}
+		return s.AIType == &aiType
+	}
+	return false
+}
+
 func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// check battle id
 	if payload.BattleID != btl.BattleID {
@@ -1193,6 +1216,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// get spawned AI
 	spawnedAI := &WarMachine{
 		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
+		OwnedByID:     payload.SpawnedAIEvent.UserID,
 		Name:          payload.SpawnedAIEvent.Name,
 		Model:         payload.SpawnedAIEvent.Model,
 		Skin:          payload.SpawnedAIEvent.Skin,
@@ -1203,14 +1227,21 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		FactionID:     payload.SpawnedAIEvent.FactionID,
 		Position:      payload.SpawnedAIEvent.Position,
 		Rotation:      payload.SpawnedAIEvent.Rotation,
+		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		AIType:        &payload.SpawnedAIEvent.Type,
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
-	// cache record in battle, for future subscription
 	btl.spawnedAIMux.Lock()
+	defer btl.spawnedAIMux.Unlock()
+
+	// cache record in battle, for future subscription
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
-	btl.spawnedAIMux.Unlock()
+
+	// Broadcast spawn event
+	ws.PublishMessage("/battle", HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }

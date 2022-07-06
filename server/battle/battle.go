@@ -1301,6 +1301,7 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 	}
 }
 
+const HubKeyBattleAISpawned = "BATTLE:AI:SPAWNED:SUBSCRIBE"
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
@@ -1447,7 +1448,8 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 
-		if participantID < 100 {
+		// If Mech is a regular type OR is a mini mech
+		if participantID < 100 || btl.IsMechOfType(participantID, MiniMech) {
 			wsMessages = append(wsMessages, ws.Message{
 				URI:     fmt.Sprintf("/public/mech/%d", participantID),
 				Key:     HubKeyWarMachineStatUpdated,

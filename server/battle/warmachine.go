@@ -11,16 +11,17 @@ import (
 )
 
 type WarMachine struct {
-	ID            string `json:"id"`
-	Hash          string `json:"hash"`
-	OwnedByID     string `json:"ownedByID"`
-	OwnerUsername string `json:"ownerUsername"`
-	Name          string `json:"name"`
-	ParticipantID byte   `json:"participantID"`
-	FactionID     string `json:"factionID"`
-	MaxHealth     uint32 `json:"maxHealth"`
-	MaxShield     uint32 `json:"maxShield"`
-	Health        uint32 `json:"health"`
+	ID            string  `json:"id"`
+	Hash          string  `json:"hash"`
+	OwnedByID     string  `json:"ownedByID"`
+	OwnerUsername string  `json:"ownerUsername"`
+	Name          string  `json:"name"`
+	ParticipantID byte    `json:"participantID"`
+	FactionID     string  `json:"factionID"`
+	MaxHealth     uint32  `json:"maxHealth"`
+	MaxShield     uint32  `json:"maxShield"`
+	Health        uint32  `json:"health"`
+	AIType        *AIType `json:"aiType"`
 
 	Model string `json:"model"`
 	Skin  string `json:"skin"`
