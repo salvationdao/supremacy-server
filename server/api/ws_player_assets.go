@@ -53,7 +53,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 
 	// public profile
-	api.Command(HubKeyPlayerPublicAssetMechList, pac.PlayerAssetMechListPublicHandler)
+	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
 	api.Command(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetailPublic)
 
 	return pac
@@ -216,7 +216,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	return nil
 }
 
-const HubKeyPlayerPublicAssetMechList = "PLAYER:ASSET:MECH:PUBLIC:LIST"
+const HubKeyPlayerAssetMechListPublic = "PLAYER:ASSET:MECH:LIST:PUBLIC"
 
 type PlayerAssetMechListPublicRequest struct {
 	Payload struct {
@@ -326,6 +326,40 @@ type PlayerAssetMechDetailRequest struct {
 
 const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
 
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMechDetailRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	// get mech
+	mech, err := db.Mech(nil, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
+	}
+
+	reply(mech)
+	return nil
+}
+
 const HubKeyPlayerAssetMechDetailPublic = "PLAYER:ASSET:MECH:DETAIL:PUBLIC"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -346,41 +380,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			),
 		),
-		// boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to find mech from the collection")
-	}
-
-	// get mech
-	mech, err := db.Mech(nil, collectionItem.ItemID)
-	if err != nil {
-		return terror.Error(err, "Failed to find mech from db")
-	}
-
-	reply(mech)
-	return nil
-}
-
-func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetMechDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	// get collection and check ownership
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s",
-				boiler.TableNames.Players,
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			),
-		),
-		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")

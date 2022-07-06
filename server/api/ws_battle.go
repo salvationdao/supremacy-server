@@ -115,6 +115,47 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 	return nil
 }
 
+const HubKeyPlayerBattleMechHistoryList = "PLAYER:BATTLE:MECH:HISTORY:LIST"
+
+type PlayerBattleMechHistoryRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+	} `json:"payload"`
+}
+
+func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerBattleMechHistoryRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.OwnerID.EQ(req.Payload.PlayerID), qm.OrderBy("created_at desc"), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("BattleMechWhere", req.Payload.PlayerID).
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
+	}
+
+	output := []BattleMechDetailed{}
+	for _, o := range battleMechs {
+		output = append(output, BattleMechDetailed{
+			BattleMech: o,
+			Battle: &BattleDetailed{
+				Battle:  o.R.Battle,
+				GameMap: o.R.Battle.R.GameMap,
+			},
+		})
+	}
+
+	reply(BattleMechHistoryResponse{
+		len(output),
+		output,
+	})
+	return nil
+}
+
 type BattleMechStatsRequest struct {
 	Payload struct {
 		MechID string `json:"mech_id"`
