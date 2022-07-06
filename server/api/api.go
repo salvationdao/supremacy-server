@@ -165,7 +165,7 @@ func NewAPI(
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
-	_ = NewPlayerAssetsController(api)
+	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 
@@ -198,6 +198,11 @@ func NewAPI(
 			if config.Environment != "development" {
 				// TODO: Create new tracer not using HUB
 				r.Use(DatadogTracer.Middleware())
+
+			}
+
+			if config.Environment == "development" {
+				r.Get("/give_crates/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
 			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
@@ -216,6 +221,7 @@ func NewAPI(
 			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
+
 		})
 
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
@@ -231,6 +237,8 @@ func NewAPI(
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
+
+				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
@@ -257,6 +265,8 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
+
 			}))
 
 			// secured faction route ws
