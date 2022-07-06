@@ -55,6 +55,19 @@ func (api *API) FactionActivePlayerSetup() {
 
 		api.FactionActivePlayers[f.ID] = ap
 	}
+
+	ap := &ActivePlayers{
+		FactionID:            "GLOBAL",
+		Map:                  make(map[string]*ActiveStat),
+		ActivePlayerListChan: make(chan *ActivePlayerBroadcast),
+	}
+
+	go ap.Run()
+
+	go ap.debounceBroadcastActivePlayers()
+
+	api.FactionActivePlayers["GLOBAL"] = ap
+
 }
 
 // CurrentFactionActivePlayer return a copy of current faction active player list
@@ -151,12 +164,12 @@ func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
 	defer ap.Unlock()
 
 	if isActive {
-		err := ap.Add(playerID)
+		err := ap.add(playerID)
 		if err != nil {
 			return terror.Error(err, "Failed to add player onto active player map")
 		}
 	} else {
-		err := ap.Remove(playerID)
+		err := ap.remove(playerID)
 		if err != nil {
 			return terror.Error(err, "Failed to remove player from active player map")
 		}
@@ -165,7 +178,7 @@ func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
 	return nil
 }
 
-func (ap *ActivePlayers) Add(playerID string) error {
+func (ap *ActivePlayers) add(playerID string) error {
 	now := time.Now()
 
 	// check player's active stat is in the list
@@ -213,7 +226,7 @@ func (ap *ActivePlayers) Add(playerID string) error {
 	return nil
 }
 
-func (ap *ActivePlayers) Remove(playerID string) error {
+func (ap *ActivePlayers) remove(playerID string) error {
 	if _, ok := ap.Map[playerID]; !ok {
 		// skip, if player is not in the list
 		return nil

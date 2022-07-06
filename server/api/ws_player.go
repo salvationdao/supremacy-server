@@ -334,6 +334,21 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 		}
 	}
 
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return nil
+	}
+
+	err = fap.Set(user.ID, isActive)
+	if err != nil {
+		return terror.Error(err, "Failed to update player active stat")
+	}
+
+	// debounce broadcast active player
+	fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: fap.CurrentFactionActivePlayer(),
+	}
+
 	return nil
 }
 
@@ -868,6 +883,19 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 	}
 
 	fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]
+	if !ok {
+		return terror.Error(terror.ErrForbidden, "Faction does not exist in the list")
+	}
+
+	reply(fap.CurrentFactionActivePlayer())
+
+	return nil
+}
+
+const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
+
+func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
 	if !ok {
 		return terror.Error(terror.ErrForbidden, "Faction does not exist in the list")
 	}
