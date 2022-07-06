@@ -213,14 +213,48 @@ func SyncMechSkins(dt DevTool) error {
 	for _, mechSkin := range MechSkins {
 
 		_, err = dt.db.Exec(`
-			UPDATE mystery_crate_blueprints SET blueprint_id=$1 WHERE blueprint_id = (SELECT id FROM blueprint_mech_skin WHERE label=$2 AND tier=$3 AND collection=$4 AND mech_model=$5 AND mech_type=$6);
+			UPDATE template_blueprints 
+			SET blueprint_id=$1 
+			WHERE blueprint_id = (
+				SELECT id 
+				FROM blueprint_mech_skin 
+				WHERE label=$2 
+				  AND tier=$3 
+				  AND collection=$4 
+				  AND mech_model=$5 
+				  AND mech_type=$6
+				);
+		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
+		if err != nil {
+			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
+			continue
+		}
+
+		_, err = dt.db.Exec(`
+			UPDATE mystery_crate_blueprints 
+			SET blueprint_id=$1 
+			WHERE blueprint_id = (
+				SELECT id 
+				FROM blueprint_mech_skin 
+				WHERE label=$2 
+				  AND tier=$3 
+				  AND collection=$4 
+				  AND mech_model=$5 
+				  AND mech_type=$6
+				);
 		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
 			continue
 		}
 		_, err = dt.db.Exec(`
-			UPDATE blueprint_mech_skin SET id=$1 WHERE label=$2 AND tier=$3 AND collection=$4 AND mech_model=$5 AND mech_type=$6;
+			UPDATE blueprint_mech_skin 
+			SET id=$1 
+			WHERE label=$2 
+			  AND tier=$3 
+			  AND collection=$4 
+			  AND mech_model=$5 
+			  AND mech_type=$6;
 		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
