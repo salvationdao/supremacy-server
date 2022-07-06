@@ -356,7 +356,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 		}
 		bq.QueueNotificationFeeTXID = null.StringFrom(notifyTransactionID)
-		_, err = bq.Update(gamedb.StdConn, boil.Infer())
+		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.QueueNotificationFeeTXID))
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").
 				Str("tx_id", notifyTransactionID).

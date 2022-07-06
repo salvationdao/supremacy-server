@@ -493,7 +493,7 @@ func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClie
 		return terror.Error(err, "Failed to get punish type from db")
 	}
 
-	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour)
+	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Minute)
 
 	if pvt.api.Config.Address == "staging" || pvt.api.Config.Address == "development" {
 		punishDuration = time.Now().Add(time.Duration(5) * time.Minute)
@@ -560,7 +560,7 @@ func (pvt *PunishVoteTracker) VotePassed() error {
 		return terror.Error(err, "Failed to get punish type from db")
 	}
 
-	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour)
+	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Minute)
 
 	if pvt.api.Config.Address == "staging" || pvt.api.Config.Address == "development" {
 		punishDuration = time.Now().Add(time.Duration(5) * time.Minute)

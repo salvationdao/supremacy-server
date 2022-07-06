@@ -328,7 +328,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
-		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Name))
 
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
