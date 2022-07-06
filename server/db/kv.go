@@ -15,7 +15,6 @@ import (
 )
 
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
-const KeySaleAbilitySalePeriodTickerIntervalSeconds KVKey = "sale_ability_sale_ticker_interval_seconds"
 const KeySaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
