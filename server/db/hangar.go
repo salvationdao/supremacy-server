@@ -84,6 +84,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		}
 		if mech.IsCompleteLimited() || mech.IsCompleteGenesis() {
 			mechDefaultSkin := &SiloSkin{
+				Type:        "skin",
 				OwnershipID: nil,
 				StaticID:    mechSilo.SkinIDStr,
 			}
