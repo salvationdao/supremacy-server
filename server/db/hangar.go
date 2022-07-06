@@ -29,6 +29,7 @@ type MechSiloAccessories struct {
 }
 
 type SiloSkin struct {
+	Type        string  `json:"type"`
 	OwnershipID *string `json:"ownership_id,omitempty"`
 	StaticID    *string `json:"static_id,omitempty"`
 }
@@ -93,6 +94,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		}
 
 		mechSkin := &SiloSkin{
+			Type:        "skin",
 			OwnershipID: nil,
 			StaticID:    mechSilo.SkinIDStr,
 		}
@@ -137,6 +139,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 					OwnershipID: weaponCollection.ID,
 					StaticID:    weapon.BlueprintID,
 					Skin: &SiloSkin{
+						Type:        "skin",
 						OwnershipID: weaponSkin,
 						StaticID:    &weaponStringID,
 					},
@@ -259,6 +262,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 		}
 
 		weaponSkinSilo := &SiloSkin{
+			Type:        "skin",
 			OwnershipID: &weaponSkinOwnership.ID,
 			StaticID:    &weaponSkin.BlueprintID,
 		}
