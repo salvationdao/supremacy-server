@@ -38,6 +38,7 @@ type ChatHistory struct {
 	Lang            string      `boiler:"lang" boil:"lang" json:"lang" toml:"lang" yaml:"lang"`
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	BattleNumber    null.Int    `boiler:"battle_number" boil:"battle_number" json:"battle_number,omitempty" toml:"battle_number" yaml:"battle_number,omitempty"`
+	Metadata        null.JSON   `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 
 	R *chatHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L chatHistoryL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -59,6 +60,7 @@ var ChatHistoryColumns = struct {
 	Lang            string
 	CreatedAt       string
 	BattleNumber    string
+	Metadata        string
 }{
 	ID:              "id",
 	FactionID:       "faction_id",
@@ -75,6 +77,7 @@ var ChatHistoryColumns = struct {
 	Lang:            "lang",
 	CreatedAt:       "created_at",
 	BattleNumber:    "battle_number",
+	Metadata:        "metadata",
 }
 
 var ChatHistoryTableColumns = struct {
@@ -93,6 +96,7 @@ var ChatHistoryTableColumns = struct {
 	Lang            string
 	CreatedAt       string
 	BattleNumber    string
+	Metadata        string
 }{
 	ID:              "chat_history.id",
 	FactionID:       "chat_history.faction_id",
@@ -109,9 +113,34 @@ var ChatHistoryTableColumns = struct {
 	Lang:            "chat_history.lang",
 	CreatedAt:       "chat_history.created_at",
 	BattleNumber:    "chat_history.battle_number",
+	Metadata:        "chat_history.metadata",
 }
 
 // Generated where
+
+type whereHelpernull_JSON struct{ field string }
+
+func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_JSON) NEQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_JSON) LT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_JSON) LTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_JSON) GT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var ChatHistoryWhere = struct {
 	ID              whereHelperstring
@@ -129,6 +158,7 @@ var ChatHistoryWhere = struct {
 	Lang            whereHelperstring
 	CreatedAt       whereHelpertime_Time
 	BattleNumber    whereHelpernull_Int
+	Metadata        whereHelpernull_JSON
 }{
 	ID:              whereHelperstring{field: "\"chat_history\".\"id\""},
 	FactionID:       whereHelperstring{field: "\"chat_history\".\"faction_id\""},
@@ -145,6 +175,7 @@ var ChatHistoryWhere = struct {
 	Lang:            whereHelperstring{field: "\"chat_history\".\"lang\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"chat_history\".\"created_at\""},
 	BattleNumber:    whereHelpernull_Int{field: "\"chat_history\".\"battle_number\""},
+	Metadata:        whereHelpernull_JSON{field: "\"chat_history\".\"metadata\""},
 }
 
 // ChatHistoryRels is where relationship names are stored.
@@ -174,9 +205,9 @@ func (*chatHistoryR) NewStruct() *chatHistoryR {
 type chatHistoryL struct{}
 
 var (
-	chatHistoryAllColumns            = []string{"id", "faction_id", "player_id", "message_color", "text", "battle_id", "msg_type", "chat_stream", "user_rank", "total_multiplier", "kill_count", "is_citizen", "lang", "created_at", "battle_number"}
+	chatHistoryAllColumns            = []string{"id", "faction_id", "player_id", "message_color", "text", "battle_id", "msg_type", "chat_stream", "user_rank", "total_multiplier", "kill_count", "is_citizen", "lang", "created_at", "battle_number", "metadata"}
 	chatHistoryColumnsWithoutDefault = []string{"faction_id", "player_id", "message_color", "text", "user_rank", "total_multiplier", "kill_count"}
-	chatHistoryColumnsWithDefault    = []string{"id", "battle_id", "msg_type", "chat_stream", "is_citizen", "lang", "created_at", "battle_number"}
+	chatHistoryColumnsWithDefault    = []string{"id", "battle_id", "msg_type", "chat_stream", "is_citizen", "lang", "created_at", "battle_number", "metadata"}
 	chatHistoryPrimaryKeyColumns     = []string{"id"}
 	chatHistoryGeneratedColumns      = []string{}
 )
