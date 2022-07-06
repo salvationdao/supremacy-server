@@ -42,18 +42,17 @@ type SaleAbilityAmountResponse struct {
 type SalePlayerAbilitiesSystem struct {
 	// sale player abilities
 	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
-	userPurchaseLimits  map[uuid.UUID]map[string]int            // map[player_id]map[sale_ability_id]purchase count for the current sale period
-	nextSalePeriod      time.Time                               // timestamp of when the next sale period will begin
+	userPurchaseLimits  map[uuid.UUID]int                       // map[player_id]purchase count for the current sale period
+	nextRefresh         time.Time                               // timestamp of when the next sale period will begin
 
 	// KVs
-	UserPurchaseLimit               int
-	PriceTickerIntervalSeconds      int
-	SalePeriodTickerIntervalSeconds int
-	TimeBetweenRefreshSeconds       int
-	ReductionPercentage             decimal.Decimal
-	InflationPercentage             decimal.Decimal
-	FloorPrice                      decimal.Decimal
-	Limit                           int
+	UserPurchaseLimit          int
+	PriceTickerIntervalSeconds int
+	TimeBetweenRefreshSeconds  int
+	ReductionPercentage        decimal.Decimal
+	InflationPercentage        decimal.Decimal
+	FloorPrice                 decimal.Decimal
+	Limit                      int
 
 	// on sale ability purchase
 	Purchase chan *Purchase
@@ -73,21 +72,20 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilities[sID] = s
 	}
 
-	salePeriodTickerIntervalSeconds := db.GetIntWithDefault(db.KeySaleAbilitySalePeriodTickerIntervalSeconds, 600) // default 10 minutes (600 seconds)
+	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
-		salePlayerAbilities:             salePlayerAbilities,
-		userPurchaseLimits:              make(map[uuid.UUID]map[string]int),
-		nextSalePeriod:                  time.Now().Add(time.Duration(salePeriodTickerIntervalSeconds) * time.Second),
-		UserPurchaseLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
-		PriceTickerIntervalSeconds:      db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
-		SalePeriodTickerIntervalSeconds: salePeriodTickerIntervalSeconds,
-		TimeBetweenRefreshSeconds:       db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 3600),                     // default 1 hour (3600 seconds)
-		ReductionPercentage:             db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
-		InflationPercentage:             db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
-		FloorPrice:                      db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
-		Limit:                           db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3
-		Purchase:                        make(chan *Purchase),
-		closed:                          atomic.NewBool(false),
+		salePlayerAbilities:        salePlayerAbilities,
+		userPurchaseLimits:         make(map[uuid.UUID]int),
+		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
+		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
+		PriceTickerIntervalSeconds: db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
+		TimeBetweenRefreshSeconds:  timeBetweenRefreshSeconds,
+		ReductionPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
+		InflationPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
+		FloorPrice:                 db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
+		Limit:                      db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3
+		Purchase:                   make(chan *Purchase),
+		closed:                     atomic.NewBool(false),
 	}
 
 	go pas.SalePlayerAbilitiesUpdater()
@@ -95,11 +93,11 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	return pas
 }
 
-func (pas *SalePlayerAbilitiesSystem) NextSalePeriod() time.Time {
+func (pas *SalePlayerAbilitiesSystem) NextRefresh() time.Time {
 	pas.RLock()
 	defer pas.RUnlock()
 
-	return pas.nextSalePeriod
+	return pas.nextRefresh
 }
 
 func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
@@ -107,43 +105,37 @@ func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
 	defer pas.Unlock()
 
 	// Reset map
-	pas.userPurchaseLimits = make(map[uuid.UUID]map[string]int)
+	pas.userPurchaseLimits = make(map[uuid.UUID]int)
 
 	// Update sale period
-	pas.nextSalePeriod = time.Now().Add(time.Duration(pas.SalePeriodTickerIntervalSeconds) * time.Second)
+	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 }
 
 func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, saleAbilityID string) error {
 	pas.Lock()
 	defer pas.Unlock()
 
-	abilitiesMap, ok := pas.userPurchaseLimits[userID]
+	count, ok := pas.userPurchaseLimits[userID]
 	if !ok {
-		abilitiesMap = map[string]int{}
-		pas.userPurchaseLimits[userID] = abilitiesMap
+		count = 0
 	}
 
-	count, ok := abilitiesMap[saleAbilityID]
-	if !ok {
-		abilitiesMap[saleAbilityID] = 0
-	} else if count == pas.UserPurchaseLimit {
-		minutes := int(time.Until(pas.nextSalePeriod).Minutes())
+	if count == pas.UserPurchaseLimit {
+		minutes := int(time.Until(pas.nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
-			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextSalePeriod).Seconds()))
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh).Seconds()))
 		}
-		return fmt.Errorf("You have hit your purchase limit of %d for this ability during this sale period. %s", pas.UserPurchaseLimit, msg)
+		return fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pas.UserPurchaseLimit, msg)
 	}
 
-	abilitiesMap[saleAbilityID] = count + 1
-	pas.userPurchaseLimits[userID] = abilitiesMap
+	pas.userPurchaseLimits[userID] = count + 1
 
 	return nil
 }
 
 func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(time.Duration(pas.PriceTickerIntervalSeconds) * time.Second)
-	salePeriodTicker := time.NewTicker(time.Duration(pas.SalePeriodTickerIntervalSeconds) * time.Second)
 
 	defer func() {
 		priceTicker.Stop()
@@ -235,17 +227,17 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
-					oneHourFromNow := time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
+					tenMinutesFromNow := time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(weightedSaleAbilities))
 					for _, i := range randomIndexes[:pas.Limit] {
-						weightedSaleAbilities[i].AvailableUntil = null.TimeFrom(oneHourFromNow)
+						weightedSaleAbilities[i].AvailableUntil = null.TimeFrom(tenMinutesFromNow)
 						weightedSaleAbilities[i].AmountSold = 0 // reset amount sold
 						saleAbilities = append(saleAbilities, weightedSaleAbilities[i])
 					}
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-						"available_until": oneHourFromNow,
+						"available_until": tenMinutesFromNow,
 						"amount_sold":     0,
 					})
 					if err != nil {
@@ -266,11 +258,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 					// Broadcast trigger of sale abilities list update
 					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
-						NextRefreshTime *time.Time                `json:"next_refresh_time"`
-						SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
+						NextRefreshTime              *time.Time                `json:"next_refresh_time"`
+						RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
+						SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
 					}{
-						NextRefreshTime: &oneHourFromNow,
-						SaleAbilities:   detailedSaleAbilities,
+						NextRefreshTime:              &pas.nextRefresh,
+						RefreshPeriodDurationSeconds: pas.TimeBetweenRefreshSeconds,
+						SaleAbilities:                detailedSaleAbilities,
 					})
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
@@ -300,20 +294,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
 			}
-			break
-		case <-salePeriodTicker.C:
-			// Sale period ticker ticks every 10 minutes, resets the user ability purchase counts
-			// Reset user ability purchase counts
-			pas.ResetUserPurchaseCounts()
-
-			// Broadcast sale period time update
-			ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesSalePeriodSubscribe, struct {
-				NextSalePeriodTime        *time.Time `json:"next_sale_period_time"`
-				SalePeriodDurationSeconds int        `json:"sale_period_duration_seconds"`
-			}{
-				NextSalePeriodTime:        &pas.nextSalePeriod,
-				SalePeriodDurationSeconds: pas.SalePeriodTickerIntervalSeconds,
-			})
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
