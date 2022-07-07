@@ -61,6 +61,7 @@ const (
 	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
 	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
 	AbilityTypeEnumFIREWORKS      = "FIREWORKS"
+	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
 // Enum values for BattleEvent
