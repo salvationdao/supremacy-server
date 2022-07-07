@@ -579,6 +579,18 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			},
 		}
 
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType:   "Equipped On",
+				Value:       nil,
+				AssetHash:   "",
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,

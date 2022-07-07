@@ -24,6 +24,8 @@ type MechSkin struct {
 	AvatarURL             null.String `json:"avatar_url,omitempty"`
 	LargeImageURL         null.String `json:"large_image_url,omitempty"`
 	CreatedAt             time.Time   `json:"created_at"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *MechSkin) Scan(value interface{}) error {
