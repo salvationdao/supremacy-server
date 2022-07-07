@@ -707,7 +707,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
-		// TODO create these dynamically depending on weapon type
+
 		attributes := []*Attribute{
 			{
 				TraitType: "Label",

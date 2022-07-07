@@ -213,6 +213,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	return nil
 }
 
+
 type PlayerAssetMechDetailRequest struct {
 	Payload struct {
 		MechID string `json:"mech_id"`
