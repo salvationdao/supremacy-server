@@ -11,7 +11,7 @@ INSERT INTO
     )
 VALUES
     (
-        20,
+        18,
         'Mini Mech',
         '#4f5f61',
         'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png',
@@ -31,7 +31,7 @@ VALUES
             FROM
                 blueprint_player_abilities
             WHERE
-                game_client_ability_id = 20
+                game_client_ability_id = 18
         ),
         100000000000000000000,
         now()
