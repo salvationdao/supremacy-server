@@ -63,6 +63,12 @@ func TransferAssets(
 		},
 	}
 
+	rollbackFunc := func() {
+		for _, fn := range rpcAssetTransferRollbackFuncs {
+			fn()
+		}
+	}
+
 	for _, attachedHash := range otherAssets {
 		err = passport.TransferAsset(
 			fromUserID,
@@ -74,6 +80,7 @@ func TransferAssets(
 			},
 		)
 		if err != nil {
+			rollbackFunc()
 			return nil, terror.Error(err)
 		}
 		rpcAssetTransferRollbackFuncs = append(rpcAssetTransferRollbackFuncs, func() {
@@ -95,12 +102,6 @@ func TransferAssets(
 					Msg("Failed to start purchase sale item rpc TransferAsset rollback (attachment).")
 			}
 		})
-	}
-
-	rollbackFunc := func() {
-		for _, fn := range rpcAssetTransferRollbackFuncs {
-			fn()
-		}
 	}
 
 	return rollbackFunc, nil
