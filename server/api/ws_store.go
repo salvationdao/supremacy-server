@@ -16,7 +16,6 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
-	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -51,47 +50,6 @@ func NewStoreController(api *API) *StoreController {
 type MysteryCrateOwnershipResp struct {
 	Owned   int `json:"owned"`
 	Allowed int `json:"allowed"`
-}
-
-const HubKeyMysteryCrateOwnershipSubscribe = "STORE:MYSTERY:CRATE:OWNERSHIP:SUBSCRIBE"
-
-func (sc *StoreController) MysteryCrateOwnershipSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	BroadcastCrateOwnershipUpdate(user.ID)
-	return nil
-}
-
-func BroadcastCrateOwnershipUpdate(userID string) {
-	// check keycards
-	allowedToBuy := 0
-	keycards, err := boiler.PlayerKeycards(
-		boiler.PlayerKeycardWhere.PlayerID.EQ(userID),
-		qm.Load(boiler.PlayerKeycardRels.BlueprintKeycard),
-	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("userID", userID).Msg("failed to get keycards for user")
-		return
-	}
-
-	for _, kc := range keycards {
-		if kc.R.BlueprintKeycard.KeycardGroup == "KEYCARD" {
-			allowedToBuy += kc.Count * 10
-		}
-	}
-
-	// check owned mystery crates
-	mysteryCrateCount, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(userID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("userID", userID).Msg("failed to get mysteryCrateCount for user")
-		return
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/user/%s/mystery_crates", userID), HubKeyMysteryCrateOwnershipSubscribe, &MysteryCrateOwnershipResp{
-		Owned:   int(mysteryCrateCount),
-		Allowed: allowedToBuy,
-	})
 }
 
 const HubKeyGetMysteryCrates = "STORE:MYSTERY:CRATES"
@@ -152,33 +110,33 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	// check keycards
-	allowedToBuy := 0
-	keycards, err := boiler.PlayerKeycards(
-		boiler.PlayerKeycardWhere.PlayerID.EQ(user.ID),
-		qm.Load(boiler.PlayerKeycardRels.BlueprintKeycard),
-	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err)
-	}
-
-	for _, kc := range keycards {
-		if kc.R.BlueprintKeycard.KeycardGroup == "KEYCARD" {
-			allowedToBuy += kc.Count * 10
-		}
-	}
-
-	//check owned mystery crates
-	mysteryCrateCount, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if int64(allowedToBuy) < (mysteryCrateCount + int64(req.Payload.Quantity)) {
-		return terror.Error(fmt.Errorf("Unable to purchase %d mystery crates, owned: %d, allowed: %d", req.Payload.Quantity, mysteryCrateCount, allowedToBuy))
-	}
+	//allowedToBuy := 0
+	//keycards, err := boiler.PlayerKeycards(
+	//	boiler.PlayerKeycardWhere.PlayerID.EQ(user.ID),
+	//	qm.Load(boiler.PlayerKeycardRels.BlueprintKeycard),
+	//).All(gamedb.StdConn)
+	//if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	//	return terror.Error(err)
+	//}
+	//
+	//for _, kc := range keycards {
+	//	if kc.R.BlueprintKeycard.KeycardGroup == "KEYCARD" {
+	//		allowedToBuy += kc.Count * 10
+	//	}
+	//}
+	//
+	////check owned mystery crates
+	//mysteryCrateCount, err := boiler.CollectionItems(
+	//	boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+	//	boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+	//).Count(gamedb.StdConn)
+	//if err != nil {
+	//	return terror.Error(err)
+	//}
+	//
+	//if int64(allowedToBuy) < (mysteryCrateCount + int64(req.Payload.Quantity)) {
+	//	return terror.Error(fmt.Errorf("Unable to purchase %d mystery crates, owned: %d, allowed: %d", req.Payload.Quantity, mysteryCrateCount, allowedToBuy))
+	//}
 
 	//double check there are still crates available on storefront, user should not be able to buy it though
 	storeCrate, err := boiler.StorefrontMysteryCrates(
@@ -289,7 +247,6 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 	//update mysterycrate subscribers and update player
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, serverStoreCrate)
-	go BroadcastCrateOwnershipUpdate(user.ID)
 
 	reply(resp)
 	return nil

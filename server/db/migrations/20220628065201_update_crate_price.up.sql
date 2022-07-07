@@ -1,0 +1,1 @@
+UPDATE storefront_mystery_crates SET price = price + 1000000000000000000000
