@@ -166,6 +166,7 @@ func NewAPI(
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
 	pasc := NewPlayerAssetsController(api)
+	// NewLeaderboardController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 
@@ -243,6 +244,10 @@ func NewAPI(
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+				
+				// // leaderboard
+				s.WS("/leaderboard", server.HubKeyPlayerWeaponsList, api.Leaderboard)
+				s.WS("/leaderboard_p", server.HubKeyPlayerWeaponsList, api.Leaderboard)
 			}))
 
 			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
