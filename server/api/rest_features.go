@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 	"net/http"
+	"server"
 	"server/db"
 	"server/helpers"
 )
@@ -30,17 +31,17 @@ func FeatureRouter(api *API) chi.Router {
 }
 
 type FeaturesbyIDsRequest struct {
-	FeatureType string
-	IDs         []string
+	FeatureType string   `json:"feature_type"`
+	IDs         []string `json:"ids"`
 }
 
 type FeaturesbyAddressesRequest struct {
-	FeatureType string
-	Addresses   []string
+	FeatureType string   `json:"feature_type"`
+	Addresses   []string `json:"addresses"`
 }
 
 type FeaturesByIDRequest struct {
-	ID string
+	ID string `json:"id"`
 }
 
 func (f *FeaturesController) AllFeatures(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -63,7 +64,9 @@ func (f *FeaturesController) PlayerFeaturesByID(w http.ResponseWriter, r *http.R
 		return http.StatusInternalServerError, terror.Error(err, "Failed to add features to player ids")
 	}
 
-	return helpers.EncodeJSON(w, features)
+	serverFeature := server.FeaturesFromBoiler(features)
+
+	return helpers.EncodeJSON(w, serverFeature)
 }
 
 func (f *FeaturesController) AddFeatureByIDs(w http.ResponseWriter, r *http.Request) (int, error) {
