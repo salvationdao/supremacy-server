@@ -65,16 +65,9 @@ func MustSecureWithFeature(featureType string, fn SecureCommandFunc) ws.CommandF
 			return err
 		}
 
-		feature, err := boiler.Features(
-			boiler.FeatureWhere.Type.EQ(featureType),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return err
-		}
-
 		for _, pf := range user.R.PlayersFeatures {
 
-			if pf.FeatureID == feature.ID {
+			if pf.FeatureType == featureType {
 				return fn(ctx, user, key, payload, reply)
 			}
 		}
@@ -90,15 +83,8 @@ func MustSecureFactionWithFeature(featureType string, fn SecureFactionCommandFun
 			return err
 		}
 
-		feature, err := boiler.Features(
-			boiler.FeatureWhere.Type.EQ(featureType),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return err
-		}
-
 		for _, pf := range user.R.PlayersFeatures {
-			if pf.FeatureID == feature.ID {
+			if pf.FeatureType == featureType {
 				return fn(ctx, user, user.FactionID.String, key, payload, reply)
 			}
 		}

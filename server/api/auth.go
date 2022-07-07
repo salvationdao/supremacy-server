@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -122,7 +123,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
-	
+
 	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
@@ -278,6 +279,28 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 		}
 	}
 
+	if api.Config.Environment == "development" {
+		features, err := db.GetAllFeatures()
+		if err != nil {
+			return terror.Error(err, "Failed get features.")
+		}
+
+		playerFeatures, err := db.GetPlayerFeaturesByID(player.ID)
+		if err != nil {
+			return terror.Error(err, "Failed get features for user.")
+		}
+
+		if len(playerFeatures) != len(features) {
+			for _, feature := range features {
+				err := db.AddFeatureToPlayerIDs(feature.Type, []string{playerID})
+				if err != nil {
+					return terror.Error(err, "Failed get add feature to user.")
+				}
+			}
+
+		}
+
+	}
 	// fingerprint
 	if fingerprint != nil {
 		err = FingerprintUpsert(*fingerprint, playerID)

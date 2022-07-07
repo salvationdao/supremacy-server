@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -61,21 +60,6 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		return nil, terror.Error(err, "Failed to commit db transaction")
 	}
 	return player, nil
-}
-
-//GetPlayerFeatures finds all Features for a player
-func GetPlayerFeatures(playerID string) (boiler.FeatureSlice, error) {
-	features, err := boiler.Features(
-		qm.Select("*"),
-		qm.InnerJoin("players_features pf on pf.feature_id = features.id"),
-		qm.InnerJoin("players p on pf.player_id = p.id"),
-		qm.Where("p.id = ?", playerID),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	return features, nil
 }
 
 func GetUserLanguage(playerID string) string {

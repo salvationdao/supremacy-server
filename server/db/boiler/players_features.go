@@ -23,80 +23,80 @@ import (
 
 // PlayersFeature is an object representing the database table.
 type PlayersFeature struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	FeatureID string    `boiler:"feature_id" boil:"feature_id" json:"feature_id" toml:"feature_id" yaml:"feature_id"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID    string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FeatureType string    `boiler:"feature_type" boil:"feature_type" json:"feature_type" toml:"feature_type" yaml:"feature_type"`
+	DeletedAt   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *playersFeatureR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playersFeatureL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayersFeatureColumns = struct {
-	ID        string
-	PlayerID  string
-	FeatureID string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID          string
+	PlayerID    string
+	FeatureType string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
-	ID:        "id",
-	PlayerID:  "player_id",
-	FeatureID: "feature_id",
-	DeletedAt: "deleted_at",
-	UpdatedAt: "updated_at",
-	CreatedAt: "created_at",
+	ID:          "id",
+	PlayerID:    "player_id",
+	FeatureType: "feature_type",
+	DeletedAt:   "deleted_at",
+	UpdatedAt:   "updated_at",
+	CreatedAt:   "created_at",
 }
 
 var PlayersFeatureTableColumns = struct {
-	ID        string
-	PlayerID  string
-	FeatureID string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID          string
+	PlayerID    string
+	FeatureType string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
-	ID:        "players_features.id",
-	PlayerID:  "players_features.player_id",
-	FeatureID: "players_features.feature_id",
-	DeletedAt: "players_features.deleted_at",
-	UpdatedAt: "players_features.updated_at",
-	CreatedAt: "players_features.created_at",
+	ID:          "players_features.id",
+	PlayerID:    "players_features.player_id",
+	FeatureType: "players_features.feature_type",
+	DeletedAt:   "players_features.deleted_at",
+	UpdatedAt:   "players_features.updated_at",
+	CreatedAt:   "players_features.created_at",
 }
 
 // Generated where
 
 var PlayersFeatureWhere = struct {
-	ID        whereHelperstring
-	PlayerID  whereHelperstring
-	FeatureID whereHelperstring
-	DeletedAt whereHelpernull_Time
-	UpdatedAt whereHelpertime_Time
-	CreatedAt whereHelpertime_Time
+	ID          whereHelperstring
+	PlayerID    whereHelperstring
+	FeatureType whereHelperstring
+	DeletedAt   whereHelpernull_Time
+	UpdatedAt   whereHelpertime_Time
+	CreatedAt   whereHelpertime_Time
 }{
-	ID:        whereHelperstring{field: "\"players_features\".\"id\""},
-	PlayerID:  whereHelperstring{field: "\"players_features\".\"player_id\""},
-	FeatureID: whereHelperstring{field: "\"players_features\".\"feature_id\""},
-	DeletedAt: whereHelpernull_Time{field: "\"players_features\".\"deleted_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"players_features\".\"updated_at\""},
-	CreatedAt: whereHelpertime_Time{field: "\"players_features\".\"created_at\""},
+	ID:          whereHelperstring{field: "\"players_features\".\"id\""},
+	PlayerID:    whereHelperstring{field: "\"players_features\".\"player_id\""},
+	FeatureType: whereHelperstring{field: "\"players_features\".\"feature_type\""},
+	DeletedAt:   whereHelpernull_Time{field: "\"players_features\".\"deleted_at\""},
+	UpdatedAt:   whereHelpertime_Time{field: "\"players_features\".\"updated_at\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"players_features\".\"created_at\""},
 }
 
 // PlayersFeatureRels is where relationship names are stored.
 var PlayersFeatureRels = struct {
-	Feature string
-	Player  string
+	FeatureTypeFeature string
+	Player             string
 }{
-	Feature: "Feature",
-	Player:  "Player",
+	FeatureTypeFeature: "FeatureTypeFeature",
+	Player:             "Player",
 }
 
 // playersFeatureR is where relationships are stored.
 type playersFeatureR struct {
-	Feature *Feature `boiler:"Feature" boil:"Feature" json:"Feature" toml:"Feature" yaml:"Feature"`
-	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	FeatureTypeFeature *Feature `boiler:"FeatureTypeFeature" boil:"FeatureTypeFeature" json:"FeatureTypeFeature" toml:"FeatureTypeFeature" yaml:"FeatureTypeFeature"`
+	Player             *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -108,8 +108,8 @@ func (*playersFeatureR) NewStruct() *playersFeatureR {
 type playersFeatureL struct{}
 
 var (
-	playersFeatureAllColumns            = []string{"id", "player_id", "feature_id", "deleted_at", "updated_at", "created_at"}
-	playersFeatureColumnsWithoutDefault = []string{"player_id", "feature_id"}
+	playersFeatureAllColumns            = []string{"id", "player_id", "feature_type", "deleted_at", "updated_at", "created_at"}
+	playersFeatureColumnsWithoutDefault = []string{"player_id", "feature_type"}
 	playersFeatureColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	playersFeaturePrimaryKeyColumns     = []string{"id"}
 	playersFeatureGeneratedColumns      = []string{}
@@ -357,10 +357,10 @@ func (q playersFeatureQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// Feature pointed to by the foreign key.
-func (o *PlayersFeature) Feature(mods ...qm.QueryMod) featureQuery {
+// FeatureTypeFeature pointed to by the foreign key.
+func (o *PlayersFeature) FeatureTypeFeature(mods ...qm.QueryMod) featureQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.FeatureID),
+		qm.Where("\"type\" = ?", o.FeatureType),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -387,9 +387,9 @@ func (o *PlayersFeature) Player(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// LoadFeature allows an eager lookup of values, cached into the
+// LoadFeatureTypeFeature allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playersFeatureL) LoadFeature(e boil.Executor, singular bool, maybePlayersFeature interface{}, mods queries.Applicator) error {
+func (playersFeatureL) LoadFeatureTypeFeature(e boil.Executor, singular bool, maybePlayersFeature interface{}, mods queries.Applicator) error {
 	var slice []*PlayersFeature
 	var object *PlayersFeature
 
@@ -404,7 +404,7 @@ func (playersFeatureL) LoadFeature(e boil.Executor, singular bool, maybePlayersF
 		if object.R == nil {
 			object.R = &playersFeatureR{}
 		}
-		args = append(args, object.FeatureID)
+		args = append(args, object.FeatureType)
 
 	} else {
 	Outer:
@@ -414,12 +414,12 @@ func (playersFeatureL) LoadFeature(e boil.Executor, singular bool, maybePlayersF
 			}
 
 			for _, a := range args {
-				if a == obj.FeatureID {
+				if a == obj.FeatureType {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.FeatureID)
+			args = append(args, obj.FeatureType)
 
 		}
 	}
@@ -430,7 +430,7 @@ func (playersFeatureL) LoadFeature(e boil.Executor, singular bool, maybePlayersF
 
 	query := NewQuery(
 		qm.From(`features`),
-		qm.WhereIn(`features.id in ?`, args...),
+		qm.WhereIn(`features.type in ?`, args...),
 		qmhelper.WhereIsNull(`features.deleted_at`),
 	)
 	if mods != nil {
@@ -468,22 +468,22 @@ func (playersFeatureL) LoadFeature(e boil.Executor, singular bool, maybePlayersF
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Feature = foreign
+		object.R.FeatureTypeFeature = foreign
 		if foreign.R == nil {
 			foreign.R = &featureR{}
 		}
-		foreign.R.PlayersFeatures = append(foreign.R.PlayersFeatures, object)
+		foreign.R.FeatureTypePlayersFeatures = append(foreign.R.FeatureTypePlayersFeatures, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.FeatureID == foreign.ID {
-				local.R.Feature = foreign
+			if local.FeatureType == foreign.Type {
+				local.R.FeatureTypeFeature = foreign
 				if foreign.R == nil {
 					foreign.R = &featureR{}
 				}
-				foreign.R.PlayersFeatures = append(foreign.R.PlayersFeatures, local)
+				foreign.R.FeatureTypePlayersFeatures = append(foreign.R.FeatureTypePlayersFeatures, local)
 				break
 			}
 		}
@@ -597,10 +597,10 @@ func (playersFeatureL) LoadPlayer(e boil.Executor, singular bool, maybePlayersFe
 	return nil
 }
 
-// SetFeature of the playersFeature to the related item.
-// Sets o.R.Feature to related.
-// Adds o to related.R.PlayersFeatures.
-func (o *PlayersFeature) SetFeature(exec boil.Executor, insert bool, related *Feature) error {
+// SetFeatureTypeFeature of the playersFeature to the related item.
+// Sets o.R.FeatureTypeFeature to related.
+// Adds o to related.R.FeatureTypePlayersFeatures.
+func (o *PlayersFeature) SetFeatureTypeFeature(exec boil.Executor, insert bool, related *Feature) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -610,10 +610,10 @@ func (o *PlayersFeature) SetFeature(exec boil.Executor, insert bool, related *Fe
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"players_features\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"feature_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"feature_type"}),
 		strmangle.WhereClause("\"", "\"", 2, playersFeaturePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.Type, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -623,21 +623,21 @@ func (o *PlayersFeature) SetFeature(exec boil.Executor, insert bool, related *Fe
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.FeatureID = related.ID
+	o.FeatureType = related.Type
 	if o.R == nil {
 		o.R = &playersFeatureR{
-			Feature: related,
+			FeatureTypeFeature: related,
 		}
 	} else {
-		o.R.Feature = related
+		o.R.FeatureTypeFeature = related
 	}
 
 	if related.R == nil {
 		related.R = &featureR{
-			PlayersFeatures: PlayersFeatureSlice{o},
+			FeatureTypePlayersFeatures: PlayersFeatureSlice{o},
 		}
 	} else {
-		related.R.PlayersFeatures = append(related.R.PlayersFeatures, o)
+		related.R.FeatureTypePlayersFeatures = append(related.R.FeatureTypePlayersFeatures, o)
 	}
 
 	return nil
