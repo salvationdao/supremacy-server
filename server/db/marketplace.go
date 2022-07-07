@@ -16,6 +16,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 var ItemSaleQueryMods = []qm.QueryMod{
@@ -274,6 +275,60 @@ var ItemKeycardSaleQueryMods = []qm.QueryMod{
 		),
 	),
 }
+
+var ItemSaleOtherAssetsSQL = `
+SELECT (
+	CASE ci.item_type
+		WHEN 'mech' THEN (
+			SELECT array_agg(_ci.hash)
+			FROM (
+				(
+					SELECT 'mech_skin'::item_type AS item_type, _ms.id as item_id
+					FROM mechs _m 
+						INNER JOIN mech_skin _ms on _ms.id = _m.chassis_skin_id 
+					WHERE _m.id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'weapon'::item_type AS item_type, _mw.weapon_id AS item_id 
+					FROM mech_weapons _mw 
+					WHERE _mw.chassis_id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'utility'::item_type AS item_type, _mu.utility_id AS item_id 
+					FROM mech_utility _mu 
+					WHERE _mu.chassis_id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'power_core'::item_type AS item_type, _pc.id AS item_id 
+					FROM mechs _m 
+						INNER JOIN power_cores _pc ON _pc.id = _m.power_core_id
+					WHERE _m.id = ci.item_id
+				)
+			) a 
+				INNER JOIN collection_items _ci on _ci.item_id = a.item_id AND _ci.item_type = a.item_type
+		)
+		WHEN 'weapon' THEN (
+			SELECT array_agg( _ci.hash)
+			FROM weapons _w 
+				INNER JOIN weapon_skin _ws on _ws.id = _w.equipped_weapon_skin_id
+				INNER JOIN collection_items _ci on _ci.item_id = _ws.id AND _ci.item_type = 'weapon_skin'
+			WHERE _w.id = ci.item_id
+		)
+		ELSE ARRAY[]::text[]
+	END)	
+FROM item_sales s 
+	LEFT JOIN collection_items ci ON ci.id = s.collection_item_id 
+	LEFT JOIN weapons w ON w.id = ci.item_id AND ci.item_type = 'weapon'
+	LEFT JOIN mechs m ON m.id = ci.item_id AND ci.item_type = 'mech'
+WHERE s.id = $1
+	AND s.sold_to IS NOT NULL
+	AND (
+	    (ci.item_type = 'weapon' AND w.id IS NOT NULL AND w.genesis_token_id IS NULL)
+	    OR (ci.item_type = 'mech' AND m.id IS NOT NULL AND m.genesis_token_id IS NULL)
+    )`
 
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
@@ -1696,4 +1751,14 @@ func MarketplaceAddEvent(eventType string, userID string, amount decimal.NullDec
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// MarketplaceGetOtherAssets grabs a list of other assets found in item sale.
+func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string, error) {
+	var output types.StringArray
+	err := conn.QueryRow(ItemSaleOtherAssetsSQL, itemSaleID).Scan(&output)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err)
+	}
+	return output, nil
 }

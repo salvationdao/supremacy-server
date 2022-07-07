@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/asset"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -1277,17 +1277,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// TODO: Have weapons on Xsyn, it seems to not exist
-
-	err = mp.API.Passport.TransferAsset(
-		saleItem.OwnerID,
-		userID.String(),
-		saleItem.CollectionItem.Hash,
-		null.StringFrom(txid),
-		func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-			asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-		},
-	)
+	rpcAssetTransferRollback, err := marketplace.TransferAssets(gamedb.StdConn, mp.API.Passport, saleItem.OwnerID, userID.String(), txid, saleItem.CollectionItem.Hash, saleItem.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
@@ -1300,28 +1290,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Err(err).
 			Msg("Failed to start purchase sale item rpc TransferAsset.")
 		return terror.Error(err, errMsg)
-	}
-
-	rpcAssetTransferRollback := func() {
-		err := mp.API.Passport.TransferAsset(
-			userID.String(),
-			saleItem.OwnerID,
-			saleItem.CollectionItem.Hash,
-			null.StringFrom(txid),
-			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-			},
-		)
-		if err != nil {
-			gamelog.L.Error().
-				Str("from_user_id", user.ID).
-				Str("to_user_id", saleItem.OwnerID).
-				Str("balance", balance.String()).
-				Str("cost", saleItemCost.String()).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Failed to start purchase sale item rpc TransferAsset rollback.")
-		}
 	}
 
 	// Start transaction

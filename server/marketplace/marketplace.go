@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/asset"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -437,15 +436,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			err = m.Passport.TransferAsset(
-				auctionItem.OwnerID.String(),
-				auctionItem.AuctionBidUserID.String(),
-				auctionItem.Hash,
-				null.StringFrom(txid),
-				func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-					asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-				},
-			)
+			rpcAssetTransferRollback, err := TransferAssets(gamedb.StdConn, m.Passport, auctionItem.OwnerID.String(), auctionItem.AuctionBidUserID.String(), txid, auctionItem.Hash, auctionItem.ID.String())
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				gamelog.L.Error().
@@ -455,26 +446,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Err(err).
 					Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
 				return
-			}
-
-			rpcAssetTransferRollback := func() {
-				err := m.Passport.TransferAsset(
-					auctionItem.AuctionBidUserID.String(),
-					auctionItem.OwnerID.String(),
-					auctionItem.Hash,
-					null.String{},
-					func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-						asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-					},
-				)
-				if err != nil {
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
-						Err(err).
-						Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
-				}
 			}
 
 			// Transfer ownership of asset
