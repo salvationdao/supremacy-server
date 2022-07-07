@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -39,6 +40,9 @@ func NewSyndicateController(api *API) *SyndicateWS {
 	api.SecureUserFactionCommand(HubKeySyndicateLeave, sc.SyndicateLeaveHandler)
 
 	// update syndicate settings
+	api.SecureUserFactionCommand(HubKeySyndicateIssueMotion, sc.SyndicateIssueMotionHandler)
+
+	// motion pass instantly if less than 3
 
 	return sc
 }
@@ -46,6 +50,7 @@ func NewSyndicateController(api *API) *SyndicateWS {
 type SyndicateCreateRequest struct {
 	Payload struct {
 		Name    string          `json:"name"`
+		Type    string          `json:"type"`
 		JoinFee decimal.Decimal `json:"join_fee"`
 		ExitFee decimal.Decimal `json:"exit_fee"`
 	} `json:"payload"`
@@ -65,14 +70,23 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 		return terror.Error(terror.ErrInvalidInput, "Only non-syndicate players can start a new syndicate.")
 	}
 
-	// check syndicate name is registered
-	syndicateName, err := sc.API.SyndicateNameVerification(req.Payload.Name)
-	if err != nil {
-		return terror.Error(err, err.Error())
+	// check price
+	if req.Payload.JoinFee.LessThan(decimal.Zero) {
+		return terror.Error(terror.ErrInvalidInput, "Join fee should not be less than zero")
+	}
+
+	if req.Payload.ExitFee.LessThan(decimal.Zero) {
+		return terror.Error(terror.ErrInvalidInput, "Exit fee should not be less than zero")
 	}
 
 	if req.Payload.ExitFee.GreaterThan(req.Payload.JoinFee) {
 		return terror.Error(fmt.Errorf("exit fee is higher than join fee"), "Exit fee should not be higher than join fee.")
+	}
+
+	// check syndicate name is registered
+	syndicateName, err := sc.API.SyndicateNameVerification(req.Payload.Name)
+	if err != nil {
+		return terror.Error(err, err.Error())
 	}
 
 	// create new syndicate
@@ -85,6 +99,7 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	defer tx.Rollback()
 
 	syndicate := boiler.Syndicate{
+		Type:        req.Payload.Type,
 		Name:        syndicateName,
 		FactionID:   factionID,
 		FoundedByID: user.ID,
@@ -99,7 +114,11 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	}
 
 	user.SyndicateID = null.StringFrom(syndicate.ID)
-	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+	user.DirectorOfSyndicateID = null.StringFromPtr(nil)
+	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
+		user.DirectorOfSyndicateID = null.StringFrom(syndicate.ID)
+	}
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID, boiler.PlayerColumns.DirectorOfSyndicateID))
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Interface("user", user).Msg("Failed to update syndicate id of current user.")
 		return terror.Error(err, "Failed to assign syndicate")
@@ -270,6 +289,13 @@ func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Pl
 
 	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
 
+	// broadcast latest syndicate detail
+	serverSyndicate, err := GetSyndicateLatestDetail(syndicate.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get syndicate detail")
+	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
+
 	reply(true)
 
 	return nil
@@ -310,7 +336,8 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	defer tx.Rollback()
 
 	user.SyndicateID = null.StringFromPtr(nil)
-	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+	user.DirectorOfSyndicateID = null.StringFromPtr(nil)
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID, boiler.PlayerColumns.DirectorOfSyndicateID))
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("user", user).Msg("Failed to update user syndicate column")
 		return terror.Error(err, "Failed to exit syndicate")
@@ -356,5 +383,136 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 		}
 	}
 
+	// broadcast updated user
+	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
+
+	// broadcast latest syndicate detail
+	serverSyndicate, err := GetSyndicateLatestDetail(syndicate.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get syndicate detail")
+	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
+
+	reply(true)
+
 	return nil
+}
+
+type SyndicateIssueMotionRequest struct {
+	Payload struct {
+		SyndicateID string `json:"syndicate_id"`
+		Type        string `json:"type"`
+
+		// content
+		NewSymbolID      null.String `json:"new_symbol_id"`
+		NewSyndicateName null.String `json:"new_syndicate_name"`
+
+		NewJoinFee decimal.NullDecimal `json:"new_join_fee"`
+		NewExitFee decimal.NullDecimal `json:"new_exit_fee"`
+
+		NewDeployingUserPercentage decimal.NullDecimal `json:"new_deploying_user_percentage"`
+		NewAbilityKillPercentage   decimal.NullDecimal `json:"new_ability_kill_percentage"`
+		NewMechOwnerPercentage     decimal.NullDecimal `json:"new_mech_owner_percentage"`
+		NewSyndicateCutPercentage  decimal.NullDecimal `json:"new_syndicate_cut_percentage"`
+
+		SyndicateRuleID null.String `json:"syndicate_rule_id"`
+		NewRuleNumber   null.Int    `json:"new_rule_number"`
+		NewRuleContent  null.Int    `json:"new_rule_content"`
+
+		DirectorID null.String `json:"director_id"`
+
+		DurationDays int `json:"duration_days"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateIssueMotion = "SYNDICATE:ISSUE:MOTION"
+
+func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	req := &SyndicateIssueMotionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.SyndicateID != user.SyndicateID.String {
+		return terror.Error(terror.ErrInvalidInput, "Can only issue motion in your own syndicate")
+	}
+
+	// get syndicate
+	syndicate, err := boiler.FindSyndicate(gamedb.StdConn, req.Payload.SyndicateID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get syndicate from db")
+		return terror.Error(err, "Failed to load syndicate data")
+	}
+
+	if syndicate.Type == boiler.SyndicateTypeCORPORATION && user.DirectorOfSyndicateID.String == syndicate.ID {
+		return terror.Error(terror.ErrForbidden, "Only directors can issue motion in the syndicate")
+	}
+
+	// start issue motion
+	switch syndicate.Type {
+	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
+
+	case boiler.SyndicateMotionTypeCHANGE_PAYMENT_SETTING:
+
+	case boiler.SyndicateMotionTypeADD_RULE:
+
+	case boiler.SyndicateMotionTypeREMOVE_RULE:
+
+	case boiler.SyndicateMotionTypeCHANGE_RULE:
+
+	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
+
+	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
+
+	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
+
+	case boiler.SyndicateMotionTypeNAMING_CONVENTION:
+
+	}
+	return nil
+}
+
+// subscription handlers
+
+const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
+
+// SyndicateGeneralDetailSubscribeHandler return syndicate general detail (join fee, exit fee, name, symbol_url, available_seat_count)
+func (sc *SyndicateWS) SyndicateGeneralDetailSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	syndicateID := cctx.URLParam("syndicate_id")
+	if syndicateID == "" {
+		return terror.Error(terror.ErrInvalidInput, "Missing syndicate id")
+	}
+
+	if user.SyndicateID.String != syndicateID {
+		return terror.Error(terror.ErrInvalidInput, "The player does not belong to the syndicate")
+	}
+
+	// get syndicate detail
+	syndicate, err := GetSyndicateLatestDetail(syndicateID)
+	if err != nil {
+		return terror.Error(err, "Failed to get syndicate")
+	}
+
+	reply(syndicate)
+
+	return nil
+}
+
+func GetSyndicateLatestDetail(syndicateID string) (*server.Syndicate, error) {
+	syndicate, err := boiler.Syndicates(
+		boiler.SyndicateWhere.ID.EQ(syndicateID),
+		qm.Load(boiler.SyndicateRels.Players, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
+		qm.Load(boiler.SyndicateRels.Symbol),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get syndicate")
+	}
+
+	return server.SyndicateBoilerToServer(syndicate), nil
 }

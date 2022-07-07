@@ -219,7 +219,27 @@ const (
 
 // Enum values for SyndicateEventType
 const (
-	SyndicateEventTypeMEMBER_JOIN    = "MEMBER_JOIN"
-	SyndicateEventTypeMEMBER_LEAVE   = "MEMBER_LEAVE"
-	SyndicateEventTypeUPDATE_PROFILE = "UPDATE_PROFILE"
+	SyndicateEventTypeMEMBER_JOIN     = "MEMBER_JOIN"
+	SyndicateEventTypeMEMBER_LEAVE    = "MEMBER_LEAVE"
+	SyndicateEventTypeUPDATE_PROFILE  = "UPDATE_PROFILE"
+	SyndicateEventTypeCONTRIBUTE_FUND = "CONTRIBUTE_FUND"
+)
+
+// Enum values for SyndicateMotionType
+const (
+	SyndicateMotionTypeCHANGE_GENERAL_DETAIL  = "CHANGE_GENERAL_DETAIL"
+	SyndicateMotionTypeCHANGE_PAYMENT_SETTING = "CHANGE_PAYMENT_SETTING"
+	SyndicateMotionTypeADD_RULE               = "ADD_RULE"
+	SyndicateMotionTypeREMOVE_RULE            = "REMOVE_RULE"
+	SyndicateMotionTypeCHANGE_RULE            = "CHANGE_RULE"
+	SyndicateMotionTypeAPPOINT_DIRECTOR       = "APPOINT_DIRECTOR"
+	SyndicateMotionTypeREMOVE_DIRECTOR        = "REMOVE_DIRECTOR"
+	SyndicateMotionTypeREMOVE_FOUNDER         = "REMOVE_FOUNDER"
+	SyndicateMotionTypeNAMING_CONVENTION      = "NAMING_CONVENTION"
+)
+
+// Enum values for SyndicateType
+const (
+	SyndicateTypeCORPORATION   = "CORPORATION"
+	SyndicateTypeDECENTRALISED = "DECENTRALISED"
 )

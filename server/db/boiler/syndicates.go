@@ -25,10 +25,11 @@ import (
 // Syndicate is an object representing the database table.
 type Syndicate struct {
 	ID          string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type        string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	FactionID   string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	FoundedByID string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
 	Name        string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	AvatarURL   null.String     `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	SymbolID    string          `boiler:"symbol_id" boil:"symbol_id" json:"symbol_id" toml:"symbol_id" yaml:"symbol_id"`
 	SeatCount   int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
 	JoinFee     decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
 	ExitFee     decimal.Decimal `boiler:"exit_fee" boil:"exit_fee" json:"exit_fee" toml:"exit_fee" yaml:"exit_fee"`
@@ -42,10 +43,11 @@ type Syndicate struct {
 
 var SyndicateColumns = struct {
 	ID          string
+	Type        string
 	FactionID   string
 	FoundedByID string
 	Name        string
-	AvatarURL   string
+	SymbolID    string
 	SeatCount   string
 	JoinFee     string
 	ExitFee     string
@@ -54,10 +56,11 @@ var SyndicateColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "id",
+	Type:        "type",
 	FactionID:   "faction_id",
 	FoundedByID: "founded_by_id",
 	Name:        "name",
-	AvatarURL:   "avatar_url",
+	SymbolID:    "symbol_id",
 	SeatCount:   "seat_count",
 	JoinFee:     "join_fee",
 	ExitFee:     "exit_fee",
@@ -68,10 +71,11 @@ var SyndicateColumns = struct {
 
 var SyndicateTableColumns = struct {
 	ID          string
+	Type        string
 	FactionID   string
 	FoundedByID string
 	Name        string
-	AvatarURL   string
+	SymbolID    string
 	SeatCount   string
 	JoinFee     string
 	ExitFee     string
@@ -80,10 +84,11 @@ var SyndicateTableColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "syndicates.id",
+	Type:        "syndicates.type",
 	FactionID:   "syndicates.faction_id",
 	FoundedByID: "syndicates.founded_by_id",
 	Name:        "syndicates.name",
-	AvatarURL:   "syndicates.avatar_url",
+	SymbolID:    "syndicates.symbol_id",
 	SeatCount:   "syndicates.seat_count",
 	JoinFee:     "syndicates.join_fee",
 	ExitFee:     "syndicates.exit_fee",
@@ -96,10 +101,11 @@ var SyndicateTableColumns = struct {
 
 var SyndicateWhere = struct {
 	ID          whereHelperstring
+	Type        whereHelperstring
 	FactionID   whereHelperstring
 	FoundedByID whereHelperstring
 	Name        whereHelperstring
-	AvatarURL   whereHelpernull_String
+	SymbolID    whereHelperstring
 	SeatCount   whereHelperint
 	JoinFee     whereHelperdecimal_Decimal
 	ExitFee     whereHelperdecimal_Decimal
@@ -108,10 +114,11 @@ var SyndicateWhere = struct {
 	DeletedAt   whereHelpernull_Time
 }{
 	ID:          whereHelperstring{field: "\"syndicates\".\"id\""},
+	Type:        whereHelperstring{field: "\"syndicates\".\"type\""},
 	FactionID:   whereHelperstring{field: "\"syndicates\".\"faction_id\""},
 	FoundedByID: whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
 	Name:        whereHelperstring{field: "\"syndicates\".\"name\""},
-	AvatarURL:   whereHelpernull_String{field: "\"syndicates\".\"avatar_url\""},
+	SymbolID:    whereHelperstring{field: "\"syndicates\".\"symbol_id\""},
 	SeatCount:   whereHelperint{field: "\"syndicates\".\"seat_count\""},
 	JoinFee:     whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
 	ExitFee:     whereHelperdecimal_Decimal{field: "\"syndicates\".\"exit_fee\""},
@@ -124,21 +131,30 @@ var SyndicateWhere = struct {
 var SyndicateRels = struct {
 	Faction                    string
 	FoundedBy                  string
+	Symbol                     string
 	IDSyndicateWinDistribution string
+	DirectorOfSyndicatePlayers string
 	Players                    string
+	SyndicateRules             string
 }{
 	Faction:                    "Faction",
 	FoundedBy:                  "FoundedBy",
+	Symbol:                     "Symbol",
 	IDSyndicateWinDistribution: "IDSyndicateWinDistribution",
+	DirectorOfSyndicatePlayers: "DirectorOfSyndicatePlayers",
 	Players:                    "Players",
+	SyndicateRules:             "SyndicateRules",
 }
 
 // syndicateR is where relationships are stored.
 type syndicateR struct {
 	Faction                    *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	FoundedBy                  *Player                   `boiler:"FoundedBy" boil:"FoundedBy" json:"FoundedBy" toml:"FoundedBy" yaml:"FoundedBy"`
+	Symbol                     *Symbol                   `boiler:"Symbol" boil:"Symbol" json:"Symbol" toml:"Symbol" yaml:"Symbol"`
 	IDSyndicateWinDistribution *SyndicateWinDistribution `boiler:"IDSyndicateWinDistribution" boil:"IDSyndicateWinDistribution" json:"IDSyndicateWinDistribution" toml:"IDSyndicateWinDistribution" yaml:"IDSyndicateWinDistribution"`
+	DirectorOfSyndicatePlayers PlayerSlice               `boiler:"DirectorOfSyndicatePlayers" boil:"DirectorOfSyndicatePlayers" json:"DirectorOfSyndicatePlayers" toml:"DirectorOfSyndicatePlayers" yaml:"DirectorOfSyndicatePlayers"`
 	Players                    PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	SyndicateRules             SyndicateRuleSlice        `boiler:"SyndicateRules" boil:"SyndicateRules" json:"SyndicateRules" toml:"SyndicateRules" yaml:"SyndicateRules"`
 }
 
 // NewStruct creates a new relationship struct
@@ -150,9 +166,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "faction_id", "founded_by_id", "name", "avatar_url", "seat_count", "join_fee", "exit_fee", "created_at", "updated_at", "deleted_at"}
-	syndicateColumnsWithoutDefault = []string{"faction_id", "founded_by_id", "name", "join_fee", "exit_fee"}
-	syndicateColumnsWithDefault    = []string{"id", "avatar_url", "seat_count", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "name", "symbol_id", "seat_count", "join_fee", "exit_fee", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol_id", "join_fee", "exit_fee"}
+	syndicateColumnsWithDefault    = []string{"id", "seat_count", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )
@@ -429,6 +445,21 @@ func (o *Syndicate) FoundedBy(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// Symbol pointed to by the foreign key.
+func (o *Syndicate) Symbol(mods ...qm.QueryMod) symbolQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.SymbolID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Symbols(queryMods...)
+	queries.SetFrom(query.Query, "\"symbols\"")
+
+	return query
+}
+
 // IDSyndicateWinDistribution pointed to by the foreign key.
 func (o *Syndicate) IDSyndicateWinDistribution(mods ...qm.QueryMod) syndicateWinDistributionQuery {
 	queryMods := []qm.QueryMod{
@@ -440,6 +471,28 @@ func (o *Syndicate) IDSyndicateWinDistribution(mods ...qm.QueryMod) syndicateWin
 
 	query := SyndicateWinDistributions(queryMods...)
 	queries.SetFrom(query.Query, "\"syndicate_win_distributions\"")
+
+	return query
+}
+
+// DirectorOfSyndicatePlayers retrieves all the player's Players with an executor via director_of_syndicate_id column.
+func (o *Syndicate) DirectorOfSyndicatePlayers(mods ...qm.QueryMod) playerQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"players\".\"director_of_syndicate_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"players\".\"deleted_at\""),
+	)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"players\".*"})
+	}
 
 	return query
 }
@@ -461,6 +514,28 @@ func (o *Syndicate) Players(mods ...qm.QueryMod) playerQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"players\".*"})
+	}
+
+	return query
+}
+
+// SyndicateRules retrieves all the syndicate_rule's SyndicateRules with an executor.
+func (o *Syndicate) SyndicateRules(mods ...qm.QueryMod) syndicateRuleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_rules\".\"syndicate_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_rules\".\"deleted_at\""),
+	)
+
+	query := SyndicateRules(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_rules\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_rules\".*"})
 	}
 
 	return query
@@ -676,6 +751,111 @@ func (syndicateL) LoadFoundedBy(e boil.Executor, singular bool, maybeSyndicate i
 	return nil
 }
 
+// LoadSymbol allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateL) LoadSymbol(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		args = append(args, object.SymbolID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.SymbolID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.SymbolID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`symbols`),
+		qm.WhereIn(`symbols.id in ?`, args...),
+		qmhelper.WhereIsNull(`symbols.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Symbol")
+	}
+
+	var resultSlice []*Symbol
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Symbol")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for symbols")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for symbols")
+	}
+
+	if len(syndicateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Symbol = foreign
+		if foreign.R == nil {
+			foreign.R = &symbolR{}
+		}
+		foreign.R.Syndicates = append(foreign.R.Syndicates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.SymbolID == foreign.ID {
+				local.R.Symbol = foreign
+				if foreign.R == nil {
+					foreign.R = &symbolR{}
+				}
+				foreign.R.Syndicates = append(foreign.R.Syndicates, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadIDSyndicateWinDistribution allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
 func (syndicateL) LoadIDSyndicateWinDistribution(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
@@ -770,6 +950,105 @@ func (syndicateL) LoadIDSyndicateWinDistribution(e boil.Executor, singular bool,
 					foreign.R = &syndicateWinDistributionR{}
 				}
 				foreign.R.IDSyndicate = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDirectorOfSyndicatePlayers allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (syndicateL) LoadDirectorOfSyndicatePlayers(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.director_of_syndicate_id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load players")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice players")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DirectorOfSyndicatePlayers = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerR{}
+			}
+			foreign.R.DirectorOfSyndicate = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.DirectorOfSyndicateID) {
+				local.R.DirectorOfSyndicatePlayers = append(local.R.DirectorOfSyndicatePlayers, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.DirectorOfSyndicate = local
 				break
 			}
 		}
@@ -877,6 +1156,105 @@ func (syndicateL) LoadPlayers(e boil.Executor, singular bool, maybeSyndicate int
 	return nil
 }
 
+// LoadSyndicateRules allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (syndicateL) LoadSyndicateRules(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_rules`),
+		qm.WhereIn(`syndicate_rules.syndicate_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_rules.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_rules")
+	}
+
+	var resultSlice []*SyndicateRule
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_rules")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_rules")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_rules")
+	}
+
+	if len(syndicateRuleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.SyndicateRules = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateRuleR{}
+			}
+			foreign.R.Syndicate = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.SyndicateID {
+				local.R.SyndicateRules = append(local.R.SyndicateRules, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateRuleR{}
+				}
+				foreign.R.Syndicate = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetFaction of the syndicate to the related item.
 // Sets o.R.Faction to related.
 // Adds o to related.R.Syndicates.
@@ -969,6 +1347,52 @@ func (o *Syndicate) SetFoundedBy(exec boil.Executor, insert bool, related *Playe
 	return nil
 }
 
+// SetSymbol of the syndicate to the related item.
+// Sets o.R.Symbol to related.
+// Adds o to related.R.Syndicates.
+func (o *Syndicate) SetSymbol(exec boil.Executor, insert bool, related *Symbol) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"symbol_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.SymbolID = related.ID
+	if o.R == nil {
+		o.R = &syndicateR{
+			Symbol: related,
+		}
+	} else {
+		o.R.Symbol = related
+	}
+
+	if related.R == nil {
+		related.R = &symbolR{
+			Syndicates: SyndicateSlice{o},
+		}
+	} else {
+		related.R.Syndicates = append(related.R.Syndicates, o)
+	}
+
+	return nil
+}
+
 // SetIDSyndicateWinDistribution of the syndicate to the related item.
 // Sets o.R.IDSyndicateWinDistribution to related.
 // Adds o to related.R.IDSyndicate.
@@ -1016,6 +1440,131 @@ func (o *Syndicate) SetIDSyndicateWinDistribution(exec boil.Executor, insert boo
 	} else {
 		related.R.IDSyndicate = o
 	}
+	return nil
+}
+
+// AddDirectorOfSyndicatePlayers adds the given related objects to the existing relationships
+// of the syndicate, optionally inserting them as new records.
+// Appends related to o.R.DirectorOfSyndicatePlayers.
+// Sets related.R.DirectorOfSyndicate appropriately.
+func (o *Syndicate) AddDirectorOfSyndicatePlayers(exec boil.Executor, insert bool, related ...*Player) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.DirectorOfSyndicateID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"players\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"director_of_syndicate_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.DirectorOfSyndicateID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &syndicateR{
+			DirectorOfSyndicatePlayers: related,
+		}
+	} else {
+		o.R.DirectorOfSyndicatePlayers = append(o.R.DirectorOfSyndicatePlayers, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerR{
+				DirectorOfSyndicate: o,
+			}
+		} else {
+			rel.R.DirectorOfSyndicate = o
+		}
+	}
+	return nil
+}
+
+// SetDirectorOfSyndicatePlayers removes all previously related items of the
+// syndicate replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.DirectorOfSyndicate's DirectorOfSyndicatePlayers accordingly.
+// Replaces o.R.DirectorOfSyndicatePlayers with related.
+// Sets related.R.DirectorOfSyndicate's DirectorOfSyndicatePlayers accordingly.
+func (o *Syndicate) SetDirectorOfSyndicatePlayers(exec boil.Executor, insert bool, related ...*Player) error {
+	query := "update \"players\" set \"director_of_syndicate_id\" = null where \"director_of_syndicate_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.DirectorOfSyndicatePlayers {
+			queries.SetScanner(&rel.DirectorOfSyndicateID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.DirectorOfSyndicate = nil
+		}
+
+		o.R.DirectorOfSyndicatePlayers = nil
+	}
+	return o.AddDirectorOfSyndicatePlayers(exec, insert, related...)
+}
+
+// RemoveDirectorOfSyndicatePlayers relationships from objects passed in.
+// Removes related items from R.DirectorOfSyndicatePlayers (uses pointer comparison, removal does not keep order)
+// Sets related.R.DirectorOfSyndicate.
+func (o *Syndicate) RemoveDirectorOfSyndicatePlayers(exec boil.Executor, related ...*Player) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.DirectorOfSyndicateID, nil)
+		if rel.R != nil {
+			rel.R.DirectorOfSyndicate = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("director_of_syndicate_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.DirectorOfSyndicatePlayers {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.DirectorOfSyndicatePlayers)
+			if ln > 1 && i < ln-1 {
+				o.R.DirectorOfSyndicatePlayers[i] = o.R.DirectorOfSyndicatePlayers[ln-1]
+			}
+			o.R.DirectorOfSyndicatePlayers = o.R.DirectorOfSyndicatePlayers[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
@@ -1141,6 +1690,58 @@ func (o *Syndicate) RemovePlayers(exec boil.Executor, related ...*Player) error 
 		}
 	}
 
+	return nil
+}
+
+// AddSyndicateRules adds the given related objects to the existing relationships
+// of the syndicate, optionally inserting them as new records.
+// Appends related to o.R.SyndicateRules.
+// Sets related.R.Syndicate appropriately.
+func (o *Syndicate) AddSyndicateRules(exec boil.Executor, insert bool, related ...*SyndicateRule) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.SyndicateID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_rules\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateRulePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.SyndicateID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &syndicateR{
+			SyndicateRules: related,
+		}
+	} else {
+		o.R.SyndicateRules = append(o.R.SyndicateRules, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateRuleR{
+				Syndicate: o,
+			}
+		} else {
+			rel.R.Syndicate = o
+		}
+	}
 	return nil
 }
 

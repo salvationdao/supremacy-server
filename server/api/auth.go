@@ -113,13 +113,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	// check user from token
 	player, err := api.TokenLogin(token)
 	if err != nil {
-		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
-			return http.StatusBadRequest, terror.Error(err, "Session is expired")
-		}
+		err := api.DeleteCookie(w, r)
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
