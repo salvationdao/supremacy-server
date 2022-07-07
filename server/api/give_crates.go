@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -107,6 +110,14 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(err, "Could not find crate, try again or contact support.")
 	}
 
+	crateRollback := func() {
+		crate.Opened = false
+		_, err = crate.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed rollback crate opened: %s", crate.ID))
+		}
+	}
+
 	items := OpenCrateResponse{}
 
 	blueprintItems, err := crate.MysteryCrateBlueprints().All(tx2)
@@ -114,6 +125,8 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get blueprint relationships from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 		return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
+
+	xsynAsserts := []*rpctypes.XsynAsset{}
 
 	for _, blueprintItem := range blueprintItems {
 		switch blueprintItem.BlueprintType {
@@ -130,6 +143,8 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 			}
 			items.Mech = mech
+
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
 			if err != nil {
@@ -143,6 +158,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Could not get weapon during crate opening, try again or contact support.")
 			}
 			items.Weapons = append(items.Weapons, weapon)
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 		case boiler.TemplateItemTypeMECH_SKIN:
 			bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -156,6 +172,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
 			}
 			items.MechSkin = mechSkin
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{mechSkin})...)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -168,6 +185,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
 			}
 			items.WeaponSkin = weaponSkin
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{weaponSkin})...)
 		case boiler.TemplateItemTypePOWER_CORE:
 			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
@@ -181,7 +199,15 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				return http.StatusInternalServerError, terror.Error(err, "Could not get powercore during crate opening, try again or contact support.")
 			}
 			items.PowerCore = powerCore
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{powerCore})...)
 		}
+	}
+
+	err = api.Passport.AssetsRegister(xsynAsserts) // register new assets
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
+		crateRollback()
+		return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
 	if crate.Type == boiler.CrateTypeMECH {
