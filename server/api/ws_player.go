@@ -15,6 +15,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/xsyn_rpcclient"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,6 +67,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerRankGet, pc.PlayerRankGet)
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
+
+	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 
 	return pc
 }
@@ -1035,5 +1038,66 @@ func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, 
 	}
 
 	reply(prefs)
+	return nil
+}
+
+type PlayerProfileRequest struct {
+	Payload struct {
+		PlayerGID string `json:"player_gid"`
+	} `json:"payload"`
+}
+
+type PlayerProfileResponse struct {
+	*boiler.Player `json:"player"`
+	Stats          *boiler.PlayerStat `json:"stats"`
+	Faction        *boiler.Faction    `json:"faction"`
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
+
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	gid, err := strconv.Atoi(req.Payload.PlayerGID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Err(err).Msg("unable to convert player gid to int")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get player
+	player, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(gid),
+
+		// load faction
+		qm.Load(boiler.PlayerRels.Faction),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Msg("unable to get player")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get stats
+	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	var faction *boiler.Faction
+	if player.R != nil && player.R.Faction != nil {
+		faction = player.R.Faction
+	}
+	reply(PlayerProfileResponse{
+		Player:  player,
+		Stats:   stats,
+		Faction: faction,
+	})
 	return nil
 }
