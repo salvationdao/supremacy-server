@@ -9,7 +9,7 @@ import (
 
 type Feature struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"Type"`
+	Type      string    `json:"type"`
 	DeletedAt null.Time `json:"deleted_at,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
