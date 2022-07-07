@@ -122,6 +122,25 @@ func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID
 	return ids
 }
 
+func (arena *Arena) CurrentBattleWarMachineOrAIByHash(hash string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	for _, wm := range arena._currentBattle.SpawnedAI {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
+}
+
 func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -929,6 +948,7 @@ const (
 
 type SpawnedAIEvent struct {
 	ParticipantID byte            `json:"participantID"`
+	Hash          string          `json:"hash"`
 	UserID        string          `json:"userID"`
 	Name          string          `json:"name"`
 	Model         string          `json:"model"`
@@ -1222,6 +1242,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// get spawned AI
 	spawnedAI := &WarMachine{
 		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
+		Hash:          payload.SpawnedAIEvent.Hash,
 		OwnedByID:     payload.SpawnedAIEvent.UserID,
 		Name:          payload.SpawnedAIEvent.Name,
 		Model:         payload.SpawnedAIEvent.Model,

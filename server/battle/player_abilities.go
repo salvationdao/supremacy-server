@@ -516,7 +516,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	}
 
 	// get mech
-	wm := arena.CurrentBattleWarMachineByHash(req.Payload.Hash)
+	wm := arena.CurrentBattleWarMachineOrAIByHash(req.Payload.Hash)
 	if wm == nil {
 		return terror.Error(fmt.Errorf("required mech not found"), "Targeted mech is not on the battlefield.")
 	}
