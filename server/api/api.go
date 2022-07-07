@@ -210,6 +210,7 @@ func NewAPI(
 			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 			r.Mount("/faction", FactionRouter(api))
+			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
