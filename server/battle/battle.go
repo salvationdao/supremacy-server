@@ -1449,7 +1449,7 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		// If Mech is a regular type OR is a mini mech
-		if participantID < 100 || btl.IsMechOfType(participantID, MiniMech) {
+		if participantID < 100 || btl.IsMechOfType(int(participantID), MiniMech) {
 			wsMessages = append(wsMessages, ws.Message{
 				URI:     fmt.Sprintf("/public/mech/%d", participantID),
 				Key:     HubKeyWarMachineStatUpdated,

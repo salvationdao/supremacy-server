@@ -149,6 +149,12 @@ func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 		}
 	}
 
+	for _, wm := range arena._currentBattle.SpawnedAI {
+		if checkWarMachineByParticipantID(wm, participantID) {
+			return wm
+		}
+	}
+
 	return nil
 }
 
@@ -1190,15 +1196,15 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
-func (btl *Battle) IsMechOfType(participantID byte, aiType AIType) bool {
+func (btl *Battle) IsMechOfType(participantID int, aiType AIType) bool {
 	btl.spawnedAIMux.RLock()
 	defer btl.spawnedAIMux.RUnlock()
 
 	for _, s := range btl.SpawnedAI {
-		if s.ParticipantID != participantID {
+		if int(s.ParticipantID) != participantID {
 			continue
 		}
-		return s.AIType == &aiType
+		return *s.AIType == aiType
 	}
 	return false
 }
