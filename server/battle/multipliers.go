@@ -19,14 +19,6 @@ import (
 
 type MultiplierTypeEnum string
 
-const SPEND_AVERAGE MultiplierTypeEnum = "spend_average"
-const MOST_SUPS_LOST MultiplierTypeEnum = "most_sups_lost"
-const GAB_ABILITY MultiplierTypeEnum = "gab_ability"
-const COMBO_BREAKER MultiplierTypeEnum = "combo_breaker"
-const PLAYER_MECH MultiplierTypeEnum = "player_mech"
-const HOURS_ONLINE MultiplierTypeEnum = "hours_online"
-const SYNDICATE_WIN MultiplierTypeEnum = "syndicate_win"
-
 type MultiplierSystem struct {
 	multipliers map[string]*boiler.Multiplier
 	players     map[string]map[*boiler.Multiplier]*boiler.PlayerMultiplier
@@ -204,86 +196,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		mult[contributorMultiplier.ID] = append(mult[contributorMultiplier.ID], &copiedMulti)
 
 		newMultipliers[playerID] = mult
-	}
-
-	// TODO: move this to it own function
-	repairEvents, err := boiler.BattleHistories(
-		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventPickup),
-		boiler.BattleHistoryWhere.BattleID.EQ(ms.battle.BattleID),
-		boiler.BattleHistoryWhere.RelatedID.IsNotNull(),
-		qm.Load(boiler.BattleHistoryRels.WarMachineOne),
-	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
-	}
-
-	repairContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("grease monkey")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
-	}
-
-	repairTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("field mechanic")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get repair events")
-	}
-
-	if repairContributorMultiplier != nil && repairTriggerMultiplier != nil {
-
-		for _, repairEvent := range repairEvents {
-			triggeredPlayer, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
-				continue
-			}
-
-			ci, err := db.CollectionItemFromItemID(nil, repairEvent.R.WarMachineOne.ID)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
-				continue
-			}
-
-			mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ci.OwnerID)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech owner contributors")
-				continue
-			}
-
-			if mechOwner.FactionID.String != triggeredPlayer.FactionID {
-				continue
-			}
-
-			eventContributors, err := db.GetPlayerContributions(ms.battle.ID, repairEvent.RelatedID.String)
-			if err != nil {
-				continue
-			}
-
-			totalSpendings := decimal.Zero
-
-			for _, totalSpending := range eventContributors {
-				totalSpendings = totalSpendings.Add(totalSpending.Amount)
-			}
-
-			minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
-
-			for _, eventContributor := range eventContributors {
-				if eventContributor.Amount.LessThan(minimumSpending) {
-					continue
-				}
-				mult, ok := newMultipliers[eventContributor.PlayerID]
-				if !ok {
-					mult = make(map[string][]*boiler.Multiplier)
-				}
-				if eventContributor.PlayerID == triggeredPlayer.PlayerID.String {
-					mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
-					newMultipliers[triggeredPlayer.PlayerID.String] = mult
-					continue
-				}
-
-				mult[repairContributorMultiplier.ID] = append(mult[repairContributorMultiplier.ID], repairContributorMultiplier)
-				newMultipliers[eventContributor.PlayerID] = mult
-			}
-
-		}
 	}
 
 	killedEvents, err := boiler.BattleHistories(
