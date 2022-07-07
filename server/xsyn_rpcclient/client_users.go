@@ -96,13 +96,31 @@ type UserBalanceGetResp struct {
 // UserBalanceGet return the sups balance from the given user id
 func (pp *XsynXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	resp := &UserBalanceGetResp{}
-	err := pp.XrpcClient.Call("S.UserBalanceGetHandler", UserBalanceGetReq{pp.ApiKey, userID}, resp)
+	err := pp.XrpcClient.Call("S.UserUpdateUsername", UserBalanceGetReq{pp.ApiKey, userID}, resp)
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserBalanceGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
 		return decimal.Zero
 	}
 
 	return resp.Balance
+}
+
+type UsernameUpdateReq struct {
+	UserID      string `json:"user_id"`
+	NewUsername string `json:"new_username"`
+	ApiKey      string
+}
+
+// UserUpdateUsername updates username
+func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) *UserResp {
+	resp := &UserResp{}
+	err := pp.XrpcClient.Call("S.UserBalanceGetHandler", UsernameUpdateReq{pp.ApiKey, userID, newUsername}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserBalanceGetHandler").Msg("rpc error")
+		return nil
+	}
+
+	return resp
 }
 
 type UserFactionEnlistReq struct {

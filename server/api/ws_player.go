@@ -18,7 +18,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
+	goaway "github.com/TwiN/go-away"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
@@ -43,6 +45,8 @@ func NewPlayerController(api *API) *PlayerController {
 	pc := &PlayerController{
 		API: api,
 	}
+
+	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
@@ -1100,4 +1104,99 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 		Faction: faction,
 	})
 	return nil
+}
+
+type PlayerUpdateUsernameRequest struct {
+	Payload struct {
+		NewUsername string `json:"new_username"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateUsername = "PLAYER:UPDATE_USERNAME"
+
+func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating username, try again or contact support."
+	req := &PlayerUpdateUsernameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// check profanity/ check if valid username
+	err = IsValidUsername(req.Payload.NewUsername)
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
+	}
+
+	user.Username = null.StringFrom(req.Payload.NewUsername)
+	user.UpdatedAt = time.Now()
+
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// update in xsyn
+	resp := pc.API.Passport.UserUpdateUsername(user.ID, req.Payload.NewUsername)
+	reply(resp)
+	return nil
+}
+
+func IsValidUsername(username string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 15 characters
+	// Cannot contain profanity
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(username)) {
+		hasDisallowedSymbol = true
+	}
+
+	//err := fmt.Errorf("username does not meet requirements")
+	if TrimUsername(username) == "" {
+		return terror.Error(fmt.Errorf("username cannot be empty"), "Invalid username. Your username cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(username)) < 3 {
+		return terror.Error(fmt.Errorf("username must be at least characters long"), "Invalid username. Your username must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(username)) > 30 {
+		return terror.Error(fmt.Errorf("username cannot be more than 30 characters long"), "Invalid username. Your username cannot be more than 30 characters long.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(fmt.Errorf("username cannot contain disallowed symbols"), "Invalid username. Your username contains a disallowed symbol.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(username) {
+		return terror.Error(fmt.Errorf("username contains profanity"), "Invalid username. Your username contains profanity.")
+	}
+
+	return nil
+}
+
+// TrimUsername removes misuse of invisible characters.
+func TrimUsername(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	// Enforce one Space like characters between words
+	output = strings.Join(strings.Fields(output), " ")
+
+	return output
 }
