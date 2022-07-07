@@ -37,6 +37,7 @@ type Weapon struct {
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
+	EquippedOnDetails *EquippedOnDetails
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`

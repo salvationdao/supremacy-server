@@ -22,6 +22,8 @@ type WeaponSkin struct {
 	Tier          string      `json:"tier"`
 	CreatedAt     time.Time   `json:"created_at"`
 	WeaponModelID string      `json:"weapon_model_id"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *WeaponSkin) Scan(value interface{}) error {

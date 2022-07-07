@@ -28,6 +28,8 @@ type Utility struct {
 	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
 	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
 	AntiMissile *UtilityAntiMissile `json:"anti_missile,omitempty"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *Utility) Scan(value interface{}) error {

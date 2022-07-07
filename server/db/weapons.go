@@ -17,6 +17,35 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+func WeaponEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, error) {
+	eid := &server.EquippedOnDetails{}
+
+	err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemColumns.ItemID,
+			boiler.CollectionItemColumns.Hash,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
+	).QueryRow(gamedb.StdConn).Scan(
+		&eid.ID,
+		&eid.Hash,
+		&eid.Label,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return eid, nil
+}
+
 func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	tx := trx
 	if trx == nil {

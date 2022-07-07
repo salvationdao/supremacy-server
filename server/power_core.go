@@ -24,6 +24,8 @@ type PowerCore struct {
 	CreatedAt             time.Time       `json:"created_at"`
 	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *PowerCore) Scan(value interface{}) error {

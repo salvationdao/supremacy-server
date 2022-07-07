@@ -16,6 +16,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+
 func InsertNewMechSkin(trx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
 	tx := trx
 	if trx == nil {

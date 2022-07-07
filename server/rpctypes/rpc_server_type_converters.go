@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -581,13 +582,18 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
-
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
 			}
 
 			attributes = append(attributes, &Attribute{
 				TraitType:   "Equipped On",
-				Value:       nil,
-				AssetHash:   "",
+				Value:       i.EquippedOnDetails.Label,
+				AssetHash:   i.EquippedOnDetails.Hash,
 			})
 		}
 
@@ -650,6 +656,23 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 				TraitType:   "Recharge rate",
 				Value:       i.RechargeRate.InexactFloat64(),
 			},
+		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType:   "Equipped On",
+				Value:       i.EquippedOnDetails.Label,
+				AssetHash:   i.EquippedOnDetails.Hash,
+			})
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -769,6 +792,23 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType:   "Equipped On",
+				Value:       i.EquippedOnDetails.Label,
+				AssetHash:   i.EquippedOnDetails.Hash,
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -817,6 +857,23 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			},
 		}
 
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.WeaponEquippedOnDetails(i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType:   "Equipped On",
+				Value:       i.EquippedOnDetails.Label,
+				AssetHash:   i.EquippedOnDetails.Hash,
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -862,6 +919,24 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 				Value:     i.Type,
 			},
 		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType:   "Equipped On",
+				Value:       i.EquippedOnDetails.Label,
+				AssetHash:   i.EquippedOnDetails.Hash,
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,

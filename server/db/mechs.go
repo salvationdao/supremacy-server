@@ -793,3 +793,32 @@ func MechRename(mechID string, ownerID string, name string) (string, error) {
 	return name, nil
 
 }
+
+func MechEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, error) {
+	eid := &server.EquippedOnDetails{}
+
+	err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemColumns.ItemID,
+			boiler.CollectionItemColumns.Hash,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
+	).QueryRow(gamedb.StdConn).Scan(
+		&eid.ID,
+		&eid.Hash,
+		&eid.Label,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return eid, nil
+}
