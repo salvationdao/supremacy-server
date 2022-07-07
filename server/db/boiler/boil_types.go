@@ -61,6 +61,7 @@ const (
 	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
 	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
 	AbilityTypeEnumFIREWORKS      = "FIREWORKS"
+	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
 // Enum values for BattleEvent
@@ -214,4 +215,11 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)
+
+// Enum values for SyndicateEventType
+const (
+	SyndicateEventTypeMEMBER_JOIN    = "MEMBER_JOIN"
+	SyndicateEventTypeMEMBER_LEAVE   = "MEMBER_LEAVE"
+	SyndicateEventTypeUPDATE_PROFILE = "UPDATE_PROFILE"
 )

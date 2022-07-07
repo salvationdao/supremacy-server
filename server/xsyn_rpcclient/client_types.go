@@ -114,3 +114,11 @@ type AssetLockToServiceReq struct {
 	OwnerID        string `json:"owner_id,omitempty"`
 	Hash           string `json:"hash,omitempty"`
 }
+
+type SyndicateCreateReq struct {
+	ApiKey      string `json:"apiKey"`
+	ID          string `json:"id"`
+	FoundedByID string `json:"foundedByID"`
+	Name        string `json:"name"`
+}
+type SyndicateCreateResp struct{}

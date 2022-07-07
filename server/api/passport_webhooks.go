@@ -87,6 +87,9 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, err
 	}
 
+	// broadcast syndicate id
+	req.User.SyndicateID = player.SyndicateID
+
 	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, req.User)
 
 	return helpers.EncodeJSON(w, struct {
@@ -135,6 +138,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		FactionID:     req.FactionID,
 		Faction:       &server.Faction{},
 		Gid:           player.Gid,
+		SyndicateID:   player.SyndicateID,
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())

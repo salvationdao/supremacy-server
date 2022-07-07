@@ -99,6 +99,9 @@ var TableNames = struct {
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
+	SyndicateEventLog                                  string
+	SyndicateWinDistributions                          string
+	Syndicates                                         string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
 	Templates                                          string
@@ -209,6 +212,9 @@ var TableNames = struct {
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",
+	SyndicateEventLog:            "syndicate_event_log",
+	SyndicateWinDistributions:    "syndicate_win_distributions",
+	Syndicates:                   "syndicates",
 	TelegramNotifications:        "telegram_notifications",
 	TemplateBlueprints:           "template_blueprints",
 	Templates:                    "templates",

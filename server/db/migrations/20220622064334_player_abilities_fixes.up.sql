@@ -27,7 +27,7 @@ CREATE TYPE LOCATION_SELECT_TYPE_ENUM AS ENUM (
     'MECH_SELECT',
     'LOCATION_SELECT',
     'GLOBAL'
-);
+    );
 
 ALTER TABLE
     blueprint_player_abilities DROP CONSTRAINT blueprint_player_abilities_location_select_type_check;
