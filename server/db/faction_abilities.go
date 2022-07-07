@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -16,8 +17,7 @@ func BattleAbilityGetRandom() (*boiler.BattleAbility, error) {
 		return nil, err
 	}
 
-	// NOTE: need to ensure there is always a battle ability on the list, otherwise the system will crash
-	battleAbility := battleAbilities[rand.Intn(len(battleAbilities))]
+	battleAbility := battleAbilities[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(battleAbilities))]
 
 	return battleAbility, nil
 }

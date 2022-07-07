@@ -220,6 +220,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				TextColour:          ability.TextColour,
 				Title:               "FACTION_WIDE",
 				OfferingID:          uuid.Must(uuid.NewV4()),
+				LocationSelectType:  ability.LocationSelectType,
 			}
 			abilities[factionAbility.Identity] = factionAbility
 
@@ -276,6 +277,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					Colour:              ability.Colour,
 					TextColour:          ability.TextColour,
 					OfferingID:          uuid.Must(uuid.NewV4()),
+					LocationSelectType:  ability.LocationSelectType,
 				}
 
 				wm.Abilities = append(wm.Abilities, wmAbility)
@@ -1555,6 +1557,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 			TextColour:             ga.TextColour,
 			CooldownDurationSecond: ba.CooldownDurationSecond,
 			OfferingID:             uuid.Must(uuid.NewV4()),
+			LocationSelectType:     ga.LocationSelectType,
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
@@ -2146,7 +2149,7 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID string) (*GameAbili
 	return ability, nil
 }
 
-func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
+func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, startPoint server.CellLocation, endPoint *server.CellLocation) error {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the LocationSelect!", r)
@@ -2178,18 +2181,17 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	event := &server.GameAbilityEvent{
 		IsTriggered:         true,
 		GameClientAbilityID: ability.GameClientAbilityID,
-		TriggeredOnCellX:    &x,
-		TriggeredOnCellY:    &y,
 		TriggeredByUserID:   &userID,
 		TriggeredByUsername: &player.Username.String,
 		EventID:             ability.OfferingID,
 		FactionID:           &faction.ID,
 	}
 
-	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
-		X: *event.TriggeredOnCellX,
-		Y: *event.TriggeredOnCellY,
-	})
+	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&startPoint)
+
+	if ability.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && endPoint != nil {
+		event.GameLocationEnd = as.battle().getGameWorldCoordinatesFromCellXY(endPoint)
+	}
 
 	// trigger location select
 	as.battle().arena.Message("BATTLE:ABILITY", event)
@@ -2215,8 +2217,6 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 
 	as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 		Type: LocationSelectTypeTrigger,
-		X:    &x,
-		Y:    &y,
 		Ability: &AbilityBrief{
 			Label:    ability.Label,
 			ImageUrl: ability.ImageUrl,
