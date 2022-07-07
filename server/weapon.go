@@ -127,7 +127,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 	}
 }
 
-func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) *Weapon {
+func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
@@ -169,5 +169,6 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,
 		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
+		WeaponSkin:           weaponSkin,
 	}
 }

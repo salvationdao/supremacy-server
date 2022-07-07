@@ -94,7 +94,7 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		tx = gamedb.StdConn
 	}
 
-	boilerMech, err := boiler.FindWeapon(tx, id)
+	boilerWeapon, err := boiler.FindWeapon(tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,15 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
-	return server.WeaponFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+	var weaponSkin *server.WeaponSkin
+	if boilerWeapon.EquippedWeaponSkinID.Valid{
+		weaponSkin, err = WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID.String)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails,weaponSkin), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
@@ -118,7 +126,15 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		if err != nil {
 			return nil, err
 		}
-		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails))
+
+		var weaponSkin *server.WeaponSkin
+		if bm.EquippedWeaponSkinID.Valid{
+			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
+			if err != nil {
+				return nil, err
+			}
+		}
+		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails, weaponSkin))
 	}
 
 	return weapons, nil
