@@ -398,7 +398,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			Name:             i.Label,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			Data:             asJson,
@@ -525,6 +524,10 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 				TraitType: "Outro Animation",
 				Value:     i.IntroAnimation.Bool,
 			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
+			},
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -569,6 +572,10 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			{
 				TraitType: "Mech Model",
 				Value:     i.MechModel, // TODO: get mech model name instead
+			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
 			},
 		}
 
@@ -637,7 +644,6 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			AssetType:        null.StringFrom(i.ItemType),
@@ -685,44 +691,113 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 				TraitType: "Weapon Type",
 				Value:     i.WeaponType,
 			},
-			{
-				TraitType: "Damage Falloff",
-				Value:     i.DamageFalloff.Int,
-			},
-			{
+		}
+
+		if i.DamageFalloff.Valid {
+			attributes = append(attributes, &Attribute{
+				DisplayType: BoostNumber,
+				TraitType:   "Damage Falloff",
+				Value:       i.DamageFalloff.Int,
+			})
+		}
+
+		if i.DamageFalloffRate.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff rate",
 				Value:       i.DamageFalloffRate.Int,
-			},
-			{
+			})
+		}
+
+		if i.Radius.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Area of effect",
 				Value:       i.Radius.Int,
-			},
-			{
+			})
+		}
+
+		if i.Spread.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Spread",
 				Value:       i.Spread.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.RateOfFire.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Rate of fire",
 				Value:       i.RateOfFire.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.ProjectileSpeed.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Projectile Speed",
 				Value:       i.ProjectileSpeed.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.EnergyCost.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
 				Value:       i.EnergyCost.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.MaxAmmo.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Max Ammo",
 				Value:       i.MaxAmmo.Int,
+			})
+		}
+
+		assets = append(assets, &XsynAsset{
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
+			XsynLocked:       i.XsynLocked,
+		})
+	}
+
+	return assets
+}
+
+func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range weaponSkins {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Weapon Model",
+				Value:     i.WeaponModelID, // TODO: bring in weapons matrix and have a list of weapons it can fit on
 			},
 			{
 				TraitType: "Tier",
@@ -737,16 +812,17 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
-			AssetType:        null.StringFrom(i.ItemType),
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
+			AssetType:        null.StringFrom(i.ItemType),
 			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
 			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
+			LargeImageURL:    i.LargeImageURL,
 			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -778,7 +854,6 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			AssetType:        null.StringFrom(i.ItemType),
@@ -823,13 +898,11 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 		ID:             mysteryCrate.ID,
 		CollectionSlug: mysteryCrate.CollectionSlug,
 		TokenID:        mysteryCrate.TokenID,
-		Tier:           mysteryCrate.Tier,
 		Data:           asJson,
 		Attributes:     attributes,
 		Hash:           mysteryCrate.Hash,
 		OwnerID:        mysteryCrate.OwnerID,
 		AssetType:      null.StringFrom(mysteryCrate.ItemType),
-
 		Name:             mysteryCrate.Label,
 		ImageURL:         mysteryCrate.ImageURL,
 		BackgroundColor:  mysteryCrate.BackgroundColor,
