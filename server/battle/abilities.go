@@ -567,10 +567,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					bm.Start("sup_contribution")
-					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
 					bm.End("sup_contribution")
 					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to contribute sups to faction ability")
+						if err.Error() != "player is banned to trigger ability" {
+							gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to contribute sups to faction ability")
+						}
 						cont.reply(false)
 						continue
 					}
@@ -777,11 +779,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
-
-	bm := benchmark.New()
-	defer bm.Alert(100)
-
+func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal, cannotTrigger bool) (decimal.Decimal, decimal.Decimal, bool, error) {
 	isTriggered := false
 
 	// calc the different
@@ -789,6 +787,11 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	// if players spend more thant they need, crop the spend price
 	if amount.GreaterThanOrEqual(diff) {
+		// skip, if player cannot trigger the ability
+		if cannotTrigger {
+			return decimal.Zero, decimal.Zero, false, fmt.Errorf("player is banned to trigger ability")
+		}
+
 		isTriggered = true
 		amount = diff
 	}
@@ -806,6 +809,9 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
 	}
+
+	bm := benchmark.New()
+	defer bm.Alert(100)
 
 	// pay sup
 	bm.Start("send_sup_message")
@@ -1356,11 +1362,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// contribute sups
 				bm.Start("sup_contribution")
-				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
 				bm.End("sup_contribution")
 				// tell frontend the contribution is success
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+					if err.Error() != "player is banned to trigger ability" {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+					}
 					cont.reply(false)
 					continue
 				}
@@ -1585,6 +1593,7 @@ type Contribution struct {
 	percentage        decimal.Decimal
 	abilityOfferingID string
 	abilityIdentity   string
+	cannotTrigger     bool
 	reply             ws.ReplyFunc
 }
 
@@ -1972,7 +1981,7 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal, reply ws.ReplyFunc) {
+func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal, cannotTrigger bool, reply ws.ReplyFunc) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
@@ -1996,6 +2005,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 		percentage,
 		abilityOfferingID,
 		abilityIdentity,
+		cannotTrigger,
 		reply,
 	}
 
@@ -2056,7 +2066,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	return abilities
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal, reply ws.ReplyFunc) {
+func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal, cannotTrigger bool, reply ws.ReplyFunc) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BribeGabs!", r)
@@ -2087,6 +2097,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		percentage,
 		abilityOfferingID,
 		"",
+		cannotTrigger,
 		reply,
 	}
 

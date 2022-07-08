@@ -51,6 +51,7 @@ type ChatMessageType string
 const (
 	ChatMessageTypeText       ChatMessageType = "TEXT"
 	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
+	ChatMessageTypeSystemBan  ChatMessageType = "SYSTEM_BAN"
 )
 
 type MessageText struct {
@@ -219,7 +220,38 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 
+	go api.SystemBanMessageBroadcaster()
+
 	return chatHub
+}
+
+func (api *API) SystemBanMessageBroadcaster() {
+	for {
+		msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan
+		cm := &ChatMessage{
+			Type:   ChatMessageTypeSystemBan,
+			SentAt: time.Now(),
+			Data:   msg,
+		}
+
+		switch msg.FactionID.String {
+		case server.RedMountainFactionID:
+			api.RedMountainChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		case server.BostonCyberneticsFactionID:
+			api.BostonChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		case server.ZaibatsuFactionID:
+			api.ZaibatsuChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		default:
+			api.GlobalChat.AddMessage(cm)
+			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+		}
+	}
 }
 
 // FactionChatRequest sends chat message to specific faction.

@@ -13,18 +13,57 @@ import (
 	"time"
 )
 
-type SystemBanManager struct {
-	teamKillCourtroom map[string]*TeamKillDefendant
+type MessageSystemBan struct {
+	PlayerBan    *boiler.PlayerBan `json:"player_ban"`
+	SystemPlayer *boiler.Player    `json:"system_player"`
+	BannedPlayer *boiler.Player    `json:"banned_player"`
+	FactionID    null.String       `json:"faction_id"`
+}
 
+type SystemBanManager struct {
+	SystemBanMassageChan chan *MessageSystemBan
+
+	teamKillCourtroom map[string]*TeamKillDefendant
 	sync.RWMutex
 }
 
 func NewSystemBanManager() *SystemBanManager {
 	sbm := &SystemBanManager{
-		teamKillCourtroom: make(map[string]*TeamKillDefendant),
+		teamKillCourtroom:    make(map[string]*TeamKillDefendant),
+		SystemBanMassageChan: make(chan *MessageSystemBan),
 	}
 
 	return sbm
+}
+
+func (sbm *SystemBanManager) sendSystemBanMessage(playerBanID string) {
+	playerBan, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.ID.EQ(playerBanID),
+		qm.Load(
+			boiler.PlayerBanRels.BannedBy,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+				boiler.PlayerColumns.Gid,
+			),
+		),
+		qm.Load(
+			boiler.PlayerBanRels.BannedPlayer,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+				boiler.PlayerColumns.Gid,
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player ban detail")
+		return
+	}
+
+	sbm.SystemBanMassageChan <- &MessageSystemBan{playerBan, playerBan.R.BannedBy, playerBan.R.BannedPlayer, playerBan.R.BannedPlayer.FactionID}
 }
 
 func (sbm *SystemBanManager) HasOngoingTeamKillCases(playerID string) bool {
@@ -241,4 +280,7 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 		gamelog.L.Error().Err(err).Interface("player ban", playerBan).Msg("Failed to insert system team kill ban into db")
 		return
 	}
+
+	// send player ban to chat
+	go tkj.systemBanManager.sendSystemBanMessage(playerBan.ID)
 }
