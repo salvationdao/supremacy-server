@@ -1626,6 +1626,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
 				}
 
+				// sent instance to system ban manager
+				go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
+
 			} else {
 				// update user kill
 				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)

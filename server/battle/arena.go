@@ -50,6 +50,7 @@ type Arena struct {
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
+	SystemBanManager         *SystemBanManager
 	sync.RWMutex
 }
 
@@ -246,6 +247,7 @@ func NewArena(opts *Opts) *Arena {
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		telegram:                 opts.Telegram,
 		opts:                     opts,
+		SystemBanManager:         NewSystemBanManager(),
 	}
 
 	var err error

@@ -1,3 +1,7 @@
+-- insert system battle user
+INSERT INTO players (id, username, is_ai)
+VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true);
+
 DROP TYPE IF EXISTS BAN_FROM_TYPE;
 CREATE TYPE BAN_FROM_TYPE AS ENUM ('SYSTEM','ADMIN','PLAYER');
 

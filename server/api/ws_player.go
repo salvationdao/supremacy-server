@@ -588,6 +588,11 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		queries = append(queries, boiler.PlayerBanWhere.BanSupsContribute.EQ(true))
 	case "restrict_location_select":
 		queries = append(queries, boiler.PlayerBanWhere.BanLocationSelect.EQ(true))
+
+		// skip, if the player is in the team kill courtroom
+		if pc.API.BattleArena.SystemBanManager.HasOngoingTeamKillCases(intendToBenPlayer.ID) {
+			return terror.Error(fmt.Errorf("player is listed on system ban"), "The player is already listed on system ban list")
+		}
 	case "restrict_chat":
 		queries = append(queries, boiler.PlayerBanWhere.BanSendChat.EQ(true))
 	}

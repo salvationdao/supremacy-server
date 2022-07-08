@@ -26,6 +26,8 @@ func (b *Faction) Scan(value interface{}) error {
 	return json.Unmarshal(v, b)
 }
 
+const SupremacyBattleUserID = "87c60803-b051-4abb-aa60-487104946bd7"
+
 var RedMountainFactionID = "98bf7bb3-1a7c-4f21-8843-458d62884060"
 var BostonCyberneticsFactionID = "7c6dde21-b067-46cf-9e56-155c88a520e2"
 var ZaibatsuFactionID = "880db344-e405-428d-84e5-6ebebab1fe6d"
