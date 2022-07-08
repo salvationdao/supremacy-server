@@ -1767,13 +1767,13 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, error) {
 	mechRow, err := boiler.Mechs(
 		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
-		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		), boiler.ItemTypeMech),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
 		boiler.CollectionItemWhere.ItemID.EQ(itemSaleID),
 	).One(conn)
