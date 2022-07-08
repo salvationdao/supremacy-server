@@ -273,9 +273,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	// check user is banned on chat
-	isBanned, err := player.BannedPlayerPlayerBans(
-		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.BanSendChat.EQ(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")

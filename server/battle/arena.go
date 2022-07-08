@@ -485,8 +485,8 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	// check user is banned on limit sups contribution
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
-		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		boiler.PlayerBanWhere.BanSupsContribute.GT(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -646,8 +646,8 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	// check user is banned on limit sups contribution
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
-		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		boiler.PlayerBanWhere.BanSupsContribute.GT(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")

@@ -31,6 +31,12 @@ CREATE TABLE player_bans(
     deleted_at timestamptz
 );
 
+create index idx_player_ban_search on player_bans(banned_player_id, end_at DESC);
+create index idx_player_ban_sup_contribute on player_bans(banned_player_id,ban_sups_contribute, end_at DESC);
+create index idx_player_ban_location_select on player_bans(ban_location_select, end_at DESC);
+create index idx_player_ban_send_chat on player_bans(banned_player_id,ban_send_chat, end_at DESC);
+create index idx_player_ban_view_chat on player_bans(banned_player_id,ban_view_chat, end_at DESC);
+
 INSERT INTO player_bans (ban_from, banned_player_id, banned_by_id, reason, banned_at, end_at, related_punish_vote_id, ban_sups_contribute, ban_location_select, ban_send_chat, ban_view_chat)
 SELECT  'PLAYER',
         pp.player_id,

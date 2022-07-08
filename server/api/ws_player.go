@@ -581,7 +581,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	// check player is currently punished with the same option
 	queries := []qm.QueryMod{
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
-		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	}
 
 	switch punishOption.Key {
@@ -592,6 +591,8 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	case "restrict_chat":
 		queries = append(queries, boiler.PlayerBanWhere.BanSendChat.EQ(true))
 	}
+
+	queries = append(queries, boiler.PlayerBanWhere.EndAt.GT(time.Now()))
 
 	punishedPlayer, err := boiler.PlayerBans(queries...).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
