@@ -4,6 +4,8 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/shopspring/decimal"
 )
 
 type PlayerMechSurvives struct {
@@ -36,7 +38,7 @@ func GetPlayerMechSurvives() ([]*PlayerMechSurvives, error) {
 
 		if err != nil {
 			gamelog.L.Error().
-				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player contribtions into struct")
+				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player mech survives into struct")
 			return nil, err
 		}
 
@@ -47,8 +49,8 @@ func GetPlayerMechSurvives() ([]*PlayerMechSurvives, error) {
 }
 
 type PlayerBattleContributions struct {
-	Player             *boiler.Player `json:"player"`
-	TotalContributions string         `db:"total_contributions" json:"total_contributions"`
+	Player             *boiler.Player  `json:"player"`
+	TotalContributions decimal.Decimal `db:"total_contributions" json:"total_contributions"`
 }
 
 func GetPlayerBattleContributions() ([]*PlayerBattleContributions, error) {
@@ -76,7 +78,47 @@ func GetPlayerBattleContributions() ([]*PlayerBattleContributions, error) {
 
 		if err != nil {
 			gamelog.L.Error().
-				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player contribtions into struct")
+				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player battle contributions into struct")
+			return nil, err
+		}
+
+		resp = append(resp, battleContributions)
+	}
+
+	return resp, nil
+}
+
+type PlayerMechsOwned struct {
+	Player     *boiler.Player  `json:"player"`
+	MechsOwned decimal.Decimal `db:"mechs_owned" json:"mechs_owned"`
+}
+
+func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
+	q := `
+        WITH ci AS (SELECT owner_id, COUNT(id) AS mechs_owned FROM collection_items ci WHERE "item_type" = 'mech' GROUP BY owner_id LIMIT 10)
+        SELECT p.id, p.username, p.faction_id, p.gid, p.rank, ci.mechs_owned FROM players p
+        INNER JOIN ci on p.id = ci.owner_id
+        ORDER BY ci.mechs_owned DESC;
+    `
+	rows, err := gamedb.StdConn.Query(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player mechs owned.")
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	resp := []*PlayerMechsOwned{}
+	for rows.Next() {
+		battleContributions := &PlayerMechsOwned{
+			Player: &boiler.Player{},
+		}
+
+		err := rows.Scan(&battleContributions.Player.ID, &battleContributions.Player.Username, &battleContributions.Player.FactionID, &battleContributions.Player.Gid, &battleContributions.Player.Rank, &battleContributions.MechsOwned)
+
+		if err != nil {
+			gamelog.L.Error().
+				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player mechs owned into struct")
 			return nil, err
 		}
 

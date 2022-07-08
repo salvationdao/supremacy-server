@@ -31,6 +31,7 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 	api.Command(HubKeyPlayerAbilityKills, leaderboardHub.GetPlayerAbilityKillsHandler)
 	api.Command(HubKeyPlayerAbilityTriggers, leaderboardHub.GetPlayerAbilityTriggersHandler)
 	api.Command(HubKeyPlayerBattleContributions, leaderboardHub.GetPlayerBattleContributionsHandler)
+	api.Command(HubKeyPlayerMechsOwned, leaderboardHub.GetPlayerMechsOwnedHandler)
 
 	return leaderboardHub
 }
@@ -251,6 +252,23 @@ func (lc *LeaderboardController) GetPlayerBattleContributionsHandler(ctx context
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player battle contributions.")
 		return terror.Error(err, "Failed to get leaderboard player battle contributions.")
+	}
+
+	reply(resp)
+	return nil
+}
+
+/**
+* Get top players most mech survivals based on the mechs they own
+ */
+const HubKeyPlayerMechsOwned = "LEADERBOARD:PLAYER:MECHS:OWNED"
+
+func (lc *LeaderboardController) GetPlayerMechsOwnedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.GetPlayerMechsOwned()
+
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mechs owned.")
+		return terror.Error(err, "Failed to get leaderboard player mechs owned.")
 	}
 
 	reply(resp)
