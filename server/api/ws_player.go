@@ -1053,8 +1053,9 @@ type PlayerProfileRequest struct {
 
 type PlayerProfileResponse struct {
 	*boiler.Player `json:"player"`
-	Stats          *boiler.PlayerStat `json:"stats"`
-	Faction        *boiler.Faction    `json:"faction"`
+	Stats          *boiler.PlayerStat      `json:"stats"`
+	Faction        *boiler.Faction         `json:"faction"`
+	ActiveLog      *boiler.PlayerActiveLog `json:"active_log"`
 }
 
 const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
@@ -1094,14 +1095,28 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
 	}
 
+	// get active log
+	activeLog, err := boiler.PlayerActiveLogs(
+		boiler.PlayerActiveLogWhere.PlayerID.EQ(player.ID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerActiveLogColumns.ActiveAt)),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get player's active log")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// set faction
 	var faction *boiler.Faction
 	if player.R != nil && player.R.Faction != nil {
 		faction = player.R.Faction
 	}
 	reply(PlayerProfileResponse{
-		Player:  player,
-		Stats:   stats,
-		Faction: faction,
+		Player:    player,
+		Stats:     stats,
+		Faction:   faction,
+		ActiveLog: activeLog,
 	})
 	return nil
 }
