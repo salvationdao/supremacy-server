@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -94,6 +95,7 @@ func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) {
 		mm.ReachedAt = &now
 		pam.movingMiniMechs[hash] = mm
 	}
+	spew.Dump(pam.movingMiniMechs)
 }
 
 func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []MovingMiniMech {
@@ -103,6 +105,8 @@ func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []Movi
 	result := []MovingMiniMech{}
 	for _, mmm := range pam.movingMiniMechs {
 		if mmm.FactionID != factionID || mmm.ReachedAt != nil {
+			fmt.Println("--------DISCARDING-----------")
+			fmt.Println(mmm.MechHash)
 			continue
 		}
 
@@ -513,9 +517,6 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 	}
 
 	movingMiniMechs := arena._currentBattle.playerAbilityManager().MovingFactionMiniMechs(factionID)
-	if len(movingMiniMechs) == 0 {
-		return nil
-	}
 	for _, mm := range movingMiniMechs {
 		result = append(result, &FactionMechCommands{
 			BattleID: mm.BattleID,
