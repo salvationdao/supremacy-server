@@ -200,19 +200,18 @@ type DeleteAssetHandlerReq struct {
 	AssetID string `json:"asset_id"`
 }
 
-
 type DeleteAssetHandlerResp struct {
 }
 
-func (pp *XsynXrpcClient) DeleteAssetXSYN(assetID string)  error {
+func (pp *XsynXrpcClient) DeleteAssetXSYN(assetID string) error {
 	req := &DeleteAssetHandlerReq{
-		ApiKey: pp.ApiKey,
+		ApiKey:  pp.ApiKey,
 		AssetID: assetID,
 	}
 	resp := &DeleteAssetHandlerResp{}
 	err := pp.XrpcClient.Call("S.DeleteAssetHandler", req, resp)
 	if err != nil {
-		return  err
+		return err
 	}
 
 	return nil

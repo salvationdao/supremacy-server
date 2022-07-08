@@ -213,7 +213,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	return nil
 }
 
-
 type PlayerAssetMechDetailRequest struct {
 	Payload struct {
 		MechID string `json:"mech_id"`
@@ -753,8 +752,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 	}
 
-
-
 	if crate.Type == boiler.CrateTypeMECH {
 		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
 		if err != nil {
@@ -797,7 +794,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
-
 		mech, err := db.Mech(tx, items.Mech.ID)
 		if err != nil {
 			crateRollback()
@@ -805,7 +801,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		mech.ChassisSkin = items.MechSkin
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset( []*server.Mech{mech})...)
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
@@ -841,7 +837,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 	}
 
-
 	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
@@ -856,7 +851,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		crateRollback()
 		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
-	
+
 	err = tx.Commit()
 	if err != nil {
 		crateRollback()

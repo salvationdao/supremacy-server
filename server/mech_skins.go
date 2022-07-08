@@ -82,7 +82,7 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 }
 
 func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
-	mskin:=  &MechSkin{
+	mskin := &MechSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
@@ -93,7 +93,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
-			AssetHidden:       collection.AssetHidden,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

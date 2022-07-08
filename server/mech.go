@@ -220,7 +220,7 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
-			AssetHidden:       collection.AssetHidden,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         skin.ImageURL,
 			CardAnimationURL: skin.CardAnimationURL,
 			AvatarURL:        skin.AvatarURL,

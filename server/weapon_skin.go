@@ -105,7 +105,7 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
-			AssetHidden:       collection.AssetHidden,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

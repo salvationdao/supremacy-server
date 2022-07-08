@@ -361,7 +361,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		}, 0, ""))
 	}
 
-
 	// Filters
 	if opts.Filter != nil {
 		// if we have filter

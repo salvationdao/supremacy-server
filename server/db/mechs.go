@@ -804,7 +804,7 @@ func MechRename(mechID string, ownerID string, name string) (string, error) {
 
 }
 
-func MechEquippedOnDetails(trx boil.Executor,equippedOnID string) (*server.EquippedOnDetails, error) {
+func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
 	tx := trx
 	if trx == nil {
 		tx = gamedb.StdConn
@@ -853,7 +853,7 @@ func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason n
 	// get equipped mech skin
 	mSkins, err := boiler.MechSkins(
 		boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID)),
-		).All(tx)
+	).All(tx)
 	if err != nil {
 		return err
 	}
@@ -907,12 +907,12 @@ func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason n
 	// update!
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
-		).UpdateAll(tx, boiler.M{
+	).UpdateAll(tx, boiler.M{
 		"asset_hidden": reason,
 	})
 	if err != nil {
 		return err
 	}
 
-	return  nil
+	return nil
 }
