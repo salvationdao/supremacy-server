@@ -26,11 +26,14 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 	}
 
 	api.Command(HubKeyPlayerBattlesSpectated, leaderboardHub.GetPlayerBattlesSpectatedHandler)
+	api.Command(HubKeyPlayerMechSurvives, leaderboardHub.GetPlayerMechSurvivesHandler)
 
 	return leaderboardHub
 }
 
-// --------------------------------------
+/**
+* Get players battles spectated
+ */
 const HubKeyPlayerBattlesSpectated = "LEADERBOARD:PLAYER:BATTLES:SPECTATED"
 
 type PlayerBattlesSpectated struct {
@@ -39,7 +42,7 @@ type PlayerBattlesSpectated struct {
 }
 
 func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	pss, err := boiler.PlayerStats(
+	rows, err := boiler.PlayerStats(
 		qm.Select(boiler.PlayerStatColumns.ViewBattleCount),
 		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ViewBattleCount, db.SortByDirDesc)),
 		qm.Limit(10),
@@ -61,11 +64,28 @@ func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Co
 	}
 
 	resp := []*PlayerBattlesSpectated{}
-	for _, ps := range pss {
+	for _, row := range rows {
 		resp = append(resp, &PlayerBattlesSpectated{
-			Player:          ps.R.IDPlayer,
-			ViewBattleCount: ps.ViewBattleCount,
+			Player:          row.R.IDPlayer,
+			ViewBattleCount: row.ViewBattleCount,
 		})
+	}
+
+	reply(resp)
+	return nil
+}
+
+/**
+* Get players most mech survivals based on the mechs they own
+ */
+const HubKeyPlayerMechSurvives = "LEADERBOARD:PLAYER:MECH:SURVIVES"
+
+func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := db.GetPlayerMechSurvives()
+
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech survives.")
+		return terror.Error(err, "Failed to get leaderboard player mech survives.")
 	}
 
 	reply(resp)
