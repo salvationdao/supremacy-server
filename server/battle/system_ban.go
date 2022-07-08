@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-type MessageSystemBan struct {
+type SystemBanMessageData struct {
 	PlayerBan    *boiler.PlayerBan `json:"player_ban"`
 	SystemPlayer *boiler.Player    `json:"system_player"`
 	BannedPlayer *boiler.Player    `json:"banned_player"`
@@ -21,7 +21,7 @@ type MessageSystemBan struct {
 }
 
 type SystemBanManager struct {
-	SystemBanMassageChan chan *MessageSystemBan
+	SystemBanMassageChan chan *SystemBanMessageData
 
 	teamKillCourtroom map[string]*TeamKillDefendant
 	sync.RWMutex
@@ -30,7 +30,7 @@ type SystemBanManager struct {
 func NewSystemBanManager() *SystemBanManager {
 	sbm := &SystemBanManager{
 		teamKillCourtroom:    make(map[string]*TeamKillDefendant),
-		SystemBanMassageChan: make(chan *MessageSystemBan),
+		SystemBanMassageChan: make(chan *SystemBanMessageData),
 	}
 
 	return sbm
@@ -63,7 +63,7 @@ func (sbm *SystemBanManager) sendSystemBanMessage(playerBanID string) {
 		return
 	}
 
-	sbm.SystemBanMassageChan <- &MessageSystemBan{playerBan, playerBan.R.BannedBy, playerBan.R.BannedPlayer, playerBan.R.BannedPlayer.FactionID}
+	sbm.SystemBanMassageChan <- &SystemBanMessageData{playerBan, playerBan.R.BannedBy, playerBan.R.BannedPlayer, playerBan.R.BannedPlayer.FactionID}
 }
 
 func (sbm *SystemBanManager) HasOngoingTeamKillCases(playerID string) bool {

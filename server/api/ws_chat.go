@@ -79,6 +79,20 @@ type MessagePunishVote struct {
 	InstantPassByUsers    []*boiler.Player    `json:"instant_pass_by_users"`
 }
 
+type MessageSystemBan struct {
+	BannedByUser *boiler.Player `json:"banned_by_user"`
+	BannedUser   *boiler.Player `json:"banned_user"`
+
+	FactionID    null.String `json:"faction_id"`
+	BattleNumber null.Int    `json:"battle_number"`
+
+	Reason   string    `json:"reason"`
+	BanUntil time.Time `json:"ban_until"`
+
+	IsPermanentBan bool     `json:"is_permanent_ban"`
+	Restrictions   []string `json:"restrictions"`
+}
+
 // Chatroom holds a specific chat room
 type Chatroom struct {
 	sync.RWMutex
@@ -225,13 +239,46 @@ func NewChatController(api *API) *ChatController {
 	return chatHub
 }
 
+const (
+	RestrictionLocationSelect = "Select location"
+	RestrictionAbilityTrigger = "Trigger abilities"
+	RestrictionChatSend       = "Send chat"
+	RestrictionChatView       = "Receive chat"
+	RestrictionSupsContribute = "Contribute sups"
+)
+
 func (api *API) SystemBanMessageBroadcaster() {
 	for {
 		msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan
+
+		banMessage := &MessageSystemBan{
+			BannedByUser:   msg.SystemPlayer,
+			BannedUser:     msg.BannedPlayer,
+			FactionID:      msg.FactionID,
+			BattleNumber:   msg.PlayerBan.BattleNumber,
+			Reason:         msg.PlayerBan.Reason,
+			BanUntil:       msg.PlayerBan.EndAt,
+			IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
+			Restrictions:   []string{},
+		}
+
+		if msg.PlayerBan.BanLocationSelect {
+			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionLocationSelect, RestrictionAbilityTrigger)
+		}
+		if msg.PlayerBan.BanSendChat {
+			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionChatSend)
+		}
+		if msg.PlayerBan.BanViewChat {
+			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionChatView)
+		}
+		if msg.PlayerBan.BanSupsContribute {
+			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionSupsContribute)
+		}
+
 		cm := &ChatMessage{
 			Type:   ChatMessageTypeSystemBan,
 			SentAt: time.Now(),
-			Data:   msg,
+			Data:   banMessage,
 		}
 
 		switch msg.FactionID.String {
