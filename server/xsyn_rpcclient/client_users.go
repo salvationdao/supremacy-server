@@ -1,6 +1,7 @@
 package xsyn_rpcclient
 
 import (
+	"fmt"
 	"server"
 	"server/gamelog"
 	"time"
@@ -96,9 +97,9 @@ type UserBalanceGetResp struct {
 // UserBalanceGet return the sups balance from the given user id
 func (pp *XsynXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	resp := &UserBalanceGetResp{}
-	err := pp.XrpcClient.Call("S.UserUpdateUsername", UserBalanceGetReq{pp.ApiKey, userID}, resp)
+	err := pp.XrpcClient.Call("S.UserBalanceGetHandler", UserBalanceGetReq{pp.ApiKey, userID}, resp)
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "UserBalanceGetHandler").Msg("rpc error")
 		return decimal.Zero
 	}
 
@@ -113,12 +114,25 @@ type UsernameUpdateReq struct {
 
 // UserUpdateUsername updates username
 func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) *UserResp {
+
+	fmt.Println("--------------")
+	fmt.Println("--------------")
+	fmt.Println("--------------")
+
+	fmt.Println("--------------", pp.ApiKey)
 	resp := &UserResp{}
-	err := pp.XrpcClient.Call("S.UserBalanceGetHandler", UsernameUpdateReq{pp.ApiKey, userID, newUsername}, resp)
+	err := pp.XrpcClient.Call("S.UserUpdateUsername", UsernameUpdateReq{
+		ApiKey:      pp.ApiKey,
+		UserID:      userID,
+		NewUsername: newUsername},
+		resp)
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserBalanceGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
 		return nil
 	}
+
+	fmt.Println("_+_+_+_+_")
+	fmt.Printf("%+v", resp)
 
 	return resp
 }
