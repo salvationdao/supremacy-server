@@ -56,7 +56,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if ult.EquippedOn.Valid && ult.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 	case "weapon":
 		wpn, err := boiler.FindWeapon(tx, collectionItem.ItemID)
@@ -65,7 +65,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if wpn.EquippedOn.Valid && wpn.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 		// we need to set the "asset_hidden" on all the equipped assets to this weapon
 		err = db.WeaponSetAllEquippedAssetsAsHidden(tx, collectionItem.ItemID, null.StringFrom("Equipped on asset that doesn't live on Supremacy."))
@@ -80,7 +80,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if ms.EquippedOn.Valid && ms.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 	case "mech_animation":
 		ma, err := boiler.FindMechAnimation(tx, collectionItem.ItemID)
@@ -89,7 +89,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if ma.EquippedOn.Valid && ma.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 	case "power_core":
 		pc, err := boiler.FindPowerCore(tx, collectionItem.ItemID)
@@ -98,7 +98,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if pc.EquippedOn.Valid && pc.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 	case "weapon_skin":
 		ws, err := boiler.FindWeaponSkin(tx, collectionItem.ItemID)
@@ -107,7 +107,7 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 			return terror.Error(err, "Failed to unlock asset from supremacy")
 		}
 		if ws.EquippedOn.Valid && ws.EquippedOn.String != "" {
-			return fmt.Errorf("asset is equipped to another object, unequipped to transfer")
+			return fmt.Errorf("asset is equipped to another object, unequip first to transfer")
 		}
 	case "mystery_crate":
 		//		these can't be equipped so all gucci
@@ -186,6 +186,35 @@ func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *Asset
 		return nil
 	}
 
+	switch collectionItem.ItemType {
+	case "utility":
+	case "weapon":
+		// we need to set the "asset_hidden" on all the equipped assets to this weapon
+		err = db.WeaponSetAllEquippedAssetsAsHidden(tx, collectionItem.ItemID, null.String{
+			String: "",
+			Valid:  false,
+		})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("req", req).Str("collectionItem.ItemID", collectionItem.ItemID).Msg("failed to unlock asset - WeaponSetAllEquippedAssetsAsHidden - AssetLockToSupremacyHandler")
+			return terror.Error(err, "Failed to unlock asset from supremacy")
+		}
+	case "mech_skin":
+	case "mech_animation":
+	case "power_core":
+	case "weapon_skin":
+	case "mystery_crate":
+	case "mech":
+		// we need to set the "asset_hidden" to null on all the equipped assets to this mech
+		err = db.MechSetAllEquippedAssetsAsHidden(tx, collectionItem.ItemID, null.String{
+			String: "",
+			Valid:  false,
+		})
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("req", req).Str("collectionItem.ItemID", collectionItem.ItemID).Msg("failed to unlock asset - MechSetAllEquippedAssetsAsHidden - AssetLockToSupremacyHandler")
+			return terror.Error(err, "Failed to unlock asset from supremacy")
+		}
+	}
+
 	collectionItem.XsynLocked = false
 	collectionItem.MarketLocked = req.MarketLocked
 	_, err = collectionItem.Update(tx, boil.Infer())
@@ -194,6 +223,11 @@ func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *Asset
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - failed to commit - AssetLockToSupremacyHandler")
+		return err
+	}
 	// TODO: store transfer event ID
 
 	return nil

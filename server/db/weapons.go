@@ -285,6 +285,7 @@ type WeaponListOpts struct {
 	OwnerID                  string
 	DisplayXsynMechs         bool
 	DisplayGenesisAndLimited bool
+	DisplayHidden            bool
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
 	FilterRarities           []string `json:"rarities"`
@@ -352,6 +353,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
+	if !opts.DisplayHidden {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.AssetHidden,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+
 
 	// Filters
 	if opts.Filter != nil {
@@ -413,6 +422,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
@@ -463,12 +473,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 }
 
 // PlayerWeaponsList returns a list of tallied player weapons, ordered by last purchased date from the weapons table.
-// It excludes player abilities with a count of 0
 func PlayerWeaponsList(
 	userID string,
 ) ([]*boiler.Weapon, error) {
 
-	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
+	items, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

@@ -194,3 +194,26 @@ func (pp *XsynXrpcClient) UpdateKeycardCountXSYN(keycardUpdateCount *Asset1155Co
 
 	return resp, nil
 }
+
+type DeleteAssetHandlerReq struct {
+	ApiKey  string `json:"api_key"`
+	AssetID string `json:"asset_id"`
+}
+
+
+type DeleteAssetHandlerResp struct {
+}
+
+func (pp *XsynXrpcClient) DeleteAssetXSYN(assetID string)  error {
+	req := &DeleteAssetHandlerReq{
+		ApiKey: pp.ApiKey,
+		AssetID: assetID,
+	}
+	resp := &DeleteAssetHandlerResp{}
+	err := pp.XrpcClient.Call("S.DeleteAssetHandler", req, resp)
+	if err != nil {
+		return  err
+	}
+
+	return nil
+}

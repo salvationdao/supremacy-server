@@ -849,6 +849,14 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
+	// delete crate on xsyn
+	err = pac.API.Passport.DeleteAssetXSYN(crate.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets - DeleteAssetXSYN")
+		crateRollback()
+		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+	}
+	
 	err = tx.Commit()
 	if err != nil {
 		crateRollback()
