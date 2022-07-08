@@ -1698,7 +1698,7 @@ func ChangeKeycardOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		WHERE iks.id = $1 AND iks.sold_to IS NOT NULL
 		ON CONFLICT (player_id, blueprint_keycard_id)
 		DO UPDATE 
-		SET count = excluded.count + 1`
+		SET count = player_keycards.count + 1`
 	_, err := conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
