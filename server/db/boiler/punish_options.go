@@ -93,17 +93,14 @@ var PunishOptionWhere = struct {
 
 // PunishOptionRels is where relationship names are stored.
 var PunishOptionRels = struct {
-	PunishVotes     string
-	PunishedPlayers string
+	PunishVotes string
 }{
-	PunishVotes:     "PunishVotes",
-	PunishedPlayers: "PunishedPlayers",
+	PunishVotes: "PunishVotes",
 }
 
 // punishOptionR is where relationships are stored.
 type punishOptionR struct {
-	PunishVotes     PunishVoteSlice     `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
-	PunishedPlayers PunishedPlayerSlice `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
+	PunishVotes PunishVoteSlice `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
 }
 
 // NewStruct creates a new relationship struct
@@ -386,28 +383,6 @@ func (o *PunishOption) PunishVotes(mods ...qm.QueryMod) punishVoteQuery {
 	return query
 }
 
-// PunishedPlayers retrieves all the punished_player's PunishedPlayers with an executor.
-func (o *PunishOption) PunishedPlayers(mods ...qm.QueryMod) punishedPlayerQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"punished_players\".\"punish_option_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"punished_players\".\"deleted_at\""),
-	)
-
-	query := PunishedPlayers(queryMods...)
-	queries.SetFrom(query.Query, "\"punished_players\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"punished_players\".*"})
-	}
-
-	return query
-}
-
 // LoadPunishVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (punishOptionL) LoadPunishVotes(e boil.Executor, singular bool, maybePunishOption interface{}, mods queries.Applicator) error {
@@ -507,105 +482,6 @@ func (punishOptionL) LoadPunishVotes(e boil.Executor, singular bool, maybePunish
 	return nil
 }
 
-// LoadPunishedPlayers allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (punishOptionL) LoadPunishedPlayers(e boil.Executor, singular bool, maybePunishOption interface{}, mods queries.Applicator) error {
-	var slice []*PunishOption
-	var object *PunishOption
-
-	if singular {
-		object = maybePunishOption.(*PunishOption)
-	} else {
-		slice = *maybePunishOption.(*[]*PunishOption)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &punishOptionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &punishOptionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`punished_players`),
-		qm.WhereIn(`punished_players.punish_option_id in ?`, args...),
-		qmhelper.WhereIsNull(`punished_players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load punished_players")
-	}
-
-	var resultSlice []*PunishedPlayer
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice punished_players")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on punished_players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punished_players")
-	}
-
-	if len(punishedPlayerAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.PunishedPlayers = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &punishedPlayerR{}
-			}
-			foreign.R.PunishOption = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.PunishOptionID {
-				local.R.PunishedPlayers = append(local.R.PunishedPlayers, foreign)
-				if foreign.R == nil {
-					foreign.R = &punishedPlayerR{}
-				}
-				foreign.R.PunishOption = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // AddPunishVotes adds the given related objects to the existing relationships
 // of the punish_option, optionally inserting them as new records.
 // Appends related to o.R.PunishVotes.
@@ -649,58 +525,6 @@ func (o *PunishOption) AddPunishVotes(exec boil.Executor, insert bool, related .
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &punishVoteR{
-				PunishOption: o,
-			}
-		} else {
-			rel.R.PunishOption = o
-		}
-	}
-	return nil
-}
-
-// AddPunishedPlayers adds the given related objects to the existing relationships
-// of the punish_option, optionally inserting them as new records.
-// Appends related to o.R.PunishedPlayers.
-// Sets related.R.PunishOption appropriately.
-func (o *PunishOption) AddPunishedPlayers(exec boil.Executor, insert bool, related ...*PunishedPlayer) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.PunishOptionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"punished_players\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"punish_option_id"}),
-				strmangle.WhereClause("\"", "\"", 2, punishedPlayerPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.PunishOptionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &punishOptionR{
-			PunishedPlayers: related,
-		}
-	} else {
-		o.R.PunishedPlayers = append(o.R.PunishedPlayers, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &punishedPlayerR{
 				PunishOption: o,
 			}
 		} else {

@@ -1623,18 +1623,9 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 	}
 
 	// get location select limited players
-	punishedPlayers, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictLocationSelect,
-		),
+	punishedPlayers, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get limited select players from db")
@@ -1647,7 +1638,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		// check user is banned
 		for _, pp := range punishedPlayers {
 
-			if pp.PlayerID == pid.String() {
+			if pp.BannedPlayerID == pid.String() {
 				isPunished = true
 				break
 			}
