@@ -40,6 +40,7 @@ type PlayerBattlesSpectated struct {
 
 func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	pss, err := boiler.PlayerStats(
+		qm.Select(boiler.PlayerStatColumns.ViewBattleCount),
 		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ViewBattleCount, db.SortByDirDesc)),
 		qm.Limit(10),
 		qm.Load(
