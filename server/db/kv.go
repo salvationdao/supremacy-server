@@ -23,6 +23,8 @@ const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percenta
 const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
 const QueueLengthAdd KVKey = "queue_length_add"
 
+const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
+const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
 type KVKey string
