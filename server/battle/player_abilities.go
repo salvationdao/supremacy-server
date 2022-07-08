@@ -42,9 +42,12 @@ type MovingMiniMech struct {
 	BattleID       string
 	CellX          int
 	CellY          int
+	TriggeredByID  string
 	FactionID      string
 	MechHash       string
 	CooldownExpiry time.Time
+	CancelledAt    *time.Time
+	ReachedAt      *time.Time
 }
 
 // PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
@@ -70,13 +73,36 @@ func NewPlayerAbilityManager() *PlayerAbilityManager {
 	}
 }
 
+func (pam *PlayerAbilityManager) DeleteMiniMechMove(hash string) {
+	pam.Lock()
+	defer pam.Unlock()
+
+	_, ok := pam.movingMiniMechs[hash]
+	if ok {
+		fmt.Println(hash)
+		delete(pam.movingMiniMechs, hash)
+	}
+}
+
+func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) {
+	pam.Lock()
+	defer pam.Unlock()
+
+	mm, ok := pam.movingMiniMechs[hash]
+	if ok {
+		now := time.Now()
+		mm.ReachedAt = &now
+		pam.movingMiniMechs[hash] = mm
+	}
+}
+
 func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []MovingMiniMech {
 	pam.RLock()
 	defer pam.RUnlock()
 
 	result := []MovingMiniMech{}
 	for _, mmm := range pam.movingMiniMechs {
-		if mmm.FactionID != factionID {
+		if mmm.FactionID != factionID || mmm.ReachedAt != nil {
 			continue
 		}
 
@@ -86,7 +112,7 @@ func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []Movi
 	return result
 }
 
-func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, cellX int, cellY int, battleID string) error {
+func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, triggeredByID string, cellX int, cellY int, battleID string) error {
 	pam.Lock()
 	defer pam.Unlock()
 
@@ -99,8 +125,9 @@ func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID
 		BattleID:       battleID,
 		CellX:          cellX,
 		CellY:          cellY,
-		MechHash:       hash,
+		TriggeredByID:  triggeredByID,
 		FactionID:      factionID,
+		MechHash:       hash,
 		CooldownExpiry: time.Now().Add(time.Duration(pam.MiniMechMoveCoooldownSeconds) * time.Second),
 	}
 
@@ -486,6 +513,9 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 	}
 
 	movingMiniMechs := arena._currentBattle.playerAbilityManager().MovingFactionMiniMechs(factionID)
+	if len(movingMiniMechs) == 0 {
+		return nil
+	}
 	for _, mm := range movingMiniMechs {
 		result = append(result, &FactionMechCommands{
 			BattleID: mm.BattleID,
@@ -641,6 +671,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		err := arena._currentBattle.playerAbilityManager().IssueMiniMechMoveCommand(
 			wm.Hash,
 			wm.FactionID,
+			user.ID,
 			req.Payload.StartCoords.X,
 			req.Payload.StartCoords.Y,
 			arena.CurrentBattle().ID,

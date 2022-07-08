@@ -1284,35 +1284,39 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	}
 
 	// get mech
-	wm := btl.arena.CurrentBattleWarMachineByHash(payload.WarMachineHash)
+	wm := btl.arena.CurrentBattleWarMachineOrAIByHash(payload.WarMachineHash)
 	if wm == nil {
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
-	// get the last move command of the mech
-	mmc, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
-		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to get mech move command from db.")
+	isMiniMech := *wm.AIType == MiniMech
+	if !isMiniMech {
+		// get the last move command of the mech
+		mmc, err := boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
+			qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get mech move command from db.")
+		}
+
+		// update completed_at
+		mmc.ReachedAt = null.TimeFrom(time.Now())
+		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+		if err != nil {
+			return terror.Error(err, "Failed to update mech move command")
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+			MechMoveCommandLog:    mmc,
+			RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		})
+	} else {
+		btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
 	}
 
-	// update completed_at
-	mmc.ReachedAt = null.TimeFrom(time.Now())
-
-	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
-	if err != nil {
-		return terror.Error(err, "Failed to update mech move command")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
-	})
-
-	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
+	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
