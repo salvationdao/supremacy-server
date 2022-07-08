@@ -1,4 +1,4 @@
--- updating bws names to weapon manufacturer's skins in rarities
+-- updating bws names to weapon manufacturer's skins in rarities- weapons manufacturer skin is accounted for in rarity
 UPDATE blueprint_weapon_skin
 SET label = 'Archon Miltech'
 WHERE label = 'BC';
@@ -11,7 +11,7 @@ UPDATE blueprint_weapon_skin
 SET label = 'Warsui'
 WHERE label = 'Zaibatsu';
 
---updating bms manufacturer's names to faction
+--updating bms manufacturer's names to faction- mech manufacturer's skin is OUT of raririties and faction skin is IN and accounted for in rarities
 UPDATE blueprint_mech_skin
 SET label = 'BC'
 WHERE label = 'Daison Avionics';
@@ -31,7 +31,7 @@ SET label = 'RM'
 WHERE label = 'UMC';
 UPDATE blueprint_weapon_skin
 SET label = 'RM'
-WHERE label = 'RM';
+WHERE label = 'UMC';
 
 
 --Creating new skin that is manufacturer's "default", all mech crates will receive this mech skin
@@ -88,6 +88,42 @@ $$
 $$;
 
 --for each mech crate, insert another mech skin(BC, ZAI, RM) and 2x weapon manufacturer's skins
+DO
+$$
+    DECLARE
+        mech_crater MYSTERY_CRATE%ROWTYPE;
+    BEGIN
+        FOR mech_crater IN SELECT *
+                           FROM mystery_crate
+                           WHERE type = 'MECH'
+            LOOP
+                CASE
+                    -- BC
+                    WHEN mech_crater.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                        THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (mech_crater.id, 'WEAPON_SKIN', (SELECT id FROM blueprint_weapon_skin WHERE label = 'Archon Miltech' and weapon_type= 'Flak'));
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (mech_crater.id, 'WEAPON_SKIN', (SELECT id FROM blueprint_weapon_skin WHERE ));
+
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                    -- ZAI
+                    WHEN mech_crater.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
+
+
+                        THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                    -- RM
+                    WHEN mech_crater.faction_id =
+                         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
+
+
+                        THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                    END CASE;
+            END LOOP;
+    END;
+$$;
 
 --delete crates where # is wrong
 
