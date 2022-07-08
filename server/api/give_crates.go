@@ -52,7 +52,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 	defer tx.Rollback()
 
 	storeCrate, err := boiler.StorefrontMysteryCrates(
-		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ("MECH"),
+		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ("WEAPON"),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
 		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
 	).One(gamedb.StdConn)
