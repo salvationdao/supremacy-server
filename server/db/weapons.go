@@ -104,14 +104,14 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 	}
 
 	var weaponSkin *server.WeaponSkin
-	if boilerWeapon.EquippedWeaponSkinID.Valid{
+	if boilerWeapon.EquippedWeaponSkinID.Valid {
 		weaponSkin, err = WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID.String)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails,weaponSkin), nil
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
@@ -128,7 +128,7 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		}
 
 		var weaponSkin *server.WeaponSkin
-		if bm.EquippedWeaponSkinID.Valid{
+		if bm.EquippedWeaponSkinID.Valid {
 			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
 			if err != nil {
 				return nil, err
@@ -273,6 +273,7 @@ type WeaponListOpts struct {
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+	ExcludeEquipped     bool
 	FilterRarities      []string `json:"rarities"`
 	FilterWeaponTypes   []string `json:"weapon_types"`
 }
@@ -323,6 +324,20 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
+	}
+	if opts.ExcludeEquipped {
+		queryMods = append(queryMods,
+			qm.LeftOuterJoin(fmt.Sprintf(
+				`%s on %s = %s`,
+				boiler.TableNames.MechWeapons,
+				qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			)),
+			qm.Expr(
+				boiler.WeaponWhere.EquippedOn.IsNull(),
+				qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+			),
+		)
 	}
 
 	// Filters

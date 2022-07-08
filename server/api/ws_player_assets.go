@@ -691,7 +691,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 			items.Mech = mech
 
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset( []*server.Mech{mech})...)
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
 			if err != nil {
@@ -765,7 +765,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
-
 	if crate.Type == boiler.CrateTypeMECH {
 		//attach mech_skin to mech - mech
 		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
@@ -837,6 +836,7 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		ExcludeEquipped     bool                  `json:"exclude_equipped"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterWeaponTypes   []string              `json:"weapon_types"`
 	} `json:"payload"`
@@ -893,6 +893,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		ExcludeEquipped:     req.Payload.ExcludeEquipped,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
 	}
