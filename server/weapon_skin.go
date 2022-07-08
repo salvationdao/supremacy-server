@@ -22,6 +22,8 @@ type WeaponSkin struct {
 	Tier          string      `json:"tier"`
 	CreatedAt     time.Time   `json:"created_at"`
 	WeaponModelID string      `json:"weapon_model_id"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *WeaponSkin) Scan(value interface{}) error {
@@ -103,6 +105,7 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
