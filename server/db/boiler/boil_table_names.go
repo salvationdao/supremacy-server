@@ -78,6 +78,7 @@ var TableNames = struct {
 	PlayerActiveLogs                                   string
 	PlayerBans                                         string
 	PlayerFingerprints                                 string
+	PlayerIps                                          string
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
@@ -188,6 +189,7 @@ var TableNames = struct {
 	PlayerActiveLogs:             "player_active_logs",
 	PlayerBans:                   "player_bans",
 	PlayerFingerprints:           "player_fingerprints",
+	PlayerIps:                    "player_ips",
 	PlayerKeycards:               "player_keycards",
 	PlayerKillLog:                "player_kill_log",
 	PlayerLanguages:              "player_languages",

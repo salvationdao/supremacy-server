@@ -58,3 +58,10 @@ INNER JOIN punish_votes pv on pv.id = pp.related_punish_vote_id;
 
 DROP TABLE punished_players;
 
+CREATE TABLE player_ips(
+    player_id uuid not null references players (id),
+    ip text not null,
+    first_seen_at timestamptz not null,
+    last_seen_at timestamptz not null,
+    PRIMARY KEY (player_id, ip)
+);

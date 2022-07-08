@@ -171,6 +171,7 @@ var PlayerRels = struct {
 	BannedByPlayerBans                       string
 	BannedPlayerPlayerBans                   string
 	PlayerFingerprints                       string
+	PlayerIps                                string
 	PlayerKeycards                           string
 	PlayerKillLogs                           string
 	PlayerLanguages                          string
@@ -212,6 +213,7 @@ var PlayerRels = struct {
 	BannedByPlayerBans:                       "BannedByPlayerBans",
 	BannedPlayerPlayerBans:                   "BannedPlayerPlayerBans",
 	PlayerFingerprints:                       "PlayerFingerprints",
+	PlayerIps:                                "PlayerIps",
 	PlayerKeycards:                           "PlayerKeycards",
 	PlayerKillLogs:                           "PlayerKillLogs",
 	PlayerLanguages:                          "PlayerLanguages",
@@ -256,6 +258,7 @@ type playerR struct {
 	BannedByPlayerBans                       PlayerBanSlice                   `boiler:"BannedByPlayerBans" boil:"BannedByPlayerBans" json:"BannedByPlayerBans" toml:"BannedByPlayerBans" yaml:"BannedByPlayerBans"`
 	BannedPlayerPlayerBans                   PlayerBanSlice                   `boiler:"BannedPlayerPlayerBans" boil:"BannedPlayerPlayerBans" json:"BannedPlayerPlayerBans" toml:"BannedPlayerPlayerBans" yaml:"BannedPlayerPlayerBans"`
 	PlayerFingerprints                       PlayerFingerprintSlice           `boiler:"PlayerFingerprints" boil:"PlayerFingerprints" json:"PlayerFingerprints" toml:"PlayerFingerprints" yaml:"PlayerFingerprints"`
+	PlayerIps                                PlayerIPSlice                    `boiler:"PlayerIps" boil:"PlayerIps" json:"PlayerIps" toml:"PlayerIps" yaml:"PlayerIps"`
 	PlayerKeycards                           PlayerKeycardSlice               `boiler:"PlayerKeycards" boil:"PlayerKeycards" json:"PlayerKeycards" toml:"PlayerKeycards" yaml:"PlayerKeycards"`
 	PlayerKillLogs                           PlayerKillLogSlice               `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages                          PlayerLanguageSlice              `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
@@ -1101,6 +1104,27 @@ func (o *Player) PlayerFingerprints(mods ...qm.QueryMod) playerFingerprintQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_fingerprints\".*"})
+	}
+
+	return query
+}
+
+// PlayerIps retrieves all the player_ip's PlayerIps with an executor.
+func (o *Player) PlayerIps(mods ...qm.QueryMod) playerIPQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_ips\".\"player_id\"=?", o.ID),
+	)
+
+	query := PlayerIps(queryMods...)
+	queries.SetFrom(query.Query, "\"player_ips\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_ips\".*"})
 	}
 
 	return query
@@ -4151,6 +4175,104 @@ func (playerL) LoadPlayerFingerprints(e boil.Executor, singular bool, maybePlaye
 	return nil
 }
 
+// LoadPlayerIps allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayerIps(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_ips`),
+		qm.WhereIn(`player_ips.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_ips")
+	}
+
+	var resultSlice []*PlayerIP
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_ips")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_ips")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_ips")
+	}
+
+	if len(playerIPAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerIps = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerIPR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerIps = append(local.R.PlayerIps, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerIPR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayerKeycards allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadPlayerKeycards(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -7184,6 +7306,58 @@ func (o *Player) AddPlayerFingerprints(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerFingerprintR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerIps adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayerIps.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayerIps(exec boil.Executor, insert bool, related ...*PlayerIP) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_ips\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerIPPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.PlayerID, rel.IP}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerIps: related,
+		}
+	} else {
+		o.R.PlayerIps = append(o.R.PlayerIps, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerIPR{
 				Player: o,
 			}
 		} else {
