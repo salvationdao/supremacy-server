@@ -45,17 +45,18 @@ $$
             LOOP
                 CASE
                     -- BC
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Daison Avionics')
                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
                              VALUES ('Daison Avionics', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
                     -- ZAI
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'X3 Wartech')
                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
                              VALUES ('X3 Wartech', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
                     -- RM
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
                              VALUES ('Unified Martian Corps', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+                    ELSE CONTINUE;
                     END CASE;
             END LOOP;
     END;
@@ -82,6 +83,7 @@ $$
                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
                              VALUES ('Unified Martian Corps', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+                    ELSE CONTINUE;
                     END CASE;
             END LOOP;
     END;
@@ -91,35 +93,104 @@ $$;
 DO
 $$
     DECLARE
-        mech_crater MYSTERY_CRATE%ROWTYPE;
+        vmech_crate_blueprint MYSTERY_CRATE_BLUEPRINTS%ROWTYPE;
+        factionid             UUID;
+        powercoresize         TEXT;
+
     BEGIN
-        FOR mech_crater IN SELECT *
-                           FROM mystery_crate
-                           WHERE type = 'MECH'
+        FOR vmech_crate_blueprint IN SELECT *
+                                     FROM mystery_crate_blueprints
+                                     WHERE blueprint_type = 'MECH'
             LOOP
+
+                factionid := (SELECT faction_id FROM mystery_crate WHERE id = vmech_crate_blueprint.mystery_crate_id);
+                powercoresize :=
+                        (SELECT power_core_size FROM blueprint_mechs WHERE id = vmech_crate_blueprint.blueprint_id);
+
                 CASE
                     -- BC
-                    WHEN mech_crater.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
+                    WHEN factionid = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-                             VALUES (mech_crater.id, 'WEAPON_SKIN', (SELECT id FROM blueprint_weapon_skin WHERE label = 'Archon Miltech' and weapon_type= 'Flak'));
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Archon Miltech'
+                                                                                               AND weapon_type = 'Flak'));
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-                             VALUES (mech_crater.id, 'WEAPON_SKIN', (SELECT id FROM blueprint_weapon_skin WHERE ));
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Archon Miltech'
+                                                                                               AND weapon_type = 'Machine Gun'));
 
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'MECH_SKIN',
+                                     CASE
+                                         WHEN powercoresize = 'SMALL'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'Daison Avionics'
+                                                     AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                         WHEN powercoresize = 'MEDIUM'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'Daison Avionics'
+                                                     AND mech_type = 'PLATFORM'::MECH_TYPE)
+                                         END);
                     -- ZAI
-                    WHEN mech_crater.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
-
-
+                    WHEN factionid = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Warsui'
+                                                                                               AND weapon_type = 'Flak'));
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Warsui'
+                                                                                               AND weapon_type = 'Machine Gun'));
+
+
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'MECH_SKIN',
+                                     CASE
+                                         WHEN powercoresize = 'SMALL'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'X3 Wartech'
+                                                     AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                         WHEN powercoresize = 'MEDIUM'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'X3 Wartech'
+                                                     AND mech_type = 'PLATFORM'::MECH_TYPE)
+                                         END);
                     -- RM
-                    WHEN mech_crater.faction_id =
-                         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
-
-
+                    WHEN factionid = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-                             VALUES (mech_crater.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE ));
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Pyrotronics'
+                                                                                               AND weapon_type = 'Flak'));
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
+                                                                                             FROM blueprint_weapon_skin
+                                                                                             WHERE label = 'Pyrotronics'
+                                                                                               AND weapon_type = 'Machine Gun'));
+
+
+                             INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+                             VALUES (vmech_crate_blueprint.mystery_crate_id, 'MECH_SKIN',
+                                     CASE
+                                         WHEN powercoresize = 'SMALL'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'Unified Martian Corps'
+                                                     AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                         WHEN powercoresize = 'MEDIUM'
+                                             THEN (SELECT id
+                                                   FROM blueprint_mech_skin
+                                                   WHERE label = 'Unified Martian Corps'
+                                                     AND mech_type = 'PLATFORM'::MECH_TYPE)
+                                         END);
                     END CASE;
             END LOOP;
     END;
