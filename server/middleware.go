@@ -58,7 +58,7 @@ func RetrieveUser(ctx context.Context) (*boiler.Player, error) {
 	return user, nil
 }
 
-func MustSecureWithFeature(featureType string, fn SecureCommandFunc) ws.CommandFunc {
+func MustSecureWithFeature(featureName string, fn SecureCommandFunc) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		user, err := RetrieveUser(ctx)
 		if err != nil {
@@ -67,7 +67,7 @@ func MustSecureWithFeature(featureType string, fn SecureCommandFunc) ws.CommandF
 
 		for _, pf := range user.R.PlayersFeatures {
 
-			if pf.FeatureType == featureType {
+			if pf.FeatureName == featureName {
 				return fn(ctx, user, key, payload, reply)
 			}
 		}
@@ -76,7 +76,7 @@ func MustSecureWithFeature(featureType string, fn SecureCommandFunc) ws.CommandF
 	}
 }
 
-func MustSecureFactionWithFeature(featureType string, fn SecureFactionCommandFunc) ws.CommandFunc {
+func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFunc) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		user, err := RetrieveUser(ctx)
 		if err != nil {
@@ -84,7 +84,7 @@ func MustSecureFactionWithFeature(featureType string, fn SecureFactionCommandFun
 		}
 
 		for _, pf := range user.R.PlayersFeatures {
-			if pf.FeatureType == featureType {
+			if pf.FeatureName == featureName {
 				return fn(ctx, user, user.FactionID.String, key, payload, reply)
 			}
 		}

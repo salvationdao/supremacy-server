@@ -292,7 +292,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 
 		if len(playerFeatures) != len(features) {
 			for _, feature := range features {
-				err := db.AddFeatureToPlayerIDs(feature.Type, []string{playerID})
+				err := db.AddFeatureToPlayerIDs(feature.Name, []string{playerID})
 				if err != nil {
 					return terror.Error(err, "Failed get add feature to user.")
 				}

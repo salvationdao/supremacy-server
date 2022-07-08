@@ -9,7 +9,7 @@ import (
 
 type Feature struct {
 	ID        string    `json:"id"`
-	Type      string    `json:"type"`
+	Name      string    `json:"name"`
 	DeletedAt null.Time `json:"deleted_at,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -19,8 +19,7 @@ func FeaturesFromBoiler(features boiler.FeatureSlice) []*Feature {
 	var serverFeatures []*Feature
 	for _, feature := range features {
 		serverFeature := &Feature{
-			ID:        feature.ID,
-			Type:      feature.Type,
+			Name:      feature.Name,
 			DeletedAt: feature.DeletedAt,
 			UpdatedAt: feature.UpdatedAt,
 			CreatedAt: feature.CreatedAt,

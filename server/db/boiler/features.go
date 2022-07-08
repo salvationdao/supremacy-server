@@ -23,8 +23,7 @@ import (
 
 // Feature is an object representing the database table.
 type Feature struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type      string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Name      string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -34,28 +33,24 @@ type Feature struct {
 }
 
 var FeatureColumns = struct {
-	ID        string
-	Type      string
+	Name      string
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
 }{
-	ID:        "id",
-	Type:      "type",
+	Name:      "name",
 	DeletedAt: "deleted_at",
 	UpdatedAt: "updated_at",
 	CreatedAt: "created_at",
 }
 
 var FeatureTableColumns = struct {
-	ID        string
-	Type      string
+	Name      string
 	DeletedAt string
 	UpdatedAt string
 	CreatedAt string
 }{
-	ID:        "features.id",
-	Type:      "features.type",
+	Name:      "features.name",
 	DeletedAt: "features.deleted_at",
 	UpdatedAt: "features.updated_at",
 	CreatedAt: "features.created_at",
@@ -64,14 +59,12 @@ var FeatureTableColumns = struct {
 // Generated where
 
 var FeatureWhere = struct {
-	ID        whereHelperstring
-	Type      whereHelperstring
+	Name      whereHelperstring
 	DeletedAt whereHelpernull_Time
 	UpdatedAt whereHelpertime_Time
 	CreatedAt whereHelpertime_Time
 }{
-	ID:        whereHelperstring{field: "\"features\".\"id\""},
-	Type:      whereHelperstring{field: "\"features\".\"type\""},
+	Name:      whereHelperstring{field: "\"features\".\"name\""},
 	DeletedAt: whereHelpernull_Time{field: "\"features\".\"deleted_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"features\".\"updated_at\""},
 	CreatedAt: whereHelpertime_Time{field: "\"features\".\"created_at\""},
@@ -79,14 +72,14 @@ var FeatureWhere = struct {
 
 // FeatureRels is where relationship names are stored.
 var FeatureRels = struct {
-	FeatureTypePlayersFeatures string
+	FeatureNamePlayersFeatures string
 }{
-	FeatureTypePlayersFeatures: "FeatureTypePlayersFeatures",
+	FeatureNamePlayersFeatures: "FeatureNamePlayersFeatures",
 }
 
 // featureR is where relationships are stored.
 type featureR struct {
-	FeatureTypePlayersFeatures PlayersFeatureSlice `boiler:"FeatureTypePlayersFeatures" boil:"FeatureTypePlayersFeatures" json:"FeatureTypePlayersFeatures" toml:"FeatureTypePlayersFeatures" yaml:"FeatureTypePlayersFeatures"`
+	FeatureNamePlayersFeatures PlayersFeatureSlice `boiler:"FeatureNamePlayersFeatures" boil:"FeatureNamePlayersFeatures" json:"FeatureNamePlayersFeatures" toml:"FeatureNamePlayersFeatures" yaml:"FeatureNamePlayersFeatures"`
 }
 
 // NewStruct creates a new relationship struct
@@ -98,10 +91,10 @@ func (*featureR) NewStruct() *featureR {
 type featureL struct{}
 
 var (
-	featureAllColumns            = []string{"id", "type", "deleted_at", "updated_at", "created_at"}
-	featureColumnsWithoutDefault = []string{"type"}
-	featureColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
-	featurePrimaryKeyColumns     = []string{"type"}
+	featureAllColumns            = []string{"name", "deleted_at", "updated_at", "created_at"}
+	featureColumnsWithoutDefault = []string{"name"}
+	featureColumnsWithDefault    = []string{"deleted_at", "updated_at", "created_at"}
+	featurePrimaryKeyColumns     = []string{"name"}
 	featureGeneratedColumns      = []string{}
 )
 
@@ -347,15 +340,15 @@ func (q featureQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// FeatureTypePlayersFeatures retrieves all the players_feature's PlayersFeatures with an executor via feature_type column.
-func (o *Feature) FeatureTypePlayersFeatures(mods ...qm.QueryMod) playersFeatureQuery {
+// FeatureNamePlayersFeatures retrieves all the players_feature's PlayersFeatures with an executor via feature_name column.
+func (o *Feature) FeatureNamePlayersFeatures(mods ...qm.QueryMod) playersFeatureQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"players_features\".\"feature_type\"=?", o.Type),
+		qm.Where("\"players_features\".\"feature_name\"=?", o.Name),
 		qmhelper.WhereIsNull("\"players_features\".\"deleted_at\""),
 	)
 
@@ -369,9 +362,9 @@ func (o *Feature) FeatureTypePlayersFeatures(mods ...qm.QueryMod) playersFeature
 	return query
 }
 
-// LoadFeatureTypePlayersFeatures allows an eager lookup of values, cached into the
+// LoadFeatureNamePlayersFeatures allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, maybeFeature interface{}, mods queries.Applicator) error {
+func (featureL) LoadFeatureNamePlayersFeatures(e boil.Executor, singular bool, maybeFeature interface{}, mods queries.Applicator) error {
 	var slice []*Feature
 	var object *Feature
 
@@ -386,7 +379,7 @@ func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, m
 		if object.R == nil {
 			object.R = &featureR{}
 		}
-		args = append(args, object.Type)
+		args = append(args, object.Name)
 	} else {
 	Outer:
 		for _, obj := range slice {
@@ -395,12 +388,12 @@ func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, m
 			}
 
 			for _, a := range args {
-				if a == obj.Type {
+				if a == obj.Name {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Type)
+			args = append(args, obj.Name)
 		}
 	}
 
@@ -410,7 +403,7 @@ func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, m
 
 	query := NewQuery(
 		qm.From(`players_features`),
-		qm.WhereIn(`players_features.feature_type in ?`, args...),
+		qm.WhereIn(`players_features.feature_name in ?`, args...),
 		qmhelper.WhereIsNull(`players_features.deleted_at`),
 	)
 	if mods != nil {
@@ -442,24 +435,24 @@ func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, m
 		}
 	}
 	if singular {
-		object.R.FeatureTypePlayersFeatures = resultSlice
+		object.R.FeatureNamePlayersFeatures = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &playersFeatureR{}
 			}
-			foreign.R.FeatureTypeFeature = object
+			foreign.R.FeatureNameFeature = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.Type == foreign.FeatureType {
-				local.R.FeatureTypePlayersFeatures = append(local.R.FeatureTypePlayersFeatures, foreign)
+			if local.Name == foreign.FeatureName {
+				local.R.FeatureNamePlayersFeatures = append(local.R.FeatureNamePlayersFeatures, foreign)
 				if foreign.R == nil {
 					foreign.R = &playersFeatureR{}
 				}
-				foreign.R.FeatureTypeFeature = local
+				foreign.R.FeatureNameFeature = local
 				break
 			}
 		}
@@ -468,25 +461,25 @@ func (featureL) LoadFeatureTypePlayersFeatures(e boil.Executor, singular bool, m
 	return nil
 }
 
-// AddFeatureTypePlayersFeatures adds the given related objects to the existing relationships
+// AddFeatureNamePlayersFeatures adds the given related objects to the existing relationships
 // of the feature, optionally inserting them as new records.
-// Appends related to o.R.FeatureTypePlayersFeatures.
-// Sets related.R.FeatureTypeFeature appropriately.
-func (o *Feature) AddFeatureTypePlayersFeatures(exec boil.Executor, insert bool, related ...*PlayersFeature) error {
+// Appends related to o.R.FeatureNamePlayersFeatures.
+// Sets related.R.FeatureNameFeature appropriately.
+func (o *Feature) AddFeatureNamePlayersFeatures(exec boil.Executor, insert bool, related ...*PlayersFeature) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.FeatureType = o.Type
+			rel.FeatureName = o.Name
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"players_features\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"feature_type"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"feature_name"}),
 				strmangle.WhereClause("\"", "\"", 2, playersFeaturePrimaryKeyColumns),
 			)
-			values := []interface{}{o.Type, rel.ID}
+			values := []interface{}{o.Name, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -496,25 +489,25 @@ func (o *Feature) AddFeatureTypePlayersFeatures(exec boil.Executor, insert bool,
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.FeatureType = o.Type
+			rel.FeatureName = o.Name
 		}
 	}
 
 	if o.R == nil {
 		o.R = &featureR{
-			FeatureTypePlayersFeatures: related,
+			FeatureNamePlayersFeatures: related,
 		}
 	} else {
-		o.R.FeatureTypePlayersFeatures = append(o.R.FeatureTypePlayersFeatures, related...)
+		o.R.FeatureNamePlayersFeatures = append(o.R.FeatureNamePlayersFeatures, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playersFeatureR{
-				FeatureTypeFeature: o,
+				FeatureNameFeature: o,
 			}
 		} else {
-			rel.R.FeatureTypeFeature = o
+			rel.R.FeatureNameFeature = o
 		}
 	}
 	return nil
@@ -528,7 +521,7 @@ func Features(mods ...qm.QueryMod) featureQuery {
 
 // FindFeature retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindFeature(exec boil.Executor, type_ string, selectCols ...string) (*Feature, error) {
+func FindFeature(exec boil.Executor, name string, selectCols ...string) (*Feature, error) {
 	featureObj := &Feature{}
 
 	sel := "*"
@@ -536,10 +529,10 @@ func FindFeature(exec boil.Executor, type_ string, selectCols ...string) (*Featu
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"features\" where \"type\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"features\" where \"name\"=$1 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, type_)
+	q := queries.Raw(query, name)
 
 	err := q.Bind(nil, exec, featureObj)
 	if err != nil {
@@ -910,12 +903,12 @@ func (o *Feature) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), featurePrimaryKeyMapping)
-		sql = "DELETE FROM \"features\" WHERE \"type\"=$1"
+		sql = "DELETE FROM \"features\" WHERE \"name\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"features\" SET %s WHERE \"type\"=$2",
+		sql = fmt.Sprintf("UPDATE \"features\" SET %s WHERE \"name\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(featureType, featureMapping, append(wl, featurePrimaryKeyColumns...))
@@ -1040,7 +1033,7 @@ func (o FeatureSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, err
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *Feature) Reload(exec boil.Executor) error {
-	ret, err := FindFeature(exec, o.Type)
+	ret, err := FindFeature(exec, o.Name)
 	if err != nil {
 		return err
 	}
@@ -1080,15 +1073,15 @@ func (o *FeatureSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // FeatureExists checks if the Feature row exists.
-func FeatureExists(exec boil.Executor, type_ string) (bool, error) {
+func FeatureExists(exec boil.Executor, name string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"features\" where \"type\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"features\" where \"name\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, type_)
+		fmt.Fprintln(boil.DebugWriter, name)
 	}
-	row := exec.QueryRow(sql, type_)
+	row := exec.QueryRow(sql, name)
 
 	err := row.Scan(&exists)
 	if err != nil {

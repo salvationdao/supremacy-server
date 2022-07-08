@@ -20,23 +20,23 @@ func FeatureRouter(api *API) chi.Router {
 		api,
 	}
 	r := chi.NewRouter()
-	r.Get("/all-features", WithError(f.AllFeatures))
-	r.Post("/features-by-id", WithError(f.PlayerFeaturesByID))
+	r.Get("/all-features", WithToken(api.Config.ServerStreamKey, WithError(f.AllFeatures)))
+	r.Post("/features-by-id", WithToken(api.Config.ServerStreamKey, WithError(f.PlayerFeaturesByID)))
 	r.Post("/add-feature-by-IDs", WithError(f.AddFeatureByIDs))
 	r.Post("/add-feature-by-addresses", WithError(f.AddFeatureByAddresses))
 	r.Post("/remove-feature-by-IDs", WithError(f.RemoveFeatureByIDs))
-	r.Post("/remove-feature-by-addresses", WithError(f.RemoveFeatureByAddresses))
+	r.Post("/remove-feature-by-addresses", WithToken(api.Config.ServerStreamKey, WithError(f.RemoveFeatureByAddresses)))
 
 	return r
 }
 
 type FeaturesbyIDsRequest struct {
-	FeatureType string   `json:"feature_type"`
+	FeatureName string   `json:"feature_name"`
 	IDs         []string `json:"ids"`
 }
 
 type FeaturesbyAddressesRequest struct {
-	FeatureType string   `json:"feature_type"`
+	FeatureName string   `json:"feature_name"`
 	Addresses   []string `json:"addresses"`
 }
 
@@ -75,7 +75,7 @@ func (f *FeaturesController) AddFeatureByIDs(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
-	err = db.AddFeatureToPlayerIDs(req.FeatureType, req.IDs)
+	err = db.AddFeatureToPlayerIDs(req.FeatureName, req.IDs)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to add features to player ids")
 	}
@@ -89,7 +89,7 @@ func (f *FeaturesController) AddFeatureByAddresses(w http.ResponseWriter, r *htt
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
-	err = db.AddFeatureToPublicAddresses(req.FeatureType, req.Addresses)
+	err = db.AddFeatureToPublicAddresses(req.FeatureName, req.Addresses)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to add features to public addresses")
 	}
@@ -103,7 +103,7 @@ func (f *FeaturesController) RemoveFeatureByIDs(w http.ResponseWriter, r *http.R
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
-	err = db.RemoveFeatureFromPlayerIDs(req.FeatureType, req.IDs)
+	err = db.RemoveFeatureFromPlayerIDs(req.FeatureName, req.IDs)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to remove features to player ids")
 	}
@@ -117,7 +117,7 @@ func (f *FeaturesController) RemoveFeatureByAddresses(w http.ResponseWriter, r *
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
-	err = db.RemoveFeatureFromPublicAddresses(req.FeatureType, req.Addresses)
+	err = db.RemoveFeatureFromPublicAddresses(req.FeatureName, req.Addresses)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to remove features to public addresses")
 	}

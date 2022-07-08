@@ -29,8 +29,8 @@ func GetPlayerFeaturesByID(playerID string) (boiler.FeatureSlice, error) {
 	features, err := boiler.Features(
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.PlayersFeatures,
-			qm.Rels(boiler.TableNames.Features, boiler.FeatureColumns.Type),
-			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.FeatureType),
+			qm.Rels(boiler.TableNames.Features, boiler.FeatureColumns.Name),
+			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.FeatureName),
 		)),
 		qm.Where(fmt.Sprintf("%s = ?",
 			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.PlayerID),
@@ -46,13 +46,13 @@ func GetPlayerFeaturesByID(playerID string) (boiler.FeatureSlice, error) {
 	return features, nil
 }
 
-func AddFeatureToPlayerIDs(featureType string, ids []string) error {
-	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureType)
+func AddFeatureToPlayerIDs(featureName string, ids []string) error {
+	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureName)
 	if err != nil {
 		return terror.Error(err, "Error finding if feature exists")
 	}
 	if !featureExists {
-		return terror.Error(fmt.Errorf("feature: %s does not exist", featureType), fmt.Sprintf("feature: %s does not exist", featureType))
+		return terror.Error(fmt.Errorf("feature: %s does not exist", featureName), fmt.Sprintf("feature: %s does not exist", featureName))
 
 	}
 
@@ -66,24 +66,13 @@ func AddFeatureToPlayerIDs(featureType string, ids []string) error {
 			return terror.Error(fmt.Errorf("player: %s does not exist", id), fmt.Sprintf("player: %s does not exist", id))
 		}
 
-		playerFeatureExists, err := boiler.PlayersFeatures(
-			boiler.PlayersFeatureWhere.PlayerID.EQ(id),
-			boiler.PlayersFeatureWhere.FeatureType.EQ(featureType),
-			boiler.PlayersFeatureWhere.DeletedAt.IsNull(),
-		).Exists(gamedb.StdConn)
-		if err != nil {
-			return terror.Error(err, "Error finding if player feature exists")
-		}
-		if playerFeatureExists {
-			break
-		}
-
 		pf := &boiler.PlayersFeature{
 			PlayerID:    id,
-			FeatureType: featureType,
+			FeatureName: featureName,
+			DeletedAt:   null.Time{},
 		}
 
-		err = pf.Insert(gamedb.StdConn, boil.Infer())
+		err = pf.Upsert(gamedb.StdConn, true, []string{boiler.PlayersFeatureColumns.PlayerID, boiler.PlayersFeatureColumns.FeatureName}, boil.Infer(), boil.Infer())
 		if err != nil {
 			return terror.Error(err, "Could not insert into player features")
 		}
@@ -92,19 +81,19 @@ func AddFeatureToPlayerIDs(featureType string, ids []string) error {
 	return nil
 }
 
-func AddFeatureToPublicAddresses(featureType string, addresses []string) error {
-	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureType)
+func AddFeatureToPublicAddresses(featureName string, addresses []string) error {
+	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureName)
 	if err != nil {
 		return terror.Error(err, "Error finding if feature exists")
 	}
 	if !featureExists {
-		return terror.Error(fmt.Errorf("feature: %s does not exist", featureType), fmt.Sprintf("feature: %s does not exist", featureType))
+		return terror.Error(fmt.Errorf("feature: %s does not exist", featureName), fmt.Sprintf("feature: %s does not exist", featureName))
 
 	}
 
 	for _, address := range addresses {
 		if address == "" {
-			break
+			continue
 		}
 
 		player, err := boiler.Players(
@@ -114,24 +103,13 @@ func AddFeatureToPublicAddresses(featureType string, addresses []string) error {
 			return terror.Error(err, "Error finding player")
 		}
 
-		playerFeatureExists, err := boiler.PlayersFeatures(
-			boiler.PlayersFeatureWhere.PlayerID.EQ(player.ID),
-			boiler.PlayersFeatureWhere.FeatureType.EQ(featureType),
-			boiler.PlayersFeatureWhere.DeletedAt.IsNull(),
-		).Exists(gamedb.StdConn)
-		if err != nil {
-			return terror.Error(err, "Error finding if player feature exists")
-		}
-		if playerFeatureExists {
-			break
-		}
-
 		pf := &boiler.PlayersFeature{
 			PlayerID:    player.ID,
-			FeatureType: featureType,
+			FeatureName: featureName,
+			DeletedAt:   null.Time{},
 		}
 
-		err = pf.Insert(gamedb.StdConn, boil.Infer())
+		err = pf.Upsert(gamedb.StdConn, true, []string{boiler.PlayersFeatureColumns.PlayerID, boiler.PlayersFeatureColumns.FeatureName}, boil.Infer(), boil.Infer())
 		if err != nil {
 			return terror.Error(err, "Could not insert into player features")
 		}
@@ -139,25 +117,25 @@ func AddFeatureToPublicAddresses(featureType string, addresses []string) error {
 	return nil
 }
 
-func RemoveFeatureFromPlayerIDs(featureType string, ids []string) error {
-	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureType)
+func RemoveFeatureFromPlayerIDs(featureName string, ids []string) error {
+	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureName)
 	if err != nil {
 		return terror.Error(err, "Error finding if feature exists")
 	}
 	if !featureExists {
-		return terror.Error(fmt.Errorf("feature: %s does not exist", featureType), fmt.Sprintf("feature: %s does not exist", featureType))
+		return terror.Error(fmt.Errorf("feature: %s does not exist", featureName), fmt.Sprintf("feature: %s does not exist", featureName))
 
 	}
 
 	for _, id := range ids {
 		pf, err := boiler.PlayersFeatures(
 			boiler.PlayersFeatureWhere.PlayerID.EQ(id),
-			boiler.PlayersFeatureWhere.FeatureType.EQ(featureType),
+			boiler.PlayersFeatureWhere.FeatureName.EQ(featureName),
 			boiler.PlayersFeatureWhere.DeletedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				break
+				continue
 			}
 			return terror.Error(err, "Error finding player feature")
 		}
@@ -172,19 +150,19 @@ func RemoveFeatureFromPlayerIDs(featureType string, ids []string) error {
 	return nil
 }
 
-func RemoveFeatureFromPublicAddresses(featureType string, addresses []string) error {
-	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureType)
+func RemoveFeatureFromPublicAddresses(featureName string, addresses []string) error {
+	featureExists, err := boiler.FeatureExists(gamedb.StdConn, featureName)
 	if err != nil {
 		return terror.Error(err, "Error finding if feature exists")
 	}
 	if !featureExists {
-		return terror.Error(fmt.Errorf("feature: %s does not exist", featureType), fmt.Sprintf("feature: %s does not exist", featureType))
+		return terror.Error(fmt.Errorf("feature: %s does not exist", featureName), fmt.Sprintf("feature: %s does not exist", featureName))
 
 	}
 
 	for _, address := range addresses {
 		if address == "" {
-			break
+			continue
 		}
 
 		player, err := boiler.Players(
@@ -196,12 +174,12 @@ func RemoveFeatureFromPublicAddresses(featureType string, addresses []string) er
 
 		pf, err := boiler.PlayersFeatures(
 			boiler.PlayersFeatureWhere.PlayerID.EQ(player.ID),
-			boiler.PlayersFeatureWhere.FeatureType.EQ(featureType),
+			boiler.PlayersFeatureWhere.FeatureName.EQ(featureName),
 			boiler.PlayersFeatureWhere.DeletedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				break
+				continue
 			}
 			return terror.Error(err, "Error finding player feature")
 		}
