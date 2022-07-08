@@ -27,12 +27,13 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 
 	api.Command(HubKeyPlayerBattlesSpectated, leaderboardHub.GetPlayerBattlesSpectatedHandler)
 	api.Command(HubKeyPlayerMechSurvives, leaderboardHub.GetPlayerMechSurvivesHandler)
+	api.Command(HubKeyPlayerMechKills, leaderboardHub.GetPlayerMechKillsHandler)
 
 	return leaderboardHub
 }
 
 /**
-* Get players battles spectated
+* Get top players battles spectated
  */
 const HubKeyPlayerBattlesSpectated = "LEADERBOARD:PLAYER:BATTLES:SPECTATED"
 
@@ -43,7 +44,10 @@ type PlayerBattlesSpectated struct {
 
 func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	rows, err := boiler.PlayerStats(
-		qm.Select(boiler.PlayerStatColumns.ViewBattleCount),
+		qm.Select(
+			boiler.PlayerStatColumns.ID,
+			boiler.PlayerStatColumns.ViewBattleCount,
+		),
 		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ViewBattleCount, db.SortByDirDesc)),
 		qm.Limit(10),
 		qm.Load(
@@ -76,7 +80,7 @@ func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Co
 }
 
 /**
-* Get players most mech survivals based on the mechs they own
+* Get top players mech survivals based on the mechs they own
  */
 const HubKeyPlayerMechSurvives = "LEADERBOARD:PLAYER:MECH:SURVIVES"
 
@@ -86,6 +90,53 @@ func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Contex
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech survives.")
 		return terror.Error(err, "Failed to get leaderboard player mech survives.")
+	}
+
+	reply(resp)
+	return nil
+}
+
+/**
+* Get top players mech kills
+ */
+const HubKeyPlayerMechKills = "LEADERBOARD:PLAYER:MECH:KILLS"
+
+type PlayerMechKills struct {
+	Player        *boiler.Player `json:"player"`
+	MechKillCount int            `json:"mech_kill_count"`
+}
+
+func (lc *LeaderboardController) GetPlayerMechKillsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	rows, err := boiler.PlayerStats(
+		qm.Select(
+			boiler.PlayerStatColumns.ID,
+			boiler.PlayerStatColumns.MechKillCount,
+		),
+		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.MechKillCount, db.SortByDirDesc)),
+		qm.Limit(10),
+		qm.Load(
+			boiler.PlayerStatRels.IDPlayer,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+				boiler.PlayerColumns.Gid,
+				boiler.PlayerColumns.Rank,
+			),
+		),
+	).All(gamedb.StdConn)
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech kills.")
+		return terror.Error(err, "Failed to get leaderboard player mech kills.")
+	}
+
+	resp := []*PlayerMechKills{}
+	for _, row := range rows {
+		resp = append(resp, &PlayerMechKills{
+			Player:        row.R.IDPlayer,
+			MechKillCount: row.MechKillCount,
+		})
 	}
 
 	reply(resp)
