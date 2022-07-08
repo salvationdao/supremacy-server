@@ -10,6 +10,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpctypes"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
@@ -37,9 +38,16 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	crateType := strings.ToUpper(chi.URLParam(r, "crate_type"))
 	user, err := boiler.Players(boiler.PlayerWhere.PublicAddress.EQ(null.StringFrom(publicAddress.String()))).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
+
+		return http.StatusInternalServerError, err
+	}
+	if crateType != boiler.CrateTypeMECH && crateType != boiler.CrateTypeWEAPON {
+		err := fmt.Errorf("invalid crate type")
+		gamelog.L.Error().Err(err).Msg("Invalid crate type")
 
 		return http.StatusInternalServerError, err
 	}
@@ -52,7 +60,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 	defer tx.Rollback()
 
 	storeCrate, err := boiler.StorefrontMysteryCrates(
-		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ("WEAPON"),
+		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(crateType),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
 		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
 	).One(gamedb.StdConn)
