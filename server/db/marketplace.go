@@ -324,7 +324,6 @@ FROM item_sales s
 	LEFT JOIN weapons w ON w.id = ci.item_id AND ci.item_type = 'weapon'
 	LEFT JOIN mechs m ON m.id = ci.item_id AND ci.item_type = 'mech'
 WHERE s.id = $1
-	AND s.sold_to IS NOT NULL
 	AND (
 	    (ci.item_type = 'weapon' AND w.id IS NOT NULL AND w.genesis_token_id IS NULL)
 	    OR (ci.item_type = 'mech' AND m.id IS NOT NULL AND m.genesis_token_id IS NULL)

@@ -64,12 +64,12 @@ func TransferAssets(
 		}
 	}
 
-	// Check if it's a mech genesis
-	isGenesis, err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
+	// Check whether to transfer mech only
+	transferMechOnly, err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	if isGenesis {
+	if transferMechOnly {
 		return rollbackFunc, nil
 	}
 
@@ -79,7 +79,7 @@ func TransferAssets(
 		return nil, terror.Error(err)
 	}
 	for _, attachedHash := range otherAssets {
-		err = passport.TransferAsset(
+		err := passport.TransferAsset(
 			fromUserID,
 			toUserID,
 			attachedHash,
