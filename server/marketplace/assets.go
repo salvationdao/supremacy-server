@@ -65,7 +65,7 @@ func TransferAssets(
 	}
 
 	// Check if it's a mech genesis
-	isGenesis, err := db.MarketplaceItemIsGenesisMech(conn, itemSaleID)
+	isGenesis, err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

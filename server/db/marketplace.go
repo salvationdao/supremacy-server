@@ -1763,8 +1763,8 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 	return output, nil
 }
 
-// MarketplaceItemIsGenesisMech checks whether sale item is a genesis mech for sale.
-func MarketplaceItemIsGenesisMech(conn boil.Executor, itemSaleID string) (bool, error) {
+// MarketplaceItemIsGenesisOrLimitedMech checks whether sale item is a genesis mech for sale.
+func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, error) {
 	mechRow, err := boiler.Mechs(
 		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 		qm.From(boiler.TableNames.CollectionItems),
@@ -1789,5 +1789,5 @@ func MarketplaceItemIsGenesisMech(conn boil.Executor, itemSaleID string) (bool, 
 		return false, terror.Error(err)
 	}
 
-	return mech.IsCompleteGenesis(), nil
+	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(), nil
 }
