@@ -756,6 +756,13 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 
 	if crate.Type == boiler.CrateTypeMECH {
+		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get MechEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach mech_skin to mech - mech
 		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
 		if err != nil {
@@ -764,6 +771,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.MechSkin.EquippedOnDetails = eod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
 
 		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
@@ -773,6 +781,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		items.PowerCore.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.PowerCore.EquippedOnDetails = eod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
@@ -784,6 +793,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not open crate, try again or contact support.")
 			}
 			weapon.EquippedOn = null.StringFrom(items.Mech.ID)
+			weapon.EquippedOnDetails = eod
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
@@ -794,10 +804,18 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		mech.ChassisSkin = items.MechSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset( []*server.Mech{mech})...)
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
+		wod, err := db.WeaponEquippedOnDetails(tx, items.Weapons[0].ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach weapon_skin to weapon -weapon
 		if len(items.Weapons) != 1 {
 			crateRollback()
@@ -811,6 +829,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkin.EquippedOnDetails = wod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
 
 		weapon, err := db.Weapon(tx, items.Weapons[0].ID)

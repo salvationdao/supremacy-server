@@ -731,12 +731,12 @@ func (mechAnimationL) LoadMechAnimationMechModel(e boil.Executor, singular bool,
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
+		return errors.Wrap(err, "failed to eager load MechModelID")
 	}
 
 	var resultSlice []*MechModel
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
+		return errors.Wrap(err, "failed to bind eager loaded slice MechModelID")
 	}
 
 	if err = results.Close(); err != nil {

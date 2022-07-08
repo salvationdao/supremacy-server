@@ -799,7 +799,12 @@ func MechRename(mechID string, ownerID string, name string) (string, error) {
 
 }
 
-func MechEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, error) {
+func MechEquippedOnDetails(trx boil.Executor,equippedOnID string) (*server.EquippedOnDetails, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
 	eid := &server.EquippedOnDetails{}
 
 	err := boiler.NewQuery(
@@ -807,6 +812,7 @@ func MechEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, erro
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.Hash,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf(
@@ -816,9 +822,10 @@ func MechEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, erro
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
 		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
-	).QueryRow(gamedb.StdConn).Scan(
+	).QueryRow(tx).Scan(
 		&eid.ID,
 		&eid.Hash,
+		&eid.Name,
 		&eid.Label,
 	)
 	if err != nil {

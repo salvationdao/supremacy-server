@@ -17,7 +17,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func WeaponEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, error) {
+func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
 	eid := &server.EquippedOnDetails{}
 
 	err := boiler.NewQuery(
@@ -34,7 +39,7 @@ func WeaponEquippedOnDetails(equippedOnID string) (*server.EquippedOnDetails, er
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
 		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
-	).QueryRow(gamedb.StdConn).Scan(
+	).QueryRow(tx).Scan(
 		&eid.ID,
 		&eid.Hash,
 		&eid.Label,
@@ -133,14 +138,14 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 	}
 
 	var weaponSkin *server.WeaponSkin
-	if boilerWeapon.EquippedWeaponSkinID.Valid{
+	if boilerWeapon.EquippedWeaponSkinID.Valid {
 		weaponSkin, err = WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID.String)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails,weaponSkin), nil
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
@@ -157,7 +162,7 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		}
 
 		var weaponSkin *server.WeaponSkin
-		if bm.EquippedWeaponSkinID.Valid{
+		if bm.EquippedWeaponSkinID.Valid {
 			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
 			if err != nil {
 				return nil, err
@@ -278,8 +283,9 @@ type WeaponListOpts struct {
 	PageSize            int
 	Page                int
 	OwnerID             string
-	DisplayXsynMechs    bool
-	ExcludeMarketLocked bool
+	DisplayXsynMechs         bool
+	DisplayGenesisAndLimited bool
+	ExcludeMarketLocked      bool
 	IncludeMarketListed bool
 	FilterRarities      []string `json:"rarities"`
 	FilterWeaponTypes   []string `json:"weapon_types"`
@@ -330,6 +336,20 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
 			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
+	if !opts.DisplayGenesisAndLimited {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.Weapons,
+			Column:   boiler.WeaponColumns.GenesisTokenID,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+	if !opts.DisplayGenesisAndLimited {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.Weapons,
+			Column:   boiler.WeaponColumns.LimitedReleaseTokenID,
+			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
 

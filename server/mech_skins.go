@@ -16,7 +16,8 @@ type MechSkin struct {
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
-	MechModel             string      `json:"mech_model"`
+	MechModelID           string      `json:"mech_model_id"`
+	MechModelName         string      `json:"mech_model_name"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	ImageURL              null.String `json:"image_url,omitempty"`
 	AnimationURL          null.String `json:"animation_url,omitempty"`
@@ -81,7 +82,7 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 }
 
 func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
-	return &MechSkin{
+	mskin:=  &MechSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
@@ -104,7 +105,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		BlueprintID:      skin.BlueprintID,
 		GenesisTokenID:   skin.GenesisTokenID,
 		Label:            skin.Label,
-		MechModel:        skin.MechModel,
+		MechModelID:      skin.MechModel,
 		EquippedOn:       skin.EquippedOn,
 		ImageURL:         skin.ImageURL,
 		AnimationURL:     skin.AnimationURL,
@@ -113,4 +114,10 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		LargeImageURL:    skin.LargeImageURL,
 		CreatedAt:        skin.CreatedAt,
 	}
+
+	if skin.R != nil && skin.R.MechSkinMechModel != nil {
+		mskin.MechModelName = skin.R.MechSkinMechModel.Label
+	}
+
+	return mskin
 }
