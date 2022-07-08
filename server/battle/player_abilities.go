@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -80,7 +79,6 @@ func (pam *PlayerAbilityManager) DeleteMiniMechMove(hash string) {
 
 	_, ok := pam.movingMiniMechs[hash]
 	if ok {
-		fmt.Println(hash)
 		delete(pam.movingMiniMechs, hash)
 	}
 }
@@ -95,7 +93,6 @@ func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) {
 		mm.ReachedAt = &now
 		pam.movingMiniMechs[hash] = mm
 	}
-	spew.Dump(pam.movingMiniMechs)
 }
 
 func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []MovingMiniMech {
@@ -105,8 +102,6 @@ func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []Movi
 	result := []MovingMiniMech{}
 	for _, mmm := range pam.movingMiniMechs {
 		if mmm.FactionID != factionID || mmm.ReachedAt != nil {
-			fmt.Println("--------DISCARDING-----------")
-			fmt.Println(mmm.MechHash)
 			continue
 		}
 
