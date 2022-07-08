@@ -1,5 +1,5 @@
-// +build tools
-// +build windows
+//go:build tools && windows
+// +build tools,windows
 
 package server
 

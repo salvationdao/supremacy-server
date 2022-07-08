@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -68,7 +69,10 @@ func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
 		tx = gamedb.StdConn
 	}
 
-	boilerMech, err := boiler.FindMechSkin(tx, id)
+	boilerMech, err := boiler.MechSkins(
+		boiler.MechSkinWhere.ID.EQ(id),
+		qm.Load(boiler.MechSkinRels.MechSkinMechModel),
+	).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +156,7 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 	// wrong model
 	if mech.ModelID != mechSkin.MechModel {
 		err := fmt.Errorf("mechSkin model mismatch")
-		gamelog.L.Error().Err(err).Str("mech.ModelID", mech.ModelID).Str("mechSkin.MechModel", mechSkin.MechModel).Msg("mech skin doesn't fit this mech")
+		gamelog.L.Error().Err(err).Str("mech.ModelID", mech.ModelID).Str("mechSkin.MechModelID", mechSkin.MechModel).Msg("mech skin doesn't fit this mech")
 		return terror.Error(err, "This war machine skin doesn't fit this war machine.")
 	}
 
