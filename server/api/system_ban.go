@@ -94,6 +94,5 @@ func (sbm *SystemBanManager) TeamKillJudgment(relativeOfferingID string) {
 
 	// if team kill
 	if teamKillCount > 0 {
-		boiler.
 	}
 }
