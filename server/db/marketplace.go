@@ -1762,3 +1762,32 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 	}
 	return output, nil
 }
+
+// MarketplaceItemIsGenesisMech checks whether sale item is a genesis mech for sale.
+func MarketplaceItemIsGenesisMech(conn boil.Executor, itemSaleID string) (bool, error) {
+	mechRow, err := boiler.Mechs(
+		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(itemSaleID),
+	).One(conn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, terror.Error(err)
+	}
+
+	mech, err := Mech(conn, mechRow.ID)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+
+	return mech.IsCompleteGenesis(), nil
+}

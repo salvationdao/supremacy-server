@@ -23,12 +23,7 @@ func TransferAssets(
 	hash string,
 	itemSaleID string,
 ) (TransferAssetRollbackFunc, error) {
-	otherAssets, err := db.MarketplaceGetOtherAssets(conn, itemSaleID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	err = passport.TransferAsset(
+	err := passport.TransferAsset(
 		fromUserID,
 		toUserID,
 		hash,
@@ -69,6 +64,20 @@ func TransferAssets(
 		}
 	}
 
+	// Check if it's a mech genesis
+	isGenesis, err := db.MarketplaceItemIsGenesisMech(conn, itemSaleID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	if isGenesis {
+		return rollbackFunc, nil
+	}
+
+	// Transfer submodels
+	otherAssets, err := db.MarketplaceGetOtherAssets(conn, itemSaleID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 	for _, attachedHash := range otherAssets {
 		err = passport.TransferAsset(
 			fromUserID,
