@@ -483,19 +483,10 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.BanSupsContribute.GT(true),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -653,19 +644,10 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.BanSupsContribute.GT(true),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")

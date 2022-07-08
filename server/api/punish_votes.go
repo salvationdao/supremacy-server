@@ -500,11 +500,22 @@ func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClie
 	}
 
 	// punish user
-	bp := &boiler.PunishedPlayer{
-		PlayerID:            punishVote.ReportedPlayerID,
-		PunishOptionID:      punishOption.ID,
-		PunishUntil:         punishDuration,
-		RelatedPunishVoteID: null.StringFrom(punishVote.ID),
+	bp := &boiler.PlayerBan{
+		BanFrom:        boiler.BanFromTypePLAYER,
+		BannedByID:     punishVote.IssuedByID,
+		BannedPlayerID: punishVote.ReportedPlayerID,
+		BannedAt:       time.Now(),
+		EndAt:          punishDuration,
+		Reason:         punishVote.Reason,
+	}
+
+	switch punishOption.Key {
+	case "restrict_sups_contribution":
+		bp.BanSupsContribute = true
+	case "restrict_location_select":
+		bp.BanLocationSelect = true
+	case "restrict_chat":
+		bp.BanSendChat = true
 	}
 	err = bp.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -565,13 +576,23 @@ func (pvt *PunishVoteTracker) VotePassed() error {
 	if pvt.api.Config.Address == "staging" || pvt.api.Config.Address == "development" {
 		punishDuration = time.Now().Add(time.Duration(5) * time.Minute)
 	}
-
 	// punish user
-	bp := &boiler.PunishedPlayer{
-		PlayerID:            punishVote.ReportedPlayerID,
-		PunishOptionID:      punishOption.ID,
-		PunishUntil:         punishDuration,
-		RelatedPunishVoteID: null.StringFrom(punishVote.ID),
+	bp := &boiler.PlayerBan{
+		BanFrom:        boiler.BanFromTypePLAYER,
+		BannedByID:     punishVote.IssuedByID,
+		BannedPlayerID: punishVote.ReportedPlayerID,
+		BannedAt:       time.Now(),
+		EndAt:          punishDuration,
+		Reason:         punishVote.Reason,
+	}
+
+	switch punishOption.Key {
+	case "restrict_sups_contribution":
+		bp.BanSupsContribute = true
+	case "restrict_location_select":
+		bp.BanLocationSelect = true
+	case "restrict_chat":
+		bp.BanSendChat = true
 	}
 	err = bp.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -724,17 +745,15 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	if isPassed {
 		// get current player's punishment
-		punishments, err := boiler.PunishedPlayers(
-			boiler.PunishedPlayerWhere.PlayerID.EQ(punishVote.ReportedPlayerID),
-			boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-			qm.Load(boiler.PunishedPlayerRels.PunishOption),
-			qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+		punishments, err := boiler.PlayerBans(
+			boiler.PlayerBanWhere.BannedPlayerID.EQ(punishVote.ReportedPlayerID),
+			boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+			qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
 		).All(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to get player's punishment from db")
 			return
 		}
-
 		if punishments == nil || len(punishments) == 0 {
 			return
 		}
@@ -742,9 +761,8 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		playerPunishments := []*PlayerPunishment{}
 		for _, punishment := range punishments {
 			playerPunishments = append(playerPunishments, &PlayerPunishment{
-				PunishedPlayer:    punishment,
+				PlayerBan:         punishment,
 				RelatedPunishVote: punishment.R.RelatedPunishVote,
-				PunishOption:      punishment.R.PunishOption,
 			})
 		}
 

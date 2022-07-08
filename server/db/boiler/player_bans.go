@@ -24,13 +24,15 @@ import (
 // PlayerBan is an object representing the database table.
 type PlayerBan struct {
 	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BanFrom             string      `boiler:"ban_from" boil:"ban_from" json:"ban_from" toml:"ban_from" yaml:"ban_from"`
+	BattleNumber        null.Int    `boiler:"battle_number" boil:"battle_number" json:"battle_number,omitempty" toml:"battle_number" yaml:"battle_number,omitempty"`
 	BannedPlayerID      string      `boiler:"banned_player_id" boil:"banned_player_id" json:"banned_player_id" toml:"banned_player_id" yaml:"banned_player_id"`
 	BannedByID          string      `boiler:"banned_by_id" boil:"banned_by_id" json:"banned_by_id" toml:"banned_by_id" yaml:"banned_by_id"`
-	BattleNumber        null.Int    `boiler:"battle_number" boil:"battle_number" json:"battle_number,omitempty" toml:"battle_number" yaml:"battle_number,omitempty"`
 	Reason              string      `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
 	BannedAt            time.Time   `boiler:"banned_at" boil:"banned_at" json:"banned_at" toml:"banned_at" yaml:"banned_at"`
-	EndAt               null.Time   `boiler:"end_at" boil:"end_at" json:"end_at,omitempty" toml:"end_at" yaml:"end_at,omitempty"`
-	ManuallyUnbanByID   string      `boiler:"manually_unban_by_id" boil:"manually_unban_by_id" json:"manually_unban_by_id" toml:"manually_unban_by_id" yaml:"manually_unban_by_id"`
+	EndAt               time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	RelatedPunishVoteID null.String `boiler:"related_punish_vote_id" boil:"related_punish_vote_id" json:"related_punish_vote_id,omitempty" toml:"related_punish_vote_id" yaml:"related_punish_vote_id,omitempty"`
+	ManuallyUnbanByID   null.String `boiler:"manually_unban_by_id" boil:"manually_unban_by_id" json:"manually_unban_by_id,omitempty" toml:"manually_unban_by_id" yaml:"manually_unban_by_id,omitempty"`
 	ManuallyUnbanReason null.String `boiler:"manually_unban_reason" boil:"manually_unban_reason" json:"manually_unban_reason,omitempty" toml:"manually_unban_reason" yaml:"manually_unban_reason,omitempty"`
 	ManuallyUnbanAt     null.Time   `boiler:"manually_unban_at" boil:"manually_unban_at" json:"manually_unban_at,omitempty" toml:"manually_unban_at" yaml:"manually_unban_at,omitempty"`
 	BanSupsContribute   bool        `boiler:"ban_sups_contribute" boil:"ban_sups_contribute" json:"ban_sups_contribute" toml:"ban_sups_contribute" yaml:"ban_sups_contribute"`
@@ -47,12 +49,14 @@ type PlayerBan struct {
 
 var PlayerBanColumns = struct {
 	ID                  string
+	BanFrom             string
+	BattleNumber        string
 	BannedPlayerID      string
 	BannedByID          string
-	BattleNumber        string
 	Reason              string
 	BannedAt            string
 	EndAt               string
+	RelatedPunishVoteID string
 	ManuallyUnbanByID   string
 	ManuallyUnbanReason string
 	ManuallyUnbanAt     string
@@ -65,12 +69,14 @@ var PlayerBanColumns = struct {
 	DeletedAt           string
 }{
 	ID:                  "id",
+	BanFrom:             "ban_from",
+	BattleNumber:        "battle_number",
 	BannedPlayerID:      "banned_player_id",
 	BannedByID:          "banned_by_id",
-	BattleNumber:        "battle_number",
 	Reason:              "reason",
 	BannedAt:            "banned_at",
 	EndAt:               "end_at",
+	RelatedPunishVoteID: "related_punish_vote_id",
 	ManuallyUnbanByID:   "manually_unban_by_id",
 	ManuallyUnbanReason: "manually_unban_reason",
 	ManuallyUnbanAt:     "manually_unban_at",
@@ -85,12 +91,14 @@ var PlayerBanColumns = struct {
 
 var PlayerBanTableColumns = struct {
 	ID                  string
+	BanFrom             string
+	BattleNumber        string
 	BannedPlayerID      string
 	BannedByID          string
-	BattleNumber        string
 	Reason              string
 	BannedAt            string
 	EndAt               string
+	RelatedPunishVoteID string
 	ManuallyUnbanByID   string
 	ManuallyUnbanReason string
 	ManuallyUnbanAt     string
@@ -103,12 +111,14 @@ var PlayerBanTableColumns = struct {
 	DeletedAt           string
 }{
 	ID:                  "player_bans.id",
+	BanFrom:             "player_bans.ban_from",
+	BattleNumber:        "player_bans.battle_number",
 	BannedPlayerID:      "player_bans.banned_player_id",
 	BannedByID:          "player_bans.banned_by_id",
-	BattleNumber:        "player_bans.battle_number",
 	Reason:              "player_bans.reason",
 	BannedAt:            "player_bans.banned_at",
 	EndAt:               "player_bans.end_at",
+	RelatedPunishVoteID: "player_bans.related_punish_vote_id",
 	ManuallyUnbanByID:   "player_bans.manually_unban_by_id",
 	ManuallyUnbanReason: "player_bans.manually_unban_reason",
 	ManuallyUnbanAt:     "player_bans.manually_unban_at",
@@ -125,13 +135,15 @@ var PlayerBanTableColumns = struct {
 
 var PlayerBanWhere = struct {
 	ID                  whereHelperstring
+	BanFrom             whereHelperstring
+	BattleNumber        whereHelpernull_Int
 	BannedPlayerID      whereHelperstring
 	BannedByID          whereHelperstring
-	BattleNumber        whereHelpernull_Int
 	Reason              whereHelperstring
 	BannedAt            whereHelpertime_Time
-	EndAt               whereHelpernull_Time
-	ManuallyUnbanByID   whereHelperstring
+	EndAt               whereHelpertime_Time
+	RelatedPunishVoteID whereHelpernull_String
+	ManuallyUnbanByID   whereHelpernull_String
 	ManuallyUnbanReason whereHelpernull_String
 	ManuallyUnbanAt     whereHelpernull_Time
 	BanSupsContribute   whereHelperbool
@@ -143,13 +155,15 @@ var PlayerBanWhere = struct {
 	DeletedAt           whereHelpernull_Time
 }{
 	ID:                  whereHelperstring{field: "\"player_bans\".\"id\""},
+	BanFrom:             whereHelperstring{field: "\"player_bans\".\"ban_from\""},
+	BattleNumber:        whereHelpernull_Int{field: "\"player_bans\".\"battle_number\""},
 	BannedPlayerID:      whereHelperstring{field: "\"player_bans\".\"banned_player_id\""},
 	BannedByID:          whereHelperstring{field: "\"player_bans\".\"banned_by_id\""},
-	BattleNumber:        whereHelpernull_Int{field: "\"player_bans\".\"battle_number\""},
 	Reason:              whereHelperstring{field: "\"player_bans\".\"reason\""},
 	BannedAt:            whereHelpertime_Time{field: "\"player_bans\".\"banned_at\""},
-	EndAt:               whereHelpernull_Time{field: "\"player_bans\".\"end_at\""},
-	ManuallyUnbanByID:   whereHelperstring{field: "\"player_bans\".\"manually_unban_by_id\""},
+	EndAt:               whereHelpertime_Time{field: "\"player_bans\".\"end_at\""},
+	RelatedPunishVoteID: whereHelpernull_String{field: "\"player_bans\".\"related_punish_vote_id\""},
+	ManuallyUnbanByID:   whereHelpernull_String{field: "\"player_bans\".\"manually_unban_by_id\""},
 	ManuallyUnbanReason: whereHelpernull_String{field: "\"player_bans\".\"manually_unban_reason\""},
 	ManuallyUnbanAt:     whereHelpernull_Time{field: "\"player_bans\".\"manually_unban_at\""},
 	BanSupsContribute:   whereHelperbool{field: "\"player_bans\".\"ban_sups_contribute\""},
@@ -166,17 +180,20 @@ var PlayerBanRels = struct {
 	BannedBy           string
 	BannedPlayer       string
 	BattleNumberBattle string
+	RelatedPunishVote  string
 }{
 	BannedBy:           "BannedBy",
 	BannedPlayer:       "BannedPlayer",
 	BattleNumberBattle: "BattleNumberBattle",
+	RelatedPunishVote:  "RelatedPunishVote",
 }
 
 // playerBanR is where relationships are stored.
 type playerBanR struct {
-	BannedBy           *Player `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
-	BannedPlayer       *Player `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
-	BattleNumberBattle *Battle `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
+	BannedBy           *Player     `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
+	BannedPlayer       *Player     `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
+	BattleNumberBattle *Battle     `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
+	RelatedPunishVote  *PunishVote `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
 }
 
 // NewStruct creates a new relationship struct
@@ -188,9 +205,9 @@ func (*playerBanR) NewStruct() *playerBanR {
 type playerBanL struct{}
 
 var (
-	playerBanAllColumns            = []string{"id", "banned_player_id", "banned_by_id", "battle_number", "reason", "banned_at", "end_at", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
-	playerBanColumnsWithoutDefault = []string{"banned_player_id", "banned_by_id", "reason", "manually_unban_by_id"}
-	playerBanColumnsWithDefault    = []string{"id", "battle_number", "banned_at", "end_at", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
+	playerBanAllColumns            = []string{"id", "ban_from", "battle_number", "banned_player_id", "banned_by_id", "reason", "banned_at", "end_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
+	playerBanColumnsWithoutDefault = []string{"ban_from", "banned_player_id", "banned_by_id", "reason", "end_at"}
+	playerBanColumnsWithDefault    = []string{"id", "battle_number", "banned_at", "related_punish_vote_id", "manually_unban_by_id", "manually_unban_reason", "manually_unban_at", "ban_sups_contribute", "ban_location_select", "ban_send_chat", "ban_view_chat", "created_at", "updated_at", "deleted_at"}
 	playerBanPrimaryKeyColumns     = []string{"id"}
 	playerBanGeneratedColumns      = []string{}
 )
@@ -477,6 +494,21 @@ func (o *PlayerBan) BattleNumberBattle(mods ...qm.QueryMod) battleQuery {
 
 	query := Battles(queryMods...)
 	queries.SetFrom(query.Query, "\"battles\"")
+
+	return query
+}
+
+// RelatedPunishVote pointed to by the foreign key.
+func (o *PlayerBan) RelatedPunishVote(mods ...qm.QueryMod) punishVoteQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RelatedPunishVoteID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := PunishVotes(queryMods...)
+	queries.SetFrom(query.Query, "\"punish_votes\"")
 
 	return query
 }
@@ -799,6 +831,115 @@ func (playerBanL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybePl
 	return nil
 }
 
+// LoadRelatedPunishVote allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerBanL) LoadRelatedPunishVote(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
+	var slice []*PlayerBan
+	var object *PlayerBan
+
+	if singular {
+		object = maybePlayerBan.(*PlayerBan)
+	} else {
+		slice = *maybePlayerBan.(*[]*PlayerBan)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerBanR{}
+		}
+		if !queries.IsNil(object.RelatedPunishVoteID) {
+			args = append(args, object.RelatedPunishVoteID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerBanR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RelatedPunishVoteID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RelatedPunishVoteID) {
+				args = append(args, obj.RelatedPunishVoteID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`punish_votes`),
+		qm.WhereIn(`punish_votes.id in ?`, args...),
+		qmhelper.WhereIsNull(`punish_votes.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load PunishVote")
+	}
+
+	var resultSlice []*PunishVote
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice PunishVote")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for punish_votes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punish_votes")
+	}
+
+	if len(playerBanAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RelatedPunishVote = foreign
+		if foreign.R == nil {
+			foreign.R = &punishVoteR{}
+		}
+		foreign.R.RelatedPunishVotePlayerBans = append(foreign.R.RelatedPunishVotePlayerBans, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RelatedPunishVoteID, foreign.ID) {
+				local.R.RelatedPunishVote = foreign
+				if foreign.R == nil {
+					foreign.R = &punishVoteR{}
+				}
+				foreign.R.RelatedPunishVotePlayerBans = append(foreign.R.RelatedPunishVotePlayerBans, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBannedBy of the playerBan to the related item.
 // Sets o.R.BannedBy to related.
 // Adds o to related.R.BannedByPlayerBans.
@@ -965,6 +1106,85 @@ func (o *PlayerBan) RemoveBattleNumberBattle(exec boil.Executor, related *Battle
 			related.R.BattleNumberPlayerBans[i] = related.R.BattleNumberPlayerBans[ln-1]
 		}
 		related.R.BattleNumberPlayerBans = related.R.BattleNumberPlayerBans[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetRelatedPunishVote of the playerBan to the related item.
+// Sets o.R.RelatedPunishVote to related.
+// Adds o to related.R.RelatedPunishVotePlayerBans.
+func (o *PlayerBan) SetRelatedPunishVote(exec boil.Executor, insert bool, related *PunishVote) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"player_bans\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"related_punish_vote_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerBanPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RelatedPunishVoteID, related.ID)
+	if o.R == nil {
+		o.R = &playerBanR{
+			RelatedPunishVote: related,
+		}
+	} else {
+		o.R.RelatedPunishVote = related
+	}
+
+	if related.R == nil {
+		related.R = &punishVoteR{
+			RelatedPunishVotePlayerBans: PlayerBanSlice{o},
+		}
+	} else {
+		related.R.RelatedPunishVotePlayerBans = append(related.R.RelatedPunishVotePlayerBans, o)
+	}
+
+	return nil
+}
+
+// RemoveRelatedPunishVote relationship.
+// Sets o.R.RelatedPunishVote to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PlayerBan) RemoveRelatedPunishVote(exec boil.Executor, related *PunishVote) error {
+	var err error
+
+	queries.SetScanner(&o.RelatedPunishVoteID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("related_punish_vote_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RelatedPunishVote = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.RelatedPunishVotePlayerBans {
+		if queries.Equal(o.RelatedPunishVoteID, ri.RelatedPunishVoteID) {
+			continue
+		}
+
+		ln := len(related.R.RelatedPunishVotePlayerBans)
+		if ln > 1 && i < ln-1 {
+			related.R.RelatedPunishVotePlayerBans[i] = related.R.RelatedPunishVotePlayerBans[ln-1]
+		}
+		related.R.RelatedPunishVotePlayerBans = related.R.RelatedPunishVotePlayerBans[:ln-1]
 		break
 	}
 	return nil

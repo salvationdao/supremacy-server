@@ -93,7 +93,6 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
-	PunishedPlayers                                    string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -204,7 +203,6 @@ var TableNames = struct {
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
-	PunishedPlayers:              "punished_players",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
