@@ -648,12 +648,12 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModelID")
+		return errors.Wrap(err, "failed to eager load MechModel")
 	}
 
 	var resultSlice []*MechModel
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModelID")
+		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
 	}
 
 	if err = results.Close(); err != nil {

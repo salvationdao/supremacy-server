@@ -277,18 +277,18 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 }
 
 type WeaponListOpts struct {
-	Search              string
-	Filter              *ListFilterRequest
-	Sort                *ListSortRequest
-	PageSize            int
-	Page                int
-	OwnerID             string
+	Search                   string
+	Filter                   *ListFilterRequest
+	Sort                     *ListSortRequest
+	PageSize                 int
+	Page                     int
+	OwnerID                  string
 	DisplayXsynMechs         bool
 	DisplayGenesisAndLimited bool
 	ExcludeMarketLocked      bool
-	IncludeMarketListed bool
-	FilterRarities      []string `json:"rarities"`
-	FilterWeaponTypes   []string `json:"weapon_types"`
+	IncludeMarketListed      bool
+	FilterRarities           []string `json:"rarities"`
+	FilterWeaponTypes        []string `json:"weapon_types"`
 }
 
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
@@ -447,6 +447,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&wp.CollectionItem.MarketLocked,
 			&wp.CollectionItem.XsynLocked,
 			&wp.CollectionItem.LockedToMarketplace,
+			&wp.CollectionItem.AssetHidden,
 			&wp.ID,
 			&wp.Label,
 		}
@@ -485,4 +486,36 @@ func PlayerWeaponsList(
 	}
 
 	return weapons, nil
+}
+
+func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reason null.String) error {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	itemIDsToUpdate := []string{}
+
+	// get equipped mech weapon skins
+	mWpnSkin, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(weaponID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mWpnSkin {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
+	// update!
+	_, err = boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
+	).UpdateAll(tx, boiler.M{
+		"asset_hidden": reason,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -135,7 +135,7 @@ var (
 
 type (
 	// MechModelSlice is an alias for a slice of pointers to MechModel.
-	// This should almost always be used instead of []MechModelID.
+	// This should almost always be used instead of []MechModel.
 	MechModelSlice []*MechModel
 	// MechModelHook is the signature for custom MechModel hook methods
 	MechModelHook func(boil.Executor, *MechModel) error
@@ -330,7 +330,7 @@ func (q mechModelQuery) All(exec boil.Executor) (MechModelSlice, error) {
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to MechModelID slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to MechModel slice")
 	}
 
 	if len(mechModelAfterSelectHooks) != 0 {
@@ -2141,7 +2141,7 @@ func (o *MechModel) Upsert(exec boil.Executor, updateOnConflict bool, conflictCo
 // Delete will match against the primary key column to find the record to delete.
 func (o *MechModel) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no MechModelID provided for delete")
+		return 0, errors.New("boiler: no MechModel provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
