@@ -76,6 +76,7 @@ var TableNames = struct {
 	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
+	PlayerBans                                         string
 	PlayerFingerprints                                 string
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
@@ -186,6 +187,7 @@ var TableNames = struct {
 	MysteryCrateBlueprints:       "mystery_crate_blueprints",
 	PlayerAbilities:              "player_abilities",
 	PlayerActiveLogs:             "player_active_logs",
+	PlayerBans:                   "player_bans",
 	PlayerFingerprints:           "player_fingerprints",
 	PlayerKeycards:               "player_keycards",
 	PlayerKillLog:                "player_kill_log",

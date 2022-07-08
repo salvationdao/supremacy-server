@@ -54,6 +54,7 @@ const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 
 const KeyInstantPassRequiredAmount KVKey = "instant_pass_required_amount"
+const KeyJudgmentCountdownSeconds KVKey = "judgment_countdown_seconds"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
