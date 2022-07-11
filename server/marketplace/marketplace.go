@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/asset"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -448,45 +449,17 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			// Transfer ownership of asset
-			if auctionItem.ItemType == boiler.ItemTypeMech {
-				err = db.ChangeMechOwner(tx, auctionItem.ID)
-				if err != nil {
-					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTransferRollback()
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
-						Err(err).
-						Msg("Failed to Transfer Mech to New Owner")
-					return
-				}
-			} else if auctionItem.ItemType == boiler.ItemTypeMysteryCrate {
-				err = db.ChangeMysteryCrateOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
-				if err != nil {
-					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTransferRollback()
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
-						Err(err).
-						Msg("Failed to Transfer Mystery Crate to New Owner")
-					return
-				}
-			} else if auctionItem.ItemType == boiler.ItemTypeWeapon {
-				err = db.ChangeWeaponOwner(tx, auctionItem.CollectionItemID.String(), auctionItem.AuctionBidUserID.String())
-				if err != nil {
-					m.Passport.RefundSupsMessage(txid)
-					rpcAssetTransferRollback()
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
-						Err(err).
-						Msg("Failed to Transfer Weapon to New Owner")
-				}
+			err = HandleMarketplaceAssetTransfer(tx, auctionItem.ID.String())
+			if err != nil {
+				m.Passport.RefundSupsMessage(txid)
+				rpcAssetTransferRollback()
+				gamelog.L.Error().
+					Str("item_id", auctionItem.ID.String()).
+					Str("user_id", auctionItem.AuctionBidUserID.String()).
+					Str("cost", auctionItem.AuctionBidPrice.String()).
+					Err(err).
+					Msg("Failed to transfer item to new owner")
+				return
 			}
 
 			// Unlock Listed Item
@@ -553,4 +526,49 @@ func (m *MarketplaceController) processFinishedAuctions() {
 		Int("num_failed", len(auctions)-numProcessed).
 		Int("num_pending", len(auctions)).
 		Msg("processing completed auction items completed")
+}
+
+func HandleMarketplaceAssetTransfer(conn boil.Executor, itemSaleID string) error {
+	L := gamelog.L.Error().Interface("itemSaleID", itemSaleID).Str("func", "HandleMarketplaceAuctionAssetTransfer")
+
+	itemSale, err := boiler.FindItemSale(conn, itemSaleID)
+	if err != nil {
+		L.Err(err).Msg("failed to find item sale")
+		return err
+	}
+	colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
+	if err != nil {
+		L.Err(err).Msg("failed to find collection Item")
+		return err
+	}
+
+	switch colItem.ItemType {
+	case boiler.ItemTypeWeapon:
+		err = asset.TransferWeaponToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
+		if err != nil {
+			L.Err(err).Msg("failed to transfer mech to new owner")
+			return err
+		}
+	case boiler.ItemTypeMech:
+		err = asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
+		if err != nil {
+			L.Err(err).Msg("failed to transfer mech to new owner")
+			return err
+		}
+	case boiler.ItemTypeUtility,
+		boiler.ItemTypeMechSkin,
+		boiler.ItemTypeMechAnimation,
+		boiler.ItemTypePowerCore,
+		boiler.ItemTypeMysteryCrate,
+		boiler.ItemTypeWeaponSkin:
+		colItem.OwnerID = itemSale.SoldTo.String
+		_, err = colItem.Update(conn, boil.Infer())
+		if err != nil {
+			L.Err(err).Msg("failed to transfer mech to new owner")
+			return err
+		}
+	default:
+		return fmt.Errorf("unhandled item type")
+	}
+	return nil
 }

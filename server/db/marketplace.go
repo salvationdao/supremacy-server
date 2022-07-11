@@ -7,7 +7,6 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
-	"server/gamelog"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -1492,109 +1491,32 @@ func MarketplaceCountKeycards(playerKeycardID uuid.UUID) (int64, error) {
 
 // ChangeMechOwner transfers a collection item to a new owner.
 func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
-	itemSale, err := boiler.FindItemSale(conn, itemSaleID.String())
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-	colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
+	//itemSale, err := boiler.FindItemSale(conn, itemSaleID.String())
+	//if err != nil {
+	//	gamelog.L.Error().
+	//		Err(err).
+	//		Str("itemSaleID", itemSaleID.String()).
+	//		Msg("ChangeMechOwner")
+	//	return err
+	//}
+	//colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
+	//if err != nil {
+	//	gamelog.L.Error().
+	//		Err(err).
+	//		Str("itemSaleID", itemSaleID.String()).
+	//		Msg("ChangeMechOwner")
+	//	return err
+	//}
 
-	mech, err := Mech(nil, colItem.ItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
+	//err = asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
+	//if err != nil {
+	//	gamelog.L.Error().
+	//		Err(err).
+	//		Str("itemSaleID", itemSaleID.String()).
+	//		Msg("ChangeMechOwner")
+	//	return err
+	//}
 
-	_, err = boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(colItem.ItemID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).UpdateAll(conn, boiler.M{
-		"owner_id": itemSale.SoldTo,
-	})
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-
-	if mech.ChassisSkin != nil {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	if mech.PowerCoreID.Valid {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	for _, w := range mech.Weapons {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(w.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	for _, u := range mech.Utility {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(u.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
 	return nil
 }
 
