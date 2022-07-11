@@ -575,7 +575,8 @@ func TrimName(username string) string {
 
 type OpenCrateRequest struct {
 	Payload struct {
-		Id string `json:"id"`
+		Id       string `json:"id"`
+		IsHangar *bool  `json:"is_hangar,omitempty"`
 	} `json:"payload"`
 }
 
@@ -601,6 +602,11 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	var isHangarOpening bool
+	if req.Payload.IsHangar != nil {
+		isHangarOpening = *req.Payload.IsHangar
 	}
 
 	collectionItem, err := boiler.CollectionItems(
@@ -751,7 +757,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			items.PowerCore = powerCore
 		}
 	}
-
+	var hangarResp *db.SiloType
 	if crate.Type == boiler.CrateTypeMECH {
 		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
 		if err != nil {
@@ -802,6 +808,14 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 		mech.ChassisSkin = items.MechSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
+
+		if isHangarOpening {
+			hangarResp, err = db.GetUserMechHangarItemsWithMechID(user.ID, mech.ID, tx)
+			if err != nil {
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
+
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
@@ -857,6 +871,11 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		crateRollback()
 		gamelog.L.Error().Err(err).Interface("crate", crate).Msg("failed to open mystery crate")
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
+	}
+
+	if isHangarOpening {
+		reply(hangarResp)
+		return nil
 	}
 
 	reply(items)

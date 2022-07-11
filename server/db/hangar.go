@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
@@ -275,4 +276,149 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 	}
 
 	return weaponHangarSilo, nil
+}
+
+func GetUserMechHangarItemsWithMechID(userID, mechID string, trx boil.Executor) (*SiloType, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	q := `
+	SELECT 	ci.item_type    as type,
+			ci.id           as ownership_id,
+       		m.model_id  	as static_id,
+       		ms.blueprint_id as skin_id
+	FROM collection_items ci
+         	INNER JOIN mechs m on
+    			m.id = ci.item_id
+         	INNER JOIN mech_skin ms on
+        		ms.id = coalesce(
+            			m.chassis_skin_id,
+            			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
+        				)
+	WHERE ci.owner_id = $1
+  	AND (ci.item_type = 'mech')
+	AND (m.id = '$2');
+	`
+	rows, err := boiler.NewQuery(qm.SQL(q, userID, mechID)).Query(tx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, terror.Error(err, "failed to query for finding silos")
+	}
+
+	mechSiloType := &SiloType{}
+	defer rows.Close()
+	for rows.Next() {
+
+		err := rows.Scan(&mechSiloType.Type, &mechSiloType.OwnershipID, &mechSiloType.StaticID, &mechSiloType.SkinIDStr)
+		if err != nil {
+			return nil, terror.Error(err, "failed to scan rows")
+		}
+
+	}
+
+	collectionItem, err := boiler.FindCollectionItem(tx, mechSiloType.OwnershipID)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get collection item for")
+	}
+	var mechAttributes []MechSiloAccessories
+	mech, err := Mech(tx, collectionItem.ItemID)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get mech info")
+	}
+	if mech.IsCompleteLimited() || mech.IsCompleteGenesis() {
+		mechDefaultSkin := &SiloSkin{
+			Type:        "skin",
+			OwnershipID: nil,
+			StaticID:    mechSiloType.SkinIDStr,
+		}
+		mechSiloType.SkinIDStr = nil
+		mechSiloType.SkinID = mechDefaultSkin
+		mechAttributes = []MechSiloAccessories{}
+		return mechSiloType, nil
+	}
+
+	mechSkin := &SiloSkin{
+		Type:        "skin",
+		OwnershipID: nil,
+		StaticID:    mechSiloType.SkinIDStr,
+	}
+
+	if mech.ChassisSkinID.Valid {
+		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(tx)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to get mech skin ownership")
+		}
+
+		mechSkin.OwnershipID = &mechSkinOwnership.ID
+	}
+
+	mechSiloType.SkinID = mechSkin
+
+	if len(mech.Weapons) > 0 {
+		for _, weapon := range mech.Weapons {
+			weaponStringID := weapon.EquippedWeaponSkinID.String
+			if !weapon.EquippedWeaponSkinID.Valid {
+				defaultSkin, err := boiler.BlueprintWeaponSkins(
+					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
+					boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
+				).One(tx)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+					continue
+				}
+				weaponStringID = defaultSkin.ID
+			}
+
+			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(tx)
+			if err != nil {
+				continue
+			}
+			var weaponSkin *string
+			if weapon.EquippedWeaponSkinID.Valid {
+				weaponSkin = &weapon.EquippedWeaponSkinID.String
+			}
+
+			newAttribute := MechSiloAccessories{
+				Type:        "weapon",
+				OwnershipID: weaponCollection.ID,
+				StaticID:    weapon.BlueprintID,
+				Skin: &SiloSkin{
+					Type:        "skin",
+					OwnershipID: weaponSkin,
+					StaticID:    &weaponStringID,
+				},
+			}
+
+			mechAttributes = append(mechAttributes, newAttribute)
+		}
+	}
+
+	if mech.PowerCoreID.Valid {
+		powerCoreCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String)).One(tx)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Failed to get collection item for power core")
+		}
+
+		powerCoreBlueprint, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.EQ(mech.PowerCoreID.String)).One(tx)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Failed to get blueprint info for power core")
+		}
+
+		newAttribute := MechSiloAccessories{
+			Type:        "power_core",
+			OwnershipID: powerCoreCollection.ID,
+			StaticID:    powerCoreBlueprint.BlueprintID.String,
+		}
+
+		mechAttributes = append(mechAttributes, newAttribute)
+	}
+
+	mechSiloType.Accessories = mechAttributes
+	mechSiloType.SkinIDStr = nil
+
+	return mechSiloType, nil
 }
