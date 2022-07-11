@@ -22,9 +22,9 @@ func FeatureRouter(api *API) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/all-features", WithToken(api.Config.ServerStreamKey, WithError(f.AllFeatures)))
 	r.Post("/features-by-id", WithToken(api.Config.ServerStreamKey, WithError(f.PlayerFeaturesByID)))
-	r.Post("/add-feature-by-IDs", WithError(f.AddFeatureByIDs))
-	r.Post("/add-feature-by-addresses", WithError(f.AddFeatureByAddresses))
-	r.Post("/remove-feature-by-IDs", WithError(f.RemoveFeatureByIDs))
+	r.Post("/add-feature-by-IDs", WithToken(api.Config.ServerStreamKey, WithError(f.AddFeatureByIDs)))
+	r.Post("/add-feature-by-addresses", WithToken(api.Config.ServerStreamKey, WithError(f.AddFeatureByAddresses)))
+	r.Post("/remove-feature-by-IDs", WithToken(api.Config.ServerStreamKey, WithError(f.RemoveFeatureByIDs)))
 	r.Post("/remove-feature-by-addresses", WithToken(api.Config.ServerStreamKey, WithError(f.RemoveFeatureByAddresses)))
 
 	return r
