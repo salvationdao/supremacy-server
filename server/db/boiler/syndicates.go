@@ -24,107 +24,114 @@ import (
 
 // Syndicate is an object representing the database table.
 type Syndicate struct {
-	ID          string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type        string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	FactionID   string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	FoundedByID string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
-	Name        string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	SymbolID    string          `boiler:"symbol_id" boil:"symbol_id" json:"symbol_id" toml:"symbol_id" yaml:"symbol_id"`
-	SeatCount   int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
-	JoinFee     decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
-	ExitFee     decimal.Decimal `boiler:"exit_fee" boil:"exit_fee" json:"exit_fee" toml:"exit_fee" yaml:"exit_fee"`
-	CreatedAt   time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt   time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt   null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type             string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	FactionID        string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	FoundedByID      string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
+	Name             string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	SymbolID         string          `boiler:"symbol_id" boil:"symbol_id" json:"symbol_id" toml:"symbol_id" yaml:"symbol_id"`
+	NamingConvention null.String     `boiler:"naming_convention" boil:"naming_convention" json:"naming_convention,omitempty" toml:"naming_convention" yaml:"naming_convention,omitempty"`
+	SeatCount        int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
+	JoinFee          decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
+	ExitFee          decimal.Decimal `boiler:"exit_fee" boil:"exit_fee" json:"exit_fee" toml:"exit_fee" yaml:"exit_fee"`
+	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *syndicateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syndicateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SyndicateColumns = struct {
-	ID          string
-	Type        string
-	FactionID   string
-	FoundedByID string
-	Name        string
-	SymbolID    string
-	SeatCount   string
-	JoinFee     string
-	ExitFee     string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID               string
+	Type             string
+	FactionID        string
+	FoundedByID      string
+	Name             string
+	SymbolID         string
+	NamingConvention string
+	SeatCount        string
+	JoinFee          string
+	ExitFee          string
+	CreatedAt        string
+	UpdatedAt        string
+	DeletedAt        string
 }{
-	ID:          "id",
-	Type:        "type",
-	FactionID:   "faction_id",
-	FoundedByID: "founded_by_id",
-	Name:        "name",
-	SymbolID:    "symbol_id",
-	SeatCount:   "seat_count",
-	JoinFee:     "join_fee",
-	ExitFee:     "exit_fee",
-	CreatedAt:   "created_at",
-	UpdatedAt:   "updated_at",
-	DeletedAt:   "deleted_at",
+	ID:               "id",
+	Type:             "type",
+	FactionID:        "faction_id",
+	FoundedByID:      "founded_by_id",
+	Name:             "name",
+	SymbolID:         "symbol_id",
+	NamingConvention: "naming_convention",
+	SeatCount:        "seat_count",
+	JoinFee:          "join_fee",
+	ExitFee:          "exit_fee",
+	CreatedAt:        "created_at",
+	UpdatedAt:        "updated_at",
+	DeletedAt:        "deleted_at",
 }
 
 var SyndicateTableColumns = struct {
-	ID          string
-	Type        string
-	FactionID   string
-	FoundedByID string
-	Name        string
-	SymbolID    string
-	SeatCount   string
-	JoinFee     string
-	ExitFee     string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID               string
+	Type             string
+	FactionID        string
+	FoundedByID      string
+	Name             string
+	SymbolID         string
+	NamingConvention string
+	SeatCount        string
+	JoinFee          string
+	ExitFee          string
+	CreatedAt        string
+	UpdatedAt        string
+	DeletedAt        string
 }{
-	ID:          "syndicates.id",
-	Type:        "syndicates.type",
-	FactionID:   "syndicates.faction_id",
-	FoundedByID: "syndicates.founded_by_id",
-	Name:        "syndicates.name",
-	SymbolID:    "syndicates.symbol_id",
-	SeatCount:   "syndicates.seat_count",
-	JoinFee:     "syndicates.join_fee",
-	ExitFee:     "syndicates.exit_fee",
-	CreatedAt:   "syndicates.created_at",
-	UpdatedAt:   "syndicates.updated_at",
-	DeletedAt:   "syndicates.deleted_at",
+	ID:               "syndicates.id",
+	Type:             "syndicates.type",
+	FactionID:        "syndicates.faction_id",
+	FoundedByID:      "syndicates.founded_by_id",
+	Name:             "syndicates.name",
+	SymbolID:         "syndicates.symbol_id",
+	NamingConvention: "syndicates.naming_convention",
+	SeatCount:        "syndicates.seat_count",
+	JoinFee:          "syndicates.join_fee",
+	ExitFee:          "syndicates.exit_fee",
+	CreatedAt:        "syndicates.created_at",
+	UpdatedAt:        "syndicates.updated_at",
+	DeletedAt:        "syndicates.deleted_at",
 }
 
 // Generated where
 
 var SyndicateWhere = struct {
-	ID          whereHelperstring
-	Type        whereHelperstring
-	FactionID   whereHelperstring
-	FoundedByID whereHelperstring
-	Name        whereHelperstring
-	SymbolID    whereHelperstring
-	SeatCount   whereHelperint
-	JoinFee     whereHelperdecimal_Decimal
-	ExitFee     whereHelperdecimal_Decimal
-	CreatedAt   whereHelpertime_Time
-	UpdatedAt   whereHelpertime_Time
-	DeletedAt   whereHelpernull_Time
+	ID               whereHelperstring
+	Type             whereHelperstring
+	FactionID        whereHelperstring
+	FoundedByID      whereHelperstring
+	Name             whereHelperstring
+	SymbolID         whereHelperstring
+	NamingConvention whereHelpernull_String
+	SeatCount        whereHelperint
+	JoinFee          whereHelperdecimal_Decimal
+	ExitFee          whereHelperdecimal_Decimal
+	CreatedAt        whereHelpertime_Time
+	UpdatedAt        whereHelpertime_Time
+	DeletedAt        whereHelpernull_Time
 }{
-	ID:          whereHelperstring{field: "\"syndicates\".\"id\""},
-	Type:        whereHelperstring{field: "\"syndicates\".\"type\""},
-	FactionID:   whereHelperstring{field: "\"syndicates\".\"faction_id\""},
-	FoundedByID: whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
-	Name:        whereHelperstring{field: "\"syndicates\".\"name\""},
-	SymbolID:    whereHelperstring{field: "\"syndicates\".\"symbol_id\""},
-	SeatCount:   whereHelperint{field: "\"syndicates\".\"seat_count\""},
-	JoinFee:     whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
-	ExitFee:     whereHelperdecimal_Decimal{field: "\"syndicates\".\"exit_fee\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"syndicates\".\"created_at\""},
-	UpdatedAt:   whereHelpertime_Time{field: "\"syndicates\".\"updated_at\""},
-	DeletedAt:   whereHelpernull_Time{field: "\"syndicates\".\"deleted_at\""},
+	ID:               whereHelperstring{field: "\"syndicates\".\"id\""},
+	Type:             whereHelperstring{field: "\"syndicates\".\"type\""},
+	FactionID:        whereHelperstring{field: "\"syndicates\".\"faction_id\""},
+	FoundedByID:      whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
+	Name:             whereHelperstring{field: "\"syndicates\".\"name\""},
+	SymbolID:         whereHelperstring{field: "\"syndicates\".\"symbol_id\""},
+	NamingConvention: whereHelpernull_String{field: "\"syndicates\".\"naming_convention\""},
+	SeatCount:        whereHelperint{field: "\"syndicates\".\"seat_count\""},
+	JoinFee:          whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
+	ExitFee:          whereHelperdecimal_Decimal{field: "\"syndicates\".\"exit_fee\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"syndicates\".\"created_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"syndicates\".\"updated_at\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"syndicates\".\"deleted_at\""},
 }
 
 // SyndicateRels is where relationship names are stored.
@@ -135,6 +142,7 @@ var SyndicateRels = struct {
 	IDSyndicateWinDistribution string
 	DirectorOfSyndicatePlayers string
 	Players                    string
+	SyndicateMotions           string
 	SyndicateRules             string
 }{
 	Faction:                    "Faction",
@@ -143,6 +151,7 @@ var SyndicateRels = struct {
 	IDSyndicateWinDistribution: "IDSyndicateWinDistribution",
 	DirectorOfSyndicatePlayers: "DirectorOfSyndicatePlayers",
 	Players:                    "Players",
+	SyndicateMotions:           "SyndicateMotions",
 	SyndicateRules:             "SyndicateRules",
 }
 
@@ -154,6 +163,7 @@ type syndicateR struct {
 	IDSyndicateWinDistribution *SyndicateWinDistribution `boiler:"IDSyndicateWinDistribution" boil:"IDSyndicateWinDistribution" json:"IDSyndicateWinDistribution" toml:"IDSyndicateWinDistribution" yaml:"IDSyndicateWinDistribution"`
 	DirectorOfSyndicatePlayers PlayerSlice               `boiler:"DirectorOfSyndicatePlayers" boil:"DirectorOfSyndicatePlayers" json:"DirectorOfSyndicatePlayers" toml:"DirectorOfSyndicatePlayers" yaml:"DirectorOfSyndicatePlayers"`
 	Players                    PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	SyndicateMotions           SyndicateMotionSlice      `boiler:"SyndicateMotions" boil:"SyndicateMotions" json:"SyndicateMotions" toml:"SyndicateMotions" yaml:"SyndicateMotions"`
 	SyndicateRules             SyndicateRuleSlice        `boiler:"SyndicateRules" boil:"SyndicateRules" json:"SyndicateRules" toml:"SyndicateRules" yaml:"SyndicateRules"`
 }
 
@@ -166,9 +176,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "name", "symbol_id", "seat_count", "join_fee", "exit_fee", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "name", "symbol_id", "naming_convention", "seat_count", "join_fee", "exit_fee", "created_at", "updated_at", "deleted_at"}
 	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol_id", "join_fee", "exit_fee"}
-	syndicateColumnsWithDefault    = []string{"id", "seat_count", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithDefault    = []string{"id", "naming_convention", "seat_count", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )
@@ -514,6 +524,28 @@ func (o *Syndicate) Players(mods ...qm.QueryMod) playerQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"players\".*"})
+	}
+
+	return query
+}
+
+// SyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor.
+func (o *Syndicate) SyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"syndicate_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
 	}
 
 	return query
@@ -1156,6 +1188,105 @@ func (syndicateL) LoadPlayers(e boil.Executor, singular bool, maybeSyndicate int
 	return nil
 }
 
+// LoadSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (syndicateL) LoadSyndicateMotions(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.syndicate_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.SyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.Syndicate = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.SyndicateID {
+				local.R.SyndicateMotions = append(local.R.SyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.Syndicate = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadSyndicateRules allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (syndicateL) LoadSyndicateRules(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
@@ -1690,6 +1821,58 @@ func (o *Syndicate) RemovePlayers(exec boil.Executor, related ...*Player) error 
 		}
 	}
 
+	return nil
+}
+
+// AddSyndicateMotions adds the given related objects to the existing relationships
+// of the syndicate, optionally inserting them as new records.
+// Appends related to o.R.SyndicateMotions.
+// Sets related.R.Syndicate appropriately.
+func (o *Syndicate) AddSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.SyndicateID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.SyndicateID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &syndicateR{
+			SyndicateMotions: related,
+		}
+	} else {
+		o.R.SyndicateMotions = append(o.R.SyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				Syndicate: o,
+			}
+		} else {
+			rel.R.Syndicate = o
+		}
+	}
 	return nil
 }
 

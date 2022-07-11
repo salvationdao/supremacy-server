@@ -98,6 +98,8 @@ type API struct {
 	ZaibatsuChat     *Chatroom
 	ProfanityManager *profanities.ProfanityManager
 
+	SyndicateSystem *SyndicateSystem
+
 	Config *server.Config
 }
 
@@ -142,6 +144,13 @@ func NewAPI(
 		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
 		ProfanityManager: pm,
 	}
+
+	// spin up syndicate system
+	ss, err := NewSyndicateSystem()
+	if err != nil {
+
+	}
+	api.SyndicateSystem = ss
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
@@ -262,7 +271,6 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
-
 			}))
 
 			// secured faction route ws

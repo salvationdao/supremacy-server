@@ -19,6 +19,7 @@ CREATE TABLE syndicates(
     founded_by_id uuid not null references players (id),
     name text not null UNIQUE,
     symbol_id uuid NOT NULL REFERENCES symbols (id),
+    naming_convention text,
     seat_count int NOT NULL DEFAULT 10,
     join_fee numeric(28) NOT NULL,
     exit_fee numeric(28) NOT NULL,
@@ -31,6 +32,9 @@ CREATE TABLE syndicates(
 ALTER TABLE players
     ADD COLUMN IF NOT EXISTS syndicate_id uuid references syndicates(id),
     ADD COLUMN IF NOT EXISTS director_of_syndicate_id uuid REFERENCES syndicates(id);
+
+CREATE INDEX IF NOT EXISTS idx_player_syndicate on players(syndicate_id);
+CREATE INDEX IF NOT EXISTS idx_player_syndicate_director on players(director_of_syndicate_id);
 
 DROP TYPE IF EXISTS SYNDICATE_EVENT_TYPE;
 CREATE TYPE SYNDICATE_EVENT_TYPE AS ENUM (
@@ -81,12 +85,12 @@ CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'CHANGE_RULE',
     'APPOINT_DIRECTOR',
     'REMOVE_DIRECTOR',
-    'REMOVE_FOUNDER',
-    'NAMING_CONVENTION'
+    'REMOVE_FOUNDER'
 );
 
 CREATE TABLE syndicate_motions(
     id uuid primary key default gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
     type SYNDICATE_MOTION_TYPE not null,
     issued_by_id uuid not null references players(id),
     reason text not null,
@@ -94,6 +98,9 @@ CREATE TABLE syndicate_motions(
     -- content
     new_symbol_id uuid references symbols(id),
     new_name text,
+    new_naming_convention text,
+
+    -- payment change
     new_join_fee numeric(28),
     new_exit_fee numeric(28),
     new_deploying_user_percentage decimal,

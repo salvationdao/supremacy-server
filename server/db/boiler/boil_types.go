@@ -241,7 +241,6 @@ const (
 	SyndicateMotionTypeAPPOINT_DIRECTOR       = "APPOINT_DIRECTOR"
 	SyndicateMotionTypeREMOVE_DIRECTOR        = "REMOVE_DIRECTOR"
 	SyndicateMotionTypeREMOVE_FOUNDER         = "REMOVE_FOUNDER"
-	SyndicateMotionTypeNAMING_CONVENTION      = "NAMING_CONVENTION"
 )
 
 // Enum values for SyndicateType

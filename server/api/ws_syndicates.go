@@ -402,10 +402,12 @@ type SyndicateIssueMotionRequest struct {
 	Payload struct {
 		SyndicateID string `json:"syndicate_id"`
 		Type        string `json:"type"`
+		Reason      string `json:"reason"`
 
 		// content
-		NewSymbolID      null.String `json:"new_symbol_id"`
-		NewSyndicateName null.String `json:"new_syndicate_name"`
+		NewSymbolID         null.String `json:"new_symbol_id"`
+		NewSyndicateName    null.String `json:"new_syndicate_name"`
+		NewNamingConvention null.String `json:"new_naming_convention"`
 
 		NewJoinFee decimal.NullDecimal `json:"new_join_fee"`
 		NewExitFee decimal.NullDecimal `json:"new_exit_fee"`
@@ -417,7 +419,7 @@ type SyndicateIssueMotionRequest struct {
 
 		SyndicateRuleID null.String `json:"syndicate_rule_id"`
 		NewRuleNumber   null.Int    `json:"new_rule_number"`
-		NewRuleContent  null.Int    `json:"new_rule_content"`
+		NewRuleContent  null.String `json:"new_rule_content"`
 
 		DirectorID null.String `json:"director_id"`
 
@@ -442,6 +444,10 @@ func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *bo
 		return terror.Error(terror.ErrInvalidInput, "Can only issue motion in your own syndicate")
 	}
 
+	if req.Payload.Reason == "" {
+		return terror.Error(fmt.Errorf("missing reason"), "Missing reason for the motion")
+	}
+
 	// get syndicate
 	syndicate, err := boiler.FindSyndicate(gamedb.StdConn, req.Payload.SyndicateID)
 	if err != nil {
@@ -450,29 +456,119 @@ func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *bo
 	}
 
 	if syndicate.Type == boiler.SyndicateTypeCORPORATION && user.DirectorOfSyndicateID.String == syndicate.ID {
-		return terror.Error(terror.ErrForbidden, "Only directors can issue motion in the syndicate")
+		return terror.Error(terror.ErrForbidden, "Only directors can issue motion in the syndicate.")
 	}
 
+	motion := &boiler.SyndicateMotion{
+		Type:       req.Payload.Type,
+		IssuedByID: user.ID,
+		Reason:     req.Payload.Reason,
+	}
 	// start issue motion
-	switch syndicate.Type {
+	switch req.Payload.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
+		if !req.Payload.NewSyndicateName.Valid && !req.Payload.NewSymbolID.Valid && !req.Payload.NewNamingConvention.Valid {
+			return terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
+		}
+		// change symbol, name
+		motion.NewName = req.Payload.NewSyndicateName
+		motion.NewSymbolID = req.Payload.NewSymbolID
+		motion.NewNamingConvention = req.Payload.NewNamingConvention
 
 	case boiler.SyndicateMotionTypeCHANGE_PAYMENT_SETTING:
+		// change
+		motion.NewJoinFee = req.Payload.NewJoinFee
+		motion.NewExitFee = req.Payload.NewExitFee
+		motion.NewDeployingUserPercentage = req.Payload.NewDeployingUserPercentage
+		motion.NewAbilityKillPercentage = req.Payload.NewAbilityKillPercentage
+		motion.NewMechOwnerPercentage = req.Payload.NewMechOwnerPercentage
+		motion.NewSyndicateCutPercentage = req.Payload.NewSyndicateCutPercentage
 
 	case boiler.SyndicateMotionTypeADD_RULE:
+		if !req.Payload.NewRuleContent.Valid {
+			return terror.Error(fmt.Errorf("rule content is not provided"), "Rule content is not provided.")
+		}
+		motion.NewRuleContent = req.Payload.NewRuleContent
+		motion.NewRuleNumber = req.Payload.NewRuleNumber
 
 	case boiler.SyndicateMotionTypeREMOVE_RULE:
+		if !req.Payload.SyndicateRuleID.Valid {
+			return terror.Error(fmt.Errorf("missing rule id"), "Missing rule id")
+		}
+		_, err := boiler.FindSyndicateRule(gamedb.StdConn, req.Payload.SyndicateRuleID.String)
+		if err != nil {
+			return terror.Error(err, "Syndicate rule does not exist")
+		}
+		motion.RuleID = req.Payload.SyndicateRuleID
 
 	case boiler.SyndicateMotionTypeCHANGE_RULE:
+		if !req.Payload.SyndicateRuleID.Valid {
+			return terror.Error(fmt.Errorf("missing rule id"), "Missing rule id")
+		}
+		_, err := boiler.FindSyndicateRule(gamedb.StdConn, req.Payload.SyndicateRuleID.String)
+		if err != nil {
+			return terror.Error(err, "Syndicate rule does not exist")
+		}
+
+		if !req.Payload.NewRuleNumber.Valid && !req.Payload.NewRuleContent.Valid {
+			return terror.Error(fmt.Errorf("missing rule change"), "Changing content is not provided.")
+		}
+
+		motion.NewRuleNumber = req.Payload.NewRuleNumber
+		motion.NewRuleContent = req.Payload.NewRuleContent
 
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
+		if syndicate.Type != boiler.SyndicateTypeCORPORATION {
+			return terror.Error(fmt.Errorf("only corporation syndicate can appoint director"), "Only corporation syndicate can appoint director.")
+		}
+		if !req.Payload.DirectorID.Valid {
+			return terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+		}
+		player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.DirectorID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player id", req.Payload.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			return terror.Error(err, "Player not found")
+		}
+
+		if player.SyndicateID.String != syndicate.ID {
+			return terror.Error(fmt.Errorf("not syndicate memeber"), "Player is not a member of the syndicate")
+		}
+
+		if player.DirectorOfSyndicateID.Valid {
+			return terror.Error(fmt.Errorf("already a director"), "Player is already a director of the syndicate")
+		}
+
+		motion.DirectorID = req.Payload.DirectorID
 
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
+		if syndicate.Type != boiler.SyndicateTypeCORPORATION {
+			return terror.Error(fmt.Errorf("only corporation syndicate can appoint director"), "Only corporation syndicate can appoint director.")
+		}
+		if !req.Payload.DirectorID.Valid {
+			return terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+		}
+
+		player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.DirectorID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player id", req.Payload.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			return terror.Error(err, "Player not found")
+		}
+
+		if player.SyndicateID.String != syndicate.ID {
+			return terror.Error(fmt.Errorf("not syndicate memeber"), "Player is not a member of the syndicate")
+		}
+
+		if !player.DirectorOfSyndicateID.Valid {
+			return terror.Error(fmt.Errorf("not a director"), "Player is not a director of the syndicate")
+		}
+		motion.DirectorID = req.Payload.DirectorID
 
 	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
+		// check motion is issued
 
-	case boiler.SyndicateMotionTypeNAMING_CONVENTION:
-
+	default:
+		gamelog.L.Debug().Str("motion type", req.Payload.Type).Msg("Invalid motion type")
+		return terror.Error(fmt.Errorf("invalid motion type"), "Invalid motion type")
 	}
 	return nil
 }
