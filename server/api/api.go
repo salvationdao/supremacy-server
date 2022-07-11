@@ -114,7 +114,14 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-) *API {
+) (*API, error) {
+	// spin up syndicate system
+	ss, err := NewSyndicateSystem()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
+		return nil, err
+	}
+
 	// initialise api
 	api := &API{
 		Config:                    config,
@@ -143,14 +150,8 @@ func NewAPI(
 		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
 		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
 		ProfanityManager: pm,
+		SyndicateSystem:  ss,
 	}
-
-	// spin up syndicate system
-	ss, err := NewSyndicateSystem()
-	if err != nil {
-
-	}
-	api.SyndicateSystem = ss
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
@@ -330,7 +331,7 @@ func NewAPI(
 	})
 	factionMvpUpdate.Log = gamelog.L
 
-	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
+	err = factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
@@ -343,7 +344,7 @@ func NewAPI(
 
 	api.FactionActivePlayerSetup()
 
-	return api
+	return api, nil
 }
 
 // Run the API service
