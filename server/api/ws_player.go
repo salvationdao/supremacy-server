@@ -47,6 +47,7 @@ func NewPlayerController(api *API) *PlayerController {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
+	api.SecureUserCommand(HubKeyPlayerUpdateAboutMe, pc.PlayerUpdateAboutMeHandler)
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
@@ -1113,7 +1114,15 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 		faction = player.R.Faction
 	}
 	reply(PlayerProfileResponse{
-		Player:    player,
+		Player: &boiler.Player{
+			ID:        player.ID,
+			Username:  player.Username,
+			Gid:       player.Gid,
+			FactionID: player.FactionID,
+			AboutMe:   player.AboutMe,
+			Rank:      player.Rank,
+			CreatedAt: player.CreatedAt,
+		},
 		Stats:     stats,
 		Faction:   faction,
 		ActiveLog: activeLog,
@@ -1123,11 +1132,12 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 
 type PlayerUpdateUsernameRequest struct {
 	Payload struct {
+		PlayerID    string `json:"player_id"`
 		NewUsername string `json:"new_username"`
 	} `json:"payload"`
 }
 
-const HubKeyPlayerUpdateUsername = "PLAYER:UPDATE_USERNAME"
+const HubKeyPlayerUpdateUsername = "PLAYER:UPDATE:USERNAME"
 
 func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating username, try again or contact support."
@@ -1136,9 +1146,17 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
 
 	// check profanity/ check if valid username
 	err = IsValidUsername(req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
+
+	}
 	user.Username = null.StringFrom(req.Payload.NewUsername)
 	user.UpdatedAt = time.Now()
 
@@ -1169,19 +1187,20 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
-
 	// check if user
 	if req.Payload.PlayerID != user.ID {
 		return terror.Error(err, "You do not have permission to update this section")
 	}
-
 	// check profanity/ check if valid about me
 	err = IsValidAboutMe(req.Payload.AboutMe)
-	_, err = user.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Invalid about me, must be between 3 - 400 characters long, cannot contain profanities.")
-	}
 
+	}
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
 	user.AboutMe = null.StringFrom(req.Payload.AboutMe)
 	user.UpdatedAt = time.Now()
 	_, err = user.Update(gamedb.StdConn, boil.Whitelist(
@@ -1191,7 +1210,6 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-
 	reply(user)
 	return nil
 }
