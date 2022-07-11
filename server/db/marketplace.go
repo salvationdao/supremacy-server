@@ -16,6 +16,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 var ItemSaleQueryMods = []qm.QueryMod{
@@ -59,7 +60,16 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		mystery_crate.id AS "mystery_crate.id",
 		mystery_crate.label AS "mystery_crate.label",
 		mystery_crate.description AS "mystery_crate.description",
-		collection_items.tier AS "collection_items.tier",
+		weapons.id AS "weapons.id",
+		weapons.label AS "weapons.label",
+		weapon_skin.weapon_type AS "weapons.weapon_type",
+		blueprint_weapon_skin.avatar_url AS "weapons.avatar_url",
+		(
+			CASE
+				WHEN collection_items.item_type = 'weapon' THEN COALESCE(wsc.tier, collection_items.tier)
+				ELSE collection_items.tier
+			END
+		) AS "collection_items.tier",
 		collection_items.image_url AS "collection_items.image_url",
 		collection_items.card_animation_url AS "collection_items.card_animation_url",
 		collection_items.avatar_url AS "collection_items.avatar_url",
@@ -111,6 +121,51 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 		),
 		boiler.ItemTypeMysteryCrate,
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeWeapon,
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponSkin,
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s wsc ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels("wsc", boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+			qm.Rels("wsc", boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeWeaponSkin,
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = COALESCE(%s, %s)",
+			boiler.TableNames.BlueprintWeaponSkin,
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.DefaultSkinID),
+		),
 	),
 	qm.InnerJoin(
 		fmt.Sprintf(
@@ -221,6 +276,59 @@ var ItemKeycardSaleQueryMods = []qm.QueryMod{
 	),
 }
 
+var ItemSaleOtherAssetsSQL = `
+SELECT (
+	CASE ci.item_type
+		WHEN 'mech' THEN (
+			SELECT array_agg(_ci.hash)
+			FROM (
+				(
+					SELECT 'mech_skin'::item_type AS item_type, _ms.id as item_id
+					FROM mechs _m 
+						INNER JOIN mech_skin _ms on _ms.id = _m.chassis_skin_id 
+					WHERE _m.id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'weapon'::item_type AS item_type, _mw.weapon_id AS item_id 
+					FROM mech_weapons _mw 
+					WHERE _mw.chassis_id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'utility'::item_type AS item_type, _mu.utility_id AS item_id 
+					FROM mech_utility _mu 
+					WHERE _mu.chassis_id = ci.item_id
+				)
+				UNION ALL 
+				(
+					SELECT 'power_core'::item_type AS item_type, _pc.id AS item_id 
+					FROM mechs _m 
+						INNER JOIN power_cores _pc ON _pc.id = _m.power_core_id
+					WHERE _m.id = ci.item_id
+				)
+			) a 
+				INNER JOIN collection_items _ci on _ci.item_id = a.item_id AND _ci.item_type = a.item_type
+		)
+		WHEN 'weapon' THEN (
+			SELECT array_agg( _ci.hash)
+			FROM weapons _w 
+				INNER JOIN weapon_skin _ws on _ws.id = _w.equipped_weapon_skin_id
+				INNER JOIN collection_items _ci on _ci.item_id = _ws.id AND _ci.item_type = 'weapon_skin'
+			WHERE _w.id = ci.item_id
+		)
+		ELSE ARRAY[]::text[]
+	END)	
+FROM item_sales s 
+	LEFT JOIN collection_items ci ON ci.id = s.collection_item_id 
+	LEFT JOIN weapons w ON w.id = ci.item_id AND ci.item_type = 'weapon'
+	LEFT JOIN mechs m ON m.id = ci.item_id AND ci.item_type = 'mech'
+WHERE s.id = $1
+	AND (
+	    (ci.item_type = 'weapon' AND w.id IS NOT NULL AND w.genesis_token_id IS NULL)
+	    OR (ci.item_type = 'mech' AND m.id IS NOT NULL AND m.genesis_token_id IS NULL)
+    )`
+
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	output := &server.MarketplaceSaleItem{}
@@ -269,6 +377,10 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.MysteryCrate.ID,
 		&output.MysteryCrate.Label,
 		&output.MysteryCrate.Description,
+		&output.Weapon.ID,
+		&output.Weapon.Label,
+		&output.Weapon.WeaponType,
+		&output.Weapon.AvatarURL,
 		&output.CollectionItem.Tier,
 		&output.CollectionItem.ImageURL,
 		&output.CollectionItem.CardAnimationURL,
@@ -349,6 +461,7 @@ func MarketplaceItemSaleList(
 	search string,
 	rarities []string,
 	saleTypes []string,
+	weaponTypes []string,
 	ownedBy []string,
 	sold bool,
 	minPrice decimal.NullDecimal,
@@ -375,7 +488,14 @@ func MarketplaceItemSaleList(
 
 	// Filters
 	if len(rarities) > 0 {
-		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(rarities))
+		vals := []interface{}{}
+		for _, v := range rarities {
+			vals = append(vals, v)
+		}
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(rarities),
+			qm.Or2(qm.WhereIn(qm.Rels("wsc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
+		))
 	}
 	if len(saleTypes) > 0 {
 		saleTypeConditions := []qm.QueryMod{}
@@ -409,6 +529,9 @@ func MarketplaceItemSaleList(
 		} else if !isSelf && isOthers {
 			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.NEQ(userID))
 		}
+	}
+	if len(weaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
 	}
 
 	if minPrice.Valid {
@@ -466,13 +589,22 @@ func MarketplaceItemSaleList(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
+				xsearch,
+				xsearch,
+				xsearch,
 				xsearch,
 				xsearch,
 				xsearch,
@@ -493,7 +625,7 @@ func MarketplaceItemSaleList(
 	// Sort
 	var orderBy qm.QueryMod
 	if sortBy == "alphabetical" {
-		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name) %s", sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name, weapons.label) %s", sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt), sortDir))
 	} else if sortBy == "price" && sold {
@@ -645,11 +777,11 @@ func MarketplaceItemKeycardSaleList(
 	if sortBy == "alphabetical" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label), sortDir))
 	} else if sortBy == "time" {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.EndAt), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt), sortDir))
 	} else if sortBy == "price" && sold {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.SoldFor), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.SoldFor), sortDir))
 	} else if sortBy == "price" && !sold {
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemSaleColumns.BuyoutPrice), sortDir))
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.BuyoutPrice), sortDir))
 	} else {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
 	}
@@ -1462,9 +1594,9 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 }
 
 // ChangeMysteryCrateOwner transfers a collection item to a new owner.
-func ChangeMysteryCrateOwner(conn boil.Executor, crateCollectionItemID string, newOwnerID string) error {
+func ChangeMysteryCrateOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
 	_, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(crateCollectionItemID),
+		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
 	).UpdateAll(conn,
 		boiler.M{
 			"owner_id": newOwnerID,
@@ -1472,6 +1604,45 @@ func ChangeMysteryCrateOwner(conn boil.Executor, crateCollectionItemID string, n
 	if err != nil {
 		return terror.Error(err)
 	}
+	return nil
+}
+
+// ChangeWeaponOwner transfers a weapon to a new owner.
+func ChangeWeaponOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
+	// Transfer Weapon
+	colItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+	).One(conn)
+	if err != nil {
+		return err
+	}
+	colItem.OwnerID = newOwnerID
+	_, err = colItem.Update(conn, boil.Whitelist(boiler.CollectionItemColumns.OwnerID))
+	if err != nil {
+		return err
+	}
+
+	// Transfer Weapon Skin
+	weaponSkin, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(colItem.ItemID)),
+	).One(conn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if weaponSkin != nil {
+		_, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeaponSkin),
+		).UpdateAll(conn,
+			boiler.M{
+				boiler.CollectionItemColumns.OwnerID: newOwnerID,
+			})
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
 	return nil
 }
 
@@ -1526,7 +1697,7 @@ func ChangeKeycardOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 		WHERE iks.id = $1 AND iks.sold_to IS NOT NULL
 		ON CONFLICT (player_id, blueprint_keycard_id)
 		DO UPDATE 
-		SET count = excluded.count + 1`
+		SET count = player_keycards.count + 1`
 	_, err := conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
@@ -1579,4 +1750,43 @@ func MarketplaceAddEvent(eventType string, userID string, amount decimal.NullDec
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// MarketplaceGetOtherAssets grabs a list of other assets found in item sale.
+func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string, error) {
+	var output types.StringArray
+	err := conn.QueryRow(ItemSaleOtherAssetsSQL, itemSaleID).Scan(&output)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err)
+	}
+	return output, nil
+}
+
+// MarketplaceItemIsGenesisOrLimitedMech checks whether sale item is a genesis mech for sale.
+func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, error) {
+	mechRow, err := boiler.Mechs(
+		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+		), boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(itemSaleID),
+	).One(conn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, terror.Error(err)
+	}
+
+	mech, err := Mech(conn, mechRow.ID)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+
+	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(), nil
 }
