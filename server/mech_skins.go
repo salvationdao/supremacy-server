@@ -16,7 +16,8 @@ type MechSkin struct {
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
-	MechModel             string      `json:"mech_model"`
+	MechModelID           string      `json:"mech_model_id"`
+	MechModelName         string      `json:"mech_model_name"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	ImageURL              null.String `json:"image_url,omitempty"`
 	AnimationURL          null.String `json:"animation_url,omitempty"`
@@ -24,6 +25,8 @@ type MechSkin struct {
 	AvatarURL             null.String `json:"avatar_url,omitempty"`
 	LargeImageURL         null.String `json:"large_image_url,omitempty"`
 	CreatedAt             time.Time   `json:"created_at"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *MechSkin) Scan(value interface{}) error {
@@ -79,7 +82,7 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 }
 
 func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
-	return &MechSkin{
+	mskin := &MechSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
@@ -90,6 +93,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
@@ -102,7 +106,7 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		BlueprintID:      skin.BlueprintID,
 		GenesisTokenID:   skin.GenesisTokenID,
 		Label:            skin.Label,
-		MechModel:        skin.MechModel,
+		MechModelID:      skin.MechModel,
 		EquippedOn:       skin.EquippedOn,
 		ImageURL:         skin.ImageURL,
 		AnimationURL:     skin.AnimationURL,
@@ -111,4 +115,10 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		LargeImageURL:    skin.LargeImageURL,
 		CreatedAt:        skin.CreatedAt,
 	}
+
+	if skin.R != nil && skin.R.MechSkinMechModel != nil {
+		mskin.MechModelName = skin.R.MechSkinMechModel.Label
+	}
+
+	return mskin
 }
