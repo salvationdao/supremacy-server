@@ -1154,16 +1154,6 @@ func (arena *Arena) beginBattle() {
 	})
 
 	arena.storeCurrentBattle(btl)
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	// fmt.Printf("%+v\n", btl.WarMachines[0].Stats)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	arena.Message(BATTLEINIT, btl)
 
 	go arena.NotifyUpcomingWarMachines()
