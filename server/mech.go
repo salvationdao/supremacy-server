@@ -36,16 +36,17 @@ type CollectionItem struct {
 }
 
 type Stats struct {
-	WinPercentage      float64 `json:"win_percentage"`
-	Kills              int     `json:"kill_count"`
-	SurvivalPercentage float64 `json:"survival_percentage"`
-	Deaths             int     `json:"death_count"`
+	TotalWins       int `json:"total_wins"`
+	TotalDeaths     int `json:"total_deaths"`
+	TotalKills      int `json:"total_kills"`
+	BattlesSurvived int `json:"battles_survived"`
+	TotalLosses     int `json:"total_losses"`
 }
 
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionItem
-	// *Stats
+	*Stats
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
