@@ -1313,7 +1313,23 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 			RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 		})
 	} else {
-		btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
+		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
+		if err == nil && mmmc != nil {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+				MechMoveCommandLog: &boiler.MechMoveCommandLog{
+					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
+					BattleID:      mmmc.BattleID,
+					MechID:        mmmc.MechHash,
+					TriggeredByID: mmmc.TriggeredByID,
+					CellX:         mmmc.CellX,
+					CellY:         mmmc.CellY,
+					CancelledAt:   null.TimeFromPtr(mmmc.CancelledAt),
+					ReachedAt:     null.TimeFromPtr(mmmc.ReachedAt),
+				},
+				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
+				IsMiniMech:            true,
+			})
+		}
 	}
 
 	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
