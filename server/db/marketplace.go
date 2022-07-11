@@ -1520,6 +1520,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(colItem.ItemID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
 	).UpdateAll(conn, boiler.M{
 		"owner_id": itemSale.SoldTo,
 	})
@@ -1534,6 +1535,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	if mech.ChassisSkin != nil {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldTo,
 		})
@@ -1549,6 +1551,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	if mech.PowerCoreID.Valid {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldTo,
 		})
@@ -1564,6 +1567,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	for _, w := range mech.Weapons {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(w.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldTo,
 		})
@@ -1579,6 +1583,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	for _, u := range mech.Utility {
 		_, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(u.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
 		).UpdateAll(conn, boiler.M{
 			"owner_id": itemSale.SoldTo,
 		})
