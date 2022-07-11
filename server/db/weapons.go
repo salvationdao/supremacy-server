@@ -276,6 +276,27 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	return nil
 }
 
+// CheckWeaponAttached checks whether weapon item is already equipped.
+func CheckWeaponAttached(weaponID string) (bool, error) {
+	exists, err := boiler.Weapons(
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`%s on %s = %s`,
+			boiler.TableNames.MechWeapons,
+			qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+		)),
+		boiler.WeaponWhere.ID.EQ(weaponID),
+		qm.Expr(
+			boiler.WeaponWhere.EquippedOn.IsNotNull(),
+			qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+		),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return exists, nil
+}
+
 type WeaponListOpts struct {
 	Search                   string
 	Filter                   *ListFilterRequest
@@ -288,6 +309,7 @@ type WeaponListOpts struct {
 	DisplayHidden            bool
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
+	ExcludeEquipped          bool
 	FilterRarities           []string `json:"rarities"`
 	FilterWeaponTypes        []string `json:"weapon_types"`
 }
@@ -359,6 +381,20 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Column:   boiler.CollectionItemColumns.AssetHidden,
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
+	}
+	if opts.ExcludeEquipped {
+		queryMods = append(queryMods,
+			qm.LeftOuterJoin(fmt.Sprintf(
+				`%s on %s = %s`,
+				boiler.TableNames.MechWeapons,
+				qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			)),
+			qm.Expr(
+				boiler.WeaponWhere.EquippedOn.IsNull(),
+				qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+			),
+		)
 	}
 
 	// Filters

@@ -874,6 +874,7 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		ExcludeEquipped     bool                  `json:"exclude_equipped"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterWeaponTypes   []string              `json:"weapon_types"`
 	} `json:"payload"`
@@ -930,6 +931,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		ExcludeEquipped:     req.Payload.ExcludeEquipped,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
 	}

@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/asset"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -87,6 +87,7 @@ type MarketplaceSalesListRequest struct {
 		SortBy             string              `json:"sort_by"`
 		FilterRarities     []string            `json:"rarities"`
 		FilterListingTypes []string            `json:"listing_types"`
+		FilterWeaponTypes  []string            `json:"weapon_types"`
 		FilterOwnedBy      []string            `json:"owned_by"`
 		Sold               bool                `json:"sold"`
 		ItemType           string              `json:"item_type"`
@@ -122,6 +123,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.Search,
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
+		req.Payload.FilterWeaponTypes,
 		req.Payload.FilterOwnedBy,
 		req.Payload.Sold,
 		req.Payload.MinPrice,
@@ -419,7 +421,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Check if allowed to sell item
-	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate {
+	if req.Payload.ItemType != boiler.ItemTypeMech && req.Payload.ItemType != boiler.ItemTypeMysteryCrate && req.Payload.ItemType != boiler.ItemTypeWeapon {
 		return terror.Error(fmt.Errorf("invalid item type"), "Invalid Item Type input received.")
 	}
 
@@ -458,6 +460,23 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Err(err).
 			Msg("Unable to parse collection item id")
 		return terror.Error(err, errMsg)
+	}
+
+	// check if weapon is equipped
+	if collectionItem.ItemType == boiler.ItemTypeWeapon {
+		equipped, err := db.CheckWeaponAttached(collectionItem.ItemID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to check whether weapon is attached")
+			return err
+		}
+		if equipped {
+			return fmt.Errorf("cannot sell weapons attached to a war machine")
+		}
 	}
 
 	// check if queue
@@ -1258,15 +1277,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	err = mp.API.Passport.TransferAsset(
-		saleItem.OwnerID,
-		userID.String(),
-		saleItem.CollectionItem.Hash,
-		null.StringFrom(txid),
-		func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-			asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-		},
-	)
+	rpcAssetTransferRollback, err := marketplace.TransferAssetsToXsyn(gamedb.StdConn, mp.API.Passport, saleItem.OwnerID, userID.String(), txid, saleItem.CollectionItem.Hash, saleItem.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
@@ -1281,34 +1292,12 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	rpcAssetTrasferRollback := func() {
-		err := mp.API.Passport.TransferAsset(
-			userID.String(),
-			saleItem.OwnerID,
-			saleItem.CollectionItem.Hash,
-			null.StringFrom(txid),
-			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-			},
-		)
-		if err != nil {
-			gamelog.L.Error().
-				Str("from_user_id", user.ID).
-				Str("to_user_id", saleItem.OwnerID).
-				Str("balance", balance.String()).
-				Str("cost", saleItemCost.String()).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Failed to start purchase sale item rpc TransferAsset rollback.")
-		}
-	}
-
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
-		rpcAssetTrasferRollback()
+		rpcAssetTransferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
@@ -1343,7 +1332,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
-		rpcAssetTrasferRollback()
+		rpcAssetTransferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1362,7 +1351,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
-			rpcAssetTrasferRollback()
+			rpcAssetTransferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -1378,7 +1367,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		if err != nil {
 			mp.API.Passport.RefundSupsMessage(feeTXID)
 			mp.API.Passport.RefundSupsMessage(txid)
-			rpcAssetTrasferRollback()
+			rpcAssetTransferRollback()
 			gamelog.L.Error().
 				Str("from_user_id", user.ID).
 				Str("to_user_id", saleItem.OwnerID).
@@ -1387,6 +1376,22 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Str("item_sale_id", req.Payload.ID.String()).
 				Err(err).
 				Msg("Failed to Transfer Mystery Crate to New Owner")
+			return terror.Error(err, errMsg)
+		}
+	} else if saleItem.CollectionItemType == boiler.ItemTypeWeapon {
+		err = db.ChangeWeaponOwner(tx, saleItem.CollectionItemID, user.ID)
+		if err != nil {
+			mp.API.Passport.RefundSupsMessage(feeTXID)
+			mp.API.Passport.RefundSupsMessage(txid)
+			rpcAssetTransferRollback()
+			gamelog.L.Error().
+				Str("from_user_id", user.ID).
+				Str("to_user_id", saleItem.OwnerID).
+				Str("balance", balance.String()).
+				Str("cost", saleItemCost.String()).
+				Str("item_sale_id", req.Payload.ID.String()).
+				Err(err).
+				Msg("Failed to Transfer Weapon to New Owner")
 			return terror.Error(err, errMsg)
 		}
 	}
@@ -1403,7 +1408,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
-		rpcAssetTrasferRollback()
+		rpcAssetTransferRollback()
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
@@ -1421,7 +1426,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
-		rpcAssetTrasferRollback()
+		rpcAssetTransferRollback()
 		gamelog.L.Error().
 			Str("from_user_id", user.ID).
 			Str("to_user_id", saleItem.OwnerID).
