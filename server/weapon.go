@@ -35,6 +35,7 @@ type Weapon struct {
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
+	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails
@@ -128,7 +129,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 	}
 }
 
-func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin) *Weapon {
+func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin, itemSaleID null.String) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,

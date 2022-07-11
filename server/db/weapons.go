@@ -2,11 +2,13 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 
 	"github.com/volatiletech/null/v8"
 
@@ -145,30 +147,69 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		}
 	}
 
-	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin), nil
+	itemSale, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.CollectionItemID.EQ(boilerMechCollectionDetails.ID),
+		boiler.ItemSaleWhere.SoldAt.IsNull(),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+	).One(tx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	itemSaleID := null.String{}
+	if itemSale != nil {
+		itemSaleID = null.StringFrom(itemSale.ID)
+	}
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
 	var weapons []*server.Weapon
-	boilerMechs, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerWeapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, bm := range boilerMechs {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bm.ID)).One(gamedb.StdConn)
+	collectionItemToWeapon := map[string]string{}
+	collectionItemIDs := []string{}
+
+	for _, bw := range boilerWeapons {
+		boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bw.ID)).One(gamedb.StdConn)
 		if err != nil {
 			return nil, err
 		}
+		collectionItemToWeapon[bw.ID] = boilerWeaponCollectionDetails.ID
+		collectionItemIDs = append(collectionItemIDs, boilerWeaponCollectionDetails.ID)
 
 		var weaponSkin *server.WeaponSkin
-		if bm.EquippedWeaponSkinID.Valid {
-			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
+		if bw.EquippedWeaponSkinID.Valid {
+			weaponSkin, err = WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID.String)
 			if err != nil {
 				return nil, err
 			}
 		}
-		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails, weaponSkin))
+		weapons = append(weapons, server.WeaponFromBoiler(bw, boilerWeaponCollectionDetails, weaponSkin, null.String{}))
+	}
+
+	if len(collectionItemIDs) > 0 {
+		itemSales, err := boiler.ItemSales(
+			boiler.ItemSaleWhere.CollectionItemID.IN(collectionItemIDs),
+			boiler.ItemSaleWhere.SoldAt.IsNull(),
+			boiler.ItemSaleWhere.DeletedAt.IsNull(),
+			boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		for i := range weapons {
+			if collectionItemID, ok := collectionItemToWeapon[weapons[i].ID]; ok {
+				for _, s := range itemSales {
+					if s.CollectionItemID == collectionItemID {
+						weapons[i].ItemSaleID = null.StringFrom(s.ID)
+					}
+				}
+			}
+		}
 	}
 
 	return weapons, nil
@@ -489,6 +530,24 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+
+			fmt.Sprintf(
+				`(
+					SELECT _i.%s
+					FROM %s _i
+					WHERE _i.%s = %s
+						AND _i.%s IS NULL
+						AND _i.%s IS NULL
+						AND _i.%s > NOW()
+				) AS item_sale_id`,
+				boiler.ItemSaleColumns.ID,
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleColumns.CollectionItemID,
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+				boiler.ItemSaleColumns.SoldAt,
+				boiler.ItemSaleColumns.DeletedAt,
+				boiler.ItemSaleColumns.EndAt,
+			),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
@@ -523,6 +582,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&wp.CollectionItem.AssetHidden,
 			&wp.ID,
 			&wp.Label,
+			&wp.ItemSaleID,
 		}
 
 		err = rows.Scan(scanArgs...)
