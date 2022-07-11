@@ -767,6 +767,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 				RelatedPunishVote: punishment.R.RelatedPunishVote,
 				Restrictions:      PlayerBanRestrictions(punishment),
 				BanByUser:         punishment.R.BannedBy,
+				IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 			})
 		}
 

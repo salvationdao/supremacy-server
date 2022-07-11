@@ -253,6 +253,7 @@ type PlayerPunishment struct {
 	RelatedPunishVote *boiler.PunishVote `json:"related_punish_vote"`
 	Restrictions      []string           `json:"restrictions"`
 	BanByUser         *boiler.Player     `json:"ban_by_user"`
+	IsPermanent       bool               `json:"is_permanent"`
 }
 
 const HubKeyPlayerPunishmentList = "PLAYER:PUNISHMENT:LIST"
@@ -282,10 +283,9 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
 			Restrictions:      PlayerBanRestrictions(punishment),
 			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
-
-	fmt.Println("player ben count:", len(playerPunishments))
 
 	reply(playerPunishments)
 
@@ -885,6 +885,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
 			Restrictions:      PlayerBanRestrictions(punishment),
 			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
 
