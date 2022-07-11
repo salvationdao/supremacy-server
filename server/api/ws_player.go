@@ -1139,11 +1139,6 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 
 	// check profanity/ check if valid username
 	err = IsValidUsername(req.Payload.NewUsername)
-	_, err = user.Update(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
-	}
-
 	user.Username = null.StringFrom(req.Payload.NewUsername)
 	user.UpdatedAt = time.Now()
 
@@ -1168,7 +1163,6 @@ func IsValidUsername(username string) error {
 		hasDisallowedSymbol = true
 	}
 
-	//err := fmt.Errorf("username does not meet requirements")
 	if TrimUsername(username) == "" {
 		return terror.Error(fmt.Errorf("username cannot be empty"), "Invalid username. Your username cannot be empty.")
 	}
@@ -1187,6 +1181,31 @@ func IsValidUsername(username string) error {
 
 	if profanityDetector.IsProfane(username) {
 		return terror.Error(fmt.Errorf("username contains profanity"), "Invalid username. Your username contains profanity.")
+	}
+
+	return nil
+}
+
+func IsValidAboutMe(aboutMe string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 150 characters
+	// Cannot contain profanity
+
+	if TrimUsername(aboutMe) == "" {
+		return terror.Error(fmt.Errorf("about me cannot be empty"), "Invalid about me. Your about me cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) < 3 {
+		return terror.Error(fmt.Errorf("about me must be at least 3 characters long"), "Invalid about me. Your about me must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) > 200 {
+		return terror.Error(fmt.Errorf("about me cannot be more than 30 characters long"), "Invalid about me. Your about me cannot be more than 30 characters long.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(aboutMe) {
+		return terror.Error(fmt.Errorf("about me contains profanity"), "Invalid about me. Your about me contains profanity.")
 	}
 
 	return nil
@@ -1214,4 +1233,45 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+type PlayerUpdateAboutMeRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+		AboutMe  string `json:"about_me"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateAboutMe = "PLAYER:UPDATE:ABOUT_ME"
+
+func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating about me, try again or contact support."
+	req := &PlayerUpdateAboutMeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
+
+	// check profanity/ check if valid about me
+	err = IsValidAboutMe(req.Payload.AboutMe)
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Invalid about me, must be between 3 - 200 characters long, cannot contain profanities.")
+	}
+
+	user.AboutMe = null.StringFrom(req.Payload.AboutMe)
+	user.UpdatedAt = time.Now()
+
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(user)
+	return nil
 }
