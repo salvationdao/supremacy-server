@@ -147,6 +147,7 @@ func NewChatroom(factionID string) *Chatroom {
 	stats := map[string]*server.UserStat{}
 
 	cms := make([]*ChatMessage, len(msgs))
+	cmstoSend := []*ChatMessage{}
 	for i, msg := range msgs {
 
 		player, ok := players[msg.PlayerID]
@@ -189,17 +190,18 @@ func NewChatroom(factionID string) *Chatroom {
 				IsCitizen:       msg.IsCitizen,
 			},
 		}
+		cmstoSend = append(cmstoSend, cms[i])
 	}
 
 	// sort the messages to the correct order
-	sort.Slice(cms, func(i, j int) bool {
-		return cms[i].SentAt.Before(cms[j].SentAt)
+	sort.Slice(cmstoSend, func(i, j int) bool {
+		return cmstoSend[i].SentAt.Before(cmstoSend[j].SentAt)
 	})
 
 	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
 		factionID: &factionUUID,
-		messages:  cms,
+		messages:  cmstoSend,
 	}
 	return chatroom
 }
