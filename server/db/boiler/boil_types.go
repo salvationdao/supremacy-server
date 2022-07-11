@@ -161,6 +161,12 @@ const (
 	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
 )
 
+// Enum values for FeatureName
+const (
+	FeatureNameMECH_MOVE      = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for AbilityLevel
 const (
 	AbilityLevelMECH    = "MECH"

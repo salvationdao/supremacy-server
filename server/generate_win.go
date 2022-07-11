@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 // package server holds platform wide source code

@@ -12,15 +12,13 @@ import (
 )
 
 type SiloType struct {
-	Type           string                `db:"type" json:"type"`
-	OwnershipID    string                `db:"ownership_id" json:"ownership_id"`
-	MechID         *string               `db:"mech_id" json:"mech_id,omitempty"`
-	SkinIDStr      *string               `db:"skin_id" json:"skin_id_str,omitempty"`
-	WeaponTypeID   *string               `json:"weapon_type_id,omitempty"`
-	SkinID         *SiloSkin             `json:"skin,omitempty"`
-	MysteryCrateID *string               `db:"mystery_crate_id" json:"mystery_crate_id,omitempty"`
-	CanOpenOn      *string               `db:"can_open_on" json:"can_open_on,omitempty"`
-	Accessories    []MechSiloAccessories `json:"accessories,omitempty"`
+	Type        string                `db:"type" json:"type"`
+	OwnershipID string                `db:"ownership_id" json:"ownership_id"`
+	StaticID    *string               `db:"static_id" json:"static_id,omitempty"`
+	SkinIDStr   *string               `db:"skin_id" json:"skin_id_str,omitempty"`
+	SkinID      *SiloSkin             `json:"skin,omitempty"`
+	CanOpenOn   *string               `db:"can_open_on" json:"can_open_on,omitempty"`
+	Accessories []MechSiloAccessories `json:"accessories,omitempty"`
 }
 
 type MechSiloAccessories struct {
@@ -31,15 +29,16 @@ type MechSiloAccessories struct {
 }
 
 type SiloSkin struct {
+	Type        string  `json:"type"`
 	OwnershipID *string `json:"ownership_id,omitempty"`
-	SkinID      *string `json:"skin_id,omitempty"`
+	StaticID    *string `json:"static_id,omitempty"`
 }
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	q := `
 	SELECT 	ci.item_type    as type,
 			ci.id           as ownership_id,
-       		m.model_id  	as mech_id,
+       		m.model_id  	as static_id,
        		ms.blueprint_id as skin_id
 	FROM collection_items ci
          	INNER JOIN mechs m on
@@ -65,7 +64,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	for rows.Next() {
 		mst := &SiloType{}
 
-		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.MechID, &mst.SkinIDStr)
+		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
@@ -78,17 +77,27 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		if err != nil {
 			continue
 		}
+		var mechAttributes []MechSiloAccessories
 		mech, err := Mech(gamedb.StdConn, collectionItem.ItemID)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to get mech info")
 		}
 		if mech.IsCompleteLimited() || mech.IsCompleteGenesis() {
+			mechDefaultSkin := &SiloSkin{
+				Type:        "skin",
+				OwnershipID: nil,
+				StaticID:    mechSilo.SkinIDStr,
+			}
+			mechSilo.SkinIDStr = nil
+			mechSilo.SkinID = mechDefaultSkin
+			mechAttributes = []MechSiloAccessories{}
 			continue
 		}
-		var mechAttributes []MechSiloAccessories
 
 		mechSkin := &SiloSkin{
-			SkinID: mechSilo.SkinIDStr,
+			Type:        "skin",
+			OwnershipID: nil,
+			StaticID:    mechSilo.SkinIDStr,
 		}
 
 		if mech.ChassisSkinID.Valid {
@@ -121,13 +130,19 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				if err != nil {
 					continue
 				}
+				var weaponSkin *string
+				if weapon.EquippedWeaponSkinID.Valid {
+					weaponSkin = &weapon.EquippedWeaponSkinID.String
+				}
+
 				newAttribute := MechSiloAccessories{
 					Type:        "weapon",
 					OwnershipID: weaponCollection.ID,
 					StaticID:    weapon.BlueprintID,
 					Skin: &SiloSkin{
-						OwnershipID: &weapon.EquippedWeaponSkinID.String,
-						SkinID:      &weaponStringID,
+						Type:        "skin",
+						OwnershipID: weaponSkin,
+						StaticID:    &weaponStringID,
 					},
 				}
 
@@ -190,7 +205,7 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	for rows.Next() {
 		mst := &SiloType{}
 		var canOpenOn time.Time
-		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.MysteryCrateID, &canOpenOn)
+		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &canOpenOn)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
@@ -226,15 +241,15 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 			continue
 		}
 
-		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
+		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(gamedb.StdConn)
 		if err != nil {
 			continue
 		}
 
 		weaponSilo := &SiloType{
-			Type:         ownedWeapon.ItemType,
-			OwnershipID:  ownedWeapon.ID,
-			WeaponTypeID: &weaponBlueprint.WeaponModelID,
+			Type:        ownedWeapon.ItemType,
+			OwnershipID: ownedWeapon.ID,
+			StaticID:    &weaponBlueprint.R.WeaponModel.ID,
 		}
 
 		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(gamedb.StdConn)
@@ -248,8 +263,9 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 		}
 
 		weaponSkinSilo := &SiloSkin{
+			Type:        "skin",
 			OwnershipID: &weaponSkinOwnership.ID,
-			SkinID:      &weaponSkin.BlueprintID,
+			StaticID:    &weaponSkin.BlueprintID,
 		}
 
 		weaponSilo.SkinID = weaponSkinSilo
