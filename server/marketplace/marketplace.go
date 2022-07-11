@@ -436,7 +436,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			rpcAssetTransferRollback, err := TransferAssets(gamedb.StdConn, m.Passport, auctionItem.OwnerID.String(), auctionItem.AuctionBidUserID.String(), txid, auctionItem.Hash, auctionItem.ID.String())
+			rpcAssetTransferRollback, err := TransferAssetsToXsyn(gamedb.StdConn, m.Passport, auctionItem.OwnerID.String(), auctionItem.AuctionBidUserID.String(), txid, auctionItem.Hash, auctionItem.ID.String())
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				gamelog.L.Error().

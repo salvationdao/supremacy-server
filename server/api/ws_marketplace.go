@@ -1277,7 +1277,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	rpcAssetTransferRollback, err := marketplace.TransferAssets(gamedb.StdConn, mp.API.Passport, saleItem.OwnerID, userID.String(), txid, saleItem.CollectionItem.Hash, saleItem.ID)
+	rpcAssetTransferRollback, err := marketplace.TransferAssetsToXsyn(gamedb.StdConn, mp.API.Passport, saleItem.OwnerID, userID.String(), txid, saleItem.CollectionItem.Hash, saleItem.ID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)

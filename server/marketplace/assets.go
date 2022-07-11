@@ -11,10 +11,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-type TransferAssetRollbackFunc func()
+type TransferAssetToXsynRollbackFunc func()
 
-// TransferAssets transfers an item sale's collection item to new owner.
-func TransferAssets(
+// TransferAssetsXsyn transfers an item sale's collection item to new owner.
+func TransferAssetsToXsyn(
 	conn boil.Executor,
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	fromUserID string,
@@ -22,7 +22,7 @@ func TransferAssets(
 	relatedTransactionID string,
 	hash string,
 	itemSaleID string,
-) (TransferAssetRollbackFunc, error) {
+) (TransferAssetToXsynRollbackFunc, error) {
 	err := passport.TransferAsset(
 		fromUserID,
 		toUserID,
@@ -36,7 +36,7 @@ func TransferAssets(
 		return nil, terror.Error(err)
 	}
 
-	rpcAssetTransferRollbackFuncs := []TransferAssetRollbackFunc{
+	rpcAssetTransferRollbackFuncs := []TransferAssetToXsynRollbackFunc{
 		func() {
 			err := passport.TransferAsset(
 				toUserID,
