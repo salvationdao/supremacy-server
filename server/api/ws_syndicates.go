@@ -98,7 +98,7 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 
 	defer tx.Rollback()
 
-	syndicate := boiler.Syndicate{
+	syndicate := &boiler.Syndicate{
 		Type:        req.Payload.Type,
 		Name:        syndicateName,
 		FactionID:   factionID,
@@ -135,6 +135,11 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 		return terror.Error(err, "Failed to create syndicate.")
+	}
+
+	err = sc.API.SyndicateSystem.AddSyndicate(syndicate)
+	if err != nil {
+		return terror.Error(err, "Failed to add syndicate to the system")
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
