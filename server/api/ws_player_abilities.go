@@ -61,8 +61,9 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 }
 
 type SaleAbilitiesListResponse struct {
-	NextRefreshTime *time.Time                `json:"next_refresh_time"`
-	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
+	NextRefreshTime              *time.Time                `json:"next_refresh_time"`
+	RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
+	SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -73,7 +74,8 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 	}
 
 	reply(&SaleAbilitiesListResponse{
-		SaleAbilities: dspas,
+		RefreshPeriodDurationSeconds: db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),
+		SaleAbilities:                dspas,
 	})
 	return nil
 }
@@ -201,6 +203,14 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
 		return err
+	}
+
+	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID, spa.ID)
+	if err != nil {
+		refundFunc()
+		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
+
+		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
 	}
 
 	err = tx.Commit()

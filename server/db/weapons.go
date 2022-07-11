@@ -17,6 +17,40 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	eid := &server.EquippedOnDetails{}
+
+	err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemColumns.ItemID,
+			boiler.CollectionItemColumns.Hash,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
+	).QueryRow(tx).Scan(
+		&eid.ID,
+		&eid.Hash,
+		&eid.Label,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return eid, nil
+}
+
 func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	tx := trx
 	if trx == nil {
@@ -94,7 +128,7 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		tx = gamedb.StdConn
 	}
 
-	boilerMech, err := boiler.FindWeapon(tx, id)
+	boilerWeapon, err := boiler.FindWeapon(tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +137,15 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
-	return server.WeaponFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+	var weaponSkin *server.WeaponSkin
+	if boilerWeapon.EquippedWeaponSkinID.Valid {
+		weaponSkin, err = WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID.String)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
@@ -118,7 +160,15 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		if err != nil {
 			return nil, err
 		}
-		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails))
+
+		var weaponSkin *server.WeaponSkin
+		if bm.EquippedWeaponSkinID.Valid {
+			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
+			if err != nil {
+				return nil, err
+			}
+		}
+		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails, weaponSkin))
 	}
 
 	return weapons, nil
@@ -226,18 +276,42 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	return nil
 }
 
+// CheckWeaponAttached checks whether weapon item is already equipped.
+func CheckWeaponAttached(weaponID string) (bool, error) {
+	exists, err := boiler.Weapons(
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`%s on %s = %s`,
+			boiler.TableNames.MechWeapons,
+			qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+		)),
+		boiler.WeaponWhere.ID.EQ(weaponID),
+		qm.Expr(
+			boiler.WeaponWhere.EquippedOn.IsNotNull(),
+			qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+		),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return exists, nil
+}
+
 type WeaponListOpts struct {
-	Search              string
-	Filter              *ListFilterRequest
-	Sort                *ListSortRequest
-	PageSize            int
-	Page                int
-	OwnerID             string
-	DisplayXsynMechs    bool
-	ExcludeMarketLocked bool
-	IncludeMarketListed bool
-	FilterRarities      []string `json:"rarities"`
-	FilterWeaponTypes   []string `json:"weapon_types"`
+	Search                   string
+	Filter                   *ListFilterRequest
+	Sort                     *ListSortRequest
+	PageSize                 int
+	Page                     int
+	OwnerID                  string
+	DisplayXsynMechs         bool
+	DisplayGenesisAndLimited bool
+	DisplayHidden            bool
+	ExcludeMarketLocked      bool
+	IncludeMarketListed      bool
+	ExcludeEquipped          bool
+	FilterRarities           []string `json:"rarities"`
+	FilterWeaponTypes        []string `json:"weapon_types"`
 }
 
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
@@ -286,6 +360,41 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
+	}
+	if !opts.DisplayGenesisAndLimited {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.Weapons,
+			Column:   boiler.WeaponColumns.GenesisTokenID,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+	if !opts.DisplayGenesisAndLimited {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.Weapons,
+			Column:   boiler.WeaponColumns.LimitedReleaseTokenID,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+	if !opts.DisplayHidden {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.AssetHidden,
+			Operator: OperatorValueTypeIsNull,
+		}, 0, ""))
+	}
+	if opts.ExcludeEquipped {
+		queryMods = append(queryMods,
+			qm.LeftOuterJoin(fmt.Sprintf(
+				`%s on %s = %s`,
+				boiler.TableNames.MechWeapons,
+				qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			)),
+			qm.Expr(
+				boiler.WeaponWhere.EquippedOn.IsNull(),
+				qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+			),
+		)
 	}
 
 	// Filters
@@ -348,6 +457,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
@@ -382,6 +492,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&wp.CollectionItem.MarketLocked,
 			&wp.CollectionItem.XsynLocked,
 			&wp.CollectionItem.LockedToMarketplace,
+			&wp.CollectionItem.AssetHidden,
 			&wp.ID,
 			&wp.Label,
 		}
@@ -397,12 +508,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 }
 
 // PlayerWeaponsList returns a list of tallied player weapons, ordered by last purchased date from the weapons table.
-// It excludes player abilities with a count of 0
 func PlayerWeaponsList(
 	userID string,
 ) ([]*boiler.Weapon, error) {
 
-	items, err := boiler.CollectionItems(boiler.CollectionItemWhere.OwnerID.EQ(userID), boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
+	items, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -420,4 +533,36 @@ func PlayerWeaponsList(
 	}
 
 	return weapons, nil
+}
+
+func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reason null.String) error {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	itemIDsToUpdate := []string{}
+
+	// get equipped mech weapon skins
+	mWpnSkin, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(weaponID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mWpnSkin {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
+	// update!
+	_, err = boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
+	).UpdateAll(tx, boiler.M{
+		"asset_hidden": reason,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

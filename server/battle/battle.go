@@ -60,7 +60,7 @@ type Battle struct {
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
-	_incognitoManager *IncognitoManager
+	_playerAbilityManager *PlayerAbilityManager
 
 	destroyedWarMachineMap map[string]*WMDestroyedRecord
 	*boiler.Battle
@@ -77,10 +77,10 @@ func (btl *Battle) abilities() *AbilitiesSystem {
 	return btl._abilities
 }
 
-func (btl *Battle) incognitoManager() *IncognitoManager {
+func (btl *Battle) playerAbilityManager() *PlayerAbilityManager {
 	btl.RLock()
 	defer btl.RUnlock()
-	return btl._incognitoManager
+	return btl._playerAbilityManager
 }
 
 func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
@@ -104,10 +104,10 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.DisabledCells = gm.DisabledCells
 }
 
-func (btl *Battle) storeIncognitoManager(im *IncognitoManager) {
+func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
 	btl.Lock()
 	defer btl.Unlock()
-	btl._incognitoManager = im
+	btl._playerAbilityManager = im
 }
 
 func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
@@ -399,6 +399,15 @@ func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) 
 	return &server.GameLocation{
 		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.LeftPixels,
 		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.TopPixels,
+	}
+}
+
+// getCellCoordinatesFromGameWorldXY converts location in game to a cell location
+func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocation) *server.CellLocation {
+	gameMap := btl.gameMap
+	return &server.CellLocation{
+		X: (location.X - gameMap.LeftPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+		Y: (location.Y - gameMap.TopPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
 	}
 }
 
@@ -1419,7 +1428,17 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		// Hidden/Incognito
-		if btl.incognitoManager().IsWarMachineHidden(warmachine.Hash) {
+		if btl.playerAbilityManager().IsWarMachineHidden(warmachine.Hash) {
+			wms.IsHidden = true
+			wms.Position = &server.Vector3{
+				X: -1,
+				Y: -1,
+				Z: -1,
+			}
+		} else if btl.playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+			X: wms.Position.X,
+			Y: wms.Position.Y,
+		}) {
 			wms.IsHidden = true
 			wms.Position = &server.Vector3{
 				X: -1,
@@ -1440,45 +1459,61 @@ func (btl *Battle) Tick(payload []byte) {
 	if len(wsMessages) > 0 {
 		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
 	}
+
+	if btl.playerAbilityManager().HasBlackoutsUpdated() {
+		minimapUpdates := []MinimapEvent{}
+		for id, b := range btl.playerAbilityManager().Blackouts() {
+			minimapUpdates = append(minimapUpdates, MinimapEvent{
+				ID:            id,
+				GameAbilityID: BlackoutGameAbilityID,
+				Duration:      BlackoutDurationSeconds,
+				Radius:        int(BlackoutRadius),
+				Coords:        b.CellCoords,
+			})
+		}
+		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
+		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+	}
 }
 
 func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-	if btl.ID != dp.BattleID {
-		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-		btl.arena.reset()
-		return
-	}
-
-	// get item id from hash
-	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-		return
-	}
-
-	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-		return
-	}
-
-	btlHistory := boiler.BattleHistory{
-		BattleID:        btl.BattleID,
-		WarMachineOneID: wm.ID,
-		RelatedID:       null.NewString(dp.EventID, true),
-		EventType:       "pickup",
-	}
-
-	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-		return
-	}
-}
+// repair is moved to mech level
+//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
+//	if btl.ID != dp.BattleID {
+//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
+//		btl.arena.reset()
+//		return
+//	}
+//
+//	// get item id from hash
+//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
+//		return
+//	}
+//
+//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
+//		return
+//	}
+//
+//	btlHistory := boiler.BattleHistory{
+//		BattleID:        btl.BattleID,
+//		WarMachineOneID: wm.ID,
+//		RelatedID:       null.NewString(dp.EventID, true),
+//		EventType:       "pickup",
+//	}
+//
+//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
+//	if err != nil {
+//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
+//		return
+//	}
+//}
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
@@ -2038,6 +2073,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
 			}
 		}
+
+		// add owner username
+		if mech.Owner != nil {
+			newWarMachine.OwnerUsername = mech.Owner.Username
+		}
+
 		// check model
 		if mech.Model != nil {
 			model, ok := ModelMap[mech.Model.Label]

@@ -188,6 +188,7 @@ type GameAbility struct {
 	Level               string          `json:"level" db:"level"`
 	SupsCost            decimal.Decimal `json:"sups_cost"`
 	CurrentSups         decimal.Decimal `json:"current_sups"`
+	LocationSelectType  string          `json:"location_select_type"`
 
 	// used to track ability price update
 	Identity string `json:"identity"`

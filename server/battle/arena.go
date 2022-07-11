@@ -328,7 +328,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
-		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Name))
 
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
@@ -520,8 +520,8 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 
 type LocationSelectRequest struct {
 	Payload struct {
-		XIndex int `json:"x"`
-		YIndex int `json:"y"`
+		StartCoords server.CellLocation  `json:"start_coords"`
+		EndCoords   *server.CellLocation `json:"end_coords,omitempty"`
 	} `json:"payload"`
 }
 
@@ -558,13 +558,35 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	err = arena.CurrentBattle().abilities().LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
+	err = arena.CurrentBattle().abilities().LocationSelect(userID, req.Payload.StartCoords, req.Payload.EndCoords)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
 	}
 
 	reply(true)
+	return nil
+}
+
+type MinimapEvent struct {
+	ID            string              `json:"id"`
+	GameAbilityID int                 `json:"game_ability_id"`
+	Duration      int                 `json:"duration"`
+	Radius        int                 `json:"radius"`
+	Coords        server.CellLocation `json:"coords"`
+}
+
+const HubKeyMinimapUpdatesSubscribe = "MINIMAP:UPDATES:SUBSCRIBE"
+
+func (arena *Arena) MinimapUpdatesSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	// skip, if current not battle
+	if arena.CurrentBattle() == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
+	}
+
+	reply(nil)
+
 	return nil
 }
 
@@ -999,12 +1021,7 @@ func (arena *Arena) start() {
 				btl.Destroyed(&dataPayload)
 
 			case "BATTLE:WAR_MACHINE_PICKUP":
-				var dataPayload BattleWMPickupPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine pickup payload")
-					continue
-				}
-				btl.Pickup(&dataPayload)
+				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
 
 			case "BATTLE:END":
 				var dataPayload *BattleEndPayload
@@ -1122,7 +1139,7 @@ func (arena *Arena) beginBattle() {
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
-	btl.storeIncognitoManager(NewIncognitoManager())
+	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 
 	err = btl.Load()
 	if err != nil {
@@ -1137,6 +1154,7 @@ func (arena *Arena) beginBattle() {
 	})
 
 	arena.storeCurrentBattle(btl)
+
 	arena.Message(BATTLEINIT, btl)
 
 	go arena.NotifyUpcomingWarMachines()

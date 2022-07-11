@@ -61,6 +61,7 @@ const (
 	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
 	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
 	AbilityTypeEnumFIREWORKS      = "FIREWORKS"
+	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
 // Enum values for BattleEvent
@@ -158,6 +159,12 @@ const (
 	CouponItemTypeWEAPON_CRATE = "WEAPON_CRATE"
 	CouponItemTypeMECH_CRATE   = "MECH_CRATE"
 	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
+)
+
+// Enum values for FeatureName
+const (
+	FeatureNameMECH_MOVE      = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
 // Enum values for AbilityLevel

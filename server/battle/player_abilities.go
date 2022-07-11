@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"server"
 	"server/db"
@@ -12,7 +13,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/xsyn_rpcclient"
 	"sync"
 	"time"
 
@@ -22,61 +22,135 @@ import (
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// IncognitoManager tracks all war machines that are currently hidden from the map
-type IncognitoManager struct {
-	incognitoWarMachineIDs map[string]time.Time
+const IncognitoGameAbilityID = 15
+const BlackoutGameAbilityID = 16
+
+const BlackoutDurationSeconds = 15 // has to match duration specified in supremacy-gameclient/abilities.json
+
+type BlackoutEntry struct {
+	GameCoords server.GameLocation
+	CellCoords server.CellLocation
+	ExpiresAt  time.Time
+}
+
+// PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
+type PlayerAbilityManager struct {
+	hiddenWarMachines map[string]time.Time // mech hash, expiry timestamp
+
+	blackouts           map[string]BlackoutEntry //  timestamp-player_ability_id-owner_id, ability info
+	hasBlackoutsUpdated bool
 
 	sync.RWMutex
 }
 
-func NewIncognitoManager() *IncognitoManager {
-	return &IncognitoManager{
-		incognitoWarMachineIDs: make(map[string]time.Time), // id, expiry timestamp
+func NewPlayerAbilityManager() *PlayerAbilityManager {
+	return &PlayerAbilityManager{
+		hiddenWarMachines: make(map[string]time.Time),
+		blackouts:         make(map[string]BlackoutEntry),
 	}
 }
 
-// IsWarMachineHidden is called on frequently and will remove mechs from the map if their hidden
+func (pam *PlayerAbilityManager) ResetHasBlackoutsUpdated() {
+	pam.Lock()
+	defer pam.Unlock()
+
+	pam.hasBlackoutsUpdated = false
+}
+
+func (pam *PlayerAbilityManager) HasBlackoutsUpdated() bool {
+	pam.RLock()
+	defer pam.RUnlock()
+
+	return pam.hasBlackoutsUpdated
+}
+
+func (pam *PlayerAbilityManager) Blackouts() map[string]BlackoutEntry {
+	pam.RLock()
+	defer pam.RUnlock()
+
+	return pam.blackouts
+}
+
+func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLocation) bool {
+	pam.Lock()
+	defer pam.Unlock()
+	for id, b := range pam.blackouts {
+		// Check if blackout is currently active, if not then delete it
+		if time.Now().After(b.ExpiresAt) {
+			delete(pam.blackouts, id)
+			pam.hasBlackoutsUpdated = true
+			continue
+		}
+
+		c1 := position
+		c2 := b.GameCoords
+		d := math.Sqrt(math.Pow(float64(c2.X)-float64(c1.X), 2) + math.Pow(float64(c2.Y)-float64(c1.Y), 2))
+		if d < float64(BlackoutRadius) {
+			return true
+		}
+	}
+	return false
+}
+
+func (pam *PlayerAbilityManager) AddBlackout(id string, cellCoords server.CellLocation, gameCoords server.GameLocation) error {
+	pam.Lock()
+	defer pam.Unlock()
+
+	_, ok := pam.blackouts[id]
+	if ok {
+		return fmt.Errorf("Blackout has already been cast")
+	}
+	pam.blackouts[id] = BlackoutEntry{
+		CellCoords: cellCoords,
+		GameCoords: gameCoords,
+		ExpiresAt:  time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),
+	}
+	pam.hasBlackoutsUpdated = true
+
+	return nil
+}
+
+// IsWarMachineHidden is called frequently and will remove mechs from the map if their hidden
 // duration is up
-func (iwmm *IncognitoManager) IsWarMachineHidden(hash string) bool {
-	iwmm.Lock()
-	defer iwmm.Unlock()
-	t, exists := iwmm.incognitoWarMachineIDs[hash]
+func (pam *PlayerAbilityManager) IsWarMachineHidden(hash string) bool {
+	pam.Lock()
+	defer pam.Unlock()
+	t, exists := pam.hiddenWarMachines[hash]
 	if exists && time.Now().After(t) {
-		delete(iwmm.incognitoWarMachineIDs, hash)
+		delete(pam.hiddenWarMachines, hash)
 		return false
 	}
 
 	return exists
 }
 
-func (iwmm *IncognitoManager) AddHiddenWarMachineHash(hash string, duration time.Duration) error {
-	iwmm.Lock()
-	defer iwmm.Unlock()
+func (pam *PlayerAbilityManager) AddHiddenWarMachineHash(hash string, duration time.Duration) error {
+	pam.Lock()
+	defer pam.Unlock()
 
-	_, ok := iwmm.incognitoWarMachineIDs[hash]
+	_, ok := pam.hiddenWarMachines[hash]
 	if ok {
 		return fmt.Errorf("War machine is already hidden")
 	}
-	iwmm.incognitoWarMachineIDs[hash] = time.Now().Add(duration)
+	pam.hiddenWarMachines[hash] = time.Now().Add(duration)
 
 	return nil
 }
 
-func (iwmm *IncognitoManager) RemoveHiddenWarMachineHash(hash string) {
-	iwmm.Lock()
-	defer iwmm.Unlock()
+func (pam *PlayerAbilityManager) RemoveHiddenWarMachineHash(hash string) {
+	pam.Lock()
+	defer pam.Unlock()
 
-	_, ok := iwmm.incognitoWarMachineIDs[hash]
+	_, ok := pam.hiddenWarMachines[hash]
 	if !ok {
 		return
 	}
-	delete(iwmm.incognitoWarMachineIDs, hash)
+	delete(pam.hiddenWarMachines, hash)
 }
 
 type PlayerAbilityUseRequest struct {
@@ -88,8 +162,6 @@ type PlayerAbilityUseRequest struct {
 		MechHash           string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
-
-const IncognitoGameAbilityID = 15
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
@@ -271,8 +343,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 
 		incognitoDurationSeconds := db.GetIntWithDefault(db.KeyPlayerAbilityIncognitoDurationSeconds, 20) // default 20 seconds
 
-		im := arena.CurrentBattle().incognitoManager()
-		err = im.AddHiddenWarMachineHash(wm.Hash, time.Second*time.Duration(incognitoDurationSeconds))
+		err = arena.CurrentBattle().playerAbilityManager().AddHiddenWarMachineHash(wm.Hash, time.Second*time.Duration(incognitoDurationSeconds))
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to execute Incognito player ability")
 			return err
@@ -297,6 +368,16 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+
+	if bpa.GameClientAbilityID == BlackoutGameAbilityID {
+		cellCoords := req.Payload.StartCoords
+		gameCoords := arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords)
+		err = arena.CurrentBattle().playerAbilityManager().AddBlackout(fmt.Sprintf("%d-%s-%s", time.Now().UnixNano(), pa.ID, pa.OwnerID), *cellCoords, *gameCoords)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to execute Incognito player ability")
+			return err
+		}
+	}
 
 	return nil
 }
@@ -474,20 +555,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
 	}
 
-	txid, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(user.ID),
-		ToUserID:             SupremacyBattleUserID,
-		Amount:               decimal.New(10, 18).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("mech_move_command|%s|%d", wm.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupBattle),
-		SubGroup:             arena.CurrentBattle().ID,
-		Description:          "mech move command: " + wm.ID,
-		NotSafe:              true,
-	})
-	if err != nil {
-		return terror.Error(err, err.Error())
-	}
-
 	now := time.Now()
 
 	event := &server.GameAbilityEvent{
@@ -526,7 +593,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		CellX:         req.Payload.StartCoords.X,
 		CellY:         req.Payload.StartCoords.Y,
 		BattleID:      arena.CurrentBattle().ID,
-		TXID:          txid,
 		CreatedAt:     now,
 	}
 
