@@ -889,7 +889,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	// send to the player
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
+	ws.PublishMessage(fmt.Sprintf("/user/%s/punishment_list", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
 
 	return nil
 }
