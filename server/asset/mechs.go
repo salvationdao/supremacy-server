@@ -42,6 +42,17 @@ func TransferMechToNewOwner(
 		itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
 	}
 
+	// get equipped mech power core
+	mPc, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(conn)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mPc {
+		itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
+	}
+
 	// get equipped mech animations
 	mAnim, err := boiler.MechAnimations(
 		boiler.MechAnimationWhere.EquippedOn.EQ(null.StringFrom(mechID)),
