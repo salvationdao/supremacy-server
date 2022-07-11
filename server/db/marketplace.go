@@ -1414,18 +1414,6 @@ func MarketplaceSaleBidHistoryCreate(conn boil.Executor, id uuid.UUID, bidderUse
 	return obj, nil
 }
 
-// MarketplaceLastSaleBid gets the last sale bid.
-func MarketplaceLastSaleBid(itemSaleID uuid.UUID) (*boiler.ItemSalesBidHistory, error) {
-	obj, err := boiler.ItemSalesBidHistories(
-		boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(itemSaleID.String()),
-		boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err)
-	}
-	return obj, nil
-}
-
 // MarketplaceSaleAuctionSync updates the current auction price based on the bid history.
 func MarketplaceSaleAuctionSync(conn boil.Executor, id uuid.UUID) error {
 	q := fmt.Sprintf(
@@ -1453,15 +1441,6 @@ func MarketplaceSaleAuctionSync(conn boil.Executor, id uuid.UUID) error {
 	return nil
 }
 
-// MarketplaceSaleItemExists checks whether given sales item exists.
-func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
-	output, err := boiler.ItemSaleExists(gamedb.StdConn, id.String())
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return output, nil
-}
-
 // MarketplaceCheckCollectionItem checks whether collection item is already in marketplace.
 func MarketplaceCheckCollectionItem(collectionItemID uuid.UUID) (bool, error) {
 	output, err := boiler.ItemSales(
@@ -1473,104 +1452,6 @@ func MarketplaceCheckCollectionItem(collectionItemID uuid.UUID) (bool, error) {
 		return false, terror.Error(err)
 	}
 	return output, nil
-}
-
-// MarketplaceCountKeycards counts number of player's keycard for sale.
-// This is used to check whether player can sell more.
-func MarketplaceCountKeycards(playerKeycardID uuid.UUID) (int64, error) {
-	output, err := boiler.ItemKeycardSales(
-		boiler.ItemKeycardSaleWhere.ItemID.EQ(playerKeycardID.String()),
-		boiler.ItemKeycardSaleWhere.SoldAt.IsNull(),
-		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		return 0, terror.Error(err)
-	}
-	return output, nil
-}
-
-// ChangeMechOwner transfers a collection item to a new owner.
-func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
-	//itemSale, err := boiler.FindItemSale(conn, itemSaleID.String())
-	//if err != nil {
-	//	gamelog.L.Error().
-	//		Err(err).
-	//		Str("itemSaleID", itemSaleID.String()).
-	//		Msg("ChangeMechOwner")
-	//	return err
-	//}
-	//colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
-	//if err != nil {
-	//	gamelog.L.Error().
-	//		Err(err).
-	//		Str("itemSaleID", itemSaleID.String()).
-	//		Msg("ChangeMechOwner")
-	//	return err
-	//}
-
-	//err = asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
-	//if err != nil {
-	//	gamelog.L.Error().
-	//		Err(err).
-	//		Str("itemSaleID", itemSaleID.String()).
-	//		Msg("ChangeMechOwner")
-	//	return err
-	//}
-
-	return nil
-}
-
-// ChangeMysteryCrateOwner transfers a collection item to a new owner.
-func ChangeMysteryCrateOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
-	_, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
-	).UpdateAll(conn,
-		boiler.M{
-			"owner_id": newOwnerID,
-		})
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// ChangeWeaponOwner transfers a weapon to a new owner.
-func ChangeWeaponOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
-	// Transfer Weapon
-	colItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-	).One(conn)
-	if err != nil {
-		return err
-	}
-	colItem.OwnerID = newOwnerID
-	_, err = colItem.Update(conn, boil.Whitelist(boiler.CollectionItemColumns.OwnerID))
-	if err != nil {
-		return err
-	}
-
-	// Transfer Weapon Skin
-	weaponSkin, err := boiler.WeaponSkins(
-		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(colItem.ItemID)),
-	).One(conn)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	if weaponSkin != nil {
-		_, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeaponSkin),
-		).UpdateAll(conn,
-			boiler.M{
-				boiler.CollectionItemColumns.OwnerID: newOwnerID,
-			})
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-
-	return nil
 }
 
 // MarketplaceKeycardSaleCreate inserts a new sale item.
