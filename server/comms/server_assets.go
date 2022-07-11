@@ -226,6 +226,6 @@ type AssetTransferResp struct {
 }
 
 func (s *S) AssetTransferHandler(req *AssetTransferReq, resp *AssetTransferResp) error {
-	asset.HandleTransferEvent(s.passportRPC, req.TransferEvent)
+	asset.HandleTransferEvent(s.passportRPC, req.TransferEvent, false)
 	return nil
 }

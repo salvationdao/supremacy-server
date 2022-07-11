@@ -535,18 +535,13 @@ func PlayerWeaponsList(
 	return weapons, nil
 }
 
-func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reason null.String) error {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, reason null.String) error {
 	itemIDsToUpdate := []string{}
 
 	// get equipped mech weapon skins
 	mWpnSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(weaponID)),
-	).All(tx)
+	).All(conn)
 	if err != nil {
 		return err
 	}
@@ -557,7 +552,7 @@ func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reas
 	// update!
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
-	).UpdateAll(tx, boiler.M{
+	).UpdateAll(conn, boiler.M{
 		"asset_hidden": reason,
 	})
 	if err != nil {
