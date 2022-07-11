@@ -86,8 +86,8 @@ type MessageSystemBan struct {
 	FactionID    null.String `json:"faction_id"`
 	BattleNumber null.Int    `json:"battle_number"`
 
-	Reason   string    `json:"reason"`
-	BanUntil time.Time `json:"ban_until"`
+	Reason      string `json:"reason"`
+	BanDuration string `json:"ban_duration"`
 
 	IsPermanentBan bool     `json:"is_permanent_ban"`
 	Restrictions   []string `json:"restrictions"`
@@ -257,22 +257,9 @@ func (api *API) SystemBanMessageBroadcaster() {
 			FactionID:      msg.FactionID,
 			BattleNumber:   msg.PlayerBan.BattleNumber,
 			Reason:         msg.PlayerBan.Reason,
-			BanUntil:       msg.PlayerBan.EndAt,
+			BanDuration:    msg.BanDuration,
 			IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
-			Restrictions:   []string{},
-		}
-
-		if msg.PlayerBan.BanLocationSelect {
-			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionLocationSelect, RestrictionAbilityTrigger)
-		}
-		if msg.PlayerBan.BanSendChat {
-			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionChatSend)
-		}
-		if msg.PlayerBan.BanViewChat {
-			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionChatView)
-		}
-		if msg.PlayerBan.BanSupsContribute {
-			banMessage.Restrictions = append(banMessage.Restrictions, RestrictionSupsContribute)
+			Restrictions:   PlayerBanRestrictions(msg.PlayerBan),
 		}
 
 		cm := &ChatMessage{

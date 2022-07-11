@@ -749,6 +749,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 			boiler.PlayerBanWhere.BannedPlayerID.EQ(punishVote.ReportedPlayerID),
 			boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 			qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+			qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 		).All(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to get player's punishment from db")
@@ -763,6 +764,8 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 			playerPunishments = append(playerPunishments, &PlayerPunishment{
 				PlayerBan:         punishment,
 				RelatedPunishVote: punishment.R.RelatedPunishVote,
+				Restrictions:      PlayerBanRestrictions(punishment),
+				BanByUser:         punishment.R.BannedBy,
 			})
 		}
 

@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"fmt"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -18,6 +19,7 @@ type SystemBanMessageData struct {
 	SystemPlayer *boiler.Player    `json:"system_player"`
 	BannedPlayer *boiler.Player    `json:"banned_player"`
 	FactionID    null.String       `json:"faction_id"`
+	BanDuration  string            `json:"ban_duration"`
 }
 
 type SystemBanManager struct {
@@ -34,36 +36,6 @@ func NewSystemBanManager() *SystemBanManager {
 	}
 
 	return sbm
-}
-
-func (sbm *SystemBanManager) sendSystemBanMessage(playerBanID string) {
-	playerBan, err := boiler.PlayerBans(
-		boiler.PlayerBanWhere.ID.EQ(playerBanID),
-		qm.Load(
-			boiler.PlayerBanRels.BannedBy,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-			),
-		),
-		qm.Load(
-			boiler.PlayerBanRels.BannedPlayer,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-			),
-		),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player ban detail")
-		return
-	}
-
-	sbm.SystemBanMassageChan <- &SystemBanMessageData{playerBan, playerBan.R.BannedBy, playerBan.R.BannedPlayer, playerBan.R.BannedPlayer.FactionID}
 }
 
 func (sbm *SystemBanManager) HasOngoingTeamKillCases(playerID string) bool {
@@ -282,5 +254,36 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 	}
 
 	// send player ban to chat
-	go tkj.systemBanManager.sendSystemBanMessage(playerBan.ID)
+	pb, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.ID.EQ(playerBan.ID),
+		qm.Load(
+			boiler.PlayerBanRels.BannedBy,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+				boiler.PlayerColumns.Gid,
+			),
+		),
+		qm.Load(
+			boiler.PlayerBanRels.BannedPlayer,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+				boiler.PlayerColumns.Gid,
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player ban detail")
+		return
+	}
+
+	banDuration := "1 hr"
+	if banDurationHours > 1 {
+		banDuration = fmt.Sprintf("%d hrs", banDurationHours)
+	}
+
+	tkj.systemBanManager.SystemBanMassageChan <- &SystemBanMessageData{pb, pb.R.BannedBy, pb.R.BannedPlayer, pb.R.BannedPlayer.FactionID, banDuration}
 }

@@ -49,7 +49,6 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
 
 	// punish vote related
-	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
@@ -252,6 +251,8 @@ func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *h
 type PlayerPunishment struct {
 	*boiler.PlayerBan
 	RelatedPunishVote *boiler.PunishVote `json:"related_punish_vote"`
+	Restrictions      []string           `json:"restrictions"`
+	BanByUser         *boiler.Player     `json:"ban_by_user"`
 }
 
 const HubKeyPlayerPunishmentList = "PLAYER:PUNISHMENT:LIST"
@@ -262,6 +263,7 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
@@ -277,12 +279,33 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
 			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
 		})
 	}
+
+	fmt.Println("player ben count:", len(playerPunishments))
 
 	reply(playerPunishments)
 
 	return nil
+}
+
+func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
+	restrictions := []string{}
+	if pb.BanLocationSelect {
+		restrictions = append(restrictions, RestrictionLocationSelect, RestrictionAbilityTrigger)
+	}
+	if pb.BanSendChat {
+		restrictions = append(restrictions, RestrictionChatSend)
+	}
+	if pb.BanViewChat {
+		restrictions = append(restrictions, RestrictionChatView)
+	}
+	if pb.BanSupsContribute {
+		restrictions = append(restrictions, RestrictionSupsContribute)
+	}
+	return restrictions
 }
 
 type PlayerActiveCheckRequest struct {
@@ -839,6 +862,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
@@ -854,6 +878,8 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
 			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
 		})
 	}
 
