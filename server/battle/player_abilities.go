@@ -667,7 +667,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	mechMoveCooldownSeconds := db.GetIntWithDefault(db.KeyPlayerAbilityMechMoveCommandCooldownSeconds, 30) // default 30 seconds
 
 	// Only perform mech move command db checks if war machine is not a mini mech
-	isMiniMech := *wm.AIType == MiniMech
+	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if !isMiniMech {
 		// check mech move command is triggered within 30 seconds
 		mmc, err := boiler.MechMoveCommandLogs(

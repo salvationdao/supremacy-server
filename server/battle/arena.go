@@ -1289,7 +1289,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
-	isMiniMech := *wm.AIType == MiniMech
+	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if !isMiniMech {
 		// get the last move command of the mech
 		mmc, err := boiler.MechMoveCommandLogs(
