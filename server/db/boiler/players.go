@@ -175,6 +175,7 @@ var PlayerRels = struct {
 	PlayerMultipliers                        string
 	PlayerPreferences                        string
 	PlayerSpoilsOfWars                       string
+	PlayersFeatures                          string
 	PlayersPunishVotes                       string
 	VoteByPlayerPunishVoteInstantPassRecords string
 	InstantPassByPunishVotes                 string
@@ -215,6 +216,7 @@ var PlayerRels = struct {
 	PlayerMultipliers:                        "PlayerMultipliers",
 	PlayerPreferences:                        "PlayerPreferences",
 	PlayerSpoilsOfWars:                       "PlayerSpoilsOfWars",
+	PlayersFeatures:                          "PlayersFeatures",
 	PlayersPunishVotes:                       "PlayersPunishVotes",
 	VoteByPlayerPunishVoteInstantPassRecords: "VoteByPlayerPunishVoteInstantPassRecords",
 	InstantPassByPunishVotes:                 "InstantPassByPunishVotes",
@@ -258,6 +260,7 @@ type playerR struct {
 	PlayerMultipliers                        PlayerMultiplierSlice            `boiler:"PlayerMultipliers" boil:"PlayerMultipliers" json:"PlayerMultipliers" toml:"PlayerMultipliers" yaml:"PlayerMultipliers"`
 	PlayerPreferences                        PlayerPreferenceSlice            `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayerSpoilsOfWars                       PlayerSpoilsOfWarSlice           `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
+	PlayersFeatures                          PlayersFeatureSlice              `boiler:"PlayersFeatures" boil:"PlayersFeatures" json:"PlayersFeatures" toml:"PlayersFeatures" yaml:"PlayersFeatures"`
 	PlayersPunishVotes                       PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
 	VoteByPlayerPunishVoteInstantPassRecords PunishVoteInstantPassRecordSlice `boiler:"VoteByPlayerPunishVoteInstantPassRecords" boil:"VoteByPlayerPunishVoteInstantPassRecords" json:"VoteByPlayerPunishVoteInstantPassRecords" toml:"VoteByPlayerPunishVoteInstantPassRecords" yaml:"VoteByPlayerPunishVoteInstantPassRecords"`
 	InstantPassByPunishVotes                 PunishVoteSlice                  `boiler:"InstantPassByPunishVotes" boil:"InstantPassByPunishVotes" json:"InstantPassByPunishVotes" toml:"InstantPassByPunishVotes" yaml:"InstantPassByPunishVotes"`
@@ -1181,6 +1184,28 @@ func (o *Player) PlayerSpoilsOfWars(mods ...qm.QueryMod) playerSpoilsOfWarQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_spoils_of_war\".*"})
+	}
+
+	return query
+}
+
+// PlayersFeatures retrieves all the players_feature's PlayersFeatures with an executor.
+func (o *Player) PlayersFeatures(mods ...qm.QueryMod) playersFeatureQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"players_features\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"players_features\".\"deleted_at\""),
+	)
+
+	query := PlayersFeatures(queryMods...)
+	queries.SetFrom(query.Query, "\"players_features\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"players_features\".*"})
 	}
 
 	return query
@@ -4517,6 +4542,105 @@ func (playerL) LoadPlayerSpoilsOfWars(e boil.Executor, singular bool, maybePlaye
 	return nil
 }
 
+// LoadPlayersFeatures allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayersFeatures(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players_features`),
+		qm.WhereIn(`players_features.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`players_features.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load players_features")
+	}
+
+	var resultSlice []*PlayersFeature
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice players_features")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on players_features")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_features")
+	}
+
+	if len(playersFeatureAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayersFeatures = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playersFeatureR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayersFeatures = append(local.R.PlayersFeatures, foreign)
+				if foreign.R == nil {
+					foreign.R = &playersFeatureR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayersPunishVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -7268,6 +7392,58 @@ func (o *Player) AddPlayerSpoilsOfWars(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerSpoilsOfWarR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayersFeatures adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayersFeatures.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayersFeatures(exec boil.Executor, insert bool, related ...*PlayersFeature) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"players_features\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playersFeaturePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayersFeatures: related,
+		}
+	} else {
+		o.R.PlayersFeatures = append(o.R.PlayersFeatures, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playersFeatureR{
 				Player: o,
 			}
 		} else {

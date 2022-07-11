@@ -806,7 +806,17 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 
 func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	// broadcast player
-	reply(user)
+	features, err := db.GetPlayerFeaturesByID(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
+	}
+
+	player, err := server.PlayerFromBoiler(user, features)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
+	}
+
+	reply(player)
 
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
