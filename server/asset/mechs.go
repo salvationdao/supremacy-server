@@ -16,12 +16,6 @@ func TransferMechToNewOwner(
 ) error {
 	itemIDsToTransfer := []string{}
 
-	fmt.Println(xsynLocked)
-	fmt.Println(xsynLocked)
-	fmt.Println(xsynLocked)
-	fmt.Println(xsynLocked)
-	fmt.Println(xsynLocked)
-
 	// update mech owner
 	updated, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
