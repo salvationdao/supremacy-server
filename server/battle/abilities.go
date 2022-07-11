@@ -1634,6 +1634,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 	// get location select limited players
 	punishedPlayers, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {

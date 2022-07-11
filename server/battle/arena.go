@@ -488,6 +488,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
@@ -503,6 +504,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	cannotTrigger, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
@@ -659,6 +661,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
@@ -681,6 +684,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	cannotTrigger, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
 		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {

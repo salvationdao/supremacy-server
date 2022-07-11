@@ -2,6 +2,12 @@
 INSERT INTO players (id, username, is_ai)
 VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true);
 
+INSERT INTO players (id, username, is_ai)
+VALUES ('7bba7172-932a-4293-9765-ebd0ae98f0ea', 'System Moderator', true);
+
+INSERT INTO players (id, username, is_ai)
+VALUES ('7bea1ab5-cc2e-46bb-95d4-e8082e141f1f', 'System Admin', true);
+
 DROP TYPE IF EXISTS BAN_FROM_TYPE;
 CREATE TYPE BAN_FROM_TYPE AS ENUM ('SYSTEM','ADMIN','PLAYER');
 

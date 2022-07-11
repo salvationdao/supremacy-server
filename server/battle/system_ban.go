@@ -209,12 +209,13 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 	// ban player
 
 	// check how many system location ban the player has involved
-	systemTeamKillDefaultReason := db.GetStrWithDefault(db.KeySystemBanTeamKillDefaultReason, "Team kill activity is detected (SYSTEM)")
+	systemTeamKillDefaultReason := db.GetStrWithDefault(db.KeySystemBanTeamKillDefaultReason, "Team kill activity is detected")
 
 	pbs, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BanFrom.EQ(boiler.BanFromTypeSYSTEM),
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(bat.PlayerID.String),
 		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.Reason.EQ(systemTeamKillDefaultReason),
 	).All(gamedb.StdConn)
 	if err != nil {

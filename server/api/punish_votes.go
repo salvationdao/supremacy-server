@@ -747,6 +747,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		// get current player's punishment
 		punishments, err := boiler.PlayerBans(
 			boiler.PlayerBanWhere.BannedPlayerID.EQ(punishVote.ReportedPlayerID),
+			boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 			boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 			qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
 			qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),

@@ -261,6 +261,7 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 	// get current player's punishment
 	punishments, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
 		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
@@ -620,7 +621,10 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		queries = append(queries, boiler.PlayerBanWhere.BanSendChat.EQ(true))
 	}
 
-	queries = append(queries, boiler.PlayerBanWhere.EndAt.GT(time.Now()))
+	queries = append(queries,
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	)
 
 	punishedPlayer, err := boiler.PlayerBans(queries...).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -860,6 +864,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	// get current player's punishment
 	punishments, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
 		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),

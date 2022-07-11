@@ -27,6 +27,8 @@ func (b *Faction) Scan(value interface{}) error {
 }
 
 const SupremacyBattleUserID = "87c60803-b051-4abb-aa60-487104946bd7"
+const SupremacySystemModeratorUserID = "7bba7172-932a-4293-9765-ebd0ae98f0ea"
+const SupremacySystemAdminUserID = "7bea1ab5-cc2e-46bb-95d4-e8082e141f1f"
 
 var RedMountainFactionID = "98bf7bb3-1a7c-4f21-8843-458d62884060"
 var BostonCyberneticsFactionID = "7c6dde21-b067-46cf-9e56-155c88a520e2"
