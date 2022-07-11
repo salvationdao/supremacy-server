@@ -309,9 +309,9 @@ type WeaponListOpts struct {
 	DisplayHidden            bool
 	ExcludeMarketLocked      bool
 	IncludeMarketListed      bool
-	ExcludeEquipped          bool
 	FilterRarities           []string `json:"rarities"`
 	FilterWeaponTypes        []string `json:"weapon_types"`
+	FilterEquippedStatuses   []string `json:"equipped_statuses"`
 }
 
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
@@ -382,19 +382,47 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
-	if opts.ExcludeEquipped {
-		queryMods = append(queryMods,
-			qm.LeftOuterJoin(fmt.Sprintf(
-				`%s on %s = %s`,
-				boiler.TableNames.MechWeapons,
-				qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
-				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			)),
-			qm.Expr(
-				boiler.WeaponWhere.EquippedOn.IsNull(),
-				qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
-			),
-		)
+	if len(opts.FilterEquippedStatuses) > 0 {
+		showEquipped := false
+		showUnequipped := false
+		for _, s := range opts.FilterEquippedStatuses {
+			if s == "equipped" {
+				showEquipped = true
+			} else if s == "unequipped" {
+				showUnequipped = true
+			}
+			if showEquipped && showUnequipped {
+				break
+			}
+		}
+
+		if showEquipped && !showUnequipped {
+			queryMods = append(queryMods,
+				qm.LeftOuterJoin(fmt.Sprintf(
+					`%s on %s = %s`,
+					boiler.TableNames.MechWeapons,
+					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				)),
+				qm.Expr(
+					boiler.WeaponWhere.EquippedOn.IsNotNull(),
+					qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+				),
+			)
+		} else if showUnequipped && !showEquipped {
+			queryMods = append(queryMods,
+				qm.LeftOuterJoin(fmt.Sprintf(
+					`%s on %s = %s`,
+					boiler.TableNames.MechWeapons,
+					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				)),
+				qm.Expr(
+					boiler.WeaponWhere.EquippedOn.IsNull(),
+					qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+				),
+			)
+		}
 	}
 
 	// Filters

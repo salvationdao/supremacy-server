@@ -866,17 +866,17 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
-		Search              string                `json:"search"`
-		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
-		PageSize            int                   `json:"page_size"`
-		Page                int                   `json:"page"`
-		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
-		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed bool                  `json:"include_market_listed"`
-		ExcludeEquipped     bool                  `json:"exclude_equipped"`
-		FilterRarities      []string              `json:"rarities"`
-		FilterWeaponTypes   []string              `json:"weapon_types"`
+		Search                 string                `json:"search"`
+		Filter                 *db.ListFilterRequest `json:"filter"`
+		Sort                   *db.ListSortRequest   `json:"sort"`
+		PageSize               int                   `json:"page_size"`
+		Page                   int                   `json:"page"`
+		DisplayXsynMechs       bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked    bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed    bool                  `json:"include_market_listed"`
+		FilterRarities         []string              `json:"rarities"`
+		FilterWeaponTypes      []string              `json:"weapon_types"`
+		FilterEquippedStatuses []string              `json:"equipped_statuses"`
 	} `json:"payload"`
 }
 
@@ -922,18 +922,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 	}
 
 	listOpts := &db.WeaponListOpts{
-		Search:              req.Payload.Search,
-		Filter:              req.Payload.Filter,
-		Sort:                req.Payload.Sort,
-		PageSize:            req.Payload.PageSize,
-		Page:                req.Payload.Page,
-		OwnerID:             user.ID,
-		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
-		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed: req.Payload.IncludeMarketListed,
-		ExcludeEquipped:     req.Payload.ExcludeEquipped,
-		FilterRarities:      req.Payload.FilterRarities,
-		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
+		Search:                 req.Payload.Search,
+		Filter:                 req.Payload.Filter,
+		Sort:                   req.Payload.Sort,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		DisplayXsynMechs:       req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterWeaponTypes:      req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
 	}
 
 	total, weapons, err := db.WeaponList(listOpts)
