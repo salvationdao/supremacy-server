@@ -360,4 +360,185 @@ SET weapon_hardpoints = 2,
 WHERE utility_slots = 4;
 
 
---delete crates where # is wrong
+--update asset images
+--MECHS
+--BC
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_daison-sleek.png'
+WHERE label = 'Daison Sleek'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_spot-yellow.png'
+WHERE label = 'Spot Yellow'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_sea-hawk.png'
+WHERE label = 'Sea Hawk'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_thin-blue-line.png'
+WHERE label = 'Thin Blue Line'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_bullion.png'
+WHERE label = 'Bullion'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_code-of-chivalry.png'
+WHERE label = 'Code of Chivalry'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_telling-the-bees.png'
+WHERE label = 'Telling the Bees'
+  AND mech_type = 'HUMANOID';
+
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_daison-sleek.png'
+WHERE label = 'Daison Sleek'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_spot-yellow.png'
+WHERE label = 'Spot Yellow'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_sea-hawk.png'
+WHERE label = 'Sea Hawk'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_thin-blue-line.png'
+WHERE label = 'Thin Blue Line'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_bullion.png'
+WHERE label = 'Bullion'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_code-of-chivalry.png'
+WHERE label = 'Code of Chivalry'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_telling-the-bees.png'
+WHERE label = 'Telling the Bees'
+  AND mech_type = 'PLATFORM';
+
+--zai
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_x3-kuro.png'
+WHERE label = 'X3 Kuro'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_heavy-white.png'
+WHERE label = 'Heavy White'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_nullifier.png'
+WHERE label = 'Nullifier'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_two-five-zero-one.png'
+WHERE label = 'Two Five Zero One'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_mine-god.png'
+WHERE label = 'Mine God'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_shadows-steal-away.png'
+WHERE label = 'Shadows Steal Away'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_synth-punk.png'
+WHERE label = 'Synth Punk'
+  AND mech_type = 'HUMANOID';
+
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_x3-kuro.png'
+WHERE label = 'X3 Kuro'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_heavy-white.png'
+WHERE label = 'Heavy White'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_nullifier.png'
+WHERE label = 'Nullifier'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_two-five-zero-one.png'
+WHERE label = 'Two Five Zero One'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_mine-god.png'
+WHERE label = 'Mine God'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_shadows-steal-away.png'
+WHERE label = 'Shadows Steal Away'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_synth-punk.png'
+WHERE label = 'Synth Punk'
+  AND mech_type = 'PLATFORM';
+
+--rm
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_martian-soil.png'
+WHERE label = 'Martian Soil'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_pilbara-dust.png'
+WHERE label = 'Pilbara Dust'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_high-caliber.png'
+WHERE label = 'High Caliber'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_fifo.png'
+WHERE label = 'Fly In Fly Out'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_sovereign-hill.png'
+WHERE label = 'Sovereign Hill'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_osmium-scream.png'
+WHERE label = 'Osmium Scream'
+  AND mech_type = 'HUMANOID';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_promethean-gold.png'
+WHERE label = 'Promethean Gold'
+  AND mech_type = 'HUMANOID';
+
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_martian-soil.png'
+WHERE label = 'Martian Soil'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_pilbara-dust.png'
+WHERE label = 'Pilbara Dust'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_high-caliber.png'
+WHERE label = 'High Caliber'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_fifo.png'
+WHERE label = 'Fly In Fly Out'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_sovereign-hill.png'
+WHERE label = 'Sovereign Hill'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_osmium-scream.png'
+WHERE label = 'Osmium Scream'
+  AND mech_type = 'PLATFORM';
+UPDATE blueprint_mech_skin
+SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_promethean-gold.png'
+WHERE label = 'Promethean Gold'
+  AND mech_type = 'PLATFORM';
+
+
+--WEAPONS
+
