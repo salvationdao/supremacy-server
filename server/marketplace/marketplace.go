@@ -541,6 +541,11 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, itemSaleID string) error
 		L.Err(err).Msg("failed to find collection Item")
 		return err
 	}
+	fmt.Println(colItem.XsynLocked)
+	fmt.Println(colItem.XsynLocked)
+	fmt.Println(colItem.XsynLocked)
+	fmt.Println(colItem.XsynLocked)
+	fmt.Println(colItem.XsynLocked)
 
 	switch colItem.ItemType {
 	case boiler.ItemTypeWeapon:

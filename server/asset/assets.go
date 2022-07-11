@@ -78,6 +78,7 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 	// assets shouldn't be getting transferred on xsyn if they are locked to supremacy, but this just realigns them if that does happen.
 	xsynLocked := true
 	assetHidden := null.NewString("Equipped on asset that doesn't live on Supremacy.", true)
+
 	if te.OwnedService.Valid && te.OwnedService.String == server.SupremacyGameUserID {
 		xsynLocked = false
 		assetHidden = null.NewString("", false)
