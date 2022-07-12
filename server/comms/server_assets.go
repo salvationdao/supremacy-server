@@ -223,6 +223,7 @@ type AssetTransferReq struct {
 }
 
 type AssetTransferResp struct {
+	OtherTransferredAssetHashes string `json:"other_transferred_asset_hashes"`
 }
 
 func (s *S) AssetTransferHandler(req *AssetTransferReq, resp *AssetTransferResp) error {

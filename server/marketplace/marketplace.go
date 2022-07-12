@@ -531,6 +531,8 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclient.XsynXrpcClient, itemSaleID string) error {
 	l := gamelog.L.With().Interface("itemSaleID", itemSaleID).Str("func", "HandleMarketplaceAuctionAssetTransfer").Logger()
+	attachedHashes := []string{}
+
 
 	itemSale, err := boiler.FindItemSale(conn, itemSaleID)
 	if err != nil {
@@ -545,58 +547,22 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 
 	switch colItem.ItemType {
 	case boiler.ItemTypeWeapon:
-		err = asset.TransferWeaponToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false),
-			func(colItems []*boiler.CollectionItem) error {
-				for _, colItem := range colItems {
-					err := rpcClient.TransferAsset(
-						itemSale.SoldTo.String,
-						colItem.OwnerID,
-						colItem.Hash,
-						itemSale.SoldTXID,
-						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-							asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-						},
-					)
-					if err != nil && strings.Contains(err.Error(), "asset not exist") {
-						l.Warn().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-					} else if err != nil {
-						l.Error().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-						return err
-					}
-				}
-				return nil
-			},
-		)
+		attachedColItems, err := asset.TransferWeaponToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
 		if err != nil {
 			l.Error().Err(err).Msg("failed to transfer mech to new owner")
 			return err
 		}
+		for _, colItem := range attachedColItems {
+			attachedHashes = append(attachedHashes, colItem.Hash)
+		}
 	case boiler.ItemTypeMech:
-		err = asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false),
-			func(colItems []*boiler.CollectionItem) error {
-				for _, colItem := range colItems {
-					err := rpcClient.TransferAsset(
-						itemSale.SoldTo.String,
-						colItem.OwnerID,
-						colItem.Hash,
-						itemSale.SoldTXID,
-						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-							asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
-						},
-					)
-					if err != nil && strings.Contains(err.Error(), "asset not exist") {
-						l.Warn().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-					} else if err != nil {
-						l.Error().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-						return err
-					}
-				}
-				return nil
-			},
-		)
+		attachedColItems, err := asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
 		if err != nil {
 			l.Error().Err(err).Msg("failed to transfer mech to new owner")
 			return err
+		}
+		for _, colItem := range attachedColItems {
+			attachedHashes = append(attachedHashes, colItem.Hash)
 		}
 	case boiler.ItemTypeUtility,
 		boiler.ItemTypeMechSkin,
@@ -613,5 +579,25 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 	default:
 		return fmt.Errorf("unhandled item type")
 	}
+
+
+	for _, hash := range attachedHashes {
+		err := rpcClient.TransferAsset(
+			itemSale.SoldTo.String,
+			colItem.OwnerID,
+			hash,
+			itemSale.SoldTXID,
+			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+			},
+		)
+		if err != nil && strings.Contains(err.Error(), "asset not exist") {
+			l.Warn().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+		} else if err != nil {
+			l.Error().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+			return err
+		}
+	}
+
 	return nil
 }
