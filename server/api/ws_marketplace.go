@@ -1345,55 +1345,20 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// Transfer ownership of asset
-	if saleItem.CollectionItemType == boiler.ItemTypeMech {
-		err = db.ChangeMechOwner(tx, req.Payload.ID)
-		if err != nil {
-			mp.API.Passport.RefundSupsMessage(feeTXID)
-			mp.API.Passport.RefundSupsMessage(txid)
-			rpcAssetTransferRollback()
-			gamelog.L.Error().
-				Str("from_user_id", user.ID).
-				Str("to_user_id", saleItem.OwnerID).
-				Str("balance", balance.String()).
-				Str("cost", saleItemCost.String()).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Failed to Transfer Mech to New Owner")
-			return terror.Error(err, errMsg)
-		}
-	} else if saleItem.CollectionItemType == boiler.ItemTypeMysteryCrate {
-		err = db.ChangeMysteryCrateOwner(tx, saleItem.CollectionItemID, user.ID)
-		if err != nil {
-			mp.API.Passport.RefundSupsMessage(feeTXID)
-			mp.API.Passport.RefundSupsMessage(txid)
-			rpcAssetTransferRollback()
-			gamelog.L.Error().
-				Str("from_user_id", user.ID).
-				Str("to_user_id", saleItem.OwnerID).
-				Str("balance", balance.String()).
-				Str("cost", saleItemCost.String()).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Failed to Transfer Mystery Crate to New Owner")
-			return terror.Error(err, errMsg)
-		}
-	} else if saleItem.CollectionItemType == boiler.ItemTypeWeapon {
-		err = db.ChangeWeaponOwner(tx, saleItem.CollectionItemID, user.ID)
-		if err != nil {
-			mp.API.Passport.RefundSupsMessage(feeTXID)
-			mp.API.Passport.RefundSupsMessage(txid)
-			rpcAssetTransferRollback()
-			gamelog.L.Error().
-				Str("from_user_id", user.ID).
-				Str("to_user_id", saleItem.OwnerID).
-				Str("balance", balance.String()).
-				Str("cost", saleItemCost.String()).
-				Str("item_sale_id", req.Payload.ID.String()).
-				Err(err).
-				Msg("Failed to Transfer Weapon to New Owner")
-			return terror.Error(err, errMsg)
-		}
+	err = marketplace.HandleMarketplaceAssetTransfer(tx, req.Payload.ID.String())
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(feeTXID)
+		mp.API.Passport.RefundSupsMessage(txid)
+		rpcAssetTransferRollback()
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_sale_id", req.Payload.ID.String()).
+			Err(err).
+			Msg("Failed to Transfer Mech to New Owner")
+		return terror.Error(err, errMsg)
 	}
 
 	// Unlock Listed Item
