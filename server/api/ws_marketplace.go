@@ -1307,7 +1307,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	err = marketplace.HandleMarketplaceAssetTransfer(tx, req.Payload.ID.String())
+	err = marketplace.HandleMarketplaceAssetTransfer(tx, mp.API.Passport, req.Payload.ID.String())
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
 		mp.API.Passport.RefundSupsMessage(txid)
