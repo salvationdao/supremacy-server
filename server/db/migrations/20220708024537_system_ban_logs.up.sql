@@ -1,6 +1,7 @@
 -- insert system battle user
 INSERT INTO players (id, username, is_ai)
-VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true);
+VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true)
+ON CONFLICT do nothing;
 
 INSERT INTO players (id, username, is_ai)
 VALUES ('7bba7172-932a-4293-9765-ebd0ae98f0ea', 'System Moderator', true);
