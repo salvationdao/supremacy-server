@@ -80,15 +80,18 @@ var SymbolWhere = struct {
 // SymbolRels is where relationship names are stored.
 var SymbolRels = struct {
 	NewSymbolSyndicateMotions string
+	OldSymbolSyndicateMotions string
 	Syndicates                string
 }{
 	NewSymbolSyndicateMotions: "NewSymbolSyndicateMotions",
+	OldSymbolSyndicateMotions: "OldSymbolSyndicateMotions",
 	Syndicates:                "Syndicates",
 }
 
 // symbolR is where relationships are stored.
 type symbolR struct {
 	NewSymbolSyndicateMotions SyndicateMotionSlice `boiler:"NewSymbolSyndicateMotions" boil:"NewSymbolSyndicateMotions" json:"NewSymbolSyndicateMotions" toml:"NewSymbolSyndicateMotions" yaml:"NewSymbolSyndicateMotions"`
+	OldSymbolSyndicateMotions SyndicateMotionSlice `boiler:"OldSymbolSyndicateMotions" boil:"OldSymbolSyndicateMotions" json:"OldSymbolSyndicateMotions" toml:"OldSymbolSyndicateMotions" yaml:"OldSymbolSyndicateMotions"`
 	Syndicates                SyndicateSlice       `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
 }
 
@@ -372,6 +375,28 @@ func (o *Symbol) NewSymbolSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQ
 	return query
 }
 
+// OldSymbolSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via old_symbol_id column.
+func (o *Symbol) OldSymbolSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"old_symbol_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
+	}
+
+	return query
+}
+
 // Syndicates retrieves all the syndicate's Syndicates with an executor.
 func (o *Symbol) Syndicates(mods ...qm.QueryMod) syndicateQuery {
 	var queryMods []qm.QueryMod
@@ -485,6 +510,105 @@ func (symbolL) LoadNewSymbolSyndicateMotions(e boil.Executor, singular bool, may
 					foreign.R = &syndicateMotionR{}
 				}
 				foreign.R.NewSymbol = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOldSymbolSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (symbolL) LoadOldSymbolSyndicateMotions(e boil.Executor, singular bool, maybeSymbol interface{}, mods queries.Applicator) error {
+	var slice []*Symbol
+	var object *Symbol
+
+	if singular {
+		object = maybeSymbol.(*Symbol)
+	} else {
+		slice = *maybeSymbol.(*[]*Symbol)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &symbolR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &symbolR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.old_symbol_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OldSymbolSyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.OldSymbol = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.OldSymbolID) {
+				local.R.OldSymbolSyndicateMotions = append(local.R.OldSymbolSyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.OldSymbol = local
 				break
 			}
 		}
@@ -710,6 +834,131 @@ func (o *Symbol) RemoveNewSymbolSyndicateMotions(exec boil.Executor, related ...
 				o.R.NewSymbolSyndicateMotions[i] = o.R.NewSymbolSyndicateMotions[ln-1]
 			}
 			o.R.NewSymbolSyndicateMotions = o.R.NewSymbolSyndicateMotions[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddOldSymbolSyndicateMotions adds the given related objects to the existing relationships
+// of the symbol, optionally inserting them as new records.
+// Appends related to o.R.OldSymbolSyndicateMotions.
+// Sets related.R.OldSymbol appropriately.
+func (o *Symbol) AddOldSymbolSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.OldSymbolID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"old_symbol_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.OldSymbolID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &symbolR{
+			OldSymbolSyndicateMotions: related,
+		}
+	} else {
+		o.R.OldSymbolSyndicateMotions = append(o.R.OldSymbolSyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				OldSymbol: o,
+			}
+		} else {
+			rel.R.OldSymbol = o
+		}
+	}
+	return nil
+}
+
+// SetOldSymbolSyndicateMotions removes all previously related items of the
+// symbol replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.OldSymbol's OldSymbolSyndicateMotions accordingly.
+// Replaces o.R.OldSymbolSyndicateMotions with related.
+// Sets related.R.OldSymbol's OldSymbolSyndicateMotions accordingly.
+func (o *Symbol) SetOldSymbolSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	query := "update \"syndicate_motions\" set \"old_symbol_id\" = null where \"old_symbol_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.OldSymbolSyndicateMotions {
+			queries.SetScanner(&rel.OldSymbolID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.OldSymbol = nil
+		}
+
+		o.R.OldSymbolSyndicateMotions = nil
+	}
+	return o.AddOldSymbolSyndicateMotions(exec, insert, related...)
+}
+
+// RemoveOldSymbolSyndicateMotions relationships from objects passed in.
+// Removes related items from R.OldSymbolSyndicateMotions (uses pointer comparison, removal does not keep order)
+// Sets related.R.OldSymbol.
+func (o *Symbol) RemoveOldSymbolSyndicateMotions(exec boil.Executor, related ...*SyndicateMotion) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.OldSymbolID, nil)
+		if rel.R != nil {
+			rel.R.OldSymbol = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("old_symbol_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.OldSymbolSyndicateMotions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.OldSymbolSyndicateMotions)
+			if ln > 1 && i < ln-1 {
+				o.R.OldSymbolSyndicateMotions[i] = o.R.OldSymbolSyndicateMotions[ln-1]
+			}
+			o.R.OldSymbolSyndicateMotions = o.R.OldSymbolSyndicateMotions[:ln-1]
 			break
 		}
 	}

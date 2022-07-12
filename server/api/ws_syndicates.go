@@ -43,9 +43,10 @@ func NewSyndicateController(api *API) *SyndicateWS {
 
 	// update syndicate settings
 	api.SecureUserFactionCommand(HubKeySyndicateIssueMotion, sc.SyndicateIssueMotionHandler)
-	api.SecureUserFactionCommand()
+	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateMotionList, sc.SyndicateMotionListHandler)
 
-	// motion pass instantly if less than 3
+	// subscribetion
 
 	return sc
 }
@@ -407,7 +408,24 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 }
 
 type SyndicateIssueMotionRequest struct {
-	Payload *boiler.SyndicateMotion `json:"payload"`
+	Payload struct {
+		LastForDays                     int                 `json:"last_for_days"`
+		Type                            string              `json:"type"`
+		Reason                          string              `json:"reason"`
+		NewSymbolID                     null.String         `json:"new_symbol_id"`
+		NewName                         null.String         `json:"new_name"`
+		NewNamingConvention             null.String         `json:"new_naming_convention"`
+		NewJoinFee                      decimal.NullDecimal `json:"new_join_fee"`
+		NewExitFee                      decimal.NullDecimal `json:"new_exit_fee"`
+		NewDeployingMemberCutPercentage decimal.NullDecimal `json:"new_deploying_member_cut_percentage"`
+		NewMemberAssistCutPercentage    decimal.NullDecimal `json:"new_member_assist_cut_percentage"`
+		NewMechOwnerCutPercentage       decimal.NullDecimal `json:"new_mech_owner_cut_percentage"`
+		NewSyndicateCutPercentage       decimal.NullDecimal `json:"new_syndicate_cut_percentage"`
+		RuleID                          null.String         `json:"rule_id"`
+		NewRuleNumber                   null.Int            `json:"new_rule_number"`
+		NewRuleContent                  null.String         `json:"new_rule_content"`
+		DirectorID                      null.String         `json:"director_id"`
+	} `json:"payload"`
 }
 
 const HubKeySyndicateIssueMotion = "SYNDICATE:ISSUE:MOTION"
@@ -423,7 +441,31 @@ func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *bo
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	err = sc.API.SyndicateSystem.AddMotion(user, req.Payload)
+	if req.Payload.LastForDays < 1 {
+		return terror.Error(fmt.Errorf("negative duration"), "The period of the motion cannot be less than 1 day")
+	}
+
+	// build motion
+	m := &boiler.SyndicateMotion{
+		Type:                            req.Payload.Type,
+		Reason:                          req.Payload.Reason,
+		NewSymbolID:                     req.Payload.NewSymbolID,
+		NewName:                         req.Payload.NewName,
+		NewNamingConvention:             req.Payload.NewNamingConvention,
+		NewJoinFee:                      req.Payload.NewJoinFee,
+		NewExitFee:                      req.Payload.NewExitFee,
+		NewDeployingMemberCutPercentage: req.Payload.NewDeployingMemberCutPercentage,
+		NewMemberAssistCutPercentage:    req.Payload.NewMemberAssistCutPercentage,
+		NewMechOwnerCutPercentage:       req.Payload.NewMechOwnerCutPercentage,
+		NewSyndicateCutPercentage:       req.Payload.NewSyndicateCutPercentage,
+		RuleID:                          req.Payload.RuleID,
+		NewRuleNumber:                   req.Payload.NewRuleNumber,
+		NewRuleContent:                  req.Payload.NewRuleContent,
+		DirectorID:                      req.Payload.DirectorID,
+		EndedAt:                         time.Now().AddDate(0, 0, req.Payload.LastForDays),
+	}
+
+	err = sc.API.SyndicateSystem.AddMotion(user, m)
 	if err != nil {
 		return terror.Error(err, "Failed to add motion")
 	}
@@ -458,6 +500,45 @@ func (sc *SyndicateWS) SyndicateVoteMotionHandler(ctx context.Context, user *boi
 	}
 
 	reply(true)
+	return nil
+}
+
+type SyndicateMotionListRequest struct {
+	Payload struct {
+		Filter     *db.SyndicateMotionListFilter `json:"filter"`
+		PageSize   int                           `json:"page_size"`
+		PageNumber int                           `json:"page_number"`
+	} `json:"payload"`
+}
+
+type SyndicateMotionListResponse struct {
+	SyndicateMotions []*boiler.SyndicateMotion `json:"syndicate_motions"`
+	Total            int64                     `json:"total"`
+}
+
+const HubKeySyndicateMotionList = "SYNDICATE:MOTION:LIST"
+
+func (sc *SyndicateWS) SyndicateMotionListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	req := &SyndicateMotionListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	limit := req.Payload.PageSize
+	offset := req.Payload.PageNumber * req.Payload.PageSize
+
+	sms, total, err := db.SyndicateMotionList(user.SyndicateID.String, req.Payload.Filter, limit, offset)
+	if err != nil {
+		return err
+	}
+
+	reply(&SyndicateMotionListResponse{sms, total})
+
 	return nil
 }
 

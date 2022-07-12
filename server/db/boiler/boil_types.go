@@ -233,14 +233,15 @@ const (
 
 // Enum values for SyndicateMotionType
 const (
-	SyndicateMotionTypeCHANGE_GENERAL_DETAIL  = "CHANGE_GENERAL_DETAIL"
-	SyndicateMotionTypeCHANGE_PAYMENT_SETTING = "CHANGE_PAYMENT_SETTING"
-	SyndicateMotionTypeADD_RULE               = "ADD_RULE"
-	SyndicateMotionTypeREMOVE_RULE            = "REMOVE_RULE"
-	SyndicateMotionTypeCHANGE_RULE            = "CHANGE_RULE"
-	SyndicateMotionTypeAPPOINT_DIRECTOR       = "APPOINT_DIRECTOR"
-	SyndicateMotionTypeREMOVE_DIRECTOR        = "REMOVE_DIRECTOR"
-	SyndicateMotionTypeREMOVE_FOUNDER         = "REMOVE_FOUNDER"
+	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"
+	SyndicateMotionTypeCHANGE_ENTRY_FEE      = "CHANGE_ENTRY_FEE"
+	SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT = "CHANGE_BATTLE_WIN_CUT"
+	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
+	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
+	SyndicateMotionTypeCHANGE_RULE           = "CHANGE_RULE"
+	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
+	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
+	SyndicateMotionTypeREMOVE_FOUNDER        = "REMOVE_FOUNDER"
 )
 
 // Enum values for SyndicateMotionResult

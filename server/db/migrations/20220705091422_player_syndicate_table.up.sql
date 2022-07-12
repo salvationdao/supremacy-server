@@ -78,7 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_syndicate_rule_syndicate on syndicate_rules(syndi
 DROP TYPE IF EXISTS SYNDICATE_MOTION_TYPE;
 CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'CHANGE_GENERAL_DETAIL',
-    'CHANGE_PAYMENT_SETTING',
+    'CHANGE_ENTRY_FEE',
+    'CHANGE_BATTLE_WIN_CUT',
     'ADD_RULE',
     'REMOVE_RULE',
     'CHANGE_RULE',
@@ -102,21 +103,39 @@ CREATE TABLE syndicate_motions(
     reason text not null,
 
     -- content
+    old_symbol_id uuid references symbols(id),
     new_symbol_id uuid references symbols(id),
-    new_name text,
+
+    old_syndicate_name text,
+    new_syndicate_name text,
+
+    old_naming_convention text,
     new_naming_convention text,
 
     -- payment change
+    old_join_fee numeric(28),
     new_join_fee numeric(28),
+
+    old_exit_fee numeric(28),
     new_exit_fee numeric(28),
+
+    old_deploying_member_cut_percentage decimal,
     new_deploying_member_cut_percentage decimal,
+
+    old_member_assist_cut_percentage decimal,
     new_member_assist_cut_percentage decimal,
+
+    old_mech_owner_cut_percentage decimal,
     new_mech_owner_cut_percentage decimal,
+
+    old_syndicate_cut_percentage decimal,
     new_syndicate_cut_percentage decimal,
 
     -- add/remove/change rule
     rule_id uuid references syndicate_rules(id),
+    old_rule_number int,
     new_rule_number int,
+    old_rule_content text,
     new_rule_content text,
 
     -- appoint/remove director
@@ -129,6 +148,10 @@ CREATE TABLE syndicate_motions(
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
 );
+
+CREATE INDEX IF NOT EXISTS idx_syndicate_motion_created_at_descending on syndicate_motions(created_at desc);
+CREATE INDEX IF NOT EXISTS idx_syndicate_motion_type on syndicate_motions(type);
+CREATE INDEX IF NOT EXISTS idx_syndicate_motion_syndicate_id on syndicate_motions(syndicate_id);
 
 CREATE TABLE syndicate_motion_votes(
     id uuid primary key default gen_random_uuid(),

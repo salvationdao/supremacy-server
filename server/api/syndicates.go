@@ -131,7 +131,7 @@ func (ss *SyndicateSystem) AddMotion(user *boiler.Player, bsm *boiler.SyndicateM
 	}
 
 	if s.Type == boiler.SyndicateTypeCORPORATION && !user.DirectorOfSyndicateID.Valid {
-		return terror.Error(fmt.Errorf("only director can add motion"), "Only director can add motion")
+		return terror.Error(fmt.Errorf("only director can issue motion"), "Only director can issue motion")
 	}
 
 	// check motion is valid and generate a clean motion
@@ -182,9 +182,23 @@ func (ss *SyndicateSystem) VoteMotion(user *boiler.Player, motionID string, isAg
 
 type Syndicate struct {
 	*boiler.Syndicate
-	sync.Mutex // for update syndicate
+	sync.RWMutex // for update syndicate
 
 	motionSystem *SyndicateMotionSystem
+}
+
+func (s *Syndicate) store(syndicate *boiler.Syndicate) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.Syndicate = syndicate
+}
+
+func (s *Syndicate) load() boiler.Syndicate {
+	s.RLock()
+	defer s.RUnlock()
+
+	return *s.Syndicate
 }
 
 func newSyndicate(syndicate *boiler.Syndicate) (*Syndicate, error) {
@@ -311,6 +325,8 @@ func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion) error {
 		delete(sms.ongoingMotions, m.ID)
 	}
 
+	// TODO: check total vote member, instant pass if vote member less than 3
+
 	// add motion to the map
 	sms.ongoingMotions[m.ID] = m
 
@@ -320,7 +336,11 @@ func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion) error {
 	return nil
 }
 
+// motionValidCheck check incoming motion has valid input, and generate a new boiler motion for voting
 func (sms *SyndicateMotionSystem) motionValidCheck(user *boiler.Player, bsm *boiler.SyndicateMotion) (*boiler.SyndicateMotion, error) {
+	// record old syndicate info to the motion
+	s := sms.syndicate.load()
+
 	if bsm.Reason == "" {
 		return nil, terror.Error(fmt.Errorf("missing motion reason"), "Missing motion reason")
 	}
@@ -333,22 +353,115 @@ func (sms *SyndicateMotionSystem) motionValidCheck(user *boiler.Player, bsm *boi
 	// start issue motion
 	switch motion.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
-		if !bsm.NewName.Valid && !bsm.NewSymbolID.Valid && !bsm.NewNamingConvention.Valid {
+		if !bsm.NewSyndicateName.Valid && !bsm.NewSymbolID.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
-		// change symbol, name
-		motion.NewName = bsm.NewName
-		motion.NewSymbolID = bsm.NewSymbolID
-		motion.NewNamingConvention = bsm.NewNamingConvention
 
-	case boiler.SyndicateMotionTypeCHANGE_PAYMENT_SETTING:
+		// change symbol, name
+		if bsm.NewSyndicateName.Valid {
+			motion.NewSyndicateName = bsm.NewSyndicateName
+			motion.OldSyndicateName = null.StringFrom(s.Name)
+		}
+		if bsm.NewSymbolID.Valid {
+			motion.NewSymbolID = bsm.NewSymbolID
+			motion.OldSymbolID = null.StringFrom(s.SymbolID)
+		}
+
+		motion.NewNamingConvention = bsm.NewNamingConvention
+		motion.OldNamingConvention = s.NamingConvention
+
+	case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
+		if !motion.NewJoinFee.Valid && !motion.NewExitFee.Valid {
+			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
+		}
+
+		joinFeeAfterChanged := s.JoinFee
 		// change
-		motion.NewJoinFee = bsm.NewJoinFee
-		motion.NewExitFee = bsm.NewExitFee
-		motion.NewDeployingMemberCutPercentage = bsm.NewDeployingMemberCutPercentage
-		motion.NewMemberAssistCutPercentage = bsm.NewMemberAssistCutPercentage
-		motion.NewMechOwnerCutPercentage = bsm.NewMechOwnerCutPercentage
-		motion.NewSyndicateCutPercentage = bsm.NewSyndicateCutPercentage
+		if bsm.NewJoinFee.Valid {
+			if bsm.NewJoinFee.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("join fee cannot less than zero"), "Join fee cannot less than zero.")
+			}
+			motion.NewJoinFee = bsm.NewJoinFee
+			motion.OldJoinFee = decimal.NewNullDecimal(s.JoinFee)
+
+			joinFeeAfterChanged = bsm.NewJoinFee.Decimal
+		}
+
+		exitFeeAfterChange := s.ExitFee
+		if bsm.NewExitFee.Valid {
+			// exit fee cannot less than zero
+			if bsm.NewExitFee.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("exit fee cannot less than zero"), "Exit fee cannot less than zero.")
+			}
+			motion.NewExitFee = bsm.NewExitFee
+			motion.OldExitFee = decimal.NewNullDecimal(s.ExitFee)
+
+			exitFeeAfterChange = bsm.NewExitFee.Decimal
+		}
+
+		if exitFeeAfterChange.GreaterThan(joinFeeAfterChanged) {
+			return nil, terror.Error(fmt.Errorf("exit fee cannot be higher than join fee"), "Exit fee cannot be higher than join fee.")
+		}
+
+	case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
+		if !motion.NewDeployingMemberCutPercentage.Valid &&
+			!motion.NewMemberAssistCutPercentage.Valid &&
+			!motion.NewMechOwnerCutPercentage.Valid &&
+			!motion.NewSyndicateCutPercentage.Valid {
+			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
+		}
+
+		deployMemberCutAfterChange := s.DeployingMemberCutPercentage
+		if bsm.NewDeployingMemberCutPercentage.Valid {
+			// exit fee cannot less than zero
+			if bsm.NewDeployingMemberCutPercentage.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("mech deploying member cut cannot less than zero"), "Mech deploying member cut cannot less than zero.")
+			}
+			motion.NewDeployingMemberCutPercentage = bsm.NewDeployingMemberCutPercentage
+			motion.OldDeployingMemberCutPercentage = decimal.NewNullDecimal(s.DeployingMemberCutPercentage)
+			deployMemberCutAfterChange = bsm.NewDeployingMemberCutPercentage.Decimal
+		}
+
+		memberAssistCutAfterChange := s.MemberAssistCutPercentage
+		if bsm.NewMemberAssistCutPercentage.Valid {
+			// exit fee cannot less than zero
+			if bsm.NewMemberAssistCutPercentage.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("member assistance cut cannot less than zero"), "Member assistance cut cannot less than zero.")
+			}
+
+			motion.NewMemberAssistCutPercentage = bsm.NewMemberAssistCutPercentage
+			motion.OldMemberAssistCutPercentage = decimal.NewNullDecimal(s.MemberAssistCutPercentage)
+			memberAssistCutAfterChange = bsm.NewMemberAssistCutPercentage.Decimal
+		}
+
+		mechOwnerCutAfterChange := s.MechOwnerCutPercentage
+		if bsm.NewMechOwnerCutPercentage.Valid {
+			// exit fee cannot less than zero
+			if bsm.NewMechOwnerCutPercentage.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("mech owner cut cannot less than zero"), "Mech owner cut cannot less than zero.")
+			}
+
+			motion.NewMechOwnerCutPercentage = bsm.NewMechOwnerCutPercentage
+			motion.OldMechOwnerCutPercentage = decimal.NewNullDecimal(s.MechOwnerCutPercentage)
+			mechOwnerCutAfterChange = bsm.NewMechOwnerCutPercentage.Decimal
+		}
+
+		syndicateCutAfterChange := s.SyndicateCutPercentage
+		if bsm.NewSyndicateCutPercentage.Valid {
+			// exit fee cannot less than zero
+			if bsm.NewSyndicateCutPercentage.Decimal.LessThan(decimal.Zero) {
+				return nil, terror.Error(fmt.Errorf("syndicate cut cannot less than zero"), "Syndicate cut cannot less than zero.")
+			}
+
+			motion.NewSyndicateCutPercentage = bsm.NewSyndicateCutPercentage
+			motion.OldSyndicateCutPercentage = decimal.NewNullDecimal(s.SyndicateCutPercentage)
+
+			syndicateCutAfterChange = bsm.NewSyndicateCutPercentage.Decimal
+		}
+
+		if decimal.NewFromInt(100).LessThan(deployMemberCutAfterChange.Add(memberAssistCutAfterChange).Add(mechOwnerCutAfterChange).Add(syndicateCutAfterChange)) {
+			return nil, terror.Error(fmt.Errorf("percentage over 100"), "Total percentage cannot be over 100")
+		}
 
 	case boiler.SyndicateMotionTypeADD_RULE:
 		if !bsm.NewRuleContent.Valid {
@@ -468,7 +581,7 @@ func (sms *SyndicateMotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMot
 		// check change content is duplicated
 		switch om.Type {
 		case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
-			if bsm.NewName.Valid && om.NewName.Valid {
+			if bsm.NewSyndicateName.Valid && om.NewSyndicateName.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate name.")
 			}
 			if bsm.NewSymbolID.Valid && om.NewSymbolID.Valid {
@@ -476,25 +589,6 @@ func (sms *SyndicateMotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMot
 			}
 			if bsm.NewNamingConvention.Valid && om.NewNamingConvention.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate naming convention.")
-			}
-		case boiler.SyndicateMotionTypeCHANGE_PAYMENT_SETTING:
-			if bsm.NewJoinFee.Valid && om.NewJoinFee.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate join fee.")
-			}
-			if bsm.NewExitFee.Valid && om.NewExitFee.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate exit fee.")
-			}
-			if bsm.NewDeployingMemberCutPercentage.Valid && om.NewDeployingMemberCutPercentage.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate deploying member cut percentage.")
-			}
-			if bsm.NewMemberAssistCutPercentage.Valid && om.NewMemberAssistCutPercentage.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate member assist cut percentage.")
-			}
-			if bsm.NewMechOwnerCutPercentage.Valid && om.NewMechOwnerCutPercentage.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate mech owner cut percentage.")
-			}
-			if bsm.NewSyndicateCutPercentage.Valid && om.NewSyndicateCutPercentage.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate cut percentage.")
 			}
 		case boiler.SyndicateMotionTypeADD_RULE:
 			if bsm.NewRuleContent.Valid && om.NewRuleContent.Valid {
@@ -512,6 +606,10 @@ func (sms *SyndicateMotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMot
 			if bsm.DirectorID.String == om.DirectorID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for removing the same director.")
 			}
+		case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing entry fee.")
+		case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing battle win cut.")
 		case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
 			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for removing the founder.")
 		}
@@ -605,7 +703,7 @@ func (sm *SyndicateMotion) vote(user *boiler.Player, isAgreed bool) error {
 	}
 
 	// close the vote, if only three people can vote or all the player have voted
-	if totalVoteCount < 3 || totalVoteCount == currentVoteCount {
+	if totalVoteCount <= 3 || totalVoteCount == currentVoteCount {
 		sm.isClosed.Store(true)
 		return nil
 	}
@@ -651,18 +749,21 @@ func (sm *SyndicateMotion) parseResult() {
 	}
 
 	// calculate pass rate
-	rate := decimal.NewFromInt(int64(agreedCount * 100)).Div(decimal.NewFromInt(int64(agreedCount + disagreedCount)))
+	totalVote := decimal.NewFromInt(int64(agreedCount + disagreedCount))
 
-	// failed
-	if (rate.LessThanOrEqual(decimal.NewFromInt(50))) || (sm.Type == boiler.SyndicateMotionTypeREMOVE_FOUNDER && rate.LessThanOrEqual(decimal.NewFromInt(80))) {
-		sm.Result = null.StringFrom(boiler.SyndicateMotionResultFAILED)
-		// update motion result and actual end time
-		_, err := sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to update motion result")
+	// check whether vote is failed, if more than three members voted
+	if totalVote.GreaterThan(decimal.NewFromInt(3)) {
+		rate := decimal.NewFromInt(int64(agreedCount * 100)).Div(totalVote)
+		if (rate.LessThanOrEqual(decimal.NewFromInt(50))) || (sm.Type == boiler.SyndicateMotionTypeREMOVE_FOUNDER && rate.LessThanOrEqual(decimal.NewFromInt(80))) {
+			sm.Result = null.StringFrom(boiler.SyndicateMotionResultFAILED)
+			// update motion result and actual end time
+			_, err := sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to update motion result")
+			}
+
+			return
 		}
-
-		return
 	}
 
 	sm.Result = null.StringFrom(boiler.SyndicateMotionResultPASSED)
@@ -674,10 +775,10 @@ func (sm *SyndicateMotion) parseResult() {
 
 	// process action
 	switch sm.Type {
-	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
-		sm.updateGeneralDetail()
-	case boiler.SyndicateMotionTypeCHANGE_PAYMENT_SETTING:
-		sm.updatePaymentSetting()
+	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL,
+		boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE,
+		boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
+		sm.updateSyndicate()
 	case boiler.SyndicateMotionTypeADD_RULE:
 		sm.addRule()
 	case boiler.SyndicateMotionTypeREMOVE_RULE:
@@ -691,7 +792,6 @@ func (sm *SyndicateMotion) parseResult() {
 	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
 		sm.removeFounder()
 	}
-
 }
 
 // broadcastUpdatedSyndicate broadcast the latest detail of the syndicate
@@ -701,6 +801,8 @@ func (sm *SyndicateMotion) broadcastUpdatedSyndicate() {
 		gamelog.L.Error().Err(err).Msg("Failed to load updated syndicate")
 		return
 	}
+
+	sm.syndicate.store(s)
 
 	ws.PublishMessage("", "", s)
 }
@@ -720,14 +822,14 @@ func (sm *SyndicateMotion) broadcastUpdateRules() {
 	ws.PublishMessage("", "", rules)
 }
 
-// updateGeneralDetail update syndicate's name, symbol and naming convention
-func (sm *SyndicateMotion) updateGeneralDetail() {
+// updateGeneralDetail update syndicate's join fee, exit fee and battle win cut percentage
+func (sm *SyndicateMotion) updateSyndicate() {
 	syndicate := &boiler.Syndicate{
 		ID: sm.syndicate.ID,
 	}
 	updateCols := []string{}
-	if sm.NewName.Valid {
-		syndicate.Name = sm.NewName.String
+	if sm.NewSyndicateName.Valid {
+		syndicate.Name = sm.NewSyndicateName.String
 		updateCols = append(updateCols, boiler.SyndicateColumns.Name)
 	}
 	if sm.NewSymbolID.Valid {
@@ -738,22 +840,6 @@ func (sm *SyndicateMotion) updateGeneralDetail() {
 		syndicate.NamingConvention = sm.NewNamingConvention
 		updateCols = append(updateCols, boiler.SyndicateColumns.NamingConvention)
 	}
-
-	_, err := syndicate.Update(gamedb.StdConn, boil.Whitelist(updateCols...))
-	if err != nil {
-		gamelog.L.Error().Interface("motion", sm.SyndicateMotion).Interface("updated syndicate", syndicate).Strs("updated column", updateCols).Err(err).Msg("Failed to update syndicate from motion")
-		return
-	}
-
-	sm.broadcastUpdatedSyndicate()
-}
-
-// updateGeneralDetail update syndicate's join fee, exit fee and battle win cut percentage
-func (sm *SyndicateMotion) updatePaymentSetting() {
-	syndicate := &boiler.Syndicate{
-		ID: sm.syndicate.ID,
-	}
-	updateCols := []string{}
 	if sm.NewJoinFee.Valid {
 		syndicate.JoinFee = sm.NewJoinFee.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.JoinFee)
@@ -762,22 +848,18 @@ func (sm *SyndicateMotion) updatePaymentSetting() {
 		syndicate.ExitFee = sm.NewExitFee.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.ExitFee)
 	}
-
 	if sm.NewDeployingMemberCutPercentage.Valid {
 		syndicate.DeployingMemberCutPercentage = sm.NewDeployingMemberCutPercentage.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.DeployingMemberCutPercentage)
 	}
-
 	if sm.NewMemberAssistCutPercentage.Valid {
 		syndicate.MemberAssistCutPercentage = sm.NewMemberAssistCutPercentage.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.MemberAssistCutPercentage)
 	}
-
 	if sm.NewMechOwnerCutPercentage.Valid {
 		syndicate.MechOwnerCutPercentage = sm.NewMechOwnerCutPercentage.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.MechOwnerCutPercentage)
 	}
-
 	if sm.NewSyndicateCutPercentage.Valid {
 		syndicate.SyndicateCutPercentage = sm.NewSyndicateCutPercentage.Decimal
 		updateCols = append(updateCols, boiler.SyndicateColumns.SyndicateCutPercentage)
@@ -988,6 +1070,7 @@ func (sm *SyndicateMotion) changeRule() {
 	}
 	sm.broadcastUpdateRules()
 }
+
 func (sm *SyndicateMotion) appointDirector() {
 	player, err := boiler.Players(
 		boiler.PlayerWhere.ID.EQ(sm.DirectorID.String),

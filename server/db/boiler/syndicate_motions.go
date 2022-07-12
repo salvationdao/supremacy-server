@@ -29,17 +29,28 @@ type SyndicateMotion struct {
 	Type                            string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	IssuedByID                      string              `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
 	Reason                          string              `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
+	OldSymbolID                     null.String         `boiler:"old_symbol_id" boil:"old_symbol_id" json:"old_symbol_id,omitempty" toml:"old_symbol_id" yaml:"old_symbol_id,omitempty"`
 	NewSymbolID                     null.String         `boiler:"new_symbol_id" boil:"new_symbol_id" json:"new_symbol_id,omitempty" toml:"new_symbol_id" yaml:"new_symbol_id,omitempty"`
-	NewName                         null.String         `boiler:"new_name" boil:"new_name" json:"new_name,omitempty" toml:"new_name" yaml:"new_name,omitempty"`
+	OldSyndicateName                null.String         `boiler:"old_syndicate_name" boil:"old_syndicate_name" json:"old_syndicate_name,omitempty" toml:"old_syndicate_name" yaml:"old_syndicate_name,omitempty"`
+	NewSyndicateName                null.String         `boiler:"new_syndicate_name" boil:"new_syndicate_name" json:"new_syndicate_name,omitempty" toml:"new_syndicate_name" yaml:"new_syndicate_name,omitempty"`
+	OldNamingConvention             null.String         `boiler:"old_naming_convention" boil:"old_naming_convention" json:"old_naming_convention,omitempty" toml:"old_naming_convention" yaml:"old_naming_convention,omitempty"`
 	NewNamingConvention             null.String         `boiler:"new_naming_convention" boil:"new_naming_convention" json:"new_naming_convention,omitempty" toml:"new_naming_convention" yaml:"new_naming_convention,omitempty"`
+	OldJoinFee                      decimal.NullDecimal `boiler:"old_join_fee" boil:"old_join_fee" json:"old_join_fee,omitempty" toml:"old_join_fee" yaml:"old_join_fee,omitempty"`
 	NewJoinFee                      decimal.NullDecimal `boiler:"new_join_fee" boil:"new_join_fee" json:"new_join_fee,omitempty" toml:"new_join_fee" yaml:"new_join_fee,omitempty"`
+	OldExitFee                      decimal.NullDecimal `boiler:"old_exit_fee" boil:"old_exit_fee" json:"old_exit_fee,omitempty" toml:"old_exit_fee" yaml:"old_exit_fee,omitempty"`
 	NewExitFee                      decimal.NullDecimal `boiler:"new_exit_fee" boil:"new_exit_fee" json:"new_exit_fee,omitempty" toml:"new_exit_fee" yaml:"new_exit_fee,omitempty"`
+	OldDeployingMemberCutPercentage decimal.NullDecimal `boiler:"old_deploying_member_cut_percentage" boil:"old_deploying_member_cut_percentage" json:"old_deploying_member_cut_percentage,omitempty" toml:"old_deploying_member_cut_percentage" yaml:"old_deploying_member_cut_percentage,omitempty"`
 	NewDeployingMemberCutPercentage decimal.NullDecimal `boiler:"new_deploying_member_cut_percentage" boil:"new_deploying_member_cut_percentage" json:"new_deploying_member_cut_percentage,omitempty" toml:"new_deploying_member_cut_percentage" yaml:"new_deploying_member_cut_percentage,omitempty"`
+	OldMemberAssistCutPercentage    decimal.NullDecimal `boiler:"old_member_assist_cut_percentage" boil:"old_member_assist_cut_percentage" json:"old_member_assist_cut_percentage,omitempty" toml:"old_member_assist_cut_percentage" yaml:"old_member_assist_cut_percentage,omitempty"`
 	NewMemberAssistCutPercentage    decimal.NullDecimal `boiler:"new_member_assist_cut_percentage" boil:"new_member_assist_cut_percentage" json:"new_member_assist_cut_percentage,omitempty" toml:"new_member_assist_cut_percentage" yaml:"new_member_assist_cut_percentage,omitempty"`
+	OldMechOwnerCutPercentage       decimal.NullDecimal `boiler:"old_mech_owner_cut_percentage" boil:"old_mech_owner_cut_percentage" json:"old_mech_owner_cut_percentage,omitempty" toml:"old_mech_owner_cut_percentage" yaml:"old_mech_owner_cut_percentage,omitempty"`
 	NewMechOwnerCutPercentage       decimal.NullDecimal `boiler:"new_mech_owner_cut_percentage" boil:"new_mech_owner_cut_percentage" json:"new_mech_owner_cut_percentage,omitempty" toml:"new_mech_owner_cut_percentage" yaml:"new_mech_owner_cut_percentage,omitempty"`
+	OldSyndicateCutPercentage       decimal.NullDecimal `boiler:"old_syndicate_cut_percentage" boil:"old_syndicate_cut_percentage" json:"old_syndicate_cut_percentage,omitempty" toml:"old_syndicate_cut_percentage" yaml:"old_syndicate_cut_percentage,omitempty"`
 	NewSyndicateCutPercentage       decimal.NullDecimal `boiler:"new_syndicate_cut_percentage" boil:"new_syndicate_cut_percentage" json:"new_syndicate_cut_percentage,omitempty" toml:"new_syndicate_cut_percentage" yaml:"new_syndicate_cut_percentage,omitempty"`
 	RuleID                          null.String         `boiler:"rule_id" boil:"rule_id" json:"rule_id,omitempty" toml:"rule_id" yaml:"rule_id,omitempty"`
+	OldRuleNumber                   null.Int            `boiler:"old_rule_number" boil:"old_rule_number" json:"old_rule_number,omitempty" toml:"old_rule_number" yaml:"old_rule_number,omitempty"`
 	NewRuleNumber                   null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
+	OldRuleContent                  null.String         `boiler:"old_rule_content" boil:"old_rule_content" json:"old_rule_content,omitempty" toml:"old_rule_content" yaml:"old_rule_content,omitempty"`
 	NewRuleContent                  null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
 	DirectorID                      null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
 	Result                          null.String         `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
@@ -59,17 +70,28 @@ var SyndicateMotionColumns = struct {
 	Type                            string
 	IssuedByID                      string
 	Reason                          string
+	OldSymbolID                     string
 	NewSymbolID                     string
-	NewName                         string
+	OldSyndicateName                string
+	NewSyndicateName                string
+	OldNamingConvention             string
 	NewNamingConvention             string
+	OldJoinFee                      string
 	NewJoinFee                      string
+	OldExitFee                      string
 	NewExitFee                      string
+	OldDeployingMemberCutPercentage string
 	NewDeployingMemberCutPercentage string
+	OldMemberAssistCutPercentage    string
 	NewMemberAssistCutPercentage    string
+	OldMechOwnerCutPercentage       string
 	NewMechOwnerCutPercentage       string
+	OldSyndicateCutPercentage       string
 	NewSyndicateCutPercentage       string
 	RuleID                          string
+	OldRuleNumber                   string
 	NewRuleNumber                   string
+	OldRuleContent                  string
 	NewRuleContent                  string
 	DirectorID                      string
 	Result                          string
@@ -84,17 +106,28 @@ var SyndicateMotionColumns = struct {
 	Type:                            "type",
 	IssuedByID:                      "issued_by_id",
 	Reason:                          "reason",
+	OldSymbolID:                     "old_symbol_id",
 	NewSymbolID:                     "new_symbol_id",
-	NewName:                         "new_name",
+	OldSyndicateName:                "old_syndicate_name",
+	NewSyndicateName:                "new_syndicate_name",
+	OldNamingConvention:             "old_naming_convention",
 	NewNamingConvention:             "new_naming_convention",
+	OldJoinFee:                      "old_join_fee",
 	NewJoinFee:                      "new_join_fee",
+	OldExitFee:                      "old_exit_fee",
 	NewExitFee:                      "new_exit_fee",
+	OldDeployingMemberCutPercentage: "old_deploying_member_cut_percentage",
 	NewDeployingMemberCutPercentage: "new_deploying_member_cut_percentage",
+	OldMemberAssistCutPercentage:    "old_member_assist_cut_percentage",
 	NewMemberAssistCutPercentage:    "new_member_assist_cut_percentage",
+	OldMechOwnerCutPercentage:       "old_mech_owner_cut_percentage",
 	NewMechOwnerCutPercentage:       "new_mech_owner_cut_percentage",
+	OldSyndicateCutPercentage:       "old_syndicate_cut_percentage",
 	NewSyndicateCutPercentage:       "new_syndicate_cut_percentage",
 	RuleID:                          "rule_id",
+	OldRuleNumber:                   "old_rule_number",
 	NewRuleNumber:                   "new_rule_number",
+	OldRuleContent:                  "old_rule_content",
 	NewRuleContent:                  "new_rule_content",
 	DirectorID:                      "director_id",
 	Result:                          "result",
@@ -111,17 +144,28 @@ var SyndicateMotionTableColumns = struct {
 	Type                            string
 	IssuedByID                      string
 	Reason                          string
+	OldSymbolID                     string
 	NewSymbolID                     string
-	NewName                         string
+	OldSyndicateName                string
+	NewSyndicateName                string
+	OldNamingConvention             string
 	NewNamingConvention             string
+	OldJoinFee                      string
 	NewJoinFee                      string
+	OldExitFee                      string
 	NewExitFee                      string
+	OldDeployingMemberCutPercentage string
 	NewDeployingMemberCutPercentage string
+	OldMemberAssistCutPercentage    string
 	NewMemberAssistCutPercentage    string
+	OldMechOwnerCutPercentage       string
 	NewMechOwnerCutPercentage       string
+	OldSyndicateCutPercentage       string
 	NewSyndicateCutPercentage       string
 	RuleID                          string
+	OldRuleNumber                   string
 	NewRuleNumber                   string
+	OldRuleContent                  string
 	NewRuleContent                  string
 	DirectorID                      string
 	Result                          string
@@ -136,17 +180,28 @@ var SyndicateMotionTableColumns = struct {
 	Type:                            "syndicate_motions.type",
 	IssuedByID:                      "syndicate_motions.issued_by_id",
 	Reason:                          "syndicate_motions.reason",
+	OldSymbolID:                     "syndicate_motions.old_symbol_id",
 	NewSymbolID:                     "syndicate_motions.new_symbol_id",
-	NewName:                         "syndicate_motions.new_name",
+	OldSyndicateName:                "syndicate_motions.old_syndicate_name",
+	NewSyndicateName:                "syndicate_motions.new_syndicate_name",
+	OldNamingConvention:             "syndicate_motions.old_naming_convention",
 	NewNamingConvention:             "syndicate_motions.new_naming_convention",
+	OldJoinFee:                      "syndicate_motions.old_join_fee",
 	NewJoinFee:                      "syndicate_motions.new_join_fee",
+	OldExitFee:                      "syndicate_motions.old_exit_fee",
 	NewExitFee:                      "syndicate_motions.new_exit_fee",
+	OldDeployingMemberCutPercentage: "syndicate_motions.old_deploying_member_cut_percentage",
 	NewDeployingMemberCutPercentage: "syndicate_motions.new_deploying_member_cut_percentage",
+	OldMemberAssistCutPercentage:    "syndicate_motions.old_member_assist_cut_percentage",
 	NewMemberAssistCutPercentage:    "syndicate_motions.new_member_assist_cut_percentage",
+	OldMechOwnerCutPercentage:       "syndicate_motions.old_mech_owner_cut_percentage",
 	NewMechOwnerCutPercentage:       "syndicate_motions.new_mech_owner_cut_percentage",
+	OldSyndicateCutPercentage:       "syndicate_motions.old_syndicate_cut_percentage",
 	NewSyndicateCutPercentage:       "syndicate_motions.new_syndicate_cut_percentage",
 	RuleID:                          "syndicate_motions.rule_id",
+	OldRuleNumber:                   "syndicate_motions.old_rule_number",
 	NewRuleNumber:                   "syndicate_motions.new_rule_number",
+	OldRuleContent:                  "syndicate_motions.old_rule_content",
 	NewRuleContent:                  "syndicate_motions.new_rule_content",
 	DirectorID:                      "syndicate_motions.director_id",
 	Result:                          "syndicate_motions.result",
@@ -165,17 +220,28 @@ var SyndicateMotionWhere = struct {
 	Type                            whereHelperstring
 	IssuedByID                      whereHelperstring
 	Reason                          whereHelperstring
+	OldSymbolID                     whereHelpernull_String
 	NewSymbolID                     whereHelpernull_String
-	NewName                         whereHelpernull_String
+	OldSyndicateName                whereHelpernull_String
+	NewSyndicateName                whereHelpernull_String
+	OldNamingConvention             whereHelpernull_String
 	NewNamingConvention             whereHelpernull_String
+	OldJoinFee                      whereHelperdecimal_NullDecimal
 	NewJoinFee                      whereHelperdecimal_NullDecimal
+	OldExitFee                      whereHelperdecimal_NullDecimal
 	NewExitFee                      whereHelperdecimal_NullDecimal
+	OldDeployingMemberCutPercentage whereHelperdecimal_NullDecimal
 	NewDeployingMemberCutPercentage whereHelperdecimal_NullDecimal
+	OldMemberAssistCutPercentage    whereHelperdecimal_NullDecimal
 	NewMemberAssistCutPercentage    whereHelperdecimal_NullDecimal
+	OldMechOwnerCutPercentage       whereHelperdecimal_NullDecimal
 	NewMechOwnerCutPercentage       whereHelperdecimal_NullDecimal
+	OldSyndicateCutPercentage       whereHelperdecimal_NullDecimal
 	NewSyndicateCutPercentage       whereHelperdecimal_NullDecimal
 	RuleID                          whereHelpernull_String
+	OldRuleNumber                   whereHelpernull_Int
 	NewRuleNumber                   whereHelpernull_Int
+	OldRuleContent                  whereHelpernull_String
 	NewRuleContent                  whereHelpernull_String
 	DirectorID                      whereHelpernull_String
 	Result                          whereHelpernull_String
@@ -190,17 +256,28 @@ var SyndicateMotionWhere = struct {
 	Type:                            whereHelperstring{field: "\"syndicate_motions\".\"type\""},
 	IssuedByID:                      whereHelperstring{field: "\"syndicate_motions\".\"issued_by_id\""},
 	Reason:                          whereHelperstring{field: "\"syndicate_motions\".\"reason\""},
+	OldSymbolID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"old_symbol_id\""},
 	NewSymbolID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"new_symbol_id\""},
-	NewName:                         whereHelpernull_String{field: "\"syndicate_motions\".\"new_name\""},
+	OldSyndicateName:                whereHelpernull_String{field: "\"syndicate_motions\".\"old_syndicate_name\""},
+	NewSyndicateName:                whereHelpernull_String{field: "\"syndicate_motions\".\"new_syndicate_name\""},
+	OldNamingConvention:             whereHelpernull_String{field: "\"syndicate_motions\".\"old_naming_convention\""},
 	NewNamingConvention:             whereHelpernull_String{field: "\"syndicate_motions\".\"new_naming_convention\""},
+	OldJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_join_fee\""},
 	NewJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_join_fee\""},
+	OldExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_exit_fee\""},
 	NewExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_exit_fee\""},
+	OldDeployingMemberCutPercentage: whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_deploying_member_cut_percentage\""},
 	NewDeployingMemberCutPercentage: whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_deploying_member_cut_percentage\""},
+	OldMemberAssistCutPercentage:    whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_member_assist_cut_percentage\""},
 	NewMemberAssistCutPercentage:    whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_member_assist_cut_percentage\""},
+	OldMechOwnerCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_mech_owner_cut_percentage\""},
 	NewMechOwnerCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_mech_owner_cut_percentage\""},
+	OldSyndicateCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_syndicate_cut_percentage\""},
 	NewSyndicateCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_syndicate_cut_percentage\""},
 	RuleID:                          whereHelpernull_String{field: "\"syndicate_motions\".\"rule_id\""},
+	OldRuleNumber:                   whereHelpernull_Int{field: "\"syndicate_motions\".\"old_rule_number\""},
 	NewRuleNumber:                   whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
+	OldRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"old_rule_content\""},
 	NewRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
 	DirectorID:                      whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
 	Result:                          whereHelpernull_String{field: "\"syndicate_motions\".\"result\""},
@@ -216,6 +293,7 @@ var SyndicateMotionRels = struct {
 	Director                   string
 	IssuedBy                   string
 	NewSymbol                  string
+	OldSymbol                  string
 	Rule                       string
 	Syndicate                  string
 	MotionSyndicateMotionVotes string
@@ -223,6 +301,7 @@ var SyndicateMotionRels = struct {
 	Director:                   "Director",
 	IssuedBy:                   "IssuedBy",
 	NewSymbol:                  "NewSymbol",
+	OldSymbol:                  "OldSymbol",
 	Rule:                       "Rule",
 	Syndicate:                  "Syndicate",
 	MotionSyndicateMotionVotes: "MotionSyndicateMotionVotes",
@@ -233,6 +312,7 @@ type syndicateMotionR struct {
 	Director                   *Player                  `boiler:"Director" boil:"Director" json:"Director" toml:"Director" yaml:"Director"`
 	IssuedBy                   *Player                  `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
 	NewSymbol                  *Symbol                  `boiler:"NewSymbol" boil:"NewSymbol" json:"NewSymbol" toml:"NewSymbol" yaml:"NewSymbol"`
+	OldSymbol                  *Symbol                  `boiler:"OldSymbol" boil:"OldSymbol" json:"OldSymbol" toml:"OldSymbol" yaml:"OldSymbol"`
 	Rule                       *SyndicateRule           `boiler:"Rule" boil:"Rule" json:"Rule" toml:"Rule" yaml:"Rule"`
 	Syndicate                  *Syndicate               `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
 	MotionSyndicateMotionVotes SyndicateMotionVoteSlice `boiler:"MotionSyndicateMotionVotes" boil:"MotionSyndicateMotionVotes" json:"MotionSyndicateMotionVotes" toml:"MotionSyndicateMotionVotes" yaml:"MotionSyndicateMotionVotes"`
@@ -247,9 +327,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_member_cut_percentage", "new_member_assist_cut_percentage", "new_mech_owner_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol_id", "new_symbol_id", "old_syndicate_name", "new_syndicate_name", "old_naming_convention", "new_naming_convention", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_member_cut_percentage", "new_member_assist_cut_percentage", "new_mech_owner_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol_id", "new_symbol_id", "old_syndicate_name", "new_syndicate_name", "old_naming_convention", "new_naming_convention", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )
@@ -530,6 +610,21 @@ func (o *SyndicateMotion) IssuedBy(mods ...qm.QueryMod) playerQuery {
 func (o *SyndicateMotion) NewSymbol(mods ...qm.QueryMod) symbolQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.NewSymbolID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Symbols(queryMods...)
+	queries.SetFrom(query.Query, "\"symbols\"")
+
+	return query
+}
+
+// OldSymbol pointed to by the foreign key.
+func (o *SyndicateMotion) OldSymbol(mods ...qm.QueryMod) symbolQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OldSymbolID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -908,6 +1003,115 @@ func (syndicateMotionL) LoadNewSymbol(e boil.Executor, singular bool, maybeSyndi
 					foreign.R = &symbolR{}
 				}
 				foreign.R.NewSymbolSyndicateMotions = append(foreign.R.NewSymbolSyndicateMotions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOldSymbol allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateMotionL) LoadOldSymbol(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		if !queries.IsNil(object.OldSymbolID) {
+			args = append(args, object.OldSymbolID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.OldSymbolID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.OldSymbolID) {
+				args = append(args, obj.OldSymbolID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`symbols`),
+		qm.WhereIn(`symbols.id in ?`, args...),
+		qmhelper.WhereIsNull(`symbols.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Symbol")
+	}
+
+	var resultSlice []*Symbol
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Symbol")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for symbols")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for symbols")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.OldSymbol = foreign
+		if foreign.R == nil {
+			foreign.R = &symbolR{}
+		}
+		foreign.R.OldSymbolSyndicateMotions = append(foreign.R.OldSymbolSyndicateMotions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.OldSymbolID, foreign.ID) {
+				local.R.OldSymbol = foreign
+				if foreign.R == nil {
+					foreign.R = &symbolR{}
+				}
+				foreign.R.OldSymbolSyndicateMotions = append(foreign.R.OldSymbolSyndicateMotions, local)
 				break
 			}
 		}
@@ -1428,6 +1632,85 @@ func (o *SyndicateMotion) RemoveNewSymbol(exec boil.Executor, related *Symbol) e
 			related.R.NewSymbolSyndicateMotions[i] = related.R.NewSymbolSyndicateMotions[ln-1]
 		}
 		related.R.NewSymbolSyndicateMotions = related.R.NewSymbolSyndicateMotions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetOldSymbol of the syndicateMotion to the related item.
+// Sets o.R.OldSymbol to related.
+// Adds o to related.R.OldSymbolSyndicateMotions.
+func (o *SyndicateMotion) SetOldSymbol(exec boil.Executor, insert bool, related *Symbol) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"old_symbol_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.OldSymbolID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			OldSymbol: related,
+		}
+	} else {
+		o.R.OldSymbol = related
+	}
+
+	if related.R == nil {
+		related.R = &symbolR{
+			OldSymbolSyndicateMotions: SyndicateMotionSlice{o},
+		}
+	} else {
+		related.R.OldSymbolSyndicateMotions = append(related.R.OldSymbolSyndicateMotions, o)
+	}
+
+	return nil
+}
+
+// RemoveOldSymbol relationship.
+// Sets o.R.OldSymbol to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *SyndicateMotion) RemoveOldSymbol(exec boil.Executor, related *Symbol) error {
+	var err error
+
+	queries.SetScanner(&o.OldSymbolID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("old_symbol_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.OldSymbol = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.OldSymbolSyndicateMotions {
+		if queries.Equal(o.OldSymbolID, ri.OldSymbolID) {
+			continue
+		}
+
+		ln := len(related.R.OldSymbolSyndicateMotions)
+		if ln > 1 && i < ln-1 {
+			related.R.OldSymbolSyndicateMotions[i] = related.R.OldSymbolSyndicateMotions[ln-1]
+		}
+		related.R.OldSymbolSyndicateMotions = related.R.OldSymbolSyndicateMotions[:ln-1]
 		break
 	}
 	return nil
