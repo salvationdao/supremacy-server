@@ -7,6 +7,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -279,64 +280,30 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 	return weaponHangarSilo, nil
 }
 
-func GetUserMechHangarItemsWithMechID(userID, mechID string, trx boil.Executor) (*SiloType, error) {
+func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil.Executor) (*SiloType, error) {
 	tx := trx
 	if trx == nil {
 		tx = gamedb.StdConn
 	}
-
-	q := `
-	SELECT 	ci.item_type    as type,
-			ci.id           as ownership_id,
-       		m.model_id  	as static_id,
-       		ms.blueprint_id as skin_id
-	FROM collection_items ci
-         	INNER JOIN mechs m on
-    			m.id = ci.item_id
-         	INNER JOIN mech_skin ms on
-        		ms.id = coalesce(
-            			m.chassis_skin_id,
-            			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
-        				)
-	WHERE ci.owner_id = $1
-  	AND (ci.item_type = 'mech')
-	AND (m.id = '$2');
-	`
-	rows, err := boiler.NewQuery(qm.SQL(q, userID, mechID)).Query(tx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, terror.Error(err, "failed to query for finding silos")
+	mechSiloType := &SiloType{
+		Type:        "mech",
+		OwnershipID: mech.CollectionItemID,
+		StaticID:    &mech.Model.ID,
 	}
 
-	mechSiloType := &SiloType{}
-	defer rows.Close()
-	for rows.Next() {
-
-		err := rows.Scan(&mechSiloType.Type, &mechSiloType.OwnershipID, &mechSiloType.StaticID, &mechSiloType.SkinIDStr)
-		if err != nil {
-			return nil, terror.Error(err, "failed to scan rows")
-		}
-
-	}
-
-	collectionItem, err := boiler.FindCollectionItem(tx, mechSiloType.OwnershipID)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get collection item for")
-	}
 	var mechAttributes []MechSiloAccessories
-	mech, err := Mech(tx, collectionItem.ItemID)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get mech info")
-	}
+
 	if mech.IsCompleteLimited() || mech.IsCompleteGenesis() {
+
+		if mech.ChassisSkin == nil {
+			return nil, terror.Error(fmt.Errorf("default mech with no chassis skin"), "Fail to get chassis skin for genesis or limited mech")
+		}
+
 		mechDefaultSkin := &SiloSkin{
 			Type:        "skin",
 			OwnershipID: nil,
-			StaticID:    mechSiloType.SkinIDStr,
+			StaticID:    &mech.ChassisSkin.BlueprintID,
 		}
-		mechSiloType.SkinIDStr = nil
 		mechSiloType.SkinID = mechDefaultSkin
 		mechAttributes = []MechSiloAccessories{}
 		return mechSiloType, nil
@@ -424,25 +391,10 @@ func GetUserMechHangarItemsWithMechID(userID, mechID string, trx boil.Executor) 
 	return mechSiloType, nil
 }
 
-func GetUserWeaponHangarItemsWithID(userID, weaponID string, trx boil.Executor) (*SiloType, error) {
+func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx boil.Executor) (*SiloType, error) {
 	tx := trx
 	if trx == nil {
 		tx = gamedb.StdConn
-	}
-
-	ownedWeapon, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-		boiler.CollectionItemWhere.OwnerID.EQ(userID),
-		boiler.CollectionItemWhere.ID.EQ(weaponID),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to get user owned weapons")
-	}
-
-	weapon, err := Weapon(tx, ownedWeapon.ItemID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("owned weapon col id", ownedWeapon.ID).Msg("Failed to get weapon")
-		return nil, err
 	}
 
 	if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
@@ -455,8 +407,8 @@ func GetUserWeaponHangarItemsWithID(userID, weaponID string, trx boil.Executor) 
 	}
 
 	weaponSilo := &SiloType{
-		Type:        ownedWeapon.ItemType,
-		OwnershipID: ownedWeapon.ID,
+		Type:        weapon.CollectionItem.ItemType,
+		OwnershipID: weapon.CollectionItemID,
 		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
 	}
 

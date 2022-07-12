@@ -608,11 +608,18 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	if req.Payload.IsHangar != nil {
 		isHangarOpening = *req.Payload.IsHangar
 	}
-
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	).One(gamedb.StdConn)
+	var collectionItem *boiler.CollectionItem
+	if isHangarOpening {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	} else {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	}
 	if err != nil {
 		return terror.Error(err, "Could not find collection item, try again or contact support.")
 	}
@@ -810,8 +817,10 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 
 		if isHangarOpening {
-			hangarResp, err = db.GetUserMechHangarItemsWithMechID(user.ID, mech.ID, tx)
+			hangarResp, err = db.GetUserMechHangarItemsWithMechID(mech, user.ID, tx)
 			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get mech hangar items while opening crate")
 				return terror.Error(err, "Failed to get user mech hangar from items")
 			}
 		}
@@ -851,8 +860,10 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 
 		if isHangarOpening {
-			hangarResp, err = db.GetUserWeaponHangarItemsWithID(user.ID, weapon.ID, tx)
+			hangarResp, err = db.GetUserWeaponHangarItemsWithID(weapon, user.ID, tx)
 			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get weapon hangar items while opening crate")
 				return terror.Error(err, "Failed to get user mech hangar from items")
 			}
 		}
