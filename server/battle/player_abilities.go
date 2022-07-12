@@ -107,8 +107,24 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	// check player is banned
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player ban")
+		return terror.Error(err, "Failed to trigger ability")
+	}
+
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned for triggering ability"), "You are banned for triggering ability")
+	}
+
 	req := &PlayerAbilityUseRequest{}
-	err := json.Unmarshal(payload, req)
+	err = json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")

@@ -49,7 +49,6 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
 
 	// punish vote related
-	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
@@ -250,25 +249,28 @@ func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *h
 }
 
 type PlayerPunishment struct {
-	*boiler.PunishedPlayer
-	RelatedPunishVote *boiler.PunishVote   `json:"related_punish_vote"`
-	PunishOption      *boiler.PunishOption `json:"punish_option"`
+	*boiler.PlayerBan
+	RelatedPunishVote *boiler.PunishVote `json:"related_punish_vote"`
+	Restrictions      []string           `json:"restrictions"`
+	BanByUser         *boiler.Player     `json:"ban_by_user"`
+	IsPermanent       bool               `json:"is_permanent"`
 }
 
 const HubKeyPlayerPunishmentList = "PLAYER:PUNISHMENT:LIST"
 
 func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	punishments, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.Load(boiler.PunishedPlayerRels.PunishOption),
-		qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+	// get current player's punishment
+	punishments, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
 		return terror.Error(err, "Failed to get player's punishment from db")
 	}
-
 	if punishments == nil || len(punishments) == 0 {
 		reply([]*PlayerPunishment{})
 		return nil
@@ -277,15 +279,34 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 	playerPunishments := []*PlayerPunishment{}
 	for _, punishment := range punishments {
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
-			PunishedPlayer:    punishment,
+			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
-			PunishOption:      punishment.R.PunishOption,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
 
 	reply(playerPunishments)
 
 	return nil
+}
+
+func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
+	restrictions := []string{}
+	if pb.BanLocationSelect {
+		restrictions = append(restrictions, RestrictionLocationSelect, RestrictionAbilityTrigger)
+	}
+	if pb.BanSendChat {
+		restrictions = append(restrictions, RestrictionChatSend)
+	}
+	if pb.BanViewChat {
+		restrictions = append(restrictions, RestrictionChatView)
+	}
+	if pb.BanSupsContribute {
+		restrictions = append(restrictions, RestrictionSupsContribute)
+	}
+	return restrictions
 }
 
 type PlayerActiveCheckRequest struct {
@@ -582,11 +603,30 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	defer pc.API.FactionPunishVote[factionID].Unlock()
 
 	// check player is currently punished with the same option
-	punishedPlayer, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PunishOptionID.EQ(punishOption.ID),
-	).One(gamedb.StdConn)
+	queries := []qm.QueryMod{
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
+	}
+
+	switch punishOption.Key {
+	case "restrict_sups_contribution":
+		queries = append(queries, boiler.PlayerBanWhere.BanSupsContribute.EQ(true))
+	case "restrict_location_select":
+		queries = append(queries, boiler.PlayerBanWhere.BanLocationSelect.EQ(true))
+
+		// skip, if the player is in the team kill courtroom
+		if pc.API.BattleArena.SystemBanManager.HasOngoingTeamKillCases(intendToBenPlayer.ID) {
+			return terror.Error(fmt.Errorf("player is listed on system ban"), "The player is already listed on system ban list")
+		}
+	case "restrict_chat":
+		queries = append(queries, boiler.PlayerBanWhere.BanSendChat.EQ(true))
+	}
+
+	queries = append(queries,
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	)
+
+	punishedPlayer, err := boiler.PlayerBans(queries...).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get the punished player from db")
 	}
@@ -822,15 +862,16 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 
 	// broadcast player punishment list
 	// get current player's punishment
-	punishments, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.Load(boiler.PunishedPlayerRels.PunishOption),
-		qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+	punishments, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
-		return nil
+		return terror.Error(err, "Failed to get player's punishment from db")
 	}
 
 	if punishments == nil || len(punishments) == 0 {
@@ -840,14 +881,16 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	playerPunishments := []*PlayerPunishment{}
 	for _, punishment := range punishments {
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
-			PunishedPlayer:    punishment,
+			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
-			PunishOption:      punishment.R.PunishOption,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
 
 	// send to the player
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
+	ws.PublishMessage(fmt.Sprintf("/user/%s/punishment_list", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
 
 	return nil
 }

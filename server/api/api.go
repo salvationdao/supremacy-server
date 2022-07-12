@@ -256,6 +256,7 @@ func NewAPI(
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 			}))
 
 			// secured faction route ws
@@ -393,6 +394,26 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 				return
 			}
 
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				fmt.Fprintf(w, "invalid ip address")
+				return
+			}
+
 			if !user.FactionID.Valid {
 				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
 				return
@@ -450,6 +471,25 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 					return
 				}
 				next.ServeHTTP(w, r)
+				return
+			}
+
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
 				return
 			}
 

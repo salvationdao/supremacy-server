@@ -54,6 +54,11 @@ const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 
 const KeyInstantPassRequiredAmount KVKey = "instant_pass_required_amount"
+const KeyJudgingCountdownSeconds KVKey = "system_ban_judging_countdown_seconds"
+const KeySystemBanTeamKillDefaultReason KVKey = "system_ban_team_kill_default_reason"
+const KeySystemBanTeamKillBanBaseDurationHours KVKey = "system_ban_team_kill_ban_base_duration_hours"
+const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ban_duration_multiplier"
+const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
