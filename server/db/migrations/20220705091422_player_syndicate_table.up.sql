@@ -21,8 +21,16 @@ CREATE TABLE syndicates(
     symbol_id uuid NOT NULL REFERENCES symbols (id),
     naming_convention text,
     seat_count int NOT NULL DEFAULT 10,
-    join_fee numeric(28) NOT NULL,
-    exit_fee numeric(28) NOT NULL,
+
+    -- payment detail
+    join_fee numeric(28) NOT NULL default 0,
+    exit_fee numeric(28) NOT NULL default 0,
+
+    -- battle win columns
+    deploying_member_cut_percentage decimal NOT NULL DEFAULT 0,
+    member_assist_cut_percentage decimal NOT NULL DEFAULT 0,
+    mech_owner_cut_percentage decimal NOT NULL DEFAULT 0,
+    syndicate_cut_percentage decimal NOT NULL DEFAULT 0,
 
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
@@ -53,28 +61,18 @@ CREATE TABLE syndicate_event_log(
     deleted_at timestamptz
 );
 
-CREATE TABLE syndicate_win_distributions(
-    id uuid primary key references syndicates(id),
-    deploying_user_percentage decimal NOT NULL DEFAULT 0,
-    ability_kill_percentage decimal NOT NULL DEFAULT 0,
-    mech_owner_percentage decimal NOT NULL DEFAULT 0,
-    syndicate_cut_percentage decimal NOT NULL DEFAULT 0,
-
-    created_at timestamptz not null default NOW(),
-    updated_at timestamptz not null default NOW(),
-    deleted_at timestamptz
-);
-
 CREATE TABLE syndicate_rules(
     id uuid primary key default gen_random_uuid(),
     syndicate_id uuid not null references syndicates(id),
-    number int not null default 1,
+    number int not null,
     content text not null,
 
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
 );
+
+CREATE INDEX IF NOT EXISTS idx_syndicate_rule_syndicate on syndicate_rules(syndicate_id);
 
 DROP TYPE IF EXISTS SYNDICATE_MOTION_TYPE;
 CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
@@ -110,9 +108,9 @@ CREATE TABLE syndicate_motions(
     -- payment change
     new_join_fee numeric(28),
     new_exit_fee numeric(28),
-    new_deploying_user_percentage decimal,
-    new_ability_kill_percentage decimal,
-    new_mech_owner_percentage decimal,
+    new_deploying_member_cut_percentage decimal,
+    new_member_assist_cut_percentage decimal,
+    new_mech_owner_cut_percentage decimal,
     new_syndicate_cut_percentage decimal,
 
     -- add/remove/change rule
@@ -123,7 +121,7 @@ CREATE TABLE syndicate_motions(
     -- appoint/remove director
     director_id uuid references players(id),
 
-    result SYNDICATE_MOTION_RESULT not null,
+    result SYNDICATE_MOTION_RESULT,
     ended_at timestamptz not null,
     actual_ended_at timestamptz,
     created_at timestamptz not null default NOW(),
@@ -141,3 +139,5 @@ CREATE TABLE syndicate_motion_votes(
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
 );
+
+CREATE INDEX IF NOT EXISTS idx_motion_vote_motion_id on syndicate_motion_votes(motion_id);

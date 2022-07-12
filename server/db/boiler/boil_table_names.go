@@ -106,7 +106,6 @@ var TableNames = struct {
 	SyndicateMotionVotes                               string
 	SyndicateMotions                                   string
 	SyndicateRules                                     string
-	SyndicateWinDistributions                          string
 	Syndicates                                         string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
@@ -225,7 +224,6 @@ var TableNames = struct {
 	SyndicateMotionVotes:         "syndicate_motion_votes",
 	SyndicateMotions:             "syndicate_motions",
 	SyndicateRules:               "syndicate_rules",
-	SyndicateWinDistributions:    "syndicate_win_distributions",
 	Syndicates:                   "syndicates",
 	TelegramNotifications:        "telegram_notifications",
 	TemplateBlueprints:           "template_blueprints",

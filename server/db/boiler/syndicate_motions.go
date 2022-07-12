@@ -24,191 +24,191 @@ import (
 
 // SyndicateMotion is an object representing the database table.
 type SyndicateMotion struct {
-	ID                         string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	SyndicateID                string              `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
-	Type                       string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	IssuedByID                 string              `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
-	Reason                     string              `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
-	NewSymbolID                null.String         `boiler:"new_symbol_id" boil:"new_symbol_id" json:"new_symbol_id,omitempty" toml:"new_symbol_id" yaml:"new_symbol_id,omitempty"`
-	NewName                    null.String         `boiler:"new_name" boil:"new_name" json:"new_name,omitempty" toml:"new_name" yaml:"new_name,omitempty"`
-	NewNamingConvention        null.String         `boiler:"new_naming_convention" boil:"new_naming_convention" json:"new_naming_convention,omitempty" toml:"new_naming_convention" yaml:"new_naming_convention,omitempty"`
-	NewJoinFee                 decimal.NullDecimal `boiler:"new_join_fee" boil:"new_join_fee" json:"new_join_fee,omitempty" toml:"new_join_fee" yaml:"new_join_fee,omitempty"`
-	NewExitFee                 decimal.NullDecimal `boiler:"new_exit_fee" boil:"new_exit_fee" json:"new_exit_fee,omitempty" toml:"new_exit_fee" yaml:"new_exit_fee,omitempty"`
-	NewDeployingUserPercentage decimal.NullDecimal `boiler:"new_deploying_user_percentage" boil:"new_deploying_user_percentage" json:"new_deploying_user_percentage,omitempty" toml:"new_deploying_user_percentage" yaml:"new_deploying_user_percentage,omitempty"`
-	NewAbilityKillPercentage   decimal.NullDecimal `boiler:"new_ability_kill_percentage" boil:"new_ability_kill_percentage" json:"new_ability_kill_percentage,omitempty" toml:"new_ability_kill_percentage" yaml:"new_ability_kill_percentage,omitempty"`
-	NewMechOwnerPercentage     decimal.NullDecimal `boiler:"new_mech_owner_percentage" boil:"new_mech_owner_percentage" json:"new_mech_owner_percentage,omitempty" toml:"new_mech_owner_percentage" yaml:"new_mech_owner_percentage,omitempty"`
-	NewSyndicateCutPercentage  decimal.NullDecimal `boiler:"new_syndicate_cut_percentage" boil:"new_syndicate_cut_percentage" json:"new_syndicate_cut_percentage,omitempty" toml:"new_syndicate_cut_percentage" yaml:"new_syndicate_cut_percentage,omitempty"`
-	RuleID                     null.String         `boiler:"rule_id" boil:"rule_id" json:"rule_id,omitempty" toml:"rule_id" yaml:"rule_id,omitempty"`
-	NewRuleNumber              null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
-	NewRuleContent             null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
-	DirectorID                 null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
-	Result                     string              `boiler:"result" boil:"result" json:"result" toml:"result" yaml:"result"`
-	EndedAt                    time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
-	ActualEndedAt              null.Time           `boiler:"actual_ended_at" boil:"actual_ended_at" json:"actual_ended_at,omitempty" toml:"actual_ended_at" yaml:"actual_ended_at,omitempty"`
-	CreatedAt                  time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt                  time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt                  null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                              string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	SyndicateID                     string              `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
+	Type                            string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	IssuedByID                      string              `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
+	Reason                          string              `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
+	NewSymbolID                     null.String         `boiler:"new_symbol_id" boil:"new_symbol_id" json:"new_symbol_id,omitempty" toml:"new_symbol_id" yaml:"new_symbol_id,omitempty"`
+	NewName                         null.String         `boiler:"new_name" boil:"new_name" json:"new_name,omitempty" toml:"new_name" yaml:"new_name,omitempty"`
+	NewNamingConvention             null.String         `boiler:"new_naming_convention" boil:"new_naming_convention" json:"new_naming_convention,omitempty" toml:"new_naming_convention" yaml:"new_naming_convention,omitempty"`
+	NewJoinFee                      decimal.NullDecimal `boiler:"new_join_fee" boil:"new_join_fee" json:"new_join_fee,omitempty" toml:"new_join_fee" yaml:"new_join_fee,omitempty"`
+	NewExitFee                      decimal.NullDecimal `boiler:"new_exit_fee" boil:"new_exit_fee" json:"new_exit_fee,omitempty" toml:"new_exit_fee" yaml:"new_exit_fee,omitempty"`
+	NewDeployingMemberCutPercentage decimal.NullDecimal `boiler:"new_deploying_member_cut_percentage" boil:"new_deploying_member_cut_percentage" json:"new_deploying_member_cut_percentage,omitempty" toml:"new_deploying_member_cut_percentage" yaml:"new_deploying_member_cut_percentage,omitempty"`
+	NewMemberAssistCutPercentage    decimal.NullDecimal `boiler:"new_member_assist_cut_percentage" boil:"new_member_assist_cut_percentage" json:"new_member_assist_cut_percentage,omitempty" toml:"new_member_assist_cut_percentage" yaml:"new_member_assist_cut_percentage,omitempty"`
+	NewMechOwnerCutPercentage       decimal.NullDecimal `boiler:"new_mech_owner_cut_percentage" boil:"new_mech_owner_cut_percentage" json:"new_mech_owner_cut_percentage,omitempty" toml:"new_mech_owner_cut_percentage" yaml:"new_mech_owner_cut_percentage,omitempty"`
+	NewSyndicateCutPercentage       decimal.NullDecimal `boiler:"new_syndicate_cut_percentage" boil:"new_syndicate_cut_percentage" json:"new_syndicate_cut_percentage,omitempty" toml:"new_syndicate_cut_percentage" yaml:"new_syndicate_cut_percentage,omitempty"`
+	RuleID                          null.String         `boiler:"rule_id" boil:"rule_id" json:"rule_id,omitempty" toml:"rule_id" yaml:"rule_id,omitempty"`
+	NewRuleNumber                   null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
+	NewRuleContent                  null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
+	DirectorID                      null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
+	Result                          null.String         `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
+	EndedAt                         time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
+	ActualEndedAt                   null.Time           `boiler:"actual_ended_at" boil:"actual_ended_at" json:"actual_ended_at,omitempty" toml:"actual_ended_at" yaml:"actual_ended_at,omitempty"`
+	CreatedAt                       time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt                       time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt                       null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *syndicateMotionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syndicateMotionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SyndicateMotionColumns = struct {
-	ID                         string
-	SyndicateID                string
-	Type                       string
-	IssuedByID                 string
-	Reason                     string
-	NewSymbolID                string
-	NewName                    string
-	NewNamingConvention        string
-	NewJoinFee                 string
-	NewExitFee                 string
-	NewDeployingUserPercentage string
-	NewAbilityKillPercentage   string
-	NewMechOwnerPercentage     string
-	NewSyndicateCutPercentage  string
-	RuleID                     string
-	NewRuleNumber              string
-	NewRuleContent             string
-	DirectorID                 string
-	Result                     string
-	EndedAt                    string
-	ActualEndedAt              string
-	CreatedAt                  string
-	UpdatedAt                  string
-	DeletedAt                  string
+	ID                              string
+	SyndicateID                     string
+	Type                            string
+	IssuedByID                      string
+	Reason                          string
+	NewSymbolID                     string
+	NewName                         string
+	NewNamingConvention             string
+	NewJoinFee                      string
+	NewExitFee                      string
+	NewDeployingMemberCutPercentage string
+	NewMemberAssistCutPercentage    string
+	NewMechOwnerCutPercentage       string
+	NewSyndicateCutPercentage       string
+	RuleID                          string
+	NewRuleNumber                   string
+	NewRuleContent                  string
+	DirectorID                      string
+	Result                          string
+	EndedAt                         string
+	ActualEndedAt                   string
+	CreatedAt                       string
+	UpdatedAt                       string
+	DeletedAt                       string
 }{
-	ID:                         "id",
-	SyndicateID:                "syndicate_id",
-	Type:                       "type",
-	IssuedByID:                 "issued_by_id",
-	Reason:                     "reason",
-	NewSymbolID:                "new_symbol_id",
-	NewName:                    "new_name",
-	NewNamingConvention:        "new_naming_convention",
-	NewJoinFee:                 "new_join_fee",
-	NewExitFee:                 "new_exit_fee",
-	NewDeployingUserPercentage: "new_deploying_user_percentage",
-	NewAbilityKillPercentage:   "new_ability_kill_percentage",
-	NewMechOwnerPercentage:     "new_mech_owner_percentage",
-	NewSyndicateCutPercentage:  "new_syndicate_cut_percentage",
-	RuleID:                     "rule_id",
-	NewRuleNumber:              "new_rule_number",
-	NewRuleContent:             "new_rule_content",
-	DirectorID:                 "director_id",
-	Result:                     "result",
-	EndedAt:                    "ended_at",
-	ActualEndedAt:              "actual_ended_at",
-	CreatedAt:                  "created_at",
-	UpdatedAt:                  "updated_at",
-	DeletedAt:                  "deleted_at",
+	ID:                              "id",
+	SyndicateID:                     "syndicate_id",
+	Type:                            "type",
+	IssuedByID:                      "issued_by_id",
+	Reason:                          "reason",
+	NewSymbolID:                     "new_symbol_id",
+	NewName:                         "new_name",
+	NewNamingConvention:             "new_naming_convention",
+	NewJoinFee:                      "new_join_fee",
+	NewExitFee:                      "new_exit_fee",
+	NewDeployingMemberCutPercentage: "new_deploying_member_cut_percentage",
+	NewMemberAssistCutPercentage:    "new_member_assist_cut_percentage",
+	NewMechOwnerCutPercentage:       "new_mech_owner_cut_percentage",
+	NewSyndicateCutPercentage:       "new_syndicate_cut_percentage",
+	RuleID:                          "rule_id",
+	NewRuleNumber:                   "new_rule_number",
+	NewRuleContent:                  "new_rule_content",
+	DirectorID:                      "director_id",
+	Result:                          "result",
+	EndedAt:                         "ended_at",
+	ActualEndedAt:                   "actual_ended_at",
+	CreatedAt:                       "created_at",
+	UpdatedAt:                       "updated_at",
+	DeletedAt:                       "deleted_at",
 }
 
 var SyndicateMotionTableColumns = struct {
-	ID                         string
-	SyndicateID                string
-	Type                       string
-	IssuedByID                 string
-	Reason                     string
-	NewSymbolID                string
-	NewName                    string
-	NewNamingConvention        string
-	NewJoinFee                 string
-	NewExitFee                 string
-	NewDeployingUserPercentage string
-	NewAbilityKillPercentage   string
-	NewMechOwnerPercentage     string
-	NewSyndicateCutPercentage  string
-	RuleID                     string
-	NewRuleNumber              string
-	NewRuleContent             string
-	DirectorID                 string
-	Result                     string
-	EndedAt                    string
-	ActualEndedAt              string
-	CreatedAt                  string
-	UpdatedAt                  string
-	DeletedAt                  string
+	ID                              string
+	SyndicateID                     string
+	Type                            string
+	IssuedByID                      string
+	Reason                          string
+	NewSymbolID                     string
+	NewName                         string
+	NewNamingConvention             string
+	NewJoinFee                      string
+	NewExitFee                      string
+	NewDeployingMemberCutPercentage string
+	NewMemberAssistCutPercentage    string
+	NewMechOwnerCutPercentage       string
+	NewSyndicateCutPercentage       string
+	RuleID                          string
+	NewRuleNumber                   string
+	NewRuleContent                  string
+	DirectorID                      string
+	Result                          string
+	EndedAt                         string
+	ActualEndedAt                   string
+	CreatedAt                       string
+	UpdatedAt                       string
+	DeletedAt                       string
 }{
-	ID:                         "syndicate_motions.id",
-	SyndicateID:                "syndicate_motions.syndicate_id",
-	Type:                       "syndicate_motions.type",
-	IssuedByID:                 "syndicate_motions.issued_by_id",
-	Reason:                     "syndicate_motions.reason",
-	NewSymbolID:                "syndicate_motions.new_symbol_id",
-	NewName:                    "syndicate_motions.new_name",
-	NewNamingConvention:        "syndicate_motions.new_naming_convention",
-	NewJoinFee:                 "syndicate_motions.new_join_fee",
-	NewExitFee:                 "syndicate_motions.new_exit_fee",
-	NewDeployingUserPercentage: "syndicate_motions.new_deploying_user_percentage",
-	NewAbilityKillPercentage:   "syndicate_motions.new_ability_kill_percentage",
-	NewMechOwnerPercentage:     "syndicate_motions.new_mech_owner_percentage",
-	NewSyndicateCutPercentage:  "syndicate_motions.new_syndicate_cut_percentage",
-	RuleID:                     "syndicate_motions.rule_id",
-	NewRuleNumber:              "syndicate_motions.new_rule_number",
-	NewRuleContent:             "syndicate_motions.new_rule_content",
-	DirectorID:                 "syndicate_motions.director_id",
-	Result:                     "syndicate_motions.result",
-	EndedAt:                    "syndicate_motions.ended_at",
-	ActualEndedAt:              "syndicate_motions.actual_ended_at",
-	CreatedAt:                  "syndicate_motions.created_at",
-	UpdatedAt:                  "syndicate_motions.updated_at",
-	DeletedAt:                  "syndicate_motions.deleted_at",
+	ID:                              "syndicate_motions.id",
+	SyndicateID:                     "syndicate_motions.syndicate_id",
+	Type:                            "syndicate_motions.type",
+	IssuedByID:                      "syndicate_motions.issued_by_id",
+	Reason:                          "syndicate_motions.reason",
+	NewSymbolID:                     "syndicate_motions.new_symbol_id",
+	NewName:                         "syndicate_motions.new_name",
+	NewNamingConvention:             "syndicate_motions.new_naming_convention",
+	NewJoinFee:                      "syndicate_motions.new_join_fee",
+	NewExitFee:                      "syndicate_motions.new_exit_fee",
+	NewDeployingMemberCutPercentage: "syndicate_motions.new_deploying_member_cut_percentage",
+	NewMemberAssistCutPercentage:    "syndicate_motions.new_member_assist_cut_percentage",
+	NewMechOwnerCutPercentage:       "syndicate_motions.new_mech_owner_cut_percentage",
+	NewSyndicateCutPercentage:       "syndicate_motions.new_syndicate_cut_percentage",
+	RuleID:                          "syndicate_motions.rule_id",
+	NewRuleNumber:                   "syndicate_motions.new_rule_number",
+	NewRuleContent:                  "syndicate_motions.new_rule_content",
+	DirectorID:                      "syndicate_motions.director_id",
+	Result:                          "syndicate_motions.result",
+	EndedAt:                         "syndicate_motions.ended_at",
+	ActualEndedAt:                   "syndicate_motions.actual_ended_at",
+	CreatedAt:                       "syndicate_motions.created_at",
+	UpdatedAt:                       "syndicate_motions.updated_at",
+	DeletedAt:                       "syndicate_motions.deleted_at",
 }
 
 // Generated where
 
 var SyndicateMotionWhere = struct {
-	ID                         whereHelperstring
-	SyndicateID                whereHelperstring
-	Type                       whereHelperstring
-	IssuedByID                 whereHelperstring
-	Reason                     whereHelperstring
-	NewSymbolID                whereHelpernull_String
-	NewName                    whereHelpernull_String
-	NewNamingConvention        whereHelpernull_String
-	NewJoinFee                 whereHelperdecimal_NullDecimal
-	NewExitFee                 whereHelperdecimal_NullDecimal
-	NewDeployingUserPercentage whereHelperdecimal_NullDecimal
-	NewAbilityKillPercentage   whereHelperdecimal_NullDecimal
-	NewMechOwnerPercentage     whereHelperdecimal_NullDecimal
-	NewSyndicateCutPercentage  whereHelperdecimal_NullDecimal
-	RuleID                     whereHelpernull_String
-	NewRuleNumber              whereHelpernull_Int
-	NewRuleContent             whereHelpernull_String
-	DirectorID                 whereHelpernull_String
-	Result                     whereHelperstring
-	EndedAt                    whereHelpertime_Time
-	ActualEndedAt              whereHelpernull_Time
-	CreatedAt                  whereHelpertime_Time
-	UpdatedAt                  whereHelpertime_Time
-	DeletedAt                  whereHelpernull_Time
+	ID                              whereHelperstring
+	SyndicateID                     whereHelperstring
+	Type                            whereHelperstring
+	IssuedByID                      whereHelperstring
+	Reason                          whereHelperstring
+	NewSymbolID                     whereHelpernull_String
+	NewName                         whereHelpernull_String
+	NewNamingConvention             whereHelpernull_String
+	NewJoinFee                      whereHelperdecimal_NullDecimal
+	NewExitFee                      whereHelperdecimal_NullDecimal
+	NewDeployingMemberCutPercentage whereHelperdecimal_NullDecimal
+	NewMemberAssistCutPercentage    whereHelperdecimal_NullDecimal
+	NewMechOwnerCutPercentage       whereHelperdecimal_NullDecimal
+	NewSyndicateCutPercentage       whereHelperdecimal_NullDecimal
+	RuleID                          whereHelpernull_String
+	NewRuleNumber                   whereHelpernull_Int
+	NewRuleContent                  whereHelpernull_String
+	DirectorID                      whereHelpernull_String
+	Result                          whereHelpernull_String
+	EndedAt                         whereHelpertime_Time
+	ActualEndedAt                   whereHelpernull_Time
+	CreatedAt                       whereHelpertime_Time
+	UpdatedAt                       whereHelpertime_Time
+	DeletedAt                       whereHelpernull_Time
 }{
-	ID:                         whereHelperstring{field: "\"syndicate_motions\".\"id\""},
-	SyndicateID:                whereHelperstring{field: "\"syndicate_motions\".\"syndicate_id\""},
-	Type:                       whereHelperstring{field: "\"syndicate_motions\".\"type\""},
-	IssuedByID:                 whereHelperstring{field: "\"syndicate_motions\".\"issued_by_id\""},
-	Reason:                     whereHelperstring{field: "\"syndicate_motions\".\"reason\""},
-	NewSymbolID:                whereHelpernull_String{field: "\"syndicate_motions\".\"new_symbol_id\""},
-	NewName:                    whereHelpernull_String{field: "\"syndicate_motions\".\"new_name\""},
-	NewNamingConvention:        whereHelpernull_String{field: "\"syndicate_motions\".\"new_naming_convention\""},
-	NewJoinFee:                 whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_join_fee\""},
-	NewExitFee:                 whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_exit_fee\""},
-	NewDeployingUserPercentage: whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_deploying_user_percentage\""},
-	NewAbilityKillPercentage:   whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_ability_kill_percentage\""},
-	NewMechOwnerPercentage:     whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_mech_owner_percentage\""},
-	NewSyndicateCutPercentage:  whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_syndicate_cut_percentage\""},
-	RuleID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"rule_id\""},
-	NewRuleNumber:              whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
-	NewRuleContent:             whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
-	DirectorID:                 whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
-	Result:                     whereHelperstring{field: "\"syndicate_motions\".\"result\""},
-	EndedAt:                    whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
-	ActualEndedAt:              whereHelpernull_Time{field: "\"syndicate_motions\".\"actual_ended_at\""},
-	CreatedAt:                  whereHelpertime_Time{field: "\"syndicate_motions\".\"created_at\""},
-	UpdatedAt:                  whereHelpertime_Time{field: "\"syndicate_motions\".\"updated_at\""},
-	DeletedAt:                  whereHelpernull_Time{field: "\"syndicate_motions\".\"deleted_at\""},
+	ID:                              whereHelperstring{field: "\"syndicate_motions\".\"id\""},
+	SyndicateID:                     whereHelperstring{field: "\"syndicate_motions\".\"syndicate_id\""},
+	Type:                            whereHelperstring{field: "\"syndicate_motions\".\"type\""},
+	IssuedByID:                      whereHelperstring{field: "\"syndicate_motions\".\"issued_by_id\""},
+	Reason:                          whereHelperstring{field: "\"syndicate_motions\".\"reason\""},
+	NewSymbolID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"new_symbol_id\""},
+	NewName:                         whereHelpernull_String{field: "\"syndicate_motions\".\"new_name\""},
+	NewNamingConvention:             whereHelpernull_String{field: "\"syndicate_motions\".\"new_naming_convention\""},
+	NewJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_join_fee\""},
+	NewExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_exit_fee\""},
+	NewDeployingMemberCutPercentage: whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_deploying_member_cut_percentage\""},
+	NewMemberAssistCutPercentage:    whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_member_assist_cut_percentage\""},
+	NewMechOwnerCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_mech_owner_cut_percentage\""},
+	NewSyndicateCutPercentage:       whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_syndicate_cut_percentage\""},
+	RuleID:                          whereHelpernull_String{field: "\"syndicate_motions\".\"rule_id\""},
+	NewRuleNumber:                   whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
+	NewRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
+	DirectorID:                      whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
+	Result:                          whereHelpernull_String{field: "\"syndicate_motions\".\"result\""},
+	EndedAt:                         whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
+	ActualEndedAt:                   whereHelpernull_Time{field: "\"syndicate_motions\".\"actual_ended_at\""},
+	CreatedAt:                       whereHelpertime_Time{field: "\"syndicate_motions\".\"created_at\""},
+	UpdatedAt:                       whereHelpertime_Time{field: "\"syndicate_motions\".\"updated_at\""},
+	DeletedAt:                       whereHelpernull_Time{field: "\"syndicate_motions\".\"deleted_at\""},
 }
 
 // SyndicateMotionRels is where relationship names are stored.
@@ -247,9 +247,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
-	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "result", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_member_cut_percentage", "new_member_assist_cut_percentage", "new_mech_owner_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_member_cut_percentage", "new_member_assist_cut_percentage", "new_mech_owner_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )
