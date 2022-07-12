@@ -13,6 +13,7 @@ func TransferWeaponToNewOwner(
 	toID string,
 	xsynLocked bool,
 	assetHidden null.String,
+	xsynAssetTransfer func(colItems []*boiler.CollectionItem) error,
 ) error {
 	itemIDsToTransfer := []string{}
 
@@ -48,6 +49,18 @@ func TransferWeaponToNewOwner(
 		"owner_id": toID,
 		"asset_hidden": assetHidden,
 	})
+	if err != nil {
+		return err
+	}
+
+	// now lets also transfer all the assets on xsyn too!
+	colItems, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(itemIDsToTransfer),
+	).All(conn)
+	if err != nil {
+		return err
+	}
+	err = xsynAssetTransfer(colItems)
 	if err != nil {
 		return err
 	}

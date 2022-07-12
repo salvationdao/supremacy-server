@@ -11,6 +11,7 @@ import (
 	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"sort"
+	"strings"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -53,7 +54,6 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 			return
 		}
 	}
-
 
 	exists, err := boiler.Players(boiler.PlayerWhere.ID.EQ(te.ToUserID)).Exists(gamedb.StdConn)
 	if err != nil {
@@ -99,13 +99,55 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 
 	switch colItem.ItemType {
 	case boiler.ItemTypeWeapon:
-		err = TransferWeaponToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden)
+		err = TransferWeaponToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden,
+			func(colItems []*boiler.CollectionItem) error {
+				for _, colItem := range colItems {
+					err := rpcClient.TransferAsset(
+						te.ToUserID,
+						te.FromUserID,
+						colItem.Hash,
+						te.TransferTXID,
+						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+							UpdateLatestHandledTransferEvent(rpcClient, eventID)
+						},
+					)
+					if err != nil && strings.Contains(err.Error(), "asset not exist") {
+						gamelog.L.Warn().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+					} else if err != nil {
+						gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+						return err
+					}
+				}
+				return nil
+			},
+		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to TransferWeaponToNewOwner")
 			return
 		}
 	case boiler.ItemTypeMech:
-		err = TransferMechToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden)
+		err = TransferMechToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden,
+			func(colItems []*boiler.CollectionItem) error {
+				for _, colItem := range colItems {
+					err := rpcClient.TransferAsset(
+						te.ToUserID,
+						te.FromUserID,
+						colItem.Hash,
+						te.TransferTXID,
+						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+							UpdateLatestHandledTransferEvent(rpcClient, eventID)
+						},
+					)
+					if err != nil && strings.Contains(err.Error(), "asset not exist") {
+						gamelog.L.Warn().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+					} else if err != nil {
+						gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+						return err
+					}
+				}
+				return nil
+			},
+		)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to TransferMechToNewOwner")
 			return
@@ -184,4 +226,3 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 	}
 	return
 }
-
