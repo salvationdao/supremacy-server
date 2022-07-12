@@ -866,17 +866,27 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
-		Search                 string                `json:"search"`
-		Filter                 *db.ListFilterRequest `json:"filter"`
-		Sort                   *db.ListSortRequest   `json:"sort"`
-		PageSize               int                   `json:"page_size"`
-		Page                   int                   `json:"page"`
-		DisplayXsynMechs       bool                  `json:"display_xsyn_mechs"`
-		ExcludeMarketLocked    bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed    bool                  `json:"include_market_listed"`
-		FilterRarities         []string              `json:"rarities"`
-		FilterWeaponTypes      []string              `json:"weapon_types"`
-		FilterEquippedStatuses []string              `json:"equipped_statuses"`
+		Search                        string                    `json:"search"`
+		Filter                        *db.ListFilterRequest     `json:"filter"`
+		Sort                          *db.ListSortRequest       `json:"sort"`
+		PageSize                      int                       `json:"page_size"`
+		Page                          int                       `json:"page"`
+		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
+		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		FilterRarities                []string                  `json:"rarities"`
+		FilterWeaponTypes             []string                  `json:"weapon_types"`
+		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
+		FilterStatAmmo                *db.WeaponStatFilterRange `json:"stat_ammo"`
+		FilterStatDamage              *db.WeaponStatFilterRange `json:"stat_damage"`
+		FilterStatDamageFalloff       *db.WeaponStatFilterRange `json:"stat_damage_falloff"`
+		FilterStatDamageFalloffRate   *db.WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+		FilterStatRadius              *db.WeaponStatFilterRange `json:"stat_radius"`
+		FilterStatRadiusDamageFalloff *db.WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+		FilterStatRateOfFire          *db.WeaponStatFilterRange `json:"stat_rate_of_fire"`
+		FilterStatEnergyCosts         *db.WeaponStatFilterRange `json:"stat_energy_cost"`
+		FilterStatProjectileSpeed     *db.WeaponStatFilterRange `json:"stat_projectile_speed"`
+		FilterStatSpread              *db.WeaponStatFilterRange `json:"stat_spread"`
 	} `json:"payload"`
 }
 
@@ -922,18 +932,28 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 	}
 
 	listOpts := &db.WeaponListOpts{
-		Search:                 req.Payload.Search,
-		Filter:                 req.Payload.Filter,
-		Sort:                   req.Payload.Sort,
-		PageSize:               req.Payload.PageSize,
-		Page:                   req.Payload.Page,
-		OwnerID:                user.ID,
-		DisplayXsynMechs:       req.Payload.DisplayXsynMechs,
-		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed:    req.Payload.IncludeMarketListed,
-		FilterRarities:         req.Payload.FilterRarities,
-		FilterWeaponTypes:      req.Payload.FilterWeaponTypes,
-		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+		Search:                        req.Payload.Search,
+		Filter:                        req.Payload.Filter,
+		Sort:                          req.Payload.Sort,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
 	}
 
 	total, weapons, err := db.WeaponList(listOpts)

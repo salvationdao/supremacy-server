@@ -622,7 +622,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	// Unlock Item
+	// Lock Item
 	collectionItem.LockedToMarketplace = true
 	_, err = collectionItem.Update(tx, boil.Whitelist(
 		boiler.CollectionItemColumns.ID,

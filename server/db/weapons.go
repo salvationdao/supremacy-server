@@ -339,20 +339,49 @@ func CheckWeaponAttached(weaponID string) (bool, error) {
 }
 
 type WeaponListOpts struct {
-	Search                   string
-	Filter                   *ListFilterRequest
-	Sort                     *ListSortRequest
-	PageSize                 int
-	Page                     int
-	OwnerID                  string
-	DisplayXsynMechs         bool
-	DisplayGenesisAndLimited bool
-	DisplayHidden            bool
-	ExcludeMarketLocked      bool
-	IncludeMarketListed      bool
-	FilterRarities           []string `json:"rarities"`
-	FilterWeaponTypes        []string `json:"weapon_types"`
-	FilterEquippedStatuses   []string `json:"equipped_statuses"`
+	Search                        string
+	Filter                        *ListFilterRequest
+	Sort                          *ListSortRequest
+	PageSize                      int
+	Page                          int
+	OwnerID                       string
+	DisplayXsynMechs              bool
+	DisplayGenesisAndLimited      bool
+	DisplayHidden                 bool
+	ExcludeMarketLocked           bool
+	IncludeMarketListed           bool
+	FilterRarities                []string               `json:"rarities"`
+	FilterWeaponTypes             []string               `json:"weapon_types"`
+	FilterEquippedStatuses        []string               `json:"equipped_statuses"`
+	FilterStatAmmo                *WeaponStatFilterRange `json:"stat_ammo"`
+	FilterStatDamage              *WeaponStatFilterRange `json:"stat_damage"`
+	FilterStatDamageFalloff       *WeaponStatFilterRange `json:"stat_damage_falloff"`
+	FilterStatDamageFalloffRate   *WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+	FilterStatRadius              *WeaponStatFilterRange `json:"stat_radius"`
+	FilterStatRadiusDamageFalloff *WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+	FilterStatRateOfFire          *WeaponStatFilterRange `json:"stat_rate_of_fire"`
+	FilterStatEnergyCosts         *WeaponStatFilterRange `json:"stat_energy_cost"`
+	FilterStatProjectileSpeed     *WeaponStatFilterRange `json:"stat_projectile_speed"`
+	FilterStatSpread              *WeaponStatFilterRange `json:"stat_spread"`
+}
+
+type WeaponStatFilterRange struct {
+	Min null.Int `json:"min"`
+	Max null.Int `json:"max"`
+}
+
+func GenerateWeaponStatFilterQueryMods(column string, filter *WeaponStatFilterRange) []qm.QueryMod {
+	output := []qm.QueryMod{}
+	if filter == nil {
+		return output
+	}
+	if filter.Min.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" >= ?", filter.Min))
+	}
+	if filter.Max.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" <= ?", filter.Max))
+	}
+	return output
 }
 
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
@@ -423,6 +452,22 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			Operator: OperatorValueTypeIsNull,
 		}, 0, ""))
 	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+		}
+	}
+
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+	}
+
 	if len(opts.FilterEquippedStatuses) > 0 {
 		showEquipped := false
 		showUnequipped := false
@@ -466,20 +511,36 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		}
 	}
 
-	// Filters
-	if opts.Filter != nil {
-		// if we have filter
-		for i, f := range opts.Filter.Items {
-			// validate it is the right table and valid column
-			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
-				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
-			}
-
-		}
+	// Filter - Weapon Stats
+	if opts.FilterStatAmmo != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, opts.FilterStatAmmo)...)
 	}
-
-	if len(opts.FilterRarities) > 0 {
-		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+	if opts.FilterStatDamage != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, opts.FilterStatDamage)...)
+	}
+	if opts.FilterStatDamageFalloff != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, opts.FilterStatDamageFalloff)...)
+	}
+	if opts.FilterStatDamageFalloffRate != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, opts.FilterStatDamageFalloffRate)...)
+	}
+	if opts.FilterStatRadius != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, opts.FilterStatRadius)...)
+	}
+	if opts.FilterStatRadiusDamageFalloff != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, opts.FilterStatRadiusDamageFalloff)...)
+	}
+	if opts.FilterStatRateOfFire != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, opts.FilterStatRateOfFire)...)
+	}
+	if opts.FilterStatEnergyCosts != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, opts.FilterStatEnergyCosts)...)
+	}
+	if opts.FilterStatProjectileSpeed != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, opts.FilterStatProjectileSpeed)...)
+	}
+	if opts.FilterStatSpread != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, opts.FilterStatSpread)...)
 	}
 
 	// Search
