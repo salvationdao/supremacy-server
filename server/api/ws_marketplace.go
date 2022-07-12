@@ -82,20 +82,21 @@ const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"
 type MarketplaceSalesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID             server.UserID       `json:"user_id"`
-		SortDir            db.SortByDir        `json:"sort_dir"`
-		SortBy             string              `json:"sort_by"`
-		FilterRarities     []string            `json:"rarities"`
-		FilterListingTypes []string            `json:"listing_types"`
-		FilterWeaponTypes  []string            `json:"weapon_types"`
-		FilterOwnedBy      []string            `json:"owned_by"`
-		Sold               bool                `json:"sold"`
-		ItemType           string              `json:"item_type"`
-		MinPrice           decimal.NullDecimal `json:"min_price"`
-		MaxPrice           decimal.NullDecimal `json:"max_price"`
-		Search             string              `json:"search"`
-		PageSize           int                 `json:"page_size"`
-		Page               int                 `json:"page"`
+		UserID             server.UserID                   `json:"user_id"`
+		SortDir            db.SortByDir                    `json:"sort_dir"`
+		SortBy             string                          `json:"sort_by"`
+		FilterRarities     []string                        `json:"rarities"`
+		FilterListingTypes []string                        `json:"listing_types"`
+		FilterWeaponTypes  []string                        `json:"weapon_types"`
+		FilterWeaponStats  *db.MarketplaceWeaponStatFilter `json:"weapon_stats"`
+		FilterOwnedBy      []string                        `json:"owned_by"`
+		Sold               bool                            `json:"sold"`
+		ItemType           string                          `json:"item_type"`
+		MinPrice           decimal.NullDecimal             `json:"min_price"`
+		MaxPrice           decimal.NullDecimal             `json:"max_price"`
+		Search             string                          `json:"search"`
+		PageSize           int                             `json:"page_size"`
+		Page               int                             `json:"page"`
 	} `json:"payload"`
 }
 
@@ -124,6 +125,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
 		req.Payload.FilterWeaponTypes,
+		req.Payload.FilterWeaponStats,
 		req.Payload.FilterOwnedBy,
 		req.Payload.Sold,
 		req.Payload.MinPrice,

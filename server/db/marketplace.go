@@ -452,6 +452,19 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 	return output, nil
 }
 
+type MarketplaceWeaponStatFilter struct {
+	FilterStatAmmo                *WeaponStatFilterRange `json:"ammo"`
+	FilterStatDamage              *WeaponStatFilterRange `json:"damage"`
+	FilterStatDamageFalloff       *WeaponStatFilterRange `json:"damage_falloff"`
+	FilterStatDamageFalloffRate   *WeaponStatFilterRange `json:"damage_falloff_rate"`
+	FilterStatRadius              *WeaponStatFilterRange `json:"radius"`
+	FilterStatRadiusDamageFalloff *WeaponStatFilterRange `json:"radius_damage_falloff"`
+	FilterStatRateOfFire          *WeaponStatFilterRange `json:"rate_of_fire"`
+	FilterStatEnergyCosts         *WeaponStatFilterRange `json:"energy_cost"`
+	FilterStatProjectileSpeed     *WeaponStatFilterRange `json:"projectile_speed"`
+	FilterStatSpread              *WeaponStatFilterRange `json:"spread"`
+}
+
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
 	itemType string,
@@ -461,6 +474,7 @@ func MarketplaceItemSaleList(
 	rarities []string,
 	saleTypes []string,
 	weaponTypes []string,
+	weaponStats *MarketplaceWeaponStatFilter,
 	ownedBy []string,
 	sold bool,
 	minPrice decimal.NullDecimal,
@@ -531,6 +545,38 @@ func MarketplaceItemSaleList(
 	}
 	if len(weaponTypes) > 0 {
 		queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
+	}
+	if weaponStats != nil {
+		if weaponStats.FilterStatAmmo != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
+		}
+		if weaponStats.FilterStatDamage != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, weaponStats.FilterStatDamage)...)
+		}
+		if weaponStats.FilterStatDamageFalloff != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, weaponStats.FilterStatDamageFalloff)...)
+		}
+		if weaponStats.FilterStatDamageFalloffRate != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, weaponStats.FilterStatDamageFalloffRate)...)
+		}
+		if weaponStats.FilterStatRadius != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, weaponStats.FilterStatRadius)...)
+		}
+		if weaponStats.FilterStatRadiusDamageFalloff != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, weaponStats.FilterStatRadiusDamageFalloff)...)
+		}
+		if weaponStats.FilterStatRateOfFire != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, weaponStats.FilterStatRateOfFire)...)
+		}
+		if weaponStats.FilterStatEnergyCosts != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, weaponStats.FilterStatEnergyCosts)...)
+		}
+		if weaponStats.FilterStatProjectileSpeed != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, weaponStats.FilterStatProjectileSpeed)...)
+		}
+		if weaponStats.FilterStatSpread != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, weaponStats.FilterStatSpread)...)
+		}
 	}
 
 	if minPrice.Valid {
