@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -421,4 +422,61 @@ func GetUserMechHangarItemsWithMechID(userID, mechID string, trx boil.Executor) 
 	mechSiloType.SkinIDStr = nil
 
 	return mechSiloType, nil
+}
+
+func GetUserWeaponHangarItemsWithID(userID, weaponID string, trx boil.Executor) (*SiloType, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	ownedWeapon, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		boiler.CollectionItemWhere.ID.EQ(weaponID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get user owned weapons")
+	}
+
+	weapon, err := Weapon(tx, ownedWeapon.ItemID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("owned weapon col id", ownedWeapon.ID).Msg("Failed to get weapon")
+		return nil, err
+	}
+
+	if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
+		return nil, terror.Error(fmt.Errorf("weapon not availiable in hangar"), "Weapon not available on hangar by itself")
+	}
+
+	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(tx)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get blueprint weapon")
+	}
+
+	weaponSilo := &SiloType{
+		Type:        ownedWeapon.ItemType,
+		OwnershipID: ownedWeapon.ID,
+		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
+	}
+
+	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(tx)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get weapon skin")
+	}
+
+	weaponSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID)).One(tx)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get weapon skin ownership")
+	}
+
+	weaponSkinSilo := &SiloSkin{
+		Type:        "skin",
+		OwnershipID: &weaponSkinOwnership.ID,
+		StaticID:    &weaponSkin.BlueprintID,
+	}
+
+	weaponSilo.SkinID = weaponSkinSilo
+
+	return weaponSilo, nil
 }

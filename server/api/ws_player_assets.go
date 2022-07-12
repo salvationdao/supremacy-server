@@ -849,6 +849,13 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+
+		if isHangarOpening {
+			hangarResp, err = db.GetUserWeaponHangarItemsWithID(user.ID, weapon.ID, tx)
+			if err != nil {
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
 	}
 
 	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
