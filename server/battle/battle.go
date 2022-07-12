@@ -2055,15 +2055,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
 			Weapons:   WeaponsFromServer(mech.Weapons),
 			Utility:   UtilitiesFromServer(mech.Utility),
-
-			//Abilities:  nil,
-		}
-		// update the name to be valid if not
-		if len(newWarMachine.Name) < 3 {
-			newWarMachine.Name = mech.Owner.Username
-			if newWarMachine.Name == "" {
-				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-			}
+			Stats: &Stats{
+				TotalWins:       mech.Stats.TotalWins,
+				TotalDeaths:     mech.Stats.TotalDeaths,
+				TotalKills:      mech.Stats.TotalKills,
+				BattlesSurvived: mech.Stats.BattlesSurvived,
+				TotalLosses:     mech.Stats.TotalLosses,
+			},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
