@@ -55,7 +55,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
-	api.Command(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetailPublic)
+	api.Command(HubKeyPlayerAssetMechDetailPublic, pac.PlayerAssetMechDetailPublic)
 
 	return pac
 }
@@ -387,11 +387,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	}
 
 	// get mech
-	mech, err := db.Mech(nil, collectionItem.ItemID)
+	mech, err := db.Mech(gamedb.StdConn, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
-
 	reply(mech)
 	return nil
 }
