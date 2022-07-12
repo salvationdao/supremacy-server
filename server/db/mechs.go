@@ -598,6 +598,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -639,9 +644,8 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Label,
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 					xSearch,
 				))
@@ -702,11 +706,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
 
 	// Sort
