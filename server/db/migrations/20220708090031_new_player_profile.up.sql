@@ -20,3 +20,11 @@ ALTER TABLE players ADD about_me TEXT;
 -- create indexes for active log
 CREATE INDEX idx_player_active_log_active_descding ON player_active_logs (player_id, active_at DESC);
 CREATE INDEX idx_player_active_log_inactive_descding ON player_active_logs (player_id, inactive_at DESC);
+
+
+-- add player profile feature flag
+BEGIN;
+ALTER TYPE FEATURE_NAME ADD VALUE 'PUBLIC_PROFILE';
+COMMIT;
+
+INSERT INTO features (name) VALUES ('PUBLIC_PROFILE');
