@@ -223,10 +223,10 @@ type AssetTransferReq struct {
 }
 
 type AssetTransferResp struct {
-	OtherTransferredAssetHashes string `json:"other_transferred_asset_hashes"`
+	OtherTransferredAssetHashes []string `json:"other_transferred_asset_hashes"`
 }
 
 func (s *S) AssetTransferHandler(req *AssetTransferReq, resp *AssetTransferResp) error {
-	asset.HandleTransferEvent(s.passportRPC, req.TransferEvent, false)
+	resp.OtherTransferredAssetHashes = asset.HandleTransferEvent(s.passportRPC, req.TransferEvent, false)
 	return nil
 }
