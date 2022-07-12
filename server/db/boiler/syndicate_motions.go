@@ -42,7 +42,9 @@ type SyndicateMotion struct {
 	NewRuleNumber              null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
 	NewRuleContent             null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
 	DirectorID                 null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
+	Result                     string              `boiler:"result" boil:"result" json:"result" toml:"result" yaml:"result"`
 	EndedAt                    time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
+	ActualEndedAt              null.Time           `boiler:"actual_ended_at" boil:"actual_ended_at" json:"actual_ended_at,omitempty" toml:"actual_ended_at" yaml:"actual_ended_at,omitempty"`
 	CreatedAt                  time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                  time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt                  null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -70,7 +72,9 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber              string
 	NewRuleContent             string
 	DirectorID                 string
+	Result                     string
 	EndedAt                    string
+	ActualEndedAt              string
 	CreatedAt                  string
 	UpdatedAt                  string
 	DeletedAt                  string
@@ -93,7 +97,9 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber:              "new_rule_number",
 	NewRuleContent:             "new_rule_content",
 	DirectorID:                 "director_id",
+	Result:                     "result",
 	EndedAt:                    "ended_at",
+	ActualEndedAt:              "actual_ended_at",
 	CreatedAt:                  "created_at",
 	UpdatedAt:                  "updated_at",
 	DeletedAt:                  "deleted_at",
@@ -118,7 +124,9 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber              string
 	NewRuleContent             string
 	DirectorID                 string
+	Result                     string
 	EndedAt                    string
+	ActualEndedAt              string
 	CreatedAt                  string
 	UpdatedAt                  string
 	DeletedAt                  string
@@ -141,7 +149,9 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber:              "syndicate_motions.new_rule_number",
 	NewRuleContent:             "syndicate_motions.new_rule_content",
 	DirectorID:                 "syndicate_motions.director_id",
+	Result:                     "syndicate_motions.result",
 	EndedAt:                    "syndicate_motions.ended_at",
+	ActualEndedAt:              "syndicate_motions.actual_ended_at",
 	CreatedAt:                  "syndicate_motions.created_at",
 	UpdatedAt:                  "syndicate_motions.updated_at",
 	DeletedAt:                  "syndicate_motions.deleted_at",
@@ -168,7 +178,9 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber              whereHelpernull_Int
 	NewRuleContent             whereHelpernull_String
 	DirectorID                 whereHelpernull_String
+	Result                     whereHelperstring
 	EndedAt                    whereHelpertime_Time
+	ActualEndedAt              whereHelpernull_Time
 	CreatedAt                  whereHelpertime_Time
 	UpdatedAt                  whereHelpertime_Time
 	DeletedAt                  whereHelpernull_Time
@@ -191,7 +203,9 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber:              whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
 	NewRuleContent:             whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
 	DirectorID:                 whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
+	Result:                     whereHelperstring{field: "\"syndicate_motions\".\"result\""},
 	EndedAt:                    whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
+	ActualEndedAt:              whereHelpernull_Time{field: "\"syndicate_motions\".\"actual_ended_at\""},
 	CreatedAt:                  whereHelpertime_Time{field: "\"syndicate_motions\".\"created_at\""},
 	UpdatedAt:                  whereHelpertime_Time{field: "\"syndicate_motions\".\"updated_at\""},
 	DeletedAt:                  whereHelpernull_Time{field: "\"syndicate_motions\".\"deleted_at\""},
@@ -233,9 +247,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "ended_at", "created_at", "updated_at", "deleted_at"}
-	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "result", "ended_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "new_symbol_id", "new_name", "new_naming_convention", "new_join_fee", "new_exit_fee", "new_deploying_user_percentage", "new_ability_kill_percentage", "new_mech_owner_percentage", "new_syndicate_cut_percentage", "rule_id", "new_rule_number", "new_rule_content", "director_id", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )

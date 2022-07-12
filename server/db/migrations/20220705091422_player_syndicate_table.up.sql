@@ -88,6 +88,13 @@ CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'REMOVE_FOUNDER'
 );
 
+DROP TYPE IF EXISTS SYNDICATE_MOTION_RESULT;
+CREATE TYPE SYNDICATE_MOTION_RESULT AS ENUM (
+    'PASSED',
+    'FAILED',
+    'FORCE_CLOSED'
+);
+
 CREATE TABLE syndicate_motions(
     id uuid primary key default gen_random_uuid(),
     syndicate_id uuid not null references syndicates(id),
@@ -116,7 +123,9 @@ CREATE TABLE syndicate_motions(
     -- appoint/remove director
     director_id uuid references players(id),
 
+    result SYNDICATE_MOTION_RESULT not null,
     ended_at timestamptz not null,
+    actual_ended_at timestamptz,
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz

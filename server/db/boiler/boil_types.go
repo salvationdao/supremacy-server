@@ -243,6 +243,13 @@ const (
 	SyndicateMotionTypeREMOVE_FOUNDER         = "REMOVE_FOUNDER"
 )
 
+// Enum values for SyndicateMotionResult
+const (
+	SyndicateMotionResultPASSED       = "PASSED"
+	SyndicateMotionResultFAILED       = "FAILED"
+	SyndicateMotionResultFORCE_CLOSED = "FORCE_CLOSED"
+)
+
 // Enum values for SyndicateType
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
