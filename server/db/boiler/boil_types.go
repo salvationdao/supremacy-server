@@ -215,6 +215,13 @@ const (
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )
 
+// Enum values for BanFromType
+const (
+	BanFromTypeSYSTEM = "SYSTEM"
+	BanFromTypeADMIN  = "ADMIN"
+	BanFromTypePLAYER = "PLAYER"
+)
+
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"
