@@ -1,3 +1,12 @@
+ALTER TABLE mystery_crate_blueprints
+    DROP CONSTRAINT mystery_crate_blueprints_mystery_crate_id_fkey;
+
+ALTER TABLE mystery_crate_blueprints
+    ADD CONSTRAINT mystery_crate_blueprints_mystery_crate_id_fkey
+        FOREIGN KEY (mystery_crate_id)
+            REFERENCES mystery_crate (id)
+            ON DELETE CASCADE;
+
 -- updating bws names to weapon manufacturer's skins in rarities- weapons manufacturer skin is accounted for in rarity
 UPDATE blueprint_weapon_skin
 SET label = 'Archon Gunmetal'
@@ -32,83 +41,83 @@ WHERE label = 'UMC';
 UPDATE blueprint_weapon_skin
 SET label = 'Pilbara Dust'
 WHERE label = 'UMC';
-
---Creating new skin that is manufacturer's "default", all mech crates will receive this mech skin
-DO
-$$
-    DECLARE
-        mech_modelr MECH_MODELS%ROWTYPE;
-    BEGIN
-        FOR mech_modelr IN SELECT * FROM mech_models
-            LOOP
-                CASE
-                    -- BC
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Daison Avionics')
-                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
-                             VALUES ('Daison Sleek', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
-                             UPDATE blueprint_mech_skin
-                             SET label = 'Bullion'
-                             WHERE label = 'Gold'
-                               AND mech_model = mech_modelr.id;
-                    -- ZAI
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'X3 Wartech')
-                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
-                             VALUES ('X3 Kuro', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
-                             UPDATE blueprint_mech_skin
-                             SET label = 'Mine God'
-                             WHERE label = 'Gold'
-                               AND mech_model = mech_modelr.id;
-                    -- RM
-                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
-                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
-                             VALUES ('Martian Soil', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
-                             UPDATE blueprint_mech_skin
-                             SET label = 'Sovereign Hill'
-                             WHERE label = 'Gold'
-                               AND mech_model = mech_modelr.id;
-                    ELSE CONTINUE;
-                    END CASE;
-            END LOOP;
-    END;
-$$;
-
-DO
-$$
-    DECLARE
-        weapon_model WEAPON_MODELS%ROWTYPE;
-    BEGIN
-        FOR weapon_model IN SELECT * FROM weapon_models
-            LOOP
-                CASE
-                    -- BC
-                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
-                             VALUES ('Daison Sleek', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
-                             UPDATE blueprint_weapon_skin
-                             SET label = 'Bullion'
-                             WHERE label = 'Gold'
-                               AND weapon_model_id = weapon_model.id;
-                    -- ZAI
-                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Warsui')
-                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
-                             VALUES ('X3 Kuro', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
-                             UPDATE blueprint_weapon_skin
-                             SET label = 'Mine God'
-                             WHERE label = 'Gold'
-                               AND weapon_model_id = weapon_model.id;
-                    -- RM
-                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
-                             VALUES ('Martian Soil', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
-                             UPDATE blueprint_weapon_skin
-                             SET label = 'Sovereign Hill'
-                             WHERE label = 'Gold'
-                               AND weapon_model_id = weapon_model.id;
-                    ELSE CONTINUE;
-                    END CASE;
-            END LOOP;
-    END;
-$$;
+--
+-- --Creating new skin that is manufacturer's "default", all mech crates will receive this mech skin
+-- DO
+-- $$
+--     DECLARE
+--         mech_modelr MECH_MODELS%ROWTYPE;
+--     BEGIN
+--         FOR mech_modelr IN SELECT * FROM mech_models
+--             LOOP
+--                 CASE
+--                     -- BC
+--                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Daison Avionics')
+--                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+--                              VALUES ('Daison Sleek', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+--                              UPDATE blueprint_mech_skin
+--                              SET label = 'Bullion'
+--                              WHERE label = 'Gold'
+--                                AND mech_model = mech_modelr.id;
+--                     -- ZAI
+--                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'X3 Wartech')
+--                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+--                              VALUES ('X3 Kuro', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+--                              UPDATE blueprint_mech_skin
+--                              SET label = 'Mine God'
+--                              WHERE label = 'Gold'
+--                                AND mech_model = mech_modelr.id;
+--                     -- RM
+--                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
+--                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+--                              VALUES ('Martian Soil', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+--                              UPDATE blueprint_mech_skin
+--                              SET label = 'Sovereign Hill'
+--                              WHERE label = 'Gold'
+--                                AND mech_model = mech_modelr.id;
+--                     ELSE CONTINUE;
+--                     END CASE;
+--             END LOOP;
+--     END;
+-- $$;
+--
+-- DO
+-- $$
+--     DECLARE
+--         weapon_model WEAPON_MODELS%ROWTYPE;
+--     BEGIN
+--         FOR weapon_model IN SELECT * FROM weapon_models
+--             LOOP
+--                 CASE
+--                     -- BC
+--                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech')
+--                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+--                              VALUES ('Daison Sleek', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+--                              UPDATE blueprint_weapon_skin
+--                              SET label = 'Bullion'
+--                              WHERE label = 'Gold'
+--                                AND weapon_model_id = weapon_model.id;
+--                     -- ZAI
+--                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Warsui')
+--                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+--                              VALUES ('X3 Kuro', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+--                              UPDATE blueprint_weapon_skin
+--                              SET label = 'Mine God'
+--                              WHERE label = 'Gold'
+--                                AND weapon_model_id = weapon_model.id;
+--                     -- RM
+--                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
+--                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+--                              VALUES ('Martian Soil', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+--                              UPDATE blueprint_weapon_skin
+--                              SET label = 'Sovereign Hill'
+--                              WHERE label = 'Gold'
+--                                AND weapon_model_id = weapon_model.id;
+--                     ELSE CONTINUE;
+--                     END CASE;
+--             END LOOP;
+--     END;
+-- $$;
 
 --for each mech crate, insert another mech skin(BC, ZAI, RM) and 2x weapon manufacturer's skins
 DO
@@ -359,186 +368,4 @@ SET weapon_hardpoints = 2,
     utility_slots     = 2
 WHERE utility_slots = 4;
 
-
---update asset images
---MECHS
---BC
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_daison-sleek.png'
-WHERE label = 'Daison Sleek'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_spot-yellow.png'
-WHERE label = 'Spot Yellow'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_sea-hawk.png'
-WHERE label = 'Sea Hawk'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_thin-blue-line.png'
-WHERE label = 'Thin Blue Line'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_bullion.png'
-WHERE label = 'Bullion'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_code-of-chivalry.png'
-WHERE label = 'Code of Chivalry'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/humanoid/nexus_dai_war-enforcer_telling-the-bees.png'
-WHERE label = 'Telling the Bees'
-  AND mech_type = 'HUMANOID';
-
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_daison-sleek.png'
-WHERE label = 'Daison Sleek'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_spot-yellow.png'
-WHERE label = 'Spot Yellow'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_sea-hawk.png'
-WHERE label = 'Sea Hawk'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_thin-blue-line.png'
-WHERE label = 'Thin Blue Line'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_bullion.png'
-WHERE label = 'Bullion'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_code-of-chivalry.png'
-WHERE label = 'Code of Chivalry'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/bc-daison-avionics/platform/nexus_dai_annihilator_telling-the-bees.png'
-WHERE label = 'Telling the Bees'
-  AND mech_type = 'PLATFORM';
-
---zai
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_x3-kuro.png'
-WHERE label = 'X3 Kuro'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_heavy-white.png'
-WHERE label = 'Heavy White'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_nullifier.png'
-WHERE label = 'Nullifier'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_two-five-zero-one.png'
-WHERE label = 'Two Five Zero One'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_mine-god.png'
-WHERE label = 'Mine God'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_shadows-steal-away.png'
-WHERE label = 'Shadows Steal Away'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_synth-punk.png'
-WHERE label = 'Synth Punk'
-  AND mech_type = 'HUMANOID';
-
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_x3-kuro.png'
-WHERE label = 'X3 Kuro'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_heavy-white.png'
-WHERE label = 'Heavy White'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_nullifier.png'
-WHERE label = 'Nullifier'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_two-five-zero-one.png'
-WHERE label = 'Two Five Zero One'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_mine-god.png'
-WHERE label = 'Mine God'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_shirokuma_shadows-steal-away.png'
-WHERE label = 'Shadows Steal Away'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/zai-x3-wartech/humanoid/nexus_x3_kenji_synth-punk.png'
-WHERE label = 'Synth Punk'
-  AND mech_type = 'PLATFORM';
-
---rm
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_martian-soil.png'
-WHERE label = 'Martian Soil'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_pilbara-dust.png'
-WHERE label = 'Pilbara Dust'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_high-caliber.png'
-WHERE label = 'High Caliber'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_fifo.png'
-WHERE label = 'Fly In Fly Out'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_sovereign-hill.png'
-WHERE label = 'Sovereign Hill'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_osmium-scream.png'
-WHERE label = 'Osmium Scream'
-  AND mech_type = 'HUMANOID';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_aries_promethean-gold.png'
-WHERE label = 'Promethean Gold'
-  AND mech_type = 'HUMANOID';
-
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_martian-soil.png'
-WHERE label = 'Martian Soil'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_pilbara-dust.png'
-WHERE label = 'Pilbara Dust'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_high-caliber.png'
-WHERE label = 'High Caliber'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_fifo.png'
-WHERE label = 'Fly In Fly Out'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_sovereign-hill.png'
-WHERE label = 'Sovereign Hill'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_osmium-scream.png'
-WHERE label = 'Osmium Scream'
-  AND mech_type = 'PLATFORM';
-UPDATE blueprint_mech_skin
-SET image_url = 'https://afiles.ninja-cdn.com/passport/nexus/mech/rm-umc/humanoid/nexus_umc_viking_promethean-gold.png'
-WHERE label = 'Promethean Gold'
-  AND mech_type = 'PLATFORM';
-
-
---WEAPONS
 
