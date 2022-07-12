@@ -202,7 +202,7 @@ func NewAPI(
 			}
 
 			if config.Environment == "development" {
-				r.Get("/give_crates/{public_address}", WithError(WithDev(api.DevGiveCrates)))
+				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
 			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
@@ -210,6 +210,7 @@ func NewAPI(
 			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 			r.Mount("/faction", FactionRouter(api))
+			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
@@ -263,8 +264,8 @@ func NewAPI(
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
-				s.WS("/mystery_crates", HubKeyMysteryCrateOwnershipSubscribe, server.MustSecure(ssc.MysteryCrateOwnershipSubscribeHandler))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
+				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 
 			}))
@@ -404,6 +405,26 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 				return
 			}
 
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				fmt.Fprintf(w, "invalid ip address")
+				return
+			}
+
 			if !user.FactionID.Valid {
 				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
 				return
@@ -464,6 +485,25 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				return
 			}
 
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				return
+			}
+
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
@@ -486,7 +526,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 }
 
 // TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
+func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
@@ -499,5 +539,19 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 		return nil, err
 	}
 
-	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+
+	features, err := db.GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		return nil, err
+	}
+
+	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		return nil, err
+	}
+
+	return serverPlayer, nil
 }

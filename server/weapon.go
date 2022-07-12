@@ -37,6 +37,7 @@ type Weapon struct {
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
+	EquippedOnDetails *EquippedOnDetails
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -139,6 +140,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

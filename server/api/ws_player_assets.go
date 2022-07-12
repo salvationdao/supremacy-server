@@ -352,7 +352,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	// get mech
-	mech, err := db.Mech(nil, collectionItem.ItemID)
+	mech, err := db.Mech(gamedb.StdConn, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
@@ -831,8 +831,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 			}
 			items.Mech = mech
-
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset( []*server.Mech{mech})...)
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
 			if err != nil {
@@ -848,7 +846,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not get weapon during crate opening, try again or contact support.")
 			}
 			items.Weapons = append(items.Weapons, weapon)
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 		case boiler.TemplateItemTypeMECH_SKIN:
 			bp, err := db.BlueprintMechSkinSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -864,7 +861,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
 			}
 			items.MechSkin = mechSkin
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{mechSkin})...)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -879,7 +875,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
 			}
 			items.WeaponSkin = weaponSkin
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{weaponSkin})...)
 		case boiler.TemplateItemTypePOWER_CORE:
 			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
@@ -895,19 +890,17 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Could not get powercore during crate opening, try again or contact support.")
 			}
 			items.PowerCore = powerCore
-			xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{powerCore})...)
 		}
 	}
 
-	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
-		crateRollback()
-		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
-	}
-
-
 	if crate.Type == boiler.CrateTypeMECH {
+		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get MechEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach mech_skin to mech - mech
 		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
 		if err != nil {
@@ -915,6 +908,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.MechSkin.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
 
 		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
@@ -922,6 +918,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach powercore to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		items.PowerCore.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.PowerCore.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
 		for _, weapon := range items.Weapons {
@@ -931,17 +930,29 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapons to mech during CRATE:OPEN crate: %s", crate.ID))
 				return terror.Error(err, "Could not open crate, try again or contact support.")
 			}
+			weapon.EquippedOn = null.StringFrom(items.Mech.ID)
+			weapon.EquippedOnDetails = eod
 		}
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
-		_, err := db.Mech(tx, items.Mech.ID)
+		mech, err := db.Mech(tx, items.Mech.ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		mech.ChassisSkin = items.MechSkin
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
+		wod, err := db.WeaponEquippedOnDetails(tx, items.Weapons[0].ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach weapon_skin to weapon -weapon
 		if len(items.Weapons) != 1 {
 			crateRollback()
@@ -954,6 +965,32 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkin.EquippedOnDetails = wod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
+
+		weapon, err := db.Weapon(tx, items.Weapons[0].ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+	}
+
+	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
+		crateRollback()
+		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+	}
+
+	// delete crate on xsyn
+	err = pac.API.Passport.DeleteAssetXSYN(crate.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets - DeleteAssetXSYN")
+		crateRollback()
+		return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
 	err = tx.Commit()
@@ -980,6 +1017,7 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		ExcludeEquipped     bool                  `json:"exclude_equipped"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterWeaponTypes   []string              `json:"weapon_types"`
 	} `json:"payload"`
@@ -1036,6 +1074,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		ExcludeEquipped:     req.Payload.ExcludeEquipped,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
 	}

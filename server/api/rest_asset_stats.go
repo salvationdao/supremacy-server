@@ -118,5 +118,4 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 		100 - percentage,
 		percentage,
 	})
-	return 200, nil
 }

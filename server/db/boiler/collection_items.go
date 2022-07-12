@@ -41,6 +41,7 @@ type CollectionItem struct {
 	AnimationURL        null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	YoutubeURL          null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 	LockedToMarketplace bool        `boiler:"locked_to_marketplace" boil:"locked_to_marketplace" json:"locked_to_marketplace" toml:"locked_to_marketplace" yaml:"locked_to_marketplace"`
+	AssetHidden         null.String `boiler:"asset_hidden" boil:"asset_hidden" json:"asset_hidden,omitempty" toml:"asset_hidden" yaml:"asset_hidden,omitempty"`
 
 	R *collectionItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -65,6 +66,7 @@ var CollectionItemColumns = struct {
 	AnimationURL        string
 	YoutubeURL          string
 	LockedToMarketplace string
+	AssetHidden         string
 }{
 	ID:                  "id",
 	CollectionSlug:      "collection_slug",
@@ -84,6 +86,7 @@ var CollectionItemColumns = struct {
 	AnimationURL:        "animation_url",
 	YoutubeURL:          "youtube_url",
 	LockedToMarketplace: "locked_to_marketplace",
+	AssetHidden:         "asset_hidden",
 }
 
 var CollectionItemTableColumns = struct {
@@ -105,6 +108,7 @@ var CollectionItemTableColumns = struct {
 	AnimationURL        string
 	YoutubeURL          string
 	LockedToMarketplace string
+	AssetHidden         string
 }{
 	ID:                  "collection_items.id",
 	CollectionSlug:      "collection_items.collection_slug",
@@ -124,6 +128,7 @@ var CollectionItemTableColumns = struct {
 	AnimationURL:        "collection_items.animation_url",
 	YoutubeURL:          "collection_items.youtube_url",
 	LockedToMarketplace: "collection_items.locked_to_marketplace",
+	AssetHidden:         "collection_items.asset_hidden",
 }
 
 // Generated where
@@ -147,6 +152,7 @@ var CollectionItemWhere = struct {
 	AnimationURL        whereHelpernull_String
 	YoutubeURL          whereHelpernull_String
 	LockedToMarketplace whereHelperbool
+	AssetHidden         whereHelpernull_String
 }{
 	ID:                  whereHelperstring{field: "\"collection_items\".\"id\""},
 	CollectionSlug:      whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
@@ -166,6 +172,7 @@ var CollectionItemWhere = struct {
 	AnimationURL:        whereHelpernull_String{field: "\"collection_items\".\"animation_url\""},
 	YoutubeURL:          whereHelpernull_String{field: "\"collection_items\".\"youtube_url\""},
 	LockedToMarketplace: whereHelperbool{field: "\"collection_items\".\"locked_to_marketplace\""},
+	AssetHidden:         whereHelpernull_String{field: "\"collection_items\".\"asset_hidden\""},
 }
 
 // CollectionItemRels is where relationship names are stored.
@@ -192,9 +199,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace", "asset_hidden"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace", "asset_hidden"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )
