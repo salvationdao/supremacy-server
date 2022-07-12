@@ -677,11 +677,10 @@ func (sm *SyndicateMotion) parseResult() {
 	case boiler.SyndicateMotionTypeCHANGE_RULE:
 		sm.changeRule()
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
-
+		sm.appointDirector()
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
-
+		sm.removeDirector()
 	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
-
 	}
 
 }
