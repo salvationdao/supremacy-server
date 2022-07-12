@@ -116,8 +116,8 @@ type syndicateRuleL struct{}
 
 var (
 	syndicateRuleAllColumns            = []string{"id", "syndicate_id", "number", "content", "created_at", "updated_at", "deleted_at"}
-	syndicateRuleColumnsWithoutDefault = []string{"syndicate_id", "content"}
-	syndicateRuleColumnsWithDefault    = []string{"id", "number", "created_at", "updated_at", "deleted_at"}
+	syndicateRuleColumnsWithoutDefault = []string{"syndicate_id", "number", "content"}
+	syndicateRuleColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	syndicateRulePrimaryKeyColumns     = []string{"id"}
 	syndicateRuleGeneratedColumns      = []string{}
 )

@@ -17,6 +17,7 @@ CREATE TABLE syndicates(
     type SYNDICATE_TYPE not null,
     faction_id uuid not null references factions (id),
     founded_by_id uuid not null references players (id),
+    honorary_founder bool not null default false,
     name text not null UNIQUE,
     symbol_id uuid NOT NULL REFERENCES symbols (id),
     naming_convention text,

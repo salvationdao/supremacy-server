@@ -173,6 +173,10 @@ func (ss *SyndicateSystem) VoteMotion(user *boiler.Player, motionID string, isAg
 		return err
 	}
 
+	if om.SyndicateID != user.SyndicateID.String {
+		return terror.Error(fmt.Errorf("not a member of the syndicate"), "Player is not a member of the syndicate")
+	}
+
 	return om.vote(user, isAgreed)
 }
 
@@ -426,8 +430,9 @@ func (sms *SyndicateMotionSystem) motionValidCheck(user *boiler.Player, bsm *boi
 		motion.DirectorID = bsm.DirectorID
 
 	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
-		// do nothing
-
+		if sms.syndicate.HonoraryFounder {
+			return nil, terror.Error(fmt.Errorf("syndicate founder has no power"), "The syndicate founder has no power")
+		}
 	default:
 		gamelog.L.Debug().Str("motion type", bsm.Type).Msg("Invalid motion type")
 		return nil, terror.Error(fmt.Errorf("invalid motion type"), "Invalid motion type")
@@ -613,11 +618,10 @@ func (sm *SyndicateMotion) parseResult() {
 	defer sm.Unlock()
 	sm.isClosed.Store(true)
 
-	now := time.Now()
+	sm.ActualEndedAt = null.TimeFrom(time.Now())
 
 	// only update result, if force closed
 	if sm.forceClosed.Load() {
-		sm.ActualEndedAt = null.TimeFrom(now)
 		sm.Result = null.StringFrom(boiler.SyndicateMotionResultFORCE_CLOSED)
 		// update motion result and actual end time
 		_, err := sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
@@ -626,9 +630,6 @@ func (sm *SyndicateMotion) parseResult() {
 		}
 		return
 	}
-
-	// otherwise, parse result
-	sm.ActualEndedAt = null.TimeFrom(now)
 
 	votes, err := boiler.SyndicateMotionVotes(
 		boiler.SyndicateMotionVoteWhere.MotionID.EQ(sm.ID),
@@ -664,6 +665,13 @@ func (sm *SyndicateMotion) parseResult() {
 		return
 	}
 
+	sm.Result = null.StringFrom(boiler.SyndicateMotionResultPASSED)
+	// update motion result and actual end time
+	_, err = sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update motion result")
+	}
+
 	// process action
 	switch sm.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
@@ -681,24 +689,23 @@ func (sm *SyndicateMotion) parseResult() {
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
 		sm.removeDirector()
 	case boiler.SyndicateMotionTypeREMOVE_FOUNDER:
+		sm.removeFounder()
 	}
 
 }
 
+// broadcastUpdatedSyndicate broadcast the latest detail of the syndicate
 func (sm *SyndicateMotion) broadcastUpdatedSyndicate() {
-	s := &boiler.Syndicate{
-		ID: sm.SyndicateID,
-	}
-
-	err := s.Reload(gamedb.StdConn)
+	s, err := boiler.FindSyndicate(gamedb.StdConn, sm.SyndicateID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to reload updated syndicate")
+		gamelog.L.Error().Err(err).Msg("Failed to load updated syndicate")
 		return
 	}
 
 	ws.PublishMessage("", "", s)
 }
 
+// broadcastUpdateRules broadcast the latest rule list
 func (sm *SyndicateMotion) broadcastUpdateRules() {
 	rules, err := boiler.SyndicateRules(
 		boiler.SyndicateRuleWhere.SyndicateID.EQ(sm.SyndicateID),
@@ -713,6 +720,7 @@ func (sm *SyndicateMotion) broadcastUpdateRules() {
 	ws.PublishMessage("", "", rules)
 }
 
+// updateGeneralDetail update syndicate's name, symbol and naming convention
 func (sm *SyndicateMotion) updateGeneralDetail() {
 	syndicate := &boiler.Syndicate{
 		ID: sm.syndicate.ID,
@@ -740,6 +748,7 @@ func (sm *SyndicateMotion) updateGeneralDetail() {
 	sm.broadcastUpdatedSyndicate()
 }
 
+// updateGeneralDetail update syndicate's join fee, exit fee and battle win cut percentage
 func (sm *SyndicateMotion) updatePaymentSetting() {
 	syndicate := &boiler.Syndicate{
 		ID: sm.syndicate.ID,
@@ -783,6 +792,7 @@ func (sm *SyndicateMotion) updatePaymentSetting() {
 	sm.broadcastUpdatedSyndicate()
 }
 
+// addRule add a new rule to db, and shift existing rules
 func (sm *SyndicateMotion) addRule() {
 	// get rules
 	rules, err := boiler.SyndicateRules(
@@ -849,8 +859,191 @@ func (sm *SyndicateMotion) addRule() {
 }
 
 func (sm *SyndicateMotion) removeRule() {
+	// get rule
+	rule, err := boiler.FindSyndicateRule(gamedb.StdConn, sm.RuleID.String)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to load rules")
+		return
+	}
+
+	rule.DeletedAt = null.TimeFrom(time.Now())
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return
+	}
+
+	defer tx.Rollback()
+
+	// update rule number
+	q := `
+		UPDATE 
+			syndicate_rules
+		SET
+			number = number - 1
+		WHERE
+			syndicate_id = $1 AND number >= $2 AND deleted_at ISNULL;
+	`
+
+	_, err = tx.Exec(q, sm.SyndicateID, rule.Number)
+	if err != nil {
+		gamelog.L.Error().
+			Str("query", q).
+			Str("syndicate id", sm.SyndicateID).
+			Int("rule number", sm.NewRuleNumber.Int).
+			Err(err).Msg("Failed to update rules' number")
+		return
+	}
+
+	_, err = rule.Update(tx, boil.Whitelist(boiler.SyndicateRuleColumns.DeletedAt))
+	if err != nil {
+		gamelog.L.Error().Str("rule id", rule.ID).Err(err).Msg("Failed to remove rule")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return
+	}
+
 	sm.broadcastUpdateRules()
 }
+
 func (sm *SyndicateMotion) changeRule() {
+	rule, err := boiler.FindSyndicateRule(gamedb.StdConn, sm.RuleID.String)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to load rules")
+		return
+	}
+
+	if sm.NewRuleContent.Valid {
+		rule.Content = sm.NewRuleContent.String
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+		return
+	}
+
+	defer tx.Rollback()
+
+	// implement number shifting
+	if sm.NewRuleNumber.Valid && sm.NewRuleNumber.Int != rule.Number {
+		if sm.NewRuleNumber.Int > rule.Number {
+			q := `
+				UPDATE 
+					syndicate_rules
+				SET
+					number = number - 1
+				WHERE
+					syndicate_id = $1 AND number > $2 AND number <= $3 AND deleted_at ISNULL;
+			`
+			_, err = tx.Exec(q, sm.SyndicateID, rule.Number, sm.NewRuleNumber.Int)
+			if err != nil {
+				gamelog.L.Error().
+					Str("query", q).
+					Str("syndicate id", sm.SyndicateID).
+					Int("$2", rule.Number).
+					Int("$3", sm.NewRuleNumber.Int).
+					Err(err).Msg("Failed to shift rules' number")
+				return
+			}
+		} else {
+			q := `
+				UPDATE 
+					syndicate_rules
+				SET
+					number = number + 1
+				WHERE
+					syndicate_id = $1 AND number >= $2 AND number < $3 AND deleted_at ISNULL;
+			`
+			_, err = tx.Exec(q, sm.SyndicateID, sm.NewRuleNumber.Int, rule.Number)
+			if err != nil {
+				gamelog.L.Error().
+					Str("query", q).
+					Str("syndicate id", sm.SyndicateID).
+					Int("$2", sm.NewRuleNumber.Int).
+					Int("$3", rule.Number).
+					Err(err).Msg("Failed to shift rules' number")
+				return
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+			return
+		}
+
+		rule.Number = sm.NewRuleNumber.Int
+	}
+
+	_, err = rule.Update(tx, boil.Whitelist(boiler.SyndicateRuleColumns.Content, boiler.SyndicateRuleColumns.Number))
+	if err != nil {
+		gamelog.L.Error().Interface("rule", rule).Err(err).Msg("Failed to update rules")
+		return
+	}
 	sm.broadcastUpdateRules()
+}
+func (sm *SyndicateMotion) appointDirector() {
+	player, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(sm.DirectorID.String),
+		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(sm.SyndicateID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to get player")
+		return
+	}
+
+	player.DirectorOfSyndicateID = null.StringFrom(sm.SyndicateID)
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.DirectorOfSyndicateID))
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to appoint player to director")
+		return
+	}
+
+	// broadcast data
+	ws.PublishMessage(fmt.Sprintf("/user/%s", sm.DirectorID.String), HubKeyUserSubscribe, player)
+
+	// broadcast syndicate director list
+}
+
+func (sm *SyndicateMotion) removeDirector() {
+	player, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(sm.DirectorID.String),
+		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(sm.SyndicateID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to get player")
+		return
+	}
+
+	player.DirectorOfSyndicateID = null.StringFromPtr(nil)
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.DirectorOfSyndicateID))
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to remove player from syndicate director list")
+		return
+	}
+
+	// broadcast data
+	ws.PublishMessage(fmt.Sprintf("/user/%s", sm.DirectorID.String), HubKeyUserSubscribe, player)
+
+	// broadcast syndicate director list
+}
+func (sm *SyndicateMotion) removeFounder() {
+	syndicate := boiler.Syndicate{
+		ID:              sm.SyndicateID,
+		HonoraryFounder: true,
+	}
+
+	_, err := syndicate.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateColumns.HonoraryFounder))
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update syndicate honorary founder")
+		return
+	}
+
+	sm.broadcastUpdatedSyndicate()
 }

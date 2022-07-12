@@ -43,6 +43,7 @@ func NewSyndicateController(api *API) *SyndicateWS {
 
 	// update syndicate settings
 	api.SecureUserFactionCommand(HubKeySyndicateIssueMotion, sc.SyndicateIssueMotionHandler)
+	api.SecureUserFactionCommand()
 
 	// motion pass instantly if less than 3
 
@@ -425,6 +426,35 @@ func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *bo
 	err = sc.API.SyndicateSystem.AddMotion(user, req.Payload)
 	if err != nil {
 		return terror.Error(err, "Failed to add motion")
+	}
+
+	reply(true)
+	return nil
+}
+
+type SyndicateMotionVoteRequest struct {
+	Payload struct {
+		MotionID string `json:"motion_id"`
+		IsAgreed bool   `json:"is_agreed"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateVoteMotion = "SYNDICATE:VOTE:MOTION"
+
+func (sc *SyndicateWS) SyndicateVoteMotionHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	req := &SyndicateMotionVoteRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	err = sc.API.SyndicateSystem.VoteMotion(user, req.Payload.MotionID, req.Payload.IsAgreed)
+	if err != nil {
+		return err
 	}
 
 	reply(true)

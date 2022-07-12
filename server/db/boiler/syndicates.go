@@ -28,6 +28,7 @@ type Syndicate struct {
 	Type                         string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	FactionID                    string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	FoundedByID                  string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
+	HonoraryFounder              bool            `boiler:"honorary_founder" boil:"honorary_founder" json:"honorary_founder" toml:"honorary_founder" yaml:"honorary_founder"`
 	Name                         string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	SymbolID                     string          `boiler:"symbol_id" boil:"symbol_id" json:"symbol_id" toml:"symbol_id" yaml:"symbol_id"`
 	NamingConvention             null.String     `boiler:"naming_convention" boil:"naming_convention" json:"naming_convention,omitempty" toml:"naming_convention" yaml:"naming_convention,omitempty"`
@@ -51,6 +52,7 @@ var SyndicateColumns = struct {
 	Type                         string
 	FactionID                    string
 	FoundedByID                  string
+	HonoraryFounder              string
 	Name                         string
 	SymbolID                     string
 	NamingConvention             string
@@ -69,6 +71,7 @@ var SyndicateColumns = struct {
 	Type:                         "type",
 	FactionID:                    "faction_id",
 	FoundedByID:                  "founded_by_id",
+	HonoraryFounder:              "honorary_founder",
 	Name:                         "name",
 	SymbolID:                     "symbol_id",
 	NamingConvention:             "naming_convention",
@@ -89,6 +92,7 @@ var SyndicateTableColumns = struct {
 	Type                         string
 	FactionID                    string
 	FoundedByID                  string
+	HonoraryFounder              string
 	Name                         string
 	SymbolID                     string
 	NamingConvention             string
@@ -107,6 +111,7 @@ var SyndicateTableColumns = struct {
 	Type:                         "syndicates.type",
 	FactionID:                    "syndicates.faction_id",
 	FoundedByID:                  "syndicates.founded_by_id",
+	HonoraryFounder:              "syndicates.honorary_founder",
 	Name:                         "syndicates.name",
 	SymbolID:                     "syndicates.symbol_id",
 	NamingConvention:             "syndicates.naming_convention",
@@ -129,6 +134,7 @@ var SyndicateWhere = struct {
 	Type                         whereHelperstring
 	FactionID                    whereHelperstring
 	FoundedByID                  whereHelperstring
+	HonoraryFounder              whereHelperbool
 	Name                         whereHelperstring
 	SymbolID                     whereHelperstring
 	NamingConvention             whereHelpernull_String
@@ -147,6 +153,7 @@ var SyndicateWhere = struct {
 	Type:                         whereHelperstring{field: "\"syndicates\".\"type\""},
 	FactionID:                    whereHelperstring{field: "\"syndicates\".\"faction_id\""},
 	FoundedByID:                  whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
+	HonoraryFounder:              whereHelperbool{field: "\"syndicates\".\"honorary_founder\""},
 	Name:                         whereHelperstring{field: "\"syndicates\".\"name\""},
 	SymbolID:                     whereHelperstring{field: "\"syndicates\".\"symbol_id\""},
 	NamingConvention:             whereHelpernull_String{field: "\"syndicates\".\"naming_convention\""},
@@ -201,9 +208,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "name", "symbol_id", "naming_convention", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "honorary_founder", "name", "symbol_id", "naming_convention", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol_id"}
-	syndicateColumnsWithDefault    = []string{"id", "naming_convention", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithDefault    = []string{"id", "honorary_founder", "naming_convention", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )
