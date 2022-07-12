@@ -82,7 +82,6 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameMap := range GameMaps {
 		err := GameMapCreate(ctx, conn, gameMap)
 		if err != nil {
-			fmt.Println(err)
 			return err
 		}
 	}
