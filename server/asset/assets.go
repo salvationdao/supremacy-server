@@ -103,8 +103,8 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 			func(colItems []*boiler.CollectionItem) error {
 				for _, colItem := range colItems {
 					err := rpcClient.TransferAsset(
-						te.ToUserID,
 						te.FromUserID,
+						te.ToUserID,
 						colItem.Hash,
 						te.TransferTXID,
 						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
@@ -130,8 +130,8 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 			func(colItems []*boiler.CollectionItem) error {
 				for _, colItem := range colItems {
 					err := rpcClient.TransferAsset(
-						te.ToUserID,
 						te.FromUserID,
+						te.ToUserID,
 						colItem.Hash,
 						te.TransferTXID,
 						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
