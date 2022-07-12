@@ -246,7 +246,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	// get mech
-	mech, err := db.Mech(nil, collectionItem.ItemID)
+	mech, err := db.Mech(gamedb.StdConn, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
