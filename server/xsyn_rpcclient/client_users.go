@@ -1,7 +1,6 @@
 package xsyn_rpcclient
 
 import (
-	"fmt"
 	"server"
 	"server/gamelog"
 	"time"
@@ -114,12 +113,6 @@ type UsernameUpdateReq struct {
 
 // UserUpdateUsername updates username
 func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) *UserResp {
-
-	fmt.Println("--------------")
-	fmt.Println("--------------")
-	fmt.Println("--------------")
-
-	fmt.Println("--------------", pp.ApiKey)
 	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.UserUpdateUsername", UsernameUpdateReq{
 		ApiKey:      pp.ApiKey,
@@ -130,10 +123,6 @@ func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) 
 		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
 		return nil
 	}
-
-	fmt.Println("_+_+_+_+_")
-	fmt.Printf("%+v", resp)
-
 	return resp
 }
 
