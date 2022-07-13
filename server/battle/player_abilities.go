@@ -169,7 +169,7 @@ var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	b := playerAbilityBucket.Add(user.ID, 2)
 	if b == 0 {
-		return nil
+		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
 	}
 
 	// skip, if current not battle
