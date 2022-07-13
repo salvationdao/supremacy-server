@@ -52,6 +52,7 @@ const (
 	ChatMessageTypeText       ChatMessageType = "TEXT"
 	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
 	ChatMessageTypeSystemBan  ChatMessageType = "SYSTEM_BAN"
+	ChatMessageTypeNewBattle  ChatMessageType = "NEW_BATTLE"
 )
 
 type MessageText struct {
@@ -92,6 +93,11 @@ type MessageSystemBan struct {
 
 	IsPermanentBan bool     `json:"is_permanent_ban"`
 	Restrictions   []string `json:"restrictions"`
+}
+
+type MessageNewBattle struct {
+	BattleNumber int       `json:"battle_number"`
+	BattleStart  time.Time `json:"battle_start"`
 }
 
 // Chatroom holds a specific chat room
@@ -204,7 +210,7 @@ func NewChatroom(factionID string) *Chatroom {
 				FromUserStat:    stat,
 				TotalMultiplier: msg.TotalMultiplier,
 				IsCitizen:       msg.IsCitizen,
-				BattleNumber:    msg.BattleNumber.Int,
+				BattleNumber:    msg.BattleNumber,
 			},
 		}
 		cmstoSend = append(cmstoSend, cms[i])
@@ -343,6 +349,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		SentMessageCount: user.SentMessageCount,
 	}
 
+	err = fc.API.BroadcastNewBattle(1, time.Now())
+	if err != nil {
+		return terror.Error(err, "Couldn't broadcast")
+	}
 	// check user is banned on chat
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
@@ -476,7 +486,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			ChatStream:      player.FactionID.String,
 			IsCitizen:       isCitizen,
 			Lang:            language,
-			BattleNumber:    null.IntFrom(req.Payload.BattleNumber),
+			BattleNumber:    req.Payload.BattleNumber,
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -523,7 +533,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		ChatStream:      "global",
 		IsCitizen:       isCitizen,
 		Lang:            language,
-		BattleNumber:    null.IntFrom(req.Payload.BattleNumber),
+		BattleNumber:    req.Payload.BattleNumber,
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -571,6 +581,70 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 		return true
 	})
 	reply(resp)
+	return nil
+}
+
+func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) error {
+	factions, err := boiler.Factions().All(gamedb.StdConn)
+
+	for _, faction := range factions {
+		ch := &boiler.ChatHistory{
+			FactionID:       faction.ID,
+			PlayerID:        server.SupremacyBattleUserID,
+			MessageColor:    "",
+			Text:            "",
+			MSGType:         boiler.ChatMSGTypeEnumNEW_BATTLE,
+			ChatStream:      faction.ID,
+			UserRank:        "",
+			TotalMultiplier: "",
+			KillCount:       "",
+			IsCitizen:       false,
+			Lang:            "",
+			BattleNumber:    battleNumber,
+		}
+		err = ch.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "nah fam")
+		}
+	}
+
+	ch := &boiler.ChatHistory{
+		FactionID:       server.RedMountainFactionID,
+		PlayerID:        server.SupremacyBattleUserID,
+		MessageColor:    "",
+		Text:            "",
+		MSGType:         boiler.ChatMSGTypeEnumNEW_BATTLE,
+		ChatStream:      "global",
+		UserRank:        "",
+		TotalMultiplier: "",
+		KillCount:       "",
+		IsCitizen:       false,
+		Lang:            "",
+		BattleNumber:    battleNumber,
+	}
+	err = ch.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "nah fam")
+	}
+
+	cm := &ChatMessage{
+		Type:   ChatMessageTypeNewBattle,
+		SentAt: time.Now(),
+		Data:   MessageNewBattle{BattleNumber: battleNumber, BattleStart: battleStart},
+	}
+
+	api.RedMountainChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.RedMountainFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.BostonChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.BostonCyberneticsFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.ZaibatsuChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.ZaibatsuFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.GlobalChat.AddMessage(cm)
+	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+
 	return nil
 }
 

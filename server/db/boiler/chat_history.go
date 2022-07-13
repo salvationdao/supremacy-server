@@ -37,7 +37,7 @@ type ChatHistory struct {
 	IsCitizen       bool        `boiler:"is_citizen" boil:"is_citizen" json:"is_citizen" toml:"is_citizen" yaml:"is_citizen"`
 	Lang            string      `boiler:"lang" boil:"lang" json:"lang" toml:"lang" yaml:"lang"`
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	BattleNumber    null.Int    `boiler:"battle_number" boil:"battle_number" json:"battle_number,omitempty" toml:"battle_number" yaml:"battle_number,omitempty"`
+	BattleNumber    int         `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
 	Metadata        null.JSON   `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
 
 	R *chatHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -157,7 +157,7 @@ var ChatHistoryWhere = struct {
 	IsCitizen       whereHelperbool
 	Lang            whereHelperstring
 	CreatedAt       whereHelpertime_Time
-	BattleNumber    whereHelpernull_Int
+	BattleNumber    whereHelperint
 	Metadata        whereHelpernull_JSON
 }{
 	ID:              whereHelperstring{field: "\"chat_history\".\"id\""},
@@ -174,7 +174,7 @@ var ChatHistoryWhere = struct {
 	IsCitizen:       whereHelperbool{field: "\"chat_history\".\"is_citizen\""},
 	Lang:            whereHelperstring{field: "\"chat_history\".\"lang\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"chat_history\".\"created_at\""},
-	BattleNumber:    whereHelpernull_Int{field: "\"chat_history\".\"battle_number\""},
+	BattleNumber:    whereHelperint{field: "\"chat_history\".\"battle_number\""},
 	Metadata:        whereHelpernull_JSON{field: "\"chat_history\".\"metadata\""},
 }
 
