@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -278,6 +279,28 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 		}
 	}
 
+	if api.Config.Environment == "development" {
+		features, err := db.GetAllFeatures()
+		if err != nil {
+			return terror.Error(err, "Failed get features.")
+		}
+
+		playerFeatures, err := db.GetPlayerFeaturesByID(player.ID)
+		if err != nil {
+			return terror.Error(err, "Failed get features for user.")
+		}
+
+		if len(playerFeatures) != len(features) {
+			for _, feature := range features {
+				err := db.AddFeatureToPlayerIDs(feature.Name, []string{playerID})
+				if err != nil {
+					return terror.Error(err, "Failed get add feature to user.")
+				}
+			}
+
+		}
+
+	}
 	// fingerprint
 	if fingerprint != nil {
 		err = FingerprintUpsert(*fingerprint, playerID)

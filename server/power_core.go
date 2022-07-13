@@ -24,6 +24,8 @@ type PowerCore struct {
 	CreatedAt             time.Time       `json:"created_at"`
 	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
+
+	EquippedOnDetails *EquippedOnDetails
 }
 
 func (b *PowerCore) Scan(value interface{}) error {
@@ -100,6 +102,7 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

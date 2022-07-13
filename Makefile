@@ -130,7 +130,7 @@ db-update-assets:
 db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate dev-sync-data
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data
+db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -216,13 +216,21 @@ db-restore:
 		psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
 		psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
 
-.PHONE: dev-give-crate
-dev-give-crate:
-	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/${public_address}
+.PHONE: dev-give-weapon-crate
+dev-give-weapon-crate:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/weapon/${public_address}
 
-.PHONE: dev-give-crates
-dev-give-crates:
-	make dev-give-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
+.PHONE: dev-give-weapon-crates
+dev-give-weapon-crates:
+	make dev-give-weapon-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
+
+.PHONE: dev-give-mech-crate
+dev-give-mech-crate:
+	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/mech/${public_address}
+
+.PHONE: dev-give-mech-crates
+dev-give-mech-crates:
+	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
 .PHONY: dev-sync-data
 dev-sync-data:
@@ -233,3 +241,9 @@ dev-sync-data:
 	cd ../../../server
 	go run ./devtool/main.go -sync_mech
 	rm -rf ./devtool/temp-sync
+
+.PHONY: dev-sync-data-windows
+dev-sync-data-windows:
+	cd ./server/devtool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ./server && go run ./devtool/main.go -sync_mech
+	Powershell rm -r -Force .\server\devtool\temp-sync\

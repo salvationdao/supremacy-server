@@ -8,6 +8,13 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
+type EquippedOnDetails struct {
+	ID    string `json:"id"`
+	Hash  string `json:"hash"`
+	Label string `json:"label"`
+	Name  string `json:"name"`
+}
+
 // AssetKeycard is a keycard asset struct
 type AssetKeycard struct {
 	ID                 string            `json:"id" boil:"player_keycards.id"`

@@ -220,6 +220,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				TextColour:          ability.TextColour,
 				Title:               "FACTION_WIDE",
 				OfferingID:          uuid.Must(uuid.NewV4()),
+				LocationSelectType:  ability.LocationSelectType,
 			}
 			abilities[factionAbility.Identity] = factionAbility
 
@@ -276,6 +277,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					Colour:              ability.Colour,
 					TextColour:          ability.TextColour,
 					OfferingID:          uuid.Must(uuid.NewV4()),
+					LocationSelectType:  ability.LocationSelectType,
 				}
 
 				wm.Abilities = append(wm.Abilities, wmAbility)
@@ -574,10 +576,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					bm.Start("sup_contribution")
-					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
 					bm.End("sup_contribution")
 					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to contribute sups to faction ability")
+						if err.Error() != "player is banned to trigger ability" {
+							gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to contribute sups to faction ability")
+						}
 						cont.reply(false)
 						continue
 					}
@@ -784,11 +788,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal,
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
-
-	bm := benchmark.New()
-	defer bm.Alert(100)
-
+func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal, cannotTrigger bool) (decimal.Decimal, decimal.Decimal, bool, error) {
 	isTriggered := false
 
 	// calc the different
@@ -796,6 +796,11 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	// if players spend more thant they need, crop the spend price
 	if amount.GreaterThanOrEqual(diff) {
+		// skip, if player cannot trigger the ability
+		if cannotTrigger {
+			return decimal.Zero, decimal.Zero, false, fmt.Errorf("player is banned to trigger ability")
+		}
+
 		isTriggered = true
 		amount = diff
 	}
@@ -813,6 +818,9 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
 	}
+
+	bm := benchmark.New()
+	defer bm.Alert(100)
 
 	// pay sup
 	bm.Start("send_sup_message")
@@ -1363,11 +1371,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// contribute sups
 				bm.Start("sup_contribution")
-				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
 				bm.End("sup_contribution")
 				// tell frontend the contribution is success
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+					if err.Error() != "player is banned to trigger ability" {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+					}
 					cont.reply(false)
 					continue
 				}
@@ -1555,6 +1565,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 			TextColour:             ga.TextColour,
 			CooldownDurationSecond: ba.CooldownDurationSecond,
 			OfferingID:             uuid.Must(uuid.NewV4()),
+			LocationSelectType:     ga.LocationSelectType,
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
@@ -1592,6 +1603,7 @@ type Contribution struct {
 	percentage        decimal.Decimal
 	abilityOfferingID string
 	abilityIdentity   string
+	cannotTrigger     bool
 	reply             ws.ReplyFunc
 }
 
@@ -1630,18 +1642,10 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 	}
 
 	// get location select limited players
-	punishedPlayers, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictLocationSelect,
-		),
+	punishedPlayers, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get limited select players from db")
@@ -1654,7 +1658,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		// check user is banned
 		for _, pp := range punishedPlayers {
 
-			if pp.PlayerID == pid.String() {
+			if pp.BannedPlayerID == pid.String() {
 				isPunished = true
 				break
 			}
@@ -1988,7 +1992,7 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal, reply ws.ReplyFunc) {
+func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal, cannotTrigger bool, reply ws.ReplyFunc) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
@@ -2012,6 +2016,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 		percentage,
 		abilityOfferingID,
 		abilityIdentity,
+		cannotTrigger,
 		reply,
 	}
 
@@ -2072,7 +2077,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	return abilities
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal, reply ws.ReplyFunc) {
+func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal, cannotTrigger bool, reply ws.ReplyFunc) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BribeGabs!", r)
@@ -2103,6 +2108,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		percentage,
 		abilityOfferingID,
 		"",
+		cannotTrigger,
 		reply,
 	}
 
@@ -2146,7 +2152,7 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID string) (*GameAbili
 	return ability, nil
 }
 
-func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
+func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, startPoint server.CellLocation, endPoint *server.CellLocation) error {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the LocationSelect!", r)
@@ -2178,18 +2184,17 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	event := &server.GameAbilityEvent{
 		IsTriggered:         true,
 		GameClientAbilityID: ability.GameClientAbilityID,
-		TriggeredOnCellX:    &x,
-		TriggeredOnCellY:    &y,
 		TriggeredByUserID:   &userID,
 		TriggeredByUsername: &player.Username.String,
 		EventID:             ability.OfferingID,
 		FactionID:           &faction.ID,
 	}
 
-	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
-		X: *event.TriggeredOnCellX,
-		Y: *event.TriggeredOnCellY,
-	})
+	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&startPoint)
+
+	if ability.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && endPoint != nil {
+		event.GameLocationEnd = as.battle().getGameWorldCoordinatesFromCellXY(endPoint)
+	}
 
 	// trigger location select
 	as.battle().arena.Message("BATTLE:ABILITY", event)
@@ -2215,8 +2220,6 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 
 	as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 		Type: LocationSelectTypeTrigger,
-		X:    &x,
-		Y:    &y,
 		Ability: &AbilityBrief{
 			Label:    ability.Label,
 			ImageUrl: ability.ImageUrl,

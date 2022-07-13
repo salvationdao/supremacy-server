@@ -50,6 +50,7 @@ type Arena struct {
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
+	SystemBanManager         *SystemBanManager
 	sync.RWMutex
 }
 
@@ -246,6 +247,7 @@ func NewArena(opts *Opts) *Arena {
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		telegram:                 opts.Telegram,
 		opts:                     opts,
+		SystemBanManager:         NewSystemBanManager(),
 	}
 
 	var err error
@@ -328,7 +330,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
-		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Name))
 
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
@@ -483,19 +485,11 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -507,21 +501,32 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
 	}
 
+	cannotTrigger, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err, "Failed to check player")
+	}
+
 	userID := uuid.FromStringOrNil(user.ID)
 	if userID.IsNil() {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("user id is nil", user.ID).Msg("cant make users")
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.CurrentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
+	arena.CurrentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage, cannotTrigger, reply)
 
 	return nil
 }
 
 type LocationSelectRequest struct {
 	Payload struct {
-		XIndex int `json:"x"`
-		YIndex int `json:"y"`
+		StartCoords server.CellLocation  `json:"start_coords"`
+		EndCoords   *server.CellLocation `json:"end_coords,omitempty"`
 	} `json:"payload"`
 }
 
@@ -558,7 +563,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	err = arena.CurrentBattle().abilities().LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
+	err = arena.CurrentBattle().abilities().LocationSelect(userID, req.Payload.StartCoords, req.Payload.EndCoords)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
@@ -675,19 +680,11 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -706,7 +703,18 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.CurrentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
+	cannotTrigger, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err, "Failed to check player")
+	}
+
+	arena.CurrentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage, cannotTrigger, reply)
 
 	return nil
 }
@@ -852,7 +860,7 @@ func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key st
 func (arena *Arena) SendSettings(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// response game setting, if current battle exists
 	if arena.CurrentBattle() != nil {
-		reply(UpdatePayload(arena.CurrentBattle()))
+		reply(GameSettingsPayload(arena.CurrentBattle()))
 	}
 
 	return nil
@@ -1021,12 +1029,7 @@ func (arena *Arena) start() {
 				btl.Destroyed(&dataPayload)
 
 			case "BATTLE:WAR_MACHINE_PICKUP":
-				var dataPayload BattleWMPickupPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine pickup payload")
-					continue
-				}
-				btl.Pickup(&dataPayload)
+				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
 
 			case "BATTLE:END":
 				var dataPayload *BattleEndPayload

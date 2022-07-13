@@ -6,14 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/xsyn_rpcclient"
 	"sync"
 	"time"
 
@@ -23,7 +21,6 @@ import (
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -181,8 +178,24 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	// check player is banned
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player ban")
+		return terror.Error(err, "Failed to trigger ability")
+	}
+
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned for triggering ability"), "You are banned for triggering ability")
+	}
+
 	req := &PlayerAbilityUseRequest{}
-	err := json.Unmarshal(payload, req)
+	err = json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
@@ -431,11 +444,6 @@ type MechMoveCommandResponse struct {
 }
 
 func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		return nil
-	}
-
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
@@ -496,12 +504,6 @@ type MechMoveCommandCreateRequest struct {
 
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -557,20 +559,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
 	}
 
-	txid, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(user.ID),
-		ToUserID:             SupremacyBattleUserID,
-		Amount:               decimal.New(10, 18).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("mech_move_command|%s|%d", wm.ID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupBattle),
-		SubGroup:             arena.CurrentBattle().ID,
-		Description:          "mech move command: " + wm.ID,
-		NotSafe:              true,
-	})
-	if err != nil {
-		return terror.Error(err, err.Error())
-	}
-
 	now := time.Now()
 
 	event := &server.GameAbilityEvent{
@@ -609,7 +597,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		CellX:         req.Payload.StartCoords.X,
 		CellY:         req.Payload.StartCoords.Y,
 		BattleID:      arena.CurrentBattle().ID,
-		TXID:          txid,
 		CreatedAt:     now,
 	}
 
@@ -659,12 +646,6 @@ type MechMoveCommandCancelRequest struct {
 
 // MechMoveCommandCancelHandler send cancel mech move command to game client
 func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")

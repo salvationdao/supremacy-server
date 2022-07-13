@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/db/boiler"
-	"server/gamedb"
+	"server/db"
 	"server/gamelog"
 
 	"github.com/volatiletech/null/v8"
@@ -52,7 +51,7 @@ func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 		GenesisTokenID:   skin.GenesisTokenID,
 		Label:            skin.Label,
 		OwnerID:          skin.OwnerID,
-		MechModel:        skin.MechModel,
+		MechModel:        skin.MechModelID,
 		EquippedOn:       skin.EquippedOn,
 		Tier:             skin.Tier,
 		ImageURL:         skin.ImageURL,
@@ -398,7 +397,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			Name:             i.Label,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			Data:             asJson,
@@ -475,25 +473,28 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				})
 		}
 
-		if i.ChassisSkinID.Valid && i.ChassisSkin != nil {
-			skin, err := boiler.FindMechSkin(gamedb.StdConn, i.ChassisSkinID.String)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
-			} else {
-				asset.ImageURL = skin.ImageURL
-				asset.BackgroundColor = i.ChassisSkin.BackgroundColor
-				asset.AnimationURL = skin.AnimationURL
-				asset.YoutubeURL = i.ChassisSkin.YoutubeURL
-				asset.AvatarURL = skin.AvatarURL
-				asset.CardAnimationURL = skin.CardAnimationURL
-
-				asset.Attributes = append(asset.Attributes,
-					&Attribute{
-						TraitType: "Submodel",
-						Value:     i.ChassisSkin.Label,
-						AssetHash: i.Hash,
-					})
+		if i.ChassisSkinID.Valid {
+			if i.ChassisSkin == nil {
+				i.ChassisSkin, err = db.MechSkin(nil, i.ChassisSkinID.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
+					continue
+				}
 			}
+
+			asset.ImageURL = i.ChassisSkin.ImageURL
+			asset.BackgroundColor = i.ChassisSkin.BackgroundColor
+			asset.AnimationURL = i.ChassisSkin.AnimationURL
+			asset.YoutubeURL = i.ChassisSkin.YoutubeURL
+			asset.AvatarURL = i.ChassisSkin.AvatarURL
+			asset.CardAnimationURL = i.ChassisSkin.CardAnimationURL
+
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: "Submodel",
+					Value:     i.ChassisSkin.Label,
+					AssetHash: i.Hash,
+				})
 		}
 
 		assets = append(assets, asset)
@@ -524,6 +525,10 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			{
 				TraitType: "Outro Animation",
 				Value:     i.IntroAnimation.Bool,
+			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
 			},
 		}
 
@@ -568,8 +573,34 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			},
 			{
 				TraitType: "Mech Model",
-				Value:     i.MechModel, // TODO: get mech model name instead
+				Value:     i.MechModelName,
 			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
+			},
+		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			name := i.EquippedOnDetails.Name
+			if name == "" {
+				name = i.EquippedOnDetails.Label
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType: "Equipped On",
+				Value:     i.EquippedOnDetails.Label,
+				AssetHash: i.EquippedOnDetails.Hash,
+			})
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -633,11 +664,32 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			},
 		}
 
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			name := i.EquippedOnDetails.Name
+			if name == "" {
+				name = i.EquippedOnDetails.Label
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType: "Equipped On",
+				Value:     i.EquippedOnDetails.Label,
+				AssetHash: i.EquippedOnDetails.Hash,
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			AssetType:        null.StringFrom(i.ItemType),
@@ -666,7 +718,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
-		// TODO create these dynamically depending on weapon type
+
 		attributes := []*Attribute{
 			{
 				TraitType: "Label",
@@ -685,56 +737,97 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 				TraitType: "Weapon Type",
 				Value:     i.WeaponType,
 			},
-			{
-				TraitType: "Damage Falloff",
-				Value:     i.DamageFalloff.Int,
-			},
-			{
+		}
+
+		if i.DamageFalloff.Valid {
+			attributes = append(attributes, &Attribute{
+				DisplayType: BoostNumber,
+				TraitType:   "Damage Falloff",
+				Value:       i.DamageFalloff.Int,
+			})
+		}
+
+		if i.DamageFalloffRate.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff rate",
 				Value:       i.DamageFalloffRate.Int,
-			},
-			{
+			})
+		}
+
+		if i.Radius.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Area of effect",
 				Value:       i.Radius.Int,
-			},
-			{
+			})
+		}
+
+		if i.Spread.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Spread",
 				Value:       i.Spread.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.RateOfFire.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Rate of fire",
 				Value:       i.RateOfFire.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.ProjectileSpeed.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Projectile Speed",
 				Value:       i.ProjectileSpeed.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.EnergyCost.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
 				Value:       i.EnergyCost.Decimal.InexactFloat64(),
-			},
-			{
+			})
+		}
+
+		if i.MaxAmmo.Valid {
+			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Max Ammo",
 				Value:       i.MaxAmmo.Int,
-			},
-			{
-				TraitType: "Tier",
-				Value:     i.Tier,
-			},
+			})
+		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+			name := i.EquippedOnDetails.Name
+			if name == "" {
+				name = i.EquippedOnDetails.Label
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType: "Equipped On",
+				Value:     name,
+				AssetHash: i.EquippedOnDetails.Hash,
+			})
 		}
 
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			AssetType:        null.StringFrom(i.ItemType),
@@ -747,6 +840,78 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			YoutubeURL:       i.YoutubeURL,
 			AvatarURL:        i.AvatarURL,
 			CardAnimationURL: i.CardAnimationURL,
+			XsynLocked:       i.XsynLocked,
+		})
+	}
+
+	return assets
+}
+
+func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range weaponSkins {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Weapon Model",
+				Value:     i.WeaponModelID, // TODO: bring in weapons matrix and have a list of weapons it can fit on
+			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
+			},
+		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.WeaponEquippedOnDetails(nil, i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			name := i.EquippedOnDetails.Name
+			if name == "" {
+				name = i.EquippedOnDetails.Label
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType: "Equipped On",
+				Value:     i.EquippedOnDetails.Label,
+				AssetHash: i.EquippedOnDetails.Hash,
+			})
+		}
+
+		assets = append(assets, &XsynAsset{
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			AssetType:        null.StringFrom(i.ItemType),
+			ImageURL:         i.ImageURL,
+			AnimationURL:     i.AnimationURL,
+			LargeImageURL:    i.LargeImageURL,
+			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -774,11 +939,33 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 				Value:     i.Type,
 			},
 		}
+
+		if i.EquippedOn.Valid {
+			if i.EquippedOnDetails == nil {
+				// make db call
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
+					continue
+				}
+			}
+
+			name := i.EquippedOnDetails.Name
+			if name == "" {
+				name = i.EquippedOnDetails.Label
+			}
+
+			attributes = append(attributes, &Attribute{
+				TraitType: "Equipped On",
+				Value:     i.EquippedOnDetails.Label,
+				AssetHash: i.EquippedOnDetails.Hash,
+			})
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
-			Tier:             i.Tier,
 			Hash:             i.Hash,
 			OwnerID:          i.OwnerID,
 			AssetType:        null.StringFrom(i.ItemType),
@@ -820,16 +1007,14 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	}
 
 	asset := &XsynAsset{
-		ID:             mysteryCrate.ID,
-		CollectionSlug: mysteryCrate.CollectionSlug,
-		TokenID:        mysteryCrate.TokenID,
-		Tier:           mysteryCrate.Tier,
-		Data:           asJson,
-		Attributes:     attributes,
-		Hash:           mysteryCrate.Hash,
-		OwnerID:        mysteryCrate.OwnerID,
-		AssetType:      null.StringFrom(mysteryCrate.ItemType),
-
+		ID:               mysteryCrate.ID,
+		CollectionSlug:   mysteryCrate.CollectionSlug,
+		TokenID:          mysteryCrate.TokenID,
+		Data:             asJson,
+		Attributes:       attributes,
+		Hash:             mysteryCrate.Hash,
+		OwnerID:          mysteryCrate.OwnerID,
+		AssetType:        null.StringFrom(mysteryCrate.ItemType),
 		Name:             mysteryCrate.Label,
 		ImageURL:         mysteryCrate.ImageURL,
 		BackgroundColor:  mysteryCrate.BackgroundColor,
