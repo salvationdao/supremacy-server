@@ -253,6 +253,7 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
+		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 
 	var err error
@@ -1018,7 +1019,6 @@ func (arena *Arena) start() {
 					return
 				}
 				battleInfo := &NewBattleChan{BattleStart: btl.startedAt, BattleNumber: btl.BattleNumber}
-				fmt.Println(battleInfo)
 				arena.NewBattleChan <- battleInfo
 
 			case "BATTLE:OUTRO_FINISHED":

@@ -258,47 +258,50 @@ const (
 )
 
 func (api *API) SystemBanMessageBroadcaster() {
-	select {
-	case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
+	for {
+		select {
+		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
 
-		banMessage := &MessageSystemBan{
-			BannedByUser:   msg.SystemPlayer,
-			BannedUser:     msg.BannedPlayer,
-			FactionID:      msg.FactionID,
-			BattleNumber:   msg.PlayerBan.BattleNumber,
-			Reason:         msg.PlayerBan.Reason,
-			BanDuration:    msg.BanDuration,
-			IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
-			Restrictions:   PlayerBanRestrictions(msg.PlayerBan),
-		}
+			banMessage := &MessageSystemBan{
+				BannedByUser:   msg.SystemPlayer,
+				BannedUser:     msg.BannedPlayer,
+				FactionID:      msg.FactionID,
+				BattleNumber:   msg.PlayerBan.BattleNumber,
+				Reason:         msg.PlayerBan.Reason,
+				BanDuration:    msg.BanDuration,
+				IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
+				Restrictions:   PlayerBanRestrictions(msg.PlayerBan),
+			}
 
-		cm := &ChatMessage{
-			Type:   ChatMessageTypeSystemBan,
-			SentAt: time.Now(),
-			Data:   banMessage,
-		}
+			cm := &ChatMessage{
+				Type:   ChatMessageTypeSystemBan,
+				SentAt: time.Now(),
+				Data:   banMessage,
+			}
 
-		switch msg.FactionID.String {
-		case server.RedMountainFactionID:
-			api.RedMountainChat.AddMessage(cm)
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+			switch msg.FactionID.String {
+			case server.RedMountainFactionID:
+				api.RedMountainChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
 
-		case server.BostonCyberneticsFactionID:
-			api.BostonChat.AddMessage(cm)
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+			case server.BostonCyberneticsFactionID:
+				api.BostonChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
 
-		case server.ZaibatsuFactionID:
-			api.ZaibatsuChat.AddMessage(cm)
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+			case server.ZaibatsuFactionID:
+				api.ZaibatsuChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
 
-		default:
-			api.GlobalChat.AddMessage(cm)
-			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
-		}
-	case newBattleInfo := <-api.BattleArena.NewBattleChan:
-		err := api.BroadcastNewBattle(newBattleInfo.BattleNumber, newBattleInfo.BattleStart)
-		if err != nil {
-			return
+			default:
+				api.GlobalChat.AddMessage(cm)
+				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+			}
+		case newBattleInfo := <-api.BattleArena.NewBattleChan:
+			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber, newBattleInfo.BattleStart)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Could not broadcast battle info")
+				return
+			}
 		}
 	}
 }
