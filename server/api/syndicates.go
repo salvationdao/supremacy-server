@@ -140,14 +140,8 @@ func (ss *SyndicateSystem) AddMotion(user *boiler.Player, bsm *boiler.SyndicateM
 		return err
 	}
 
-	// check already exists
-	err = s.motionSystem.duplicatedMotionCheck(newMotion)
-	if err != nil {
-		return err
-	}
-
 	// add motion to the motion system
-	err = s.motionSystem.addMotion(newMotion)
+	err = s.motionSystem.addMotion(newMotion, true)
 	if err != nil {
 		return err
 	}
@@ -171,10 +165,6 @@ func (ss *SyndicateSystem) VoteMotion(user *boiler.Player, motionID string, isAg
 	om, err := s.motionSystem.getOngoingMotion(motionID)
 	if err != nil {
 		return err
-	}
-
-	if om.SyndicateID != user.SyndicateID.String {
-		return terror.Error(fmt.Errorf("not a member of the syndicate"), "Player is not a member of the syndicate")
 	}
 
 	return om.vote(user, isAgreed)
@@ -245,7 +235,7 @@ func (s *Syndicate) newSyndicateMotionSystem() (*SyndicateMotionSystem, error) {
 	sms.isClosed.Store(false)
 
 	for _, m := range ms {
-		err = sms.addMotion(m)
+		err = sms.addMotion(m, false)
 		if err != nil {
 			// the duplicate check failed, so log error instead of return the system
 			gamelog.L.Error().Err(err).Msg("Failed to add motion")
@@ -290,7 +280,7 @@ func (sms *SyndicateMotionSystem) getOngoingMotion(id string) (*SyndicateMotion,
 }
 
 // addMotion check motion duplicated content and append new motion to motion system
-func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion) error {
+func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool) error {
 	// add motion to system
 	sms.Lock()
 	defer sms.Unlock()
@@ -300,38 +290,69 @@ func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion) error {
 		return terror.Error(fmt.Errorf("syndicate is closed"), "Syndicate is closed")
 	}
 
-	// insert syndicate motion if it does not have id
-	if bsm.ID == "" {
-		err := bsm.Insert(gamedb.StdConn, boil.Infer())
+	// check whether already exists if it is a new motion
+	if isNewMotion {
+		err := sms.duplicatedMotionCheck(bsm)
 		if err != nil {
-			return terror.Error(err, "Failed to insert syndicate motion")
+			return err
+		}
+
+		// insert, if motion is not in database
+		if bsm.ID == "" {
+			err = bsm.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, "Failed to insert syndicate motion")
+			}
 		}
 	}
 
+	// syndicate motion
 	m := &SyndicateMotion{
-		syndicate:       sms.syndicate,
 		SyndicateMotion: bsm,
+		syndicate:       sms.syndicate,
 		isClosed:        atomic.Bool{},
 		forceClosed:     atomic.Bool{},
-	}
+		onClose: func() {
+			sms.Lock()
+			defer sms.Unlock()
 
-	// function for removing motion from motion system map
+			// clean up motion from the list
+			if _, ok := sms.ongoingMotions[bsm.ID]; ok {
+				delete(sms.ongoingMotions, bsm.ID)
+
+				// broadcast ongoing motion list
+				ws.PublishMessage("", "", sms.ongoingMotions)
+			}
+		},
+	}
 	m.isClosed.Store(false)
 	m.forceClosed.Store(false)
-	m.onClose = func() {
-		sms.Lock()
-		defer sms.Unlock()
 
-		delete(sms.ongoingMotions, m.ID)
+	//  check total available voting member, instant pass if vote member less than 3
+	query := boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(m.SyndicateID))
+	if m.syndicate.Type == boiler.SyndicateTypeCORPORATION {
+		query = boiler.PlayerWhere.DirectorOfSyndicateID.EQ(null.StringFrom(m.SyndicateID))
+	}
+	totalVoteCount, err := boiler.Players(query).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Interface("query", query).Err(err).Msg("Failed to total syndicate users")
+		return nil
 	}
 
-	// TODO: check total vote member, instant pass if vote member less than 3
+	// instantly pass, if total available voting player is no more than 3
+	if totalVoteCount <= 3 {
+		m.parseResult()
+		return nil
+	}
 
 	// add motion to the map
 	sms.ongoingMotions[m.ID] = m
 
 	// spin up motion
 	go m.start()
+
+	// broadcast ongoing motions
+	ws.PublishMessage("", "", sms.ongoingMotions)
 
 	return nil
 }
@@ -555,9 +576,6 @@ func (sms *SyndicateMotionSystem) motionValidCheck(user *boiler.Player, bsm *boi
 }
 
 func (sms *SyndicateMotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) error {
-	sms.RLock()
-	defer sms.RUnlock()
-
 	// return if syndicate is closed
 	if sms.isClosed.Load() {
 		return terror.Error(fmt.Errorf("syndicate is closed"), "Syndicate is closed")
@@ -702,8 +720,8 @@ func (sm *SyndicateMotion) vote(user *boiler.Player, isAgreed bool) error {
 		return nil
 	}
 
-	// close the vote, if only three people can vote or all the player have voted
-	if totalVoteCount <= 3 || totalVoteCount == currentVoteCount {
+	// close the vote, if only all the player have voted
+	if totalVoteCount == currentVoteCount {
 		sm.isClosed.Store(true)
 		return nil
 	}

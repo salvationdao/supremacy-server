@@ -413,7 +413,7 @@ type SyndicateIssueMotionRequest struct {
 		Type                            string              `json:"type"`
 		Reason                          string              `json:"reason"`
 		NewSymbolID                     null.String         `json:"new_symbol_id"`
-		NewName                         null.String         `json:"new_name"`
+		NewSyndicateName                null.String         `json:"new_syndicate_name"`
 		NewNamingConvention             null.String         `json:"new_naming_convention"`
 		NewJoinFee                      decimal.NullDecimal `json:"new_join_fee"`
 		NewExitFee                      decimal.NullDecimal `json:"new_exit_fee"`
@@ -450,7 +450,7 @@ func (sc *SyndicateWS) SyndicateIssueMotionHandler(ctx context.Context, user *bo
 		Type:                            req.Payload.Type,
 		Reason:                          req.Payload.Reason,
 		NewSymbolID:                     req.Payload.NewSymbolID,
-		NewName:                         req.Payload.NewName,
+		NewSyndicateName:                req.Payload.NewSyndicateName,
 		NewNamingConvention:             req.Payload.NewNamingConvention,
 		NewJoinFee:                      req.Payload.NewJoinFee,
 		NewExitFee:                      req.Payload.NewExitFee,
