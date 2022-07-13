@@ -56,27 +56,40 @@ type MysteryCrate struct {
 	FactionID        string `json:"faction_id"`
 	Label            string `json:"label"`
 	Description      string `json:"description"`
-	ImageURL         string `json:"image_url"`
-	CardAnimationURL string `json:"card_animation_url"`
-	AvatarURL        string `json:"avatar_url"`
-	LargeImageURL    string `json:"large_image_url"`
+	ImageUrl         string `json:"image_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	LargeImageUrl    string `json:"large_image_url"`
 	BackgroundColor  string `json:"background_color"`
-	AnimationURL     string `json:"animation_url"`
-	YoutubeURL       string `json:"youtube_url"`
+	AnimationUrl     string `json:"animation_url"`
+	YoutubeUrl       string `json:"youtube_url"`
 }
 
 type WeaponModel struct {
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-	WeaponType string `json:"weapon_type"`
+	ID            string `json:"id"`
+	BrandID       string `json:"brand_id"`
+	Label         string `json:"label"`
+	WeaponType    string `json:"weapon_type"`
+	DefaultSkinID string `json:"default_skin_id"`
+	DeletedAt     string `json:"deleted_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 type WeaponSkin struct {
-	ID            string `json:"id"`
-	Label         string `json:"label"`
-	WeaponType    string `json:"weapon_typep"`
-	Tier          string `json:"tier"`
-	WeaponModelID string `json:"weapon_model_id"`
+	ID               string `json:"id"`
+	Label            string `json:"label"`
+	WeaponType       string `json:"weapon_typep"`
+	Tier             string `json:"tier"`
+	ImageUrl         string `json:"image_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	BackgroundColor  string `json:"background_color"`
+	AnimationUrl     string `json:"animation_url"`
+	YoutubeUrl       string `json:"youtube_url"`
+	Collection       string `json:"collection"`
+	WeaponModelID    string `json:"weapon_model_id"`
+	StatModifier     string `json:"stat_modifier"`
 }
 
 type BattleAbility struct {
