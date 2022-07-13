@@ -313,7 +313,7 @@ func firstN(s string, n int) string {
 }
 
 var bucket = leakybucket.NewCollector(2, 2, true)
-var minuteBucket = leakybucket.NewCollector(0.5, 0.5, true)
+var minuteBucket = leakybucket.NewCollector(0.5, 1, true)
 
 // ChatMessageHandler sends chat message from player
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
