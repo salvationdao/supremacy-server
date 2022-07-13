@@ -638,6 +638,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 		}
 	}
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
+		))
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
