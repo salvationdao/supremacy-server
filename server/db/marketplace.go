@@ -1071,8 +1071,10 @@ func MarketplaceEventList(
 	// Populate reasons
 	collectionToMechID := map[string]string{}
 	collectionToMysteryCrateID := map[string]string{}
+	collectionToWeaponID := map[string]string{}
 	mechIDs := []string{}
 	mysteryCrateIDs := []string{}
+	weaponIDs := []string{}
 
 	output := []*server.MarketplaceEvent{}
 	for _, r := range records {
@@ -1136,6 +1138,9 @@ func MarketplaceEventList(
 				case boiler.ItemTypeMysteryCrate:
 					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
 					collectionToMysteryCrateID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
+				case boiler.ItemTypeWeapon:
+					weaponIDs = append(weaponIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
+					collectionToWeaponID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
 				}
 			} else if r.R.RelatedSaleItemKeycard != nil {
 				row.Item = &server.MarketplaceEventItem{
@@ -1244,6 +1249,68 @@ func MarketplaceEventList(
 			for _, m := range mysteryCrates {
 				if m.ID.String == itemID {
 					output[i].Item.MysteryCrate = *m
+					break
+				}
+			}
+		}
+	}
+	if len(weaponIDs) > 0 {
+		weapons := []*server.MarketplaceSaleItemWeapon{}
+		err = boiler.Weapons(
+			qm.Select(
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+				qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
+				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.WeaponModels,
+					qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+				),
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.WeaponSkin,
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+				),
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s wsc ON %s = %s AND %s = ?",
+					boiler.TableNames.CollectionItems,
+					qm.Rels("wsc", boiler.CollectionItemColumns.ItemID),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+					qm.Rels("wsc", boiler.CollectionItemColumns.ItemType),
+				),
+				boiler.ItemTypeWeaponSkin,
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = COALESCE(%s, %s)",
+					boiler.TableNames.BlueprintWeaponSkin,
+					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+					qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.DefaultSkinID),
+				),
+			),
+			boiler.WeaponWhere.ID.IN(weaponIDs),
+		).Bind(nil, gamedb.StdConn, &weapons)
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i := range output {
+			itemID, ok := collectionToWeaponID[output[i].Item.CollectionItemID]
+			if output[i].Item.CollectionItemType != boiler.ItemTypeWeapon || !ok {
+				continue
+			}
+			for _, w := range weapons {
+				if w.ID.String == itemID {
+					output[i].Item.Weapon = *w
 					break
 				}
 			}
