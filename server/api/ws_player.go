@@ -1217,7 +1217,6 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 	err = IsValidUsername(req.Payload.NewUsername)
 	if err != nil {
 		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
-
 	}
 	user.Username = null.StringFrom(req.Payload.NewUsername)
 	user.UpdatedAt = time.Now()
@@ -1228,8 +1227,11 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 	}
 
 	// update in xsyn
-	resp := pc.API.Passport.UserUpdateUsername(user.ID, req.Payload.NewUsername)
-	reply(resp)
+	err = pc.API.Passport.UserUpdateUsername(user.ID, req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	reply(&xsyn_rpcclient.UsernameUpdateResp{Username: user.Username.String})
 	return nil
 }
 

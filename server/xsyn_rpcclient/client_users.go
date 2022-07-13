@@ -111,9 +111,13 @@ type UsernameUpdateReq struct {
 	ApiKey      string
 }
 
+type UsernameUpdateResp struct {
+	Username string
+}
+
 // UserUpdateUsername updates username
-func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) *UserResp {
-	resp := &UserResp{}
+func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) error {
+	resp := &UsernameUpdateResp{}
 	err := pp.XrpcClient.Call("S.UserUpdateUsername", UsernameUpdateReq{
 		ApiKey:      pp.ApiKey,
 		UserID:      userID,
@@ -121,9 +125,9 @@ func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) 
 		resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
-		return nil
+		return err
 	}
-	return resp
+	return nil
 }
 
 type UserFactionEnlistReq struct {
