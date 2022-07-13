@@ -1105,11 +1105,20 @@ type PlayerProfileRequest struct {
 	} `json:"payload"`
 }
 
+type PublicPlayer struct {
+	ID        string      `json:"id"`
+	Username  null.String `json:"username"`
+	Gid       int         `json:"gid"`
+	FactionID null.String `json:"faction_id"`
+	AboutMe   null.String `json:"about_me"`
+	Rank      string      `json:"rank"`
+	CreatedAt time.Time   `json:"created_at"`
+}
 type PlayerProfileResponse struct {
-	*boiler.Player `json:"player"`
-	Stats          *boiler.PlayerStat      `json:"stats"`
-	Faction        *boiler.Faction         `json:"faction"`
-	ActiveLog      *boiler.PlayerActiveLog `json:"active_log"`
+	*PublicPlayer `json:"player"`
+	Stats         *boiler.PlayerStat      `json:"stats"`
+	Faction       *boiler.Faction         `json:"faction"`
+	ActiveLog     *boiler.PlayerActiveLog `json:"active_log"`
 }
 
 const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
@@ -1167,7 +1176,7 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 		faction = player.R.Faction
 	}
 	reply(PlayerProfileResponse{
-		Player: &boiler.Player{
+		PublicPlayer: &PublicPlayer{
 			ID:        player.ID,
 			Username:  player.Username,
 			Gid:       player.Gid,
@@ -1263,7 +1272,16 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	reply(user)
+	resp := &PublicPlayer{
+		ID:        user.ID,
+		Username:  user.Username,
+		Gid:       user.Gid,
+		FactionID: user.FactionID,
+		AboutMe:   user.AboutMe,
+		Rank:      user.Rank,
+		CreatedAt: user.CreatedAt,
+	}
+	reply(resp)
 	return nil
 }
 
@@ -1302,7 +1320,7 @@ func IsValidUsername(username string) error {
 
 func IsValidAboutMe(aboutMe string) error {
 	// Must contain at least 3 characters
-	// Cannot contain more than 150 characters
+	// Cannot contain more than 400 characters
 	// Cannot contain profanity
 
 	if TrimUsername(aboutMe) == "" {

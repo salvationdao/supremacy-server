@@ -40,7 +40,6 @@ func NewBattleController(api *API) *BattleControllerWS {
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
-
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
 
 	// mech move command related
@@ -127,7 +126,13 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 		return terror.Error(err, "Invalid request received")
 	}
 
-	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.OwnerID.EQ(req.Payload.PlayerID), qm.OrderBy("created_at desc"), qm.Limit(10), qm.Load(boiler.BattleMechRels.Mech), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
+	battleMechs, err := boiler.BattleMechs(
+		boiler.BattleMechWhere.OwnerID.EQ(req.Payload.PlayerID),
+		qm.OrderBy("created_at desc"),
+		qm.Limit(10),
+		qm.Load(boiler.BattleMechRels.Mech),
+		qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap)),
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
 			Str("BattleMechWhere", req.Payload.PlayerID).
