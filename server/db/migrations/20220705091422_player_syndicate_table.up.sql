@@ -1,11 +1,3 @@
-CREATE TABLE symbols(
-    id uuid primary key default gen_random_uuid(),
-    image_url text NOT NULL,
-    created_at timestamptz not null default NOW(),
-    updated_at timestamptz not null default NOW(),
-    deleted_at timestamptz
-);
-
 DROP TYPE IF EXISTS SYNDICATE_TYPE;
 CREATE TYPE SYNDICATE_TYPE AS ENUM (
     'CORPORATION',
@@ -19,8 +11,7 @@ CREATE TABLE syndicates(
     founded_by_id uuid not null references players (id),
     honorary_founder bool not null default false,
     name text not null UNIQUE,
-    symbol_id uuid NOT NULL REFERENCES symbols (id),
-    naming_convention text,
+    symbol TEXT NOT NULL UNIQUE,
     seat_count int NOT NULL DEFAULT 10,
 
     -- payment detail
@@ -103,8 +94,8 @@ CREATE TABLE syndicate_motions(
     reason text not null,
 
     -- content
-    old_symbol_id uuid references symbols(id),
-    new_symbol_id uuid references symbols(id),
+    old_symbol text,
+    new_symbol text,
 
     old_syndicate_name text,
     new_syndicate_name text,

@@ -1,9 +1,13 @@
 package db
 
 import (
+	"database/sql"
+	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -46,4 +50,22 @@ func SyndicateMotionList(syndicateID string, filter *SyndicateMotionListFilter, 
 	}
 
 	return sms, count, nil
+}
+
+func GetSyndicateDetail(syndicateID string) (*server.Syndicate, error) {
+	syndicate, err := boiler.Syndicates(
+		boiler.SyndicateWhere.ID.EQ(syndicateID),
+		qm.Load(boiler.SyndicateRels.Players, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
+		qm.Load(boiler.SyndicateRels.Symbol),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to query syndicate from db")
+		return nil, terror.Error(err, "Failed to get syndicate")
+	}
+
+	if syndicate == nil {
+		return nil, terror.Error(fmt.Errorf("syndicate not found"), "Syndicate does not exist")
+	}
+
+	return server.SyndicateBoilerToServer(syndicate), nil
 }

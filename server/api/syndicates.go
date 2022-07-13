@@ -19,11 +19,12 @@ import (
 )
 
 type SyndicateSystem struct {
+	api          *API
 	syndicateMap map[string]*Syndicate
 	sync.RWMutex
 }
 
-func NewSyndicateSystem() (*SyndicateSystem, error) {
+func NewSyndicateSystem(api *API) (*SyndicateSystem, error) {
 	syndicates, err := boiler.Syndicates().All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load syndicated from db")
@@ -31,6 +32,7 @@ func NewSyndicateSystem() (*SyndicateSystem, error) {
 	}
 
 	ss := &SyndicateSystem{
+		api:          api,
 		syndicateMap: make(map[string]*Syndicate),
 	}
 
@@ -50,7 +52,7 @@ func (ss *SyndicateSystem) AddSyndicate(syndicate *boiler.Syndicate) error {
 	ss.Lock()
 	defer ss.Unlock()
 
-	s, err := newSyndicate(syndicate)
+	s, err := ss.newSyndicate(syndicate)
 	if err != nil {
 		gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to spin up syndicate")
 		return terror.Error(err, "Failed to spin up syndicate")
@@ -149,7 +151,7 @@ func (ss *SyndicateSystem) AddMotion(user *boiler.Player, bsm *boiler.SyndicateM
 	return nil
 }
 
-// VoteMotion get the motion from the syndicate and fire vote logic
+// VoteMotion get the motion from the syndicate and trigger vote
 func (ss *SyndicateSystem) VoteMotion(user *boiler.Player, motionID string, isAgreed bool) error {
 	// get syndicate
 	s, err := ss.GetSyndicate(user.SyndicateID.String)
@@ -170,7 +172,29 @@ func (ss *SyndicateSystem) VoteMotion(user *boiler.Player, motionID string, isAg
 	return om.vote(user, isAgreed)
 }
 
+// GetOngoingMotions get the motions from the syndicate
+func (ss *SyndicateSystem) GetOngoingMotions(user *boiler.Player) ([]*boiler.SyndicateMotion, error) {
+	// get syndicate
+	s, err := ss.GetSyndicate(user.SyndicateID.String)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.Type == boiler.SyndicateTypeCORPORATION && !user.DirectorOfSyndicateID.Valid {
+		return nil, terror.Error(fmt.Errorf("only director can vote"), "Only director can vote")
+	}
+
+	// fire motion vote
+	oms, err := s.motionSystem.getOngoingMotionList()
+	if err != nil {
+		return nil, err
+	}
+
+	return oms, nil
+}
+
 type Syndicate struct {
+	api *API
 	*boiler.Syndicate
 	sync.RWMutex // for update syndicate
 
@@ -191,8 +215,9 @@ func (s *Syndicate) load() boiler.Syndicate {
 	return *s.Syndicate
 }
 
-func newSyndicate(syndicate *boiler.Syndicate) (*Syndicate, error) {
+func (ss *SyndicateSystem) newSyndicate(syndicate *boiler.Syndicate) (*Syndicate, error) {
 	s := &Syndicate{
+		api:       ss.api,
 		Syndicate: syndicate,
 	}
 	motionSystem, err := s.newSyndicateMotionSystem()
@@ -207,6 +232,7 @@ func newSyndicate(syndicate *boiler.Syndicate) (*Syndicate, error) {
 }
 
 type SyndicateMotionSystem struct {
+	api            *API
 	syndicate      *Syndicate
 	ongoingMotions map[string]*SyndicateMotion
 	sync.RWMutex
@@ -229,6 +255,7 @@ func (s *Syndicate) newSyndicateMotionSystem() (*SyndicateMotionSystem, error) {
 
 	sms := &SyndicateMotionSystem{
 		syndicate:      s,
+		api:            s.api,
 		ongoingMotions: map[string]*SyndicateMotion{},
 		isClosed:       atomic.Bool{},
 	}
@@ -256,6 +283,25 @@ func (sms *SyndicateMotionSystem) terminated() {
 		om.forceClosed.Store(true) // close motion without calculate result
 		om.isClosed.Store(true)    // terminate all the processing motion
 	}
+}
+
+func (sms *SyndicateMotionSystem) getOngoingMotionList() ([]*boiler.SyndicateMotion, error) {
+	sms.RLock()
+	defer sms.RUnlock()
+	// return if syndicate is closed
+	if sms.isClosed.Load() {
+		return nil, terror.Error(fmt.Errorf("syndicate is closed"), "Syndicate is closed")
+	}
+
+	motions := []*boiler.SyndicateMotion{}
+	for _, om := range sms.ongoingMotions {
+		if om.isClosed.Load() {
+			continue
+		}
+		motions = append(motions, om.SyndicateMotion)
+	}
+
+	return motions, nil
 }
 
 // GetOngoingMotion return ongoing motion by id
@@ -290,14 +336,15 @@ func (sms *SyndicateMotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMo
 		return terror.Error(fmt.Errorf("syndicate is closed"), "Syndicate is closed")
 	}
 
-	// check whether already exists if it is a new motion
+	// check whether the motion is new
 	if isNewMotion {
+		// check duplicate ongoing motion
 		err := sms.duplicatedMotionCheck(bsm)
 		if err != nil {
 			return err
 		}
 
-		// insert, if motion is not in database
+		// insert, if motion is not in the database
 		if bsm.ID == "" {
 			err = bsm.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
@@ -374,23 +421,29 @@ func (sms *SyndicateMotionSystem) motionValidCheck(user *boiler.Player, bsm *boi
 	// start issue motion
 	switch motion.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
-		if !bsm.NewSyndicateName.Valid && !bsm.NewSymbolID.Valid {
+		if !bsm.NewSyndicateName.Valid && !bsm.NewSymbol.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
 
 		// change symbol, name
 		if bsm.NewSyndicateName.Valid {
-			motion.NewSyndicateName = bsm.NewSyndicateName
+			// verify syndicate name
+			newName, err := sms.api.SyndicateNameVerification(bsm.NewSyndicateName.String)
+			if err != nil {
+				return nil, err
+			}
+			motion.NewSyndicateName = null.StringFrom(newName)
 			motion.OldSyndicateName = null.StringFrom(s.Name)
 		}
-		if bsm.NewSymbolID.Valid {
-			motion.NewSymbolID = bsm.NewSymbolID
-			motion.OldSymbolID = null.StringFrom(s.SymbolID)
+		if bsm.NewSymbol.Valid {
+			// verify symbol
+			newSymbol, err := sms.api.SyndicateNameVerification(bsm.NewSymbol.String)
+			if err != nil {
+				return nil, err
+			}
+			motion.NewSymbol = null.StringFrom(newSymbol)
+			motion.OldSymbol = null.StringFrom(s.Symbol)
 		}
-
-		motion.NewNamingConvention = bsm.NewNamingConvention
-		motion.OldNamingConvention = s.NamingConvention
-
 	case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
 		if !motion.NewJoinFee.Valid && !motion.NewExitFee.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
@@ -602,7 +655,7 @@ func (sms *SyndicateMotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMot
 			if bsm.NewSyndicateName.Valid && om.NewSyndicateName.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate name.")
 			}
-			if bsm.NewSymbolID.Valid && om.NewSymbolID.Valid {
+			if bsm.NewSymbol.Valid && om.NewSymbol.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate symbol.")
 			}
 			if bsm.NewNamingConvention.Valid && om.NewNamingConvention.Valid {
@@ -850,13 +903,9 @@ func (sm *SyndicateMotion) updateSyndicate() {
 		syndicate.Name = sm.NewSyndicateName.String
 		updateCols = append(updateCols, boiler.SyndicateColumns.Name)
 	}
-	if sm.NewSymbolID.Valid {
-		syndicate.SymbolID = sm.NewSymbolID.String
-		updateCols = append(updateCols, boiler.SyndicateColumns.SymbolID)
-	}
-	if sm.NewNamingConvention.Valid {
-		syndicate.NamingConvention = sm.NewNamingConvention
-		updateCols = append(updateCols, boiler.SyndicateColumns.NamingConvention)
+	if sm.NewSymbol.Valid {
+		syndicate.Symbol = sm.NewSymbol.String
+		updateCols = append(updateCols, boiler.SyndicateColumns.Symbol)
 	}
 	if sm.NewJoinFee.Valid {
 		syndicate.JoinFee = sm.NewJoinFee.Decimal
