@@ -96,8 +96,7 @@ type MessageSystemBan struct {
 }
 
 type MessageNewBattle struct {
-	BattleNumber int       `json:"battle_number"`
-	BattleStart  time.Time `json:"battle_start"`
+	BattleNumber int `json:"battle_number"`
 }
 
 // Chatroom holds a specific chat room
@@ -210,7 +209,6 @@ func NewChatroom(factionID string) *Chatroom {
 				FromUserStat:    stat,
 				TotalMultiplier: msg.TotalMultiplier,
 				IsCitizen:       msg.IsCitizen,
-				BattleNumber:    msg.BattleNumber,
 			},
 		}
 		cmstoSend = append(cmstoSend, cms[i])
@@ -297,7 +295,7 @@ func (api *API) SystemBanMessageBroadcaster() {
 				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
 			}
 		case newBattleInfo := <-api.BattleArena.NewBattleChan:
-			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber, newBattleInfo.BattleStart)
+			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Could not broadcast battle info")
 				return
@@ -490,7 +488,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			ChatStream:      player.FactionID.String,
 			IsCitizen:       isCitizen,
 			Lang:            language,
-			BattleNumber:    req.Payload.BattleNumber,
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -537,7 +534,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		ChatStream:      "global",
 		IsCitizen:       isCitizen,
 		Lang:            language,
-		BattleNumber:    req.Payload.BattleNumber,
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -588,7 +584,7 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 	return nil
 }
 
-func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) error {
+func (api *API) BroadcastNewBattle(battleNumber int) error {
 	factions, err := boiler.Factions().All(gamedb.StdConn)
 
 	for _, faction := range factions {
@@ -604,7 +600,6 @@ func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) erro
 			KillCount:       "",
 			IsCitizen:       false,
 			Lang:            "",
-			BattleNumber:    battleNumber,
 		}
 		err = ch.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -624,7 +619,6 @@ func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) erro
 		KillCount:       "",
 		IsCitizen:       false,
 		Lang:            "",
-		BattleNumber:    battleNumber,
 	}
 	err = ch.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -634,7 +628,7 @@ func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) erro
 	cm := &ChatMessage{
 		Type:   ChatMessageTypeNewBattle,
 		SentAt: time.Now(),
-		Data:   MessageNewBattle{BattleNumber: battleNumber, BattleStart: battleStart},
+		Data:   MessageNewBattle{BattleNumber: battleNumber},
 	}
 
 	api.RedMountainChat.AddMessage(cm)

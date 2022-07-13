@@ -38,7 +38,6 @@ import (
 
 type NewBattleChan struct {
 	BattleNumber int
-	BattleStart  time.Time
 }
 type Arena struct {
 	server                   *http.Server
@@ -1018,7 +1017,7 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
-				battleInfo := &NewBattleChan{BattleStart: btl.startedAt, BattleNumber: btl.BattleNumber}
+				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
 				arena.NewBattleChan <- battleInfo
 
 			case "BATTLE:OUTRO_FINISHED":
