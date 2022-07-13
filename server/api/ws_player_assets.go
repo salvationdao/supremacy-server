@@ -70,6 +70,7 @@ type PlayerAssetMechListRequest struct {
 		IncludeMarketListed bool                  `json:"include_market_listed"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
 		FilterRarities      []string              `json:"rarities"`
+		FilterStatuses      []string              `json:"statuses"`
 	} `json:"payload"`
 }
 
@@ -147,6 +148,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
 		FilterRarities:      req.Payload.FilterRarities,
+		FilterStatuses:      req.Payload.FilterStatuses,
 	}
 	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
 		listOpts.QueueSort = &db.MechListQueueSortOpts{
