@@ -223,6 +223,12 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+// Enum values for SyndicateElectionType
+const (
+	SyndicateElectionTypeADMIN = "ADMIN"
+	SyndicateElectionTypeCEO   = "CEO"
+)
+
 // Enum values for SyndicateEventType
 const (
 	SyndicateEventTypeMEMBER_JOIN     = "MEMBER_JOIN"
@@ -239,9 +245,17 @@ const (
 	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
 	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
 	SyndicateMotionTypeCHANGE_RULE           = "CHANGE_RULE"
+	SyndicateMotionTypeCHANGE_CEO            = "CHANGE_CEO"
+	SyndicateMotionTypeAPPOINT_COMMITTEE     = "APPOINT_COMMITTEE"
+	SyndicateMotionTypeREMOVE_COMMITTEE      = "REMOVE_COMMITTEE"
+	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
+	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
+	SyndicateMotionTypeADMIN_ELECTION        = "ADMIN_ELECTION"
+	SyndicateMotionTypeAPPOINT_ADMIN         = "APPOINT_ADMIN"
 	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
 	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
-	SyndicateMotionTypeREMOVE_FOUNDER        = "REMOVE_FOUNDER"
+	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"
+	SyndicateMotionTypeCEO_ELECTION          = "CEO_ELECTION"
 )
 
 // Enum values for SyndicateMotionResult

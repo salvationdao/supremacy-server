@@ -101,6 +101,11 @@ var TableNames = struct {
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
+	SyndicateCommittees                                string
+	SyndicateDirectors                                 string
+	SyndicateElectionCandidates                        string
+	SyndicateElectionVotes                             string
+	SyndicateElections                                 string
 	SyndicateEventLog                                  string
 	SyndicateMotionVotes                               string
 	SyndicateMotions                                   string
@@ -218,6 +223,11 @@ var TableNames = struct {
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",
+	SyndicateCommittees:          "syndicate_committees",
+	SyndicateDirectors:           "syndicate_directors",
+	SyndicateElectionCandidates:  "syndicate_election_candidates",
+	SyndicateElectionVotes:       "syndicate_election_votes",
+	SyndicateElections:           "syndicate_elections",
 	SyndicateEventLog:            "syndicate_event_log",
 	SyndicateMotionVotes:         "syndicate_motion_votes",
 	SyndicateMotions:             "syndicate_motions",

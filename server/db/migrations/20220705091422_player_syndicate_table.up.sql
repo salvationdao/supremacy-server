@@ -9,7 +9,11 @@ CREATE TABLE syndicates(
     type SYNDICATE_TYPE not null,
     faction_id uuid not null references factions (id),
     founded_by_id uuid not null references players (id),
-    honorary_founder bool not null default false,
+
+    ceo_player_id uuid references players(id),
+    admin_id uuid references players(id),
+
+    -- general detail
     name text not null UNIQUE,
     symbol TEXT NOT NULL UNIQUE,
     seat_count int NOT NULL DEFAULT 10,
@@ -29,12 +33,32 @@ CREATE TABLE syndicates(
     deleted_at timestamptz
 );
 
+CREATE TABLE syndicate_directors(
+    syndicate_id uuid not null references syndicates(id),
+    player_id uuid not null references players(id),
+    PRIMARY KEY (syndicate_id, player_id),
+    created_at timestamptz not null default NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_syndicate_director_syndicate on syndicate_directors(syndicate_id);
+CREATE INDEX IF NOT EXISTS idx_syndicate_director_player on syndicate_directors(player_id);
+CREATE INDEX IF NOT EXISTS idx_syndicate_director_search on syndicate_directors(syndicate_id, player_id);
+
+CREATE TABLE syndicate_committees(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
+    player_id uuid not null references players(id),
+    created_at timestamptz not null default NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_syndicate_committees_syndicate on syndicate_committees(syndicate_id);
+CREATE INDEX IF NOT EXISTS idx_syndicate_committees_player on syndicate_committees(player_id);
+CREATE INDEX IF NOT EXISTS idx_syndicate_committees_search on syndicate_committees(syndicate_id, player_id);
+
 ALTER TABLE players
-    ADD COLUMN IF NOT EXISTS syndicate_id uuid references syndicates(id),
-    ADD COLUMN IF NOT EXISTS director_of_syndicate_id uuid REFERENCES syndicates(id);
+    ADD COLUMN IF NOT EXISTS syndicate_id uuid references syndicates(id);
 
 CREATE INDEX IF NOT EXISTS idx_player_syndicate on players(syndicate_id);
-CREATE INDEX IF NOT EXISTS idx_player_syndicate_director on players(director_of_syndicate_id);
 
 DROP TYPE IF EXISTS SYNDICATE_EVENT_TYPE;
 CREATE TYPE SYNDICATE_EVENT_TYPE AS ENUM (
@@ -74,9 +98,19 @@ CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'ADD_RULE',
     'REMOVE_RULE',
     'CHANGE_RULE',
+    'CHANGE_CEO',
+    'APPOINT_COMMITTEE',
+    'REMOVE_COMMITTEE',
+    'REMOVE_MEMBER',
+    'DEPOSE_ADMIN',
+
+    'ADMIN_ELECTION', -- das exclusive
+
+    -- boarder director exclusive
     'APPOINT_DIRECTOR',
     'REMOVE_DIRECTOR',
-    'REMOVE_FOUNDER'
+    'DEPOSE_CEO',
+    'CEO_ELECTION'
 );
 
 DROP TYPE IF EXISTS SYNDICATE_MOTION_RESULT;
@@ -156,3 +190,46 @@ CREATE TABLE syndicate_motion_votes(
 );
 
 CREATE INDEX IF NOT EXISTS idx_motion_vote_motion_id on syndicate_motion_votes(motion_id);
+
+DROP TYPE IF EXISTS SYNDICATE_ELECTION_TYPE;
+CREATE TYPE SYNDICATE_ELECTION_TYPE AS ENUM (
+    'ADMIN', -- das exclusive
+    'CEO' -- board of directors exclusive
+);
+
+CREATE TABLE syndicate_elections(
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
+    type SYNDICATE_ELECTION_TYPE not null,
+    parent_election_id uuid references syndicate_elections(id), -- if tie result, auto start another election
+    winner_id uuid references players(id),
+    started_at timestamptz not null,
+    end_at timestamptz not null,
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE syndicate_election_candidates(
+    syndicate_election_id uuid not null references syndicate_elections(id),
+    candidate_id uuid not null references players(id),
+    PRIMARY KEY (syndicate_election_id, candidate_id),
+
+    syndicate_id uuid not null references syndicates(id),
+    resigned_at timestamptz,
+
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE syndicate_election_votes(
+    syndicate_election_id uuid not null references syndicate_elections(id),
+    voter_id uuid not null references players(id),
+    PRIMARY KEY (syndicate_election_id, voter_id),
+
+    voted_for_candidate_id uuid not null references players(id),
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);

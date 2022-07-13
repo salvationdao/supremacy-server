@@ -14,6 +14,7 @@ import (
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
+	"server/syndicate"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -98,7 +99,7 @@ type API struct {
 	ZaibatsuChat     *Chatroom
 	ProfanityManager *profanities.ProfanityManager
 
-	SyndicateSystem *SyndicateSystem
+	SyndicateSystem *syndicate.System
 
 	Config *server.Config
 }
@@ -116,7 +117,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 ) (*API, error) {
 	// spin up syndicate system
-	ss, err := NewSyndicateSystem()
+	ss, err := syndicate.NewSystem(pm)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
 		return nil, err
@@ -299,7 +300,8 @@ func NewAPI(
 				s.WS("/mech_ability/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 
 				// syndicate related
-				s.WS("/syndicate/{syndicate_id}", HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(sdc.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(sdc.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(sdc.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
 			}))
 		})
 	})

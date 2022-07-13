@@ -4,9 +4,9 @@ import "server/db/boiler"
 
 type Syndicate struct {
 	*boiler.Syndicate
-	SymbolUrl string           `json:"symbol_url"`
-	Members   []*boiler.Player `json:"members"`
-	Directors []*boiler.Player `json:"directors"`
+	Founder *boiler.Player `json:"founder"`
+	CEO     *boiler.Player `json:"ceo"`
+	Admin   *boiler.Player `json:"admin"`
 }
 
 func SyndicateBoilerToServer(syndicate *boiler.Syndicate) *Syndicate {
@@ -15,16 +15,14 @@ func SyndicateBoilerToServer(syndicate *boiler.Syndicate) *Syndicate {
 	}
 
 	if syndicate.R != nil {
-		if syndicate.R.Symbol != nil {
-			s.SymbolUrl = syndicate.R.Symbol.ImageURL
+		if s.R.FoundedBy != nil {
+			s.Founder = &boiler.Player{ID: s.R.FoundedBy.ID, Username: s.R.FoundedBy.Username, FactionID: s.R.FoundedBy.FactionID, Gid: s.R.FoundedBy.Gid, Rank: s.R.FoundedBy.Rank}
 		}
-
-		for _, p := range syndicate.R.Players {
-			s.Members = append(s.Members, &boiler.Player{ID: p.ID, Username: p.Username, Gid: p.Gid, Rank: p.Rank})
+		if s.R.CeoPlayer != nil {
+			s.Founder = &boiler.Player{ID: s.R.CeoPlayer.ID, Username: s.R.CeoPlayer.Username, FactionID: s.R.CeoPlayer.FactionID, Gid: s.R.CeoPlayer.Gid, Rank: s.R.CeoPlayer.Rank}
 		}
-
-		for _, dp := range syndicate.R.DirectorOfSyndicatePlayers {
-			s.Directors = append(s.Directors, &boiler.Player{ID: dp.ID, Username: dp.Username, Gid: dp.Gid, Rank: dp.Rank})
+		if s.R.Admin != nil {
+			s.Founder = &boiler.Player{ID: s.R.Admin.ID, Username: s.R.Admin.Username, FactionID: s.R.Admin.FactionID, Gid: s.R.Admin.Gid, Rank: s.R.Admin.Rank}
 		}
 	}
 

@@ -13,3 +13,9 @@ const HubKeyBattleMechHistoryList = "BATTLE:MECH:HISTORY:LIST"
 const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+
+const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
+const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
+const HubKeySyndicateCommitteesSubscribe = "SYNDICATE:COMMITTEES:SUBSCRIBE"
+const HubKeySyndicateRulesSubscribe = "SYNDICATE:RULES:SUBSCRIBE"
+const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIBE"

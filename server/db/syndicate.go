@@ -56,7 +56,6 @@ func GetSyndicateDetail(syndicateID string) (*server.Syndicate, error) {
 	syndicate, err := boiler.Syndicates(
 		boiler.SyndicateWhere.ID.EQ(syndicateID),
 		qm.Load(boiler.SyndicateRels.Players, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
-		qm.Load(boiler.SyndicateRels.Symbol),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to query syndicate from db")
@@ -68,4 +67,50 @@ func GetSyndicateDetail(syndicateID string) (*server.Syndicate, error) {
 	}
 
 	return server.SyndicateBoilerToServer(syndicate), nil
+}
+
+func GetSyndicateDirectors(syndicateID string) ([]*server.Player, error) {
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.FactionID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.Rank,
+		),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.SyndicateDirectors,
+				qm.Rels(boiler.TableNames.SyndicateDirectors, boiler.SyndicateDirectorColumns.PlayerID),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+			),
+		),
+		qm.Load(boiler.PlayerRels.IDPlayerStat),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", syndicateID).Msg("Failed to get syndicate directors from db")
+		return nil, terror.Error(err, "Failed to get syndicate directors.")
+	}
+
+	result := []*server.Player{}
+	for _, p := range ps {
+		player := &server.Player{
+			ID:        p.ID,
+			Username:  p.Username,
+			FactionID: p.FactionID,
+			Gid:       p.Gid,
+			Rank:      p.Rank,
+		}
+
+		// protect player stat column
+		if p.R != nil {
+			player.Stat = p.R.IDPlayerStat
+		}
+
+		result = append(result, player)
+
+	}
+
+	return result, nil
 }

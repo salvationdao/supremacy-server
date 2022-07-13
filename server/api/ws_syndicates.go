@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/adrg/strutil"
-	"github.com/adrg/strutil/metrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -14,14 +12,12 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
-	"strings"
 	"time"
 )
 
@@ -45,12 +41,14 @@ func NewSyndicateController(api *API) *SyndicateWS {
 	api.SecureUserFactionCommand(HubKeySyndicateIssueMotion, sc.SyndicateIssueMotionHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateMotionList, sc.SyndicateMotionListHandler)
-	api.SecureUserFactionCommand(HubKeySyndicateOngoingMotionSubscribe, sc.SyndicateOngoingMotionSubscribeHandler)
+	api.SecureUserFactionCommand(server.HubKeySyndicateOngoingMotionSubscribe, sc.SyndicateOngoingMotionSubscribeHandler)
 
 	// subscribetion
 
 	return sc
 }
+
+// TODO: Move Syndicate create request to rest, and add file update handler
 
 type SyndicateCreateRequest struct {
 	Payload struct {
@@ -89,7 +87,7 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	}
 
 	// check syndicate name is registered
-	syndicateName, err := sc.API.SyndicateNameVerification(req.Payload.Name)
+	syndicateName, err := sc.API.SyndicateSystem.SyndicateNameVerification(req.Payload.Name)
 	if err != nil {
 		return terror.Error(err, err.Error())
 	}
@@ -112,6 +110,10 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 		ExitFee:     req.Payload.ExitFee,
 	}
 
+	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
+		syndicate.CeoPlayerID = null.StringFrom(user.ID)
+	}
+
 	err = syndicate.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Msg("Failed to insert syndicate into db.")
@@ -119,14 +121,16 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	}
 
 	user.SyndicateID = null.StringFrom(syndicate.ID)
-	user.DirectorOfSyndicateID = null.StringFromPtr(nil)
-	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
-		user.DirectorOfSyndicateID = null.StringFrom(syndicate.ID)
-	}
-	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID, boiler.PlayerColumns.DirectorOfSyndicateID))
+	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Interface("user", user).Msg("Failed to update syndicate id of current user.")
 		return terror.Error(err, "Failed to assign syndicate")
+	}
+
+	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
+		// TODO: insert directors table
+
+		// TODO: insert committees table
 	}
 
 	// register syndicate on xsyn server
@@ -151,81 +155,6 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 
 	reply(true)
 	return nil
-}
-
-func (api *API) SyndicateNameVerification(inputName string) (string, error) {
-	syndicateName := strings.TrimSpace(inputName)
-
-	if len(syndicateName) == 0 {
-		return "", terror.Error(fmt.Errorf("empty syndicate name"), "The name of syndicate is empty")
-	}
-
-	// check profanity
-	if api.ProfanityManager.Detector.IsProfane(syndicateName) {
-		return "", terror.Error(fmt.Errorf("profanity detected"), "The syndicate name contains profanity")
-	}
-
-	if len(syndicateName) > 64 {
-		return "", terror.Error(fmt.Errorf("too many characters"), "The syndicate name should not be longer than 64 characters")
-	}
-
-	// name similarity check
-	syndicates, err := boiler.Syndicates(
-		qm.Select(boiler.SyndicateColumns.ID, boiler.SyndicateColumns.Name),
-		qm.Where(
-			fmt.Sprintf("SIMILARITY(%s,$1) > 0.4", qm.Rels(boiler.TableNames.Syndicates, boiler.SyndicateColumns.Name)),
-			syndicateName,
-		),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("syndicate name", syndicateName).Msg("Failed to get syndicate by name from db")
-		return "", terror.Error(err, "Failed to verify syndicate name")
-	}
-
-	// https://github.com/adrg/strutil
-	for _, s := range syndicates {
-		if strutil.Similarity(syndicateName, s.Name, metrics.NewHamming()) >= 0.9 {
-			return "", terror.Error(fmt.Errorf("similar syndicate name"), fmt.Sprintf("'%s' has already been taken by other syndicate", syndicateName))
-		}
-	}
-
-	return syndicateName, nil
-}
-
-func (api *API) SyndicateSymbolVerification(inputSymbol string) (string, error) {
-	// get rid of all the spaces
-	symbol := strings.ToUpper(strings.ReplaceAll(inputSymbol, " ", ""))
-
-	if len(symbol) < 4 || len(symbol) > 5 {
-		return "", terror.Error(fmt.Errorf("must be 4 or 5 character"), "The length of symbol must be at least four and no more than five excluding spaces.")
-	}
-
-	// check profanity
-	if api.ProfanityManager.Detector.IsProfane(symbol) {
-		return "", terror.Error(fmt.Errorf("profanity detected"), "The syndicate symbol contains profanity")
-	}
-
-	// name similarity check
-	syndicates, err := boiler.Syndicates(
-		qm.Select(boiler.SyndicateColumns.ID, boiler.SyndicateColumns.Symbol),
-		qm.Where(
-			fmt.Sprintf("SIMILARITY(%s,$1) > 0.4", qm.Rels(boiler.TableNames.Syndicates, boiler.SyndicateColumns.Symbol)),
-			symbol,
-		),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("syndicate name", symbol).Msg("Failed to get syndicate by name from db")
-		return "", terror.Error(err, "Failed to verify syndicate name")
-	}
-
-	// https://github.com/adrg/strutil
-	for _, s := range syndicates {
-		if strutil.Similarity(symbol, s.Symbol, metrics.NewHamming()) >= 0.9 {
-			return "", terror.Error(fmt.Errorf("similar syndicate name"), fmt.Sprintf("'%s' has already been taken by other syndicate", symbol))
-		}
-	}
-
-	return symbol, nil
 }
 
 type SyndicateJoinRequest struct {
@@ -341,7 +270,7 @@ func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Pl
 	if err != nil {
 		return terror.Error(err, "Failed to get syndicate detail")
 	}
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
 
 	reply(true)
 
@@ -438,7 +367,7 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	if err != nil {
 		return terror.Error(err, "Failed to get syndicate detail")
 	}
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
 
 	reply(true)
 
@@ -582,8 +511,6 @@ func (sc *SyndicateWS) SyndicateMotionListHandler(ctx context.Context, user *boi
 
 // subscription handlers
 
-const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
-
 // SyndicateGeneralDetailSubscribeHandler return syndicate general detail (join fee, exit fee, name, symbol_url, available_seat_count)
 func (sc *SyndicateWS) SyndicateGeneralDetailSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
@@ -606,7 +533,27 @@ func (sc *SyndicateWS) SyndicateGeneralDetailSubscribeHandler(ctx context.Contex
 	return nil
 }
 
-const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIBE"
+// SyndicateDirectorsSubscribeHandler return the directors of the syndicate
+func (sc *SyndicateWS) SyndicateDirectorsSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	syndicateID := cctx.URLParam("syndicate_id")
+	if syndicateID == "" {
+		return terror.Error(terror.ErrInvalidInput, "Missing syndicate id")
+	}
+
+	if user.SyndicateID.String != syndicateID {
+		return terror.Error(terror.ErrInvalidInput, "The player does not belong to the syndicate")
+	}
+
+	// get syndicate detail
+	ps, err := db.GetSyndicateDirectors(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	reply(ps)
+	return nil
+}
 
 // SyndicateOngoingMotionSubscribeHandler return ongoing motion list
 func (sc *SyndicateWS) SyndicateOngoingMotionSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
