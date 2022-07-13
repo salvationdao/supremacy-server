@@ -644,17 +644,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-	boil.DebugMode = true
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
-
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
