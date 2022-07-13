@@ -604,7 +604,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	var isHangarOpening bool
+	isHangarOpening := false
 	if req.Payload.IsHangar != nil {
 		isHangarOpening = *req.Payload.IsHangar
 	}
