@@ -14,6 +14,7 @@ LOCAL_DEV_DB_HOST?=localhost
 LOCAL_DEV_DB_PORT?=5437
 LOCAL_DEV_DB_DATABASE?=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
+DB_STATIC_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable&x-migrations-table=static_migrations"
 
 GITVERSION=`git describe --tags --abbrev=0`
 GITHASH=`git rev-parse HEAD`
@@ -91,9 +92,17 @@ db-version:
 db-drop:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations drop -f
 
+.PHONY: db-drop-sync
+db-drop-sync:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static drop -f
+
 .PHONY: db-migrate
 db-migrate:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up
+
+.PHONY: db-migrate-sync
+db-migrate-sync:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static up
 
 .PHONY: db-migrate-down
 db-migrate-down:
@@ -127,7 +136,7 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate dev-sync-data
+db-reset: db-drop db-drop-sync db-migrate-sync db-migrate-up-to-seed db-seed db-migrate
 
 .PHONY: db-reset-windows
 db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
