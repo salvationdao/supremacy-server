@@ -576,7 +576,7 @@ func TrimName(username string) string {
 type OpenCrateRequest struct {
 	Payload struct {
 		Id       string `json:"id"`
-		IsHangar *bool  `json:"is_hangar,omitempty"`
+		IsHangar bool   `json:"is_hangar"`
 	} `json:"payload"`
 }
 
@@ -604,12 +604,8 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	isHangarOpening := false
-	if req.Payload.IsHangar != nil {
-		isHangarOpening = *req.Payload.IsHangar
-	}
 	var collectionItem *boiler.CollectionItem
-	if isHangarOpening {
+	if req.Payload.IsHangar {
 		collectionItem, err = boiler.CollectionItems(
 			boiler.CollectionItemWhere.ID.EQ(req.Payload.Id),
 			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
@@ -816,7 +812,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		mech.ChassisSkin = items.MechSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 
-		if isHangarOpening {
+		if req.Payload.IsHangar {
 			hangarResp, err = db.GetUserMechHangarItemsWithMechID(mech, user.ID, tx)
 			if err != nil {
 				crateRollback()
@@ -859,7 +855,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
 
-		if isHangarOpening {
+		if req.Payload.IsHangar {
 			hangarResp, err = db.GetUserWeaponHangarItemsWithID(weapon, user.ID, tx)
 			if err != nil {
 				crateRollback()
@@ -891,7 +887,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
-	if isHangarOpening {
+	if req.Payload.IsHangar {
 		reply(hangarResp)
 		return nil
 	}

@@ -281,9 +281,8 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 }
 
 func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil.Executor) (*SiloType, error) {
-	tx := trx
 	if trx == nil {
-		tx = gamedb.StdConn
+		return nil, terror.Error(fmt.Errorf("not tx provided"), "Failed to get user mech hangar items")
 	}
 	mechSiloType := &SiloType{
 		Type:        "mech",
@@ -316,7 +315,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 	}
 
 	if mech.ChassisSkinID.Valid {
-		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(tx)
+		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(trx)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to get mech skin ownership")
 		}
@@ -333,7 +332,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 				defaultSkin, err := boiler.BlueprintWeaponSkins(
 					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
 					boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
-				).One(tx)
+				).One(trx)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
 					continue
@@ -341,7 +340,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 				weaponStringID = defaultSkin.ID
 			}
 
-			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(tx)
+			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
 			if err != nil {
 				continue
 			}
@@ -366,12 +365,12 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 	}
 
 	if mech.PowerCoreID.Valid {
-		powerCoreCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String)).One(tx)
+		powerCoreCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String)).One(trx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Failed to get collection item for power core")
 		}
 
-		powerCoreBlueprint, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.EQ(mech.PowerCoreID.String)).One(tx)
+		powerCoreBlueprint, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.EQ(mech.PowerCoreID.String)).One(trx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Failed to get blueprint info for power core")
 		}
@@ -392,16 +391,15 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 }
 
 func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx boil.Executor) (*SiloType, error) {
-	tx := trx
 	if trx == nil {
-		tx = gamedb.StdConn
+		return nil, terror.Error(fmt.Errorf("no tx provided"), "Failed to get weapon hangar details")
 	}
 
 	if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
 		return nil, terror.Error(fmt.Errorf("weapon not availiable in hangar"), "Weapon not available on hangar by itself")
 	}
 
-	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(tx)
+	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get blueprint weapon")
 	}
@@ -412,12 +410,12 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
 	}
 
-	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(tx)
+	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get weapon skin")
 	}
 
-	weaponSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID)).One(tx)
+	weaponSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get weapon skin ownership")
 	}
