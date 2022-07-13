@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,10 +23,11 @@ import (
 
 // BattleAbility is an object representing the database table.
 type BattleAbility struct {
-	ID                     string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                  string `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	CooldownDurationSecond int    `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldown_duration_second" toml:"cooldown_duration_second" yaml:"cooldown_duration_second"`
-	Description            string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	ID                     string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                  string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CooldownDurationSecond int       `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldown_duration_second" toml:"cooldown_duration_second" yaml:"cooldown_duration_second"`
+	Description            string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	DeletedAt              null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *battleAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -36,11 +38,13 @@ var BattleAbilityColumns = struct {
 	Label                  string
 	CooldownDurationSecond string
 	Description            string
+	DeletedAt              string
 }{
 	ID:                     "id",
 	Label:                  "label",
 	CooldownDurationSecond: "cooldown_duration_second",
 	Description:            "description",
+	DeletedAt:              "deleted_at",
 }
 
 var BattleAbilityTableColumns = struct {
@@ -48,25 +52,53 @@ var BattleAbilityTableColumns = struct {
 	Label                  string
 	CooldownDurationSecond string
 	Description            string
+	DeletedAt              string
 }{
 	ID:                     "battle_abilities.id",
 	Label:                  "battle_abilities.label",
 	CooldownDurationSecond: "battle_abilities.cooldown_duration_second",
 	Description:            "battle_abilities.description",
+	DeletedAt:              "battle_abilities.deleted_at",
 }
 
 // Generated where
+
+type whereHelpernull_Time struct{ field string }
+
+func (w whereHelpernull_Time) EQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Time) NEQ(x null.Time) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Time) LT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Time) LTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Time) GT(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Time) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var BattleAbilityWhere = struct {
 	ID                     whereHelperstring
 	Label                  whereHelperstring
 	CooldownDurationSecond whereHelperint
 	Description            whereHelperstring
+	DeletedAt              whereHelpernull_Time
 }{
 	ID:                     whereHelperstring{field: "\"battle_abilities\".\"id\""},
 	Label:                  whereHelperstring{field: "\"battle_abilities\".\"label\""},
 	CooldownDurationSecond: whereHelperint{field: "\"battle_abilities\".\"cooldown_duration_second\""},
 	Description:            whereHelperstring{field: "\"battle_abilities\".\"description\""},
+	DeletedAt:              whereHelpernull_Time{field: "\"battle_abilities\".\"deleted_at\""},
 }
 
 // BattleAbilityRels is where relationship names are stored.
@@ -90,9 +122,9 @@ func (*battleAbilityR) NewStruct() *battleAbilityR {
 type battleAbilityL struct{}
 
 var (
-	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description"}
+	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description", "deleted_at"}
 	battleAbilityColumnsWithoutDefault = []string{"label", "cooldown_duration_second", "description"}
-	battleAbilityColumnsWithDefault    = []string{"id"}
+	battleAbilityColumnsWithDefault    = []string{"id", "deleted_at"}
 	battleAbilityPrimaryKeyColumns     = []string{"id"}
 	battleAbilityGeneratedColumns      = []string{}
 )
@@ -585,7 +617,7 @@ func (o *BattleAbility) RemoveGameAbilities(exec boil.Executor, related ...*Game
 
 // BattleAbilities retrieves all the records using an executor.
 func BattleAbilities(mods ...qm.QueryMod) battleAbilityQuery {
-	mods = append(mods, qm.From("\"battle_abilities\""))
+	mods = append(mods, qm.From("\"battle_abilities\""), qmhelper.WhereIsNull("\"battle_abilities\".\"deleted_at\""))
 	return battleAbilityQuery{NewQuery(mods...)}
 }
 
@@ -599,7 +631,7 @@ func FindBattleAbility(exec boil.Executor, iD string, selectCols ...string) (*Ba
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_abilities\" where \"id\"=$1", sel,
+		"select %s from \"battle_abilities\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -940,7 +972,7 @@ func (o *BattleAbility) Upsert(exec boil.Executor, updateOnConflict bool, confli
 
 // Delete deletes a single BattleAbility record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleAbility) Delete(exec boil.Executor) (int64, error) {
+func (o *BattleAbility) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no BattleAbility provided for delete")
 	}
@@ -949,8 +981,26 @@ func (o *BattleAbility) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleAbilityPrimaryKeyMapping)
-	sql := "DELETE FROM \"battle_abilities\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleAbilityPrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_abilities\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_abilities\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(battleAbilityType, battleAbilityMapping, append(wl, battleAbilityPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -974,12 +1024,17 @@ func (o *BattleAbility) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q battleAbilityQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no battleAbilityQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -995,7 +1050,7 @@ func (q battleAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BattleAbilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1008,14 +1063,31 @@ func (o BattleAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"battle_abilities\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_abilities\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleAbilityPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"battle_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1069,7 +1141,8 @@ func (o *BattleAbilitySlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"battle_abilities\".* FROM \"battle_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1086,7 +1159,7 @@ func (o *BattleAbilitySlice) ReloadAll(exec boil.Executor) error {
 // BattleAbilityExists checks if the BattleAbility row exists.
 func BattleAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_abilities\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"battle_abilities\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

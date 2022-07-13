@@ -47,11 +47,11 @@ SELECT
 	collection_items.animation_url,
 	collection_items.youtube_url,
 	p.username,
-	mech_stats.total_wins,
-	mech_stats.total_deaths,
-	mech_stats.total_kills,
-	mech_stats.battles_survived, 
-	mech_stats.total_losses,
+	COALESCE(mech_stats.total_wins, 0),
+	COALESCE(mech_stats.total_deaths, 0),
+	COALESCE(mech_stats.total_kills, 0),
+	COALESCE(mech_stats.battles_survived, 0), 
+	COALESCE(mech_stats.total_losses, 0),
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -96,7 +96,7 @@ SELECT
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
-INNER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
+LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN (
 	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
@@ -186,19 +186,16 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
+		Stats:          &server.Stats{},
+		Owner:          &server.User{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := tx.Query(query, mechID)
+	result, err := conn.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -756,12 +753,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-
-	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}

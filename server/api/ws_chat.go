@@ -51,6 +51,7 @@ type ChatMessageType string
 const (
 	ChatMessageTypeText       ChatMessageType = "TEXT"
 	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
+	ChatMessageTypeSystemBan  ChatMessageType = "SYSTEM_BAN"
 )
 
 type MessageText struct {
@@ -76,6 +77,20 @@ type MessagePunishVote struct {
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
 	InstantPassByUsers    []*boiler.Player    `json:"instant_pass_by_users"`
+}
+
+type MessageSystemBan struct {
+	BannedByUser *boiler.Player `json:"banned_by_user"`
+	BannedUser   *boiler.Player `json:"banned_user"`
+
+	FactionID    null.String `json:"faction_id"`
+	BattleNumber null.Int    `json:"battle_number"`
+
+	Reason      string `json:"reason"`
+	BanDuration string `json:"ban_duration"`
+
+	IsPermanentBan bool     `json:"is_permanent_ban"`
+	Restrictions   []string `json:"restrictions"`
 }
 
 // Chatroom holds a specific chat room
@@ -221,7 +236,58 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 
+	go api.SystemBanMessageBroadcaster()
+
 	return chatHub
+}
+
+const (
+	RestrictionLocationSelect = "Select location"
+	RestrictionAbilityTrigger = "Trigger abilities"
+	RestrictionChatSend       = "Send chat"
+	RestrictionChatView       = "Receive chat"
+	RestrictionSupsContribute = "Contribute sups"
+)
+
+func (api *API) SystemBanMessageBroadcaster() {
+	for {
+		msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan
+
+		banMessage := &MessageSystemBan{
+			BannedByUser:   msg.SystemPlayer,
+			BannedUser:     msg.BannedPlayer,
+			FactionID:      msg.FactionID,
+			BattleNumber:   msg.PlayerBan.BattleNumber,
+			Reason:         msg.PlayerBan.Reason,
+			BanDuration:    msg.BanDuration,
+			IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
+			Restrictions:   PlayerBanRestrictions(msg.PlayerBan),
+		}
+
+		cm := &ChatMessage{
+			Type:   ChatMessageTypeSystemBan,
+			SentAt: time.Now(),
+			Data:   banMessage,
+		}
+
+		switch msg.FactionID.String {
+		case server.RedMountainFactionID:
+			api.RedMountainChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		case server.BostonCyberneticsFactionID:
+			api.BostonChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		case server.ZaibatsuFactionID:
+			api.ZaibatsuChat.AddMessage(cm)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+		default:
+			api.GlobalChat.AddMessage(cm)
+			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+		}
+	}
 }
 
 // FactionChatRequest sends chat message to specific faction.
@@ -246,8 +312,8 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(2, 10, true)
-var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
+var bucket = leakybucket.NewCollector(2, 2, true)
+var minuteBucket = leakybucket.NewCollector(0.5, 0.5, true)
 
 // ChatMessageHandler sends chat message from player
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -275,18 +341,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	// check user is banned on chat
-	isBanned, err := player.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictChat,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSendChat.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")

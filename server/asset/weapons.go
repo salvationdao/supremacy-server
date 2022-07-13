@@ -12,8 +12,8 @@ func TransferWeaponToNewOwner(
 	weaponID,
 	toID string,
 	xsynLocked bool,
-	assetHidden null.String,
-) error {
+	assetHidden null.String) ([]*boiler.CollectionItem,
+ error) {
 	itemIDsToTransfer := []string{}
 
 	// update mech owner
@@ -25,17 +25,17 @@ func TransferWeaponToNewOwner(
 		"xsyn_locked": xsynLocked,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if updated != 1 {
-		return fmt.Errorf("expected to update 1 weapon but updated %d", updated)
+		return nil, fmt.Errorf("expected to update 1 weapon but updated %d", updated)
 	}
 	// get equipped mech weapon skins
 	mWpnSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(weaponID)),
 	).All(conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, itm := range mWpnSkin {
 		itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
@@ -49,8 +49,16 @@ func TransferWeaponToNewOwner(
 		"asset_hidden": assetHidden,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	// now lets also transfer all the assets on xsyn too!
+	colItems, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(itemIDsToTransfer),
+	).All(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return colItems, nil
 }

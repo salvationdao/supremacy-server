@@ -235,7 +235,7 @@ func WinBattle(battleID string, winCondition string, mechs ...*MechWithOwner) er
 
 //DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
-	players, err := boiler.Players(qm.Where("is_ai = true")).All(gamedb.StdConn)
+	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

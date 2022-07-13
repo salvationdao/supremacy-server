@@ -11,6 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -449,7 +450,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				return
 			}
 
-			err = HandleMarketplaceAssetTransfer(tx, auctionItem.ID.String())
+			err = HandleMarketplaceAssetTransfer(tx, m.Passport, auctionItem.ID.String())
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				rpcAssetTransferRollback()
@@ -528,32 +529,40 @@ func (m *MarketplaceController) processFinishedAuctions() {
 		Msg("processing completed auction items completed")
 }
 
-func HandleMarketplaceAssetTransfer(conn boil.Executor, itemSaleID string) error {
-	L := gamelog.L.Error().Interface("itemSaleID", itemSaleID).Str("func", "HandleMarketplaceAuctionAssetTransfer")
+func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclient.XsynXrpcClient, itemSaleID string) error {
+	l := gamelog.L.With().Interface("itemSaleID", itemSaleID).Str("func", "HandleMarketplaceAuctionAssetTransfer").Logger()
+	attachedHashes := []string{}
+
 
 	itemSale, err := boiler.FindItemSale(conn, itemSaleID)
 	if err != nil {
-		L.Err(err).Msg("failed to find item sale")
+		l.Error().Err(err).Msg("failed to find item sale")
 		return err
 	}
 	colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
 	if err != nil {
-		L.Err(err).Msg("failed to find collection Item")
+		l.Error().Err(err).Msg("failed to find collection Item")
 		return err
 	}
 
 	switch colItem.ItemType {
 	case boiler.ItemTypeWeapon:
-		err = asset.TransferWeaponToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
+		attachedColItems, err := asset.TransferWeaponToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
 		if err != nil {
-			L.Err(err).Msg("failed to transfer mech to new owner")
+			l.Error().Err(err).Msg("failed to transfer mech to new owner")
 			return err
 		}
+		for _, colItem := range attachedColItems {
+			attachedHashes = append(attachedHashes, colItem.Hash)
+		}
 	case boiler.ItemTypeMech:
-		err = asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
+		attachedColItems, err := asset.TransferMechToNewOwner(conn, colItem.ItemID, itemSale.SoldTo.String, colItem.XsynLocked, null.NewString("", false))
 		if err != nil {
-			L.Err(err).Msg("failed to transfer mech to new owner")
+			l.Error().Err(err).Msg("failed to transfer mech to new owner")
 			return err
+		}
+		for _, colItem := range attachedColItems {
+			attachedHashes = append(attachedHashes, colItem.Hash)
 		}
 	case boiler.ItemTypeUtility,
 		boiler.ItemTypeMechSkin,
@@ -564,11 +573,31 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, itemSaleID string) error
 		colItem.OwnerID = itemSale.SoldTo.String
 		_, err = colItem.Update(conn, boil.Infer())
 		if err != nil {
-			L.Err(err).Msg("failed to transfer mech to new owner")
+			l.Error().Err(err).Msg("failed to transfer mech to new owner")
 			return err
 		}
 	default:
 		return fmt.Errorf("unhandled item type")
 	}
+
+
+	for _, hash := range attachedHashes {
+		err := rpcClient.TransferAsset(
+			itemSale.SoldTo.String,
+			colItem.OwnerID,
+			hash,
+			itemSale.SoldTXID,
+			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
+				asset.UpdateLatestHandledTransferEvent(rpcClient, eventID)
+			},
+		)
+		if err != nil && strings.Contains(err.Error(), "asset not exist") {
+			l.Warn().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+		} else if err != nil {
+			l.Error().Err(err).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
+			return err
+		}
+	}
+
 	return nil
 }
