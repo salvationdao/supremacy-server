@@ -1185,11 +1185,12 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"game_map"`
-	WarMachines        []*WarMachine   `json:"war_machines"`
-	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
-	WarMachineLocation []byte          `json:"war_machine_location"`
-	BattleIdentifier   int             `json:"battle_identifier"`
+	GameMap            *server.GameMap  `json:"game_map"`
+	WarMachines        []*WarMachine    `json:"war_machines"`
+	SpawnedAI          []*WarMachine    `json:"spawned_ai"`
+	WarMachineLocation []byte           `json:"war_machine_location"`
+	BattleIdentifier   int              `json:"battle_identifier"`
+	AbilityDetails     []*AbilityDetail `json:"ability_details"`
 }
 
 type ViewerLiveCount struct {
@@ -1283,7 +1284,7 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 	}
 }
 
-func UpdatePayload(btl *Battle) *GameSettingsResponse {
+func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	var lt []byte
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
@@ -1292,19 +1293,39 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
+	// Indexes correspond to the game_client_ability_id in the db
+	abilityDetails := make([]*AbilityDetail, 20)
+	// Airstrike
+	abilityDetails[0] = &AbilityDetail{
+		Radius: 2000,
+	}
+	// Nuke
+	abilityDetails[1] = &AbilityDetail{
+		Radius: 5200,
+	}
+	// EMP
+	abilityDetails[12] = &AbilityDetail{
+		Radius: 10000,
+	}
+	// BLACKOUT
+	abilityDetails[16] = &AbilityDetail{
+		Radius: 20000,
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
 		WarMachineLocation: lt,
+		AbilityDetails:     abilityDetails,
 	}
 }
 
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, UpdatePayload(btl))
+	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1660,6 +1681,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
 				}
+
+				// sent instance to system ban manager
+				go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
 
 			} else {
 				// update user kill

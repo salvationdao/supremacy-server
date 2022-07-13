@@ -53,7 +53,7 @@ func (bm *Benchmarker) End(key string) {
 
 func (bm *Benchmarker) ReportGet() (time.Duration, []string, error) {
 	if len(bm.RecordMap) == 0 {
-		gamelog.L.Warn().Msg("There is no benchmark record")
+		gamelog.L.Debug().Msg("There is no benchmark record")
 		return 0, nil, fmt.Errorf("benchmark record not found")
 	}
 
@@ -77,7 +77,7 @@ func (bm *Benchmarker) ReportGet() (time.Duration, []string, error) {
 
 func (bm *Benchmarker) Report() {
 	if len(bm.RecordMap) == 0 {
-		gamelog.L.Warn().Msg("There is no benchmark record to report")
+		gamelog.L.Debug().Msg("There is no benchmark record to report")
 		return
 	}
 
@@ -94,13 +94,13 @@ func (bm *Benchmarker) Report() {
 
 func (bm *Benchmarker) Alert(millisecond int64) {
 	if len(bm.RecordMap) == 0 {
-		gamelog.L.Warn().Msg("There is no benchmark record to alert")
+		gamelog.L.Debug().Msg("There is no benchmark record to alert")
 		return
 	}
 
 	totalTime, reports, err := bm.ReportGet()
 	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("Failed to get benchmark report")
+		gamelog.L.Debug().Err(err).Msg("Failed to get benchmark report")
 		return
 	}
 

@@ -413,6 +413,7 @@ func (q gameAbilityQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *GameAbility) BattleAbility(mods ...qm.QueryMod) battleAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleAbilityID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -513,6 +514,7 @@ func (gameAbilityL) LoadBattleAbility(e boil.Executor, singular bool, maybeGameA
 	query := NewQuery(
 		qm.From(`battle_abilities`),
 		qm.WhereIn(`battle_abilities.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
