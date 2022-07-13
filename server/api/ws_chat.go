@@ -258,8 +258,8 @@ const (
 )
 
 func (api *API) SystemBanMessageBroadcaster() {
-	for {
-		msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan
+	select {
+	case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
 
 		banMessage := &MessageSystemBan{
 			BannedByUser:   msg.SystemPlayer,
@@ -294,6 +294,11 @@ func (api *API) SystemBanMessageBroadcaster() {
 		default:
 			api.GlobalChat.AddMessage(cm)
 			ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+		}
+	case newBattleInfo := <-api.BattleArena.NewBattleChan:
+		err := api.BroadcastNewBattle(newBattleInfo.BattleNumber, newBattleInfo.BattleStart)
+		if err != nil {
+			return
 		}
 	}
 }
@@ -349,10 +354,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		SentMessageCount: user.SentMessageCount,
 	}
 
-	err = fc.API.BroadcastNewBattle(1, time.Now())
-	if err != nil {
-		return terror.Error(err, "Couldn't broadcast")
-	}
 	// check user is banned on chat
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
@@ -604,7 +605,7 @@ func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) erro
 		}
 		err = ch.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			return terror.Error(err, "nah fam")
+			return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
 		}
 	}
 
@@ -624,7 +625,7 @@ func (api *API) BroadcastNewBattle(battleNumber int, battleStart time.Time) erro
 	}
 	err = ch.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		return terror.Error(err, "nah fam")
+		return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
 	}
 
 	cm := &ChatMessage{

@@ -36,6 +36,10 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type NewBattleChan struct {
+	BattleNumber int
+	BattleStart  time.Time
+}
 type Arena struct {
 	server                   *http.Server
 	opts                     *Opts
@@ -51,6 +55,7 @@ type Arena struct {
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
 	SystemBanManager         *SystemBanManager
+	NewBattleChan            chan *NewBattleChan
 	sync.RWMutex
 }
 
@@ -1012,6 +1017,9 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
+				battleInfo := &NewBattleChan{BattleStart: btl.startedAt, BattleNumber: btl.BattleNumber}
+				fmt.Println(battleInfo)
+				arena.NewBattleChan <- battleInfo
 
 			case "BATTLE:OUTRO_FINISHED":
 				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
