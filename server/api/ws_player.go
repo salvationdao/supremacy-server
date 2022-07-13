@@ -1231,7 +1231,7 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	reply(&xsyn_rpcclient.UsernameUpdateResp{Username: user.Username.String})
+	reply(user.Username.String)
 	return nil
 }
 
