@@ -51,10 +51,11 @@ func main() {
 	dt := DevTool{db: conn}
 
 	if syncMech != nil && *syncMech {
-		RemoveFKContraints(dt)
+		//RemoveFKContraints(dt)
+		SyncFactions(dt)
+		SyncBrands(dt)
 		SyncMechModels(dt)
 		SyncMechSkins(dt)
-		SyncBrands(dt)
 		SyncMysteryCrates(dt)
 		SyncWeaponModel(dt)
 		SyncWeaponSkins(dt)
@@ -155,9 +156,18 @@ func SyncMechModels(dt DevTool) error {
 	}
 
 	for _, mechModel := range MechModels {
+		brandID := &mechModel.BrandID.String
+		if mechModel.BrandID.String == "" || !mechModel.BrandID.Valid {
+			brandID = nil
+		}
+
 		_, err = dt.db.Exec(`
-			UPDATE mech_models SET id=$1 WHERE label=$2 AND mech_type=$3;
-		`, mechModel.ID, mechModel.Label, mechModel.MechType)
+			INSERT INTO mech_models (id, label, default_chassis_skin_id, brand_id, mech_type)
+			VALUES ($1,$2,$3,$4,$5)
+			ON CONFLICT (id)
+			DO
+				UPDATE SET id=$1, label=$2, default_chassis_skin_id=$3, brand_id=$4, mech_type=$5;
+		`, mechModel.ID, mechModel.Label, mechModel.DefaultChassisSkinID, brandID, mechModel.MechType)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
 			continue
@@ -204,60 +214,65 @@ func SyncMechSkins(dt DevTool) error {
 			CardAnimationUrl: null.StringFrom(record[7]),
 			LargeImageUrl:    null.StringFrom(record[8]),
 			AvatarUrl:        null.StringFrom(record[9]),
+			BackgroundColor:  record[11],
+			YoutubeURL:       record[12],
 			MechType:         record[13],
+			StatModifier:     record[14],
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
 	}
 
 	for _, mechSkin := range MechSkins {
+		imageURl := &mechSkin.ImageUrl.String
+		if !mechSkin.ImageUrl.Valid || mechSkin.ImageUrl.String == "" {
+			imageURl = nil
+		}
 
-		_, err = dt.db.Exec(`
-			UPDATE template_blueprints 
-			SET blueprint_id=$1 
-			WHERE blueprint_id = (
-				SELECT id 
-				FROM blueprint_mech_skin 
-				WHERE label=$2 
-				  AND tier=$3 
-				  AND collection=$4 
-				  AND mech_model=$5 
-				  AND mech_type=$6
-				);
-		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
-		if err != nil {
-			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
-			continue
+		animationURL := &mechSkin.AnimationUrl.String
+		if !mechSkin.AnimationUrl.Valid || mechSkin.AnimationUrl.String == "" {
+			animationURL = nil
+		}
+
+		cardAnimationURL := &mechSkin.CardAnimationUrl.String
+		if !mechSkin.CardAnimationUrl.Valid || mechSkin.CardAnimationUrl.String == "" {
+			cardAnimationURL = nil
+		}
+
+		largeImageURL := &mechSkin.LargeImageUrl.String
+		if !mechSkin.LargeImageUrl.Valid || mechSkin.LargeImageUrl.String == "" {
+			largeImageURL = nil
+		}
+
+		avatarURL := &mechSkin.AvatarUrl.String
+		if !mechSkin.AvatarUrl.Valid || mechSkin.AvatarUrl.String == "" {
+			avatarURL = nil
+		}
+
+		statModifier := &mechSkin.StatModifier
+		if mechSkin.StatModifier == "" {
+			statModifier = nil
+		}
+
+		backgroundColor := &mechSkin.StatModifier
+		if mechSkin.BackgroundColor == "" {
+			backgroundColor = nil
+		}
+
+		youtubeURL := &mechSkin.YoutubeURL
+		if mechSkin.YoutubeURL == "" {
+			youtubeURL = nil
 		}
 
 		_, err = dt.db.Exec(`
-			UPDATE mystery_crate_blueprints 
-			SET blueprint_id=$1 
-			WHERE blueprint_id = (
-				SELECT id 
-				FROM blueprint_mech_skin 
-				WHERE label=$2 
-				  AND tier=$3 
-				  AND collection=$4 
-				  AND mech_model=$5 
-				  AND mech_type=$6
-				);
-		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
+			INSERT INTO blueprint_mech_skin(id,collection, mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url, avatar_url,background_color, youtube_url, mech_type, stat_modifier)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			ON CONFLICT (id)
+			DO
+			    UPDATE SET id=$1,collection=$2, mech_model=$3, label=$4, tier=$5, image_url=$6, animation_url=$7, card_animation_url=$8, large_image_url=$9, avatar_url=$10,background_color=$11, youtube_url=$12, mech_type=$13, stat_modifier=$14;
+		`, mechSkin.ID, mechSkin.Collection, mechSkin.MechModel, mechSkin.Label, mechSkin.Tier, imageURl, animationURL, cardAnimationURL, largeImageURL, avatarURL, backgroundColor, youtubeURL, mechSkin.MechType, statModifier)
 		if err != nil {
-			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
-			continue
-		}
-		_, err = dt.db.Exec(`
-			UPDATE blueprint_mech_skin 
-			SET id=$1 
-			WHERE label=$2 
-			  AND tier=$3 
-			  AND collection=$4 
-			  AND mech_model=$5 
-			  AND mech_type=$6;
-		`, mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel, mechSkin.MechType)
-		if err != nil {
-			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection)
+			fmt.Println(err.Error()+mechSkin.ID, mechSkin.MechModel)
 			continue
 		}
 
@@ -268,6 +283,74 @@ func SyncMechSkins(dt DevTool) error {
 
 	return nil
 
+}
+
+func SyncFactions(dt DevTool) error {
+	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/factions.csv", os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var Factions []types.Faction
+	for _, record := range records {
+		faction := &types.Faction{
+			ID:              record[0],
+			ContractReward:  record[1],
+			VotePrice:       record[2],
+			Label:           record[3],
+			GuildID:         record[4],
+			DeletedAt:       record[5],
+			UpdatedAt:       record[6],
+			CreatedAt:       record[7],
+			PrimaryColor:    record[8],
+			SecondaryColor:  record[9],
+			BackgroundColor: record[10],
+			LogoURL:         record[11],
+			BackgroundURL:   record[12],
+			Description:     record[13],
+		}
+
+		Factions = append(Factions, *faction)
+	}
+
+	for _, faction := range Factions {
+		guildID := &faction.GuildID
+		if faction.GuildID == "" {
+			guildID = nil
+		}
+		_, err = dt.db.Exec(`
+			INSERT INTO factions (id, label, guild_id, primary_color, secondary_color, background_color, logo_url, background_url, description)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			ON CONFLICT (id)
+			DO
+				UPDATE SET id=$1, label=$2, guild_id=$3, primary_color=$4, secondary_color=$5, background_color=$6, logo_url=$7, background_url=$8, description=$9;
+		`, faction.ID, faction.Label, guildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
+		if err != nil {
+			fmt.Println(err.Error()+faction.ID, faction.Label)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+faction.ID, faction.Label, faction.GuildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
+	}
+
+	fmt.Println("Finish syncing Factions")
+	return nil
+
+	return nil
 }
 
 func SyncBrands(dt DevTool) error {
@@ -302,13 +385,19 @@ func SyncBrands(dt DevTool) error {
 	}
 
 	for _, brand := range Brands {
-		_, err = dt.db.Exec(`UPDATE brands SET id=$1 WHERE label=$2 AND faction_id=$3 `, brand.ID, brand.Label, brand.FactionID)
+		_, err = dt.db.Exec(`
+			INSERT INTO brands(id, label, faction_id)
+			VALUES ($1,$2,$3)
+			ON CONFLICT (id)
+			DO
+				UPDATE SET id=$1, label=$2, faction_id=$3;
+		`, brand.ID, brand.Label, brand.FactionID)
 		if err != nil {
-			fmt.Println(err.Error()+brand.ID, brand.FactionID, brand.Label)
+			fmt.Println(err.Error()+brand.ID, brand.Label, brand.FactionID)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+brand.ID, brand.FactionID, brand.Label)
+		fmt.Println("UPDATED: "+brand.ID, brand.Label, brand.FactionID)
 	}
 
 	fmt.Println("Finish syncing brands")
@@ -340,14 +429,25 @@ func SyncMysteryCrates(dt DevTool) error {
 		mysteryCrate := &types.MysteryCrate{
 			ID:               record[0],
 			MysteryCrateType: record[1],
+			FactionID:        record[4],
 			Label:            record[9],
+			Description:      record[10],
+			ImageURL:         record[11],
+			CardAnimationURL: record[12],
+			AvatarURL:        record[13],
+			LargeImageURL:    record[14],
+			BackgroundColor:  record[15],
+			AnimationURL:     record[16],
+			YoutubeURL:       record[17],
 		}
 
 		MysteryCrates = append(MysteryCrates, *mysteryCrate)
 	}
 
 	for _, mysteryCrate := range MysteryCrates {
-		_, err = dt.db.Exec(`UPDATE storefront_mystery_crates SET id=$1 WHERE label=$2 AND mystery_crate_type=$3 `, mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
+		_, err = dt.db.Exec(`
+			
+		`, mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
 		if err != nil {
 			fmt.Println(err.Error()+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
 			continue
@@ -439,11 +539,6 @@ func SyncWeaponSkins(dt DevTool) error {
 	}
 
 	for _, weaponSkin := range WeaponSkins {
-		_, err = dt.db.Exec(`UPDATE mystery_crate_blueprints SET blueprint_id=$1 WHERE blueprint_id = (SELECT  id FROM blueprint_weapon_skin WHERE label=$2 AND weapon_type=$3 AND tier=$4 AND weapon_model_id=$5 )`, weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
-		if err != nil {
-			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
-			continue
-		}
 		_, err = dt.db.Exec(`UPDATE blueprint_weapon_skin SET id=$1 WHERE label=$2 AND weapon_type=$3 AND tier=$4 AND weapon_model_id=$5 `, weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
 		if err != nil {
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)

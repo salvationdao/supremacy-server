@@ -1,26 +1,3 @@
--- Add syndicate info
-ALTER TABLE factions
-    ADD COLUMN label TEXT UNIQUE;
-UPDATE factions
-SET label = 'Zaibatsu Heavy Industries'
-WHERE id = '880db344-e405-428d-84e5-6ebebab1fe6d';
-UPDATE factions
-SET label = 'Red Mountain Offworld Mining Corporation'
-WHERE id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
-UPDATE factions
-SET label = 'Boston Cybernetics'
-WHERE id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
-ALTER TABLE factions
-    ALTER COLUMN label SET NOT NULL;
-ALTER TABLE factions
-    ADD COLUMN guild_id UUID;
-ALTER TABLE factions
-    ADD COLUMN deleted_at TIMESTAMPTZ;
-ALTER TABLE factions
-    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-ALTER TABLE factions
-    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-
 CREATE TABLE players
 (
     id             UUID PRIMARY KEY NOT NULL,
@@ -35,17 +12,6 @@ CREATE TABLE players
 
 ALTER TABLE users
     ADD COLUMN player_id UUID REFERENCES players (id);
-
-CREATE TABLE brands
-(
-    id         UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    faction_id UUID             NOT NULL REFERENCES factions (id),
-    label      TEXT UNIQUE      NOT NULL,
-
-    deleted_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE blueprint_chassis
 (
@@ -260,17 +226,6 @@ CREATE TABLE chassis_modules
     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
-
-
--- Brands
--- 1 for each faction
-INSERT INTO brands (id, faction_id, label)
-VALUES ('2b203c87-ad8c-4ce2-af17-e079835fdbcb', '880db344-e405-428d-84e5-6ebebab1fe6d', 'Zaibatsu Heavy Industries');
-INSERT INTO brands (id, faction_id, label)
-VALUES ('953ad4fc-3aa9-471f-a852-f39e9f36cd04', '98bf7bb3-1a7c-4f21-8843-458d62884060',
-        'Red Mountain Offworld Mining Corporation');
-INSERT INTO brands (id, faction_id, label)
-VALUES ('009f71fc-3594-4d24-a6e2-f05070d66f40', '7c6dde21-b067-46cf-9e56-155c88a520e2', 'Boston Cybernetics');
 
 
 -- Players

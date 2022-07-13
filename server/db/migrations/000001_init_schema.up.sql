@@ -29,14 +29,6 @@ CREATE TABLE battles
     ended_at          TIMESTAMPTZ
 );
 
-
--- factions
-CREATE TABLE factions
-(
-    id         UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    vote_price TEXT             NOT NULL DEFAULT '1000000000000000000'
-);
-
 -- users
 CREATE TABLE users
 (
@@ -60,28 +52,6 @@ CREATE TABLE battles_war_machines
     war_machine_stat JSONB NOT NULL,
     is_winner        BOOL  NOT NULL DEFAULT FALSE,
     PRIMARY KEY (battle_id, war_machine_stat)
-);
-
-
--- battle_abilities is for voting system
-CREATE TABLE battle_abilities
-(
-    id                       UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    label                    TEXT             NOT NULL,
-    cooldown_duration_second INT              NOT NULL
-);
-
--- game_abilities
-CREATE TABLE game_abilities
-(
-    id                     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    game_client_ability_id INT              NOT NULL,             -- gameclient uses byte/enum instead of uuid
-    faction_id             UUID             NOT NULL,
-    battle_ability_id      UUID REFERENCES battle_abilities (id), -- not null if the ability is a battle ability
-    label                  TEXT             NOT NULL,
-    colour                 TEXT             NOT NULL,
-    image_url              TEXT             NOT NULL,
-    sups_cost              TEXT             NOT NULL DEFAULT '0'
 );
 
 -- battle_events log all the events that happen in the battle

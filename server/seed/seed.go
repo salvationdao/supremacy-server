@@ -37,11 +37,11 @@ func (s *Seeder) Run() error {
 		return err
 	}
 
-	fmt.Println("seed factions")
-	_, err = s.factions(ctx)
-	if err != nil {
-		return err
-	}
+	//fmt.Println("seed factions")
+	//_, err = s.factions(ctx)
+	//if err != nil {
+	//	return err
+	//}
 
 	fmt.Println("Seed assets")
 	_, err = s.assets(ctx)
@@ -49,11 +49,11 @@ func (s *Seeder) Run() error {
 		return err
 	}
 
-	fmt.Println("Seed faction abilities")
-	err = factionAbilities(ctx, s.Conn)
-	if err != nil {
-		return err
-	}
+	//fmt.Println("Seed faction abilities")
+	//err = factionAbilities(ctx, s.Conn)
+	//if err != nil {
+	//	return err
+	//}
 
 	fmt.Println("Seed streams")
 	_, err = s.streams(ctx)
