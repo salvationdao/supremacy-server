@@ -860,7 +860,7 @@ func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key st
 func (arena *Arena) SendSettings(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// response game setting, if current battle exists
 	if arena.CurrentBattle() != nil {
-		reply(UpdatePayload(arena.CurrentBattle()))
+		reply(GameSettingsPayload(arena.CurrentBattle()))
 	}
 
 	return nil
