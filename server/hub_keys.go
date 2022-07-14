@@ -19,3 +19,6 @@ const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
 const HubKeySyndicateCommitteesSubscribe = "SYNDICATE:COMMITTEES:SUBSCRIBE"
 const HubKeySyndicateRulesSubscribe = "SYNDICATE:RULES:SUBSCRIBE"
 const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIBE"
+
+const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
+const HubKeyUserSubscribe = "USER:SUBSCRIBE"

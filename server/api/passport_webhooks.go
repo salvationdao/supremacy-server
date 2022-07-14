@@ -90,7 +90,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	// broadcast syndicate id
 	req.User.SyndicateID = player.SyndicateID
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, req.User)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -155,7 +155,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, user)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`

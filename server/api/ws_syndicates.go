@@ -127,8 +127,26 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 
 	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
 		// TODO: insert directors table
+		sd := &boiler.SyndicateDirector{
+			SyndicateID: syndicate.ID,
+			PlayerID:    user.ID,
+		}
+		err = sd.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Interface("syndicate director", sd).Err(err).Msg("Failed to insert syndicate director")
+			return terror.Error(err, "Failed to add syndicate director")
+		}
 
 		// TODO: insert committees table
+		sc := &boiler.SyndicateCommittee{
+			SyndicateID: syndicate.ID,
+			PlayerID:    user.ID,
+		}
+		err = sd.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Interface("syndicate committee", sc).Err(err).Msg("Failed to insert syndicate committee")
+			return terror.Error(err, "Failed to add syndicate committee")
+		}
 	}
 
 	// register syndicate on xsyn server
@@ -149,7 +167,7 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 		return terror.Error(err, "Failed to add syndicate to the system")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	reply(true)
 	return nil
@@ -377,7 +395,7 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	}
 
 	// broadcast updated user
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	// broadcast latest syndicate detail
 	serverSyndicate, err := db.GetSyndicateDetail(syndicate.ID)

@@ -54,10 +54,9 @@ type SyndicateMotion struct {
 	NewRuleNumber                   null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
 	OldRuleContent                  null.String         `boiler:"old_rule_content" boil:"old_rule_content" json:"old_rule_content,omitempty" toml:"old_rule_content" yaml:"old_rule_content,omitempty"`
 	NewRuleContent                  null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
-	CommitteeID                     null.String         `boiler:"committee_id" boil:"committee_id" json:"committee_id,omitempty" toml:"committee_id" yaml:"committee_id,omitempty"`
 	MemberID                        null.String         `boiler:"member_id" boil:"member_id" json:"member_id,omitempty" toml:"member_id" yaml:"member_id,omitempty"`
-	DirectorID                      null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
 	Result                          null.String         `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
+	Note                            null.String         `boiler:"note" boil:"note" json:"note,omitempty" toml:"note" yaml:"note,omitempty"`
 	EndedAt                         time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
 	ActualEndedAt                   null.Time           `boiler:"actual_ended_at" boil:"actual_ended_at" json:"actual_ended_at,omitempty" toml:"actual_ended_at" yaml:"actual_ended_at,omitempty"`
 	CreatedAt                       time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -99,10 +98,9 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber                   string
 	OldRuleContent                  string
 	NewRuleContent                  string
-	CommitteeID                     string
 	MemberID                        string
-	DirectorID                      string
 	Result                          string
+	Note                            string
 	EndedAt                         string
 	ActualEndedAt                   string
 	CreatedAt                       string
@@ -139,10 +137,9 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber:                   "new_rule_number",
 	OldRuleContent:                  "old_rule_content",
 	NewRuleContent:                  "new_rule_content",
-	CommitteeID:                     "committee_id",
 	MemberID:                        "member_id",
-	DirectorID:                      "director_id",
 	Result:                          "result",
+	Note:                            "note",
 	EndedAt:                         "ended_at",
 	ActualEndedAt:                   "actual_ended_at",
 	CreatedAt:                       "created_at",
@@ -181,10 +178,9 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber                   string
 	OldRuleContent                  string
 	NewRuleContent                  string
-	CommitteeID                     string
 	MemberID                        string
-	DirectorID                      string
 	Result                          string
+	Note                            string
 	EndedAt                         string
 	ActualEndedAt                   string
 	CreatedAt                       string
@@ -221,10 +217,9 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber:                   "syndicate_motions.new_rule_number",
 	OldRuleContent:                  "syndicate_motions.old_rule_content",
 	NewRuleContent:                  "syndicate_motions.new_rule_content",
-	CommitteeID:                     "syndicate_motions.committee_id",
 	MemberID:                        "syndicate_motions.member_id",
-	DirectorID:                      "syndicate_motions.director_id",
 	Result:                          "syndicate_motions.result",
+	Note:                            "syndicate_motions.note",
 	EndedAt:                         "syndicate_motions.ended_at",
 	ActualEndedAt:                   "syndicate_motions.actual_ended_at",
 	CreatedAt:                       "syndicate_motions.created_at",
@@ -265,10 +260,9 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber                   whereHelpernull_Int
 	OldRuleContent                  whereHelpernull_String
 	NewRuleContent                  whereHelpernull_String
-	CommitteeID                     whereHelpernull_String
 	MemberID                        whereHelpernull_String
-	DirectorID                      whereHelpernull_String
 	Result                          whereHelpernull_String
+	Note                            whereHelpernull_String
 	EndedAt                         whereHelpertime_Time
 	ActualEndedAt                   whereHelpernull_Time
 	CreatedAt                       whereHelpertime_Time
@@ -305,10 +299,9 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber:                   whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
 	OldRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"old_rule_content\""},
 	NewRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
-	CommitteeID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"committee_id\""},
 	MemberID:                        whereHelpernull_String{field: "\"syndicate_motions\".\"member_id\""},
-	DirectorID:                      whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
 	Result:                          whereHelpernull_String{field: "\"syndicate_motions\".\"result\""},
+	Note:                            whereHelpernull_String{field: "\"syndicate_motions\".\"note\""},
 	EndedAt:                         whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
 	ActualEndedAt:                   whereHelpernull_Time{field: "\"syndicate_motions\".\"actual_ended_at\""},
 	CreatedAt:                       whereHelpertime_Time{field: "\"syndicate_motions\".\"created_at\""},
@@ -318,8 +311,6 @@ var SyndicateMotionWhere = struct {
 
 // SyndicateMotionRels is where relationship names are stored.
 var SyndicateMotionRels = struct {
-	Committee                  string
-	Director                   string
 	IssuedBy                   string
 	Member                     string
 	NewLogo                    string
@@ -328,8 +319,6 @@ var SyndicateMotionRels = struct {
 	Syndicate                  string
 	MotionSyndicateMotionVotes string
 }{
-	Committee:                  "Committee",
-	Director:                   "Director",
 	IssuedBy:                   "IssuedBy",
 	Member:                     "Member",
 	NewLogo:                    "NewLogo",
@@ -341,8 +330,6 @@ var SyndicateMotionRels = struct {
 
 // syndicateMotionR is where relationships are stored.
 type syndicateMotionR struct {
-	Committee                  *Player                  `boiler:"Committee" boil:"Committee" json:"Committee" toml:"Committee" yaml:"Committee"`
-	Director                   *Player                  `boiler:"Director" boil:"Director" json:"Director" toml:"Director" yaml:"Director"`
 	IssuedBy                   *Player                  `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
 	Member                     *Player                  `boiler:"Member" boil:"Member" json:"Member" toml:"Member" yaml:"Member"`
 	NewLogo                    *Blob                    `boiler:"NewLogo" boil:"NewLogo" json:"NewLogo" toml:"NewLogo" yaml:"NewLogo"`
@@ -361,9 +348,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "committee_id", "member_id", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "committee_id", "member_id", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )
@@ -610,36 +597,6 @@ func (q syndicateMotionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// Committee pointed to by the foreign key.
-func (o *SyndicateMotion) Committee(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.CommitteeID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
-
-	return query
-}
-
-// Director pointed to by the foreign key.
-func (o *SyndicateMotion) Director(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.DirectorID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
-
-	return query
-}
-
 // IssuedBy pointed to by the foreign key.
 func (o *SyndicateMotion) IssuedBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -750,224 +707,6 @@ func (o *SyndicateMotion) MotionSyndicateMotionVotes(mods ...qm.QueryMod) syndic
 	}
 
 	return query
-}
-
-// LoadCommittee allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (syndicateMotionL) LoadCommittee(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
-	var slice []*SyndicateMotion
-	var object *SyndicateMotion
-
-	if singular {
-		object = maybeSyndicateMotion.(*SyndicateMotion)
-	} else {
-		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &syndicateMotionR{}
-		}
-		if !queries.IsNil(object.CommitteeID) {
-			args = append(args, object.CommitteeID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &syndicateMotionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.CommitteeID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.CommitteeID) {
-				args = append(args, obj.CommitteeID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(syndicateMotionAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Committee = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.CommitteeSyndicateMotions = append(foreign.R.CommitteeSyndicateMotions, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.CommitteeID, foreign.ID) {
-				local.R.Committee = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.CommitteeSyndicateMotions = append(foreign.R.CommitteeSyndicateMotions, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadDirector allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (syndicateMotionL) LoadDirector(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
-	var slice []*SyndicateMotion
-	var object *SyndicateMotion
-
-	if singular {
-		object = maybeSyndicateMotion.(*SyndicateMotion)
-	} else {
-		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &syndicateMotionR{}
-		}
-		if !queries.IsNil(object.DirectorID) {
-			args = append(args, object.DirectorID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &syndicateMotionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.DirectorID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.DirectorID) {
-				args = append(args, obj.DirectorID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(syndicateMotionAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Director = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.DirectorSyndicateMotions = append(foreign.R.DirectorSyndicateMotions, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.DirectorID, foreign.ID) {
-				local.R.Director = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.DirectorSyndicateMotions = append(foreign.R.DirectorSyndicateMotions, local)
-				break
-			}
-		}
-	}
-
-	return nil
 }
 
 // LoadIssuedBy allows an eager lookup of values, cached into the
@@ -1712,164 +1451,6 @@ func (syndicateMotionL) LoadMotionSyndicateMotionVotes(e boil.Executor, singular
 		}
 	}
 
-	return nil
-}
-
-// SetCommittee of the syndicateMotion to the related item.
-// Sets o.R.Committee to related.
-// Adds o to related.R.CommitteeSyndicateMotions.
-func (o *SyndicateMotion) SetCommittee(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"committee_id"}),
-		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.CommitteeID, related.ID)
-	if o.R == nil {
-		o.R = &syndicateMotionR{
-			Committee: related,
-		}
-	} else {
-		o.R.Committee = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			CommitteeSyndicateMotions: SyndicateMotionSlice{o},
-		}
-	} else {
-		related.R.CommitteeSyndicateMotions = append(related.R.CommitteeSyndicateMotions, o)
-	}
-
-	return nil
-}
-
-// RemoveCommittee relationship.
-// Sets o.R.Committee to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *SyndicateMotion) RemoveCommittee(exec boil.Executor, related *Player) error {
-	var err error
-
-	queries.SetScanner(&o.CommitteeID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("committee_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Committee = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.CommitteeSyndicateMotions {
-		if queries.Equal(o.CommitteeID, ri.CommitteeID) {
-			continue
-		}
-
-		ln := len(related.R.CommitteeSyndicateMotions)
-		if ln > 1 && i < ln-1 {
-			related.R.CommitteeSyndicateMotions[i] = related.R.CommitteeSyndicateMotions[ln-1]
-		}
-		related.R.CommitteeSyndicateMotions = related.R.CommitteeSyndicateMotions[:ln-1]
-		break
-	}
-	return nil
-}
-
-// SetDirector of the syndicateMotion to the related item.
-// Sets o.R.Director to related.
-// Adds o to related.R.DirectorSyndicateMotions.
-func (o *SyndicateMotion) SetDirector(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"director_id"}),
-		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.DirectorID, related.ID)
-	if o.R == nil {
-		o.R = &syndicateMotionR{
-			Director: related,
-		}
-	} else {
-		o.R.Director = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			DirectorSyndicateMotions: SyndicateMotionSlice{o},
-		}
-	} else {
-		related.R.DirectorSyndicateMotions = append(related.R.DirectorSyndicateMotions, o)
-	}
-
-	return nil
-}
-
-// RemoveDirector relationship.
-// Sets o.R.Director to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *SyndicateMotion) RemoveDirector(exec boil.Executor, related *Player) error {
-	var err error
-
-	queries.SetScanner(&o.DirectorID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("director_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Director = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.DirectorSyndicateMotions {
-		if queries.Equal(o.DirectorID, ri.DirectorID) {
-			continue
-		}
-
-		ln := len(related.R.DirectorSyndicateMotions)
-		if ln > 1 && i < ln-1 {
-			related.R.DirectorSyndicateMotions[i] = related.R.DirectorSyndicateMotions[ln-1]
-		}
-		related.R.DirectorSyndicateMotions = related.R.DirectorSyndicateMotions[:ln-1]
-		break
-	}
 	return nil
 }
 

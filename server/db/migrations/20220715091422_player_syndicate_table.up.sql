@@ -171,12 +171,12 @@ CREATE TABLE syndicate_motions(
     old_rule_content text,
     new_rule_content text,
 
-    -- appoint/remove director
-    committee_id uuid references players(id),
+    -- appoint/remove member/committee/director
     member_id uuid references players(id),
-    director_id uuid references players(id),
 
     result SYNDICATE_MOTION_RESULT,
+    note text,
+
     ended_at timestamptz not null,
     actual_ended_at timestamptz,
     created_at timestamptz not null default NOW(),

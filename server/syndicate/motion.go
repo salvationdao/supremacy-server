@@ -403,14 +403,32 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("member id not provided"), "Member id is not provided")
 		}
 
+		if userID == bsm.MemberID.String {
+			return nil, terror.Error(fmt.Errorf("cannot remove yourself"), "Cannot issue remove motion against yourself.")
+		}
+
+		// get issuer
 		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
 		if err != nil {
-			gamelog.L.Error().Str("player id", bsm.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			gamelog.L.Error().Str("player id", bsm.MemberID.String).Err(err).Msg("Failed to get data from db")
 			return nil, terror.Error(err, "Player not found")
 		}
 
 		if !player.SyndicateID.Valid || player.SyndicateID.String != sms.syndicate.ID {
 			return nil, terror.Error(fmt.Errorf("player is not in your syndicate"), "Player is not a member of the syndicate")
+		}
+
+		isCommittee, err := boiler.SyndicateCommittees(
+			boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sms.syndicate.ID),
+			boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+		).Exists(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("syndicate id", sms.syndicate.ID).Str("player id", player.ID).Err(err).Msg("Failed to query syndicate committee.")
+			return nil, terror.Error(err, "Failed to issue motion")
+		}
+
+		if isCommittee {
+			return nil, terror.Error(fmt.Errorf("committee cannot be removed"), "Committee cannot be removed from syndicate")
 		}
 
 		if sms.syndicate.Type == boiler.SyndicateTypeCORPORATION {
@@ -419,14 +437,96 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 				boiler.SyndicateDirectorWhere.PlayerID.EQ(player.ID),
 			).Exists(gamedb.StdConn)
 			if err != nil {
-
+				gamelog.L.Error().Str("syndicate id", sms.syndicate.ID).Str("player id", player.ID).Err(err).Msg("Failed to query syndicate director.")
+				return nil, terror.Error(err, "Failed to issue motion")
 			}
 
 			if isDirector {
-				return nil, terror.Error(fmt.Errorf("only board can remove directors"), "The director can only be removed by the board")
+				return nil, terror.Error(fmt.Errorf("only board can remove directors"), "Directors can only be removed by the board")
+			}
+		}
+
+		motion.MemberID = bsm.MemberID
+
+	case boiler.SyndicateMotionTypeAPPOINT_COMMITTEE:
+		if !bsm.MemberID.Valid {
+			return nil, terror.Error(fmt.Errorf("member id not provided"), "Member id is not provided")
+		}
+
+		// get issuer
+		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player id", bsm.MemberID.String).Err(err).Msg("Failed to get data from db")
+			return nil, terror.Error(err, "Player not found")
+		}
+
+		if !player.SyndicateID.Valid || player.SyndicateID.String != sms.syndicate.ID {
+			return nil, terror.Error(fmt.Errorf("player is not in your syndicate"), "Player is not a member of the syndicate")
+		}
+
+		// check already a committee
+		isCommittee, err := boiler.SyndicateCommittees(
+			boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sms.syndicate.ID),
+			boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+		).Exists(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("syndicate id", sms.syndicate.ID).Str("player id", player.ID).Err(err).Msg("Failed to query syndicate committee.")
+			return nil, terror.Error(err, "Failed to issue motion")
+		}
+
+		if isCommittee {
+			return nil, terror.Error(fmt.Errorf("already a committee"), "The player is already a committee of the syndicate")
+		}
+
+		// check already a director
+		if sms.syndicate.Type == boiler.SyndicateTypeCORPORATION {
+			isDirector, err := boiler.SyndicateDirectors(
+				boiler.SyndicateDirectorWhere.SyndicateID.EQ(sms.syndicate.ID),
+				boiler.SyndicateDirectorWhere.PlayerID.EQ(player.ID),
+			).Exists(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("syndicate id", sms.syndicate.ID).Str("player id", player.ID).Err(err).Msg("Failed to query syndicate director.")
+				return nil, terror.Error(err, "Failed to issue motion")
 			}
 
+			if isDirector {
+				return nil, terror.Error(fmt.Errorf("already a director"), "The player is already a director of the syndicate")
+			}
 		}
+
+		motion.MemberID = bsm.MemberID
+
+	case boiler.SyndicateMotionTypeREMOVE_COMMITTEE:
+		if !bsm.MemberID.Valid {
+			return nil, terror.Error(fmt.Errorf("member id not provided"), "Member id is not provided")
+		}
+
+		// get issuer
+		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player id", bsm.MemberID.String).Err(err).Msg("Failed to get data from db")
+			return nil, terror.Error(err, "Player not found")
+		}
+
+		if !player.SyndicateID.Valid || player.SyndicateID.String != sms.syndicate.ID {
+			return nil, terror.Error(fmt.Errorf("player is not in your syndicate"), "Player is not a member of the syndicate")
+		}
+
+		// check is a committee
+		isCommittee, err := boiler.SyndicateCommittees(
+			boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sms.syndicate.ID),
+			boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+		).Exists(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("syndicate id", sms.syndicate.ID).Str("player id", player.ID).Err(err).Msg("Failed to query syndicate committee.")
+			return nil, terror.Error(err, "Failed to issue motion")
+		}
+
+		if !isCommittee {
+			return nil, terror.Error(fmt.Errorf("not a committee"), "The player is not a committee of the syndicate")
+		}
+
+		motion.MemberID = bsm.MemberID
 
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
 		if sms.syndicate.Type != boiler.SyndicateTypeCORPORATION {
@@ -439,15 +539,15 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 		}
 
 		if !isDirector {
-			return nil, terror.Error(fmt.Errorf("no a director of syndicate"), "Only the directors of the syndicate can issue appoint director motion.")
+			return nil, terror.Error(fmt.Errorf("no a director of syndicate"), "Only the directors of the syndicate can issue motion to appoint director.")
 		}
 
-		if !bsm.DirectorID.Valid {
+		if !bsm.MemberID.Valid {
 			return nil, terror.Error(fmt.Errorf("missing player id"), "Missing player id")
 		}
-		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.DirectorID.String)
+		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
 		if err != nil {
-			gamelog.L.Error().Str("player id", bsm.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			gamelog.L.Error().Str("player id", bsm.MemberID.String).Err(err).Msg("Failed to get data from db")
 			return nil, terror.Error(err, "Player not found")
 		}
 
@@ -464,7 +564,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not a director"), fmt.Sprintf("%s is already a director of the syndicate", player.Username.String))
 		}
 
-		motion.DirectorID = bsm.DirectorID
+		motion.MemberID = bsm.MemberID
 
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
 		if sms.syndicate.Type != boiler.SyndicateTypeCORPORATION {
@@ -477,16 +577,16 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 		}
 
 		if !isDirector {
-			return nil, terror.Error(fmt.Errorf("no a director of syndicate"), "Only the directors of the syndicate can issue remove director motion.")
+			return nil, terror.Error(fmt.Errorf("not a director of syndicate"), "Only the directors of the syndicate can issue motion to remove director.")
 		}
 
-		if !bsm.DirectorID.Valid {
+		if !bsm.MemberID.Valid {
 			return nil, terror.Error(fmt.Errorf("missing player id"), "Missing player id")
 		}
 
-		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.DirectorID.String)
+		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
 		if err != nil {
-			gamelog.L.Error().Str("player id", bsm.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			gamelog.L.Error().Str("player id", bsm.MemberID.String).Err(err).Msg("Failed to get data from db")
 			return nil, terror.Error(err, "Player not found")
 		}
 
@@ -503,7 +603,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not a director"), fmt.Sprintf("%s is not a director of the syndicate", player.Username.String))
 		}
 
-		motion.DirectorID = bsm.DirectorID
+		motion.MemberID = bsm.MemberID
 
 	default:
 		gamelog.L.Debug().Str("motion type", bsm.Type).Msg("Invalid motion type")
@@ -556,12 +656,24 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing the same rule.")
 			}
 		case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
-			if bsm.DirectorID.String == om.DirectorID.String {
+			if bsm.MemberID.String == om.MemberID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for appointing the same player.")
 			}
 		case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
-			if bsm.DirectorID.String == om.DirectorID.String {
+			if bsm.MemberID.String == om.MemberID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same director.")
+			}
+		case boiler.SyndicateMotionTypeREMOVE_MEMBER:
+			if bsm.MemberID.String == om.MemberID.String {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same member.")
+			}
+		case boiler.SyndicateMotionTypeAPPOINT_COMMITTEE:
+			if bsm.MemberID.String == om.MemberID.String {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for appointing the same member.")
+			}
+		case boiler.SyndicateMotionTypeREMOVE_COMMITTEE:
+			if bsm.MemberID.String == om.MemberID.String {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same committee.")
 			}
 		case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
 			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for member monthly dues.")
@@ -683,16 +795,9 @@ func (sm *Motion) parseResult() {
 	defer sm.Unlock()
 	sm.isClosed.Store(true)
 
-	sm.ActualEndedAt = null.TimeFrom(time.Now())
-
 	// only update result, if force closed
 	if sm.forceClosed.Load() {
-		sm.Result = null.StringFrom(boiler.SyndicateMotionResultFORCE_CLOSED)
-		// update motion result and actual end time
-		_, err := sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to update motion result")
-		}
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFORCE_CLOSED, "Forced close")
 		return
 	}
 
@@ -722,22 +827,10 @@ func (sm *Motion) parseResult() {
 	if totalVote.GreaterThan(decimal.NewFromInt(3)) {
 		rate := decimal.NewFromInt(int64(agreedCount * 100)).Div(totalVote)
 		if (rate.LessThanOrEqual(decimal.NewFromInt(50))) || (sm.Type == boiler.SyndicateMotionTypeDEPOSE_CEO && rate.LessThanOrEqual(decimal.NewFromInt(80))) {
-			sm.Result = null.StringFrom(boiler.SyndicateMotionResultFAILED)
-			// update motion result and actual end time
-			_, err := sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to update motion result")
-			}
-
+			// broadcast end result
+			sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, "Not enough votes")
 			return
 		}
-	}
-
-	sm.Result = null.StringFrom(boiler.SyndicateMotionResultPASSED)
-	// update motion result and actual end time
-	_, err = sm.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateMotionColumns.Result, boiler.SyndicateMotionColumns.ActualEndedAt))
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update motion result")
 	}
 
 	// process action
@@ -753,12 +846,37 @@ func (sm *Motion) parseResult() {
 		sm.removeRule()
 	case boiler.SyndicateMotionTypeCHANGE_RULE:
 		sm.changeRule()
+	case boiler.SyndicateMotionTypeREMOVE_MEMBER:
+		sm.removeMember()
+	case boiler.SyndicateMotionTypeAPPOINT_COMMITTEE:
+		sm.appointCommittee()
+	case boiler.SyndicateMotionTypeREMOVE_COMMITTEE:
+		sm.removeCommittee()
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
 		sm.appointDirector()
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
 		sm.removeDirector()
 	case boiler.SyndicateMotionTypeDEPOSE_CEO:
 		sm.deposeCEO()
+	}
+}
+
+func (sm *Motion) broadcastEndResult(result string, note string) {
+	sm.Result = null.StringFrom(result)
+	sm.Note = null.StringFrom(note)
+	sm.ActualEndedAt = null.TimeFrom(time.Now())
+
+	// update motion result and actual end time
+	_, err := sm.Update(
+		gamedb.StdConn,
+		boil.Whitelist(
+			boiler.SyndicateMotionColumns.Result,
+			boiler.SyndicateMotionColumns.Note,
+			boiler.SyndicateMotionColumns.ActualEndedAt,
+		),
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update motion result")
 	}
 }
 
@@ -903,6 +1021,8 @@ func (sm *Motion) updateSyndicate() {
 		return
 	}
 
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
+
 	sm.broadcastUpdatedSyndicate()
 }
 
@@ -969,6 +1089,8 @@ func (sm *Motion) addRule() {
 		return
 	}
 
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
+
 	sm.broadcastUpdateRules()
 }
 
@@ -1021,6 +1143,8 @@ func (sm *Motion) removeRule() {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
 		return
 	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
 
 	sm.broadcastUpdateRules()
 }
@@ -1114,20 +1238,228 @@ func (sm *Motion) changeRule() {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
 		return
 	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
+
 	sm.broadcastUpdateRules()
 }
+
+func (sm *Motion) removeMember() {
+	// get target player
+	player, err := boiler.FindPlayer(gamedb.StdConn, sm.MemberID.String)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get member from db")
+		return
+	}
+
+	// check the player is still a member of the syndicate
+	if !player.SyndicateID.Valid || player.SyndicateID.String != sm.SyndicateID {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is no longer a member of our syndicate.", player.Username.String, player.Gid))
+		return
+	}
+
+	// check the player is a committee
+	isCommittee, err := boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to check syndicate committee list")
+	}
+
+	if isCommittee {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is a committee of our syndicate now.", player.Username.String, player.Gid))
+		return
+	}
+
+	// check the player is a director
+	isDirector, err := boiler.SyndicateDirectors(
+		boiler.SyndicateDirectorWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateDirectorWhere.PlayerID.EQ(player.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to check syndicate director list")
+	}
+
+	if isDirector {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is a director of our syndicate now.", player.Username.String, player.Gid))
+		return
+	}
+
+	// vote pass
+	player.SyndicateID = null.StringFromPtr(nil)
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+	if err != nil {
+		gamelog.L.Error().Str("player id", player.ID).Err(err).Msg("Failed to update player syndicate id in db")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, player)
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
+}
+
+func (sm *Motion) appointCommittee() {
+	// get target player
+	player, err := boiler.FindPlayer(gamedb.StdConn, sm.MemberID.String)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get member from db")
+		return
+	}
+
+	// check the player is still a member of the syndicate
+	if !player.SyndicateID.Valid || player.SyndicateID.String != sm.SyndicateID {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is no longer a member of our syndicate.", player.Username.String, player.Gid))
+		return
+	}
+
+	// check the player is a committee
+	isCommittee, err := boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to check syndicate committee list")
+	}
+
+	if isCommittee {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is already a committee of our syndicate now.", player.Username.String, player.Gid))
+		return
+	}
+
+	// check the player is a director
+	isDirector, err := boiler.SyndicateDirectors(
+		boiler.SyndicateDirectorWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateDirectorWhere.PlayerID.EQ(player.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to check syndicate director list")
+	}
+
+	if isDirector {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is already a director of our syndicate now.", player.Username.String, player.Gid))
+		return
+	}
+
+	// add committee to syndicate
+	sc := boiler.SyndicateCommittee{
+		SyndicateID: sm.SyndicateID,
+		PlayerID:    player.ID,
+	}
+
+	err = sc.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to insert syndicate committee")
+		return
+	}
+
+	// broadcast result
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
+
+	// load new director list
+	scs, err := db.GetSyndicateCommittees(sm.SyndicateID)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to get syndicate directors")
+		return
+	}
+
+	// broadcast syndicate director list
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateCommitteesSubscribe, scs)
+}
+
+func (sm *Motion) removeCommittee() {
+	// get target player
+	player, err := boiler.FindPlayer(gamedb.StdConn, sm.MemberID.String)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get member from db")
+		return
+	}
+
+	// check the player is still a member of the syndicate
+	if !player.SyndicateID.Valid || player.SyndicateID.String != sm.SyndicateID {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is no longer a member of our syndicate.", player.Username.String, player.Gid))
+		return
+	}
+
+	// check the player is a committee
+	isCommittee, err := boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to check syndicate committee list")
+	}
+
+	if !isCommittee {
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, fmt.Sprintf("Player %s #%d is no longer a committee of our syndicate.", player.Username.String, player.Gid))
+		return
+	}
+
+	// add committee to syndicate
+	_, err = boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(player.ID),
+	).DeleteAll(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to delete syndicate committee")
+		return
+	}
+
+	// broadcast result
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
+
+	// load new director list
+	scs, err := db.GetSyndicateCommittees(sm.SyndicateID)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to get syndicate directors")
+		return
+	}
+
+	// broadcast syndicate director list
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateCommitteesSubscribe, scs)
+}
+
+/****************************
+* Board of director exclusive
+ ***************************/
 
 func (sm *Motion) appointDirector() {
 	sd := boiler.SyndicateDirector{
 		SyndicateID: sm.SyndicateID,
-		PlayerID:    sm.DirectorID.String,
+		PlayerID:    sm.MemberID.String,
 	}
 
-	err := sd.Insert(gamedb.StdConn, boil.Infer())
+	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to appoint player to director")
+		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction")
 		return
 	}
+
+	defer tx.Rollback()
+
+	// insert syndicate director role
+	err = sd.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", sm.MemberID.String).Err(err).Msg("Failed to appoint player to director")
+		return
+	}
+
+	// remove committee role
+	_, err = boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(sm.SyndicateID),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(sm.MemberID.String),
+	).DeleteAll(tx)
+	if err != nil {
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", sm.MemberID.String).Err(err).Msg("Failed to remove player's committee role")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+		return
+	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
 
 	// load new director list
 	sds, err := db.GetSyndicateDirectors(sm.SyndicateID)
@@ -1143,10 +1475,10 @@ func (sm *Motion) appointDirector() {
 func (sm *Motion) removeDirector() {
 	_, err := boiler.SyndicateDirectors(
 		boiler.SyndicateDirectorWhere.SyndicateID.EQ(sm.SyndicateID),
-		boiler.SyndicateDirectorWhere.PlayerID.EQ(sm.DirectorID.String),
+		boiler.SyndicateDirectorWhere.PlayerID.EQ(sm.MemberID.String),
 	).DeleteAll(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.DirectorID.String).Err(err).Msg("Failed to remove player from syndicate director list")
+		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Interface("player id", sm.MemberID.String).Err(err).Msg("Failed to remove player from syndicate director list")
 		return
 	}
 
@@ -1156,6 +1488,8 @@ func (sm *Motion) removeDirector() {
 		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to get syndicate directors")
 		return
 	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
 
 	// broadcast syndicate director list
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/directors", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateDirectorsSubscribe, sds)
@@ -1169,6 +1503,8 @@ func (sm *Motion) deposeCEO() {
 		gamelog.L.Error().Err(err).Str("syndicate id", sm.SyndicateID).Msg("Failed to depose ceo of the syndicate.")
 		return
 	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
 
 	sm.broadcastUpdatedSyndicate()
 }

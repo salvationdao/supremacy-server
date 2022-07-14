@@ -83,8 +83,6 @@ type UserUpdatedRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyUserSubscribe = "USER:SUBSCRIBE"
-
 // FactionEnlistRequest enlist a faction
 type FactionEnlistRequest struct {
 	Payload struct {
@@ -133,7 +131,7 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	reply(true)
 
@@ -873,7 +871,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), battle.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list

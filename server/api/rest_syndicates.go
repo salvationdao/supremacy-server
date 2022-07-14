@@ -34,7 +34,6 @@ type SyndicateIssueMotionRequest struct {
 	NewRuleNumber                   null.Int            `json:"new_rule_number"`
 	NewRuleContent                  null.String         `json:"new_rule_content"`
 	MemberID                        null.String         `json:"member_id"`
-	DirectorID                      null.String         `json:"director_id"`
 }
 
 func (api *API) SyndicateMotionIssue(player *server.Player, w http.ResponseWriter, r *http.Request) (int, error) {
@@ -69,7 +68,6 @@ func (api *API) SyndicateMotionIssue(player *server.Player, w http.ResponseWrite
 		NewRuleNumber:                   req.NewRuleNumber,
 		NewRuleContent:                  req.NewRuleContent,
 		MemberID:                        req.MemberID,
-		DirectorID:                      req.DirectorID,
 
 		EndedAt: time.Now().AddDate(0, 0, req.LastForDays),
 	}

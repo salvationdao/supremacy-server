@@ -1174,8 +1174,6 @@ func (arena *Arena) beginBattle() {
 	go arena.NotifyUpcomingWarMachines()
 }
 
-const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
-
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
