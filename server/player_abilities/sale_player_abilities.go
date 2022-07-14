@@ -111,7 +111,7 @@ func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
 	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 }
 
-func (pas *SalePlayerAbilitiesSystem) CanUserPurchaseAbility(userID uuid.UUID, saleAbilityID string) bool {
+func (pas *SalePlayerAbilitiesSystem) CanUserPurchase(userID uuid.UUID) bool {
 	pas.RLock()
 	defer pas.RUnlock()
 
@@ -123,7 +123,7 @@ func (pas *SalePlayerAbilitiesSystem) CanUserPurchaseAbility(userID uuid.UUID, s
 	return count < pas.UserPurchaseLimit
 }
 
-func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, saleAbilityID string) error {
+func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID) error {
 	pas.Lock()
 	defer pas.Unlock()
 

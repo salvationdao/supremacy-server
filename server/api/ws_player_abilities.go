@@ -126,9 +126,15 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Check if user has hit their purchase limit
-	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchaseAbility(userID, spa.ID)
+	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchase(userID)
 	if !canPurchase {
-		return terror.Error(fmt.Errorf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
+		nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
+		minutes := int(time.Until(nextRefresh).Minutes())
+		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
+		if minutes < 1 {
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(nextRefresh).Seconds()))
+		}
+		return terror.Error(fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pac.API.SalePlayerAbilitiesSystem.UserPurchaseLimit, msg))
 	}
 
 	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
@@ -212,7 +218,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Attempt to add to user's purchase count
-	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID, spa.ID)
+	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID)
 	if err != nil {
 		refundFunc()
 		gamelog.L.Warn().Err(err).Str("userID", userID.String()).Str("salePlayerAbilityID", spa.ID).Msg("failed to add to user's purchase count")
