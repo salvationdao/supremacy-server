@@ -615,7 +615,7 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 	}
 
 	var jsonMeta null.JSON
-	err = jsonMeta.Scan(cm)
+	err = jsonMeta.Marshal(cm)
 	if err != nil {
 		return err
 	}
