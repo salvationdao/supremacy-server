@@ -312,7 +312,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.GreaterThan(auctionItem.AuctionBidPrice)) {
 				factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
 				if !ok {
-					l.Err(err).Str("bidTID", auctionItem.AuctionBidTXID).Msg("unable to get find faction account")
+					l.Error().Err(err).Str("bidTID", auctionItem.AuctionBidTXID).Msg("unable to get find faction account")
 					return
 				}
 				factID := uuid.Must(uuid.FromString(factionAccountID))

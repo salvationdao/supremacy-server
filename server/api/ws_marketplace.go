@@ -936,8 +936,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 		return terror.Error(err, "Item not found.")
 	}
 	if err != nil {
-		l.Err(err).
-			Msg("Unable to retrieve sale item.")
+		l.Error().Err(err).Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
 	if saleItem.OwnerID != user.ID {
@@ -964,12 +963,12 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 		}
 		if lastBid != nil {
 			if lastBid.R == nil || lastBid.R.Bidder == nil {
-				l.Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
+				l.Error().Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
 				return terror.Error(fmt.Errorf("unable to find bidder's faction"), errMsg)
 			}
 			factionAccountID, ok := server.FactionUsers[lastBid.R.Bidder.FactionID.String]
 			if !ok {
-				l.Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
+				l.Error().Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
 				return terror.Error(err, errMsg)
 			}
 			factID := uuid.Must(uuid.FromString(factionAccountID))
