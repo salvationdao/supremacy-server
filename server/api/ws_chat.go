@@ -198,7 +198,6 @@ func NewChatroom(factionID string) *Chatroom {
 		}
 		stat := stats[player.ID]
 
-
 		if msg.MSGType == boiler.ChatMSGTypeEnumNEW_BATTLE {
 			cm := &ChatMessage{}
 			err := msg.Metadata.Marshal(cm)
@@ -209,12 +208,11 @@ func NewChatroom(factionID string) *Chatroom {
 			cms[i] = &ChatMessage{
 				Type:   ChatMessageType(msg.MSGType),
 				SentAt: msg.CreatedAt,
-				Data: cm,
+				Data:   cm,
 			}
 			cmstoSend = append(cmstoSend, cms[i])
-
+			continue
 		}
-
 
 		cms[i] = &ChatMessage{
 			Type:   ChatMessageType(msg.MSGType),
@@ -633,7 +631,7 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 			KillCount:       "",
 			IsCitizen:       false,
 			Lang:            "",
-			Metadata: jsonMeta,
+			Metadata:        jsonMeta,
 		}
 		err = ch.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -653,13 +651,12 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 		KillCount:       "",
 		IsCitizen:       false,
 		Lang:            "",
-		Metadata: jsonMeta,
+		Metadata:        jsonMeta,
 	}
 	err = ch.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
 	}
-
 
 	api.RedMountainChat.AddMessage(cm)
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.RedMountainFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
