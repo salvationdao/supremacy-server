@@ -44,6 +44,7 @@ type Battle struct {
 	arena          *Arena
 	stage          *atomic.Int32
 	BattleID       string        `json:"battleID"`
+	BattleNumber   int           `json:"battleNumber"`
 	MapName        string        `json:"mapName"`
 	WarMachines    []*WarMachine `json:"warMachines"`
 	spawnedAIMux   sync.RWMutex
@@ -2094,7 +2095,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = mech.Owner.Username
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%s", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model
