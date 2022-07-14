@@ -12,10 +12,12 @@ import (
 	"net/url"
 	"os"
 	"server/devtool/types"
+	"strconv"
 )
 
 type DevTool struct {
-	db *sql.DB
+	db      *sql.DB
+	csvPath string
 }
 
 func main() {
@@ -24,6 +26,7 @@ func main() {
 	}
 
 	syncMech := flag.Bool("sync_mech", false, "Sync mech skins and models with staging data")
+	csvPath := flag.String("path-file", "./devtool/temp-sync/supremacy-static-data/", "Path to csvs")
 
 	flag.Parse()
 	fmt.Println(*syncMech)
@@ -48,7 +51,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dt := DevTool{db: conn}
+	dt := DevTool{
+		db:      conn,
+		csvPath: *csvPath,
+	}
 
 	if syncMech != nil && *syncMech {
 		//RemoveFKContraints(dt)
@@ -155,6 +161,7 @@ func SyncMechModels(dt DevTool) error {
 		MechModels = append(MechModels, *mechModel)
 	}
 
+	count := 0
 	for _, mechModel := range MechModels {
 		brandID := &mechModel.BrandID.String
 		if mechModel.BrandID.String == "" || !mechModel.BrandID.Valid {
@@ -172,11 +179,11 @@ func SyncMechModels(dt DevTool) error {
 			fmt.Println("ERROR: " + err.Error())
 			continue
 		}
-
+		count++
 		fmt.Println("UPDATED: " + mechModel.Label)
 	}
 
-	fmt.Println("Finish syncing mech models")
+	fmt.Println("Finish syncing mech models Count: " + strconv.Itoa(count))
 
 	return nil
 }
@@ -535,14 +542,23 @@ func SyncWeaponModel(dt DevTool) error {
 			deletedAt = nil
 		}
 
+		brandID := &weaponModel.BrandID
+		if weaponModel.BrandID == "" {
+			brandID = nil
+		}
+
+		defaultSkinID := &weaponModel.DefaultSkinID
+		if weaponModel.DefaultSkinID == "" {
+			defaultSkinID = nil
+		}
+
 		_, err = dt.db.Exec(`
-			UPDATE weapon_models SET id=$1 WHERE label=$2 AND weapon_type=$3 
 			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at, updated_at)
 			VALUES ($1,$2,$3,$4,$5,$6,$7)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET id=$1, brand_id=$2, label=$3, weapon_type=$4, default_skin_id=$5, deleted_at=$6, updated_at=$7;
-		`, weaponModel.ID, weaponModel.BrandID, weaponModel.Label, weaponModel.WeaponType, weaponModel.DefaultSkinID, deletedAt, weaponModel.UpdatedAt)
+		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt, weaponModel.UpdatedAt)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
 			continue
@@ -638,15 +654,14 @@ func SyncWeaponSkins(dt DevTool) error {
 			statModifier = nil
 		}
 
-		if err != nil {
-			_, err = dt.db.Exec(`
-			UPDATE blueprint_weapon_skin SET id=$1 WHERE label=$2 AND weapon_type=$3 AND tier=$4 AND weapon_model_id=$5 
+		_, err = dt.db.Exec(`
 			INSERT INTO blueprint_weapon_skin(id, label, weapon_type, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, collection, weapon_model_id, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET id=$1, label=$2, weapon_type=$3, tier=$4, image_url=$5, card_animation_url=$6, avatar_url=$7, large_image_url=$8, background_color=$9, animation_url=$10, youtube_url=$11, collection=$12, weapon_model_id=$13, stat_modifier=$14;
 		`, weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL, weaponSkin.Collection, weaponSkin.WeaponModelID, statModifier)
+		if err != nil {
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
 			continue
 		}
