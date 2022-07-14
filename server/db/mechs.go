@@ -37,6 +37,7 @@ SELECT
 	collection_items.market_locked,
 	collection_items.xsyn_locked,
 	collection_items.locked_to_marketplace,
+	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
 	collection_items.image_url,
 	collection_items.avatar_url,
@@ -45,6 +46,12 @@ SELECT
 	collection_items.background_color,
 	collection_items.animation_url,
 	collection_items.youtube_url,
+	p.username,
+	COALESCE(mech_stats.total_wins, 0),
+	COALESCE(mech_stats.total_deaths, 0),
+	COALESCE(mech_stats.total_kills, 0),
+	COALESCE(mech_stats.battles_survived, 0), 
+	COALESCE(mech_stats.total_losses, 0),
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -89,6 +96,7 @@ SELECT
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
+LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN (
 	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
@@ -178,19 +186,16 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
+		Stats:          &server.Stats{},
+		Owner:          &server.User{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := tx.Query(query, mechID)
+	result, err := conn.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +212,7 @@ func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
 			&mc.CollectionItem.LockedToMarketplace,
+			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
 			&mc.CollectionItem.ImageURL,
 			&mc.CollectionItem.CardAnimationURL,
@@ -215,6 +221,12 @@ func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.BackgroundColor,
 			&mc.CollectionItem.AnimationURL,
 			&mc.CollectionItem.YoutubeURL,
+			&mc.Owner.Username,
+			&mc.Stats.TotalWins,
+			&mc.Stats.TotalDeaths,
+			&mc.Stats.TotalKills,
+			&mc.Stats.BattlesSurvived,
+			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -293,6 +305,8 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	for result.Next() {
 		mc := &server.Mech{
 			CollectionItem: &server.CollectionItem{},
+			Stats:          &server.Stats{},
+			Owner:          &server.User{},
 		}
 		err = result.Scan(
 			&mc.CollectionItem.CollectionSlug,
@@ -304,6 +318,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
 			&mc.CollectionItem.LockedToMarketplace,
+			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
 			&mc.CollectionItem.ImageURL,
 			&mc.CollectionItem.CardAnimationURL,
@@ -312,6 +327,12 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.BackgroundColor,
 			&mc.CollectionItem.AnimationURL,
 			&mc.CollectionItem.YoutubeURL,
+			&mc.Owner.Username,
+			&mc.Stats.TotalWins,
+			&mc.Stats.TotalDeaths,
+			&mc.Stats.TotalKills,
+			&mc.Stats.BattlesSurvived,
+			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -548,6 +569,8 @@ type MechListOpts struct {
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+	FilterRarities      []string `json:"rarities"`
+	FilterStatuses      []string `json:"statuses"`
 }
 
 type MechListQueueSortOpts struct {
@@ -573,6 +596,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -608,15 +636,118 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 		}
 	}
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
+		))
+	}
+	if len(opts.FilterStatuses) > 0 {
+		hasIdleToggled := false
+		hasInBattleToggled := false
+		hasMarketplaceToggled := false
+		hasInQueueToggled := false
+
+		statusFilters := []qm.QueryMod{}
+
+		for _, s := range opts.FilterStatuses {
+			if s == "IDLE" {
+				if hasIdleToggled {
+					continue
+				}
+				hasIdleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`NOT EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				)))
+			} else if s == "BATTLE" {
+				if hasInBattleToggled {
+					continue
+				}
+				hasInBattleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NOT NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			} else if s == "MARKET" {
+				if hasMarketplaceToggled {
+					continue
+				}
+				hasMarketplaceToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _i.%s
+						FROM %s _i
+						WHERE _i.%s = %s
+							AND _i.%s IS NULL
+							AND _i.%s IS NULL
+							AND _i.%s > NOW()
+						LIMIT 1
+					)`,
+					boiler.ItemSaleColumns.ID,
+					boiler.TableNames.ItemSales,
+					boiler.ItemSaleColumns.CollectionItemID,
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+					boiler.ItemSaleColumns.SoldAt,
+					boiler.ItemSaleColumns.DeletedAt,
+					boiler.ItemSaleColumns.EndAt,
+				)))
+			} else if s == "QUEUE" {
+				if hasInQueueToggled {
+					continue
+				}
+				hasInQueueToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			}
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled {
+				statusFilters = []qm.QueryMod{} // we don't need the filtering at this point
+				break
+			}
+		}
+
+		if len(statusFilters) > 0 {
+			queryMods = append(queryMods, qm.Expr(statusFilters...))
+		}
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Label,
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 					xSearch,
 				))
@@ -628,6 +759,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+
 	// Limit/Offset
 	if opts.PageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(opts.PageSize))
@@ -648,6 +780,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
@@ -670,11 +803,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
 
 	// Sort
@@ -696,7 +824,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				opts.QueueSort.SortDir,
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-				)),
+			)),
 		)
 	} else {
 		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
@@ -705,7 +833,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
 		}
 	}
-
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -729,6 +856,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItem.MarketLocked,
 			&mc.CollectionItem.XsynLocked,
 			&mc.CollectionItem.LockedToMarketplace,
+			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
@@ -791,4 +919,117 @@ func MechRename(mechID string, ownerID string, name string) (string, error) {
 
 	return name, nil
 
+}
+
+func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	eid := &server.EquippedOnDetails{}
+
+	err := boiler.NewQuery(
+		qm.Select(
+			boiler.CollectionItemColumns.ItemID,
+			boiler.CollectionItemColumns.Hash,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
+	).QueryRow(tx).Scan(
+		&eid.ID,
+		&eid.Hash,
+		&eid.Name,
+		&eid.Label,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return eid, nil
+}
+
+// MechSetAllEquippedAssetsAsHidden marks all the attached items with the given asset_hidden reason
+// passing in a null reason will update it to be unhidden
+func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason null.String) error {
+	tx := trx
+	if trx == nil {
+		tx = gamedb.StdConn
+	}
+
+	itemIDsToUpdate := []string{}
+
+	// get equipped mech skin
+	mSkins, err := boiler.MechSkins(
+		boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mSkins {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
+	// get equipped mech animations
+	mAnim, err := boiler.MechAnimations(
+		boiler.MechAnimationWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mAnim {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
+	// get equipped mech weapons
+	mWpn, err := boiler.Weapons(
+		boiler.WeaponWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mWpn {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+		// get equipped mech weapon skins
+		mWpnSkin, err := boiler.WeaponSkins(
+			boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(itm.ID)),
+		).All(tx)
+		if err != nil {
+			return err
+		}
+		for _, itm := range mWpnSkin {
+			itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+		}
+	}
+
+	// get equipped mech utilities
+	mUtil, err := boiler.Utilities(
+		boiler.UtilityWhere.EquippedOn.EQ(null.StringFrom(mechID)),
+	).All(tx)
+	if err != nil {
+		return err
+	}
+	for _, itm := range mUtil {
+		itemIDsToUpdate = append(itemIDsToUpdate, itm.ID)
+	}
+
+	// update!
+	_, err = boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
+	).UpdateAll(tx, boiler.M{
+		"asset_hidden": reason,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

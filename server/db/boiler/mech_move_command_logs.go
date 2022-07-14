@@ -29,7 +29,6 @@ type MechMoveCommandLog struct {
 	TriggeredByID string    `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
 	CellX         int       `boiler:"cell_x" boil:"cell_x" json:"cell_x" toml:"cell_x" yaml:"cell_x"`
 	CellY         int       `boiler:"cell_y" boil:"cell_y" json:"cell_y" toml:"cell_y" yaml:"cell_y"`
-	TXID          string    `boiler:"tx_id" boil:"tx_id" json:"tx_id" toml:"tx_id" yaml:"tx_id"`
 	CancelledAt   null.Time `boiler:"cancelled_at" boil:"cancelled_at" json:"cancelled_at,omitempty" toml:"cancelled_at" yaml:"cancelled_at,omitempty"`
 	ReachedAt     null.Time `boiler:"reached_at" boil:"reached_at" json:"reached_at,omitempty" toml:"reached_at" yaml:"reached_at,omitempty"`
 	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -47,7 +46,6 @@ var MechMoveCommandLogColumns = struct {
 	TriggeredByID string
 	CellX         string
 	CellY         string
-	TXID          string
 	CancelledAt   string
 	ReachedAt     string
 	CreatedAt     string
@@ -60,7 +58,6 @@ var MechMoveCommandLogColumns = struct {
 	TriggeredByID: "triggered_by_id",
 	CellX:         "cell_x",
 	CellY:         "cell_y",
-	TXID:          "tx_id",
 	CancelledAt:   "cancelled_at",
 	ReachedAt:     "reached_at",
 	CreatedAt:     "created_at",
@@ -75,7 +72,6 @@ var MechMoveCommandLogTableColumns = struct {
 	TriggeredByID string
 	CellX         string
 	CellY         string
-	TXID          string
 	CancelledAt   string
 	ReachedAt     string
 	CreatedAt     string
@@ -88,7 +84,6 @@ var MechMoveCommandLogTableColumns = struct {
 	TriggeredByID: "mech_move_command_logs.triggered_by_id",
 	CellX:         "mech_move_command_logs.cell_x",
 	CellY:         "mech_move_command_logs.cell_y",
-	TXID:          "mech_move_command_logs.tx_id",
 	CancelledAt:   "mech_move_command_logs.cancelled_at",
 	ReachedAt:     "mech_move_command_logs.reached_at",
 	CreatedAt:     "mech_move_command_logs.created_at",
@@ -105,7 +100,6 @@ var MechMoveCommandLogWhere = struct {
 	TriggeredByID whereHelperstring
 	CellX         whereHelperint
 	CellY         whereHelperint
-	TXID          whereHelperstring
 	CancelledAt   whereHelpernull_Time
 	ReachedAt     whereHelpernull_Time
 	CreatedAt     whereHelpertime_Time
@@ -118,7 +112,6 @@ var MechMoveCommandLogWhere = struct {
 	TriggeredByID: whereHelperstring{field: "\"mech_move_command_logs\".\"triggered_by_id\""},
 	CellX:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_x\""},
 	CellY:         whereHelperint{field: "\"mech_move_command_logs\".\"cell_y\""},
-	TXID:          whereHelperstring{field: "\"mech_move_command_logs\".\"tx_id\""},
 	CancelledAt:   whereHelpernull_Time{field: "\"mech_move_command_logs\".\"cancelled_at\""},
 	ReachedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"reached_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
@@ -153,8 +146,8 @@ func (*mechMoveCommandLogR) NewStruct() *mechMoveCommandLogR {
 type mechMoveCommandLogL struct{}
 
 var (
-	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "tx_id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
-	mechMoveCommandLogColumnsWithoutDefault = []string{"battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "tx_id"}
+	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogColumnsWithoutDefault = []string{"battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y"}
 	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
 	mechMoveCommandLogPrimaryKeyColumns     = []string{"id"}
 	mechMoveCommandLogGeneratedColumns      = []string{}

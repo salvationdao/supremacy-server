@@ -14,16 +14,17 @@ import (
 */
 
 type CollectionItem struct {
-	CollectionSlug      string `json:"collection_slug"`
-	Hash                string `json:"hash"`
-	TokenID             int64  `json:"token_id"`
-	ItemType            string `json:"item_type"`
-	ItemID              string `json:"item_id"`
-	Tier                string `json:"tier"`
-	OwnerID             string `json:"owner_id"`
-	MarketLocked        bool   `json:"market_locked"`
-	XsynLocked          bool   `json:"xsyn_locked"`
-	LockedToMarketplace bool   `json:"locked_to_marketplace"`
+	CollectionSlug      string      `json:"collection_slug"`
+	Hash                string      `json:"hash"`
+	TokenID             int64       `json:"token_id"`
+	ItemType            string      `json:"item_type"`
+	ItemID              string      `json:"item_id"`
+	Tier                string      `json:"tier"`
+	OwnerID             string      `json:"owner_id"`
+	MarketLocked        bool        `json:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace"`
+	AssetHidden         null.String `json:"asset_hidden"`
 
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
@@ -34,9 +35,19 @@ type CollectionItem struct {
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
+type Stats struct {
+	TotalWins       int `json:"total_wins"`
+	TotalDeaths     int `json:"total_deaths"`
+	TotalKills      int `json:"total_kills"`
+	BattlesSurvived int `json:"battles_survived"`
+	TotalLosses     int `json:"total_losses"`
+}
+
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionItem
+	*Stats
+
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
 	WeaponHardpoints      int        `json:"weapon_hardpoints"`
@@ -219,6 +230,7 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         skin.ImageURL,
 			CardAnimationURL: skin.CardAnimationURL,
 			AvatarURL:        skin.AvatarURL,

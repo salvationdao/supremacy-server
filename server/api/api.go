@@ -165,7 +165,7 @@ func NewAPI(
 	_ = NewBattleController(api)
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
-	_ = NewPlayerAssetsController(api)
+	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 
@@ -198,6 +198,11 @@ func NewAPI(
 			if config.Environment != "development" {
 				// TODO: Create new tracer not using HUB
 				r.Use(DatadogTracer.Middleware())
+
+			}
+
+			if config.Environment == "development" {
+				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
 			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
@@ -205,6 +210,7 @@ func NewAPI(
 			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 			r.Mount("/faction", FactionRouter(api))
+			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
@@ -216,6 +222,7 @@ func NewAPI(
 			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
+
 		})
 
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
@@ -231,6 +238,8 @@ func NewAPI(
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
+
+				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
@@ -257,6 +266,8 @@ func NewAPI(
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
+				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
+
 			}))
 
 			// secured faction route ws
@@ -515,7 +526,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 }
 
 // TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
+func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
@@ -528,5 +539,19 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 		return nil, err
 	}
 
-	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
+
+	features, err := db.GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		return nil, err
+	}
+
+	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		return nil, err
+	}
+
+	return serverPlayer, nil
 }

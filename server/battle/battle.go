@@ -60,7 +60,7 @@ type Battle struct {
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
-	_incognitoManager *IncognitoManager
+	_playerAbilityManager *PlayerAbilityManager
 
 	destroyedWarMachineMap map[string]*WMDestroyedRecord
 	*boiler.Battle
@@ -77,10 +77,10 @@ func (btl *Battle) abilities() *AbilitiesSystem {
 	return btl._abilities
 }
 
-func (btl *Battle) incognitoManager() *IncognitoManager {
+func (btl *Battle) playerAbilityManager() *PlayerAbilityManager {
 	btl.RLock()
 	defer btl.RUnlock()
-	return btl._incognitoManager
+	return btl._playerAbilityManager
 }
 
 func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
@@ -104,10 +104,10 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.DisabledCells = gm.DisabledCells
 }
 
-func (btl *Battle) storeIncognitoManager(im *IncognitoManager) {
+func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
 	btl.Lock()
 	defer btl.Unlock()
-	btl._incognitoManager = im
+	btl._playerAbilityManager = im
 }
 
 func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) ([]*db.BattleMechData, map[uuid.UUID]*boiler.Faction, error) {
@@ -281,7 +281,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
 		btl.inserted = true
-
+		
 		// insert current users to
 		btl.users.Range(func(user *BattleUser) bool {
 			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
@@ -399,6 +399,15 @@ func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) 
 	return &server.GameLocation{
 		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.LeftPixels,
 		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.TopPixels,
+	}
+}
+
+// getCellCoordinatesFromGameWorldXY converts location in game to a cell location
+func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocation) *server.CellLocation {
+	gameMap := btl.gameMap
+	return &server.CellLocation{
+		X: (location.X - gameMap.LeftPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+		Y: (location.Y - gameMap.TopPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
 	}
 }
 
@@ -1176,11 +1185,12 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"game_map"`
-	WarMachines        []*WarMachine   `json:"war_machines"`
-	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
-	WarMachineLocation []byte          `json:"war_machine_location"`
-	BattleIdentifier   int             `json:"battle_identifier"`
+	GameMap            *server.GameMap  `json:"game_map"`
+	WarMachines        []*WarMachine    `json:"war_machines"`
+	SpawnedAI          []*WarMachine    `json:"spawned_ai"`
+	WarMachineLocation []byte           `json:"war_machine_location"`
+	BattleIdentifier   int              `json:"battle_identifier"`
+	AbilityDetails     []*AbilityDetail `json:"ability_details"`
 }
 
 type ViewerLiveCount struct {
@@ -1274,7 +1284,7 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 	}
 }
 
-func UpdatePayload(btl *Battle) *GameSettingsResponse {
+func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	var lt []byte
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
@@ -1283,19 +1293,35 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
+	// Indexes correspond to the game_client_ability_id in the db
+	abilityDetails := make([]*AbilityDetail, 20)
+	// Nuke
+	abilityDetails[1] = &AbilityDetail{
+		Radius: 5200,
+	}
+	// EMP
+	abilityDetails[12] = &AbilityDetail{
+		Radius: 10000,
+	}
+	// BLACKOUT
+	abilityDetails[16] = &AbilityDetail{
+		Radius: 20000,
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
 		WarMachineLocation: lt,
+		AbilityDetails:     abilityDetails,
 	}
 }
 
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, UpdatePayload(btl))
+	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1419,7 +1445,17 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		// Hidden/Incognito
-		if btl.incognitoManager().IsWarMachineHidden(warmachine.Hash) {
+		if btl.playerAbilityManager().IsWarMachineHidden(warmachine.Hash) {
+			wms.IsHidden = true
+			wms.Position = &server.Vector3{
+				X: -1,
+				Y: -1,
+				Z: -1,
+			}
+		} else if btl.playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+			X: wms.Position.X,
+			Y: wms.Position.Y,
+		}) {
 			wms.IsHidden = true
 			wms.Position = &server.Vector3{
 				X: -1,
@@ -1440,45 +1476,61 @@ func (btl *Battle) Tick(payload []byte) {
 	if len(wsMessages) > 0 {
 		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
 	}
+
+	if btl.playerAbilityManager().HasBlackoutsUpdated() {
+		minimapUpdates := []MinimapEvent{}
+		for id, b := range btl.playerAbilityManager().Blackouts() {
+			minimapUpdates = append(minimapUpdates, MinimapEvent{
+				ID:            id,
+				GameAbilityID: BlackoutGameAbilityID,
+				Duration:      BlackoutDurationSeconds,
+				Radius:        int(BlackoutRadius),
+				Coords:        b.CellCoords,
+			})
+		}
+		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
+		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+	}
 }
 
 func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-	if btl.ID != dp.BattleID {
-		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-		btl.arena.reset()
-		return
-	}
-
-	// get item id from hash
-	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-		return
-	}
-
-	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-		return
-	}
-
-	btlHistory := boiler.BattleHistory{
-		BattleID:        btl.BattleID,
-		WarMachineOneID: wm.ID,
-		RelatedID:       null.NewString(dp.EventID, true),
-		EventType:       "pickup",
-	}
-
-	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-		return
-	}
-}
+// repair is moved to mech level
+//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
+//	if btl.ID != dp.BattleID {
+//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
+//		btl.arena.reset()
+//		return
+//	}
+//
+//	// get item id from hash
+//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
+//		return
+//	}
+//
+//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
+//	if err != nil {
+//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
+//		return
+//	}
+//
+//	btlHistory := boiler.BattleHistory{
+//		BattleID:        btl.BattleID,
+//		WarMachineOneID: wm.ID,
+//		RelatedID:       null.NewString(dp.EventID, true),
+//		EventType:       "pickup",
+//	}
+//
+//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
+//	if err != nil {
+//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
+//		return
+//	}
+//}
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
@@ -2023,15 +2075,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
 			Weapons:   WeaponsFromServer(mech.Weapons),
 			Utility:   UtilitiesFromServer(mech.Utility),
-
-			//Abilities:  nil,
-		}
-		// update the name to be valid if not
-		if len(newWarMachine.Name) < 3 {
-			newWarMachine.Name = mech.Owner.Username
-			if newWarMachine.Name == "" {
-				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-			}
+			Stats: &Stats{
+				TotalWins:       mech.Stats.TotalWins,
+				TotalDeaths:     mech.Stats.TotalDeaths,
+				TotalKills:      mech.Stats.TotalKills,
+				BattlesSurvived: mech.Stats.BattlesSurvived,
+				TotalLosses:     mech.Stats.TotalLosses,
+			},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
@@ -2041,6 +2091,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
 			}
 		}
+
+		// add owner username
+		if mech.Owner != nil {
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%s", mech.Owner.Username, mech.Owner.Gid)
+		}
+
 		// check model
 		if mech.Model != nil {
 			model, ok := ModelMap[mech.Model.Label]

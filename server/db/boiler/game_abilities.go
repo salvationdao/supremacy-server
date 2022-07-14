@@ -35,6 +35,7 @@ type GameAbility struct {
 	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 	CurrentSups         string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
 	Level               string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
+	LocationSelectType  string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -53,6 +54,7 @@ var GameAbilityColumns = struct {
 	TextColour          string
 	CurrentSups         string
 	Level               string
+	LocationSelectType  string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -66,6 +68,7 @@ var GameAbilityColumns = struct {
 	TextColour:          "text_colour",
 	CurrentSups:         "current_sups",
 	Level:               "level",
+	LocationSelectType:  "location_select_type",
 }
 
 var GameAbilityTableColumns = struct {
@@ -81,6 +84,7 @@ var GameAbilityTableColumns = struct {
 	TextColour          string
 	CurrentSups         string
 	Level               string
+	LocationSelectType  string
 }{
 	ID:                  "game_abilities.id",
 	GameClientAbilityID: "game_abilities.game_client_ability_id",
@@ -94,6 +98,7 @@ var GameAbilityTableColumns = struct {
 	TextColour:          "game_abilities.text_colour",
 	CurrentSups:         "game_abilities.current_sups",
 	Level:               "game_abilities.level",
+	LocationSelectType:  "game_abilities.location_select_type",
 }
 
 // Generated where
@@ -111,6 +116,7 @@ var GameAbilityWhere = struct {
 	TextColour          whereHelperstring
 	CurrentSups         whereHelperstring
 	Level               whereHelperstring
+	LocationSelectType  whereHelperstring
 }{
 	ID:                  whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -124,6 +130,7 @@ var GameAbilityWhere = struct {
 	TextColour:          whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
 	CurrentSups:         whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
 	Level:               whereHelperstring{field: "\"game_abilities\".\"level\""},
+	LocationSelectType:  whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -153,9 +160,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
@@ -406,6 +413,7 @@ func (q gameAbilityQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *GameAbility) BattleAbility(mods ...qm.QueryMod) battleAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleAbilityID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -506,6 +514,7 @@ func (gameAbilityL) LoadBattleAbility(e boil.Executor, singular bool, maybeGameA
 	query := NewQuery(
 		qm.From(`battle_abilities`),
 		qm.WhereIn(`battle_abilities.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
