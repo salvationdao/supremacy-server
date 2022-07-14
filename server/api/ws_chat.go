@@ -242,7 +242,7 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 
-	go api.SystemBanMessageBroadcaster()
+	go api.MessageBroadcaster()
 
 	return chatHub
 }
@@ -255,7 +255,7 @@ const (
 	RestrictionSupsContribute = "Contribute sups"
 )
 
-func (api *API) SystemBanMessageBroadcaster() {
+func (api *API) MessageBroadcaster() {
 	for {
 		select {
 		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
@@ -297,7 +297,7 @@ func (api *API) SystemBanMessageBroadcaster() {
 		case newBattleInfo := <-api.BattleArena.NewBattleChan:
 			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Could not broadcast battle info")
+				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo)
 				return
 			}
 		}
@@ -586,6 +586,9 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 
 func (api *API) BroadcastNewBattle(battleNumber int) error {
 	factions, err := boiler.Factions().All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Could not get all factions, try again or contact support.")
+	}
 
 	for _, faction := range factions {
 		ch := &boiler.ChatHistory{
