@@ -13,7 +13,7 @@ import (
 
 type TransferAssetToXsynRollbackFunc func()
 
-// TransferAssetsXsyn transfers an item sale's collection item to new owner.
+// TransferAssetsToXsyn transfers an item sale's collection item to new owner.
 func TransferAssetsToXsyn(
 	conn boil.Executor,
 	passport *xsyn_rpcclient.XsynXrpcClient,

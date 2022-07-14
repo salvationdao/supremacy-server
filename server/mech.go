@@ -35,9 +35,19 @@ type CollectionItem struct {
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
+type Stats struct {
+	TotalWins       int `json:"total_wins"`
+	TotalDeaths     int `json:"total_deaths"`
+	TotalKills      int `json:"total_kills"`
+	BattlesSurvived int `json:"battles_survived"`
+	TotalLosses     int `json:"total_losses"`
+}
+
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionItem
+	*Stats
+
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
 	WeaponHardpoints      int        `json:"weapon_hardpoints"`

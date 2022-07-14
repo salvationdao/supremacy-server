@@ -165,6 +165,7 @@ const (
 const (
 	FeatureNameMECH_MOVE      = "MECH_MOVE"
 	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
+	FeatureNamePUBLIC_PROFILE = "PUBLIC_PROFILE"
 )
 
 // Enum values for AbilityLevel
@@ -213,6 +214,13 @@ const (
 	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for BanFromType
+const (
+	BanFromTypeSYSTEM = "SYSTEM"
+	BanFromTypeADMIN  = "ADMIN"
+	BanFromTypePLAYER = "PLAYER"
 )
 
 // Enum values for PlayerRankEnum
