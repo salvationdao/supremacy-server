@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -36,6 +37,7 @@ func (s *Syndicate) newMotionSystem() (*MotionSystem, error) {
 		boiler.SyndicateMotionWhere.EndedAt.GT(time.Now()),
 		boiler.SyndicateMotionWhere.ActualEndedAt.IsNull(),
 		qm.Load(boiler.SyndicateMotionRels.MotionSyndicateMotionVotes),
+		qm.Load(boiler.SyndicateMotionRels.NewLogo),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("syndicate id", s.ID).Err(err).Msg("Failed to load syndicate motions.")
@@ -50,7 +52,7 @@ func (s *Syndicate) newMotionSystem() (*MotionSystem, error) {
 	sms.isClosed.Store(false)
 
 	for _, m := range ms {
-		err = sms.addMotion(m, false)
+		err = sms.addMotion(m, m.R.NewLogo, false)
 		if err != nil {
 			// the duplicate check failed, so log error instead of return the system
 			gamelog.L.Error().Err(err).Msg("Failed to add motion")
@@ -114,7 +116,7 @@ func (sms *MotionSystem) getOngoingMotion(id string) (*Motion, error) {
 }
 
 // addMotion check motion duplicated content and append new motion to motion system
-func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool) error {
+func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, logo *boiler.Blob, isNewMotion bool) error {
 	// add motion to system
 	sms.Lock()
 	defer sms.Unlock()
@@ -132,12 +134,37 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool
 			return err
 		}
 
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
+			return terror.Error(err, "Failed to add motion to the system.")
+		}
+
+		defer func(tx *sql.Tx) {
+			_ = tx.Rollback()
+		}(tx)
+
+		if logo != nil && logo.ID != "" {
+			err = logo.Insert(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to insert logo into database")
+				return terror.Error(err, "Failed to add motion to the system")
+			}
+		}
+
 		// insert, if motion is not in the database
 		if bsm.ID == "" {
-			err = bsm.Insert(gamedb.StdConn, boil.Infer())
+			err = bsm.Insert(tx, boil.Infer())
 			if err != nil {
-				return terror.Error(err, "Failed to insert syndicate motion")
+				gamelog.L.Error().Err(err).Msg("Failed to insert motion into db")
+				return terror.Error(err, "Failed to add motion to the system")
 			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+			return terror.Error(err, "Failed to add motion to the system")
 		}
 	}
 
@@ -156,7 +183,7 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool
 				delete(sms.ongoingMotions, bsm.ID)
 
 				// broadcast ongoing motion list
-				ws.PublishMessage("", "", sms.ongoingMotions)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/ongoing_motions", sms.syndicate.FactionID, bsm.SyndicateID), server.HubKeySyndicateOngoingMotionSubscribe, sms.ongoingMotions)
 			}
 		},
 	}
@@ -182,20 +209,20 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool
 	go m.start()
 
 	// broadcast ongoing motions
-	ws.PublishMessage("", "", sms.ongoingMotions)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/ongoing_motions", sms.syndicate.FactionID, bsm.SyndicateID), server.HubKeySyndicateOngoingMotionSubscribe, sms.ongoingMotions)
 
 	return nil
 }
 
 // validateIncomingMotion check incoming motion has valid input, and generate a new boiler motion for voting
-func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler.SyndicateMotion) (*boiler.SyndicateMotion, error) {
+func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.SyndicateMotion, logo *boiler.Blob) (*boiler.SyndicateMotion, error) {
 	// validate motion
 	if bsm.Reason == "" {
 		return nil, terror.Error(fmt.Errorf("missing motion reason"), "Missing motion reason")
 	}
 	motion := &boiler.SyndicateMotion{
-		SyndicateID: user.SyndicateID.String,
-		IssuedByID:  user.ID,
+		SyndicateID: sms.syndicate.ID,
+		IssuedByID:  userID,
 		Type:        bsm.Type,
 		Reason:      bsm.Reason,
 	}
@@ -222,6 +249,14 @@ func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler
 				return nil, err
 			}
 			motion.NewSymbol = null.StringFrom(newSymbol)
+		}
+
+		// change logo
+		if logo != nil && logo.File.Valid && len(logo.File.Bytes) > 0 {
+			avatarID := uuid.Must(uuid.NewV4())
+			// set logo id, if image file is provided
+			logo.ID = avatarID.String()
+			bsm.NewLogoID = null.StringFrom(avatarID.String())
 		}
 	case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
 		if !bsm.NewJoinFee.Valid && !bsm.NewExitFee.Valid {
@@ -258,7 +293,6 @@ func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler
 		if exitFeeAfterChange.GreaterThan(joinFeeAfterChanged) {
 			return nil, terror.Error(fmt.Errorf("exit fee cannot be higher than join fee"), "Exit fee cannot be higher than join fee.")
 		}
-
 	case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
 		if !bsm.NewMonthlyDues.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
@@ -364,12 +398,42 @@ func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler
 		motion.NewRuleNumber = bsm.NewRuleNumber
 		motion.NewRuleContent = bsm.NewRuleContent
 
+	case boiler.SyndicateMotionTypeREMOVE_MEMBER:
+		if !bsm.MemberID.Valid {
+			return nil, terror.Error(fmt.Errorf("member id not provided"), "Member id is not provided")
+		}
+
+		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player id", bsm.DirectorID.String).Err(err).Msg("Failed to get data from db")
+			return nil, terror.Error(err, "Player not found")
+		}
+
+		if !player.SyndicateID.Valid || player.SyndicateID.String != sms.syndicate.ID {
+			return nil, terror.Error(fmt.Errorf("player is not in your syndicate"), "Player is not a member of the syndicate")
+		}
+
+		if sms.syndicate.Type == boiler.SyndicateTypeCORPORATION {
+			isDirector, err := boiler.SyndicateDirectors(
+				boiler.SyndicateDirectorWhere.SyndicateID.EQ(sms.syndicate.ID),
+				boiler.SyndicateDirectorWhere.PlayerID.EQ(player.ID),
+			).Exists(gamedb.StdConn)
+			if err != nil {
+
+			}
+
+			if isDirector {
+				return nil, terror.Error(fmt.Errorf("only board can remove directors"), "The director can only be removed by the board")
+			}
+
+		}
+
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
 		if sms.syndicate.Type != boiler.SyndicateTypeCORPORATION {
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
-		isDirector, err := sms.syndicate.isDirector(user.ID)
+		isDirector, err := sms.syndicate.isDirector(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -407,7 +471,7 @@ func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
-		isDirector, err := sms.syndicate.isDirector(user.ID)
+		isDirector, err := sms.syndicate.isDirector(userID)
 		if err != nil {
 			return nil, err
 		}
@@ -474,36 +538,37 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 		switch om.Type {
 		case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL:
 			if bsm.NewSyndicateName.Valid && om.NewSyndicateName.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate name.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate name.")
 			}
 			if bsm.NewSymbol.Valid && om.NewSymbol.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate symbol.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate symbol.")
 			}
-			if bsm.NewNamingConvention.Valid && om.NewNamingConvention.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing syndicate naming convention.")
+
+			if bsm.NewLogoID.Valid && om.NewLogoID.Valid {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate logo.")
 			}
 		case boiler.SyndicateMotionTypeADD_RULE:
 			if bsm.NewRuleContent.Valid && om.NewRuleContent.Valid {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for adding the same rule.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for adding the same rule.")
 			}
 		case boiler.SyndicateMotionTypeREMOVE_RULE, boiler.SyndicateMotionTypeCHANGE_RULE:
 			if bsm.RuleID.String == om.RuleID.String {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing the same rule.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing the same rule.")
 			}
 		case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
 			if bsm.DirectorID.String == om.DirectorID.String {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for appointing the same player.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for appointing the same player.")
 			}
 		case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
 			if bsm.DirectorID.String == om.DirectorID.String {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for removing the same director.")
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same director.")
 			}
 		case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for member monthly dues.")
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for member monthly dues.")
 		case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing entry fee.")
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing entry fee.")
 		case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing battle win cut.")
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing battle win cut.")
 		}
 	}
 
@@ -679,8 +744,8 @@ func (sm *Motion) parseResult() {
 	switch sm.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL,
 		boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE,
-		boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT,
-		boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
+		boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES,
+		boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
 		sm.updateSyndicate()
 	case boiler.SyndicateMotionTypeADD_RULE:
 		sm.addRule()
@@ -737,70 +802,77 @@ func (sm *Motion) updateSyndicate() {
 		return
 	}
 
-	updateMotionCols := []string{}
-	updateSyndicateCols := []string{}
+	updatedMotionCols := []string{}
+	updatedSyndicateCols := []string{}
 	if sm.NewSyndicateName.Valid {
 		sm.OldSyndicateName = null.StringFrom(syndicate.Name)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldSyndicateName)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldSyndicateName)
 
 		syndicate.Name = sm.NewSyndicateName.String
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.Name)
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.Name)
 	}
 	if sm.NewSymbol.Valid {
 		sm.OldSymbol = null.StringFrom(syndicate.Symbol)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldSymbol)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldSymbol)
 
 		syndicate.Symbol = sm.NewSymbol.String
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.Symbol)
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.Symbol)
+	}
+	if sm.NewLogoID.Valid {
+		sm.OldLogoID = syndicate.LogoID
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldLogoID)
+
+		syndicate.LogoID = sm.NewLogoID
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.LogoID)
 	}
 	if sm.NewJoinFee.Valid {
 		sm.OldJoinFee = decimal.NewNullDecimal(syndicate.JoinFee)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldJoinFee)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldJoinFee)
 
 		syndicate.JoinFee = sm.NewJoinFee.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.JoinFee)
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.JoinFee)
 	}
 	if sm.NewExitFee.Valid {
 		sm.OldExitFee = decimal.NewNullDecimal(syndicate.ExitFee)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldExitFee)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldExitFee)
 
 		syndicate.ExitFee = sm.NewExitFee.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.ExitFee)
-	}
-	if sm.NewDeployingMemberCutPercentage.Valid {
-		sm.OldDeployingMemberCutPercentage = decimal.NewNullDecimal(syndicate.DeployingMemberCutPercentage)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldDeployingMemberCutPercentage)
-
-		syndicate.DeployingMemberCutPercentage = sm.NewDeployingMemberCutPercentage.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.DeployingMemberCutPercentage)
-	}
-	if sm.NewMemberAssistCutPercentage.Valid {
-		sm.OldMemberAssistCutPercentage = decimal.NewNullDecimal(syndicate.MemberAssistCutPercentage)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldMemberAssistCutPercentage)
-
-		syndicate.MemberAssistCutPercentage = sm.NewMemberAssistCutPercentage.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.MemberAssistCutPercentage)
-	}
-	if sm.NewMechOwnerCutPercentage.Valid {
-		sm.OldMechOwnerCutPercentage = decimal.NewNullDecimal(syndicate.MechOwnerCutPercentage)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldMechOwnerCutPercentage)
-
-		syndicate.MechOwnerCutPercentage = sm.NewMechOwnerCutPercentage.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.MechOwnerCutPercentage)
-	}
-	if sm.NewSyndicateCutPercentage.Valid {
-		sm.OldSyndicateCutPercentage = decimal.NewNullDecimal(syndicate.SyndicateCutPercentage)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldSyndicateCutPercentage)
-
-		syndicate.SyndicateCutPercentage = sm.NewSyndicateCutPercentage.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.SyndicateCutPercentage)
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.ExitFee)
 	}
 	if sm.NewMonthlyDues.Valid {
 		sm.OldMonthlyDues = decimal.NewNullDecimal(syndicate.MonthlyDues)
-		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldMonthlyDues)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldMonthlyDues)
 
 		syndicate.MonthlyDues = sm.NewMonthlyDues.Decimal
-		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.MonthlyDues)
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MonthlyDues)
+	}
+	if sm.NewDeployingMemberCutPercentage.Valid {
+		sm.OldDeployingMemberCutPercentage = decimal.NewNullDecimal(syndicate.DeployingMemberCutPercentage)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldDeployingMemberCutPercentage)
+
+		syndicate.DeployingMemberCutPercentage = sm.NewDeployingMemberCutPercentage.Decimal
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.DeployingMemberCutPercentage)
+	}
+	if sm.NewMemberAssistCutPercentage.Valid {
+		sm.OldMemberAssistCutPercentage = decimal.NewNullDecimal(syndicate.MemberAssistCutPercentage)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldMemberAssistCutPercentage)
+
+		syndicate.MemberAssistCutPercentage = sm.NewMemberAssistCutPercentage.Decimal
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MemberAssistCutPercentage)
+	}
+	if sm.NewMechOwnerCutPercentage.Valid {
+		sm.OldMechOwnerCutPercentage = decimal.NewNullDecimal(syndicate.MechOwnerCutPercentage)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldMechOwnerCutPercentage)
+
+		syndicate.MechOwnerCutPercentage = sm.NewMechOwnerCutPercentage.Decimal
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MechOwnerCutPercentage)
+	}
+	if sm.NewSyndicateCutPercentage.Valid {
+		sm.OldSyndicateCutPercentage = decimal.NewNullDecimal(syndicate.SyndicateCutPercentage)
+		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldSyndicateCutPercentage)
+
+		syndicate.SyndicateCutPercentage = sm.NewSyndicateCutPercentage.Decimal
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.SyndicateCutPercentage)
 	}
 
 	tx, err := gamedb.StdConn.Begin()
@@ -811,15 +883,17 @@ func (sm *Motion) updateSyndicate() {
 
 	defer tx.Rollback()
 
-	_, err = sm.Update(tx, boil.Whitelist(updateMotionCols...))
+	// record all the old value in motion
+	_, err = sm.Update(tx, boil.Whitelist(updatedMotionCols...))
 	if err != nil {
-		gamelog.L.Error().Interface("updated motion", sm).Strs("updated column", updateMotionCols).Err(err).Msg("Failed to update motion columns")
+		gamelog.L.Error().Interface("updated motion", sm).Strs("updated column", updatedMotionCols).Err(err).Msg("Failed to update motion columns")
 		return
 	}
 
-	_, err = syndicate.Update(tx, boil.Whitelist(updateSyndicateCols...))
+	// update syndicate detail
+	_, err = syndicate.Update(tx, boil.Whitelist(updatedSyndicateCols...))
 	if err != nil {
-		gamelog.L.Error().Interface("updated syndicate", syndicate).Strs("updated column", updateSyndicateCols).Err(err).Msg("Failed to update syndicate from motion")
+		gamelog.L.Error().Interface("updated syndicate", syndicate).Strs("updated column", updatedSyndicateCols).Err(err).Msg("Failed to update syndicate from motion")
 		return
 	}
 

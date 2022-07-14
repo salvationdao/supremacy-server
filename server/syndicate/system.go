@@ -89,7 +89,7 @@ func (ss *System) GetSyndicate(id string) (*Syndicate, error) {
 }
 
 // AddMotion add new motion to the syndicate system
-func (ss *System) AddMotion(user *boiler.Player, bsm *boiler.SyndicateMotion) error {
+func (ss *System) AddMotion(user *boiler.Player, bsm *boiler.SyndicateMotion, blob *boiler.Blob) error {
 	// get syndicate
 	s, err := ss.GetSyndicate(user.SyndicateID.String)
 	if err != nil {
@@ -97,13 +97,13 @@ func (ss *System) AddMotion(user *boiler.Player, bsm *boiler.SyndicateMotion) er
 	}
 
 	// check motion is valid and generate a clean motion
-	newMotion, err := s.motionSystem.validateIncomingMotion(user, bsm)
+	newMotion, err := s.motionSystem.validateIncomingMotion(user.ID, bsm, blob)
 	if err != nil {
 		return err
 	}
 
 	// add motion to the motion system
-	err = s.motionSystem.addMotion(newMotion, true)
+	err = s.motionSystem.addMotion(newMotion, blob, true)
 	if err != nil {
 		return err
 	}

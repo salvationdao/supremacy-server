@@ -25,8 +25,10 @@ type Player struct {
 	Gid              int             `json:"gid"`
 	Rank             string          `json:"rank"`
 	SentMessageCount int             `json:"sent_message_count"`
-	SynidcateID      null
-	Stat             *boiler.PlayerStat `json:"stat"`
+	SyndicateID      null.String     `json:"syndicate_id"`
+
+	Stat      *boiler.PlayerStat `json:"stat"`
+	Syndicate *boiler.Syndicate  `json:"syndicate"`
 
 	Features []*Feature `json:"features"`
 }
@@ -60,16 +62,19 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 		Gid:              player.Gid,
 		Rank:             player.Rank,
 		SentMessageCount: player.SentMessageCount,
+		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
 	}
 
 	if player.R != nil {
 		serverPlayer.Stat = player.R.IDPlayerStat
+		serverPlayer.Syndicate = player.R.Syndicate
 	}
 
 	return serverPlayer
 }
 
+// Brief trim off confidential data from player
 func (p *Player) Brief() *Player {
 	return &Player{
 		ID:        p.ID,
@@ -78,5 +83,6 @@ func (p *Player) Brief() *Player {
 		Gid:       p.Gid,
 		Rank:      p.Rank,
 		Stat:      p.Stat,
+		Syndicate: p.Syndicate,
 	}
 }

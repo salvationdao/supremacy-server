@@ -30,9 +30,10 @@ type Syndicate struct {
 	FoundedByID                  string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
 	CeoPlayerID                  null.String     `boiler:"ceo_player_id" boil:"ceo_player_id" json:"ceo_player_id,omitempty" toml:"ceo_player_id" yaml:"ceo_player_id,omitempty"`
 	AdminID                      null.String     `boiler:"admin_id" boil:"admin_id" json:"admin_id,omitempty" toml:"admin_id" yaml:"admin_id,omitempty"`
+	SeatCount                    int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
 	Name                         string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	Symbol                       string          `boiler:"symbol" boil:"symbol" json:"symbol" toml:"symbol" yaml:"symbol"`
-	SeatCount                    int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
+	LogoID                       null.String     `boiler:"logo_id" boil:"logo_id" json:"logo_id,omitempty" toml:"logo_id" yaml:"logo_id,omitempty"`
 	JoinFee                      decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
 	ExitFee                      decimal.Decimal `boiler:"exit_fee" boil:"exit_fee" json:"exit_fee" toml:"exit_fee" yaml:"exit_fee"`
 	MonthlyDues                  decimal.Decimal `boiler:"monthly_dues" boil:"monthly_dues" json:"monthly_dues" toml:"monthly_dues" yaml:"monthly_dues"`
@@ -55,9 +56,10 @@ var SyndicateColumns = struct {
 	FoundedByID                  string
 	CeoPlayerID                  string
 	AdminID                      string
+	SeatCount                    string
 	Name                         string
 	Symbol                       string
-	SeatCount                    string
+	LogoID                       string
 	JoinFee                      string
 	ExitFee                      string
 	MonthlyDues                  string
@@ -75,9 +77,10 @@ var SyndicateColumns = struct {
 	FoundedByID:                  "founded_by_id",
 	CeoPlayerID:                  "ceo_player_id",
 	AdminID:                      "admin_id",
+	SeatCount:                    "seat_count",
 	Name:                         "name",
 	Symbol:                       "symbol",
-	SeatCount:                    "seat_count",
+	LogoID:                       "logo_id",
 	JoinFee:                      "join_fee",
 	ExitFee:                      "exit_fee",
 	MonthlyDues:                  "monthly_dues",
@@ -97,9 +100,10 @@ var SyndicateTableColumns = struct {
 	FoundedByID                  string
 	CeoPlayerID                  string
 	AdminID                      string
+	SeatCount                    string
 	Name                         string
 	Symbol                       string
-	SeatCount                    string
+	LogoID                       string
 	JoinFee                      string
 	ExitFee                      string
 	MonthlyDues                  string
@@ -117,9 +121,10 @@ var SyndicateTableColumns = struct {
 	FoundedByID:                  "syndicates.founded_by_id",
 	CeoPlayerID:                  "syndicates.ceo_player_id",
 	AdminID:                      "syndicates.admin_id",
+	SeatCount:                    "syndicates.seat_count",
 	Name:                         "syndicates.name",
 	Symbol:                       "syndicates.symbol",
-	SeatCount:                    "syndicates.seat_count",
+	LogoID:                       "syndicates.logo_id",
 	JoinFee:                      "syndicates.join_fee",
 	ExitFee:                      "syndicates.exit_fee",
 	MonthlyDues:                  "syndicates.monthly_dues",
@@ -141,9 +146,10 @@ var SyndicateWhere = struct {
 	FoundedByID                  whereHelperstring
 	CeoPlayerID                  whereHelpernull_String
 	AdminID                      whereHelpernull_String
+	SeatCount                    whereHelperint
 	Name                         whereHelperstring
 	Symbol                       whereHelperstring
-	SeatCount                    whereHelperint
+	LogoID                       whereHelpernull_String
 	JoinFee                      whereHelperdecimal_Decimal
 	ExitFee                      whereHelperdecimal_Decimal
 	MonthlyDues                  whereHelperdecimal_Decimal
@@ -161,9 +167,10 @@ var SyndicateWhere = struct {
 	FoundedByID:                  whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
 	CeoPlayerID:                  whereHelpernull_String{field: "\"syndicates\".\"ceo_player_id\""},
 	AdminID:                      whereHelpernull_String{field: "\"syndicates\".\"admin_id\""},
+	SeatCount:                    whereHelperint{field: "\"syndicates\".\"seat_count\""},
 	Name:                         whereHelperstring{field: "\"syndicates\".\"name\""},
 	Symbol:                       whereHelperstring{field: "\"syndicates\".\"symbol\""},
-	SeatCount:                    whereHelperint{field: "\"syndicates\".\"seat_count\""},
+	LogoID:                       whereHelpernull_String{field: "\"syndicates\".\"logo_id\""},
 	JoinFee:                      whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
 	ExitFee:                      whereHelperdecimal_Decimal{field: "\"syndicates\".\"exit_fee\""},
 	MonthlyDues:                  whereHelperdecimal_Decimal{field: "\"syndicates\".\"monthly_dues\""},
@@ -182,6 +189,7 @@ var SyndicateRels = struct {
 	CeoPlayer                   string
 	Faction                     string
 	FoundedBy                   string
+	Logo                        string
 	Players                     string
 	SyndicateCommittees         string
 	SyndicateDirectors          string
@@ -194,6 +202,7 @@ var SyndicateRels = struct {
 	CeoPlayer:                   "CeoPlayer",
 	Faction:                     "Faction",
 	FoundedBy:                   "FoundedBy",
+	Logo:                        "Logo",
 	Players:                     "Players",
 	SyndicateCommittees:         "SyndicateCommittees",
 	SyndicateDirectors:          "SyndicateDirectors",
@@ -209,6 +218,7 @@ type syndicateR struct {
 	CeoPlayer                   *Player                         `boiler:"CeoPlayer" boil:"CeoPlayer" json:"CeoPlayer" toml:"CeoPlayer" yaml:"CeoPlayer"`
 	Faction                     *Faction                        `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	FoundedBy                   *Player                         `boiler:"FoundedBy" boil:"FoundedBy" json:"FoundedBy" toml:"FoundedBy" yaml:"FoundedBy"`
+	Logo                        *Blob                           `boiler:"Logo" boil:"Logo" json:"Logo" toml:"Logo" yaml:"Logo"`
 	Players                     PlayerSlice                     `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	SyndicateCommittees         SyndicateCommitteeSlice         `boiler:"SyndicateCommittees" boil:"SyndicateCommittees" json:"SyndicateCommittees" toml:"SyndicateCommittees" yaml:"SyndicateCommittees"`
 	SyndicateDirectors          SyndicateDirectorSlice          `boiler:"SyndicateDirectors" boil:"SyndicateDirectors" json:"SyndicateDirectors" toml:"SyndicateDirectors" yaml:"SyndicateDirectors"`
@@ -227,9 +237,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "ceo_player_id", "admin_id", "name", "symbol", "seat_count", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "ceo_player_id", "admin_id", "seat_count", "name", "symbol", "logo_id", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol"}
-	syndicateColumnsWithDefault    = []string{"id", "ceo_player_id", "admin_id", "seat_count", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithDefault    = []string{"id", "ceo_player_id", "admin_id", "seat_count", "logo_id", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )
@@ -532,6 +542,21 @@ func (o *Syndicate) FoundedBy(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// Logo pointed to by the foreign key.
+func (o *Syndicate) Logo(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.LogoID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
 
 	return query
 }
@@ -1108,6 +1133,115 @@ func (syndicateL) LoadFoundedBy(e boil.Executor, singular bool, maybeSyndicate i
 					foreign.R = &playerR{}
 				}
 				foreign.R.FoundedBySyndicates = append(foreign.R.FoundedBySyndicates, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLogo allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateL) LoadLogo(e boil.Executor, singular bool, maybeSyndicate interface{}, mods queries.Applicator) error {
+	var slice []*Syndicate
+	var object *Syndicate
+
+	if singular {
+		object = maybeSyndicate.(*Syndicate)
+	} else {
+		slice = *maybeSyndicate.(*[]*Syndicate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateR{}
+		}
+		if !queries.IsNil(object.LogoID) {
+			args = append(args, object.LogoID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.LogoID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.LogoID) {
+				args = append(args, obj.LogoID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(syndicateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Logo = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.LogoSyndicates = append(foreign.R.LogoSyndicates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.LogoID, foreign.ID) {
+				local.R.Logo = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.LogoSyndicates = append(foreign.R.LogoSyndicates, local)
 				break
 			}
 		}
@@ -2054,6 +2188,85 @@ func (o *Syndicate) SetFoundedBy(exec boil.Executor, insert bool, related *Playe
 		related.R.FoundedBySyndicates = append(related.R.FoundedBySyndicates, o)
 	}
 
+	return nil
+}
+
+// SetLogo of the syndicate to the related item.
+// Sets o.R.Logo to related.
+// Adds o to related.R.LogoSyndicates.
+func (o *Syndicate) SetLogo(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"logo_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.LogoID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateR{
+			Logo: related,
+		}
+	} else {
+		o.R.Logo = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			LogoSyndicates: SyndicateSlice{o},
+		}
+	} else {
+		related.R.LogoSyndicates = append(related.R.LogoSyndicates, o)
+	}
+
+	return nil
+}
+
+// RemoveLogo relationship.
+// Sets o.R.Logo to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Syndicate) RemoveLogo(exec boil.Executor, related *Blob) error {
+	var err error
+
+	queries.SetScanner(&o.LogoID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("logo_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Logo = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.LogoSyndicates {
+		if queries.Equal(o.LogoID, ri.LogoID) {
+			continue
+		}
+
+		ln := len(related.R.LogoSyndicates)
+		if ln > 1 && i < ln-1 {
+			related.R.LogoSyndicates[i] = related.R.LogoSyndicates[ln-1]
+		}
+		related.R.LogoSyndicates = related.R.LogoSyndicates[:ln-1]
+		break
+	}
 	return nil
 }
 

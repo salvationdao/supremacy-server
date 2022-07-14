@@ -33,8 +33,8 @@ type SyndicateMotion struct {
 	NewSymbol                       null.String         `boiler:"new_symbol" boil:"new_symbol" json:"new_symbol,omitempty" toml:"new_symbol" yaml:"new_symbol,omitempty"`
 	OldSyndicateName                null.String         `boiler:"old_syndicate_name" boil:"old_syndicate_name" json:"old_syndicate_name,omitempty" toml:"old_syndicate_name" yaml:"old_syndicate_name,omitempty"`
 	NewSyndicateName                null.String         `boiler:"new_syndicate_name" boil:"new_syndicate_name" json:"new_syndicate_name,omitempty" toml:"new_syndicate_name" yaml:"new_syndicate_name,omitempty"`
-	OldNamingConvention             null.String         `boiler:"old_naming_convention" boil:"old_naming_convention" json:"old_naming_convention,omitempty" toml:"old_naming_convention" yaml:"old_naming_convention,omitempty"`
-	NewNamingConvention             null.String         `boiler:"new_naming_convention" boil:"new_naming_convention" json:"new_naming_convention,omitempty" toml:"new_naming_convention" yaml:"new_naming_convention,omitempty"`
+	OldLogoID                       null.String         `boiler:"old_logo_id" boil:"old_logo_id" json:"old_logo_id,omitempty" toml:"old_logo_id" yaml:"old_logo_id,omitempty"`
+	NewLogoID                       null.String         `boiler:"new_logo_id" boil:"new_logo_id" json:"new_logo_id,omitempty" toml:"new_logo_id" yaml:"new_logo_id,omitempty"`
 	OldJoinFee                      decimal.NullDecimal `boiler:"old_join_fee" boil:"old_join_fee" json:"old_join_fee,omitempty" toml:"old_join_fee" yaml:"old_join_fee,omitempty"`
 	NewJoinFee                      decimal.NullDecimal `boiler:"new_join_fee" boil:"new_join_fee" json:"new_join_fee,omitempty" toml:"new_join_fee" yaml:"new_join_fee,omitempty"`
 	OldExitFee                      decimal.NullDecimal `boiler:"old_exit_fee" boil:"old_exit_fee" json:"old_exit_fee,omitempty" toml:"old_exit_fee" yaml:"old_exit_fee,omitempty"`
@@ -54,6 +54,8 @@ type SyndicateMotion struct {
 	NewRuleNumber                   null.Int            `boiler:"new_rule_number" boil:"new_rule_number" json:"new_rule_number,omitempty" toml:"new_rule_number" yaml:"new_rule_number,omitempty"`
 	OldRuleContent                  null.String         `boiler:"old_rule_content" boil:"old_rule_content" json:"old_rule_content,omitempty" toml:"old_rule_content" yaml:"old_rule_content,omitempty"`
 	NewRuleContent                  null.String         `boiler:"new_rule_content" boil:"new_rule_content" json:"new_rule_content,omitempty" toml:"new_rule_content" yaml:"new_rule_content,omitempty"`
+	CommitteeID                     null.String         `boiler:"committee_id" boil:"committee_id" json:"committee_id,omitempty" toml:"committee_id" yaml:"committee_id,omitempty"`
+	MemberID                        null.String         `boiler:"member_id" boil:"member_id" json:"member_id,omitempty" toml:"member_id" yaml:"member_id,omitempty"`
 	DirectorID                      null.String         `boiler:"director_id" boil:"director_id" json:"director_id,omitempty" toml:"director_id" yaml:"director_id,omitempty"`
 	Result                          null.String         `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
 	EndedAt                         time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
@@ -76,8 +78,8 @@ var SyndicateMotionColumns = struct {
 	NewSymbol                       string
 	OldSyndicateName                string
 	NewSyndicateName                string
-	OldNamingConvention             string
-	NewNamingConvention             string
+	OldLogoID                       string
+	NewLogoID                       string
 	OldJoinFee                      string
 	NewJoinFee                      string
 	OldExitFee                      string
@@ -97,6 +99,8 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber                   string
 	OldRuleContent                  string
 	NewRuleContent                  string
+	CommitteeID                     string
+	MemberID                        string
 	DirectorID                      string
 	Result                          string
 	EndedAt                         string
@@ -114,8 +118,8 @@ var SyndicateMotionColumns = struct {
 	NewSymbol:                       "new_symbol",
 	OldSyndicateName:                "old_syndicate_name",
 	NewSyndicateName:                "new_syndicate_name",
-	OldNamingConvention:             "old_naming_convention",
-	NewNamingConvention:             "new_naming_convention",
+	OldLogoID:                       "old_logo_id",
+	NewLogoID:                       "new_logo_id",
 	OldJoinFee:                      "old_join_fee",
 	NewJoinFee:                      "new_join_fee",
 	OldExitFee:                      "old_exit_fee",
@@ -135,6 +139,8 @@ var SyndicateMotionColumns = struct {
 	NewRuleNumber:                   "new_rule_number",
 	OldRuleContent:                  "old_rule_content",
 	NewRuleContent:                  "new_rule_content",
+	CommitteeID:                     "committee_id",
+	MemberID:                        "member_id",
 	DirectorID:                      "director_id",
 	Result:                          "result",
 	EndedAt:                         "ended_at",
@@ -154,8 +160,8 @@ var SyndicateMotionTableColumns = struct {
 	NewSymbol                       string
 	OldSyndicateName                string
 	NewSyndicateName                string
-	OldNamingConvention             string
-	NewNamingConvention             string
+	OldLogoID                       string
+	NewLogoID                       string
 	OldJoinFee                      string
 	NewJoinFee                      string
 	OldExitFee                      string
@@ -175,6 +181,8 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber                   string
 	OldRuleContent                  string
 	NewRuleContent                  string
+	CommitteeID                     string
+	MemberID                        string
 	DirectorID                      string
 	Result                          string
 	EndedAt                         string
@@ -192,8 +200,8 @@ var SyndicateMotionTableColumns = struct {
 	NewSymbol:                       "syndicate_motions.new_symbol",
 	OldSyndicateName:                "syndicate_motions.old_syndicate_name",
 	NewSyndicateName:                "syndicate_motions.new_syndicate_name",
-	OldNamingConvention:             "syndicate_motions.old_naming_convention",
-	NewNamingConvention:             "syndicate_motions.new_naming_convention",
+	OldLogoID:                       "syndicate_motions.old_logo_id",
+	NewLogoID:                       "syndicate_motions.new_logo_id",
 	OldJoinFee:                      "syndicate_motions.old_join_fee",
 	NewJoinFee:                      "syndicate_motions.new_join_fee",
 	OldExitFee:                      "syndicate_motions.old_exit_fee",
@@ -213,6 +221,8 @@ var SyndicateMotionTableColumns = struct {
 	NewRuleNumber:                   "syndicate_motions.new_rule_number",
 	OldRuleContent:                  "syndicate_motions.old_rule_content",
 	NewRuleContent:                  "syndicate_motions.new_rule_content",
+	CommitteeID:                     "syndicate_motions.committee_id",
+	MemberID:                        "syndicate_motions.member_id",
 	DirectorID:                      "syndicate_motions.director_id",
 	Result:                          "syndicate_motions.result",
 	EndedAt:                         "syndicate_motions.ended_at",
@@ -234,8 +244,8 @@ var SyndicateMotionWhere = struct {
 	NewSymbol                       whereHelpernull_String
 	OldSyndicateName                whereHelpernull_String
 	NewSyndicateName                whereHelpernull_String
-	OldNamingConvention             whereHelpernull_String
-	NewNamingConvention             whereHelpernull_String
+	OldLogoID                       whereHelpernull_String
+	NewLogoID                       whereHelpernull_String
 	OldJoinFee                      whereHelperdecimal_NullDecimal
 	NewJoinFee                      whereHelperdecimal_NullDecimal
 	OldExitFee                      whereHelperdecimal_NullDecimal
@@ -255,6 +265,8 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber                   whereHelpernull_Int
 	OldRuleContent                  whereHelpernull_String
 	NewRuleContent                  whereHelpernull_String
+	CommitteeID                     whereHelpernull_String
+	MemberID                        whereHelpernull_String
 	DirectorID                      whereHelpernull_String
 	Result                          whereHelpernull_String
 	EndedAt                         whereHelpertime_Time
@@ -272,8 +284,8 @@ var SyndicateMotionWhere = struct {
 	NewSymbol:                       whereHelpernull_String{field: "\"syndicate_motions\".\"new_symbol\""},
 	OldSyndicateName:                whereHelpernull_String{field: "\"syndicate_motions\".\"old_syndicate_name\""},
 	NewSyndicateName:                whereHelpernull_String{field: "\"syndicate_motions\".\"new_syndicate_name\""},
-	OldNamingConvention:             whereHelpernull_String{field: "\"syndicate_motions\".\"old_naming_convention\""},
-	NewNamingConvention:             whereHelpernull_String{field: "\"syndicate_motions\".\"new_naming_convention\""},
+	OldLogoID:                       whereHelpernull_String{field: "\"syndicate_motions\".\"old_logo_id\""},
+	NewLogoID:                       whereHelpernull_String{field: "\"syndicate_motions\".\"new_logo_id\""},
 	OldJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_join_fee\""},
 	NewJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_join_fee\""},
 	OldExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_exit_fee\""},
@@ -293,6 +305,8 @@ var SyndicateMotionWhere = struct {
 	NewRuleNumber:                   whereHelpernull_Int{field: "\"syndicate_motions\".\"new_rule_number\""},
 	OldRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"old_rule_content\""},
 	NewRuleContent:                  whereHelpernull_String{field: "\"syndicate_motions\".\"new_rule_content\""},
+	CommitteeID:                     whereHelpernull_String{field: "\"syndicate_motions\".\"committee_id\""},
+	MemberID:                        whereHelpernull_String{field: "\"syndicate_motions\".\"member_id\""},
 	DirectorID:                      whereHelpernull_String{field: "\"syndicate_motions\".\"director_id\""},
 	Result:                          whereHelpernull_String{field: "\"syndicate_motions\".\"result\""},
 	EndedAt:                         whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
@@ -304,14 +318,22 @@ var SyndicateMotionWhere = struct {
 
 // SyndicateMotionRels is where relationship names are stored.
 var SyndicateMotionRels = struct {
+	Committee                  string
 	Director                   string
 	IssuedBy                   string
+	Member                     string
+	NewLogo                    string
+	OldLogo                    string
 	Rule                       string
 	Syndicate                  string
 	MotionSyndicateMotionVotes string
 }{
+	Committee:                  "Committee",
 	Director:                   "Director",
 	IssuedBy:                   "IssuedBy",
+	Member:                     "Member",
+	NewLogo:                    "NewLogo",
+	OldLogo:                    "OldLogo",
 	Rule:                       "Rule",
 	Syndicate:                  "Syndicate",
 	MotionSyndicateMotionVotes: "MotionSyndicateMotionVotes",
@@ -319,8 +341,12 @@ var SyndicateMotionRels = struct {
 
 // syndicateMotionR is where relationships are stored.
 type syndicateMotionR struct {
+	Committee                  *Player                  `boiler:"Committee" boil:"Committee" json:"Committee" toml:"Committee" yaml:"Committee"`
 	Director                   *Player                  `boiler:"Director" boil:"Director" json:"Director" toml:"Director" yaml:"Director"`
 	IssuedBy                   *Player                  `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
+	Member                     *Player                  `boiler:"Member" boil:"Member" json:"Member" toml:"Member" yaml:"Member"`
+	NewLogo                    *Blob                    `boiler:"NewLogo" boil:"NewLogo" json:"NewLogo" toml:"NewLogo" yaml:"NewLogo"`
+	OldLogo                    *Blob                    `boiler:"OldLogo" boil:"OldLogo" json:"OldLogo" toml:"OldLogo" yaml:"OldLogo"`
 	Rule                       *SyndicateRule           `boiler:"Rule" boil:"Rule" json:"Rule" toml:"Rule" yaml:"Rule"`
 	Syndicate                  *Syndicate               `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
 	MotionSyndicateMotionVotes SyndicateMotionVoteSlice `boiler:"MotionSyndicateMotionVotes" boil:"MotionSyndicateMotionVotes" json:"MotionSyndicateMotionVotes" toml:"MotionSyndicateMotionVotes" yaml:"MotionSyndicateMotionVotes"`
@@ -335,9 +361,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_naming_convention", "new_naming_convention", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "committee_id", "member_id", "director_id", "result", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_naming_convention", "new_naming_convention", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "committee_id", "member_id", "director_id", "result", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )
@@ -584,6 +610,21 @@ func (q syndicateMotionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Committee pointed to by the foreign key.
+func (o *SyndicateMotion) Committee(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.CommitteeID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // Director pointed to by the foreign key.
 func (o *SyndicateMotion) Director(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -610,6 +651,51 @@ func (o *SyndicateMotion) IssuedBy(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// Member pointed to by the foreign key.
+func (o *SyndicateMotion) Member(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.MemberID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// NewLogo pointed to by the foreign key.
+func (o *SyndicateMotion) NewLogo(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.NewLogoID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
+
+	return query
+}
+
+// OldLogo pointed to by the foreign key.
+func (o *SyndicateMotion) OldLogo(mods ...qm.QueryMod) blobQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OldLogoID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Blobs(queryMods...)
+	queries.SetFrom(query.Query, "\"blobs\"")
 
 	return query
 }
@@ -664,6 +750,115 @@ func (o *SyndicateMotion) MotionSyndicateMotionVotes(mods ...qm.QueryMod) syndic
 	}
 
 	return query
+}
+
+// LoadCommittee allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateMotionL) LoadCommittee(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		if !queries.IsNil(object.CommitteeID) {
+			args = append(args, object.CommitteeID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.CommitteeID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.CommitteeID) {
+				args = append(args, obj.CommitteeID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Committee = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.CommitteeSyndicateMotions = append(foreign.R.CommitteeSyndicateMotions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.CommitteeID, foreign.ID) {
+				local.R.Committee = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.CommitteeSyndicateMotions = append(foreign.R.CommitteeSyndicateMotions, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadDirector allows an eager lookup of values, cached into the
@@ -872,6 +1067,333 @@ func (syndicateMotionL) LoadIssuedBy(e boil.Executor, singular bool, maybeSyndic
 					foreign.R = &playerR{}
 				}
 				foreign.R.IssuedBySyndicateMotions = append(foreign.R.IssuedBySyndicateMotions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMember allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateMotionL) LoadMember(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		if !queries.IsNil(object.MemberID) {
+			args = append(args, object.MemberID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.MemberID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.MemberID) {
+				args = append(args, obj.MemberID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Member = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.MemberSyndicateMotions = append(foreign.R.MemberSyndicateMotions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.MemberID, foreign.ID) {
+				local.R.Member = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.MemberSyndicateMotions = append(foreign.R.MemberSyndicateMotions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadNewLogo allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateMotionL) LoadNewLogo(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		if !queries.IsNil(object.NewLogoID) {
+			args = append(args, object.NewLogoID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.NewLogoID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.NewLogoID) {
+				args = append(args, obj.NewLogoID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.NewLogo = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.NewLogoSyndicateMotions = append(foreign.R.NewLogoSyndicateMotions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.NewLogoID, foreign.ID) {
+				local.R.NewLogo = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.NewLogoSyndicateMotions = append(foreign.R.NewLogoSyndicateMotions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOldLogo allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateMotionL) LoadOldLogo(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		if !queries.IsNil(object.OldLogoID) {
+			args = append(args, object.OldLogoID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.OldLogoID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.OldLogoID) {
+				args = append(args, obj.OldLogoID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blobs`),
+		qm.WhereIn(`blobs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blobs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Blob")
+	}
+
+	var resultSlice []*Blob
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Blob")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blobs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blobs")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.OldLogo = foreign
+		if foreign.R == nil {
+			foreign.R = &blobR{}
+		}
+		foreign.R.OldLogoSyndicateMotions = append(foreign.R.OldLogoSyndicateMotions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.OldLogoID, foreign.ID) {
+				local.R.OldLogo = foreign
+				if foreign.R == nil {
+					foreign.R = &blobR{}
+				}
+				foreign.R.OldLogoSyndicateMotions = append(foreign.R.OldLogoSyndicateMotions, local)
 				break
 			}
 		}
@@ -1193,6 +1715,85 @@ func (syndicateMotionL) LoadMotionSyndicateMotionVotes(e boil.Executor, singular
 	return nil
 }
 
+// SetCommittee of the syndicateMotion to the related item.
+// Sets o.R.Committee to related.
+// Adds o to related.R.CommitteeSyndicateMotions.
+func (o *SyndicateMotion) SetCommittee(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"committee_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.CommitteeID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			Committee: related,
+		}
+	} else {
+		o.R.Committee = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			CommitteeSyndicateMotions: SyndicateMotionSlice{o},
+		}
+	} else {
+		related.R.CommitteeSyndicateMotions = append(related.R.CommitteeSyndicateMotions, o)
+	}
+
+	return nil
+}
+
+// RemoveCommittee relationship.
+// Sets o.R.Committee to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *SyndicateMotion) RemoveCommittee(exec boil.Executor, related *Player) error {
+	var err error
+
+	queries.SetScanner(&o.CommitteeID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("committee_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Committee = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.CommitteeSyndicateMotions {
+		if queries.Equal(o.CommitteeID, ri.CommitteeID) {
+			continue
+		}
+
+		ln := len(related.R.CommitteeSyndicateMotions)
+		if ln > 1 && i < ln-1 {
+			related.R.CommitteeSyndicateMotions[i] = related.R.CommitteeSyndicateMotions[ln-1]
+		}
+		related.R.CommitteeSyndicateMotions = related.R.CommitteeSyndicateMotions[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetDirector of the syndicateMotion to the related item.
 // Sets o.R.Director to related.
 // Adds o to related.R.DirectorSyndicateMotions.
@@ -1315,6 +1916,243 @@ func (o *SyndicateMotion) SetIssuedBy(exec boil.Executor, insert bool, related *
 		related.R.IssuedBySyndicateMotions = append(related.R.IssuedBySyndicateMotions, o)
 	}
 
+	return nil
+}
+
+// SetMember of the syndicateMotion to the related item.
+// Sets o.R.Member to related.
+// Adds o to related.R.MemberSyndicateMotions.
+func (o *SyndicateMotion) SetMember(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"member_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.MemberID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			Member: related,
+		}
+	} else {
+		o.R.Member = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			MemberSyndicateMotions: SyndicateMotionSlice{o},
+		}
+	} else {
+		related.R.MemberSyndicateMotions = append(related.R.MemberSyndicateMotions, o)
+	}
+
+	return nil
+}
+
+// RemoveMember relationship.
+// Sets o.R.Member to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *SyndicateMotion) RemoveMember(exec boil.Executor, related *Player) error {
+	var err error
+
+	queries.SetScanner(&o.MemberID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("member_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Member = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.MemberSyndicateMotions {
+		if queries.Equal(o.MemberID, ri.MemberID) {
+			continue
+		}
+
+		ln := len(related.R.MemberSyndicateMotions)
+		if ln > 1 && i < ln-1 {
+			related.R.MemberSyndicateMotions[i] = related.R.MemberSyndicateMotions[ln-1]
+		}
+		related.R.MemberSyndicateMotions = related.R.MemberSyndicateMotions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetNewLogo of the syndicateMotion to the related item.
+// Sets o.R.NewLogo to related.
+// Adds o to related.R.NewLogoSyndicateMotions.
+func (o *SyndicateMotion) SetNewLogo(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"new_logo_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.NewLogoID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			NewLogo: related,
+		}
+	} else {
+		o.R.NewLogo = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			NewLogoSyndicateMotions: SyndicateMotionSlice{o},
+		}
+	} else {
+		related.R.NewLogoSyndicateMotions = append(related.R.NewLogoSyndicateMotions, o)
+	}
+
+	return nil
+}
+
+// RemoveNewLogo relationship.
+// Sets o.R.NewLogo to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *SyndicateMotion) RemoveNewLogo(exec boil.Executor, related *Blob) error {
+	var err error
+
+	queries.SetScanner(&o.NewLogoID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("new_logo_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.NewLogo = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.NewLogoSyndicateMotions {
+		if queries.Equal(o.NewLogoID, ri.NewLogoID) {
+			continue
+		}
+
+		ln := len(related.R.NewLogoSyndicateMotions)
+		if ln > 1 && i < ln-1 {
+			related.R.NewLogoSyndicateMotions[i] = related.R.NewLogoSyndicateMotions[ln-1]
+		}
+		related.R.NewLogoSyndicateMotions = related.R.NewLogoSyndicateMotions[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetOldLogo of the syndicateMotion to the related item.
+// Sets o.R.OldLogo to related.
+// Adds o to related.R.OldLogoSyndicateMotions.
+func (o *SyndicateMotion) SetOldLogo(exec boil.Executor, insert bool, related *Blob) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"old_logo_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.OldLogoID, related.ID)
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			OldLogo: related,
+		}
+	} else {
+		o.R.OldLogo = related
+	}
+
+	if related.R == nil {
+		related.R = &blobR{
+			OldLogoSyndicateMotions: SyndicateMotionSlice{o},
+		}
+	} else {
+		related.R.OldLogoSyndicateMotions = append(related.R.OldLogoSyndicateMotions, o)
+	}
+
+	return nil
+}
+
+// RemoveOldLogo relationship.
+// Sets o.R.OldLogo to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *SyndicateMotion) RemoveOldLogo(exec boil.Executor, related *Blob) error {
+	var err error
+
+	queries.SetScanner(&o.OldLogoID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("old_logo_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.OldLogo = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.OldLogoSyndicateMotions {
+		if queries.Equal(o.OldLogoID, ri.OldLogoID) {
+			continue
+		}
+
+		ln := len(related.R.OldLogoSyndicateMotions)
+		if ln > 1 && i < ln-1 {
+			related.R.OldLogoSyndicateMotions[i] = related.R.OldLogoSyndicateMotions[ln-1]
+		}
+		related.R.OldLogoSyndicateMotions = related.R.OldLogoSyndicateMotions[:ln-1]
+		break
+	}
 	return nil
 }
 

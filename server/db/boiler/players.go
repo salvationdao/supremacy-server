@@ -207,8 +207,10 @@ var PlayerRels = struct {
 	WinnerSyndicateElections                 string
 	InvolvedPlayerSyndicateEventLogs         string
 	VoteBySyndicateMotionVotes               string
+	CommitteeSyndicateMotions                string
 	DirectorSyndicateMotions                 string
 	IssuedBySyndicateMotions                 string
+	MemberSyndicateMotions                   string
 	AdminSyndicates                          string
 	CeoPlayerSyndicates                      string
 	FoundedBySyndicates                      string
@@ -264,8 +266,10 @@ var PlayerRels = struct {
 	WinnerSyndicateElections:                 "WinnerSyndicateElections",
 	InvolvedPlayerSyndicateEventLogs:         "InvolvedPlayerSyndicateEventLogs",
 	VoteBySyndicateMotionVotes:               "VoteBySyndicateMotionVotes",
+	CommitteeSyndicateMotions:                "CommitteeSyndicateMotions",
 	DirectorSyndicateMotions:                 "DirectorSyndicateMotions",
 	IssuedBySyndicateMotions:                 "IssuedBySyndicateMotions",
+	MemberSyndicateMotions:                   "MemberSyndicateMotions",
 	AdminSyndicates:                          "AdminSyndicates",
 	CeoPlayerSyndicates:                      "CeoPlayerSyndicates",
 	FoundedBySyndicates:                      "FoundedBySyndicates",
@@ -324,8 +328,10 @@ type playerR struct {
 	WinnerSyndicateElections                 SyndicateElectionSlice           `boiler:"WinnerSyndicateElections" boil:"WinnerSyndicateElections" json:"WinnerSyndicateElections" toml:"WinnerSyndicateElections" yaml:"WinnerSyndicateElections"`
 	InvolvedPlayerSyndicateEventLogs         SyndicateEventLogSlice           `boiler:"InvolvedPlayerSyndicateEventLogs" boil:"InvolvedPlayerSyndicateEventLogs" json:"InvolvedPlayerSyndicateEventLogs" toml:"InvolvedPlayerSyndicateEventLogs" yaml:"InvolvedPlayerSyndicateEventLogs"`
 	VoteBySyndicateMotionVotes               SyndicateMotionVoteSlice         `boiler:"VoteBySyndicateMotionVotes" boil:"VoteBySyndicateMotionVotes" json:"VoteBySyndicateMotionVotes" toml:"VoteBySyndicateMotionVotes" yaml:"VoteBySyndicateMotionVotes"`
+	CommitteeSyndicateMotions                SyndicateMotionSlice             `boiler:"CommitteeSyndicateMotions" boil:"CommitteeSyndicateMotions" json:"CommitteeSyndicateMotions" toml:"CommitteeSyndicateMotions" yaml:"CommitteeSyndicateMotions"`
 	DirectorSyndicateMotions                 SyndicateMotionSlice             `boiler:"DirectorSyndicateMotions" boil:"DirectorSyndicateMotions" json:"DirectorSyndicateMotions" toml:"DirectorSyndicateMotions" yaml:"DirectorSyndicateMotions"`
 	IssuedBySyndicateMotions                 SyndicateMotionSlice             `boiler:"IssuedBySyndicateMotions" boil:"IssuedBySyndicateMotions" json:"IssuedBySyndicateMotions" toml:"IssuedBySyndicateMotions" yaml:"IssuedBySyndicateMotions"`
+	MemberSyndicateMotions                   SyndicateMotionSlice             `boiler:"MemberSyndicateMotions" boil:"MemberSyndicateMotions" json:"MemberSyndicateMotions" toml:"MemberSyndicateMotions" yaml:"MemberSyndicateMotions"`
 	AdminSyndicates                          SyndicateSlice                   `boiler:"AdminSyndicates" boil:"AdminSyndicates" json:"AdminSyndicates" toml:"AdminSyndicates" yaml:"AdminSyndicates"`
 	CeoPlayerSyndicates                      SyndicateSlice                   `boiler:"CeoPlayerSyndicates" boil:"CeoPlayerSyndicates" json:"CeoPlayerSyndicates" toml:"CeoPlayerSyndicates" yaml:"CeoPlayerSyndicates"`
 	FoundedBySyndicates                      SyndicateSlice                   `boiler:"FoundedBySyndicates" boil:"FoundedBySyndicates" json:"FoundedBySyndicates" toml:"FoundedBySyndicates" yaml:"FoundedBySyndicates"`
@@ -1637,6 +1643,28 @@ func (o *Player) VoteBySyndicateMotionVotes(mods ...qm.QueryMod) syndicateMotion
 	return query
 }
 
+// CommitteeSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via committee_id column.
+func (o *Player) CommitteeSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"committee_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
+	}
+
+	return query
+}
+
 // DirectorSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via director_id column.
 func (o *Player) DirectorSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
 	var queryMods []qm.QueryMod
@@ -1668,6 +1696,28 @@ func (o *Player) IssuedBySyndicateMotions(mods ...qm.QueryMod) syndicateMotionQu
 
 	queryMods = append(queryMods,
 		qm.Where("\"syndicate_motions\".\"issued_by_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
+	}
+
+	return query
+}
+
+// MemberSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via member_id column.
+func (o *Player) MemberSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"member_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
 	)
 
@@ -6735,6 +6785,105 @@ func (playerL) LoadVoteBySyndicateMotionVotes(e boil.Executor, singular bool, ma
 	return nil
 }
 
+// LoadCommitteeSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadCommitteeSyndicateMotions(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.committee_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CommitteeSyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.Committee = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.CommitteeID) {
+				local.R.CommitteeSyndicateMotions = append(local.R.CommitteeSyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.Committee = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadDirectorSyndicateMotions allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadDirectorSyndicateMotions(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -6925,6 +7074,105 @@ func (playerL) LoadIssuedBySyndicateMotions(e boil.Executor, singular bool, mayb
 					foreign.R = &syndicateMotionR{}
 				}
 				foreign.R.IssuedBy = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMemberSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadMemberSyndicateMotions(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.member_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MemberSyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.Member = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.MemberID) {
+				local.R.MemberSyndicateMotions = append(local.R.MemberSyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.Member = local
 				break
 			}
 		}
@@ -10505,6 +10753,131 @@ func (o *Player) AddVoteBySyndicateMotionVotes(exec boil.Executor, insert bool, 
 	return nil
 }
 
+// AddCommitteeSyndicateMotions adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.CommitteeSyndicateMotions.
+// Sets related.R.Committee appropriately.
+func (o *Player) AddCommitteeSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.CommitteeID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"committee_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.CommitteeID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			CommitteeSyndicateMotions: related,
+		}
+	} else {
+		o.R.CommitteeSyndicateMotions = append(o.R.CommitteeSyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				Committee: o,
+			}
+		} else {
+			rel.R.Committee = o
+		}
+	}
+	return nil
+}
+
+// SetCommitteeSyndicateMotions removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Committee's CommitteeSyndicateMotions accordingly.
+// Replaces o.R.CommitteeSyndicateMotions with related.
+// Sets related.R.Committee's CommitteeSyndicateMotions accordingly.
+func (o *Player) SetCommitteeSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	query := "update \"syndicate_motions\" set \"committee_id\" = null where \"committee_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.CommitteeSyndicateMotions {
+			queries.SetScanner(&rel.CommitteeID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Committee = nil
+		}
+
+		o.R.CommitteeSyndicateMotions = nil
+	}
+	return o.AddCommitteeSyndicateMotions(exec, insert, related...)
+}
+
+// RemoveCommitteeSyndicateMotions relationships from objects passed in.
+// Removes related items from R.CommitteeSyndicateMotions (uses pointer comparison, removal does not keep order)
+// Sets related.R.Committee.
+func (o *Player) RemoveCommitteeSyndicateMotions(exec boil.Executor, related ...*SyndicateMotion) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.CommitteeID, nil)
+		if rel.R != nil {
+			rel.R.Committee = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("committee_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.CommitteeSyndicateMotions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.CommitteeSyndicateMotions)
+			if ln > 1 && i < ln-1 {
+				o.R.CommitteeSyndicateMotions[i] = o.R.CommitteeSyndicateMotions[ln-1]
+			}
+			o.R.CommitteeSyndicateMotions = o.R.CommitteeSyndicateMotions[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddDirectorSyndicateMotions adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
 // Appends related to o.R.DirectorSyndicateMotions.
@@ -10679,6 +11052,131 @@ func (o *Player) AddIssuedBySyndicateMotions(exec boil.Executor, insert bool, re
 			rel.R.IssuedBy = o
 		}
 	}
+	return nil
+}
+
+// AddMemberSyndicateMotions adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.MemberSyndicateMotions.
+// Sets related.R.Member appropriately.
+func (o *Player) AddMemberSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.MemberID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"member_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.MemberID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			MemberSyndicateMotions: related,
+		}
+	} else {
+		o.R.MemberSyndicateMotions = append(o.R.MemberSyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				Member: o,
+			}
+		} else {
+			rel.R.Member = o
+		}
+	}
+	return nil
+}
+
+// SetMemberSyndicateMotions removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Member's MemberSyndicateMotions accordingly.
+// Replaces o.R.MemberSyndicateMotions with related.
+// Sets related.R.Member's MemberSyndicateMotions accordingly.
+func (o *Player) SetMemberSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	query := "update \"syndicate_motions\" set \"member_id\" = null where \"member_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.MemberSyndicateMotions {
+			queries.SetScanner(&rel.MemberID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Member = nil
+		}
+
+		o.R.MemberSyndicateMotions = nil
+	}
+	return o.AddMemberSyndicateMotions(exec, insert, related...)
+}
+
+// RemoveMemberSyndicateMotions relationships from objects passed in.
+// Removes related items from R.MemberSyndicateMotions (uses pointer comparison, removal does not keep order)
+// Sets related.R.Member.
+func (o *Player) RemoveMemberSyndicateMotions(exec boil.Executor, related ...*SyndicateMotion) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.MemberID, nil)
+		if rel.R != nil {
+			rel.R.Member = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("member_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.MemberSyndicateMotions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.MemberSyndicateMotions)
+			if ln > 1 && i < ln-1 {
+				o.R.MemberSyndicateMotions[i] = o.R.MemberSyndicateMotions[ln-1]
+			}
+			o.R.MemberSyndicateMotions = o.R.MemberSyndicateMotions[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

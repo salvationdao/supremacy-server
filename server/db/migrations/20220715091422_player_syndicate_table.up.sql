@@ -13,10 +13,12 @@ CREATE TABLE syndicates(
     ceo_player_id uuid references players(id),
     admin_id uuid references players(id),
 
+    seat_count int NOT NULL DEFAULT 10,
+
     -- general detail
     name text not null UNIQUE,
     symbol TEXT NOT NULL UNIQUE,
-    seat_count int NOT NULL DEFAULT 10,
+    logo_id uuid references blobs(id),
 
     -- payment detail
     join_fee numeric(28) NOT NULL default 0,
@@ -101,13 +103,13 @@ CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'ADD_RULE',
     'REMOVE_RULE',
     'CHANGE_RULE',
-    'CHANGE_CEO',
+    'REMOVE_MEMBER',
+
     'APPOINT_COMMITTEE',
     'REMOVE_COMMITTEE',
-    'REMOVE_MEMBER',
-    'DEPOSE_ADMIN',
 
     'ADMIN_ELECTION', -- das exclusive
+    'DEPOSE_ADMIN',
 
     -- boarder director exclusive
     'APPOINT_DIRECTOR',
@@ -137,8 +139,8 @@ CREATE TABLE syndicate_motions(
     old_syndicate_name text,
     new_syndicate_name text,
 
-    old_naming_convention text,
-    new_naming_convention text,
+    old_logo_id uuid references blobs(id),
+    new_logo_id uuid references blobs(id),
 
     -- payment change
     old_join_fee numeric(28),
@@ -170,6 +172,8 @@ CREATE TABLE syndicate_motions(
     new_rule_content text,
 
     -- appoint/remove director
+    committee_id uuid references players(id),
+    member_id uuid references players(id),
     director_id uuid references players(id),
 
     result SYNDICATE_MOTION_RESULT,

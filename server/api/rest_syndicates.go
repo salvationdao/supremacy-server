@@ -23,9 +23,9 @@ type SyndicateIssueMotionRequest struct {
 	Reason                          string              `json:"reason"`
 	NewSymbol                       null.String         `json:"new_symbol"`
 	NewSyndicateName                null.String         `json:"new_syndicate_name"`
-	NewNamingConvention             null.String         `json:"new_naming_convention"`
 	NewJoinFee                      decimal.NullDecimal `json:"new_join_fee"`
 	NewExitFee                      decimal.NullDecimal `json:"new_exit_fee"`
+	NewMonthlyDues                  decimal.NullDecimal `json:"new_monthly_dues"`
 	NewDeployingMemberCutPercentage decimal.NullDecimal `json:"new_deploying_member_cut_percentage"`
 	NewMemberAssistCutPercentage    decimal.NullDecimal `json:"new_member_assist_cut_percentage"`
 	NewMechOwnerCutPercentage       decimal.NullDecimal `json:"new_mech_owner_cut_percentage"`
@@ -33,32 +33,50 @@ type SyndicateIssueMotionRequest struct {
 	RuleID                          null.String         `json:"rule_id"`
 	NewRuleNumber                   null.Int            `json:"new_rule_number"`
 	NewRuleContent                  null.String         `json:"new_rule_content"`
+	MemberID                        null.String         `json:"member_id"`
 	DirectorID                      null.String         `json:"director_id"`
 }
 
 func (api *API) SyndicateMotionIssue(player *server.Player, w http.ResponseWriter, r *http.Request) (int, error) {
+	if !player.SyndicateID.Valid {
+		return http.StatusForbidden, terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	req := SyndicateIssueMotionRequest{}
+	blob, imageData, err := parseUploadRequest(w, r, &req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	if req.LastForDays < 1 {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("motion duration too short"), "Motion should last for at least a day.")
+	}
 
 	// build motion
 	m := &boiler.SyndicateMotion{
-		Type:                            req.Payload.Type,
-		Reason:                          req.Payload.Reason,
-		NewSymbol:                       req.Payload.NewSymbol,
-		NewSyndicateName:                req.Payload.NewSyndicateName,
-		NewNamingConvention:             req.Payload.NewNamingConvention,
-		NewJoinFee:                      req.Payload.NewJoinFee,
-		NewExitFee:                      req.Payload.NewExitFee,
-		NewDeployingMemberCutPercentage: req.Payload.NewDeployingMemberCutPercentage,
-		NewMemberAssistCutPercentage:    req.Payload.NewMemberAssistCutPercentage,
-		NewMechOwnerCutPercentage:       req.Payload.NewMechOwnerCutPercentage,
-		NewSyndicateCutPercentage:       req.Payload.NewSyndicateCutPercentage,
-		RuleID:                          req.Payload.RuleID,
-		NewRuleNumber:                   req.Payload.NewRuleNumber,
-		NewRuleContent:                  req.Payload.NewRuleContent,
-		DirectorID:                      req.Payload.DirectorID,
-		EndedAt:                         time.Now().AddDate(0, 0, req.Payload.LastForDays),
+		Type:                            req.Type,
+		Reason:                          req.Reason,
+		NewSymbol:                       req.NewSymbol,
+		NewSyndicateName:                req.NewSyndicateName,
+		NewJoinFee:                      req.NewJoinFee,
+		NewExitFee:                      req.NewExitFee,
+		NewMonthlyDues:                  req.NewMonthlyDues,
+		NewDeployingMemberCutPercentage: req.NewDeployingMemberCutPercentage,
+		NewMemberAssistCutPercentage:    req.NewMemberAssistCutPercentage,
+		NewMechOwnerCutPercentage:       req.NewMechOwnerCutPercentage,
+		NewSyndicateCutPercentage:       req.NewSyndicateCutPercentage,
+		RuleID:                          req.RuleID,
+		NewRuleNumber:                   req.NewRuleNumber,
+		NewRuleContent:                  req.NewRuleContent,
+		MemberID:                        req.MemberID,
+		DirectorID:                      req.DirectorID,
+
+		EndedAt: time.Now().AddDate(0, 0, req.LastForDays),
 	}
 
-	err := api.SyndicateSystem.AddMotion(&boiler.Player{ID: player.ID, SyndicateID: player.}, m)
+	blob.File = null.BytesFrom(imageData)
+
+	err = api.SyndicateSystem.AddMotion(&boiler.Player{ID: player.ID, SyndicateID: player.SyndicateID}, m, blob)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
