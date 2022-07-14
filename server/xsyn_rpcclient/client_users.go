@@ -105,6 +105,31 @@ func (pp *XsynXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	return resp.Balance
 }
 
+type UsernameUpdateReq struct {
+	UserID      string `json:"user_id"`
+	NewUsername string `json:"new_username"`
+	ApiKey      string
+}
+
+type UsernameUpdateResp struct {
+	Username string
+}
+
+// UserUpdateUsername updates username
+func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) error {
+	resp := &UsernameUpdateResp{}
+	err := pp.XrpcClient.Call("S.UserUpdateUsername", UsernameUpdateReq{
+		ApiKey:      pp.ApiKey,
+		UserID:      userID,
+		NewUsername: newUsername},
+		resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
+		return err
+	}
+	return nil
+}
+
 type UserFactionEnlistReq struct {
 	ApiKey    string
 	UserID    string `json:"userID"`

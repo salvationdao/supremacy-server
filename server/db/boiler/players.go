@@ -38,6 +38,7 @@ type Player struct {
 	Gid              int             `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
 	Rank             string          `boiler:"rank" boil:"rank" json:"rank" toml:"rank" yaml:"rank"`
 	SentMessageCount int             `boiler:"sent_message_count" boil:"sent_message_count" json:"sent_message_count" toml:"sent_message_count" yaml:"sent_message_count"`
+	AboutMe          null.String     `boiler:"about_me" boil:"about_me" json:"about_me,omitempty" toml:"about_me" yaml:"about_me,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -58,6 +59,7 @@ var PlayerColumns = struct {
 	Gid              string
 	Rank             string
 	SentMessageCount string
+	AboutMe          string
 }{
 	ID:               "id",
 	FactionID:        "faction_id",
@@ -73,6 +75,7 @@ var PlayerColumns = struct {
 	Gid:              "gid",
 	Rank:             "rank",
 	SentMessageCount: "sent_message_count",
+	AboutMe:          "about_me",
 }
 
 var PlayerTableColumns = struct {
@@ -90,6 +93,7 @@ var PlayerTableColumns = struct {
 	Gid              string
 	Rank             string
 	SentMessageCount string
+	AboutMe          string
 }{
 	ID:               "players.id",
 	FactionID:        "players.faction_id",
@@ -105,6 +109,7 @@ var PlayerTableColumns = struct {
 	Gid:              "players.gid",
 	Rank:             "players.rank",
 	SentMessageCount: "players.sent_message_count",
+	AboutMe:          "players.about_me",
 }
 
 // Generated where
@@ -124,6 +129,7 @@ var PlayerWhere = struct {
 	Gid              whereHelperint
 	Rank             whereHelperstring
 	SentMessageCount whereHelperint
+	AboutMe          whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
@@ -139,6 +145,7 @@ var PlayerWhere = struct {
 	Gid:              whereHelperint{field: "\"players\".\"gid\""},
 	Rank:             whereHelperstring{field: "\"players\".\"rank\""},
 	SentMessageCount: whereHelperint{field: "\"players\".\"sent_message_count\""},
+	AboutMe:          whereHelpernull_String{field: "\"players\".\"about_me\""},
 }
 
 // PlayerRels is where relationship names are stored.
@@ -285,9 +292,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
