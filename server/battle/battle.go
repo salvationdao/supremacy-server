@@ -1295,10 +1295,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 
 	// Indexes correspond to the game_client_ability_id in the db
 	abilityDetails := make([]*AbilityDetail, 20)
-	// Airstrike
-	abilityDetails[0] = &AbilityDetail{
-		Radius: 2000,
-	}
 	// Nuke
 	abilityDetails[1] = &AbilityDetail{
 		Radius: 5200,
