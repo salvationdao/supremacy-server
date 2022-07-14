@@ -297,7 +297,7 @@ func (api *API) MessageBroadcaster() {
 		case newBattleInfo := <-api.BattleArena.NewBattleChan:
 			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
 			if err != nil {
-				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo)
+				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo).Msg("failed to broadcast new battle info")
 				return
 			}
 		}
