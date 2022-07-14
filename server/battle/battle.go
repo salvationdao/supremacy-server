@@ -1474,7 +1474,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
-		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
+		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
