@@ -28,7 +28,6 @@ type Syndicate struct {
 	Type                         string          `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	FactionID                    string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	FoundedByID                  string          `boiler:"founded_by_id" boil:"founded_by_id" json:"founded_by_id" toml:"founded_by_id" yaml:"founded_by_id"`
-	HonoraryFounder              bool            `boiler:"honorary_founder" boil:"honorary_founder" json:"honorary_founder" toml:"honorary_founder" yaml:"honorary_founder"`
 	CeoPlayerID                  null.String     `boiler:"ceo_player_id" boil:"ceo_player_id" json:"ceo_player_id,omitempty" toml:"ceo_player_id" yaml:"ceo_player_id,omitempty"`
 	AdminID                      null.String     `boiler:"admin_id" boil:"admin_id" json:"admin_id,omitempty" toml:"admin_id" yaml:"admin_id,omitempty"`
 	Name                         string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
@@ -36,6 +35,7 @@ type Syndicate struct {
 	SeatCount                    int             `boiler:"seat_count" boil:"seat_count" json:"seat_count" toml:"seat_count" yaml:"seat_count"`
 	JoinFee                      decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
 	ExitFee                      decimal.Decimal `boiler:"exit_fee" boil:"exit_fee" json:"exit_fee" toml:"exit_fee" yaml:"exit_fee"`
+	MonthlyDues                  decimal.Decimal `boiler:"monthly_dues" boil:"monthly_dues" json:"monthly_dues" toml:"monthly_dues" yaml:"monthly_dues"`
 	DeployingMemberCutPercentage decimal.Decimal `boiler:"deploying_member_cut_percentage" boil:"deploying_member_cut_percentage" json:"deploying_member_cut_percentage" toml:"deploying_member_cut_percentage" yaml:"deploying_member_cut_percentage"`
 	MemberAssistCutPercentage    decimal.Decimal `boiler:"member_assist_cut_percentage" boil:"member_assist_cut_percentage" json:"member_assist_cut_percentage" toml:"member_assist_cut_percentage" yaml:"member_assist_cut_percentage"`
 	MechOwnerCutPercentage       decimal.Decimal `boiler:"mech_owner_cut_percentage" boil:"mech_owner_cut_percentage" json:"mech_owner_cut_percentage" toml:"mech_owner_cut_percentage" yaml:"mech_owner_cut_percentage"`
@@ -53,7 +53,6 @@ var SyndicateColumns = struct {
 	Type                         string
 	FactionID                    string
 	FoundedByID                  string
-	HonoraryFounder              string
 	CeoPlayerID                  string
 	AdminID                      string
 	Name                         string
@@ -61,6 +60,7 @@ var SyndicateColumns = struct {
 	SeatCount                    string
 	JoinFee                      string
 	ExitFee                      string
+	MonthlyDues                  string
 	DeployingMemberCutPercentage string
 	MemberAssistCutPercentage    string
 	MechOwnerCutPercentage       string
@@ -73,7 +73,6 @@ var SyndicateColumns = struct {
 	Type:                         "type",
 	FactionID:                    "faction_id",
 	FoundedByID:                  "founded_by_id",
-	HonoraryFounder:              "honorary_founder",
 	CeoPlayerID:                  "ceo_player_id",
 	AdminID:                      "admin_id",
 	Name:                         "name",
@@ -81,6 +80,7 @@ var SyndicateColumns = struct {
 	SeatCount:                    "seat_count",
 	JoinFee:                      "join_fee",
 	ExitFee:                      "exit_fee",
+	MonthlyDues:                  "monthly_dues",
 	DeployingMemberCutPercentage: "deploying_member_cut_percentage",
 	MemberAssistCutPercentage:    "member_assist_cut_percentage",
 	MechOwnerCutPercentage:       "mech_owner_cut_percentage",
@@ -95,7 +95,6 @@ var SyndicateTableColumns = struct {
 	Type                         string
 	FactionID                    string
 	FoundedByID                  string
-	HonoraryFounder              string
 	CeoPlayerID                  string
 	AdminID                      string
 	Name                         string
@@ -103,6 +102,7 @@ var SyndicateTableColumns = struct {
 	SeatCount                    string
 	JoinFee                      string
 	ExitFee                      string
+	MonthlyDues                  string
 	DeployingMemberCutPercentage string
 	MemberAssistCutPercentage    string
 	MechOwnerCutPercentage       string
@@ -115,7 +115,6 @@ var SyndicateTableColumns = struct {
 	Type:                         "syndicates.type",
 	FactionID:                    "syndicates.faction_id",
 	FoundedByID:                  "syndicates.founded_by_id",
-	HonoraryFounder:              "syndicates.honorary_founder",
 	CeoPlayerID:                  "syndicates.ceo_player_id",
 	AdminID:                      "syndicates.admin_id",
 	Name:                         "syndicates.name",
@@ -123,6 +122,7 @@ var SyndicateTableColumns = struct {
 	SeatCount:                    "syndicates.seat_count",
 	JoinFee:                      "syndicates.join_fee",
 	ExitFee:                      "syndicates.exit_fee",
+	MonthlyDues:                  "syndicates.monthly_dues",
 	DeployingMemberCutPercentage: "syndicates.deploying_member_cut_percentage",
 	MemberAssistCutPercentage:    "syndicates.member_assist_cut_percentage",
 	MechOwnerCutPercentage:       "syndicates.mech_owner_cut_percentage",
@@ -139,7 +139,6 @@ var SyndicateWhere = struct {
 	Type                         whereHelperstring
 	FactionID                    whereHelperstring
 	FoundedByID                  whereHelperstring
-	HonoraryFounder              whereHelperbool
 	CeoPlayerID                  whereHelpernull_String
 	AdminID                      whereHelpernull_String
 	Name                         whereHelperstring
@@ -147,6 +146,7 @@ var SyndicateWhere = struct {
 	SeatCount                    whereHelperint
 	JoinFee                      whereHelperdecimal_Decimal
 	ExitFee                      whereHelperdecimal_Decimal
+	MonthlyDues                  whereHelperdecimal_Decimal
 	DeployingMemberCutPercentage whereHelperdecimal_Decimal
 	MemberAssistCutPercentage    whereHelperdecimal_Decimal
 	MechOwnerCutPercentage       whereHelperdecimal_Decimal
@@ -159,7 +159,6 @@ var SyndicateWhere = struct {
 	Type:                         whereHelperstring{field: "\"syndicates\".\"type\""},
 	FactionID:                    whereHelperstring{field: "\"syndicates\".\"faction_id\""},
 	FoundedByID:                  whereHelperstring{field: "\"syndicates\".\"founded_by_id\""},
-	HonoraryFounder:              whereHelperbool{field: "\"syndicates\".\"honorary_founder\""},
 	CeoPlayerID:                  whereHelpernull_String{field: "\"syndicates\".\"ceo_player_id\""},
 	AdminID:                      whereHelpernull_String{field: "\"syndicates\".\"admin_id\""},
 	Name:                         whereHelperstring{field: "\"syndicates\".\"name\""},
@@ -167,6 +166,7 @@ var SyndicateWhere = struct {
 	SeatCount:                    whereHelperint{field: "\"syndicates\".\"seat_count\""},
 	JoinFee:                      whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
 	ExitFee:                      whereHelperdecimal_Decimal{field: "\"syndicates\".\"exit_fee\""},
+	MonthlyDues:                  whereHelperdecimal_Decimal{field: "\"syndicates\".\"monthly_dues\""},
 	DeployingMemberCutPercentage: whereHelperdecimal_Decimal{field: "\"syndicates\".\"deploying_member_cut_percentage\""},
 	MemberAssistCutPercentage:    whereHelperdecimal_Decimal{field: "\"syndicates\".\"member_assist_cut_percentage\""},
 	MechOwnerCutPercentage:       whereHelperdecimal_Decimal{field: "\"syndicates\".\"mech_owner_cut_percentage\""},
@@ -227,9 +227,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "honorary_founder", "ceo_player_id", "admin_id", "name", "symbol", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "ceo_player_id", "admin_id", "name", "symbol", "seat_count", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol"}
-	syndicateColumnsWithDefault    = []string{"id", "honorary_founder", "ceo_player_id", "admin_id", "seat_count", "join_fee", "exit_fee", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithDefault    = []string{"id", "ceo_player_id", "admin_id", "seat_count", "join_fee", "exit_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )

@@ -30,16 +30,19 @@ type Player struct {
 	Features []*Feature `json:"features"`
 }
 
-func (b *Player) Scan(value interface{}) error {
+func (p *Player) Scan(value interface{}) error {
 	v, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("unable to scan value into byte array")
 	}
-	return json.Unmarshal(v, b)
+	return json.Unmarshal(v, p)
 }
 
-func PlayerFromBoiler(player *boiler.Player, features boiler.FeatureSlice) (*Player, error) {
-	serverFeatures := FeaturesFromBoiler(features)
+func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *Player {
+	var serverFeatures []*Feature
+	if len(features) > 0 {
+		serverFeatures = FeaturesFromBoiler(features[0])
+	}
 
 	serverPlayer := &Player{
 		ID:               player.ID,
@@ -59,5 +62,20 @@ func PlayerFromBoiler(player *boiler.Player, features boiler.FeatureSlice) (*Pla
 		Features:         serverFeatures,
 	}
 
-	return serverPlayer, nil
+	if player.R != nil {
+		serverPlayer.Stat = player.R.IDPlayerStat
+	}
+
+	return serverPlayer
+}
+
+func (p *Player) Brief() *Player {
+	return &Player{
+		ID:        p.ID,
+		FactionID: p.FactionID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		Rank:      p.Rank,
+		Stat:      p.Stat,
+	}
 }

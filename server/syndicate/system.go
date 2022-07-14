@@ -97,7 +97,7 @@ func (ss *System) AddMotion(user *boiler.Player, bsm *boiler.SyndicateMotion) er
 	}
 
 	// check motion is valid and generate a clean motion
-	newMotion, err := s.motionSystem.motionValidCheck(user, bsm)
+	newMotion, err := s.motionSystem.validateIncomingMotion(user, bsm)
 	if err != nil {
 		return err
 	}

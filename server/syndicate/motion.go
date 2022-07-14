@@ -187,10 +187,8 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, isNewMotion bool
 	return nil
 }
 
-// motionValidCheck check incoming motion has valid input, and generate a new boiler motion for voting
-func (sms *MotionSystem) motionValidCheck(user *boiler.Player, bsm *boiler.SyndicateMotion) (*boiler.SyndicateMotion, error) {
-	// record old syndicate info to the motion
-
+// validateIncomingMotion check incoming motion has valid input, and generate a new boiler motion for voting
+func (sms *MotionSystem) validateIncomingMotion(user *boiler.Player, bsm *boiler.SyndicateMotion) (*boiler.SyndicateMotion, error) {
 	// validate motion
 	if bsm.Reason == "" {
 		return nil, terror.Error(fmt.Errorf("missing motion reason"), "Missing motion reason")
@@ -226,7 +224,7 @@ func (sms *MotionSystem) motionValidCheck(user *boiler.Player, bsm *boiler.Syndi
 			motion.NewSymbol = null.StringFrom(newSymbol)
 		}
 	case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
-		if !motion.NewJoinFee.Valid && !motion.NewExitFee.Valid {
+		if !bsm.NewJoinFee.Valid && !bsm.NewExitFee.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
 
@@ -261,11 +259,18 @@ func (sms *MotionSystem) motionValidCheck(user *boiler.Player, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("exit fee cannot be higher than join fee"), "Exit fee cannot be higher than join fee.")
 		}
 
+	case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
+		if !bsm.NewMonthlyDues.Valid {
+			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
+		}
+
+		motion.NewMonthlyDues = bsm.NewMonthlyDues
+
 	case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
-		if !motion.NewDeployingMemberCutPercentage.Valid &&
-			!motion.NewMemberAssistCutPercentage.Valid &&
-			!motion.NewMechOwnerCutPercentage.Valid &&
-			!motion.NewSyndicateCutPercentage.Valid {
+		if !bsm.NewDeployingMemberCutPercentage.Valid &&
+			!bsm.NewMemberAssistCutPercentage.Valid &&
+			!bsm.NewMechOwnerCutPercentage.Valid &&
+			!bsm.NewSyndicateCutPercentage.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
 
@@ -493,6 +498,8 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 			if bsm.DirectorID.String == om.DirectorID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for removing the same director.")
 			}
+		case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for member monthly dues.")
 		case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
 			return terror.Error(fmt.Errorf("duplicate motion content"), "There is an ongoing motion for changing entry fee.")
 		case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
@@ -672,7 +679,8 @@ func (sm *Motion) parseResult() {
 	switch sm.Type {
 	case boiler.SyndicateMotionTypeCHANGE_GENERAL_DETAIL,
 		boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE,
-		boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
+		boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT,
+		boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
 		sm.updateSyndicate()
 	case boiler.SyndicateMotionTypeADD_RULE:
 		sm.addRule()
@@ -786,6 +794,13 @@ func (sm *Motion) updateSyndicate() {
 
 		syndicate.SyndicateCutPercentage = sm.NewSyndicateCutPercentage.Decimal
 		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.SyndicateCutPercentage)
+	}
+	if sm.NewMonthlyDues.Valid {
+		sm.OldMonthlyDues = decimal.NewNullDecimal(syndicate.MonthlyDues)
+		updateMotionCols = append(updateMotionCols, boiler.SyndicateMotionColumns.OldMonthlyDues)
+
+		syndicate.MonthlyDues = sm.NewMonthlyDues.Decimal
+		updateSyndicateCols = append(updateSyndicateCols, boiler.SyndicateColumns.MonthlyDues)
 	}
 
 	tx, err := gamedb.StdConn.Begin()

@@ -241,6 +241,7 @@ const (
 const (
 	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"
 	SyndicateMotionTypeCHANGE_ENTRY_FEE      = "CHANGE_ENTRY_FEE"
+	SyndicateMotionTypeCHANGE_MONTHLY_DUES   = "CHANGE_MONTHLY_DUES"
 	SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT = "CHANGE_BATTLE_WIN_CUT"
 	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
 	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
@@ -251,7 +252,6 @@ const (
 	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
 	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
 	SyndicateMotionTypeADMIN_ELECTION        = "ADMIN_ELECTION"
-	SyndicateMotionTypeAPPOINT_ADMIN         = "APPOINT_ADMIN"
 	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
 	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
 	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"

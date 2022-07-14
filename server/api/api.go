@@ -235,6 +235,7 @@ func NewAPI(
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
+			r.Get("/syndicate/{id}/issue_motion", WithCookie(api, api.SyndicateMotionIssue))
 		})
 
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
@@ -302,6 +303,7 @@ func NewAPI(
 				// syndicate related
 				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(sdc.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(sdc.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(sdc.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
 			}))
 		})
 	})
@@ -516,7 +518,7 @@ func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 		return nil, err
 	}
 
-	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	serverPlayer := server.PlayerFromBoiler(player, features)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
 		return nil, err

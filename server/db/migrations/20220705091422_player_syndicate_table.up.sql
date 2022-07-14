@@ -22,6 +22,8 @@ CREATE TABLE syndicates(
     join_fee numeric(28) NOT NULL default 0,
     exit_fee numeric(28) NOT NULL default 0,
 
+    monthly_dues numeric(28) NOT NULL DEFAULT 0,
+
     -- battle win columns
     deploying_member_cut_percentage decimal NOT NULL DEFAULT 0,
     member_assist_cut_percentage decimal NOT NULL DEFAULT 0,
@@ -94,6 +96,7 @@ DROP TYPE IF EXISTS SYNDICATE_MOTION_TYPE;
 CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'CHANGE_GENERAL_DETAIL',
     'CHANGE_ENTRY_FEE',
+    'CHANGE_MONTHLY_DUES',
     'CHANGE_BATTLE_WIN_CUT',
     'ADD_RULE',
     'REMOVE_RULE',
@@ -143,6 +146,9 @@ CREATE TABLE syndicate_motions(
 
     old_exit_fee numeric(28),
     new_exit_fee numeric(28),
+
+    old_monthly_dues numeric(28),
+    new_monthly_dues numeric(28),
 
     old_deploying_member_cut_percentage decimal,
     new_deploying_member_cut_percentage decimal,

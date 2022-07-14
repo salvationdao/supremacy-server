@@ -93,24 +93,42 @@ func GetSyndicateDirectors(syndicateID string) ([]*server.Player, error) {
 		return nil, terror.Error(err, "Failed to get syndicate directors.")
 	}
 
-	result := []*server.Player{}
+	players := []*server.Player{}
 	for _, p := range ps {
-		player := &server.Player{
-			ID:        p.ID,
-			Username:  p.Username,
-			FactionID: p.FactionID,
-			Gid:       p.Gid,
-			Rank:      p.Rank,
-		}
-
-		// protect player stat column
-		if p.R != nil {
-			player.Stat = p.R.IDPlayerStat
-		}
-
-		result = append(result, player)
-
+		players = append(players, server.PlayerFromBoiler(p).Brief())
 	}
 
-	return result, nil
+	return players, nil
+}
+
+func GetSyndicateCommittees(syndicateID string) ([]*server.Player, error) {
+	ps, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.FactionID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.Rank,
+		),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.SyndicateCommittees,
+				qm.Rels(boiler.TableNames.SyndicateCommittees, boiler.SyndicateCommitteeColumns.PlayerID),
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+			),
+		),
+		qm.Load(boiler.PlayerRels.IDPlayerStat),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", syndicateID).Msg("Failed to get syndicate directors from db")
+		return nil, terror.Error(err, "Failed to get syndicate directors.")
+	}
+
+	players := []*server.Player{}
+	for _, p := range ps {
+		players = append(players, server.PlayerFromBoiler(p).Brief())
+	}
+
+	return players, nil
 }
