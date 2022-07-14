@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -165,12 +164,12 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-var playerAbilityBucket = leakybucket.NewCollector(1, 1, true)
+var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
 
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	b := playerAbilityBucket.Add(user.ID, 1)
+	b := playerAbilityBucket.Add(user.ID, 2)
 	if b == 0 {
-		return nil
+		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
 	}
 
 	// skip, if current not battle
@@ -179,8 +178,24 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	// check player is banned
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player ban")
+		return terror.Error(err, "Failed to trigger ability")
+	}
+
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned for triggering ability"), "You are banned for triggering ability")
+	}
+
 	req := &PlayerAbilityUseRequest{}
-	err := json.Unmarshal(payload, req)
+	err = json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
@@ -429,11 +444,6 @@ type MechMoveCommandResponse struct {
 }
 
 func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		return nil
-	}
-
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
@@ -461,7 +471,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 
 	if mmc != nil {
 		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+		resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
 		if resp.RemainCooldownSeconds < 0 {
 			resp.RemainCooldownSeconds = 0
 		}
@@ -492,14 +502,10 @@ type MechMoveCommandCreateRequest struct {
 	} `json:"payload"`
 }
 
+const MechMoveCooldownSeconds = 5
+
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -540,11 +546,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 	}
 
-	// check mech move command is triggered within 30 seconds
+	// check mech move command is triggered within 5 seconds
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
+		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-MechMoveCooldownSeconds*time.Second)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech move command from db")
@@ -552,7 +558,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	}
 
 	if mmc != nil {
-		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
+		return terror.Error(fmt.Errorf("Command is still cooling down."))
 	}
 
 	now := time.Now()
@@ -604,7 +610,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30,
+		RemainCooldownSeconds: MechMoveCooldownSeconds,
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)
@@ -642,12 +648,6 @@ type MechMoveCommandCancelRequest struct {
 
 // MechMoveCommandCancelHandler send cancel mech move command to game client
 func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -720,7 +720,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)

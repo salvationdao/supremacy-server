@@ -77,7 +77,9 @@ var TableNames = struct {
 	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
+	PlayerBans                                         string
 	PlayerFingerprints                                 string
+	PlayerIps                                          string
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
@@ -94,7 +96,6 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
-	PunishedPlayers                                    string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -199,7 +200,9 @@ var TableNames = struct {
 	MysteryCrateBlueprints:       "mystery_crate_blueprints",
 	PlayerAbilities:              "player_abilities",
 	PlayerActiveLogs:             "player_active_logs",
+	PlayerBans:                   "player_bans",
 	PlayerFingerprints:           "player_fingerprints",
+	PlayerIps:                    "player_ips",
 	PlayerKeycards:               "player_keycards",
 	PlayerKillLog:                "player_kill_log",
 	PlayerLanguages:              "player_languages",
@@ -216,7 +219,6 @@ var TableNames = struct {
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
-	PunishedPlayers:              "punished_players",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",

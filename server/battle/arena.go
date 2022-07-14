@@ -36,6 +36,9 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type NewBattleChan struct {
+	BattleNumber int
+}
 type Arena struct {
 	server                   *http.Server
 	opts                     *Opts
@@ -50,6 +53,8 @@ type Arena struct {
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
+	SystemBanManager         *SystemBanManager
+	NewBattleChan            chan *NewBattleChan
 	sync.RWMutex
 }
 
@@ -246,6 +251,8 @@ func NewArena(opts *Opts) *Arena {
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		telegram:                 opts.Telegram,
 		opts:                     opts,
+		SystemBanManager:         NewSystemBanManager(),
+		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 
 	var err error
@@ -483,19 +490,11 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -507,13 +506,24 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
 	}
 
+	cannotTrigger, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err, "Failed to check player")
+	}
+
 	userID := uuid.FromStringOrNil(user.ID)
 	if userID.IsNil() {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("user id is nil", user.ID).Msg("cant make users")
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.CurrentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
+	arena.CurrentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage, cannotTrigger, reply)
 
 	return nil
 }
@@ -675,19 +685,11 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 	}
 
 	// check user is banned on limit sups contribution
-	isBanned, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictSupsContribution,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSupsContribute.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
@@ -706,7 +708,18 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, user *bo
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.CurrentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
+	cannotTrigger, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err, "Failed to check player")
+	}
+
+	arena.CurrentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage, cannotTrigger, reply)
 
 	return nil
 }
@@ -852,7 +865,7 @@ func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key st
 func (arena *Arena) SendSettings(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// response game setting, if current battle exists
 	if arena.CurrentBattle() != nil {
-		reply(UpdatePayload(arena.CurrentBattle()))
+		reply(GameSettingsPayload(arena.CurrentBattle()))
 	}
 
 	return nil
@@ -1004,6 +1017,8 @@ func (arena *Arena) start() {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
 					return
 				}
+				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
+				arena.NewBattleChan <- battleInfo
 
 			case "BATTLE:OUTRO_FINISHED":
 				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
@@ -1250,7 +1265,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
 
 	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)

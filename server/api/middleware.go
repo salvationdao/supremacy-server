@@ -70,13 +70,11 @@ func WithCookie(api *API, next func(user *server.Player, w http.ResponseWriter, 
 			return http.StatusForbidden, fmt.Errorf("cookie not found")
 		}
 		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-			fmt.Fprintf(w, "decryption error: %v", err)
-			return http.StatusForbidden, fmt.Errorf("invalid token")
+			return http.StatusForbidden, fmt.Errorf("invalid cookie")
 		}
 		user, err := api.TokenLogin(token)
 		if err != nil {
-			fmt.Fprintf(w, "authentication error: %v", err)
-			return
+			return http.StatusForbidden, fmt.Errorf("authentication failed")
 		}
 		return next(user, w, r)
 	}

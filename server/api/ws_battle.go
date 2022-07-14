@@ -26,6 +26,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 	}
 
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
+	api.Command(HubKeyPlayerBattleMechHistoryList, bc.PlayerBattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
 	// commands from battle
@@ -39,14 +40,10 @@ func NewBattleController(api *API) *BattleControllerWS {
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
 	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
-	if api.Config.Environment == "development" || api.Config.Environment == "staging" {
-		// player ability related
-		api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
 
-		// mech move command related
-		api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
-	}
-
+	// mech move command related
+	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
 	// battle ability related (bribing)
 	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
 	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
@@ -71,6 +68,7 @@ type BattleDetailed struct {
 type BattleMechDetailed struct {
 	*boiler.BattleMech
 	Battle *BattleDetailed `json:"battle"`
+	Mech   *boiler.Mech    `json:"mech"`
 }
 
 type BattleMechHistoryResponse struct {
@@ -103,6 +101,58 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
 			},
+		})
+	}
+
+	reply(BattleMechHistoryResponse{
+		len(output),
+		output,
+	})
+	return nil
+}
+
+const HubKeyPlayerBattleMechHistoryList = "PLAYER:BATTLE:MECH:HISTORY:LIST"
+
+type PlayerBattleMechHistoryRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+	} `json:"payload"`
+}
+
+func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerBattleMechHistoryRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	battleMechs, err := boiler.BattleMechs(
+		boiler.BattleMechWhere.OwnerID.EQ(req.Payload.PlayerID),
+		qm.OrderBy("created_at desc"),
+		qm.Limit(10),
+		qm.Load(boiler.BattleMechRels.Mech),
+		qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("BattleMechWhere", req.Payload.PlayerID).
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
+	}
+
+	output := []BattleMechDetailed{}
+	for _, o := range battleMechs {
+		var mech *boiler.Mech
+		if o.R != nil && o.R.Mech != nil {
+			mech = o.R.Mech
+		}
+		output = append(output, BattleMechDetailed{
+			BattleMech: o,
+			Battle: &BattleDetailed{
+				Battle:  o.R.Battle,
+				GameMap: o.R.Battle.R.GameMap,
+			},
+			Mech: mech,
 		})
 	}
 

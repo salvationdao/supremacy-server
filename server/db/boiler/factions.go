@@ -37,6 +37,7 @@ type Faction struct {
 	LogoURL         string      `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
 	BackgroundURL   string      `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
 	Description     string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	WallpaperURL    null.String `boiler:"wallpaper_url" boil:"wallpaper_url" json:"wallpaper_url,omitempty" toml:"wallpaper_url" yaml:"wallpaper_url,omitempty"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +58,7 @@ var FactionColumns = struct {
 	LogoURL         string
 	BackgroundURL   string
 	Description     string
+	WallpaperURL    string
 }{
 	ID:              "id",
 	VotePrice:       "vote_price",
@@ -72,6 +74,7 @@ var FactionColumns = struct {
 	LogoURL:         "logo_url",
 	BackgroundURL:   "background_url",
 	Description:     "description",
+	WallpaperURL:    "wallpaper_url",
 }
 
 var FactionTableColumns = struct {
@@ -89,6 +92,7 @@ var FactionTableColumns = struct {
 	LogoURL         string
 	BackgroundURL   string
 	Description     string
+	WallpaperURL    string
 }{
 	ID:              "factions.id",
 	VotePrice:       "factions.vote_price",
@@ -104,6 +108,7 @@ var FactionTableColumns = struct {
 	LogoURL:         "factions.logo_url",
 	BackgroundURL:   "factions.background_url",
 	Description:     "factions.description",
+	WallpaperURL:    "factions.wallpaper_url",
 }
 
 // Generated where
@@ -123,6 +128,7 @@ var FactionWhere = struct {
 	LogoURL         whereHelperstring
 	BackgroundURL   whereHelperstring
 	Description     whereHelperstring
+	WallpaperURL    whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"factions\".\"id\""},
 	VotePrice:       whereHelperstring{field: "\"factions\".\"vote_price\""},
@@ -138,6 +144,7 @@ var FactionWhere = struct {
 	LogoURL:         whereHelperstring{field: "\"factions\".\"logo_url\""},
 	BackgroundURL:   whereHelperstring{field: "\"factions\".\"background_url\""},
 	Description:     whereHelperstring{field: "\"factions\".\"description\""},
+	WallpaperURL:    whereHelpernull_String{field: "\"factions\".\"wallpaper_url\""},
 }
 
 // FactionRels is where relationship names are stored.
@@ -218,9 +225,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
+	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
 	factionColumnsWithoutDefault = []string{"label"}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
+	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
 	factionPrimaryKeyColumns     = []string{"id"}
 	factionGeneratedColumns      = []string{}
 )

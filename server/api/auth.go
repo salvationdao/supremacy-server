@@ -291,9 +291,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 					return terror.Error(err, "Failed get add feature to user.")
 				}
 			}
-
 		}
-
 	}
 	// fingerprint
 	if fingerprint != nil {

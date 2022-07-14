@@ -47,11 +47,11 @@ SELECT
 	collection_items.animation_url,
 	collection_items.youtube_url,
 	p.username,
-	mech_stats.total_wins,
-	mech_stats.total_deaths,
-	mech_stats.total_kills,
-	mech_stats.battles_survived, 
-	mech_stats.total_losses,
+	COALESCE(mech_stats.total_wins, 0),
+	COALESCE(mech_stats.total_deaths, 0),
+	COALESCE(mech_stats.total_kills, 0),
+	COALESCE(mech_stats.battles_survived, 0), 
+	COALESCE(mech_stats.total_losses, 0),
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -96,7 +96,7 @@ SELECT
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
-INNER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
+LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN (
 	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
@@ -186,19 +186,16 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
+		Stats:          &server.Stats{},
+		Owner:          &server.User{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := tx.Query(query, mechID)
+	result, err := conn.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -573,6 +570,7 @@ type MechListOpts struct {
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
 	FilterRarities      []string `json:"rarities"`
+	FilterStatuses      []string `json:"statuses"`
 }
 
 type MechListQueueSortOpts struct {
@@ -598,6 +596,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -633,31 +636,129 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 		}
 	}
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
+		))
+	}
+	if len(opts.FilterStatuses) > 0 {
+		hasIdleToggled := false
+		hasInBattleToggled := false
+		hasMarketplaceToggled := false
+		hasInQueueToggled := false
+
+		statusFilters := []qm.QueryMod{}
+
+		for _, s := range opts.FilterStatuses {
+			if s == "IDLE" {
+				if hasIdleToggled {
+					continue
+				}
+				hasIdleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`NOT EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				)))
+			} else if s == "BATTLE" {
+				if hasInBattleToggled {
+					continue
+				}
+				hasInBattleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NOT NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			} else if s == "MARKET" {
+				if hasMarketplaceToggled {
+					continue
+				}
+				hasMarketplaceToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _i.%s
+						FROM %s _i
+						WHERE _i.%s = %s
+							AND _i.%s IS NULL
+							AND _i.%s IS NULL
+							AND _i.%s > NOW()
+						LIMIT 1
+					)`,
+					boiler.ItemSaleColumns.ID,
+					boiler.TableNames.ItemSales,
+					boiler.ItemSaleColumns.CollectionItemID,
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+					boiler.ItemSaleColumns.SoldAt,
+					boiler.ItemSaleColumns.DeletedAt,
+					boiler.ItemSaleColumns.EndAt,
+				)))
+			} else if s == "QUEUE" {
+				if hasInQueueToggled {
+					continue
+				}
+				hasInQueueToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			}
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled {
+				statusFilters = []qm.QueryMod{} // we don't need the filtering at this point
+				break
+			}
+		}
+
+		if len(statusFilters) > 0 {
+			queryMods = append(queryMods, qm.Expr(statusFilters...))
+		}
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Label,
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 					xSearch,
 				))
 		}
 	}
-	boil.DebugMode = true
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
-
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
@@ -702,11 +803,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
 
 	// Sort
