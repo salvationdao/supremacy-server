@@ -200,7 +200,7 @@ func NewChatroom(factionID string) *Chatroom {
 
 		if msg.MSGType == boiler.ChatMSGTypeEnumNEW_BATTLE {
 			cm := &ChatMessage{}
-			err := msg.Metadata.Marshal(cm)
+			err := msg.Metadata.Unmarshal(cm)
 			if err != nil {
 				continue
 			}
