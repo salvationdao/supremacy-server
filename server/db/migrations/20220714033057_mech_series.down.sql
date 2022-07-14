@@ -1,4 +1,4 @@
-DROP TYPE IF EXISTS ITEM_SERIES;
+ALTER TABLE blueprint_mechs
+	DROP COLUMN availability_id;
 
-ALTER TABLE blueprint_mechs 
-	DROP COLUMN series;
+DROP TABLE availabilities;
