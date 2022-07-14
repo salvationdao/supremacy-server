@@ -75,7 +75,9 @@ func (pac *PlayerAbilitiesController) Give(w http.ResponseWriter, r *http.Reques
 	}
 
 	player, err := boiler.Players(qm.Where(fmt.Sprintf("%s = ?", req.ColumnName), req.Value)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
+		return http.StatusNotFound, terror.Error(fmt.Errorf("Player does not exist"))
+	} else if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get player by: %s: %s err: %w", req.ColumnName, req.Value, err))
 	}
 
@@ -111,6 +113,11 @@ func (pac *PlayerAbilitiesController) Give(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(err, "Issue giving player ability")
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Issue giving player ability")
+	}
+
 	return http.StatusOK, nil
 }
 
@@ -131,7 +138,7 @@ func (pac *PlayerAbilitiesController) Remove(w http.ResponseWriter, r *http.Requ
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
 
-	if req.Amount < 1 {
+	if !req.RemoveAll && req.Amount < 1 {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Amount provided must be at least 1"))
 	}
 
@@ -147,12 +154,10 @@ func (pac *PlayerAbilitiesController) Remove(w http.ResponseWriter, r *http.Requ
 	}
 
 	player, err := boiler.Players(qm.Where(fmt.Sprintf("%s = ?", req.ColumnName), req.Value)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get player by: %s: %s err: %w", req.ColumnName, req.Value, err))
-	}
-
 	if errors.Is(err, sql.ErrNoRows) {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("cant find player %s: %s %w", req.ColumnName, req.Value, err))
+		return http.StatusNotFound, terror.Error(fmt.Errorf("Player does not exist"))
+	} else if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get player by: %s: %s err: %w", req.ColumnName, req.Value, err))
 	}
 
 	// Update player ability count
@@ -161,7 +166,7 @@ func (pac *PlayerAbilitiesController) Remove(w http.ResponseWriter, r *http.Requ
 		boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID),
 	).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
-		return http.StatusNotFound, terror.Error(err, "Player does not own this ability already")
+		return http.StatusNotFound, terror.Error(fmt.Errorf("Player does not own this ability already"))
 	}
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Issue removing player ability")
