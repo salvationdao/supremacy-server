@@ -42,89 +42,89 @@ UPDATE blueprint_weapon_skin
 SET label = 'Pilbara Dust'
 WHERE label = 'UMC';
 --
--- --Creating new skin that is manufacturer's "default", all mech crates will receive this mech skin
--- DO
--- $$
---     DECLARE
---         mech_modelr MECH_MODELS%ROWTYPE;
---     BEGIN
---         FOR mech_modelr IN SELECT * FROM mech_models
---             LOOP
---                 CASE
---                     -- BC
---                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Daison Avionics')
---                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
---                              VALUES ('Daison Sleek', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
---                              UPDATE blueprint_mech_skin
---                              SET label = 'Bullion'
---                              WHERE label = 'Gold'
---                                AND mech_model = mech_modelr.id;
---                     -- ZAI
---                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'X3 Wartech')
---                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
---                              VALUES ('X3 Kuro', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
---                              UPDATE blueprint_mech_skin
---                              SET label = 'Mine God'
---                              WHERE label = 'Gold'
---                                AND mech_model = mech_modelr.id;
---                     -- RM
---                     WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
---                         THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
---                              VALUES ('Martian Soil', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
---                              UPDATE blueprint_mech_skin
---                              SET label = 'Sovereign Hill'
---                              WHERE label = 'Gold'
---                                AND mech_model = mech_modelr.id;
---                     ELSE CONTINUE;
---                     END CASE;
---             END LOOP;
---     END;
--- $$;
---
--- DO
--- $$
---     DECLARE
---         weapon_model WEAPON_MODELS%ROWTYPE;
---     BEGIN
---         FOR weapon_model IN SELECT * FROM weapon_models
---             LOOP
---                 CASE
---                     -- BC
---                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech')
---                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
---                              VALUES ('Daison Sleek', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
---                              UPDATE blueprint_weapon_skin
---                              SET label = 'Bullion'
---                              WHERE label = 'Gold'
---                                AND weapon_model_id = weapon_model.id;
---                     -- ZAI
---                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Warsui')
---                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
---                              VALUES ('X3 Kuro', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
---                              UPDATE blueprint_weapon_skin
---                              SET label = 'Mine God'
---                              WHERE label = 'Gold'
---                                AND weapon_model_id = weapon_model.id;
---                     -- RM
---                     WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
---                         THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
---                              VALUES ('Martian Soil', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
---                              UPDATE blueprint_weapon_skin
---                              SET label = 'Sovereign Hill'
---                              WHERE label = 'Gold'
---                                AND weapon_model_id = weapon_model.id;
---                     ELSE CONTINUE;
---                     END CASE;
---             END LOOP;
---     END;
--- $$;
+--Creating new skin that is manufacturer's "default", all mech crates will receive this mech skin
+DO
+$$
+    DECLARE
+        mech_modelr mech_models%ROWTYPE;
+    BEGIN
+        FOR mech_modelr IN SELECT * FROM mech_models
+            LOOP
+                CASE
+                    -- BC
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Daison Avionics')
+                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+                             VALUES ('Daison Sleek', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+                             UPDATE blueprint_mech_skin
+                             SET label = 'Bullion'
+                             WHERE label = 'Gold'
+                               AND mech_model = mech_modelr.id;
+                    -- ZAI
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'X3 Wartech')
+                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+                             VALUES ('X3 Kuro', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+                             UPDATE blueprint_mech_skin
+                             SET label = 'Mine God'
+                             WHERE label = 'Gold'
+                               AND mech_model = mech_modelr.id;
+                    -- RM
+                    WHEN mech_modelr.brand_id = (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
+                        THEN INSERT INTO blueprint_mech_skin (label, tier, mech_type, mech_model)
+                             VALUES ('Martian Soil', 'COLOSSAL', mech_modelr.mech_type, mech_modelr.id);
+                             UPDATE blueprint_mech_skin
+                             SET label = 'Sovereign Hill'
+                             WHERE label = 'Gold'
+                               AND mech_model = mech_modelr.id;
+                    ELSE CONTINUE;
+                    END CASE;
+            END LOOP;
+    END;
+$$;
+
+DO
+$$
+    DECLARE
+        weapon_model weapon_models%ROWTYPE;
+    BEGIN
+        FOR weapon_model IN SELECT * FROM weapon_models
+            LOOP
+                CASE
+                    -- BC
+                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+                             VALUES ('Daison Sleek', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+                             UPDATE blueprint_weapon_skin
+                             SET label = 'Bullion'
+                             WHERE label = 'Gold'
+                               AND weapon_model_id = weapon_model.id;
+                    -- ZAI
+                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Warsui')
+                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+                             VALUES ('X3 Kuro', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+                             UPDATE blueprint_weapon_skin
+                             SET label = 'Mine God'
+                             WHERE label = 'Gold'
+                               AND weapon_model_id = weapon_model.id;
+                    -- RM
+                    WHEN weapon_model.brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        THEN INSERT INTO blueprint_weapon_skin (label, tier, weapon_type, weapon_model_id)
+                             VALUES ('Martian Soil', 'COLOSSAL', weapon_model.weapon_type, weapon_model.id);
+                             UPDATE blueprint_weapon_skin
+                             SET label = 'Sovereign Hill'
+                             WHERE label = 'Gold'
+                               AND weapon_model_id = weapon_model.id;
+                    ELSE CONTINUE;
+                    END CASE;
+            END LOOP;
+    END;
+$$;
 
 --for each mech crate, insert another mech skin(BC, ZAI, RM) and 2x weapon manufacturer's skins
 DO
 $$
     DECLARE
-        vmech_crate_blueprint MYSTERY_CRATE_BLUEPRINTS%ROWTYPE;
-        factionid             UUID;
+        vmech_crate_blueprint mystery_crate_blueprints%ROWTYPE;
+        factionid             uuid;
         powercoresize         TEXT;
 
     BEGIN
@@ -155,11 +155,11 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'Daison Sleek'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                              AND mech_type = 'HUMANOID'::mech_type)
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'Daison Sleek'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END);
+                                                                               AND mech_type = 'PLATFORM'::mech_type) END);
                     -- ZAI
                     WHEN factionid = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -180,11 +180,11 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'X3 Kuro'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                              AND mech_type = 'HUMANOID'::mech_type)
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'X3 Kuro'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END);
+                                                                               AND mech_type = 'PLATFORM'::mech_type) END);
                     -- RM
                     WHEN factionid = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -205,11 +205,11 @@ $$
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
                                                                             WHERE label = 'Martian Soil'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                              AND mech_type = 'HUMANOID'::mech_type)
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
                                                                              WHERE label = 'Martian Soil'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END); END CASE;
+                                                                               AND mech_type = 'PLATFORM'::mech_type) END); END CASE;
             END LOOP;
     END;
 $$;
