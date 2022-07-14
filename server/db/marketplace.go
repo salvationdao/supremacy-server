@@ -1346,19 +1346,23 @@ func MarketplaceSaleCreate(
 
 // CancelBidResponse contains the txid and amount on cancelled bids.
 type CancelBidResponse struct {
-	BidderID string
-	TXID     string
-	Amount   decimal.Decimal
+	BidderID  string
+	FactionID null.String
+	TXID      string
+	Amount    decimal.Decimal
 }
 
 // MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
 func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string) ([]CancelBidResponse, error) {
 	q := `
-		UPDATE item_sales_bid_history
+		UPDATE item_sales_bid_history b
 		SET cancelled_at = NOW(),
 			cancelled_reason = $2
-		WHERE item_sale_id = $1 AND cancelled_at IS NULL
-		RETURNING bidder_id, bid_tx_id, bid_price`
+		FROM players p
+		WHERE b.item_sale_id = $1
+			AND b.cancelled_at IS NULL
+			AND p.id = b.bidder_id
+		RETURNING bidder_id, faction_id, bid_tx_id, bid_price`
 	rows, err := conn.Query(q, itemID, msg)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -1368,7 +1372,7 @@ func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string)
 	cancelBidList := []CancelBidResponse{}
 	for rows.Next() {
 		var outputItem CancelBidResponse
-		err := rows.Scan(&outputItem.BidderID, &outputItem.TXID, &outputItem.Amount)
+		err := rows.Scan(&outputItem.BidderID, &outputItem.FactionID, &outputItem.TXID, &outputItem.Amount)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
