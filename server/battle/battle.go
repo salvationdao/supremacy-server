@@ -281,7 +281,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
 		btl.inserted = true
-
+		
 		// insert current users to
 		btl.users.Range(func(user *BattleUser) bool {
 			err = db.BattleViewerUpsert(btl.ID, user.ID.String())

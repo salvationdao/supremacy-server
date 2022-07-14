@@ -42,7 +42,6 @@ const (
 	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
 	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
 	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
-	GameNotificationTypeWarMachineCommand   GameNotificationType = "WAR_MACHINE_COMMAND"
 )
 
 type GameNotificationKill struct {
@@ -193,13 +192,6 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
 	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
-		Data: data,
-	})
-}
-
-func (arena *Arena) BroadcastMechCommandNotification(data *MechCommandNotification) {
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command_notification", data.FactionID), HubKeyGameNotification, &GameNotification{
-		Type: GameNotificationTypeWarMachineCommand,
 		Data: data,
 	})
 }
