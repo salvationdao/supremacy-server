@@ -1508,3 +1508,7 @@ func (sm *Motion) deposeCEO() {
 
 	sm.broadcastUpdatedSyndicate()
 }
+
+// TODO: add member id for depose ceo to check ceo is the same
+// TODO: remove ceo or admin if user leave and he is ceo or admin of the syndicate
+// TODO: missing motion admin remove, admin election, ceo election
