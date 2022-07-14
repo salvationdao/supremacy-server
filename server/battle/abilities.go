@@ -538,6 +538,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			if btl != btl.arena.CurrentBattle() {
 				mismatchCount.Add(1)
 				gamelog.L.Warn().
+					Str("current battle id", btl.arena.CurrentBattle().ID).
 					Int32("times", mismatchCount.Load()).
 					Msg("battle mismatch is detected on faction ability ticker")
 
