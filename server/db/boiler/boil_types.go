@@ -137,6 +137,8 @@ const (
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
 	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
+	ChatMSGTypeEnumSYSTEM_BAN  = "SYSTEM_BAN"
+	ChatMSGTypeEnumNEW_BATTLE  = "NEW_BATTLE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
