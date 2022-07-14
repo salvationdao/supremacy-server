@@ -205,11 +205,7 @@ func NewChatroom(factionID string) *Chatroom {
 				continue
 			}
 
-			cms[i] = &ChatMessage{
-				Type:   ChatMessageType(msg.MSGType),
-				SentAt: msg.CreatedAt,
-				Data:   cm,
-			}
+			cms[i] = cm
 			cmstoSend = append(cmstoSend, cms[i])
 			continue
 		}
