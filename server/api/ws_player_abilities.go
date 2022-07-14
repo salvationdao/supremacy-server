@@ -73,7 +73,9 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
+	nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
 	reply(&SaleAbilitiesListResponse{
+		NextRefreshTime:              &nextRefresh,
 		RefreshPeriodDurationSeconds: db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),
 		SaleAbilities:                dspas,
 	})
