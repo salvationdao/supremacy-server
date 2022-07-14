@@ -22,44 +22,44 @@ import (
 
 // Availability is an object representing the database table.
 type Availability struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Reason     string    `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
-	AvaiableAt time.Time `boiler:"avaiable_at" boil:"avaiable_at" json:"avaiable_at" toml:"avaiable_at" yaml:"avaiable_at"`
+	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Reason      string    `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
+	AvailableAt time.Time `boiler:"available_at" boil:"available_at" json:"available_at" toml:"available_at" yaml:"available_at"`
 
 	R *availabilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L availabilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AvailabilityColumns = struct {
-	ID         string
-	Reason     string
-	AvaiableAt string
+	ID          string
+	Reason      string
+	AvailableAt string
 }{
-	ID:         "id",
-	Reason:     "reason",
-	AvaiableAt: "avaiable_at",
+	ID:          "id",
+	Reason:      "reason",
+	AvailableAt: "available_at",
 }
 
 var AvailabilityTableColumns = struct {
-	ID         string
-	Reason     string
-	AvaiableAt string
+	ID          string
+	Reason      string
+	AvailableAt string
 }{
-	ID:         "availabilities.id",
-	Reason:     "availabilities.reason",
-	AvaiableAt: "availabilities.avaiable_at",
+	ID:          "availabilities.id",
+	Reason:      "availabilities.reason",
+	AvailableAt: "availabilities.available_at",
 }
 
 // Generated where
 
 var AvailabilityWhere = struct {
-	ID         whereHelperstring
-	Reason     whereHelperstring
-	AvaiableAt whereHelpertime_Time
+	ID          whereHelperstring
+	Reason      whereHelperstring
+	AvailableAt whereHelpertime_Time
 }{
-	ID:         whereHelperstring{field: "\"availabilities\".\"id\""},
-	Reason:     whereHelperstring{field: "\"availabilities\".\"reason\""},
-	AvaiableAt: whereHelpertime_Time{field: "\"availabilities\".\"avaiable_at\""},
+	ID:          whereHelperstring{field: "\"availabilities\".\"id\""},
+	Reason:      whereHelperstring{field: "\"availabilities\".\"reason\""},
+	AvailableAt: whereHelpertime_Time{field: "\"availabilities\".\"available_at\""},
 }
 
 // AvailabilityRels is where relationship names are stored.
@@ -83,8 +83,8 @@ func (*availabilityR) NewStruct() *availabilityR {
 type availabilityL struct{}
 
 var (
-	availabilityAllColumns            = []string{"id", "reason", "avaiable_at"}
-	availabilityColumnsWithoutDefault = []string{"reason", "avaiable_at"}
+	availabilityAllColumns            = []string{"id", "reason", "available_at"}
+	availabilityColumnsWithoutDefault = []string{"reason", "available_at"}
 	availabilityColumnsWithDefault    = []string{"id"}
 	availabilityPrimaryKeyColumns     = []string{"id"}
 	availabilityGeneratedColumns      = []string{}

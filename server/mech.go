@@ -62,6 +62,7 @@ type Mech struct {
 	PowerCoreSize         string     `json:"power_core_size"`
 	CollectionItemID      string     `json:"-"`
 	QueuePosition         null.Int   `json:"queue_position"`
+	BattleAvailabilityAt  null.Time  `json:"battle_availability_at"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`

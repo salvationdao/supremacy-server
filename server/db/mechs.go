@@ -92,7 +92,15 @@ SELECT
 			AND _i.deleted_at IS NULL
 			AND _i.end_at > NOW()
 		LIMIT 1
-	) AS item_sale_id
+	) AS item_sale_id,
+	(
+		SELECT _a.available_at
+		FROM blueprint_mechs _bm 
+			INNER JOIN availabilities _a ON _a.id = _bm.availability_id
+		WHERE _bm.id = mechs.blueprint_id
+			AND _bm.availability_id IS NOT NULL
+		LIMIT 1
+	) AS battle_availability_at
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
@@ -260,6 +268,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleAvailabilityAt,
 		)
 		if err != nil {
 			return nil, err
@@ -366,6 +375,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleAvailabilityAt,
 		)
 		if err != nil {
 			return nil, err
