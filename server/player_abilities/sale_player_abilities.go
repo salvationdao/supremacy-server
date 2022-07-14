@@ -62,7 +62,7 @@ type SalePlayerAbilitiesSystem struct {
 }
 
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
-	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
+	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())), boiler.SalePlayerAbilityWhere.DeletedAt.IsNull()).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
 	}
@@ -173,6 +173,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				// If no abilities are on sale, refill sale abilities
 				saleAbilities, err := boiler.SalePlayerAbilities(
 					boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
+					boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
 					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 				).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
@@ -192,11 +193,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 							Q.current_price,
 							Q.available_until,
 							Q.amount_sold,
-							Q.sale_limit
+							Q.sale_limit,
+							Q.deleted_at
 						from (
-							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, sum(rarity_weight) over (order by id) S, R
+							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, deleted_at, sum(rarity_weight) over (order by id) S, R
 							from sale_player_abilities spa
 							cross join cte
+							where spa.deleted_at is null
 						) Q
 						where S >= R
 						order by Q.id
