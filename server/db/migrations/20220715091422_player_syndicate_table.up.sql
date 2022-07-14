@@ -239,3 +239,7 @@ CREATE TABLE syndicate_election_votes(
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
 );
+
+ALTER TABLE blobs
+    ADD COLUMN IF NOT EXISTS is_remote boolean NOT NULL DEFAULT FALSE,
+    ALTER "file" DROP NOT NULL;

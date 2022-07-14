@@ -11,20 +11,21 @@ import (
 )
 
 type Player struct {
-	ID               string             `json:"id"`
-	FactionID        null.String        `json:"faction_id,omitempty"`
-	Username         null.String        `json:"username,omitempty"`
-	PublicAddress    null.String        `json:"public_address,omitempty"`
-	IsAi             bool               `json:"is_ai"`
-	DeletedAt        null.Time          `json:"deleted_at,omitempty"`
-	UpdatedAt        time.Time          `json:"updated_at"`
-	CreatedAt        time.Time          `json:"created_at"`
-	MobileNumber     null.String        `json:"mobile_number,omitempty"`
-	IssuePunishFee   decimal.Decimal    `json:"issue_punish_fee"`
-	ReportedCost     decimal.Decimal    `json:"reported_cost"`
-	Gid              int                `json:"gid"`
-	Rank             string             `json:"rank"`
-	SentMessageCount int                `json:"sent_message_count"`
+	ID               string          `json:"id"`
+	FactionID        null.String     `json:"faction_id,omitempty"`
+	Username         null.String     `json:"username,omitempty"`
+	PublicAddress    null.String     `json:"public_address,omitempty"`
+	IsAi             bool            `json:"is_ai"`
+	DeletedAt        null.Time       `json:"deleted_at,omitempty"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	CreatedAt        time.Time       `json:"created_at"`
+	MobileNumber     null.String     `json:"mobile_number,omitempty"`
+	IssuePunishFee   decimal.Decimal `json:"issue_punish_fee"`
+	ReportedCost     decimal.Decimal `json:"reported_cost"`
+	Gid              int             `json:"gid"`
+	Rank             string          `json:"rank"`
+	SentMessageCount int             `json:"sent_message_count"`
+	SynidcateID      null
 	Stat             *boiler.PlayerStat `json:"stat"`
 
 	Features []*Feature `json:"features"`

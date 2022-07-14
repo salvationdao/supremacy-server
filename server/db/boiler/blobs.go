@@ -28,12 +28,13 @@ type Blob struct {
 	MimeType      string      `boiler:"mime_type" boil:"mime_type" json:"mime_type" toml:"mime_type" yaml:"mime_type"`
 	FileSizeBytes int64       `boiler:"file_size_bytes" boil:"file_size_bytes" json:"file_size_bytes" toml:"file_size_bytes" yaml:"file_size_bytes"`
 	Extension     string      `boiler:"extension" boil:"extension" json:"extension" toml:"extension" yaml:"extension"`
-	File          []byte      `boiler:"file" boil:"file" json:"file" toml:"file" yaml:"file"`
+	File          null.Bytes  `boiler:"file" boil:"file" json:"file,omitempty" toml:"file" yaml:"file,omitempty"`
 	Views         int         `boiler:"views" boil:"views" json:"views" toml:"views" yaml:"views"`
 	Hash          null.String `boiler:"hash" boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IsRemote      bool        `boiler:"is_remote" boil:"is_remote" json:"is_remote" toml:"is_remote" yaml:"is_remote"`
 
 	R *blobR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blobL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +52,7 @@ var BlobColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	IsRemote      string
 }{
 	ID:            "id",
 	FileName:      "file_name",
@@ -63,6 +65,7 @@ var BlobColumns = struct {
 	DeletedAt:     "deleted_at",
 	UpdatedAt:     "updated_at",
 	CreatedAt:     "created_at",
+	IsRemote:      "is_remote",
 }
 
 var BlobTableColumns = struct {
@@ -77,6 +80,7 @@ var BlobTableColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	IsRemote      string
 }{
 	ID:            "blobs.id",
 	FileName:      "blobs.file_name",
@@ -89,6 +93,7 @@ var BlobTableColumns = struct {
 	DeletedAt:     "blobs.deleted_at",
 	UpdatedAt:     "blobs.updated_at",
 	CreatedAt:     "blobs.created_at",
+	IsRemote:      "blobs.is_remote",
 }
 
 // Generated where
@@ -116,14 +121,29 @@ func (w whereHelperint64) NIN(slice []int64) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
-type whereHelper__byte struct{ field string }
+type whereHelpernull_Bytes struct{ field string }
 
-func (w whereHelper__byte) EQ(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelper__byte) NEQ(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelper__byte) LT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelper__byte) LTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelpernull_Bytes) EQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Bytes) NEQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Bytes) LT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Bytes) LTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Bytes) GT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var BlobWhere = struct {
 	ID            whereHelperstring
@@ -131,24 +151,26 @@ var BlobWhere = struct {
 	MimeType      whereHelperstring
 	FileSizeBytes whereHelperint64
 	Extension     whereHelperstring
-	File          whereHelper__byte
+	File          whereHelpernull_Bytes
 	Views         whereHelperint
 	Hash          whereHelpernull_String
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
+	IsRemote      whereHelperbool
 }{
 	ID:            whereHelperstring{field: "\"blobs\".\"id\""},
 	FileName:      whereHelperstring{field: "\"blobs\".\"file_name\""},
 	MimeType:      whereHelperstring{field: "\"blobs\".\"mime_type\""},
 	FileSizeBytes: whereHelperint64{field: "\"blobs\".\"file_size_bytes\""},
 	Extension:     whereHelperstring{field: "\"blobs\".\"extension\""},
-	File:          whereHelper__byte{field: "\"blobs\".\"file\""},
+	File:          whereHelpernull_Bytes{field: "\"blobs\".\"file\""},
 	Views:         whereHelperint{field: "\"blobs\".\"views\""},
 	Hash:          whereHelpernull_String{field: "\"blobs\".\"hash\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"blobs\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"blobs\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"blobs\".\"created_at\""},
+	IsRemote:      whereHelperbool{field: "\"blobs\".\"is_remote\""},
 }
 
 // BlobRels is where relationship names are stored.
@@ -168,9 +190,9 @@ func (*blobR) NewStruct() *blobR {
 type blobL struct{}
 
 var (
-	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "deleted_at", "updated_at", "created_at"}
-	blobColumnsWithoutDefault = []string{"file_name", "mime_type", "file_size_bytes", "extension", "file"}
-	blobColumnsWithDefault    = []string{"id", "views", "hash", "deleted_at", "updated_at", "created_at"}
+	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "deleted_at", "updated_at", "created_at", "is_remote"}
+	blobColumnsWithoutDefault = []string{"file_name", "mime_type", "file_size_bytes", "extension"}
+	blobColumnsWithDefault    = []string{"id", "file", "views", "hash", "deleted_at", "updated_at", "created_at", "is_remote"}
 	blobPrimaryKeyColumns     = []string{"id"}
 	blobGeneratedColumns      = []string{}
 )
