@@ -887,7 +887,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 				}
 				err = spoil.Insert(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to insert spoils")
+					gamelog.L.Error().Str("log_name", "battle arena").Interface("spoil", spoil).Err(err).Msg("unable to insert spoils")
 				}
 			} else {
 				spoil.Amount = spoil.Amount.Add(amount)
