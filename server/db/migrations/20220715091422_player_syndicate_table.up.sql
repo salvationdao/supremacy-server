@@ -22,8 +22,6 @@ CREATE TABLE syndicates(
 
     -- payment detail
     join_fee numeric(28) NOT NULL default 0,
-    exit_fee numeric(28) NOT NULL default 0,
-
     monthly_dues numeric(28) NOT NULL DEFAULT 0,
 
     -- battle win columns
@@ -108,14 +106,12 @@ CREATE TYPE SYNDICATE_MOTION_TYPE AS ENUM (
     'APPOINT_COMMITTEE',
     'REMOVE_COMMITTEE',
 
-    'ADMIN_ELECTION', -- das exclusive
-    'DEPOSE_ADMIN',
+    'DEPOSE_ADMIN', -- das exclusive
 
     -- boarder director exclusive
     'APPOINT_DIRECTOR',
     'REMOVE_DIRECTOR',
-    'DEPOSE_CEO',
-    'CEO_ELECTION'
+    'DEPOSE_CEO'
 );
 
 DROP TYPE IF EXISTS SYNDICATE_MOTION_RESULT;
@@ -145,9 +141,6 @@ CREATE TABLE syndicate_motions(
     -- payment change
     old_join_fee numeric(28),
     new_join_fee numeric(28),
-
-    old_exit_fee numeric(28),
-    new_exit_fee numeric(28),
 
     old_monthly_dues numeric(28),
     new_monthly_dues numeric(28),

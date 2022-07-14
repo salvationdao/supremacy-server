@@ -37,8 +37,6 @@ type SyndicateMotion struct {
 	NewLogoID                       null.String         `boiler:"new_logo_id" boil:"new_logo_id" json:"new_logo_id,omitempty" toml:"new_logo_id" yaml:"new_logo_id,omitempty"`
 	OldJoinFee                      decimal.NullDecimal `boiler:"old_join_fee" boil:"old_join_fee" json:"old_join_fee,omitempty" toml:"old_join_fee" yaml:"old_join_fee,omitempty"`
 	NewJoinFee                      decimal.NullDecimal `boiler:"new_join_fee" boil:"new_join_fee" json:"new_join_fee,omitempty" toml:"new_join_fee" yaml:"new_join_fee,omitempty"`
-	OldExitFee                      decimal.NullDecimal `boiler:"old_exit_fee" boil:"old_exit_fee" json:"old_exit_fee,omitempty" toml:"old_exit_fee" yaml:"old_exit_fee,omitempty"`
-	NewExitFee                      decimal.NullDecimal `boiler:"new_exit_fee" boil:"new_exit_fee" json:"new_exit_fee,omitempty" toml:"new_exit_fee" yaml:"new_exit_fee,omitempty"`
 	OldMonthlyDues                  decimal.NullDecimal `boiler:"old_monthly_dues" boil:"old_monthly_dues" json:"old_monthly_dues,omitempty" toml:"old_monthly_dues" yaml:"old_monthly_dues,omitempty"`
 	NewMonthlyDues                  decimal.NullDecimal `boiler:"new_monthly_dues" boil:"new_monthly_dues" json:"new_monthly_dues,omitempty" toml:"new_monthly_dues" yaml:"new_monthly_dues,omitempty"`
 	OldDeployingMemberCutPercentage decimal.NullDecimal `boiler:"old_deploying_member_cut_percentage" boil:"old_deploying_member_cut_percentage" json:"old_deploying_member_cut_percentage,omitempty" toml:"old_deploying_member_cut_percentage" yaml:"old_deploying_member_cut_percentage,omitempty"`
@@ -81,8 +79,6 @@ var SyndicateMotionColumns = struct {
 	NewLogoID                       string
 	OldJoinFee                      string
 	NewJoinFee                      string
-	OldExitFee                      string
-	NewExitFee                      string
 	OldMonthlyDues                  string
 	NewMonthlyDues                  string
 	OldDeployingMemberCutPercentage string
@@ -120,8 +116,6 @@ var SyndicateMotionColumns = struct {
 	NewLogoID:                       "new_logo_id",
 	OldJoinFee:                      "old_join_fee",
 	NewJoinFee:                      "new_join_fee",
-	OldExitFee:                      "old_exit_fee",
-	NewExitFee:                      "new_exit_fee",
 	OldMonthlyDues:                  "old_monthly_dues",
 	NewMonthlyDues:                  "new_monthly_dues",
 	OldDeployingMemberCutPercentage: "old_deploying_member_cut_percentage",
@@ -161,8 +155,6 @@ var SyndicateMotionTableColumns = struct {
 	NewLogoID                       string
 	OldJoinFee                      string
 	NewJoinFee                      string
-	OldExitFee                      string
-	NewExitFee                      string
 	OldMonthlyDues                  string
 	NewMonthlyDues                  string
 	OldDeployingMemberCutPercentage string
@@ -200,8 +192,6 @@ var SyndicateMotionTableColumns = struct {
 	NewLogoID:                       "syndicate_motions.new_logo_id",
 	OldJoinFee:                      "syndicate_motions.old_join_fee",
 	NewJoinFee:                      "syndicate_motions.new_join_fee",
-	OldExitFee:                      "syndicate_motions.old_exit_fee",
-	NewExitFee:                      "syndicate_motions.new_exit_fee",
 	OldMonthlyDues:                  "syndicate_motions.old_monthly_dues",
 	NewMonthlyDues:                  "syndicate_motions.new_monthly_dues",
 	OldDeployingMemberCutPercentage: "syndicate_motions.old_deploying_member_cut_percentage",
@@ -243,8 +233,6 @@ var SyndicateMotionWhere = struct {
 	NewLogoID                       whereHelpernull_String
 	OldJoinFee                      whereHelperdecimal_NullDecimal
 	NewJoinFee                      whereHelperdecimal_NullDecimal
-	OldExitFee                      whereHelperdecimal_NullDecimal
-	NewExitFee                      whereHelperdecimal_NullDecimal
 	OldMonthlyDues                  whereHelperdecimal_NullDecimal
 	NewMonthlyDues                  whereHelperdecimal_NullDecimal
 	OldDeployingMemberCutPercentage whereHelperdecimal_NullDecimal
@@ -282,8 +270,6 @@ var SyndicateMotionWhere = struct {
 	NewLogoID:                       whereHelpernull_String{field: "\"syndicate_motions\".\"new_logo_id\""},
 	OldJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_join_fee\""},
 	NewJoinFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_join_fee\""},
-	OldExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_exit_fee\""},
-	NewExitFee:                      whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_exit_fee\""},
 	OldMonthlyDues:                  whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_monthly_dues\""},
 	NewMonthlyDues:                  whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"new_monthly_dues\""},
 	OldDeployingMemberCutPercentage: whereHelperdecimal_NullDecimal{field: "\"syndicate_motions\".\"old_deploying_member_cut_percentage\""},
@@ -348,9 +334,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_exit_fee", "new_exit_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )

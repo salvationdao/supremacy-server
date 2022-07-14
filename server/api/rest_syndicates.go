@@ -24,7 +24,6 @@ type SyndicateIssueMotionRequest struct {
 	NewSymbol                       null.String         `json:"new_symbol"`
 	NewSyndicateName                null.String         `json:"new_syndicate_name"`
 	NewJoinFee                      decimal.NullDecimal `json:"new_join_fee"`
-	NewExitFee                      decimal.NullDecimal `json:"new_exit_fee"`
 	NewMonthlyDues                  decimal.NullDecimal `json:"new_monthly_dues"`
 	NewDeployingMemberCutPercentage decimal.NullDecimal `json:"new_deploying_member_cut_percentage"`
 	NewMemberAssistCutPercentage    decimal.NullDecimal `json:"new_member_assist_cut_percentage"`
@@ -58,7 +57,6 @@ func (api *API) SyndicateMotionIssue(player *server.Player, w http.ResponseWrite
 		NewSymbol:                       req.NewSymbol,
 		NewSyndicateName:                req.NewSyndicateName,
 		NewJoinFee:                      req.NewJoinFee,
-		NewExitFee:                      req.NewExitFee,
 		NewMonthlyDues:                  req.NewMonthlyDues,
 		NewDeployingMemberCutPercentage: req.NewDeployingMemberCutPercentage,
 		NewMemberAssistCutPercentage:    req.NewMemberAssistCutPercentage,
@@ -96,6 +94,7 @@ func parseUploadRequest(w http.ResponseWriter, r *http.Request, req interface{})
 	var blob *boiler.Blob
 	var file []byte
 
+	// TODO: add file type filter
 	for {
 		part, err := mr.NextPart()
 		if err == io.EOF {

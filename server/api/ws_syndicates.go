@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
@@ -17,8 +16,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/xsyn_rpcclient"
-	"time"
 )
 
 type SyndicateWS struct {
@@ -46,14 +43,11 @@ func NewSyndicateController(api *API) *SyndicateWS {
 	return sc
 }
 
-// TODO: Move Syndicate create request to rest, and add file update handler
-
 type SyndicateCreateRequest struct {
 	Payload struct {
 		Name    string          `json:"name"`
 		Type    string          `json:"type"`
 		JoinFee decimal.Decimal `json:"join_fee"`
-		ExitFee decimal.Decimal `json:"exit_fee"`
 	} `json:"payload"`
 }
 
@@ -74,14 +68,6 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 	// check price
 	if req.Payload.JoinFee.LessThan(decimal.Zero) {
 		return terror.Error(terror.ErrInvalidInput, "Join fee should not be less than zero")
-	}
-
-	if req.Payload.ExitFee.LessThan(decimal.Zero) {
-		return terror.Error(terror.ErrInvalidInput, "Exit fee should not be less than zero")
-	}
-
-	if req.Payload.ExitFee.GreaterThan(req.Payload.JoinFee) {
-		return terror.Error(fmt.Errorf("exit fee is higher than join fee"), "Exit fee should not be higher than join fee.")
 	}
 
 	// check syndicate name is registered
@@ -105,7 +91,6 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 		FactionID:   factionID,
 		FoundedByID: user.ID,
 		JoinFee:     req.Payload.JoinFee,
-		ExitFee:     req.Payload.ExitFee,
 	}
 
 	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
@@ -307,18 +292,6 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Failed to load syndicate detail")
 	}
 
-	if user.ID == syndicate.FoundedByID {
-		return terror.Error(fmt.Errorf("founder cannot exit the syndicate"), "Syndicate's founder cannot exit the syndicate")
-	}
-
-	// check user has enough fund
-	userBalance := sc.API.Passport.UserBalanceGet(uuid.FromStringOrNil(user.ID))
-	if userBalance.LessThan(syndicate.ExitFee) {
-		return terror.Error(fmt.Errorf("insufficent fund"), "Do not have enough sups to pay the exit fee")
-	}
-
-	dasTax := db.GetDecimalWithDefault(db.KeyDecentralisedAutonomousSyndicateTax, decimal.New(25, -3)) // 0.025
-
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
@@ -351,23 +324,73 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	).DeleteAll(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
-		return terror.Error(err, "failed to remove user from syndicate committee list")
+		return terror.Error(err, "Failed to remove user from syndicate committee list.")
 	}
 
-	// pay syndicate exit fee, if the exit fee is greater than zero
-	if syndicate.ExitFee.GreaterThan(decimal.Zero) {
-		_, err = sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.FromStringOrNil(user.ID),
-			ToUserID:             uuid.FromStringOrNil(syndicate.ID),
-			Amount:               syndicate.ExitFee.String(),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("syndicate_exit_fee|%s|%d", syndicate.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupSyndicate),
-			Description:          fmt.Sprintf("Syndicate - %s exit fee: (%s)", syndicate.Name, syndicate.ID),
-			NotSafe:              true,
-		})
+	remainSyndicateMemberCount, err := boiler.Players(
+		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(syndicate.ID)),
+	).Count(tx)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
+		return terror.Error(err, "Failed to check remain syndicate member count.")
+	}
+
+	// check syndicate admin
+	if syndicate.AdminID.Valid && syndicate.AdminID.String == user.ID {
+		// remove admin role of the syndicate
+		syndicate.AdminID = null.StringFromPtr(nil)
+		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.AdminID))
 		if err != nil {
-			return terror.Error(err, "Failed to pay syndicate exit fee")
+			gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate admin")
+			return terror.Error(err, "Failed to remove admin role from syndicate.")
+		}
+
+		if syndicate.Type == boiler.SyndicateTypeDECENTRALISED {
+			// terminate depose admin motion
+
+			if remainSyndicateMemberCount > 0 {
+				// issue admin election
+			}
+		}
+	}
+
+	// check director number
+	directorCount, err := boiler.SyndicateCommittees(
+		boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
+	).Count(tx)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
+		return terror.Error(err, "Failed to remove user from syndicate committee list.")
+	}
+
+	// check syndicate ceo
+	if syndicate.CeoPlayerID.Valid && syndicate.CeoPlayerID.String == user.ID {
+		syndicate.CeoPlayerID = null.StringFromPtr(nil)
+		syndicate.AdminID = null.StringFromPtr(nil)
+		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.CeoPlayerID, boiler.SyndicateColumns.AdminID))
+		if err != nil {
+			gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate ceo")
+			return terror.Error(err, "Failed to remove ceo role from syndicate.")
+		}
+
+		// terminate depose ceo motion
+
+		if directorCount > 0 {
+			// issue ceo election
+		}
+	}
+
+	// terminate the syndicate if no member left in the syndicate
+	if remainSyndicateMemberCount == 0 {
+		// give syndicate fund to the last player but taxed
+
+	} else if syndicate.Type == boiler.SyndicateTypeCORPORATION && directorCount == 0 {
+		// change corporation syndicate to decentralised syndicate if there is no directors
+		syndicate.Type = boiler.SyndicateTypeDECENTRALISED
+		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.Type))
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Str("syndicate type", syndicate.Type).Msg("Failed to change syndicate type")
+			return terror.Error(err, "Failed to change syndicate type")
 		}
 	}
 
@@ -377,34 +400,29 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Failed to exit syndicate")
 	}
 
-	// syndicate pay tax to xsyn, if join fee is greater than zero
-	if syndicate.ExitFee.GreaterThan(decimal.Zero) {
-		_, err = sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.FromStringOrNil(syndicate.ID),
-			ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
-			Amount:               syndicate.JoinFee.Mul(dasTax).String(),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("syndicate_das_tax|%s|%d", syndicate.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupSyndicate),
-			Description:          fmt.Sprintf("Tax for Syndicate - %s exit fee: (%s)", syndicate.Name, syndicate.ID),
-			NotSafe:              true,
-		})
-		if err != nil {
-			return terror.Error(err, "Failed to pay syndicate exit fee")
-		}
-	}
-
 	// broadcast updated user
 	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	// broadcast latest syndicate detail
 	serverSyndicate, err := db.GetSyndicateDetail(syndicate.ID)
 	if err != nil {
-		return terror.Error(err, "Failed to get syndicate detail")
+		return err
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
 
-	db.GetSyndicateDirectors(syndicate.ID)
+	// broadcast directors
+	directors, err := db.GetSyndicateDirectors(syndicate.ID)
+	if err != nil {
+		return err
+	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/directors", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateDirectorsSubscribe, directors)
+
+	// broadcast committees
+	scs, err := db.GetSyndicateCommittees(syndicate.ID)
+	if err != nil {
+		return err
+	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateCommitteesSubscribe, scs)
 
 	reply(true)
 

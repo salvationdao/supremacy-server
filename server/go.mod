@@ -2,8 +2,6 @@ module server
 
 go 1.18
 
-replace github.com/ninja-syndicate/ws => /home/darren/go/src/github.com/ninja-syndicate/ws
-
 require (
 	github.com/antonholmquist/jason v1.0.0 // indirect
 	github.com/cosmtrek/air v1.27.8
@@ -16,7 +14,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/ws v0.14.0
+	github.com/ninja-syndicate/ws v0.15.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/urfave/cli/v2 v2.10.3
@@ -26,6 +24,7 @@ require (
 
 require (
 	github.com/DataDog/gostackparse v0.5.0
+	github.com/adrg/strutil v0.3.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gobwas/ws v1.1.0
@@ -53,7 +52,6 @@ require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible // indirect
 	github.com/DataDog/datadog-go/v5 v5.1.0 // indirect
 	github.com/DataDog/sketches-go v1.4.1 // indirect
-	github.com/adrg/strutil v0.3.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect

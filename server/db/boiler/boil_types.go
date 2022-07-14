@@ -259,12 +259,10 @@ const (
 	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
 	SyndicateMotionTypeAPPOINT_COMMITTEE     = "APPOINT_COMMITTEE"
 	SyndicateMotionTypeREMOVE_COMMITTEE      = "REMOVE_COMMITTEE"
-	SyndicateMotionTypeADMIN_ELECTION        = "ADMIN_ELECTION"
 	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
 	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
 	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
 	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"
-	SyndicateMotionTypeCEO_ELECTION          = "CEO_ELECTION"
 )
 
 // Enum values for SyndicateMotionResult

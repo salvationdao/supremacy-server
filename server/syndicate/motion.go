@@ -232,7 +232,6 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 		if !bsm.NewSyndicateName.Valid && !bsm.NewSymbol.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
-
 		// change symbol, name
 		if bsm.NewSyndicateName.Valid {
 			// verify syndicate name
@@ -250,7 +249,6 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			}
 			motion.NewSymbol = null.StringFrom(newSymbol)
 		}
-
 		// change logo
 		if logo != nil && logo.File.Valid && len(logo.File.Bytes) > 0 {
 			avatarID := uuid.Must(uuid.NewV4())
@@ -259,45 +257,24 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			bsm.NewLogoID = null.StringFrom(avatarID.String())
 		}
 	case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
-		if !bsm.NewJoinFee.Valid && !bsm.NewExitFee.Valid {
+		if !bsm.NewJoinFee.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
 
-		s, err := boiler.FindSyndicate(gamedb.StdConn, sms.syndicate.ID)
-		if err != nil {
-			return nil, terror.Error(err, "Failed to load syndicate detail")
-		}
-
-		joinFeeAfterChanged := s.JoinFee
 		// change
-		if bsm.NewJoinFee.Valid {
-			if bsm.NewJoinFee.Decimal.LessThan(decimal.Zero) {
-				return nil, terror.Error(fmt.Errorf("join fee cannot less than zero"), "Join fee cannot less than zero.")
-			}
-			motion.NewJoinFee = bsm.NewJoinFee
-
-			joinFeeAfterChanged = bsm.NewJoinFee.Decimal
+		if bsm.NewJoinFee.Decimal.LessThan(decimal.Zero) {
+			return nil, terror.Error(fmt.Errorf("join fee cannot less than zero"), "Join fee cannot less than zero.")
 		}
+		motion.NewJoinFee = bsm.NewJoinFee
 
-		exitFeeAfterChange := s.ExitFee
-		if bsm.NewExitFee.Valid {
-			// exit fee cannot less than zero
-			if bsm.NewExitFee.Decimal.LessThan(decimal.Zero) {
-				return nil, terror.Error(fmt.Errorf("exit fee cannot less than zero"), "Exit fee cannot less than zero.")
-			}
-			motion.NewExitFee = bsm.NewExitFee
-
-			exitFeeAfterChange = bsm.NewExitFee.Decimal
-		}
-
-		if exitFeeAfterChange.GreaterThan(joinFeeAfterChanged) {
-			return nil, terror.Error(fmt.Errorf("exit fee cannot be higher than join fee"), "Exit fee cannot be higher than join fee.")
-		}
 	case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
 		if !bsm.NewMonthlyDues.Valid {
 			return nil, terror.Error(fmt.Errorf("change info is not provided"), "Change info is not provided.")
 		}
 
+		if bsm.NewMonthlyDues.Decimal.LessThan(decimal.Zero) {
+			return nil, terror.Error(fmt.Errorf("monthly dues cannot less than zero"), "Member monthly dues cannot less than zero.")
+		}
 		motion.NewMonthlyDues = bsm.NewMonthlyDues
 
 	case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
@@ -361,8 +338,9 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			syndicateCutAfterChange = bsm.NewSyndicateCutPercentage.Decimal
 		}
 
-		if decimal.NewFromInt(100).LessThan(deployMemberCutAfterChange.Add(memberAssistCutAfterChange).Add(mechOwnerCutAfterChange).Add(syndicateCutAfterChange)) {
-			return nil, terror.Error(fmt.Errorf("percentage over 100"), "Total percentage cannot be over 100")
+		// sum of the cut cannot be more than 100%
+		if !decimal.NewFromInt(100).Equal(deployMemberCutAfterChange.Add(memberAssistCutAfterChange).Add(mechOwnerCutAfterChange).Add(syndicateCutAfterChange)) {
+			return nil, terror.Error(fmt.Errorf("percentage not 100"), "Total percentage should be 100%.")
 		}
 
 	case boiler.SyndicateMotionTypeADD_RULE:
@@ -370,7 +348,6 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("rule content is not provided"), "Rule content is not provided.")
 		}
 		motion.NewRuleContent = bsm.NewRuleContent
-		motion.NewRuleNumber = bsm.NewRuleNumber
 
 	case boiler.SyndicateMotionTypeREMOVE_RULE:
 		if !bsm.RuleID.Valid {
@@ -528,8 +505,31 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 
 		motion.MemberID = bsm.MemberID
 
+	case boiler.SyndicateMotionTypeDEPOSE_ADMIN:
+		// check member is the admin of the syndicate
+		syndicate, err := boiler.FindSyndicate(gamedb.StdConn, bsm.SyndicateID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load syndicate detail")
+			return nil, terror.Error(err, "Failed to load syndicate detail")
+		}
+
+		if syndicate.Type != boiler.SyndicateTypeDECENTRALISED {
+			return nil, terror.Error(fmt.Errorf("decentralised syndicate only"), "Only decentralised syndicate can issue motion to depose admin.")
+		}
+
+		if !syndicate.AdminID.Valid {
+			return nil, terror.Error(fmt.Errorf("no admin player at the moment"), "Your syndicate does not have an admin.")
+		}
+
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
-		if sms.syndicate.Type != boiler.SyndicateTypeCORPORATION {
+		// check syndicate type
+		syndicate, err := boiler.FindSyndicate(gamedb.StdConn, bsm.SyndicateID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load syndicate detail")
+			return nil, terror.Error(err, "Failed to load syndicate detail")
+		}
+
+		if syndicate.Type != boiler.SyndicateTypeCORPORATION {
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
@@ -567,7 +567,14 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 		motion.MemberID = bsm.MemberID
 
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
-		if sms.syndicate.Type != boiler.SyndicateTypeCORPORATION {
+		// check syndicate type
+		syndicate, err := boiler.FindSyndicate(gamedb.StdConn, bsm.SyndicateID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load syndicate detail")
+			return nil, terror.Error(err, "Failed to load syndicate detail")
+		}
+
+		if syndicate.Type != boiler.SyndicateTypeCORPORATION {
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
@@ -582,6 +589,14 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 
 		if !bsm.MemberID.Valid {
 			return nil, terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+		}
+
+		if syndicate.CeoPlayerID.Valid && syndicate.CeoPlayerID.String == bsm.MemberID.String {
+			return nil, terror.Error(fmt.Errorf("ceo can only be depose"), "Syndicate CEO can only be deposed instead.")
+		}
+
+		if syndicate.AdminID.Valid && syndicate.AdminID.String == bsm.MemberID.String {
+			return nil, terror.Error(fmt.Errorf("ceo can only be depose"), "Syndicate admin cannot be removed from the board.")
 		}
 
 		player, err := boiler.FindPlayer(gamedb.StdConn, bsm.MemberID.String)
@@ -604,6 +619,31 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 		}
 
 		motion.MemberID = bsm.MemberID
+
+	case boiler.SyndicateMotionTypeDEPOSE_CEO:
+		// check syndicate type
+		syndicate, err := boiler.FindSyndicate(gamedb.StdConn, bsm.SyndicateID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load syndicate detail")
+			return nil, terror.Error(err, "Failed to load syndicate detail")
+		}
+
+		if syndicate.Type != boiler.SyndicateTypeCORPORATION {
+			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
+		}
+
+		isDirector, err := sms.syndicate.isDirector(userID)
+		if err != nil {
+			return nil, err
+		}
+
+		if !isDirector {
+			return nil, terror.Error(fmt.Errorf("no a director of syndicate"), "Only the directors of the syndicate can issue motion to appoint director.")
+		}
+
+		if !syndicate.CeoPlayerID.Valid {
+			return nil, terror.Error(fmt.Errorf("no a ceo player"), "Your syndicate does not have a ceo.")
+		}
 
 	default:
 		gamelog.L.Debug().Str("motion type", bsm.Type).Msg("Invalid motion type")
@@ -629,9 +669,13 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 			continue
 		}
 
-		// if motion have different type, excluding remove rule and change rule
-		if bsm.Type != om.Type && bsm.Type != boiler.SyndicateMotionTypeREMOVE_RULE && bsm.Type != boiler.SyndicateMotionTypeCHANGE_RULE {
-			continue
+		// skip, if motion have different type
+		if bsm.Type != om.Type {
+			// excluding remove / change rule pair
+			if (bsm.Type != boiler.SyndicateMotionTypeREMOVE_RULE || om.Type != boiler.SyndicateMotionTypeCHANGE_RULE) &&
+				(bsm.Type != boiler.SyndicateMotionTypeCHANGE_RULE || om.Type != boiler.SyndicateMotionTypeREMOVE_RULE) {
+				continue
+			}
 		}
 
 		// check change content is duplicated
@@ -647,6 +691,12 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 			if bsm.NewLogoID.Valid && om.NewLogoID.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate logo.")
 			}
+		case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing entry fee.")
+		case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for member monthly dues.")
+		case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing battle win cut.")
 		case boiler.SyndicateMotionTypeADD_RULE:
 			if bsm.NewRuleContent.Valid && om.NewRuleContent.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for adding the same rule.")
@@ -654,14 +704,6 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 		case boiler.SyndicateMotionTypeREMOVE_RULE, boiler.SyndicateMotionTypeCHANGE_RULE:
 			if bsm.RuleID.String == om.RuleID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing the same rule.")
-			}
-		case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
-			if bsm.MemberID.String == om.MemberID.String {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for appointing the same player.")
-			}
-		case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
-			if bsm.MemberID.String == om.MemberID.String {
-				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same director.")
 			}
 		case boiler.SyndicateMotionTypeREMOVE_MEMBER:
 			if bsm.MemberID.String == om.MemberID.String {
@@ -675,12 +717,18 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 			if bsm.MemberID.String == om.MemberID.String {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same committee.")
 			}
-		case boiler.SyndicateMotionTypeCHANGE_MONTHLY_DUES:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for member monthly dues.")
-		case boiler.SyndicateMotionTypeCHANGE_ENTRY_FEE:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing entry fee.")
-		case boiler.SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT:
-			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing battle win cut.")
+		case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
+			if bsm.MemberID.String == om.MemberID.String {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for appointing the same player.")
+			}
+		case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
+			if bsm.MemberID.String == om.MemberID.String {
+				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for removing the same director.")
+			}
+		case boiler.SyndicateMotionTypeDEPOSE_ADMIN:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for deposing admin.")
+		case boiler.SyndicateMotionTypeDEPOSE_CEO:
+			return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for deposing ceo.")
 		}
 	}
 
@@ -721,7 +769,7 @@ func (sm *Motion) start() {
 func (sm *Motion) vote(user *boiler.Player, isAgreed bool) error {
 	// check vote right
 	switch sm.Type {
-	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR, boiler.SyndicateMotionTypeREMOVE_DIRECTOR, boiler.SyndicateMotionTypeDEPOSE_CEO, boiler.SyndicateMotionTypeCEO_ELECTION:
+	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR, boiler.SyndicateMotionTypeREMOVE_DIRECTOR, boiler.SyndicateMotionTypeDEPOSE_CEO:
 		isDirector, err := sm.syndicate.isDirector(user.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get check syndicate director")
@@ -856,6 +904,8 @@ func (sm *Motion) parseResult() {
 		sm.appointDirector()
 	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
 		sm.removeDirector()
+	case boiler.SyndicateMotionTypeDEPOSE_ADMIN:
+		sm.deposeAdmin()
 	case boiler.SyndicateMotionTypeDEPOSE_CEO:
 		sm.deposeCEO()
 	}
@@ -949,13 +999,6 @@ func (sm *Motion) updateSyndicate() {
 
 		syndicate.JoinFee = sm.NewJoinFee.Decimal
 		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.JoinFee)
-	}
-	if sm.NewExitFee.Valid {
-		sm.OldExitFee = decimal.NewNullDecimal(syndicate.ExitFee)
-		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldExitFee)
-
-		syndicate.ExitFee = sm.NewExitFee.Decimal
-		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.ExitFee)
 	}
 	if sm.NewMonthlyDues.Valid {
 		sm.OldMonthlyDues = decimal.NewNullDecimal(syndicate.MonthlyDues)
@@ -1407,14 +1450,14 @@ func (sm *Motion) removeCommittee() {
 	// broadcast result
 	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
 
-	// load new director list
+	// load new committee list
 	scs, err := db.GetSyndicateCommittees(sm.SyndicateID)
 	if err != nil {
 		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to get syndicate directors")
 		return
 	}
 
-	// broadcast syndicate director list
+	// broadcast syndicate committee list
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateCommitteesSubscribe, scs)
 }
 
@@ -1495,10 +1538,35 @@ func (sm *Motion) removeDirector() {
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/directors", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateDirectorsSubscribe, sds)
 }
 
+func (sm *Motion) deposeAdmin() {
+	s := &boiler.Syndicate{
+		ID:      sm.SyndicateID,
+		AdminID: null.StringFromPtr(nil),
+	}
+
+	// remove both ceo and admin player
+	_, err := s.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateColumns.CeoPlayerID, boiler.SyndicateColumns.AdminID))
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", sm.SyndicateID).Msg("Failed to depose ceo of the syndicate.")
+		return
+	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
+
+	sm.broadcastUpdatedSyndicate()
+
+	// TODO: spin up an admin election
+}
+
 func (sm *Motion) deposeCEO() {
-	_, err := boiler.Syndicates(
-		boiler.SyndicateWhere.ID.EQ(sm.SyndicateID),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.SyndicateColumns.CeoPlayerID: null.StringFromPtr(nil)})
+	s := &boiler.Syndicate{
+		ID:          sm.SyndicateID,
+		CeoPlayerID: null.StringFromPtr(nil),
+		AdminID:     null.StringFromPtr(nil),
+	}
+
+	// remove both ceo and admin player
+	_, err := s.Update(gamedb.StdConn, boil.Whitelist(boiler.SyndicateColumns.CeoPlayerID, boiler.SyndicateColumns.AdminID))
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("syndicate id", sm.SyndicateID).Msg("Failed to depose ceo of the syndicate.")
 		return
@@ -1507,8 +1575,6 @@ func (sm *Motion) deposeCEO() {
 	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
 
 	sm.broadcastUpdatedSyndicate()
-}
 
-// TODO: add member id for depose ceo to check ceo is the same
-// TODO: remove ceo or admin if user leave and he is ceo or admin of the syndicate
-// TODO: missing motion admin remove, admin election, ceo election
+	// TODO: spin up a ceo election
+}
