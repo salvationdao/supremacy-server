@@ -281,7 +281,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
 		btl.inserted = true
-		
+
 		// insert current users to
 		btl.users.Range(func(user *BattleUser) bool {
 			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
@@ -1898,23 +1898,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	})
 
 	// clear up unfinished mech move command of the destroyed mech
-	impactedRowCount, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: time.Now()})
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
 	}
 
 	// broadcast changes
-	if impactedRowCount > 0 {
-		err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
-		}
+	err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 }
