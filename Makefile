@@ -237,7 +237,7 @@ dev-sync-data:
 	cd ./server/devtool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	git clone /home/alyssa/ninja/supremacy-static-data
 	cd ../../../server
 	go run ./devtool/main.go -sync_mech
 	rm -rf ./devtool/temp-sync
