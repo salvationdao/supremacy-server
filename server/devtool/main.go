@@ -5,9 +5,7 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
-	"github.com/volatiletech/null/v8"
 	"log"
 	"net/url"
 	"os"
@@ -21,10 +19,6 @@ type DevTool struct {
 }
 
 func main() {
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		log.Fatal("Only works in dev and staging environment")
-	}
-
 	syncMech := flag.Bool("sync_mech", false, "Sync mech skins and models with staging data")
 	csvPath := flag.String("path-file", "./devtool/temp-sync/supremacy-static-data/", "Path to csvs")
 
@@ -58,8 +52,8 @@ func main() {
 
 	if syncMech != nil && *syncMech {
 		//RemoveFKContraints(dt)
-		SyncFactions(dt)
-		SyncBrands(dt)
+		//SyncFactions(dt)
+		//SyncBrands(dt)
 		SyncMechModels(dt)
 		SyncMechSkins(dt)
 		//SyncMysteryCrates(dt)
@@ -129,7 +123,7 @@ func RemoveFKContraints(dt DevTool) error {
 }
 
 func SyncMechModels(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mech_models.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%smech_models.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -189,7 +183,7 @@ func SyncMechModels(dt DevTool) error {
 }
 
 func SyncMechSkins(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mech_skins.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%smech_skins.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -293,7 +287,7 @@ func SyncMechSkins(dt DevTool) error {
 }
 
 func SyncFactions(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/factions.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%sfactions.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -361,7 +355,7 @@ func SyncFactions(dt DevTool) error {
 }
 
 func SyncBrands(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/brands.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%sbrands.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -412,7 +406,7 @@ func SyncBrands(dt DevTool) error {
 }
 
 func SyncMysteryCrates(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mystery_crates.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%smystery_crates.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -502,7 +496,7 @@ func SyncMysteryCrates(dt DevTool) error {
 }
 
 func SyncWeaponModel(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_models.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%sweapon_models.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -572,7 +566,7 @@ func SyncWeaponModel(dt DevTool) error {
 }
 
 func SyncWeaponSkins(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_skins.csv", os.O_RDONLY, 0755)
+	f, err := os.OpenFile(fmt.Sprintf("%sweapon_skins.csv", dt.csvPath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
