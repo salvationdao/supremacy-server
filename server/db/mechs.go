@@ -570,6 +570,7 @@ type MechListOpts struct {
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
 	FilterRarities      []string `json:"rarities"`
+	FilterStatuses      []string `json:"statuses"`
 }
 
 type MechListQueueSortOpts struct {
@@ -595,6 +596,11 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -630,15 +636,118 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 		}
 	}
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, qm.Expr(
+			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
+		))
+	}
+	if len(opts.FilterStatuses) > 0 {
+		hasIdleToggled := false
+		hasInBattleToggled := false
+		hasMarketplaceToggled := false
+		hasInQueueToggled := false
+
+		statusFilters := []qm.QueryMod{}
+
+		for _, s := range opts.FilterStatuses {
+			if s == "IDLE" {
+				if hasIdleToggled {
+					continue
+				}
+				hasIdleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`NOT EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				)))
+			} else if s == "BATTLE" {
+				if hasInBattleToggled {
+					continue
+				}
+				hasInBattleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NOT NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			} else if s == "MARKET" {
+				if hasMarketplaceToggled {
+					continue
+				}
+				hasMarketplaceToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _i.%s
+						FROM %s _i
+						WHERE _i.%s = %s
+							AND _i.%s IS NULL
+							AND _i.%s IS NULL
+							AND _i.%s > NOW()
+						LIMIT 1
+					)`,
+					boiler.ItemSaleColumns.ID,
+					boiler.TableNames.ItemSales,
+					boiler.ItemSaleColumns.CollectionItemID,
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+					boiler.ItemSaleColumns.SoldAt,
+					boiler.ItemSaleColumns.DeletedAt,
+					boiler.ItemSaleColumns.EndAt,
+				)))
+			} else if s == "QUEUE" {
+				if hasInQueueToggled {
+					continue
+				}
+				hasInQueueToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			}
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled {
+				statusFilters = []qm.QueryMod{} // we don't need the filtering at this point
+				break
+			}
+		}
+
+		if len(statusFilters) > 0 {
+			queryMods = append(queryMods, qm.Expr(statusFilters...))
+		}
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Label,
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 					xSearch,
 				))
@@ -694,11 +803,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
 
 	// Sort
