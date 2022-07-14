@@ -154,6 +154,7 @@ func (as *AbilitiesSystem) storeBattle(btl *Battle) {
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	factionAbilities := map[uuid.UUID]map[string]*GameAbility{}
+	factionAbilityFloorPrice := db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(10, 18))
 
 	// initialise new gabs ability pool
 	battleAbilityPool := &BattleAbilityPool{
@@ -194,7 +195,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 				// set sups cost to initial price
-				supsCost = decimal.New(100, 18)
+				supsCost = factionAbilityFloorPrice
 			}
 
 			currentSups, err := decimal.NewFromString(ability.CurrentSups)
@@ -250,7 +251,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 					// set sups cost to initial price
-					supsCost = decimal.New(100, 18)
+					supsCost = factionAbilityFloorPrice
 				}
 
 				currentSups, err := decimal.NewFromString(ability.CurrentSups)
@@ -1582,7 +1583,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
 			// set sups cost to initial price
-			supsCost = decimal.New(100, 18)
+			supsCost = as.abilityConfig.BattleAbilityFloorPrice
 		}
 		supsCost = supsCost.RoundDown(0)
 
