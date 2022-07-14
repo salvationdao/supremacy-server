@@ -44,7 +44,6 @@ type Battle struct {
 	arena          *Arena
 	stage          *atomic.Int32
 	BattleID       string        `json:"battleID"`
-	BattleNumber   int           `json:"battleNumber"`
 	MapName        string        `json:"mapName"`
 	WarMachines    []*WarMachine `json:"warMachines"`
 	spawnedAIMux   sync.RWMutex
@@ -282,6 +281,8 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
 		btl.inserted = true
+
+		fmt.Print()
 
 		// insert current users to
 		btl.users.Range(func(user *BattleUser) bool {
