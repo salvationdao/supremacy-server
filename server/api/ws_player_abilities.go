@@ -125,6 +125,12 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(fmt.Errorf("sale of player ability limit has already been reached"), "Purchase failed. This ability has been sold out and is no longer available for purchase.")
 	}
 
+	// Check if user has hit their purchase limit
+	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchaseAbility(userID, spa.ID)
+	if !canPurchase {
+		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
+	}
+
 	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
 		gamelog.L.Error().
@@ -132,7 +138,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(err, "Unable to process player ability purchase, please try again or contract support.")
 	}
 
-	// if price has gone up, tell them
+	// If price has gone up, tell them
 	if spa.CurrentPrice.Round(0).GreaterThan(givenAmount) {
 		gamelog.L.Debug().Str("spa.CurrentPrice", spa.CurrentPrice.String()).Str("givenAmount", givenAmount.String()).Msg("purchase attempt when price increased since user clicked purchase")
 		return terror.Warn(fmt.Errorf("price gone up since purchase attempted"), "Purchase failed. This item is no longer available at this price.")
@@ -205,10 +211,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return err
 	}
 
+	// Attempt to add to user's purchase count
 	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID, spa.ID)
 	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
+		gamelog.L.Warn().Err(err).Str("userID", userID.String()).Str("salePlayerAbilityID", spa.ID).Msg("failed to add to user's purchase count")
 
 		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
 	}
