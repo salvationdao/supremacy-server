@@ -561,3 +561,97 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 
 	return nil
 }
+
+type AvatarListOpts struct {
+	Search   string
+	Filter   *ListFilterRequest
+	Sort     *ListSortRequest
+	PageSize int
+	Page     int
+	OwnerID  string
+}
+
+func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
+	var avatars []*boiler.ProfileAvatar
+
+	fmt.Println("ahhhhhhh")
+	fmt.Println("ahhhhhhh")
+	fmt.Println("ahhhhhhh")
+
+	queryMods := []qm.QueryMod{
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.PlayersProfileAvatars,
+			qm.Rels(boiler.TableNames.PlayersProfileAvatars, boiler.PlayersProfileAvatarColumns.ProfileAvatarID),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.ID),
+		)),
+		qm.Where("players_profile_avatars.player_id = ?", opts.OwnerID),
+	}
+
+	fmt.Println("ahhhhhhh2")
+	fmt.Println("ahhhhhhh2")
+	fmt.Println("ahhhhhhh2")
+
+	total, err := boiler.ProfileAvatars(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	fmt.Println("ahhhhhhh3")
+	fmt.Println("ahhhhhhh3")
+	fmt.Println("ahhhhhhh3")
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.ID),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.Tier),
+		),
+		qm.From(boiler.TableNames.ProfileAvatars),
+	)
+
+	fmt.Println("ahhhhhhh4")
+	fmt.Println("ahhhhhhh4")
+	fmt.Println("ahhhhhhh4")
+	fmt.Println("ahhhhhhh4")
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	fmt.Println("ahhhhhhh5")
+	fmt.Println("ahhhhhhh5")
+	fmt.Println("ahhhhhhh5")
+	fmt.Println("ahhhhhhh5")
+
+	for rows.Next() {
+		av := &boiler.ProfileAvatar{}
+
+		scanArgs := []interface{}{
+			&av.ID,
+			&av.AvatarURL,
+			&av.Tier,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, avatars, err
+		}
+		avatars = append(avatars, av)
+	}
+
+	return total, avatars, nil
+}

@@ -46,8 +46,10 @@ func NewPlayerController(api *API) *PlayerController {
 		API: api,
 	}
 
+	//  secure user profile commands
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateAboutMe, pc.PlayerUpdateAboutMeHandler)
+	api.SecureUserCommand(HubKeyPlayerAvatarList, pc.ProfileAvatarListMeHandler)
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
@@ -1367,4 +1369,54 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+type PlayerAvatarListRequest struct {
+	Payload struct {
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+type PlayerAvatarListResp struct {
+	Total   int64                   `json:"total"`
+	Avatars []*boiler.ProfileAvatar `json:"avatars"`
+}
+
+const HubKeyPlayerAvatarList = "PLAYER:AVATAR:LIST"
+
+func (pc *PlayerController) ProfileAvatarListMeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.AvatarListOpts{
+		Search:   req.Payload.Search,
+		Filter:   req.Payload.Filter,
+		Sort:     req.Payload.Sort,
+		PageSize: req.Payload.PageSize,
+		Page:     req.Payload.Page,
+		OwnerID:  user.ID,
+	}
+
+	total, avatars, err := db.AvatarList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	reply(&PlayerAvatarListResp{
+		Total:   total,
+		Avatars: avatars,
+	})
+	return nil
 }

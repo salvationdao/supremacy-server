@@ -90,9 +90,11 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersFeatures                                    string
+	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
 	Profanities                                        string
+	ProfileAvatars                                     string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
@@ -203,9 +205,11 @@ var TableNames = struct {
 	PlayerStats:                  "player_stats",
 	Players:                      "players",
 	PlayersFeatures:              "players_features",
+	PlayersProfileAvatars:        "players_profile_avatars",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
+	ProfileAvatars:               "profile_avatars",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
