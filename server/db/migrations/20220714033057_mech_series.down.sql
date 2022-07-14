@@ -1,0 +1,4 @@
+DROP TYPE IF EXISTS ITEM_SERIES;
+
+ALTER TABLE blueprint_mechs 
+	DROP COLUMN series;
