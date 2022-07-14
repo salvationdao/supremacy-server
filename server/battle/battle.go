@@ -44,7 +44,6 @@ type Battle struct {
 	arena          *Arena
 	stage          *atomic.Int32
 	BattleID       string        `json:"battleID"`
-	BattleNumber   int           `json:"battleNumber"`
 	MapName        string        `json:"mapName"`
 	WarMachines    []*WarMachine `json:"warMachines"`
 	spawnedAIMux   sync.RWMutex
