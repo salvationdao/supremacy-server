@@ -487,6 +487,25 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				return
 			}
 
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				return
+			}
+
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
