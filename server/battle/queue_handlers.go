@@ -72,6 +72,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
+	if !mech.BattleReady {
+		err := fmt.Errorf("mech is cannot be used")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is not available for queuing")
+		return err
+	}
+
 	if mech.Faction == nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
 		return terror.Error(fmt.Errorf("missing warmachine faction"))
