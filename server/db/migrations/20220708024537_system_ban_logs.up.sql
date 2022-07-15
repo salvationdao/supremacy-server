@@ -1,6 +1,7 @@
 -- insert system battle user
 INSERT INTO players (id, username, is_ai)
-VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true);
+VALUES ('87c60803-b051-4abb-aa60-487104946bd7', 'Battle Arena System', true)
+ON CONFLICT do nothing;
 
 INSERT INTO players (id, username, is_ai)
 VALUES ('7bba7172-932a-4293-9765-ebd0ae98f0ea', 'System Moderator', true);
@@ -55,9 +56,9 @@ SELECT  'PLAYER',
         pp.created_at,
         pp.punish_until,
         pp.related_punish_vote_id,
-        (SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_sups_contribution') = true,
-        (SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_location_select') = true,
-        (SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_chat') = true,
+        COALESCE((SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_sups_contribution'), false),
+        COALESCE((SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_location_select'),false),
+        COALESCE((SELECT true FROM punish_options po where po.id = pp.punish_option_id AND po.key = 'restrict_chat'), false),
         false
 from punished_players pp
 INNER JOIN punish_votes pv on pv.id = pp.related_punish_vote_id;
