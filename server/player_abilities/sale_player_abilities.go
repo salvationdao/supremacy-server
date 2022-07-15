@@ -62,7 +62,11 @@ type SalePlayerAbilitiesSystem struct {
 }
 
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
-	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())), boiler.SalePlayerAbilityWhere.DeletedAt.IsNull()).All(gamedb.StdConn)
+	saleAbilities, err := boiler.SalePlayerAbilities(
+		boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
+		boiler.SalePlayerAbilityWhere.RarityWeight.GTE(0),
+		boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
 	}
@@ -161,7 +165,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			// Price ticker ticks every 5 seconds, updates prices of abilities and refreshes the sale ability list when all abilities on sale have expired
 			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
-				if s.AvailableUntil.Time.After(time.Now()) && !s.DeletedAt.Valid && s.RarityWeight >= 0 {
+				if s.AvailableUntil.Time.After(time.Now()) && s.RarityWeight >= 0 {
 					continue
 				}
 				sID := uuid.FromStringOrNil(s.ID)
@@ -209,13 +213,18 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 					// Find 3 random weighted abilities
 					weightedSaleAbilities := []*boiler.SalePlayerAbility{}
+					attempts := 0
 					for {
+						attempts++
 						w := &boiler.SalePlayerAbility{}
 						err := boiler.NewQuery(
 							qm.SQL(q),
 							qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 						).Bind(nil, gamedb.StdConn, w)
-						if err != nil {
+						if errors.Is(err, sql.ErrNoRows) {
+							gamelog.L.Debug().Err(err).Msg(fmt.Sprintf("couldn't find a random weighted sale ability, retrying. attempts: %d", attempts))
+							continue
+						} else if err != nil {
 							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities", pas.Limit))
 							return
 						}
@@ -228,6 +237,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 							}
 						}
 						if isDuplicate {
+							gamelog.L.Debug().Err(err).Msg(fmt.Sprintf("discarding duplicate random weighted sale ability, retrying. attempts: %d", attempts))
 							continue
 						}
 
