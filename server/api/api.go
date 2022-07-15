@@ -248,7 +248,8 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+
+				s.WS("/mech", battle.HubKeyWarMachineStatUpdated, nil)
 			}))
 
 			// battle arena route ws
