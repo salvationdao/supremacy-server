@@ -191,6 +191,10 @@ ticker:
 					attempts := 0
 					for {
 						attempts++
+						if attempts > 15 {
+							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities in under 15 attempts, aborting", pas.Limit))
+							continue ticker
+						}
 						notIn := ""
 						if len(weightedSaleAbilityIDs) > 0 {
 							notIn += "and Q.id not in (" + strings.Join(weightedSaleAbilityIDs, ",") + ")"
@@ -212,9 +216,10 @@ ticker:
 								Q.available_until,
 								Q.amount_sold,
 								Q.sale_limit,
+								Q.rarity_weight,
 								Q.deleted_at
 							from (
-								select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, deleted_at, sum(rarity_weight) over (order by id) S, R
+								select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, rarity_weight, deleted_at, sum(rarity_weight) over (order by id) S, R
 								from sale_player_abilities spa
 								cross join cte
 								where spa.deleted_at is null and spa.rarity_weight >= 0
