@@ -52,7 +52,8 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
             			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
         				)
 	WHERE ci.owner_id = $1
-  	AND (ci.item_type = 'mech');
+  	AND ci.item_type = 'mech'
+	AND ci.xsyn_locked=false;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -193,7 +194,8 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
             	smc.mystery_crate_type = mc."type"
         	AND smc.faction_id = mc.faction_id
 	WHERE ci.owner_id = $1
-  			AND ci.item_type = 'mystery_crate';
+  			AND ci.item_type = 'mystery_crate'
+			AND ci.xsyn_locked=false;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
