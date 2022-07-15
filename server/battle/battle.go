@@ -281,7 +281,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
 		btl.inserted = true
-
+		
 		// insert current users to
 		btl.users.Range(func(user *BattleUser) bool {
 			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
@@ -1295,10 +1295,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 
 	// Indexes correspond to the game_client_ability_id in the db
 	abilityDetails := make([]*AbilityDetail, 20)
-	// Airstrike
-	abilityDetails[0] = &AbilityDetail{
-		Radius: 2000,
-	}
 	// Nuke
 	abilityDetails[1] = &AbilityDetail{
 		Radius: 5200,
@@ -2098,7 +2094,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = mech.Owner.Username
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%s", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model

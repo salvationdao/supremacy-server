@@ -164,12 +164,12 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-var playerAbilityBucket = leakybucket.NewCollector(1, 1, true)
+var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
 
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	b := playerAbilityBucket.Add(user.ID, 1)
+	b := playerAbilityBucket.Add(user.ID, 2)
 	if b == 0 {
-		return nil
+		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
 	}
 
 	// skip, if current not battle
@@ -471,7 +471,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 
 	if mmc != nil {
 		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+		resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
 		if resp.RemainCooldownSeconds < 0 {
 			resp.RemainCooldownSeconds = 0
 		}
@@ -501,6 +501,8 @@ type MechMoveCommandCreateRequest struct {
 		StartCoords *server.CellLocation `json:"start_coords"`
 	} `json:"payload"`
 }
+
+const MechMoveCooldownSeconds = 5
 
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -544,11 +546,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 	}
 
-	// check mech move command is triggered within 30 seconds
+	// check mech move command is triggered within 5 seconds
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
+		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-MechMoveCooldownSeconds*time.Second)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech move command from db")
@@ -556,7 +558,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	}
 
 	if mmc != nil {
-		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
+		return terror.Error(fmt.Errorf("Command is still cooling down."))
 	}
 
 	now := time.Now()
@@ -608,27 +610,13 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30,
+		RemainCooldownSeconds: MechMoveCooldownSeconds,
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionFired,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
 
 	reply(true)
 
@@ -718,27 +706,13 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionCancel,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
 
 	reply(true)
 

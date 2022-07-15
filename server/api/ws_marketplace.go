@@ -82,20 +82,21 @@ const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"
 type MarketplaceSalesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		UserID             server.UserID       `json:"user_id"`
-		SortDir            db.SortByDir        `json:"sort_dir"`
-		SortBy             string              `json:"sort_by"`
-		FilterRarities     []string            `json:"rarities"`
-		FilterListingTypes []string            `json:"listing_types"`
-		FilterWeaponTypes  []string            `json:"weapon_types"`
-		FilterOwnedBy      []string            `json:"owned_by"`
-		Sold               bool                `json:"sold"`
-		ItemType           string              `json:"item_type"`
-		MinPrice           decimal.NullDecimal `json:"min_price"`
-		MaxPrice           decimal.NullDecimal `json:"max_price"`
-		Search             string              `json:"search"`
-		PageSize           int                 `json:"page_size"`
-		Page               int                 `json:"page"`
+		UserID             server.UserID                   `json:"user_id"`
+		SortDir            db.SortByDir                    `json:"sort_dir"`
+		SortBy             string                          `json:"sort_by"`
+		FilterRarities     []string                        `json:"rarities"`
+		FilterListingTypes []string                        `json:"listing_types"`
+		FilterWeaponTypes  []string                        `json:"weapon_types"`
+		FilterWeaponStats  *db.MarketplaceWeaponStatFilter `json:"weapon_stats"`
+		FilterOwnedBy      []string                        `json:"owned_by"`
+		Sold               bool                            `json:"sold"`
+		ItemType           string                          `json:"item_type"`
+		MinPrice           decimal.NullDecimal             `json:"min_price"`
+		MaxPrice           decimal.NullDecimal             `json:"max_price"`
+		Search             string                          `json:"search"`
+		PageSize           int                             `json:"page_size"`
+		Page               int                             `json:"page"`
 	} `json:"payload"`
 }
 
@@ -124,6 +125,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		req.Payload.FilterRarities,
 		req.Payload.FilterListingTypes,
 		req.Payload.FilterWeaponTypes,
+		req.Payload.FilterWeaponStats,
 		req.Payload.FilterOwnedBy,
 		req.Payload.Sold,
 		req.Payload.MinPrice,
@@ -622,7 +624,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	// Unlock Item
+	// Lock Item
 	collectionItem.LockedToMarketplace = true
 	_, err = collectionItem.Update(tx, boil.Whitelist(
 		boiler.CollectionItemColumns.ID,
@@ -926,17 +928,17 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	l := gamelog.L.With().
+		Str("user_id", user.ID).
+		Str("item_sale_id", req.Payload.ID.String()).Logger()
+
 	// Check whether user can cancel sale item
 	saleItem, err := db.MarketplaceItemSale(req.Payload.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Item not found.")
 	}
 	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_sale_id", req.Payload.ID.String()).
-			Err(err).
-			Msg("Unable to retrieve sale item.")
+		l.Error().Err(err).Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
 	if saleItem.OwnerID != user.ID {
@@ -956,11 +958,50 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			),
 			boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(saleItem.ID),
 			boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
+			qm.Load(boiler.ItemSalesBidHistoryRels.Bidder),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(terror.ErrUnauthorised, "Unable to check last auction bid.")
 		}
 		if lastBid != nil {
+			if lastBid.R == nil || lastBid.R.Bidder == nil {
+				l.Error().Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
+				return terror.Error(fmt.Errorf("unable to find bidder's faction"), errMsg)
+			}
+			factionAccountID, ok := server.FactionUsers[lastBid.R.Bidder.FactionID.String]
+			if !ok {
+				l.Error().Err(err).Str("bidTID", lastBid.BidTXID).Msg("unable to get find faction account")
+				return terror.Error(err, errMsg)
+			}
+			factID := uuid.Must(uuid.FromString(factionAccountID))
+			syndicateBalance := mp.API.Passport.UserBalanceGet(factID)
+			if syndicateBalance.LessThanOrEqual(lastBid.BidPrice) {
+				txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             factID,
+					Amount:               lastBid.BidPrice.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("bid_refunds|%s|%d", lastBid.BidderID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupMarketplace),
+					Description:          fmt.Sprintf("Bid Refund for Player: %s (item sale: %s)", lastBid.BidderID, saleItem.ID),
+					NotSafe:              false,
+				})
+				if err != nil {
+					l.Error().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", lastBid.BidPrice.StringFixed(0)).
+						Err(err).
+						Msg("Could not transfer money from treasury into syndicate account!!")
+					return terror.Error(err, errMsg)
+				}
+				l.Warn().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", lastBid.BidPrice.StringFixed(0)).
+					Str("TXID", txid).
+					Err(err).
+					Msg("Had to transfer funds to the syndicate account")
+			}
+
 			rtxid, err := mp.API.Passport.RefundSupsMessage(lastBid.BidTXID)
 			if err != nil {
 				return terror.Error(err, errMsg)
@@ -971,8 +1012,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			}
 			err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, lastBid.BidderID, decimal.NewNullDecimal(lastBid.BidPrice), saleItem.ID, boiler.TableNames.ItemSales)
 			if err != nil {
-				gamelog.L.Error().
-					Str("item_sale_id", saleItem.ID).
+				l.Error().
 					Str("txid", lastBid.BidTXID).
 					Str("refund_tx_id", rtxid).
 					Err(err).
@@ -996,9 +1036,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	// Log Event
 	err = db.MarketplaceAddEvent(boiler.MarketplaceEventCancelled, user.ID, decimal.NullDecimal{}, req.Payload.ID.String(), boiler.TableNames.ItemSales)
 	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ID.String()).
+		l.Error().
 			Err(err).
 			Msg("Failed to log cancelled sale item event.")
 	}
@@ -1008,7 +1046,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 		boiler.CollectionItemWhere.ID.EQ(saleItem.CollectionItemID),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("Failed to get collection item from db")
+		l.Error().Str("collection item id", saleItem.CollectionItemID).Err(err).Msg("Failed to get collection item from db")
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
@@ -1361,6 +1399,39 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return err
 	}
 	for _, b := range bids {
+		factionAccountID, ok := server.FactionUsers[b.FactionID.String]
+		if !ok {
+			l.Error().Err(err).Str("bidTID", b.TXID).Msg("unable to get find faction account")
+		}
+		factID := uuid.Must(uuid.FromString(factionAccountID))
+		syndicateBalance := mp.API.Passport.UserBalanceGet(factID)
+		if syndicateBalance.LessThanOrEqual(b.Amount) {
+			txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+				ToUserID:             factID,
+				Amount:               b.Amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("bid_refunds|%s|%d", b.BidderID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupMarketplace),
+				Description:          fmt.Sprintf("Bid Refund for Player ID: %s (item sale: %s)", b.BidderID, saleItem.ID),
+				NotSafe:              false,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", b.Amount.StringFixed(0)).
+					Err(err).
+					Msg("Could not transfer money from treasury into syndicate account!!")
+				continue
+			}
+			gamelog.L.Warn().
+				Str("Faction ID", factionAccountID).
+				Str("Amount", b.Amount.StringFixed(0)).
+				Str("TXID", txid).
+				Err(err).
+				Msg("Had to transfer funds to the syndicate account")
+		}
+
 		_, err = mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
 			l.Error().Str("txID", b.TXID).Err(err).Msg("error refunding bids")
@@ -1761,6 +1832,39 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 
 	// Refund other bids
 	for _, b := range refundBids {
+		factionAccountID, ok := server.FactionUsers[b.FactionID.String]
+		if !ok {
+			l.Error().Err(err).Str("bidTID", b.TXID).Msg("unable to get find faction account")
+		}
+		factID := uuid.Must(uuid.FromString(factionAccountID))
+		syndicateBalance := mp.API.Passport.UserBalanceGet(factID)
+		if syndicateBalance.LessThanOrEqual(b.Amount) {
+			txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+				ToUserID:             factID,
+				Amount:               b.Amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("bid_refunds|%s|%d", b.BidderID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupMarketplace),
+				Description:          fmt.Sprintf("Bid Refund for Player ID: %s (item sale: %s)", b.BidderID, saleItem.ID),
+				NotSafe:              false,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", b.Amount.StringFixed(0)).
+					Err(err).
+					Msg("Could not transfer money from treasury into syndicate account!!")
+				continue
+			}
+			gamelog.L.Warn().
+				Str("Faction ID", factionAccountID).
+				Str("Amount", b.Amount.StringFixed(0)).
+				Str("TXID", txid).
+				Err(err).
+				Msg("Had to transfer funds to the syndicate account")
+		}
+
 		refundTxID, err := mp.API.Passport.RefundSupsMessage(b.TXID)
 		if err != nil {
 			l.Error().Err(err).Str("bidTID", b.TXID).Msg("unable to refund cancelled bid")

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"server"
 	"server/battle"
@@ -16,8 +15,13 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/xsyn_rpcclient"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
+
+	goaway "github.com/TwiN/go-away"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -42,8 +46,13 @@ func NewPlayerController(api *API) *PlayerController {
 		API: api,
 	}
 
+	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
+	api.SecureUserCommand(HubKeyPlayerUpdateAboutMe, pc.PlayerUpdateAboutMeHandler)
+
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
@@ -63,6 +72,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerRankGet, pc.PlayerRankGet)
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
+
+	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 
 	return pc
 }
@@ -1042,7 +1053,6 @@ func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, use
 
 	reply(prefs)
 	return nil
-
 }
 
 const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
@@ -1147,4 +1157,274 @@ func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, 
 
 	reply(prefs)
 	return nil
+}
+
+type PlayerProfileRequest struct {
+	Payload struct {
+		PlayerGID string `json:"player_gid"`
+	} `json:"payload"`
+}
+
+type PublicPlayer struct {
+	ID        string      `json:"id"`
+	Username  null.String `json:"username"`
+	Gid       int         `json:"gid"`
+	FactionID null.String `json:"faction_id"`
+	AboutMe   null.String `json:"about_me"`
+	Rank      string      `json:"rank"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+type PlayerProfileResponse struct {
+	*PublicPlayer `json:"player"`
+	Stats         *boiler.PlayerStat      `json:"stats"`
+	Faction       *boiler.Faction         `json:"faction"`
+	ActiveLog     *boiler.PlayerActiveLog `json:"active_log"`
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
+
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	gid, err := strconv.Atoi(req.Payload.PlayerGID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Err(err).Msg("unable to convert player gid to int")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get player
+	player, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(gid),
+
+		// load faction
+		qm.Load(boiler.PlayerRels.Faction),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Msg("unable to get player")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get stats
+	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get active log
+	activeLog, err := boiler.PlayerActiveLogs(
+		boiler.PlayerActiveLogWhere.PlayerID.EQ(player.ID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerActiveLogColumns.ActiveAt)),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get player's active log")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// set faction
+	var faction *boiler.Faction
+	if player.R != nil && player.R.Faction != nil {
+		faction = player.R.Faction
+	}
+	reply(PlayerProfileResponse{
+		PublicPlayer: &PublicPlayer{
+			ID:        player.ID,
+			Username:  player.Username,
+			Gid:       player.Gid,
+			FactionID: player.FactionID,
+			AboutMe:   player.AboutMe,
+			Rank:      player.Rank,
+			CreatedAt: player.CreatedAt,
+		},
+		Stats:     stats,
+		Faction:   faction,
+		ActiveLog: activeLog,
+	})
+	return nil
+}
+
+type PlayerUpdateUsernameRequest struct {
+	Payload struct {
+		PlayerID    string `json:"player_id"`
+		NewUsername string `json:"new_username"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateUsername = "PLAYER:UPDATE:USERNAME"
+
+func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating username, try again or contact support."
+	req := &PlayerUpdateUsernameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
+
+	// check profanity/ check if valid username
+	err = IsValidUsername(req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
+	}
+	user.Username = null.StringFrom(req.Payload.NewUsername)
+	user.UpdatedAt = time.Now()
+
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// update in xsyn
+	err = pc.API.Passport.UserUpdateUsername(user.ID, req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	reply(user.Username.String)
+	return nil
+}
+
+type PlayerUpdateAboutMeRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+		AboutMe  string `json:"about_me"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateAboutMe = "PLAYER:UPDATE:ABOUT_ME"
+
+func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating about me, try again or contact support."
+	req := &PlayerUpdateAboutMeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
+	// check profanity/ check if valid about me
+	err = IsValidAboutMe(req.Payload.AboutMe)
+	if err != nil {
+		return terror.Error(err, "Invalid about me, must be between 3 - 400 characters long, cannot contain profanities.")
+
+	}
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	user.AboutMe = null.StringFrom(req.Payload.AboutMe)
+	user.UpdatedAt = time.Now()
+	_, err = user.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.AboutMe,
+		boiler.PlayerColumns.UpdatedAt,
+	))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	resp := &PublicPlayer{
+		ID:        user.ID,
+		Username:  user.Username,
+		Gid:       user.Gid,
+		FactionID: user.FactionID,
+		AboutMe:   user.AboutMe,
+		Rank:      user.Rank,
+		CreatedAt: user.CreatedAt,
+	}
+	reply(resp)
+	return nil
+}
+
+func IsValidUsername(username string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 15 characters
+	// Cannot contain profanity
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(username)) {
+		hasDisallowedSymbol = true
+	}
+
+	if TrimUsername(username) == "" {
+		return terror.Error(fmt.Errorf("username cannot be empty"), "Invalid username. Your username cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(username)) < 3 {
+		return terror.Error(fmt.Errorf("username must be at least characters long"), "Invalid username. Your username must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(username)) > 30 {
+		return terror.Error(fmt.Errorf("username cannot be more than 30 characters long"), "Invalid username. Your username cannot be more than 30 characters long.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(fmt.Errorf("username cannot contain disallowed symbols"), "Invalid username. Your username contains a disallowed symbol.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(username) {
+		return terror.Error(fmt.Errorf("username contains profanity"), "Invalid username. Your username contains profanity.")
+	}
+
+	return nil
+}
+
+func IsValidAboutMe(aboutMe string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 400 characters
+	// Cannot contain profanity
+
+	if TrimUsername(aboutMe) == "" {
+		return terror.Error(fmt.Errorf("about me cannot be empty"), "Invalid about me. Your about me cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) < 3 {
+		return terror.Error(fmt.Errorf("about me must be at least 3 characters long"), "Invalid about me. Your about me must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) > 400 {
+		return terror.Error(fmt.Errorf("about me cannot be more than 400 characters long"), "Invalid about me. Your about me cannot be more than 30 characters long.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(aboutMe) {
+		return terror.Error(fmt.Errorf("about me contains profanity"), "Invalid about me. Your about me contains profanity.")
+	}
+
+	return nil
+}
+
+// TrimUsername removes misuse of invisible characters.
+func TrimUsername(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	// Enforce one Space like characters between words
+	output = strings.Join(strings.Fields(output), " ")
+
+	return output
 }

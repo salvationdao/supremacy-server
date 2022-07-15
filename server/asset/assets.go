@@ -3,6 +3,7 @@ package asset
 import (
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -11,9 +12,6 @@ import (
 	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"sort"
-	"strings"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -45,20 +43,22 @@ func UpdateLatestHandledTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, 
 	db.PutInt(db.KeyLastTransferEventID, int(eventID))
 }
 
-func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcclient.TransferEvent, skipCheck bool) {
+func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcclient.TransferEvent, skipCheck bool) []string {
+	attachedTransferedAssets := []string{}
+
 	if !skipCheck {
 		lastTransferEvent := db.GetIntWithDefault(db.KeyLastTransferEventID, 0)
 
 		if int64(lastTransferEvent+1) < te.TransferEventID {
 			SyncAssetOwners(rpcClient)
-			return
+			return attachedTransferedAssets
 		}
 	}
 
 	exists, err := boiler.Players(boiler.PlayerWhere.ID.EQ(te.ToUserID)).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to check if user exists in transfer event")
-		return
+		return attachedTransferedAssets
 	}
 
 	if !exists {
@@ -66,12 +66,12 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 		user, err := rpcClient.UserGet(userUUID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get new user in transfer event")
-			return
+			return attachedTransferedAssets
 		}
 		_, err = db.PlayerRegister(uuid.UUID(userUUID), user.Username, uuid.FromStringOrNil(user.FactionID.String), common.HexToAddress(user.PublicAddress.String))
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to get register new user in transfer event")
-			return
+			return attachedTransferedAssets
 		}
 	}
 
@@ -87,70 +87,34 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to start tx HandleTransferEvent")
-		return
+		return attachedTransferedAssets
 	}
 	defer tx.Rollback()
 
 	colItem, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(te.AssetHash)).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to transfer collection item")
-		return
+		return attachedTransferedAssets
 	}
 
 	switch colItem.ItemType {
 	case boiler.ItemTypeWeapon:
-		err = TransferWeaponToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden,
-			func(colItems []*boiler.CollectionItem) error {
-				for _, colItem := range colItems {
-					err := rpcClient.TransferAsset(
-						te.ToUserID,
-						te.FromUserID,
-						colItem.Hash,
-						te.TransferTXID,
-						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-							UpdateLatestHandledTransferEvent(rpcClient, eventID)
-						},
-					)
-					if err != nil && strings.Contains(err.Error(), "asset not exist") {
-						gamelog.L.Warn().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-					} else if err != nil {
-						gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-						return err
-					}
-				}
-				return nil
-			},
-		)
+		relatedColItems, err := TransferWeaponToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to TransferWeaponToNewOwner")
-			return
+			return attachedTransferedAssets
+		}
+		for _, item := range relatedColItems {
+			attachedTransferedAssets = append(attachedTransferedAssets, item.Hash)
 		}
 	case boiler.ItemTypeMech:
-		err = TransferMechToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden,
-			func(colItems []*boiler.CollectionItem) error {
-				for _, colItem := range colItems {
-					err := rpcClient.TransferAsset(
-						te.ToUserID,
-						te.FromUserID,
-						colItem.Hash,
-						te.TransferTXID,
-						func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
-							UpdateLatestHandledTransferEvent(rpcClient, eventID)
-						},
-					)
-					if err != nil && strings.Contains(err.Error(), "asset not exist") {
-						gamelog.L.Warn().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-					} else if err != nil {
-						gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to transfer attached asset on xsyn TransferWeaponToNewOwner")
-						return err
-					}
-				}
-				return nil
-			},
-		)
+		relatedColItems, err := TransferMechToNewOwner(tx, colItem.ItemID, te.ToUserID, xsynLocked, assetHidden)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to TransferMechToNewOwner")
-			return
+			return attachedTransferedAssets
+		}
+		for _, item := range relatedColItems {
+			attachedTransferedAssets = append(attachedTransferedAssets, item.Hash)
 		}
 	case boiler.ItemTypeWeaponSkin, boiler.ItemTypePowerCore, boiler.ItemTypeMechAnimation, boiler.ItemTypeMysteryCrate, boiler.ItemTypeMechSkin, boiler.ItemTypeUtility:
 		colItem.OwnerID = te.ToUserID
@@ -158,20 +122,22 @@ func HandleTransferEvent(rpcClient *xsyn_rpcclient.XsynXrpcClient, te *xsyn_rpcc
 		_, err = colItem.Update(tx, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("transfer event", te).Msg("failed to HandleTransferEvent")
-			return
+			return attachedTransferedAssets
 		}
 
 	default:
 		gamelog.L.Error().Err(fmt.Errorf("unhanded item type transfer")).Interface("transfer event", te).Msg("failed to transfer asset")
-		return
+		return attachedTransferedAssets
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("tx failed collection item")
-		return
+		return attachedTransferedAssets
 	}
 	db.PutInt(db.KeyLastTransferEventID, int(te.TransferEventID))
+
+	return attachedTransferedAssets
 }
 
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
