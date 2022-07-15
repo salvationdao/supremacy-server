@@ -266,6 +266,7 @@ func NewChatController(api *API) *ChatController {
 	}
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
+	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
 
 	go api.MessageBroadcaster()
 
@@ -627,9 +628,9 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	chatHistory.Metadata = jsonTextMsgMeta
 
-	chatHistory.Update(gamedb.StdConn, boil.Infer())
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		return terror.Error(err, "Could not marshal json")
+		return terror.Error(err, "Could not update chat history")
 	}
 
 	reply(true)
