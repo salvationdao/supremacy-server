@@ -656,6 +656,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		hasInBattleToggled := false
 		hasMarketplaceToggled := false
 		hasInQueueToggled := false
+		hasBattleReadyToggled := false
 
 		statusFilters := []qm.QueryMod{}
 
@@ -738,9 +739,33 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 					boiler.BattleQueueColumns.BattleID,
 				)))
+			} else if s == "BATTLE_READY" {
+				if hasBattleReadyToggled {
+					continue
+				}
+				hasBattleReadyToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT 1 
+						FROM %s _bm
+							LEFT JOIN %s _a ON _a.%s = _bm.%s
+						WHERE _bm.%s = %s 
+							AND (
+								_a.%s IS NULL
+								OR _a.%s <= NOW()
+							)
+					)`,
+					boiler.TableNames.BlueprintMechs,
+					boiler.TableNames.Availabilities,
+					boiler.AvailabilityColumns.ID,
+					boiler.BlueprintMechColumns.AvailabilityID,
+					boiler.BlueprintMechColumns.ID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+					boiler.AvailabilityColumns.ID,
+					boiler.AvailabilityColumns.AvailableAt,
+				)))
 			}
-			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled {
-				statusFilters = []qm.QueryMod{} // we don't need the filtering at this point
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled && hasBattleReadyToggled {
 				break
 			}
 		}
