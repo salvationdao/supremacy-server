@@ -194,6 +194,7 @@ serve-test:
 .PHONY: sync
 sync:
 	cd server && go run cmd/gameserver/main.go sync
+	rm -rf ./server/devtool/temp-sync
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -246,9 +247,9 @@ dev-sync-data:
 	cd ./server/devtool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b alyssa/renameSkins
-	cd ../../../server
-	go run ./devtool/main.go -sync_mech
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ../../../
+	make sync
 	rm -rf ./devtool/temp-sync
 
 .PHONY: dev-sync-data-windows

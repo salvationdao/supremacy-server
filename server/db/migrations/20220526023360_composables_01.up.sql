@@ -30,9 +30,6 @@ ALTER SEQUENCE collection_limited_release RESTART WITH 1;
 CREATE SEQUENCE IF NOT EXISTS collection_consumables AS BIGINT;
 ALTER SEQUENCE collection_consumables RESTART WITH 1;
 
-DROP TYPE IF EXISTS COLLECTION;
-CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
-
 DROP TYPE IF EXISTS ITEM_TYPE;
 CREATE TYPE ITEM_TYPE AS ENUM ('utility', 'weapon', 'mech', 'mech_skin', 'mech_animation', 'power_core');
 
@@ -51,11 +48,6 @@ CREATE TABLE collection_items
     xsyn_locked     BOOL             NOT NULL DEFAULT FALSE,
     UNIQUE (collection_slug, token_id)
 );
-
-DROP TYPE IF EXISTS WEAPON_TYPE;
-CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
-    'Machine Gun', 'Flamethrower', 'Missile Launcher', 'Laser Beam',
-    'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword');
 
 
 
@@ -110,21 +102,6 @@ WHERE model = 'XFVS';
 /*
   ENERGY CORES
  */
-
-CREATE TABLE blueprint_power_cores
-(
-    id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    collection    COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    label         TEXT        NOT NULL,
-    size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    capacity      NUMERIC     NOT NULL DEFAULT 0,
-    max_draw_rate NUMERIC     NOT NULL DEFAULT 0,
-    recharge_rate NUMERIC     NOT NULL DEFAULT 0,
-    armour        NUMERIC     NOT NULL DEFAULT 0,
-    max_hitpoints NUMERIC     NOT NULL DEFAULT 0,
-    tier          TEXT        NOT NULL DEFAULT 'MEGA',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE power_cores
 (
@@ -491,9 +468,6 @@ CREATE TABLE weapon_ammo
 
 
 --  insert the energy cores lazily
-INSERT INTO blueprint_power_cores (id, label, "size", capacity, max_draw_rate, recharge_rate, armour,
-                                   max_hitpoints, tier)
-VALUES ('62e197a4-f45e-4034-ac0a-3e625a6770d7', 'Standard Energy Core', 'SMALL', 1000, 100, 100, 0, 1000, 'MEGA');
 
 WITH mechs AS (SELECT c.id, m.owner_id
                FROM chassis c

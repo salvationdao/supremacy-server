@@ -17,10 +17,15 @@ type DevTool struct {
 }
 
 func SyncTool(dt *DevTool) error {
-	//RemoveFKContraints(dt)
-	//SyncFactions(dt)
-	//SyncBrands(dt)
-	err := SyncMechModels(dt)
+	err := SyncFactions(dt)
+	if err != nil {
+		return err
+	}
+	err = SyncBrands(dt)
+	if err != nil {
+		return err
+	}
+	err = SyncMechModels(dt)
 	if err != nil {
 		return err
 	}
@@ -29,11 +34,21 @@ func SyncTool(dt *DevTool) error {
 		return err
 	}
 	//SyncMysteryCrates(dt)
+	err = SyncWeaponSkins(dt)
+	if err != nil {
+		return err
+	}
 	err = SyncWeaponModel(dt)
 	if err != nil {
 		return err
 	}
-	err = SyncWeaponSkins(dt)
+
+	err = SyncBattleAbilities(dt)
+	if err != nil {
+		return err
+	}
+
+	err = SyncPowerCores(dt)
 	if err != nil {
 		return err
 	}
@@ -641,5 +656,157 @@ func SyncWeaponSkins(dt *DevTool) error {
 	}
 
 	fmt.Println("Finish syncing weapon skins")
+	return nil
+}
+
+func SyncBattleAbilities(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%sbattle_abilities.csv", dt.FilePath), os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var BattleAbilities []types.BattleAbility
+	for _, record := range records {
+		battleAbility := &types.BattleAbility{
+			ID:               record[0],
+			Label:            record[1],
+			CoolDownDuration: record[2],
+			Description:      record[3],
+		}
+
+		BattleAbilities = append(BattleAbilities, *battleAbility)
+	}
+
+	for _, battleAbility := range BattleAbilities {
+		_, err = dt.DB.Exec(`
+			INSERT INTO battle_abilities(id, label, cooldown_duration_second, description)
+			VALUES ($1,$2,$3,$4)
+			ON CONFLICT (id)
+			DO 
+			    UPDATE SET id=$1, label=$2, cooldown_duration_second=$3, description=$4;
+		`, battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
+		if err != nil {
+			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
+			continue
+		}
+	}
+
+	fmt.Println("Finish syncing battle abilities")
+
+	return nil
+}
+
+func SyncPowerCores(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath), os.O_RDONLY, 0755)
+	if err != nil {
+		log.Fatal("CANT OPEN FILE")
+		return err
+	}
+
+	defer f.Close()
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var PowerCores []types.PowerCores
+	for _, record := range records {
+		powerCore := &types.PowerCores{
+			ID:               record[0],
+			Collection:       record[1],
+			Label:            record[2],
+			Size:             record[3],
+			Capacity:         record[4],
+			MaxDrawRate:      record[5],
+			RechargeRate:     record[6],
+			Armour:           record[7],
+			MaxHitpoints:     record[8],
+			Tier:             record[9],
+			ImageUrl:         record[11],
+			CardAnimationUrl: record[12],
+			AvatarUrl:        record[13],
+			LargeImageUrl:    record[14],
+			BackgroundColor:  record[15],
+			AnimationUrl:     record[16],
+			YoutubeUrl:       record[17],
+		}
+
+		PowerCores = append(PowerCores, *powerCore)
+	}
+
+	for _, powerCore := range PowerCores {
+		imageURL := &powerCore.ImageUrl
+		if powerCore.ImageUrl == "" {
+			imageURL = nil
+		}
+
+		cardAnimationURL := &powerCore.CardAnimationUrl
+		if powerCore.CardAnimationUrl == "" {
+			cardAnimationURL = nil
+		}
+
+		avatarURL := &powerCore.AvatarUrl
+		if powerCore.AvatarUrl == "" {
+			avatarURL = nil
+		}
+
+		largeImageURL := &powerCore.LargeImageUrl
+		if powerCore.LargeImageUrl == "" {
+			largeImageURL = nil
+		}
+
+		backgroundColor := &powerCore.BackgroundColor
+		if powerCore.BackgroundColor == "" {
+			backgroundColor = nil
+		}
+
+		animationURL := &powerCore.AnimationUrl
+		if powerCore.AnimationUrl == "" {
+			animationURL = nil
+		}
+
+		youtubeURL := &powerCore.YoutubeUrl
+		if powerCore.YoutubeUrl == "" {
+			youtubeURL = nil
+		}
+
+		_, err = dt.DB.Exec(`
+			INSERT INTO blueprint_power_cores(id, collection, label, size, capacity, max_draw_rate, recharge_rate, armour, max_hitpoints, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+			ON CONFLICT (id)
+			DO 
+			    UPDATE SET id=$1, collection=$2, label=$3, size=$4, capacity=$5, max_draw_rate=$6, recharge_rate=$7, armour=$8, max_hitpoints=$9, tier=$10, image_url=$11, card_animation_url=$12, avatar_url=$13, large_image_url=$14, background_color=$15, animation_url=$16, youtube_url=$17;
+		`, powerCore.ID, powerCore.Collection, powerCore.Label, powerCore.Size, powerCore.Capacity, powerCore.MaxDrawRate, powerCore.RechargeRate, powerCore.Armour, powerCore.MaxHitpoints, powerCore.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL)
+		if err != nil {
+			fmt.Println(err.Error()+powerCore.ID, powerCore.Collection, powerCore.Label)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+powerCore.ID, powerCore.Collection, powerCore.Label)
+	}
+
+	fmt.Println("Finish syncing power cores")
+
 	return nil
 }

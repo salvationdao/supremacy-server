@@ -6,15 +6,6 @@ CREATE TABLE battle_queue (
     battle_id UUID NULL references battles (id)
 );
 
-ALTER TABLE factions
-    ADD COLUMN primary_color TEXT NOT NULL default '#000000',
-    ADD COLUMN secondary_color TEXT NOT NULL default '#ffffff',
-    ADD COLUMN background_color TEXT NOT NULL default '#0D0D0D';
-
-UPDATE factions SET primary_color = '#C24242', secondary_color = '#FFFFFF', background_color = '#120E0E' WHERE id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
-UPDATE factions SET primary_color = '#428EC1', secondary_color = '#FFFFFF', background_color = '#080C12' WHERE id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
-UPDATE factions SET primary_color = '#FFFFFF', secondary_color = '#000000', background_color = '#0D0D0D' WHERE id = '880db344-e405-428d-84e5-6ebebab1fe6d';
-
 DROP TYPE IF EXISTS BATTLE_EVENT;
 CREATE TYPE BATTLE_EVENT AS ENUM ('killed', 'spawned_ai', 'kill','ability_triggered');
 

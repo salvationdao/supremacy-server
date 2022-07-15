@@ -12,11 +12,22 @@ CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
 DROP TYPE IF EXISTS COLLECTION;
 CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
 
+CREATE TABLE IF NOT EXISTS mech_models
+(
+    id                      uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
+    label                   text                                               NOT NULL,
+    created_at              timestamp with time zone DEFAULT now()             NOT NULL,
+    default_chassis_skin_id uuid                                               NOT NULL REFERENCES blueprint_mech_skin(id),
+    brand_id                uuid,
+    mech_type               MECH_TYPE
+);
+
+
 CREATE TABLE IF NOT EXISTS blueprint_mech_skin
 (
     id                 uuid PRIMARY KEY         DEFAULT gen_random_uuid()   NOT NULL,
     collection         COLLECTION               DEFAULT 'supremacy-general' NOT NULL,
-    mech_model         uuid                                                 NOT NULL,
+    mech_model         uuid                                                 NOT NULL REFERENCES mech_models(id),
     label              text                                                 NOT NULL,
     tier               text                     DEFAULT 'MEGA'::text        NOT NULL,
     image_url          text,
@@ -88,9 +99,12 @@ CREATE TABLE IF NOT EXISTS blueprint_weapon_skin
     animation_url      text,
     youtube_url        text,
     collection         text                     DEFAULT 'supremacy-general' NOT NULL,
-    weapon_model_id    uuid                                                 NOT NULL REFERENCES weapon_models (id),
+    weapon_model_id    uuid                                                 NOT NULL,
     stat_modifier      numeric(8, 0)
 );
+
+-- ALTER TABLE weapon_models
+--     ADD FOREIGN KEY ( default_skin_id) REFERENCES blueprint_weapon_skin(id);
 
 CREATE TABLE factions
 (
@@ -150,15 +164,6 @@ CREATE TABLE IF NOT EXISTS game_abilities
     location_select_type   LOCATION_SELECT_TYPE_ENUM DEFAULT 'LOCATION_SELECT' NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS mech_models
-(
-    id                      uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
-    label                   text                                               NOT NULL,
-    created_at              timestamp with time zone DEFAULT now()             NOT NULL,
-    default_chassis_skin_id uuid                                               NOT NULL,
-    brand_id                uuid,
-    mech_type               MECH_TYPE
-);
 
 DROP TYPE IF EXISTS CRATE_TYPE;
 CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
@@ -170,7 +175,7 @@ CREATE TABLE IF NOT EXISTS storefront_mystery_crates
     price              numeric(28, 0)                                     NOT NULL,
     amount             integer                                            NOT NULL,
     amount_sold        integer                  DEFAULT 0                 NOT NULL,
-    faction_id         uuid                                               NOT NULL,
+    faction_id         uuid                                               NOT NULL REFERENCES factions(id),
     deleted_at         timestamp with time zone,
     updated_at         timestamp with time zone DEFAULT now()             NOT NULL,
     created_at         timestamp with time zone DEFAULT now()             NOT NULL,

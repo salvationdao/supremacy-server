@@ -93,6 +93,28 @@ type WeaponSkin struct {
 }
 
 type BattleAbility struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+	ID               string `json:"id"`
+	Label            string `json:"label"`
+	CoolDownDuration string `json:"cool_down_duration"`
+	Description      string `json:"description"`
+}
+
+type PowerCores struct {
+	ID               string `json:"id"`
+	Collection       string `json:"collection"`
+	Label            string `json:"label"`
+	Size             string `json:"size"`
+	Capacity         string `json:"capacity"`
+	MaxDrawRate      string `json:"max_draw_rate"`
+	RechargeRate     string `json:"recharge_rate"`
+	Armour           string `json:"armour"`
+	MaxHitpoints     string `json:"max_hitpoints"`
+	Tier             string `json:"tier"`
+	ImageUrl         string `json:"image_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	BackgroundColor  string `json:"background_color"`
+	AnimationUrl     string `json:"animation_url"`
+	YoutubeUrl       string `json:"youtube_url"`
 }

@@ -1,16 +1,3 @@
-/*
-  WEAPON SKINS
- */
-
-CREATE TABLE blueprint_weapon_skin
-(
-    id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    label       TEXT        NOT NULL,
-    weapon_type WEAPON_TYPE NOT NULL,
-    tier        TEXT        NOT NULL DEFAULT 'MEGA',
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE weapon_skin
 (
     id           UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
