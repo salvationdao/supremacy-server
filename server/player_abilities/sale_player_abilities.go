@@ -282,7 +282,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					pas.ResetUserPurchaseCounts()
 
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
+					ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
 						NextRefreshTime              *time.Time                `json:"next_refresh_time"`
 						RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
 						SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
@@ -314,7 +314,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
@@ -334,13 +334,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability price
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
 				})
 
 				// Broadcast updated sale ability sold amount
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
 					ID:         saleAbility.ID,
 					AmountSold: saleAbility.AmountSold,
 				})

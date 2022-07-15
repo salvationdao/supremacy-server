@@ -1,9 +1,21 @@
 package api
 
 import (
-	"github.com/ninja-syndicate/ws"
+	"context"
 	"server"
+
+	"github.com/ninja-syndicate/ws"
 )
+
+func MustLogin(ctx context.Context) bool {
+	// get user from xsyn service
+	_, err := server.RetrieveUser(ctx)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
 
 func (api *API) Command(key string, fn ws.CommandFunc) {
 	api.Commander.Command(key, fn)

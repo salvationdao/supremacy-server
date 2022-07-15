@@ -407,13 +407,22 @@ func (as *AbilitiesSystem) GetAbilityDropRate(dropRate decimal.Decimal) map[stri
 			return m
 		}
 
+		aiCount := make(map[string]int)
+		aiCount[server.RedMountainFactionID] = 0
+		aiCount[server.BostonCyberneticsFactionID] = 0
+		aiCount[server.ZaibatsuFactionID] = 0
 		for _, p := range ps {
-			if !p.IsAi {
+			if p.IsAi {
 				continue
 			}
-			// freeze drop rate if there is an AI mech
-			if p.FactionID.Valid {
-				m[p.FactionID.String] = decimal.NewFromInt(1)
+
+			aiCount[p.FactionID.String] += 1
+		}
+
+		for factionID, count := range aiCount {
+			// freeze drop rate if all the mech is  AI
+			if count == 0 {
+				m[factionID] = decimal.NewFromInt(1)
 			}
 		}
 	}
