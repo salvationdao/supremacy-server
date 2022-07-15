@@ -1,77 +1,48 @@
-package main
+package devtool
 
 import (
 	"database/sql"
 	"encoding/csv"
-	"flag"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/volatiletech/null/v8"
 	"log"
-	"net/url"
 	"os"
 	"server/devtool/types"
 	"strconv"
 )
 
 type DevTool struct {
-	db      *sql.DB
-	csvPath string
+	DB       *sql.DB
+	FilePath string
 }
 
-func main() {
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		log.Fatal("Only works in dev and staging environment")
-	}
-
-	syncMech := flag.Bool("sync_mech", false, "Sync mech skins and models with staging data")
-	csvPath := flag.String("path-file", "./devtool/temp-sync/supremacy-static-data/", "Path to csvs")
-
-	flag.Parse()
-	fmt.Println(*syncMech)
-
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		"gameserver",
-		"dev",
-		"localhost",
-		"5437",
-		"gameserver",
-		params.Encode(),
-	)
-	cfg, err := pgx.ParseConfig(connString)
+func SyncTool(dt *DevTool) error {
+	//RemoveFKContraints(dt)
+	//SyncFactions(dt)
+	//SyncBrands(dt)
+	err := SyncMechModels(dt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	conn := stdlib.OpenDB(*cfg)
+	err = SyncMechSkins(dt)
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+	//SyncMysteryCrates(dt)
+	err = SyncWeaponModel(dt)
+	if err != nil {
+		return err
+	}
+	err = SyncWeaponSkins(dt)
+	if err != nil {
+		return err
 	}
 
-	dt := DevTool{
-		db:      conn,
-		csvPath: *csvPath,
-	}
-
-	if syncMech != nil && *syncMech {
-		//RemoveFKContraints(dt)
-		SyncFactions(dt)
-		SyncBrands(dt)
-		SyncMechModels(dt)
-		SyncMechSkins(dt)
-		//SyncMysteryCrates(dt)
-		SyncWeaponModel(dt)
-		SyncWeaponSkins(dt)
-	}
-
-	fmt.Println("Finish syncing static data")
+	return nil
 }
 
 func RemoveFKContraints(dt DevTool) error {
-	_, err := dt.db.Exec(
+	_, err := dt.DB.Exec(
 		`
 			ALTER TABLE mech_models DROP CONSTRAINT mech_model_default_chassis_skin_id_fkey;
 			ALTER TABLE mech_models ADD CONSTRAINT mech_model_default_chassis_skin_id_fkey FOREIGN KEY (default_chassis_skin_id) REFERENCES blueprint_mech_skin(id) ON UPDATE CASCADE;
@@ -128,8 +99,8 @@ func RemoveFKContraints(dt DevTool) error {
 	return nil
 }
 
-func SyncMechModels(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mech_models.csv", os.O_RDONLY, 0755)
+func SyncMechModels(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%smech_models.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -168,7 +139,7 @@ func SyncMechModels(dt DevTool) error {
 			brandID = nil
 		}
 
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO mech_models (id, label, default_chassis_skin_id, brand_id, mech_type)
 			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (id)
@@ -188,8 +159,8 @@ func SyncMechModels(dt DevTool) error {
 	return nil
 }
 
-func SyncMechSkins(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mech_skins.csv", os.O_RDONLY, 0755)
+func SyncMechSkins(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%smech_skins.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -271,7 +242,7 @@ func SyncMechSkins(dt DevTool) error {
 			youtubeURL = nil
 		}
 
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO blueprint_mech_skin(id,collection, mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url, avatar_url,background_color, youtube_url, mech_type, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)
@@ -292,8 +263,8 @@ func SyncMechSkins(dt DevTool) error {
 
 }
 
-func SyncFactions(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/factions.csv", os.O_RDONLY, 0755)
+func SyncFactions(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%sfactions.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -339,7 +310,7 @@ func SyncFactions(dt DevTool) error {
 		if faction.GuildID == "" {
 			guildID = nil
 		}
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO factions (id, label, guild_id, primary_color, secondary_color, background_color, logo_url, background_url, description)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 			ON CONFLICT (id)
@@ -360,8 +331,8 @@ func SyncFactions(dt DevTool) error {
 	return nil
 }
 
-func SyncBrands(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/brands.csv", os.O_RDONLY, 0755)
+func SyncBrands(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%sbrands.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -392,7 +363,7 @@ func SyncBrands(dt DevTool) error {
 	}
 
 	for _, brand := range Brands {
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO brands(id, label, faction_id)
 			VALUES ($1,$2,$3)
 			ON CONFLICT (id)
@@ -411,8 +382,8 @@ func SyncBrands(dt DevTool) error {
 	return nil
 }
 
-func SyncMysteryCrates(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/mystery_crates.csv", os.O_RDONLY, 0755)
+func SyncMysteryCrates(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%smystery_crates.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -482,7 +453,7 @@ func SyncMysteryCrates(dt DevTool) error {
 		if mysteryCrate.YoutubeUrl == "" {
 			youtubeURL = nil
 		}
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO storefront_mystery_crates (id,mystery_crate_type,faction_id, label, description, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
@@ -501,8 +472,8 @@ func SyncMysteryCrates(dt DevTool) error {
 	return nil
 }
 
-func SyncWeaponModel(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_models.csv", os.O_RDONLY, 0755)
+func SyncWeaponModel(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -552,7 +523,7 @@ func SyncWeaponModel(dt DevTool) error {
 			defaultSkinID = nil
 		}
 
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at, updated_at)
 			VALUES ($1,$2,$3,$4,$5,$6,$7)
 			ON CONFLICT (id)
@@ -571,8 +542,8 @@ func SyncWeaponModel(dt DevTool) error {
 	return nil
 }
 
-func SyncWeaponSkins(dt DevTool) error {
-	f, err := os.OpenFile("./devtool/temp-sync/supremacy-static-data/weapon_skins.csv", os.O_RDONLY, 0755)
+func SyncWeaponSkins(dt *DevTool) error {
+	f, err := os.OpenFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath), os.O_RDONLY, 0755)
 	if err != nil {
 		log.Fatal("CANT OPEN FILE")
 		return err
@@ -654,7 +625,7 @@ func SyncWeaponSkins(dt DevTool) error {
 			statModifier = nil
 		}
 
-		_, err = dt.db.Exec(`
+		_, err = dt.DB.Exec(`
 			INSERT INTO blueprint_weapon_skin(id, label, weapon_type, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, collection, weapon_model_id, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)

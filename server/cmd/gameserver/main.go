@@ -16,6 +16,7 @@ import (
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
+	"server/devtool"
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
@@ -410,6 +411,61 @@ func main() {
 						os.Exit(1)
 					}
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
+					return nil
+				},
+			},
+			{
+				Name:    "sync",
+				Aliases: []string{"sy"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "static_path", Value: "./devtool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
+				},
+				Usage: "sync static data",
+				Action: func(c *cli.Context) error {
+					fmt.Println("RUNNING SYNC")
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					filePath := c.String("static_path")
+
+					params := url.Values{}
+					params.Add("sslmode", "disable")
+
+					connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						params.Encode(),
+					)
+					cfg, err := pgx.ParseConfig(connString)
+					if err != nil {
+						log.Fatal(err)
+					}
+					conn := stdlib.OpenDB(*cfg)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					dt := &devtool.DevTool{
+						DB:       conn,
+						FilePath: filePath,
+					}
+
+					err = devtool.SyncTool(dt)
+					if err != nil {
+						return err
+					}
+
 					return nil
 				},
 			},
