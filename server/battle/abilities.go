@@ -912,6 +912,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	multiAmount := as.GetUserContributeMultiplier(amount)
 	bm.End("get_user_contribution")
 
+	// insert battle contribution
 	go func() {
 		battleContrib := &boiler.BattleContribution{
 			BattleID:          battleID,
@@ -943,6 +944,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	amount = amount.Truncate(0)
 
+	// insert spoil of war
 	go func() {
 		tx, err := gamedb.StdConn.Begin()
 		if err == nil {
@@ -981,12 +983,13 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	ga.CurrentSups = ga.CurrentSups.Add(amount)
 
 	if !isTriggered {
+
 		if ga.BattleAbilityID.Valid {
-			// store updated battle ability to uniform price object
+			// if battle ability, store the updated battle ability to uniform price object
 			as.battleAbilityPool.UniformedPrice.setCurrentSups(ga.FactionID, ga.CurrentSups)
 
 		} else {
-			// store updated faction ability price to db
+			// otherwise, store updated faction ability price to db
 			bm.Start("update_faction_ability_price")
 			err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 			bm.End("update_faction_ability_price")
@@ -1629,7 +1632,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	// only get nuke after certain duration
 	targetedBattleAbility := ""
 	if time.Now().Sub(as.startedAt).Seconds() > as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
-		targetedBattleAbility = "NUKE"
+		targetedBattleAbility = as.abilityConfig.ConstantAbilityLabel
 	}
 
 	// initialise new gabs ability pool
@@ -1655,6 +1658,14 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 
 	// set battle abilities of each faction
 	for _, ga := range gabsAbilities {
+
+		supsCost := as.battleAbilityPool.UniformedPrice.getSupsCost(ga.FactionID)
+		// set sups cost to constant price if battle duration has pass default seconds
+		if time.Now().Sub(as.startedAt).Seconds() >= as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
+			supsCost = as.abilityConfig.ConstantPrice
+		}
+		currentSups := as.battleAbilityPool.UniformedPrice.getCurrentSups(ga.FactionID)
+
 		// initialise game ability
 		gameAbility := &GameAbility{
 			ID:                     ga.ID,
@@ -1664,8 +1675,8 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 			Description:            ga.Description,
 			FactionID:              ga.FactionID,
 			Label:                  ga.Label,
-			SupsCost:               as.battleAbilityPool.UniformedPrice.getSupsCost(ga.FactionID).RoundDown(0),
-			CurrentSups:            as.battleAbilityPool.UniformedPrice.getCurrentSups(ga.FactionID).RoundDown(0),
+			SupsCost:               supsCost.RoundDown(0),
+			CurrentSups:            currentSups.RoundDown(0),
 			Colour:                 ga.Colour,
 			TextColour:             ga.TextColour,
 			CooldownDurationSecond: ba.CooldownDurationSecond,
@@ -1832,25 +1843,29 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
+
+		floorPrice := as.abilityConfig.BattleAbilityFloorPrice
+		if durationSeconds > as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
+			// change floor price after constant price hit
+			floorPrice = as.abilityConfig.ConstantPrice
+		}
+
+		dropRate := as.abilityConfig.BattleAbilityDropRate[ability.FactionID]
 		// check duration and change drop rate and floor price
-		if as.abilityConfig.BattleAbilityDropRate[ability.FactionID].LessThan(decimal.NewFromInt(1)) {
-			if durationSeconds > as.abilityConfig.RapidPriceDropStartAfterDuration.Seconds() {
-				// enter rapid drop rate mode
-				as.abilityConfig.BattleAbilityDropRate[ability.FactionID] = as.abilityConfig.RapidPriceDropRate
-			} else if durationSeconds > as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
-				// change floor price after constant price hit
-				as.abilityConfig.BattleAbilityFloorPrice = as.abilityConfig.ConstantPrice
-			}
+		if as.abilityConfig.BattleAbilityDropRate[ability.FactionID].LessThan(decimal.NewFromInt(1)) &&
+			durationSeconds > as.abilityConfig.RapidPriceDropStartAfterDuration.Seconds() {
+			// enter rapid drop rate mode
+			dropRate = as.abilityConfig.RapidPriceDropRate
 		}
 
 		// cache old sups cost to not trigger the ability
 		oldSupsCost := ability.SupsCost
 
-		ability.SupsCost = ability.SupsCost.Mul(as.abilityConfig.BattleAbilityDropRate[ability.FactionID]).RoundDown(0)
+		ability.SupsCost = ability.SupsCost.Mul(dropRate).RoundDown(0)
 
 		// cap minimum price
-		if ability.SupsCost.LessThan(as.abilityConfig.BattleAbilityFloorPrice) {
-			ability.SupsCost = as.abilityConfig.BattleAbilityFloorPrice
+		if ability.SupsCost.LessThan(floorPrice) {
+			ability.SupsCost = floorPrice
 		}
 
 		// check ability is triggered and if there is no player vote on current ability
@@ -1872,7 +1887,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.GreaterThan(ability.CurrentSups) {
-			// store uniform price
+			// store new uniform price
 			as.battleAbilityPool.UniformedPrice.setSupsCost(ability.FactionID, ability.SupsCost)
 			as.battleAbilityPool.UniformedPrice.setCurrentSups(ability.FactionID, ability.CurrentSups)
 
