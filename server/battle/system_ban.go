@@ -166,9 +166,15 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 	bat, err := boiler.BattleAbilityTriggers(
 		boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(relativeOfferingID),
 		boiler.BattleAbilityTriggerWhere.PlayerID.IsNotNull(),
+		qm.Load(boiler.BattleAbilityTriggerRels.GameAbility),
 	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("ability offering id", relativeOfferingID).Msg("Failed to get battle ability trigger from db")
+		return
+	}
+
+	// skip, if ability is a landmine
+	if bat.R != nil && bat.R.GameAbility.Label == "LANDMINE" {
 		return
 	}
 

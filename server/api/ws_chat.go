@@ -198,6 +198,18 @@ func NewChatroom(factionID string) *Chatroom {
 		}
 		stat := stats[player.ID]
 
+		if msg.MSGType == boiler.ChatMSGTypeEnumNEW_BATTLE {
+			cm := &ChatMessage{}
+			err := msg.Metadata.Unmarshal(cm)
+			if err != nil {
+				continue
+			}
+
+			cms[i] = cm
+			cmstoSend = append(cmstoSend, cms[i])
+			continue
+		}
+
 		cms[i] = &ChatMessage{
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
@@ -587,6 +599,18 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 		return terror.Error(err, "Could not get all factions, try again or contact support.")
 	}
 
+	cm := &ChatMessage{
+		Type:   ChatMessageTypeNewBattle,
+		SentAt: time.Now(),
+		Data:   MessageNewBattle{BattleNumber: battleNumber},
+	}
+
+	var jsonMeta null.JSON
+	err = jsonMeta.Marshal(cm)
+	if err != nil {
+		return err
+	}
+
 	for _, faction := range factions {
 		ch := &boiler.ChatHistory{
 			FactionID:       faction.ID,
@@ -600,6 +624,7 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 			KillCount:       "",
 			IsCitizen:       false,
 			Lang:            "",
+			Metadata:        jsonMeta,
 		}
 		err = ch.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -619,16 +644,11 @@ func (api *API) BroadcastNewBattle(battleNumber int) error {
 		KillCount:       "",
 		IsCitizen:       false,
 		Lang:            "",
+		Metadata:        jsonMeta,
 	}
 	err = ch.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
-	}
-
-	cm := &ChatMessage{
-		Type:   ChatMessageTypeNewBattle,
-		SentAt: time.Now(),
-		Data:   MessageNewBattle{BattleNumber: battleNumber},
 	}
 
 	api.RedMountainChat.AddMessage(cm)
