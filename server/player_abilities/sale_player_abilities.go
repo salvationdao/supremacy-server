@@ -191,8 +191,8 @@ ticker:
 					attempts := 0
 					for {
 						attempts++
-						if attempts > 15 {
-							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities in under 15 attempts, aborting", pas.Limit))
+						if attempts > 5 {
+							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities in under 5 attempts, aborting", pas.Limit))
 							continue ticker
 						}
 						notIn := ""
