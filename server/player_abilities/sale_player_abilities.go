@@ -10,6 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,6 +160,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	}()
 
 	oneHundred := decimal.NewFromFloat(100.0)
+ticker:
 	for {
 		select {
 		case <-priceTicker.C:
@@ -183,39 +185,47 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					q := fmt.Sprintf(
-						`
-						with cte as (
-							select random() * (
-								select sum(rarity_weight)
-								from sale_player_abilities
-							) R
-						)
-						select 
-							Q.id,
-							Q.blueprint_id,
-							Q.current_price,
-							Q.available_until,
-							Q.amount_sold,
-							Q.sale_limit,
-							Q.deleted_at
-						from (
-							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, deleted_at, sum(rarity_weight) over (order by id) S, R
-							from sale_player_abilities spa
-							cross join cte
-							where spa.deleted_at is null
-						) Q
-						where S >= R
-						order by Q.id
-						limit 1;
-					`,
-					)
-
 					// Find 3 random weighted abilities
 					weightedSaleAbilities := []*boiler.SalePlayerAbility{}
+					weightedSaleAbilityIDs := []string{}
 					attempts := 0
 					for {
 						attempts++
+						notIn := ""
+						if len(weightedSaleAbilityIDs) > 0 {
+							notIn += "and Q.id not in (" + strings.Join(weightedSaleAbilityIDs, ",") + ")"
+						}
+
+						q := fmt.Sprintf(
+							`
+							with cte as (
+								select random() * (
+									select sum(rarity_weight)
+									from sale_player_abilities spa
+									where spa.deleted_at is null and spa.rarity_weight >= 0
+								) R
+							)
+							select 
+								Q.id,
+								Q.blueprint_id,
+								Q.current_price,
+								Q.available_until,
+								Q.amount_sold,
+								Q.sale_limit,
+								Q.deleted_at
+							from (
+								select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, deleted_at, sum(rarity_weight) over (order by id) S, R
+								from sale_player_abilities spa
+								cross join cte
+								where spa.deleted_at is null and spa.rarity_weight >= 0
+							) Q
+							where S >= R %s
+							order by Q.id
+							limit 1;
+						`,
+							notIn,
+						)
+
 						w := &boiler.SalePlayerAbility{}
 						err := boiler.NewQuery(
 							qm.SQL(q),
@@ -226,22 +236,11 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 							continue
 						} else if err != nil {
 							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities", pas.Limit))
-							return
-						}
-
-						isDuplicate := false
-						for _, wsa := range weightedSaleAbilities {
-							if wsa.ID == w.ID {
-								isDuplicate = true
-								break
-							}
-						}
-						if isDuplicate {
-							gamelog.L.Debug().Err(err).Msg(fmt.Sprintf("discarding duplicate random weighted sale ability, retrying. attempts: %d", attempts))
-							continue
+							continue ticker
 						}
 
 						weightedSaleAbilities = append(weightedSaleAbilities, w)
+						weightedSaleAbilityIDs = append(weightedSaleAbilityIDs, fmt.Sprintf("'%s'", w.ID))
 
 						if len(weightedSaleAbilities) == pas.Limit {
 							break
