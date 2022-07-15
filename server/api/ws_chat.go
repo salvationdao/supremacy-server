@@ -484,15 +484,12 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		Likes:           &Likes{0, 0, 0},
 		TaggedUsersRead: taggedUsersGid,
 	}
-	fmt.Println(textMsgMetadata.TaggedUsersRead)
 
 	var jsonTextMsgMeta null.JSON
 	err = jsonTextMsgMeta.Marshal(textMsgMetadata)
 	if err != nil {
-
 		return terror.Error(err, "Could not marshal json")
 	}
-	fmt.Println(jsonTextMsgMeta.Value())
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -591,6 +588,51 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
 	reply(true)
 
+	return nil
+}
+
+type ReadTaggedMessageRequest struct {
+	Payload struct {
+		ChatHistoryID string `json:"chat_history_id"`
+	} `json:"payload"`
+}
+
+const HubKeyReadTaggedMessage = "READ:TAGGED:MESSAGE"
+
+func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &ReadTaggedMessageRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		return terror.Error(err, "Could not get chat history")
+	}
+
+	metadata := &TextMessageMetadata{}
+
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		return terror.Error(err, "Could not unmarshal into metadata")
+	}
+
+	metadata.TaggedUsersRead[user.Gid] = true
+
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		return terror.Error(err, "Could not marshal json")
+	}
+
+	chatHistory.Metadata = jsonTextMsgMeta
+
+	chatHistory.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Could not marshal json")
+	}
+
+	reply(true)
 	return nil
 }
 
