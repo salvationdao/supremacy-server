@@ -65,6 +65,7 @@ type MessageText struct {
 	TotalMultiplier string           `json:"total_multiplier"`
 	IsCitizen       bool             `json:"is_citizen"`
 	BattleNumber    int              `json:"battle_number"`
+	Metadata        null.JSON        `json:"metadata"`
 }
 
 type MessagePunishVote struct {
@@ -97,6 +98,18 @@ type MessageSystemBan struct {
 
 type MessageNewBattle struct {
 	BattleNumber int `json:"battle_number"`
+}
+
+type Likes struct {
+	Likes    int `json:"likes"`
+	Dislikes int `json:"dislikes"`
+	Net      int `json:"net"`
+}
+
+type TextMessageMetadata struct {
+	//gid:true(read/unread)
+	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
+	Likes           *Likes       `json:"likes"`
 }
 
 // Chatroom holds a specific chat room
@@ -319,9 +332,10 @@ func (api *API) MessageBroadcaster() {
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
 	Payload struct {
-		FactionID    server.FactionID `json:"faction_id"`
-		MessageColor string           `json:"message_color"`
-		Message      string           `json:"message"`
+		FactionID       server.FactionID `json:"faction_id"`
+		MessageColor    string           `json:"message_color"`
+		Message         string           `json:"message"`
+		TaggedUsersGids []int            `json:"tagged_users_gids"`
 	} `json:"payload"`
 }
 
@@ -460,6 +474,25 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, lastBattleNum)
+
+	taggedUsersGid := make(map[int]bool)
+	for _, gid := range req.Payload.TaggedUsersGids {
+		taggedUsersGid[gid] = false
+	}
+
+	textMsgMetadata := &TextMessageMetadata{
+		Likes:           &Likes{0, 0, 0},
+		TaggedUsersRead: taggedUsersGid,
+	}
+	fmt.Println(textMsgMetadata.TaggedUsersRead)
+
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(textMsgMetadata)
+	if err != nil {
+
+		return terror.Error(err, "Could not marshal json")
+	}
+	fmt.Println(jsonTextMsgMeta.Value())
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -482,6 +515,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 				IsCitizen:       isCitizen,
 				Lang:            language,
+				Metadata:        jsonTextMsgMeta,
 			},
 		}
 
@@ -498,6 +532,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			ChatStream:      player.FactionID.String,
 			IsCitizen:       isCitizen,
 			Lang:            language,
+			Metadata:        jsonTextMsgMeta,
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -527,6 +562,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 			IsCitizen:       isCitizen,
 			Lang:            language,
+			Metadata:        jsonTextMsgMeta,
 		},
 	}
 
@@ -543,6 +579,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		ChatStream:      "global",
 		IsCitizen:       isCitizen,
 		Lang:            language,
+		Metadata:        jsonTextMsgMeta,
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
