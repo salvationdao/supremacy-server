@@ -40,9 +40,9 @@ $$
         INSERT INTO profile_avatars 
         (avatar_url, tier)
         VALUES
-        (zhi_logo, 'common'),
-        (bc_logo, 'common'),
-        (rm_logo, 'common');
+        (zhi_logo, 'MEGA'),
+        (bc_logo, 'MEGA'),
+        (rm_logo, 'MEGA');
 
         -- player profile logo ids 
         zhi_logo_id := (SELECT id FROM profile_avatars WHERE avatar_url = zhi_logo);
@@ -51,7 +51,7 @@ $$
 
         -- give ZHI default images 
         INSERT INTO players_profile_avatars 
-        (player_id, profile_avatar_id)
+            (player_id, profile_avatar_id)
             SELECT players.id, zhi_logo_id FROM players
             INNER JOIN factions ON players.faction_id = factions.id 
             WHERE factions.label = 'Zaibatsu Heavy Industries';
@@ -59,32 +59,39 @@ $$
 
         -- give BC default images 
         INSERT INTO players_profile_avatars 
-        (player_id, profile_avatar_id)
+            (player_id, profile_avatar_id)
             SELECT players.id, bc_logo_id from players
             INNER join factions on players.faction_id = factions.id 
             WHERE factions.label = 'Boston Cybernetics';
 
          -- give RM default images 
         INSERT INTO players_profile_avatars 
-        (player_id, profile_avatar_id)
+            (player_id, profile_avatar_id)
             SELECT players.id, rm_logo_id from players
             INNER join factions on players.faction_id = factions.id 
             WHERE factions.label = 'Red Mountain Offworld Mining Corporation';
         
-        -- insert player mechs images
-        INSERT INTO profile_avatars 
-        (avatar_url, tier)
-        SELECT distinct(ci.avatar_url) , 'common' from players
-        INNER join collection_items ci on ci.owner_id = players.id 
-        WHERE ci.item_type = 'mech';
-        
-        --  populate players_profile_avatars 
-        INSERT INTO players_profile_avatars
-        (player_id, profile_avatar_id)
-        SELECT DISTINCT(p.id), pa.id FROM players p 
-        INNER JOIN collection_items ci ON ci.owner_id = p.id 
-        INNER JOIN profile_avatars pa ON pa.avatar_url = ci.avatar_url 
-        WHERE ci.item_type = 'mech';
 
     END;
 $$;
+
+ALTER TABLE blueprint_mech_skin
+    ADD COLUMN profile_avatar_id UUID REFERENCES profile_avatars (id);
+
+
+with inserted_avatars as (
+    with bms as (select avatar_url, tier from blueprint_mech_skin)
+    insert into profile_avatars(avatar_url, tier) 
+    SELECT coalesce(bms.avatar_url, ''), bms.tier from blueprint_mech_skin bms 
+    RETURNING id, avatar_url)
+update blueprint_mech_skin 
+set profile_avatar_id = inserted_avatars.id 
+from inserted_avatars
+where blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
+
+
+INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
+SELECT DISTINCT(p.id) , pa.id FROM players p 
+INNER JOIN collection_items ci ON ci.owner_id =  p.id 
+INNER JOIN blueprint_mech_skin bms ON bms.avatar_url = ci.avatar_url
+INNER JOIN profile_avatars pa ON pa.avatar_url = bms.avatar_url;

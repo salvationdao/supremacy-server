@@ -655,3 +655,30 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 
 	return total, avatars, nil
 }
+
+// run this once they enlist in a faction
+func SeedDefaultAvatars(playerID string, factionID string) error {
+	fac, err := boiler.Factions(boiler.FactionWhere.ID.EQ(factionID)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// get faction logo urls from profile avatars table
+	ava, err := boiler.ProfileAvatars(boiler.ProfileAvatarWhere.AvatarURL.EQ(fac.LogoURL)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// insert into player profile avatars
+	ppa := &boiler.PlayersProfileAvatar{
+		PlayerID:        playerID,
+		ProfileAvatarID: ava.ID,
+	}
+
+	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

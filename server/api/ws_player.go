@@ -124,6 +124,12 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to update faction in db")
 	}
 
+	// give user default profile avatar images
+	err = db.SeedDefaultAvatars(user.ID, user.FactionID.String)
+	if err != nil {
+		return err
+	}
+
 	// update user faction in passport
 	err = pc.API.Passport.UserFactionEnlist(user.ID, user.FactionID.String)
 	if err != nil {
