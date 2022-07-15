@@ -438,6 +438,7 @@ func (o *BlueprintPlayerAbility) BlueprintSalePlayerAbilities(mods ...qm.QueryMo
 
 	queryMods = append(queryMods,
 		qm.Where("\"sale_player_abilities\".\"blueprint_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"sale_player_abilities\".\"deleted_at\""),
 	)
 
 	query := SalePlayerAbilities(queryMods...)
@@ -688,6 +689,7 @@ func (blueprintPlayerAbilityL) LoadBlueprintSalePlayerAbilities(e boil.Executor,
 	query := NewQuery(
 		qm.From(`sale_player_abilities`),
 		qm.WhereIn(`sale_player_abilities.blueprint_id in ?`, args...),
+		qmhelper.WhereIsNull(`sale_player_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
