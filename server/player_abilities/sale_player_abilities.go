@@ -161,7 +161,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			// Price ticker ticks every 5 seconds, updates prices of abilities and refreshes the sale ability list when all abilities on sale have expired
 			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
-				if s.AvailableUntil.Time.After(time.Now()) {
+				if s.AvailableUntil.Time.After(time.Now()) && !s.DeletedAt.Valid && s.RarityWeight >= 0 {
 					continue
 				}
 				sID := uuid.FromStringOrNil(s.ID)
