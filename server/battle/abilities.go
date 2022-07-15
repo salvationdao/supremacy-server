@@ -1523,8 +1523,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					battleAbility.CurrentSups = decimal.Zero
 
 					// update uniform price
-					as.battleAbilityPool.UniformedPrice.setSupsCost(battleAbility.FactionID, battleAbility.SupsCost.Mul(decimal.NewFromInt(2)))
-					as.battleAbilityPool.UniformedPrice.setCurrentSups(battleAbility.FactionID, decimal.Zero)
+					as.battleAbilityPool.UniformedPrice.setSupsCost(battleAbility.FactionID, battleAbility.SupsCost)
+					as.battleAbilityPool.UniformedPrice.setCurrentSups(battleAbility.FactionID, battleAbility.CurrentSups)
 				}
 
 				bm.Start("update_live_sups_cost")
