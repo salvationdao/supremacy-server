@@ -445,7 +445,6 @@ func (pc *PlayerController) GetPlayerByGid(ctx context.Context, user *boiler.Pla
 		return terror.Error(err, "Invalid request received")
 	}
 
-	fmt.Println(req.Payload.Gid)
 	ps, err := boiler.Players(
 		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
 	).One(gamedb.StdConn)
