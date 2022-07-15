@@ -31,12 +31,11 @@ type MotionSystem struct {
 }
 
 // newMotionSystem generate a new syndicate motion system
-func (s *Syndicate) newMotionSystem() (*MotionSystem, error) {
+func newMotionSystem(s *Syndicate) (*MotionSystem, error) {
 	ms, err := boiler.SyndicateMotions(
 		boiler.SyndicateMotionWhere.SyndicateID.EQ(s.ID),
 		boiler.SyndicateMotionWhere.EndedAt.GT(time.Now()),
 		boiler.SyndicateMotionWhere.ActualEndedAt.IsNull(),
-		qm.Load(boiler.SyndicateMotionRels.MotionSyndicateMotionVotes),
 		qm.Load(boiler.SyndicateMotionRels.NewLogo),
 	).All(gamedb.StdConn)
 	if err != nil {

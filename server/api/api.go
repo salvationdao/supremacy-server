@@ -117,7 +117,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 ) (*API, error) {
 	// spin up syndicate system
-	ss, err := syndicate.NewSystem(pm)
+	ss, err := syndicate.NewSystem(pp, pm)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
 		return nil, err

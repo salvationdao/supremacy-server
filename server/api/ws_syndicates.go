@@ -147,7 +147,7 @@ func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.
 		return terror.Error(err, "Failed to create syndicate.")
 	}
 
-	err = sc.API.SyndicateSystem.AddSyndicate(syndicate)
+	err = sc.API.SyndicateSystem.CreateSyndicate(syndicate)
 	if err != nil {
 		return terror.Error(err, "Failed to add syndicate to the system")
 	}
@@ -425,7 +425,6 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateCommitteesSubscribe, scs)
 
 	reply(true)
-
 	return nil
 }
 
