@@ -1,7 +1,6 @@
 package battle
 
 import (
-	"github.com/volatiletech/null/v8"
 	"server/multipliers"
 	"sync"
 	"time"
@@ -179,7 +178,7 @@ type FactionBrief struct {
 type GameAbility struct {
 	ID                  string          `json:"id" db:"id"`
 	GameClientAbilityID byte            `json:"game_client_ability_id" db:"game_client_ability_id"`
-	BattleAbilityID     null.String     `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
+	BattleAbilityID     *string     `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string          `json:"colour" db:"colour"`
 	TextColour          string          `json:"text_colour" db:"text_colour"`
 	Description         string          `json:"description" db:"description"`
