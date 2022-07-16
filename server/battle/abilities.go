@@ -93,8 +93,8 @@ type AbilityConfig struct {
 	BattleAbilityLocationSelectDurationSeconds time.Duration
 	BattleAbilityFloorPrice                    decimal.Decimal
 	BattleAbilityDropRate                      map[string]decimal.Decimal
-	FactionAbilityFloorPrice decimal.Decimal
-	FactionAbilityDropRate   map[string]decimal.Decimal
+	FactionAbilityFloorPrice                   decimal.Decimal
+	FactionAbilityDropRate                     map[string]decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
