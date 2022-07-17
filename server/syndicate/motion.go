@@ -34,8 +34,8 @@ type MotionSystem struct {
 func newMotionSystem(s *Syndicate) (*MotionSystem, error) {
 	ms, err := boiler.SyndicateMotions(
 		boiler.SyndicateMotionWhere.SyndicateID.EQ(s.ID),
-		boiler.SyndicateMotionWhere.EndedAt.GT(time.Now()),
-		boiler.SyndicateMotionWhere.ActualEndedAt.IsNull(),
+		boiler.SyndicateMotionWhere.EndAt.GT(time.Now()),
+		boiler.SyndicateMotionWhere.FinalisedAt.IsNull(),
 		qm.Load(boiler.SyndicateMotionRels.NewLogo),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -661,7 +661,7 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 		return terror.Error(fmt.Errorf("syndicate is closed"), "Syndicate is closed")
 	}
 
-	if bsm.ActualEndedAt.Valid || bsm.Result.Valid {
+	if bsm.FinalisedAt.Valid || bsm.Result.Valid {
 		return terror.Error(fmt.Errorf("motion is already endded"), "Motion is already ended.")
 	}
 
@@ -756,7 +756,7 @@ func (sm *Motion) start() {
 	for {
 		time.Sleep(1 * time.Second)
 		// if motion is not ended and not closed
-		if sm.EndedAt.After(time.Now()) && !sm.isClosed.Load() && !sm.forceClosed.Load() {
+		if sm.EndAt.After(time.Now()) && !sm.isClosed.Load() && !sm.forceClosed.Load() {
 			continue
 		}
 
@@ -916,7 +916,7 @@ func (sm *Motion) parseResult() {
 func (sm *Motion) broadcastEndResult(result string, note string) {
 	sm.Result = null.StringFrom(result)
 	sm.Note = null.StringFrom(note)
-	sm.ActualEndedAt = null.TimeFrom(time.Now())
+	sm.FinalisedAt = null.TimeFrom(time.Now())
 
 	// update motion result and actual end time
 	_, err := sm.Update(
@@ -924,7 +924,7 @@ func (sm *Motion) broadcastEndResult(result string, note string) {
 		boil.Whitelist(
 			boiler.SyndicateMotionColumns.Result,
 			boiler.SyndicateMotionColumns.Note,
-			boiler.SyndicateMotionColumns.ActualEndedAt,
+			boiler.SyndicateMotionColumns.FinalisedAt,
 		),
 	)
 	if err != nil {

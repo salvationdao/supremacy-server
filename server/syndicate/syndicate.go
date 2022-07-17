@@ -24,8 +24,9 @@ type Syndicate struct {
 
 	isLiquidated atomic.Bool
 
-	motionSystem     *MotionSystem
-	accountantSystem *AccountSystem
+	motionSystem  *MotionSystem
+	accountSystem *AccountSystem
+	recruitSystem *RecruitSystem
 }
 
 func newSyndicate(ss *System, syndicate *boiler.Syndicate) (*Syndicate, error) {
@@ -40,7 +41,8 @@ func newSyndicate(ss *System, syndicate *boiler.Syndicate) (*Syndicate, error) {
 	}
 
 	s.motionSystem = motionSystem
-	s.accountantSystem = NewAccountSystem(s)
+	s.accountSystem = NewAccountSystem(s)
+	s.recruitSystem = newRecruitSystem(s)
 
 	return s, nil
 }
@@ -56,7 +58,7 @@ func (s *Syndicate) liquidate(tx *sql.Tx) error {
 	s.motionSystem.terminate()
 
 	// liquidate fund
-	err := s.accountantSystem.liquidate()
+	err := s.accountSystem.liquidate()
 	if err != nil {
 		return err
 	}

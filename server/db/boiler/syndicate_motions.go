@@ -28,6 +28,7 @@ type SyndicateMotion struct {
 	SyndicateID                     string              `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
 	Type                            string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	IssuedByID                      string              `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
+	EndAt                           time.Time           `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	Reason                          string              `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
 	OldSymbol                       null.String         `boiler:"old_symbol" boil:"old_symbol" json:"old_symbol,omitempty" toml:"old_symbol" yaml:"old_symbol,omitempty"`
 	NewSymbol                       null.String         `boiler:"new_symbol" boil:"new_symbol" json:"new_symbol,omitempty" toml:"new_symbol" yaml:"new_symbol,omitempty"`
@@ -55,8 +56,7 @@ type SyndicateMotion struct {
 	MemberID                        null.String         `boiler:"member_id" boil:"member_id" json:"member_id,omitempty" toml:"member_id" yaml:"member_id,omitempty"`
 	Result                          null.String         `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
 	Note                            null.String         `boiler:"note" boil:"note" json:"note,omitempty" toml:"note" yaml:"note,omitempty"`
-	EndedAt                         time.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at" toml:"ended_at" yaml:"ended_at"`
-	ActualEndedAt                   null.Time           `boiler:"actual_ended_at" boil:"actual_ended_at" json:"actual_ended_at,omitempty" toml:"actual_ended_at" yaml:"actual_ended_at,omitempty"`
+	FinalisedAt                     null.Time           `boiler:"finalised_at" boil:"finalised_at" json:"finalised_at,omitempty" toml:"finalised_at" yaml:"finalised_at,omitempty"`
 	CreatedAt                       time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                       time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt                       null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -70,6 +70,7 @@ var SyndicateMotionColumns = struct {
 	SyndicateID                     string
 	Type                            string
 	IssuedByID                      string
+	EndAt                           string
 	Reason                          string
 	OldSymbol                       string
 	NewSymbol                       string
@@ -97,8 +98,7 @@ var SyndicateMotionColumns = struct {
 	MemberID                        string
 	Result                          string
 	Note                            string
-	EndedAt                         string
-	ActualEndedAt                   string
+	FinalisedAt                     string
 	CreatedAt                       string
 	UpdatedAt                       string
 	DeletedAt                       string
@@ -107,6 +107,7 @@ var SyndicateMotionColumns = struct {
 	SyndicateID:                     "syndicate_id",
 	Type:                            "type",
 	IssuedByID:                      "issued_by_id",
+	EndAt:                           "end_at",
 	Reason:                          "reason",
 	OldSymbol:                       "old_symbol",
 	NewSymbol:                       "new_symbol",
@@ -134,8 +135,7 @@ var SyndicateMotionColumns = struct {
 	MemberID:                        "member_id",
 	Result:                          "result",
 	Note:                            "note",
-	EndedAt:                         "ended_at",
-	ActualEndedAt:                   "actual_ended_at",
+	FinalisedAt:                     "finalised_at",
 	CreatedAt:                       "created_at",
 	UpdatedAt:                       "updated_at",
 	DeletedAt:                       "deleted_at",
@@ -146,6 +146,7 @@ var SyndicateMotionTableColumns = struct {
 	SyndicateID                     string
 	Type                            string
 	IssuedByID                      string
+	EndAt                           string
 	Reason                          string
 	OldSymbol                       string
 	NewSymbol                       string
@@ -173,8 +174,7 @@ var SyndicateMotionTableColumns = struct {
 	MemberID                        string
 	Result                          string
 	Note                            string
-	EndedAt                         string
-	ActualEndedAt                   string
+	FinalisedAt                     string
 	CreatedAt                       string
 	UpdatedAt                       string
 	DeletedAt                       string
@@ -183,6 +183,7 @@ var SyndicateMotionTableColumns = struct {
 	SyndicateID:                     "syndicate_motions.syndicate_id",
 	Type:                            "syndicate_motions.type",
 	IssuedByID:                      "syndicate_motions.issued_by_id",
+	EndAt:                           "syndicate_motions.end_at",
 	Reason:                          "syndicate_motions.reason",
 	OldSymbol:                       "syndicate_motions.old_symbol",
 	NewSymbol:                       "syndicate_motions.new_symbol",
@@ -210,8 +211,7 @@ var SyndicateMotionTableColumns = struct {
 	MemberID:                        "syndicate_motions.member_id",
 	Result:                          "syndicate_motions.result",
 	Note:                            "syndicate_motions.note",
-	EndedAt:                         "syndicate_motions.ended_at",
-	ActualEndedAt:                   "syndicate_motions.actual_ended_at",
+	FinalisedAt:                     "syndicate_motions.finalised_at",
 	CreatedAt:                       "syndicate_motions.created_at",
 	UpdatedAt:                       "syndicate_motions.updated_at",
 	DeletedAt:                       "syndicate_motions.deleted_at",
@@ -224,6 +224,7 @@ var SyndicateMotionWhere = struct {
 	SyndicateID                     whereHelperstring
 	Type                            whereHelperstring
 	IssuedByID                      whereHelperstring
+	EndAt                           whereHelpertime_Time
 	Reason                          whereHelperstring
 	OldSymbol                       whereHelpernull_String
 	NewSymbol                       whereHelpernull_String
@@ -251,8 +252,7 @@ var SyndicateMotionWhere = struct {
 	MemberID                        whereHelpernull_String
 	Result                          whereHelpernull_String
 	Note                            whereHelpernull_String
-	EndedAt                         whereHelpertime_Time
-	ActualEndedAt                   whereHelpernull_Time
+	FinalisedAt                     whereHelpernull_Time
 	CreatedAt                       whereHelpertime_Time
 	UpdatedAt                       whereHelpertime_Time
 	DeletedAt                       whereHelpernull_Time
@@ -261,6 +261,7 @@ var SyndicateMotionWhere = struct {
 	SyndicateID:                     whereHelperstring{field: "\"syndicate_motions\".\"syndicate_id\""},
 	Type:                            whereHelperstring{field: "\"syndicate_motions\".\"type\""},
 	IssuedByID:                      whereHelperstring{field: "\"syndicate_motions\".\"issued_by_id\""},
+	EndAt:                           whereHelpertime_Time{field: "\"syndicate_motions\".\"end_at\""},
 	Reason:                          whereHelperstring{field: "\"syndicate_motions\".\"reason\""},
 	OldSymbol:                       whereHelpernull_String{field: "\"syndicate_motions\".\"old_symbol\""},
 	NewSymbol:                       whereHelpernull_String{field: "\"syndicate_motions\".\"new_symbol\""},
@@ -288,8 +289,7 @@ var SyndicateMotionWhere = struct {
 	MemberID:                        whereHelpernull_String{field: "\"syndicate_motions\".\"member_id\""},
 	Result:                          whereHelpernull_String{field: "\"syndicate_motions\".\"result\""},
 	Note:                            whereHelpernull_String{field: "\"syndicate_motions\".\"note\""},
-	EndedAt:                         whereHelpertime_Time{field: "\"syndicate_motions\".\"ended_at\""},
-	ActualEndedAt:                   whereHelpernull_Time{field: "\"syndicate_motions\".\"actual_ended_at\""},
+	FinalisedAt:                     whereHelpernull_Time{field: "\"syndicate_motions\".\"finalised_at\""},
 	CreatedAt:                       whereHelpertime_Time{field: "\"syndicate_motions\".\"created_at\""},
 	UpdatedAt:                       whereHelpertime_Time{field: "\"syndicate_motions\".\"updated_at\""},
 	DeletedAt:                       whereHelpernull_Time{field: "\"syndicate_motions\".\"deleted_at\""},
@@ -334,9 +334,9 @@ func (*syndicateMotionR) NewStruct() *syndicateMotionR {
 type syndicateMotionL struct{}
 
 var (
-	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "ended_at", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
-	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "reason", "ended_at"}
-	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "actual_ended_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionAllColumns            = []string{"id", "syndicate_id", "type", "issued_by_id", "end_at", "reason", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "finalised_at", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionColumnsWithoutDefault = []string{"syndicate_id", "type", "issued_by_id", "end_at", "reason"}
+	syndicateMotionColumnsWithDefault    = []string{"id", "old_symbol", "new_symbol", "old_syndicate_name", "new_syndicate_name", "old_logo_id", "new_logo_id", "old_join_fee", "new_join_fee", "old_monthly_dues", "new_monthly_dues", "old_deploying_member_cut_percentage", "new_deploying_member_cut_percentage", "old_member_assist_cut_percentage", "new_member_assist_cut_percentage", "old_mech_owner_cut_percentage", "new_mech_owner_cut_percentage", "old_syndicate_cut_percentage", "new_syndicate_cut_percentage", "rule_id", "old_rule_number", "new_rule_number", "old_rule_content", "new_rule_content", "member_id", "result", "note", "finalised_at", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionPrimaryKeyColumns     = []string{"id"}
 	syndicateMotionGeneratedColumns      = []string{}
 )
@@ -1866,7 +1866,7 @@ func (o *SyndicateMotion) AddMotionSyndicateMotionVotes(exec boil.Executor, inse
 				strmangle.SetParamNames("\"", "\"", 1, []string{"motion_id"}),
 				strmangle.WhereClause("\"", "\"", 2, syndicateMotionVotePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.MotionID, rel.VoteByID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)

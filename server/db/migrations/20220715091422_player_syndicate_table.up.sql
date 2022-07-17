@@ -125,6 +125,7 @@ CREATE TABLE syndicate_motions(
     syndicate_id uuid not null references syndicates(id),
     type SYNDICATE_MOTION_TYPE not null,
     issued_by_id uuid not null references players(id),
+    end_at timestamptz not null,
     reason text not null,
 
     -- content
@@ -168,9 +169,8 @@ CREATE TABLE syndicate_motions(
 
     result SYNDICATE_MOTION_RESULT,
     note text,
+    finalised_at timestamptz,
 
-    ended_at timestamptz not null,
-    actual_ended_at timestamptz,
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
@@ -181,11 +181,11 @@ CREATE INDEX IF NOT EXISTS idx_syndicate_motion_type on syndicate_motions(type);
 CREATE INDEX IF NOT EXISTS idx_syndicate_motion_syndicate_id on syndicate_motions(syndicate_id);
 
 CREATE TABLE syndicate_motion_votes(
-    id uuid primary key default gen_random_uuid(),
     motion_id uuid not null references syndicate_motions(id),
     vote_by_id uuid not null references players(id),
-    is_agreed bool not null,
+    PRIMARY KEY (motion_id, vote_by_id),
 
+    is_agreed bool not null,
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
@@ -227,8 +227,8 @@ CREATE TABLE syndicate_election_candidates(
 
 CREATE TABLE syndicate_election_votes(
     syndicate_election_id uuid not null references syndicate_elections(id),
-    voter_id uuid not null references players(id),
-    PRIMARY KEY (syndicate_election_id, voter_id),
+    voted_by_id uuid not null references players(id),
+    PRIMARY KEY (syndicate_election_id, voted_by_id),
 
     voted_for_candidate_id uuid not null references players(id),
     created_at timestamptz not null default NOW(),
@@ -253,8 +253,11 @@ CREATE TABLE syndicate_questionnaires(
     syndicate_id uuid not null references syndicates(id),
     usage QUESTIONNAIRE_USAGE NOT NULL,
 
+    number int not null,
+    must_answer bool not null,
     question text not null,
     type QUESTIONNAIRE_TYPE not null,
+
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
@@ -269,11 +272,26 @@ CREATE TABLE questionnaire_options(
     deleted_at timestamptz
 );
 
-CREATE TABLE syndicate_join_requests(
+DROP TYPE IF EXISTS SYNDICATE_JOIN_APPLICATION_RESULT;
+CREATE TYPE SYNDICATE_JOIN_APPLICATION_RESULT AS ENUM (
+    'ACCEPTED',
+    'REJECTED',
+    'CANCELED'
+);
+
+CREATE TABLE syndicate_join_applications(
     id uuid primary key default gen_random_uuid(),
     syndicate_id uuid not null references syndicates(id),
     applicant_id uuid not null references players(id),
     expire_at timestamptz not null,
+    paid_amount numeric(28) not null, -- record the amount of sups player paid upfront
+    tx_id text,
+    refund_tx_id text,
+
+    result SYNDICATE_JOIN_APPLICATION_RESULT,
+    note text,
+    finalised_at timestamptz,
+
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
@@ -281,12 +299,23 @@ CREATE TABLE syndicate_join_requests(
 
 CREATE TABLE questionnaire_answer(
     id uuid primary key default gen_random_uuid(),
-    syndicate_join_request_id uuid references syndicate_join_requests(id),
+    syndicate_join_application_id uuid references syndicate_join_applications(id),
 
     -- record question and answer players submitted
     question text not null,
     answer text,
     selections text[],
+
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE application_votes(
+    application_id uuid not null references syndicate_join_applications(id),
+    voted_by_id uuid not null references players(id),
+    PRIMARY KEY (application_id, voted_by_id),
+    is_agreed bool not null,
 
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),

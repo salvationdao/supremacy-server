@@ -82,8 +82,8 @@ func NewSystem(Passport *xsyn_rpcclient.XsynXrpcClient, profanityManager *profan
 	return ss, nil
 }
 
-// CreateSyndicate create new syndicate in the system
-func (ss *System) CreateSyndicate(syndicateID string) error {
+// RegisterSyndicate create new syndicate in the system
+func (ss *System) RegisterSyndicate(syndicateID string) error {
 	syndicate, err := boiler.FindSyndicate(gamedb.StdConn, syndicateID)
 	if err != nil {
 		gamelog.L.Error().Str("syndicate id", syndicateID).Err(err).Msg("Failed to get syndicate from db")
@@ -193,6 +193,20 @@ func (ss *System) LiquidateSyndicate(tx *sql.Tx, id string) error {
 	}
 
 	ss.removeSyndicate(id)
+
+	return nil
+}
+
+func (ss *System) AddJoinApplication(application *boiler.SyndicateJoinApplication) error {
+	s, err := ss.getSyndicate(application.SyndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.recruitSystem.receiveApplication(application)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

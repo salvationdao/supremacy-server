@@ -30,9 +30,9 @@ func SyndicateMotionList(syndicateID string, filter *SyndicateMotionListFilter, 
 	}
 
 	if filter.IsEnded {
-		queries = append(queries, boiler.SyndicateMotionWhere.ActualEndedAt.IsNotNull())
+		queries = append(queries, boiler.SyndicateMotionWhere.FinalisedAt.IsNotNull())
 	} else {
-		queries = append(queries, boiler.SyndicateMotionWhere.ActualEndedAt.IsNull())
+		queries = append(queries, boiler.SyndicateMotionWhere.FinalisedAt.IsNull())
 	}
 
 	count, err := boiler.SyndicateMotions(queries...).Count(gamedb.StdConn)

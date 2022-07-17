@@ -22,15 +22,23 @@ import (
 )
 
 type SyndicateCreateRequest struct {
-	Name                         string          `json:"name"`
-	Symbol                       string          `json:"symbol"`
-	Type                         string          `json:"type"`
-	JoinFee                      decimal.Decimal `json:"join_fee"`
-	MemberMonthlyDues            decimal.Decimal `json:"member_monthly_dues"`
-	DeployingMemberCutPercentage decimal.Decimal `json:"deploying_member_cut_percentage"`
-	MemberAssistCutPercentage    decimal.Decimal `json:"member_assist_cut_percentage"`
-	MechOwnerCutPercentage       decimal.Decimal `json:"mech_owner_cut_percentage"`
-	OriginalMemberIDs            []string        `json:"original_member_ids"`
+	Name                         string                        `json:"name"`
+	Symbol                       string                        `json:"symbol"`
+	Type                         string                        `json:"type"`
+	JoinFee                      decimal.Decimal               `json:"join_fee"`
+	MemberMonthlyDues            decimal.Decimal               `json:"member_monthly_dues"`
+	DeployingMemberCutPercentage decimal.Decimal               `json:"deploying_member_cut_percentage"`
+	MemberAssistCutPercentage    decimal.Decimal               `json:"member_assist_cut_percentage"`
+	MechOwnerCutPercentage       decimal.Decimal               `json:"mech_owner_cut_percentage"`
+	OriginalMemberIDs            []string                      `json:"original_member_ids"`
+	JoinQuestions                []*SyndicateJoinQuestionnaire `json:"join_questions"`
+}
+
+type SyndicateJoinQuestionnaire struct {
+	Question   string   `json:"question"`
+	MustAnswer bool     `json:"must_answer"`
+	Type       string   `json:"type"`
+	Options    []string `json:"options"`
 }
 
 func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r *http.Request) (int, error) {
@@ -126,6 +134,31 @@ func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r 
 		}
 	}
 
+	// validate questionnaire, if provided
+	for _, jq := range req.JoinQuestions {
+		if jq.Question == "" {
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("missing question"), "Missing question.")
+		}
+
+		switch jq.Type {
+		case boiler.QuestionnaireTypeTEXT:
+			if len(jq.Options) > 0 {
+				return http.StatusBadRequest, terror.Error(fmt.Errorf("text question connot contain options"), "Text question does not accept options.")
+			}
+		case boiler.QuestionnaireTypeSINGLE_SELECT, boiler.QuestionnaireTypeMULTI_SELECT:
+			if len(jq.Options) == 0 {
+				return http.StatusBadRequest, terror.Error(fmt.Errorf("missing questionnaire options"), "Missing options for selectable question.")
+			}
+			for _, op := range jq.Options {
+				if op == "" {
+					return http.StatusBadRequest, terror.Error(fmt.Errorf("option is empty string"), "Questionnaire option is an empty string.")
+				}
+			}
+		default:
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("questionnaire type does not exist"), "Questionnaire type does not exist.")
+		}
+	}
+
 	// create new syndicate
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -194,6 +227,35 @@ func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r 
 		}
 	}
 
+	// insert questionnaires
+	for i, jq := range req.JoinQuestions {
+		sq := &boiler.SyndicateQuestionnaire{
+			SyndicateID: syndicate.ID,
+			Usage:       boiler.QuestionnaireUsageJOIN_REQUEST,
+			Number:      i + 1,
+			MustAnswer:  jq.MustAnswer,
+			Question:    jq.Question,
+			Type:        jq.Type,
+		}
+		err = sq.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Interface("syndicate questionnaire", sq).Err(err).Msg("Failed to insert syndicate questionnaire.")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to store syndicate questionnaire.")
+		}
+
+		for _, op := range jq.Options {
+			qo := &boiler.QuestionnaireOption{
+				QuestionnaireID: sq.ID,
+				Content:         op,
+			}
+			err = qo.Insert(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Interface("questionnaire option", qo).Err(err).Msg("Failed to insert syndicate questionnaire option.")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to store syndicate questionnaire option.")
+			}
+		}
+	}
+
 	// register syndicate on xsyn server
 	err = api.Passport.SyndicateCreateHandler(syndicate.ID, syndicate.FoundedByID, syndicate.Name)
 	if err != nil {
@@ -208,7 +270,7 @@ func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r 
 	}
 
 	// add syndicate to the system
-	err = api.SyndicateSystem.CreateSyndicate(syndicate.ID)
+	err = api.SyndicateSystem.RegisterSyndicate(syndicate.ID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to add syndicate to the system")
 	}
@@ -269,8 +331,7 @@ func (api *API) SyndicateMotionIssue(player *server.Player, w http.ResponseWrite
 		NewRuleNumber:                   req.NewRuleNumber,
 		NewRuleContent:                  req.NewRuleContent,
 		MemberID:                        req.MemberID,
-
-		EndedAt: time.Now().AddDate(0, 0, req.LastForDays),
+		EndAt:                           time.Now().AddDate(0, 0, req.LastForDays),
 	}
 
 	blob.File = null.BytesFrom(imageData)

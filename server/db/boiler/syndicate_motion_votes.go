@@ -23,7 +23,6 @@ import (
 
 // SyndicateMotionVote is an object representing the database table.
 type SyndicateMotionVote struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	MotionID  string    `boiler:"motion_id" boil:"motion_id" json:"motion_id" toml:"motion_id" yaml:"motion_id"`
 	VoteByID  string    `boiler:"vote_by_id" boil:"vote_by_id" json:"vote_by_id" toml:"vote_by_id" yaml:"vote_by_id"`
 	IsAgreed  bool      `boiler:"is_agreed" boil:"is_agreed" json:"is_agreed" toml:"is_agreed" yaml:"is_agreed"`
@@ -36,7 +35,6 @@ type SyndicateMotionVote struct {
 }
 
 var SyndicateMotionVoteColumns = struct {
-	ID        string
 	MotionID  string
 	VoteByID  string
 	IsAgreed  string
@@ -44,7 +42,6 @@ var SyndicateMotionVoteColumns = struct {
 	UpdatedAt string
 	DeletedAt string
 }{
-	ID:        "id",
 	MotionID:  "motion_id",
 	VoteByID:  "vote_by_id",
 	IsAgreed:  "is_agreed",
@@ -54,7 +51,6 @@ var SyndicateMotionVoteColumns = struct {
 }
 
 var SyndicateMotionVoteTableColumns = struct {
-	ID        string
 	MotionID  string
 	VoteByID  string
 	IsAgreed  string
@@ -62,7 +58,6 @@ var SyndicateMotionVoteTableColumns = struct {
 	UpdatedAt string
 	DeletedAt string
 }{
-	ID:        "syndicate_motion_votes.id",
 	MotionID:  "syndicate_motion_votes.motion_id",
 	VoteByID:  "syndicate_motion_votes.vote_by_id",
 	IsAgreed:  "syndicate_motion_votes.is_agreed",
@@ -74,7 +69,6 @@ var SyndicateMotionVoteTableColumns = struct {
 // Generated where
 
 var SyndicateMotionVoteWhere = struct {
-	ID        whereHelperstring
 	MotionID  whereHelperstring
 	VoteByID  whereHelperstring
 	IsAgreed  whereHelperbool
@@ -82,7 +76,6 @@ var SyndicateMotionVoteWhere = struct {
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: "\"syndicate_motion_votes\".\"id\""},
 	MotionID:  whereHelperstring{field: "\"syndicate_motion_votes\".\"motion_id\""},
 	VoteByID:  whereHelperstring{field: "\"syndicate_motion_votes\".\"vote_by_id\""},
 	IsAgreed:  whereHelperbool{field: "\"syndicate_motion_votes\".\"is_agreed\""},
@@ -115,10 +108,10 @@ func (*syndicateMotionVoteR) NewStruct() *syndicateMotionVoteR {
 type syndicateMotionVoteL struct{}
 
 var (
-	syndicateMotionVoteAllColumns            = []string{"id", "motion_id", "vote_by_id", "is_agreed", "created_at", "updated_at", "deleted_at"}
+	syndicateMotionVoteAllColumns            = []string{"motion_id", "vote_by_id", "is_agreed", "created_at", "updated_at", "deleted_at"}
 	syndicateMotionVoteColumnsWithoutDefault = []string{"motion_id", "vote_by_id", "is_agreed"}
-	syndicateMotionVoteColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
-	syndicateMotionVotePrimaryKeyColumns     = []string{"id"}
+	syndicateMotionVoteColumnsWithDefault    = []string{"created_at", "updated_at", "deleted_at"}
+	syndicateMotionVotePrimaryKeyColumns     = []string{"motion_id", "vote_by_id"}
 	syndicateMotionVoteGeneratedColumns      = []string{}
 )
 
@@ -620,7 +613,7 @@ func (o *SyndicateMotionVote) SetMotion(exec boil.Executor, insert bool, related
 		strmangle.SetParamNames("\"", "\"", 1, []string{"motion_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syndicateMotionVotePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.MotionID, o.VoteByID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -666,7 +659,7 @@ func (o *SyndicateMotionVote) SetVoteBy(exec boil.Executor, insert bool, related
 		strmangle.SetParamNames("\"", "\"", 1, []string{"vote_by_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syndicateMotionVotePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.MotionID, o.VoteByID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -704,7 +697,7 @@ func SyndicateMotionVotes(mods ...qm.QueryMod) syndicateMotionVoteQuery {
 
 // FindSyndicateMotionVote retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindSyndicateMotionVote(exec boil.Executor, iD string, selectCols ...string) (*SyndicateMotionVote, error) {
+func FindSyndicateMotionVote(exec boil.Executor, motionID string, voteByID string, selectCols ...string) (*SyndicateMotionVote, error) {
 	syndicateMotionVoteObj := &SyndicateMotionVote{}
 
 	sel := "*"
@@ -712,10 +705,10 @@ func FindSyndicateMotionVote(exec boil.Executor, iD string, selectCols ...string
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"syndicate_motion_votes\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"syndicate_motion_votes\" where \"motion_id\"=$1 AND \"vote_by_id\"=$2 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, iD)
+	q := queries.Raw(query, motionID, voteByID)
 
 	err := q.Bind(nil, exec, syndicateMotionVoteObj)
 	if err != nil {
@@ -1086,12 +1079,12 @@ func (o *SyndicateMotionVote) Delete(exec boil.Executor, hardDelete bool) (int64
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), syndicateMotionVotePrimaryKeyMapping)
-		sql = "DELETE FROM \"syndicate_motion_votes\" WHERE \"id\"=$1"
+		sql = "DELETE FROM \"syndicate_motion_votes\" WHERE \"motion_id\"=$1 AND \"vote_by_id\"=$2"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"syndicate_motion_votes\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"syndicate_motion_votes\" SET %s WHERE \"motion_id\"=$2 AND \"vote_by_id\"=$3",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(syndicateMotionVoteType, syndicateMotionVoteMapping, append(wl, syndicateMotionVotePrimaryKeyColumns...))
@@ -1216,7 +1209,7 @@ func (o SyndicateMotionVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool)
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *SyndicateMotionVote) Reload(exec boil.Executor) error {
-	ret, err := FindSyndicateMotionVote(exec, o.ID)
+	ret, err := FindSyndicateMotionVote(exec, o.MotionID, o.VoteByID)
 	if err != nil {
 		return err
 	}
@@ -1256,15 +1249,15 @@ func (o *SyndicateMotionVoteSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // SyndicateMotionVoteExists checks if the SyndicateMotionVote row exists.
-func SyndicateMotionVoteExists(exec boil.Executor, iD string) (bool, error) {
+func SyndicateMotionVoteExists(exec boil.Executor, motionID string, voteByID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"syndicate_motion_votes\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"syndicate_motion_votes\" where \"motion_id\"=$1 AND \"vote_by_id\"=$2 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, iD)
+		fmt.Fprintln(boil.DebugWriter, motionID, voteByID)
 	}
-	row := exec.QueryRow(sql, iD)
+	row := exec.QueryRow(sql, motionID, voteByID)
 
 	err := row.Scan(&exists)
 	if err != nil {

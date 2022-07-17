@@ -2,19 +2,24 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 )
 
 type SyndicateWS struct {
@@ -39,120 +44,173 @@ func NewSyndicateController(api *API) *SyndicateWS {
 
 type SyndicateJoinRequest struct {
 	Payload struct {
-		SyndicateID string `json:"syndicate_id"`
+		SyndicateID          string                          `json:"syndicate_id"`
+		QuestionnaireAnswers []*SyndicateQuestionnaireAnswer `json:"questionnaire_answers"`
 	} `json:"payload"`
+}
+
+type SyndicateQuestionnaireAnswer struct {
+	QuestionnaireID   string   `json:"questionnaire_id"`
+	Answer            string   `json:"answer"`
+	SelectedOptionIDs []string `json:"selected_option_ids"`
 }
 
 const HubKeySyndicateJoin = "SYNDICATE:JOIN"
 
+var joinSyndicateBucket = leakybucket.NewCollector(1, 1, true)
+
 func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	//if user.SyndicateID.Valid {
-	//	return terror.Error(fmt.Errorf("player already has syndicate"), "You already have a syndicate")
-	//}
-	//
-	//req := &SyndicateJoinRequest{}
-	//err := json.Unmarshal(payload, req)
-	//if err != nil {
-	//	return terror.Error(err, "Invalid request received.")
-	//}
-	//
-	//// load targeted syndicate
-	//syndicate, err := boiler.FindSyndicate(gamedb.StdConn, req.Payload.SyndicateID)
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Str("syndicate id", req.Payload.SyndicateID).Msg("Failed to get syndicate from db")
-	//	return terror.Error(err, "Failed to get syndicate detail")
-	//}
-	//
-	//// check the faction of the syndicate is same as player's faction
-	//if syndicate.FactionID != factionID {
-	//	return terror.Error(terror.ErrForbidden, "Cannot join the syndicate in other faction")
-	//}
-	//
-	//// check available seat count
-	//currentMemberCount, err := syndicate.Players().Count(gamedb.StdConn)
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Str("syndicate id", syndicate.ID).Msg("Failed to load the number of current member within the syndicate")
-	//	return terror.Error(err, "There is no available seat in the syndicate at the moment")
-	//}
-	//
-	//if int(currentMemberCount) >= syndicate.SeatCount-1 {
-	//	return terror.Error(fmt.Errorf("no available seat"), "There is no available seat in the syndicate at the moment")
-	//}
-	//
-	//// check user has enough fund
-	//userBalance := sc.API.Passport.UserBalanceGet(uuid.FromStringOrNil(user.ID))
-	//if userBalance.LessThan(syndicate.JoinFee) {
-	//	return terror.Error(fmt.Errorf("insufficent fund"), "Do not have enough sups to pay the join fee")
-	//}
-	//
-	//dasTax := db.GetDecimalWithDefault(db.KeyDecentralisedAutonomousSyndicateTax, decimal.New(25, -3)) // 0.025
-	//
-	//tx, err := gamedb.StdConn.Begin()
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
-	//	return terror.Error(err, "Failed to join the syndicate")
-	//}
-	//
-	//defer tx.Rollback()
-	//
-	//// assign syndicate to the player
-	//user.SyndicateID = null.StringFrom(syndicate.ID)
-	//_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Msg("Failed to assign syndicate id to the player")
-	//	return terror.Error(err, "Failed to join the syndicate.")
-	//}
-	//
-	//// user pay join fee to syndicate, if join fee is greater than zero
-	//if syndicate.JoinFee.GreaterThan(decimal.Zero) {
-	//	_, err = sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-	//		FromUserID:           uuid.FromStringOrNil(user.ID),
-	//		ToUserID:             uuid.FromStringOrNil(syndicate.ID),
-	//		Amount:               syndicate.JoinFee.String(),
-	//		TransactionReference: server.TransactionReference(fmt.Sprintf("syndicate_join_fee|%s|%d", syndicate.ID, time.Now().UnixNano())),
-	//		Group:                string(server.TransactionGroupSupremacy),
-	//		SubGroup:             string(server.TransactionGroupSyndicate),
-	//		Description:          fmt.Sprintf("Syndicate - %s join fee: (%s)", syndicate.Name, syndicate.ID),
-	//		NotSafe:              true,
-	//	})
-	//	if err != nil {
-	//		return terror.Error(err, "Failed to pay syndicate join fee")
-	//	}
-	//}
-	//
-	//err = tx.Commit()
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
-	//	return terror.Error(err, "Failed to join the syndicate")
-	//}
-	//
-	//// syndicate pay tax to xsyn, if join fee is greater than zero
-	//if syndicate.JoinFee.GreaterThan(decimal.Zero) {
-	//	_, err = sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-	//		FromUserID:           uuid.FromStringOrNil(syndicate.ID),
-	//		ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
-	//		Amount:               syndicate.JoinFee.Mul(dasTax).String(),
-	//		TransactionReference: server.TransactionReference(fmt.Sprintf("syndicate_das_tax|%s|%d", syndicate.ID, time.Now().UnixNano())),
-	//		Group:                string(server.TransactionGroupSupremacy),
-	//		SubGroup:             string(server.TransactionGroupSyndicate),
-	//		Description:          fmt.Sprintf("Tax for Syndicate - %s join fee: (%s)", syndicate.Name, syndicate.ID),
-	//		NotSafe:              true,
-	//	})
-	//	if err != nil {
-	//		return terror.Error(err, "Failed to pay syndicate join fee")
-	//	}
-	//}
-	//
-	//ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
-	//
-	//// broadcast latest syndicate detail
-	//serverSyndicate, err := db.GetSyndicateDetail(syndicate.ID)
-	//if err != nil {
-	//	return terror.Error(err, "Failed to get syndicate detail")
-	//}
-	//ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateGeneralDetailSubscribe, serverSyndicate)
-	//
-	//reply(true)
+	if user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player already has syndicate"), "You already have a syndicate")
+	}
+
+	if joinSyndicateBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many join request"), "Too many syndicate join request.")
+	}
+
+	// check player has applied any application already
+	app, err := boiler.SyndicateJoinApplications(
+		boiler.SyndicateJoinApplicationWhere.ApplicantID.EQ(user.ID),
+		boiler.SyndicateJoinApplicationWhere.FinalisedAt.IsNull(),
+		qm.Load(boiler.SyndicateJoinApplicationRels.Syndicate),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "")
+	}
+
+	if app != nil {
+		return terror.Error(fmt.Errorf("unfinalised application"), fmt.Sprintf("You have an unfinalised application for joining syndicate '%s'.", app.R.Syndicate.Name))
+	}
+
+	req := &SyndicateJoinRequest{}
+	err = json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	syndicate, err := boiler.FindSyndicate(gamedb.StdConn, req.Payload.SyndicateID)
+	if err != nil {
+		return terror.Error(err, "Failed to load syndicate.")
+	}
+
+	// validate syndicate questionnaire
+	sqs, err := syndicate.SyndicateQuestionnaires(
+		qm.Load(boiler.SyndicateQuestionnaireRels.QuestionnaireQuestionnaireOptions),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", syndicate.ID).Msg("Failed to load syndicate questionnaires.")
+		return terror.Error(err, "Failed to get syndicate join questionnaire")
+	}
+
+	answers := []*boiler.QuestionnaireAnswer{}
+	for _, sq := range sqs {
+		index := -1
+		// check applicant has answered this question
+		for i, qa := range req.Payload.QuestionnaireAnswers {
+			if qa.QuestionnaireID == sq.ID {
+				index = i
+				break
+			}
+		}
+
+		// if question is not answered
+		if index == -1 {
+
+			// error, if question is must answer
+			if sq.MustAnswer {
+				return terror.Error(fmt.Errorf("missing answer"), fmt.Sprintf("Question '%s' must be answered.", sq.Question))
+			}
+
+			continue
+		}
+
+		applicantAnswer := req.Payload.QuestionnaireAnswers[index]
+		answer := &boiler.QuestionnaireAnswer{
+			Question: sq.Question,
+		}
+
+		switch sq.Type {
+		case boiler.QuestionnaireTypeTEXT:
+			if applicantAnswer.Answer == "" {
+				return terror.Error(fmt.Errorf("empty answer"), fmt.Sprintf("Answer for question '%s' is not provided.", sq.Question))
+			}
+			answer.Answer = null.StringFrom(applicantAnswer.Answer)
+		case boiler.QuestionnaireTypeSINGLE_SELECT:
+			for _, opID := range applicantAnswer.SelectedOptionIDs {
+				for _, qo := range sq.R.QuestionnaireQuestionnaireOptions {
+					// append answer if option exist
+					if opID == qo.ID {
+						answer.Selections = append(answer.Selections, qo.Content)
+					}
+				}
+			}
+
+			if len(answer.Selections) != 1 {
+				return terror.Error(fmt.Errorf("not one answer"), fmt.Sprintf("Question '%s' only allow one answer.", sq.Question))
+			}
+		case boiler.QuestionnaireTypeMULTI_SELECT:
+			for _, opID := range applicantAnswer.SelectedOptionIDs {
+				for _, qo := range sq.R.QuestionnaireQuestionnaireOptions {
+					// append answer if option exist
+					if opID == qo.ID {
+						answer.Selections = append(answer.Selections, qo.Content)
+					}
+				}
+			}
+
+			if len(answer.Selections) == 0 {
+				return terror.Error(fmt.Errorf("no answer"), fmt.Sprintf("Answer for question '%s' is not provided.", sq.Question))
+			}
+		}
+
+		// append answer to the list
+		answers = append(answers, answer)
+	}
+
+	// generate request
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+		return terror.Error(err, "Failed to submit application.")
+	}
+
+	defer tx.Rollback()
+
+	// insert application
+	app = &boiler.SyndicateJoinApplication{
+		ApplicantID: user.ID,
+		SyndicateID: syndicate.ID,
+		ExpireAt:    time.Now().AddDate(0, 0, 1),
+		PaidAmount:  syndicate.JoinFee.Round(0),
+	}
+
+	err = app.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Interface("application", app).Err(err).Msg("Failed to insert syndicate join application")
+		return terror.Error(err, "Failed to submit application")
+	}
+
+	// insert answer
+	for _, answer := range answers {
+		answer.SyndicateJoinApplicationID = null.StringFrom(app.ID)
+		err = answer.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Interface("applicant answer", answer).Err(err).Msg("Failed to insert applicant answer.")
+			return terror.Error(err, "Failed to submit application.")
+		}
+	}
+
+	// check user balance
+	err = sc.API.SyndicateSystem.AddJoinApplication(app)
+	if err != nil {
+		return terror.Error(err, "Failed to submit application")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return terror.Error(err, "Failed to submit application.")
+	}
 
 	return nil
 }

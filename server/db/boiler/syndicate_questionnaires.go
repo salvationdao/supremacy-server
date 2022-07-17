@@ -26,6 +26,8 @@ type SyndicateQuestionnaire struct {
 	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	SyndicateID string    `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
 	Usage       string    `boiler:"usage" boil:"usage" json:"usage" toml:"usage" yaml:"usage"`
+	Number      int       `boiler:"number" boil:"number" json:"number" toml:"number" yaml:"number"`
+	MustAnswer  bool      `boiler:"must_answer" boil:"must_answer" json:"must_answer" toml:"must_answer" yaml:"must_answer"`
 	Question    string    `boiler:"question" boil:"question" json:"question" toml:"question" yaml:"question"`
 	Type        string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -40,6 +42,8 @@ var SyndicateQuestionnaireColumns = struct {
 	ID          string
 	SyndicateID string
 	Usage       string
+	Number      string
+	MustAnswer  string
 	Question    string
 	Type        string
 	CreatedAt   string
@@ -49,6 +53,8 @@ var SyndicateQuestionnaireColumns = struct {
 	ID:          "id",
 	SyndicateID: "syndicate_id",
 	Usage:       "usage",
+	Number:      "number",
+	MustAnswer:  "must_answer",
 	Question:    "question",
 	Type:        "type",
 	CreatedAt:   "created_at",
@@ -60,6 +66,8 @@ var SyndicateQuestionnaireTableColumns = struct {
 	ID          string
 	SyndicateID string
 	Usage       string
+	Number      string
+	MustAnswer  string
 	Question    string
 	Type        string
 	CreatedAt   string
@@ -69,6 +77,8 @@ var SyndicateQuestionnaireTableColumns = struct {
 	ID:          "syndicate_questionnaires.id",
 	SyndicateID: "syndicate_questionnaires.syndicate_id",
 	Usage:       "syndicate_questionnaires.usage",
+	Number:      "syndicate_questionnaires.number",
+	MustAnswer:  "syndicate_questionnaires.must_answer",
 	Question:    "syndicate_questionnaires.question",
 	Type:        "syndicate_questionnaires.type",
 	CreatedAt:   "syndicate_questionnaires.created_at",
@@ -82,6 +92,8 @@ var SyndicateQuestionnaireWhere = struct {
 	ID          whereHelperstring
 	SyndicateID whereHelperstring
 	Usage       whereHelperstring
+	Number      whereHelperint
+	MustAnswer  whereHelperbool
 	Question    whereHelperstring
 	Type        whereHelperstring
 	CreatedAt   whereHelpertime_Time
@@ -91,6 +103,8 @@ var SyndicateQuestionnaireWhere = struct {
 	ID:          whereHelperstring{field: "\"syndicate_questionnaires\".\"id\""},
 	SyndicateID: whereHelperstring{field: "\"syndicate_questionnaires\".\"syndicate_id\""},
 	Usage:       whereHelperstring{field: "\"syndicate_questionnaires\".\"usage\""},
+	Number:      whereHelperint{field: "\"syndicate_questionnaires\".\"number\""},
+	MustAnswer:  whereHelperbool{field: "\"syndicate_questionnaires\".\"must_answer\""},
 	Question:    whereHelperstring{field: "\"syndicate_questionnaires\".\"question\""},
 	Type:        whereHelperstring{field: "\"syndicate_questionnaires\".\"type\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"syndicate_questionnaires\".\"created_at\""},
@@ -122,8 +136,8 @@ func (*syndicateQuestionnaireR) NewStruct() *syndicateQuestionnaireR {
 type syndicateQuestionnaireL struct{}
 
 var (
-	syndicateQuestionnaireAllColumns            = []string{"id", "syndicate_id", "usage", "question", "type", "created_at", "updated_at", "deleted_at"}
-	syndicateQuestionnaireColumnsWithoutDefault = []string{"syndicate_id", "usage", "question", "type"}
+	syndicateQuestionnaireAllColumns            = []string{"id", "syndicate_id", "usage", "number", "must_answer", "question", "type", "created_at", "updated_at", "deleted_at"}
+	syndicateQuestionnaireColumnsWithoutDefault = []string{"syndicate_id", "usage", "number", "must_answer", "question", "type"}
 	syndicateQuestionnaireColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	syndicateQuestionnairePrimaryKeyColumns     = []string{"id"}
 	syndicateQuestionnaireGeneratedColumns      = []string{}

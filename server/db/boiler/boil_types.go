@@ -247,6 +247,13 @@ const (
 	SyndicateEventTypeCONTRIBUTE_FUND = "CONTRIBUTE_FUND"
 )
 
+// Enum values for SyndicateJoinApplicationResult
+const (
+	SyndicateJoinApplicationResultACCEPTED = "ACCEPTED"
+	SyndicateJoinApplicationResultREJECTED = "REJECTED"
+	SyndicateJoinApplicationResultCANCELED = "CANCELED"
+)
+
 // Enum values for SyndicateMotionType
 const (
 	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"

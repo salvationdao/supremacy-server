@@ -24,91 +24,91 @@ import (
 
 // QuestionnaireAnswer is an object representing the database table.
 type QuestionnaireAnswer struct {
-	ID                     string            `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	SyndicateJoinRequestID null.String       `boiler:"syndicate_join_request_id" boil:"syndicate_join_request_id" json:"syndicate_join_request_id,omitempty" toml:"syndicate_join_request_id" yaml:"syndicate_join_request_id,omitempty"`
-	Question               string            `boiler:"question" boil:"question" json:"question" toml:"question" yaml:"question"`
-	Answer                 null.String       `boiler:"answer" boil:"answer" json:"answer,omitempty" toml:"answer" yaml:"answer,omitempty"`
-	Selections             types.StringArray `boiler:"selections" boil:"selections" json:"selections,omitempty" toml:"selections" yaml:"selections,omitempty"`
-	CreatedAt              time.Time         `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt              time.Time         `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt              null.Time         `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                         string            `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	SyndicateJoinApplicationID null.String       `boiler:"syndicate_join_application_id" boil:"syndicate_join_application_id" json:"syndicate_join_application_id,omitempty" toml:"syndicate_join_application_id" yaml:"syndicate_join_application_id,omitempty"`
+	Question                   string            `boiler:"question" boil:"question" json:"question" toml:"question" yaml:"question"`
+	Answer                     null.String       `boiler:"answer" boil:"answer" json:"answer,omitempty" toml:"answer" yaml:"answer,omitempty"`
+	Selections                 types.StringArray `boiler:"selections" boil:"selections" json:"selections,omitempty" toml:"selections" yaml:"selections,omitempty"`
+	CreatedAt                  time.Time         `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt                  time.Time         `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt                  null.Time         `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *questionnaireAnswerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L questionnaireAnswerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var QuestionnaireAnswerColumns = struct {
-	ID                     string
-	SyndicateJoinRequestID string
-	Question               string
-	Answer                 string
-	Selections             string
-	CreatedAt              string
-	UpdatedAt              string
-	DeletedAt              string
+	ID                         string
+	SyndicateJoinApplicationID string
+	Question                   string
+	Answer                     string
+	Selections                 string
+	CreatedAt                  string
+	UpdatedAt                  string
+	DeletedAt                  string
 }{
-	ID:                     "id",
-	SyndicateJoinRequestID: "syndicate_join_request_id",
-	Question:               "question",
-	Answer:                 "answer",
-	Selections:             "selections",
-	CreatedAt:              "created_at",
-	UpdatedAt:              "updated_at",
-	DeletedAt:              "deleted_at",
+	ID:                         "id",
+	SyndicateJoinApplicationID: "syndicate_join_application_id",
+	Question:                   "question",
+	Answer:                     "answer",
+	Selections:                 "selections",
+	CreatedAt:                  "created_at",
+	UpdatedAt:                  "updated_at",
+	DeletedAt:                  "deleted_at",
 }
 
 var QuestionnaireAnswerTableColumns = struct {
-	ID                     string
-	SyndicateJoinRequestID string
-	Question               string
-	Answer                 string
-	Selections             string
-	CreatedAt              string
-	UpdatedAt              string
-	DeletedAt              string
+	ID                         string
+	SyndicateJoinApplicationID string
+	Question                   string
+	Answer                     string
+	Selections                 string
+	CreatedAt                  string
+	UpdatedAt                  string
+	DeletedAt                  string
 }{
-	ID:                     "questionnaire_answer.id",
-	SyndicateJoinRequestID: "questionnaire_answer.syndicate_join_request_id",
-	Question:               "questionnaire_answer.question",
-	Answer:                 "questionnaire_answer.answer",
-	Selections:             "questionnaire_answer.selections",
-	CreatedAt:              "questionnaire_answer.created_at",
-	UpdatedAt:              "questionnaire_answer.updated_at",
-	DeletedAt:              "questionnaire_answer.deleted_at",
+	ID:                         "questionnaire_answer.id",
+	SyndicateJoinApplicationID: "questionnaire_answer.syndicate_join_application_id",
+	Question:                   "questionnaire_answer.question",
+	Answer:                     "questionnaire_answer.answer",
+	Selections:                 "questionnaire_answer.selections",
+	CreatedAt:                  "questionnaire_answer.created_at",
+	UpdatedAt:                  "questionnaire_answer.updated_at",
+	DeletedAt:                  "questionnaire_answer.deleted_at",
 }
 
 // Generated where
 
 var QuestionnaireAnswerWhere = struct {
-	ID                     whereHelperstring
-	SyndicateJoinRequestID whereHelpernull_String
-	Question               whereHelperstring
-	Answer                 whereHelpernull_String
-	Selections             whereHelpertypes_StringArray
-	CreatedAt              whereHelpertime_Time
-	UpdatedAt              whereHelpertime_Time
-	DeletedAt              whereHelpernull_Time
+	ID                         whereHelperstring
+	SyndicateJoinApplicationID whereHelpernull_String
+	Question                   whereHelperstring
+	Answer                     whereHelpernull_String
+	Selections                 whereHelpertypes_StringArray
+	CreatedAt                  whereHelpertime_Time
+	UpdatedAt                  whereHelpertime_Time
+	DeletedAt                  whereHelpernull_Time
 }{
-	ID:                     whereHelperstring{field: "\"questionnaire_answer\".\"id\""},
-	SyndicateJoinRequestID: whereHelpernull_String{field: "\"questionnaire_answer\".\"syndicate_join_request_id\""},
-	Question:               whereHelperstring{field: "\"questionnaire_answer\".\"question\""},
-	Answer:                 whereHelpernull_String{field: "\"questionnaire_answer\".\"answer\""},
-	Selections:             whereHelpertypes_StringArray{field: "\"questionnaire_answer\".\"selections\""},
-	CreatedAt:              whereHelpertime_Time{field: "\"questionnaire_answer\".\"created_at\""},
-	UpdatedAt:              whereHelpertime_Time{field: "\"questionnaire_answer\".\"updated_at\""},
-	DeletedAt:              whereHelpernull_Time{field: "\"questionnaire_answer\".\"deleted_at\""},
+	ID:                         whereHelperstring{field: "\"questionnaire_answer\".\"id\""},
+	SyndicateJoinApplicationID: whereHelpernull_String{field: "\"questionnaire_answer\".\"syndicate_join_application_id\""},
+	Question:                   whereHelperstring{field: "\"questionnaire_answer\".\"question\""},
+	Answer:                     whereHelpernull_String{field: "\"questionnaire_answer\".\"answer\""},
+	Selections:                 whereHelpertypes_StringArray{field: "\"questionnaire_answer\".\"selections\""},
+	CreatedAt:                  whereHelpertime_Time{field: "\"questionnaire_answer\".\"created_at\""},
+	UpdatedAt:                  whereHelpertime_Time{field: "\"questionnaire_answer\".\"updated_at\""},
+	DeletedAt:                  whereHelpernull_Time{field: "\"questionnaire_answer\".\"deleted_at\""},
 }
 
 // QuestionnaireAnswerRels is where relationship names are stored.
 var QuestionnaireAnswerRels = struct {
-	SyndicateJoinRequest string
+	SyndicateJoinApplication string
 }{
-	SyndicateJoinRequest: "SyndicateJoinRequest",
+	SyndicateJoinApplication: "SyndicateJoinApplication",
 }
 
 // questionnaireAnswerR is where relationships are stored.
 type questionnaireAnswerR struct {
-	SyndicateJoinRequest *SyndicateJoinRequest `boiler:"SyndicateJoinRequest" boil:"SyndicateJoinRequest" json:"SyndicateJoinRequest" toml:"SyndicateJoinRequest" yaml:"SyndicateJoinRequest"`
+	SyndicateJoinApplication *SyndicateJoinApplication `boiler:"SyndicateJoinApplication" boil:"SyndicateJoinApplication" json:"SyndicateJoinApplication" toml:"SyndicateJoinApplication" yaml:"SyndicateJoinApplication"`
 }
 
 // NewStruct creates a new relationship struct
@@ -120,9 +120,9 @@ func (*questionnaireAnswerR) NewStruct() *questionnaireAnswerR {
 type questionnaireAnswerL struct{}
 
 var (
-	questionnaireAnswerAllColumns            = []string{"id", "syndicate_join_request_id", "question", "answer", "selections", "created_at", "updated_at", "deleted_at"}
+	questionnaireAnswerAllColumns            = []string{"id", "syndicate_join_application_id", "question", "answer", "selections", "created_at", "updated_at", "deleted_at"}
 	questionnaireAnswerColumnsWithoutDefault = []string{"question"}
-	questionnaireAnswerColumnsWithDefault    = []string{"id", "syndicate_join_request_id", "answer", "selections", "created_at", "updated_at", "deleted_at"}
+	questionnaireAnswerColumnsWithDefault    = []string{"id", "syndicate_join_application_id", "answer", "selections", "created_at", "updated_at", "deleted_at"}
 	questionnaireAnswerPrimaryKeyColumns     = []string{"id"}
 	questionnaireAnswerGeneratedColumns      = []string{}
 )
@@ -369,24 +369,24 @@ func (q questionnaireAnswerQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// SyndicateJoinRequest pointed to by the foreign key.
-func (o *QuestionnaireAnswer) SyndicateJoinRequest(mods ...qm.QueryMod) syndicateJoinRequestQuery {
+// SyndicateJoinApplication pointed to by the foreign key.
+func (o *QuestionnaireAnswer) SyndicateJoinApplication(mods ...qm.QueryMod) syndicateJoinApplicationQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.SyndicateJoinRequestID),
+		qm.Where("\"id\" = ?", o.SyndicateJoinApplicationID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := SyndicateJoinRequests(queryMods...)
-	queries.SetFrom(query.Query, "\"syndicate_join_requests\"")
+	query := SyndicateJoinApplications(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_join_applications\"")
 
 	return query
 }
 
-// LoadSyndicateJoinRequest allows an eager lookup of values, cached into the
+// LoadSyndicateJoinApplication allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular bool, maybeQuestionnaireAnswer interface{}, mods queries.Applicator) error {
+func (questionnaireAnswerL) LoadSyndicateJoinApplication(e boil.Executor, singular bool, maybeQuestionnaireAnswer interface{}, mods queries.Applicator) error {
 	var slice []*QuestionnaireAnswer
 	var object *QuestionnaireAnswer
 
@@ -401,8 +401,8 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 		if object.R == nil {
 			object.R = &questionnaireAnswerR{}
 		}
-		if !queries.IsNil(object.SyndicateJoinRequestID) {
-			args = append(args, object.SyndicateJoinRequestID)
+		if !queries.IsNil(object.SyndicateJoinApplicationID) {
+			args = append(args, object.SyndicateJoinApplicationID)
 		}
 
 	} else {
@@ -413,13 +413,13 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.SyndicateJoinRequestID) {
+				if queries.Equal(a, obj.SyndicateJoinApplicationID) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.SyndicateJoinRequestID) {
-				args = append(args, obj.SyndicateJoinRequestID)
+			if !queries.IsNil(obj.SyndicateJoinApplicationID) {
+				args = append(args, obj.SyndicateJoinApplicationID)
 			}
 
 		}
@@ -430,9 +430,9 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 	}
 
 	query := NewQuery(
-		qm.From(`syndicate_join_requests`),
-		qm.WhereIn(`syndicate_join_requests.id in ?`, args...),
-		qmhelper.WhereIsNull(`syndicate_join_requests.deleted_at`),
+		qm.From(`syndicate_join_applications`),
+		qm.WhereIn(`syndicate_join_applications.id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_join_applications.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -440,19 +440,19 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load SyndicateJoinRequest")
+		return errors.Wrap(err, "failed to eager load SyndicateJoinApplication")
 	}
 
-	var resultSlice []*SyndicateJoinRequest
+	var resultSlice []*SyndicateJoinApplication
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice SyndicateJoinRequest")
+		return errors.Wrap(err, "failed to bind eager loaded slice SyndicateJoinApplication")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for syndicate_join_requests")
+		return errors.Wrap(err, "failed to close results of eager load for syndicate_join_applications")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_join_requests")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_join_applications")
 	}
 
 	if len(questionnaireAnswerAfterSelectHooks) != 0 {
@@ -469,9 +469,9 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.SyndicateJoinRequest = foreign
+		object.R.SyndicateJoinApplication = foreign
 		if foreign.R == nil {
-			foreign.R = &syndicateJoinRequestR{}
+			foreign.R = &syndicateJoinApplicationR{}
 		}
 		foreign.R.QuestionnaireAnswers = append(foreign.R.QuestionnaireAnswers, object)
 		return nil
@@ -479,10 +479,10 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.SyndicateJoinRequestID, foreign.ID) {
-				local.R.SyndicateJoinRequest = foreign
+			if queries.Equal(local.SyndicateJoinApplicationID, foreign.ID) {
+				local.R.SyndicateJoinApplication = foreign
 				if foreign.R == nil {
-					foreign.R = &syndicateJoinRequestR{}
+					foreign.R = &syndicateJoinApplicationR{}
 				}
 				foreign.R.QuestionnaireAnswers = append(foreign.R.QuestionnaireAnswers, local)
 				break
@@ -493,10 +493,10 @@ func (questionnaireAnswerL) LoadSyndicateJoinRequest(e boil.Executor, singular b
 	return nil
 }
 
-// SetSyndicateJoinRequest of the questionnaireAnswer to the related item.
-// Sets o.R.SyndicateJoinRequest to related.
+// SetSyndicateJoinApplication of the questionnaireAnswer to the related item.
+// Sets o.R.SyndicateJoinApplication to related.
 // Adds o to related.R.QuestionnaireAnswers.
-func (o *QuestionnaireAnswer) SetSyndicateJoinRequest(exec boil.Executor, insert bool, related *SyndicateJoinRequest) error {
+func (o *QuestionnaireAnswer) SetSyndicateJoinApplication(exec boil.Executor, insert bool, related *SyndicateJoinApplication) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -506,7 +506,7 @@ func (o *QuestionnaireAnswer) SetSyndicateJoinRequest(exec boil.Executor, insert
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"questionnaire_answer\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_join_request_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_join_application_id"}),
 		strmangle.WhereClause("\"", "\"", 2, questionnaireAnswerPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -519,17 +519,17 @@ func (o *QuestionnaireAnswer) SetSyndicateJoinRequest(exec boil.Executor, insert
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.SyndicateJoinRequestID, related.ID)
+	queries.Assign(&o.SyndicateJoinApplicationID, related.ID)
 	if o.R == nil {
 		o.R = &questionnaireAnswerR{
-			SyndicateJoinRequest: related,
+			SyndicateJoinApplication: related,
 		}
 	} else {
-		o.R.SyndicateJoinRequest = related
+		o.R.SyndicateJoinApplication = related
 	}
 
 	if related.R == nil {
-		related.R = &syndicateJoinRequestR{
+		related.R = &syndicateJoinApplicationR{
 			QuestionnaireAnswers: QuestionnaireAnswerSlice{o},
 		}
 	} else {
@@ -539,26 +539,26 @@ func (o *QuestionnaireAnswer) SetSyndicateJoinRequest(exec boil.Executor, insert
 	return nil
 }
 
-// RemoveSyndicateJoinRequest relationship.
-// Sets o.R.SyndicateJoinRequest to nil.
+// RemoveSyndicateJoinApplication relationship.
+// Sets o.R.SyndicateJoinApplication to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *QuestionnaireAnswer) RemoveSyndicateJoinRequest(exec boil.Executor, related *SyndicateJoinRequest) error {
+func (o *QuestionnaireAnswer) RemoveSyndicateJoinApplication(exec boil.Executor, related *SyndicateJoinApplication) error {
 	var err error
 
-	queries.SetScanner(&o.SyndicateJoinRequestID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("syndicate_join_request_id")); err != nil {
+	queries.SetScanner(&o.SyndicateJoinApplicationID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("syndicate_join_application_id")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.SyndicateJoinRequest = nil
+		o.R.SyndicateJoinApplication = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
 	for i, ri := range related.R.QuestionnaireAnswers {
-		if queries.Equal(o.SyndicateJoinRequestID, ri.SyndicateJoinRequestID) {
+		if queries.Equal(o.SyndicateJoinApplicationID, ri.SyndicateJoinApplicationID) {
 			continue
 		}
 

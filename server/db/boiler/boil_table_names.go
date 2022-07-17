@@ -5,6 +5,7 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
+	ApplicationVotes                                   string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -110,7 +111,7 @@ var TableNames = struct {
 	SyndicateElectionVotes                             string
 	SyndicateElections                                 string
 	SyndicateEventLog                                  string
-	SyndicateJoinRequests                              string
+	SyndicateJoinApplications                          string
 	SyndicateMotionVotes                               string
 	SyndicateMotions                                   string
 	SyndicateQuestionnaires                            string
@@ -132,6 +133,7 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
+	ApplicationVotes:                "application_votes",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -237,7 +239,7 @@ var TableNames = struct {
 	SyndicateElectionVotes:       "syndicate_election_votes",
 	SyndicateElections:           "syndicate_elections",
 	SyndicateEventLog:            "syndicate_event_log",
-	SyndicateJoinRequests:        "syndicate_join_requests",
+	SyndicateJoinApplications:    "syndicate_join_applications",
 	SyndicateMotionVotes:         "syndicate_motion_votes",
 	SyndicateMotions:             "syndicate_motions",
 	SyndicateQuestionnaires:      "syndicate_questionnaires",

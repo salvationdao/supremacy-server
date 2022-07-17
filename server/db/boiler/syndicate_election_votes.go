@@ -24,7 +24,7 @@ import (
 // SyndicateElectionVote is an object representing the database table.
 type SyndicateElectionVote struct {
 	SyndicateElectionID string    `boiler:"syndicate_election_id" boil:"syndicate_election_id" json:"syndicate_election_id" toml:"syndicate_election_id" yaml:"syndicate_election_id"`
-	VoterID             string    `boiler:"voter_id" boil:"voter_id" json:"voter_id" toml:"voter_id" yaml:"voter_id"`
+	VotedByID           string    `boiler:"voted_by_id" boil:"voted_by_id" json:"voted_by_id" toml:"voted_by_id" yaml:"voted_by_id"`
 	VotedForCandidateID string    `boiler:"voted_for_candidate_id" boil:"voted_for_candidate_id" json:"voted_for_candidate_id" toml:"voted_for_candidate_id" yaml:"voted_for_candidate_id"`
 	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt           time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -36,14 +36,14 @@ type SyndicateElectionVote struct {
 
 var SyndicateElectionVoteColumns = struct {
 	SyndicateElectionID string
-	VoterID             string
+	VotedByID           string
 	VotedForCandidateID string
 	CreatedAt           string
 	UpdatedAt           string
 	DeletedAt           string
 }{
 	SyndicateElectionID: "syndicate_election_id",
-	VoterID:             "voter_id",
+	VotedByID:           "voted_by_id",
 	VotedForCandidateID: "voted_for_candidate_id",
 	CreatedAt:           "created_at",
 	UpdatedAt:           "updated_at",
@@ -52,14 +52,14 @@ var SyndicateElectionVoteColumns = struct {
 
 var SyndicateElectionVoteTableColumns = struct {
 	SyndicateElectionID string
-	VoterID             string
+	VotedByID           string
 	VotedForCandidateID string
 	CreatedAt           string
 	UpdatedAt           string
 	DeletedAt           string
 }{
 	SyndicateElectionID: "syndicate_election_votes.syndicate_election_id",
-	VoterID:             "syndicate_election_votes.voter_id",
+	VotedByID:           "syndicate_election_votes.voted_by_id",
 	VotedForCandidateID: "syndicate_election_votes.voted_for_candidate_id",
 	CreatedAt:           "syndicate_election_votes.created_at",
 	UpdatedAt:           "syndicate_election_votes.updated_at",
@@ -70,14 +70,14 @@ var SyndicateElectionVoteTableColumns = struct {
 
 var SyndicateElectionVoteWhere = struct {
 	SyndicateElectionID whereHelperstring
-	VoterID             whereHelperstring
+	VotedByID           whereHelperstring
 	VotedForCandidateID whereHelperstring
 	CreatedAt           whereHelpertime_Time
 	UpdatedAt           whereHelpertime_Time
 	DeletedAt           whereHelpernull_Time
 }{
 	SyndicateElectionID: whereHelperstring{field: "\"syndicate_election_votes\".\"syndicate_election_id\""},
-	VoterID:             whereHelperstring{field: "\"syndicate_election_votes\".\"voter_id\""},
+	VotedByID:           whereHelperstring{field: "\"syndicate_election_votes\".\"voted_by_id\""},
 	VotedForCandidateID: whereHelperstring{field: "\"syndicate_election_votes\".\"voted_for_candidate_id\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"syndicate_election_votes\".\"created_at\""},
 	UpdatedAt:           whereHelpertime_Time{field: "\"syndicate_election_votes\".\"updated_at\""},
@@ -87,19 +87,19 @@ var SyndicateElectionVoteWhere = struct {
 // SyndicateElectionVoteRels is where relationship names are stored.
 var SyndicateElectionVoteRels = struct {
 	SyndicateElection string
+	VotedBy           string
 	VotedForCandidate string
-	Voter             string
 }{
 	SyndicateElection: "SyndicateElection",
+	VotedBy:           "VotedBy",
 	VotedForCandidate: "VotedForCandidate",
-	Voter:             "Voter",
 }
 
 // syndicateElectionVoteR is where relationships are stored.
 type syndicateElectionVoteR struct {
 	SyndicateElection *SyndicateElection `boiler:"SyndicateElection" boil:"SyndicateElection" json:"SyndicateElection" toml:"SyndicateElection" yaml:"SyndicateElection"`
+	VotedBy           *Player            `boiler:"VotedBy" boil:"VotedBy" json:"VotedBy" toml:"VotedBy" yaml:"VotedBy"`
 	VotedForCandidate *Player            `boiler:"VotedForCandidate" boil:"VotedForCandidate" json:"VotedForCandidate" toml:"VotedForCandidate" yaml:"VotedForCandidate"`
-	Voter             *Player            `boiler:"Voter" boil:"Voter" json:"Voter" toml:"Voter" yaml:"Voter"`
 }
 
 // NewStruct creates a new relationship struct
@@ -111,10 +111,10 @@ func (*syndicateElectionVoteR) NewStruct() *syndicateElectionVoteR {
 type syndicateElectionVoteL struct{}
 
 var (
-	syndicateElectionVoteAllColumns            = []string{"syndicate_election_id", "voter_id", "voted_for_candidate_id", "created_at", "updated_at", "deleted_at"}
-	syndicateElectionVoteColumnsWithoutDefault = []string{"syndicate_election_id", "voter_id", "voted_for_candidate_id"}
+	syndicateElectionVoteAllColumns            = []string{"syndicate_election_id", "voted_by_id", "voted_for_candidate_id", "created_at", "updated_at", "deleted_at"}
+	syndicateElectionVoteColumnsWithoutDefault = []string{"syndicate_election_id", "voted_by_id", "voted_for_candidate_id"}
 	syndicateElectionVoteColumnsWithDefault    = []string{"created_at", "updated_at", "deleted_at"}
-	syndicateElectionVotePrimaryKeyColumns     = []string{"syndicate_election_id", "voter_id"}
+	syndicateElectionVotePrimaryKeyColumns     = []string{"syndicate_election_id", "voted_by_id"}
 	syndicateElectionVoteGeneratedColumns      = []string{}
 )
 
@@ -375,10 +375,10 @@ func (o *SyndicateElectionVote) SyndicateElection(mods ...qm.QueryMod) syndicate
 	return query
 }
 
-// VotedForCandidate pointed to by the foreign key.
-func (o *SyndicateElectionVote) VotedForCandidate(mods ...qm.QueryMod) playerQuery {
+// VotedBy pointed to by the foreign key.
+func (o *SyndicateElectionVote) VotedBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.VotedForCandidateID),
+		qm.Where("\"id\" = ?", o.VotedByID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -390,10 +390,10 @@ func (o *SyndicateElectionVote) VotedForCandidate(mods ...qm.QueryMod) playerQue
 	return query
 }
 
-// Voter pointed to by the foreign key.
-func (o *SyndicateElectionVote) Voter(mods ...qm.QueryMod) playerQuery {
+// VotedForCandidate pointed to by the foreign key.
+func (o *SyndicateElectionVote) VotedForCandidate(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.VoterID),
+		qm.Where("\"id\" = ?", o.VotedForCandidateID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -510,6 +510,111 @@ func (syndicateElectionVoteL) LoadSyndicateElection(e boil.Executor, singular bo
 	return nil
 }
 
+// LoadVotedBy allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (syndicateElectionVoteL) LoadVotedBy(e boil.Executor, singular bool, maybeSyndicateElectionVote interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateElectionVote
+	var object *SyndicateElectionVote
+
+	if singular {
+		object = maybeSyndicateElectionVote.(*SyndicateElectionVote)
+	} else {
+		slice = *maybeSyndicateElectionVote.(*[]*SyndicateElectionVote)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateElectionVoteR{}
+		}
+		args = append(args, object.VotedByID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateElectionVoteR{}
+			}
+
+			for _, a := range args {
+				if a == obj.VotedByID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.VotedByID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(syndicateElectionVoteAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.VotedBy = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.VotedBySyndicateElectionVotes = append(foreign.R.VotedBySyndicateElectionVotes, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.VotedByID == foreign.ID {
+				local.R.VotedBy = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.VotedBySyndicateElectionVotes = append(foreign.R.VotedBySyndicateElectionVotes, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadVotedForCandidate allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (syndicateElectionVoteL) LoadVotedForCandidate(e boil.Executor, singular bool, maybeSyndicateElectionVote interface{}, mods queries.Applicator) error {
@@ -615,111 +720,6 @@ func (syndicateElectionVoteL) LoadVotedForCandidate(e boil.Executor, singular bo
 	return nil
 }
 
-// LoadVoter allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (syndicateElectionVoteL) LoadVoter(e boil.Executor, singular bool, maybeSyndicateElectionVote interface{}, mods queries.Applicator) error {
-	var slice []*SyndicateElectionVote
-	var object *SyndicateElectionVote
-
-	if singular {
-		object = maybeSyndicateElectionVote.(*SyndicateElectionVote)
-	} else {
-		slice = *maybeSyndicateElectionVote.(*[]*SyndicateElectionVote)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &syndicateElectionVoteR{}
-		}
-		args = append(args, object.VoterID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &syndicateElectionVoteR{}
-			}
-
-			for _, a := range args {
-				if a == obj.VoterID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.VoterID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(syndicateElectionVoteAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Voter = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.VoterSyndicateElectionVotes = append(foreign.R.VoterSyndicateElectionVotes, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.VoterID == foreign.ID {
-				local.R.Voter = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.VoterSyndicateElectionVotes = append(foreign.R.VoterSyndicateElectionVotes, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetSyndicateElection of the syndicateElectionVote to the related item.
 // Sets o.R.SyndicateElection to related.
 // Adds o to related.R.SyndicateElectionVotes.
@@ -736,7 +736,7 @@ func (o *SyndicateElectionVote) SetSyndicateElection(exec boil.Executor, insert 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_election_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syndicateElectionVotePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.SyndicateElectionID, o.VoterID}
+	values := []interface{}{related.ID, o.SyndicateElectionID, o.VotedByID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -766,6 +766,52 @@ func (o *SyndicateElectionVote) SetSyndicateElection(exec boil.Executor, insert 
 	return nil
 }
 
+// SetVotedBy of the syndicateElectionVote to the related item.
+// Sets o.R.VotedBy to related.
+// Adds o to related.R.VotedBySyndicateElectionVotes.
+func (o *SyndicateElectionVote) SetVotedBy(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"syndicate_election_votes\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"voted_by_id"}),
+		strmangle.WhereClause("\"", "\"", 2, syndicateElectionVotePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.SyndicateElectionID, o.VotedByID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.VotedByID = related.ID
+	if o.R == nil {
+		o.R = &syndicateElectionVoteR{
+			VotedBy: related,
+		}
+	} else {
+		o.R.VotedBy = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			VotedBySyndicateElectionVotes: SyndicateElectionVoteSlice{o},
+		}
+	} else {
+		related.R.VotedBySyndicateElectionVotes = append(related.R.VotedBySyndicateElectionVotes, o)
+	}
+
+	return nil
+}
+
 // SetVotedForCandidate of the syndicateElectionVote to the related item.
 // Sets o.R.VotedForCandidate to related.
 // Adds o to related.R.VotedForCandidateSyndicateElectionVotes.
@@ -782,7 +828,7 @@ func (o *SyndicateElectionVote) SetVotedForCandidate(exec boil.Executor, insert 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"voted_for_candidate_id"}),
 		strmangle.WhereClause("\"", "\"", 2, syndicateElectionVotePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.SyndicateElectionID, o.VoterID}
+	values := []interface{}{related.ID, o.SyndicateElectionID, o.VotedByID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -812,52 +858,6 @@ func (o *SyndicateElectionVote) SetVotedForCandidate(exec boil.Executor, insert 
 	return nil
 }
 
-// SetVoter of the syndicateElectionVote to the related item.
-// Sets o.R.Voter to related.
-// Adds o to related.R.VoterSyndicateElectionVotes.
-func (o *SyndicateElectionVote) SetVoter(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"syndicate_election_votes\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"voter_id"}),
-		strmangle.WhereClause("\"", "\"", 2, syndicateElectionVotePrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.SyndicateElectionID, o.VoterID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.VoterID = related.ID
-	if o.R == nil {
-		o.R = &syndicateElectionVoteR{
-			Voter: related,
-		}
-	} else {
-		o.R.Voter = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			VoterSyndicateElectionVotes: SyndicateElectionVoteSlice{o},
-		}
-	} else {
-		related.R.VoterSyndicateElectionVotes = append(related.R.VoterSyndicateElectionVotes, o)
-	}
-
-	return nil
-}
-
 // SyndicateElectionVotes retrieves all the records using an executor.
 func SyndicateElectionVotes(mods ...qm.QueryMod) syndicateElectionVoteQuery {
 	mods = append(mods, qm.From("\"syndicate_election_votes\""), qmhelper.WhereIsNull("\"syndicate_election_votes\".\"deleted_at\""))
@@ -866,7 +866,7 @@ func SyndicateElectionVotes(mods ...qm.QueryMod) syndicateElectionVoteQuery {
 
 // FindSyndicateElectionVote retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindSyndicateElectionVote(exec boil.Executor, syndicateElectionID string, voterID string, selectCols ...string) (*SyndicateElectionVote, error) {
+func FindSyndicateElectionVote(exec boil.Executor, syndicateElectionID string, votedByID string, selectCols ...string) (*SyndicateElectionVote, error) {
 	syndicateElectionVoteObj := &SyndicateElectionVote{}
 
 	sel := "*"
@@ -874,10 +874,10 @@ func FindSyndicateElectionVote(exec boil.Executor, syndicateElectionID string, v
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"syndicate_election_votes\" where \"syndicate_election_id\"=$1 AND \"voter_id\"=$2 and \"deleted_at\" is null", sel,
+		"select %s from \"syndicate_election_votes\" where \"syndicate_election_id\"=$1 AND \"voted_by_id\"=$2 and \"deleted_at\" is null", sel,
 	)
 
-	q := queries.Raw(query, syndicateElectionID, voterID)
+	q := queries.Raw(query, syndicateElectionID, votedByID)
 
 	err := q.Bind(nil, exec, syndicateElectionVoteObj)
 	if err != nil {
@@ -1248,12 +1248,12 @@ func (o *SyndicateElectionVote) Delete(exec boil.Executor, hardDelete bool) (int
 	)
 	if hardDelete {
 		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), syndicateElectionVotePrimaryKeyMapping)
-		sql = "DELETE FROM \"syndicate_election_votes\" WHERE \"syndicate_election_id\"=$1 AND \"voter_id\"=$2"
+		sql = "DELETE FROM \"syndicate_election_votes\" WHERE \"syndicate_election_id\"=$1 AND \"voted_by_id\"=$2"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"syndicate_election_votes\" SET %s WHERE \"syndicate_election_id\"=$2 AND \"voter_id\"=$3",
+		sql = fmt.Sprintf("UPDATE \"syndicate_election_votes\" SET %s WHERE \"syndicate_election_id\"=$2 AND \"voted_by_id\"=$3",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		valueMapping, err := queries.BindMapping(syndicateElectionVoteType, syndicateElectionVoteMapping, append(wl, syndicateElectionVotePrimaryKeyColumns...))
@@ -1378,7 +1378,7 @@ func (o SyndicateElectionVoteSlice) DeleteAll(exec boil.Executor, hardDelete boo
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *SyndicateElectionVote) Reload(exec boil.Executor) error {
-	ret, err := FindSyndicateElectionVote(exec, o.SyndicateElectionID, o.VoterID)
+	ret, err := FindSyndicateElectionVote(exec, o.SyndicateElectionID, o.VotedByID)
 	if err != nil {
 		return err
 	}
@@ -1418,15 +1418,15 @@ func (o *SyndicateElectionVoteSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // SyndicateElectionVoteExists checks if the SyndicateElectionVote row exists.
-func SyndicateElectionVoteExists(exec boil.Executor, syndicateElectionID string, voterID string) (bool, error) {
+func SyndicateElectionVoteExists(exec boil.Executor, syndicateElectionID string, votedByID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"syndicate_election_votes\" where \"syndicate_election_id\"=$1 AND \"voter_id\"=$2 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"syndicate_election_votes\" where \"syndicate_election_id\"=$1 AND \"voted_by_id\"=$2 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, syndicateElectionID, voterID)
+		fmt.Fprintln(boil.DebugWriter, syndicateElectionID, votedByID)
 	}
-	row := exec.QueryRow(sql, syndicateElectionID, voterID)
+	row := exec.QueryRow(sql, syndicateElectionID, votedByID)
 
 	err := row.Scan(&exists)
 	if err != nil {

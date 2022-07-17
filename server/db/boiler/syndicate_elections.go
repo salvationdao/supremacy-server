@@ -1402,7 +1402,7 @@ func (o *SyndicateElection) AddSyndicateElectionVotes(exec boil.Executor, insert
 				strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_election_id"}),
 				strmangle.WhereClause("\"", "\"", 2, syndicateElectionVotePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.SyndicateElectionID, rel.VoterID}
+			values := []interface{}{o.ID, rel.SyndicateElectionID, rel.VotedByID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
