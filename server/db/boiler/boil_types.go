@@ -272,6 +272,18 @@ const (
 	SyndicateMotionResultFORCE_CLOSED = "FORCE_CLOSED"
 )
 
+// Enum values for QuestionnaireUsage
+const (
+	QuestionnaireUsageJOIN_REQUEST = "JOIN_REQUEST"
+)
+
+// Enum values for QuestionnaireType
+const (
+	QuestionnaireTypeTEXT          = "TEXT"
+	QuestionnaireTypeSINGLE_SELECT = "SINGLE_SELECT"
+	QuestionnaireTypeMULTI_SELECT  = "MULTI_SELECT"
+)
+
 // Enum values for SyndicateType
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"

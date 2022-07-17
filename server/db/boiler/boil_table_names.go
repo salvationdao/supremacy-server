@@ -96,6 +96,8 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
+	QuestionnaireAnswer                                string
+	QuestionnaireOptions                               string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -108,8 +110,10 @@ var TableNames = struct {
 	SyndicateElectionVotes                             string
 	SyndicateElections                                 string
 	SyndicateEventLog                                  string
+	SyndicateJoinRequests                              string
 	SyndicateMotionVotes                               string
 	SyndicateMotions                                   string
+	SyndicateQuestionnaires                            string
 	SyndicateRules                                     string
 	Syndicates                                         string
 	TelegramNotifications                              string
@@ -219,6 +223,8 @@ var TableNames = struct {
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
+	QuestionnaireAnswer:          "questionnaire_answer",
+	QuestionnaireOptions:         "questionnaire_options",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
@@ -231,8 +237,10 @@ var TableNames = struct {
 	SyndicateElectionVotes:       "syndicate_election_votes",
 	SyndicateElections:           "syndicate_elections",
 	SyndicateEventLog:            "syndicate_event_log",
+	SyndicateJoinRequests:        "syndicate_join_requests",
 	SyndicateMotionVotes:         "syndicate_motion_votes",
 	SyndicateMotions:             "syndicate_motions",
+	SyndicateQuestionnaires:      "syndicate_questionnaires",
 	SyndicateRules:               "syndicate_rules",
 	Syndicates:                   "syndicates",
 	TelegramNotifications:        "telegram_notifications",

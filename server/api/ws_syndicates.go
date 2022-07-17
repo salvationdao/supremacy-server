@@ -34,8 +34,6 @@ func NewSyndicateController(api *API) *SyndicateWS {
 	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateMotionList, sc.SyndicateMotionListHandler)
 
-	// subscribetion
-
 	return sc
 }
 

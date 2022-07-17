@@ -236,6 +236,63 @@ CREATE TABLE syndicate_election_votes(
     deleted_at timestamptz
 );
 
+DROP TYPE IF EXISTS QUESTIONNAIRE_TYPE;
+CREATE TYPE QUESTIONNAIRE_TYPE AS ENUM (
+    'TEXT',
+    'SINGLE_SELECT',
+    'MULTI_SELECT'
+);
+
+DROP TYPE IF EXISTS QUESTIONNAIRE_USAGE;
+CREATE TYPE QUESTIONNAIRE_USAGE AS ENUM (
+    'JOIN_REQUEST'
+);
+
+CREATE TABLE syndicate_questionnaires(
+    id uuid primary key default gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
+    usage QUESTIONNAIRE_USAGE NOT NULL,
+
+    question text not null,
+    type QUESTIONNAIRE_TYPE not null,
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE questionnaire_options(
+    id uuid primary key default gen_random_uuid(),
+    questionnaire_id uuid not null references syndicate_questionnaires(id),
+    content text not null,
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE syndicate_join_requests(
+    id uuid primary key default gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
+    applicant_id uuid not null references players(id),
+    expire_at timestamptz not null,
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
+CREATE TABLE questionnaire_answer(
+    id uuid primary key default gen_random_uuid(),
+    syndicate_join_request_id uuid references syndicate_join_requests(id),
+
+    -- record question and answer players submitted
+    question text not null,
+    answer text,
+    selections text[],
+
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
 ALTER TABLE blobs
     ADD COLUMN IF NOT EXISTS is_remote boolean NOT NULL DEFAULT FALSE,
     ALTER "file" DROP NOT NULL;
