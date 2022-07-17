@@ -1,6 +1,7 @@
 package syndicate
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
@@ -140,6 +141,22 @@ func (ss *System) VoteMotion(user *boiler.Player, motionID string, isAgreed bool
 	return om.vote(user, isAgreed)
 }
 
+// ForceCloseMotionsByType close specific type of motions
+func (ss *System) ForceCloseMotionsByType(syndicateID string, reason string, motionType ...string) error {
+	if len(motionType) == 0 {
+		return terror.Error(fmt.Errorf("no type provided"), "Did not specify which type of motion to close.")
+	}
+
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	s.motionSystem.forceCloseTypes(reason, motionType...)
+
+	return nil
+}
+
 // GetOngoingMotions get the motions from the syndicate
 func (ss *System) GetOngoingMotions(user *boiler.Player) ([]*boiler.SyndicateMotion, error) {
 	// get syndicate
@@ -158,15 +175,21 @@ func (ss *System) GetOngoingMotions(user *boiler.Player) ([]*boiler.SyndicateMot
 }
 
 // LiquidateSyndicate remove syndicate from the system
-func (ss *System) LiquidateSyndicate(id string) error {
+func (ss *System) LiquidateSyndicate(tx *sql.Tx, id string) error {
 	s, err := ss.getSyndicate(id)
 	if err != nil {
 		return err
 	}
 
-	err = s.liquidate()
+	err = s.liquidate(tx)
 	if err != nil {
 		return err
+	}
+
+	err = ss.Passport.SyndicateLiquidateHandler(s.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Msg("Failed to liquidate syndicate in xsyn services.")
+		return terror.Error(err, "Failed to liquidate syndicate.")
 	}
 
 	ss.removeSyndicate(id)

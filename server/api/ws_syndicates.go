@@ -8,7 +8,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
@@ -28,11 +27,8 @@ func NewSyndicateController(api *API) *SyndicateWS {
 		API: api,
 	}
 
-	api.SecureUserFactionCommand(HubKeySyndicateCreate, sc.SyndicateCreateHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateJoin, sc.SyndicateJoinHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateLeave, sc.SyndicateLeaveHandler)
-
-	//api.SecureUserFactionCommand(HubKeySyndicateList, sc.Sy)
 
 	// update syndicate settings
 	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
@@ -41,121 +37,6 @@ func NewSyndicateController(api *API) *SyndicateWS {
 	// subscribetion
 
 	return sc
-}
-
-type SyndicateCreateRequest struct {
-	Payload struct {
-		Name    string          `json:"name"`
-		Type    string          `json:"type"`
-		JoinFee decimal.Decimal `json:"join_fee"`
-	} `json:"payload"`
-}
-
-const HubKeySyndicateCreate = "SYNDICATE:CREATE"
-
-func (sc *SyndicateWS) SyndicateCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &SyndicateCreateRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	// check current player has a syndicate
-	if user.SyndicateID.Valid {
-		return terror.Error(terror.ErrInvalidInput, "Only non-syndicate players can start a new syndicate.")
-	}
-
-	// check price
-	if req.Payload.JoinFee.LessThan(decimal.Zero) {
-		return terror.Error(terror.ErrInvalidInput, "Join fee should not be less than zero")
-	}
-
-	// check syndicate name is registered
-	syndicateName, err := sc.API.SyndicateSystem.SyndicateNameVerification(req.Payload.Name)
-	if err != nil {
-		return terror.Error(err, err.Error())
-	}
-
-	// create new syndicate
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
-		return terror.Error(err, "Failed to create syndicate.")
-	}
-
-	defer tx.Rollback()
-
-	syndicate := &boiler.Syndicate{
-		Type:        req.Payload.Type,
-		Name:        syndicateName,
-		FactionID:   factionID,
-		FoundedByID: user.ID,
-		JoinFee:     req.Payload.JoinFee,
-	}
-
-	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
-		syndicate.CeoPlayerID = null.StringFrom(user.ID)
-	}
-
-	err = syndicate.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Msg("Failed to insert syndicate into db.")
-		return terror.Error(err, "Failed to create syndicate.")
-	}
-
-	user.SyndicateID = null.StringFrom(syndicate.ID)
-	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Interface("user", user).Msg("Failed to update syndicate id of current user.")
-		return terror.Error(err, "Failed to assign syndicate")
-	}
-
-	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
-		// TODO: insert directors table
-		sd := &boiler.SyndicateDirector{
-			SyndicateID: syndicate.ID,
-			PlayerID:    user.ID,
-		}
-		err = sd.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Interface("syndicate director", sd).Err(err).Msg("Failed to insert syndicate director")
-			return terror.Error(err, "Failed to add syndicate director")
-		}
-
-		// TODO: insert committees table
-		sc := &boiler.SyndicateCommittee{
-			SyndicateID: syndicate.ID,
-			PlayerID:    user.ID,
-		}
-		err = sd.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Interface("syndicate committee", sc).Err(err).Msg("Failed to insert syndicate committee")
-			return terror.Error(err, "Failed to add syndicate committee")
-		}
-	}
-
-	// register syndicate on xsyn server
-	err = sc.API.Passport.SyndicateCreateHandler(syndicate.ID, syndicate.FoundedByID, syndicate.Name)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Msg("Failed to register syndicate on xsyn server.")
-		return terror.Error(err, err.Error())
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
-		return terror.Error(err, "Failed to create syndicate.")
-	}
-
-	err = sc.API.SyndicateSystem.CreateSyndicate(syndicate)
-	if err != nil {
-		return terror.Error(err, "Failed to add syndicate to the system")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
-
-	reply(true)
-	return nil
 }
 
 type SyndicateJoinRequest struct {
@@ -292,6 +173,15 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Failed to load syndicate detail")
 	}
 
+	// check syndicate remaining member count
+	remainSyndicateMemberCount, err := boiler.Players(
+		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(syndicate.ID)),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
+		return terror.Error(err, "Failed to check remain syndicate member count.")
+	}
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
@@ -300,97 +190,95 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 
 	defer tx.Rollback()
 
-	user.SyndicateID = null.StringFromPtr(nil)
-	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("user", user).Msg("Failed to update user syndicate column")
-		return terror.Error(err, "Failed to exit syndicate")
-	}
-
-	// remove user from syndicate director list
-	_, err = boiler.SyndicateDirectors(
-		boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
-		boiler.SyndicateDirectorWhere.PlayerID.EQ(user.ID),
-	).DeleteAll(tx)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate director table")
-		return terror.Error(err, "failed to remove user from syndicate director list")
-	}
-
-	// remove user from syndicate committee list
-	_, err = boiler.SyndicateCommittees(
-		boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
-		boiler.SyndicateDirectorWhere.PlayerID.EQ(user.ID),
-	).DeleteAll(tx)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
-		return terror.Error(err, "Failed to remove user from syndicate committee list.")
-	}
-
-	remainSyndicateMemberCount, err := boiler.Players(
-		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(syndicate.ID)),
-	).Count(tx)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
-		return terror.Error(err, "Failed to check remain syndicate member count.")
-	}
-
-	// check syndicate admin
-	if syndicate.AdminID.Valid && syndicate.AdminID.String == user.ID {
-		// remove admin role of the syndicate
-		syndicate.AdminID = null.StringFromPtr(nil)
-		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.AdminID))
+	// if the player is the last member of the syndicate
+	if remainSyndicateMemberCount == 1 {
+		// liquidate syndicate
+		err = sc.API.SyndicateSystem.LiquidateSyndicate(tx, syndicate.ID)
 		if err != nil {
-			gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate admin")
-			return terror.Error(err, "Failed to remove admin role from syndicate.")
+			return err
+		}
+	} else {
+		// remove player from the syndicate
+		user.SyndicateID = null.StringFromPtr(nil)
+		_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("user", user).Msg("Failed to update user syndicate column")
+			return terror.Error(err, "Failed to exit syndicate")
 		}
 
-		if syndicate.Type == boiler.SyndicateTypeDECENTRALISED {
-			// terminate depose admin motion
+		// remove user from syndicate director list
+		_, err = boiler.SyndicateDirectors(
+			boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
+			boiler.SyndicateDirectorWhere.PlayerID.EQ(user.ID),
+		).DeleteAll(tx)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate director table")
+			return terror.Error(err, "failed to remove user from syndicate director list")
+		}
 
-			if remainSyndicateMemberCount > 0 {
-				// issue admin election
+		// remove user from syndicate committee list
+		_, err = boiler.SyndicateCommittees(
+			boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
+			boiler.SyndicateDirectorWhere.PlayerID.EQ(user.ID),
+		).DeleteAll(tx)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
+			return terror.Error(err, "Failed to remove user from syndicate committee list.")
+		}
+
+		// check whether the player is syndicate admin
+		if syndicate.AdminID.Valid && syndicate.AdminID.String == user.ID {
+			// remove admin role of the syndicate
+			syndicate.AdminID = null.StringFromPtr(nil)
+			_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.AdminID))
+			if err != nil {
+				gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate admin")
+				return terror.Error(err, "Failed to remove admin role from syndicate.")
+			}
+
+			if syndicate.Type == boiler.SyndicateTypeDECENTRALISED {
+				// terminate any depose admin motion
+				err = sc.API.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "Admin player has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
+				if err != nil {
+					return err
+				}
 			}
 		}
-	}
 
-	// check director number
-	directorCount, err := boiler.SyndicateCommittees(
-		boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
-	).Count(tx)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
-		return terror.Error(err, "Failed to remove user from syndicate committee list.")
-	}
-
-	// check syndicate ceo
-	if syndicate.CeoPlayerID.Valid && syndicate.CeoPlayerID.String == user.ID {
-		syndicate.CeoPlayerID = null.StringFromPtr(nil)
-		syndicate.AdminID = null.StringFromPtr(nil)
-		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.CeoPlayerID, boiler.SyndicateColumns.AdminID))
+		// check director number
+		directorCount, err := boiler.SyndicateCommittees(
+			boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicate.ID),
+		).Count(tx)
 		if err != nil {
-			gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate ceo")
-			return terror.Error(err, "Failed to remove ceo role from syndicate.")
+			gamelog.L.Error().Err(err).Str("user id", user.ID).Str("Syndicate id", syndicate.ID).Msg("Failed to delete user from syndicate committees table")
+			return terror.Error(err, "Failed to remove user from syndicate committee list.")
 		}
 
-		// terminate depose ceo motion
+		// check syndicate ceo
+		if syndicate.CeoPlayerID.Valid && syndicate.CeoPlayerID.String == user.ID {
+			syndicate.CeoPlayerID = null.StringFromPtr(nil)
+			syndicate.AdminID = null.StringFromPtr(nil)
+			_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.CeoPlayerID, boiler.SyndicateColumns.AdminID))
+			if err != nil {
+				gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to remove syndicate ceo")
+				return terror.Error(err, "Failed to remove ceo role from syndicate.")
+			}
 
-		if directorCount > 0 {
-			// issue ceo election
+			// terminate depose ceo motion
+			err = sc.API.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "CEO has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
+			if err != nil {
+				return err
+			}
 		}
-	}
 
-	// terminate the syndicate if no member left in the syndicate
-	if remainSyndicateMemberCount == 0 {
-		// give syndicate fund to the last player but taxed
-
-	} else if syndicate.Type == boiler.SyndicateTypeCORPORATION && directorCount == 0 {
-		// change corporation syndicate to decentralised syndicate if there is no directors
-		syndicate.Type = boiler.SyndicateTypeDECENTRALISED
-		_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.Type))
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Str("syndicate type", syndicate.Type).Msg("Failed to change syndicate type")
-			return terror.Error(err, "Failed to change syndicate type")
+		if syndicate.Type == boiler.SyndicateTypeCORPORATION && directorCount == 0 {
+			// change corporation syndicate to decentralised syndicate if there is no directors
+			syndicate.Type = boiler.SyndicateTypeDECENTRALISED
+			_, err := syndicate.Update(tx, boil.Whitelist(boiler.SyndicateColumns.Type))
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Str("syndicate type", syndicate.Type).Msg("Failed to change syndicate type")
+				return terror.Error(err, "Failed to change syndicate type")
+			}
 		}
 	}
 

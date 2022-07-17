@@ -5,17 +5,220 @@ import (
 	"fmt"
 	"github.com/h2non/filetype"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"server"
 	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
 	"server/helpers"
 	"strings"
 	"time"
 )
+
+type SyndicateCreateRequest struct {
+	Name                         string          `json:"name"`
+	Symbol                       string          `json:"symbol"`
+	Type                         string          `json:"type"`
+	JoinFee                      decimal.Decimal `json:"join_fee"`
+	MemberMonthlyDues            decimal.Decimal `json:"member_monthly_dues"`
+	DeployingMemberCutPercentage decimal.Decimal `json:"deploying_member_cut_percentage"`
+	MemberAssistCutPercentage    decimal.Decimal `json:"member_assist_cut_percentage"`
+	MechOwnerCutPercentage       decimal.Decimal `json:"mech_owner_cut_percentage"`
+	OriginalMemberIDs            []string        `json:"original_member_ids"`
+}
+
+func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r *http.Request) (int, error) {
+	if !player.FactionID.Valid {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("player has no faction"), "Only faction player can create new syndicate.")
+	}
+
+	if player.SyndicateID.Valid {
+		return http.StatusForbidden, terror.Error(fmt.Errorf("player already has syndicate"), "Only non-syndicate players can create new syndicate.")
+	}
+
+	req := &SyndicateCreateRequest{}
+	blob, imageData, err := parseUploadRequest(w, r, &req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	// validate input
+	if blob == nil || imageData == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing logo data"), "Syndicate logo is required.")
+	}
+
+	syndicateName, err := api.SyndicateSystem.SyndicateNameVerification(req.Name)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	syndicateSymbol, err := api.SyndicateSystem.SyndicateSymbolVerification(req.Symbol)
+	if err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	if req.JoinFee.LessThan(decimal.Zero) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("join fee less than zero"), "Join fee cannot be less than zero.")
+	}
+
+	if req.MemberMonthlyDues.LessThan(decimal.Zero) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("monthly dues less than zero"), "Member monthly fee cannot be less than zero.")
+	}
+
+	if req.DeployingMemberCutPercentage.LessThan(decimal.Zero) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("deploying member cut is less than zero"), "Deploying member cut cannot be less than zero.")
+	}
+
+	if req.MemberAssistCutPercentage.LessThan(decimal.Zero) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("member assist cut is less than zero"), "member assist cut cannot be less than zero.")
+	}
+
+	if req.MechOwnerCutPercentage.LessThan(decimal.Zero) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("mech owner cut is less than zero"), "Mech owner cut cannot be less than zero.")
+	}
+
+	if decimal.NewFromInt(100).LessThan(req.MechOwnerCutPercentage.Add(req.DeployingMemberCutPercentage).Add(req.MemberAssistCutPercentage)) {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("total battle win cut percentage exceed 100"), "Total percentage of battle win cut cannot exceed 100.")
+	}
+
+	if req.Type != boiler.SyndicateTypeCORPORATION && req.Type != boiler.SyndicateTypeDECENTRALISED {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid syndicate type"), "Invalid syndicate type.")
+	}
+
+	// make sure original member is in the list
+	exist := false
+	for _, ogID := range req.OriginalMemberIDs {
+		if ogID == player.ID {
+			exist = true
+			break
+		}
+	}
+	if !exist {
+		req.OriginalMemberIDs = append(req.OriginalMemberIDs, player.ID)
+	}
+
+	ogMembers, err := boiler.Players(
+		boiler.PlayerWhere.ID.IN(req.OriginalMemberIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid original member"), "Invalid original members.")
+	}
+
+	if len(ogMembers) != len(req.OriginalMemberIDs) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("member not found"), "Contain invalid members.")
+	}
+
+	for _, ogm := range ogMembers {
+		if ogm.SyndicateID.Valid {
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("original member already has syndicate"), fmt.Sprintf("Original member %s already has syndicate", ogm.Username))
+		}
+	}
+
+	if req.Type == boiler.SyndicateTypeCORPORATION {
+		if len(ogMembers) < 3 {
+			return http.StatusBadRequest, terror.Error(fmt.Errorf("less than 3 original members"), "Require at least three original members to create a corporation syndicate.")
+		}
+	}
+
+	// create new syndicate
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to create syndicate.")
+	}
+
+	defer tx.Rollback()
+
+	syndicate := &boiler.Syndicate{
+		Type:                         req.Type,
+		FactionID:                    player.FactionID.String,
+		FoundedByID:                  player.ID,
+		Name:                         syndicateName,
+		Symbol:                       syndicateSymbol,
+		JoinFee:                      req.JoinFee,
+		MemberMonthlyDues:            req.MemberMonthlyDues,
+		DeployingMemberCutPercentage: req.DeployingMemberCutPercentage,
+		MemberAssistCutPercentage:    req.MemberAssistCutPercentage,
+		MechOwnerCutPercentage:       req.MechOwnerCutPercentage,
+	}
+
+	if syndicate.Type == boiler.SyndicateTypeCORPORATION {
+		syndicate.CeoPlayerID = null.StringFrom(player.ID)
+	} else {
+		syndicate.AdminID = null.StringFrom(player.ID)
+	}
+
+	err = syndicate.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Msg("Failed to insert syndicate into db.")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to create syndicate.")
+	}
+
+	// change original member syndicate id
+	for _, ogm := range ogMembers {
+		ogm.SyndicateID = null.StringFrom(syndicate.ID)
+		_, err := ogm.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Interface("user", ogm).Msg("Failed to update syndicate id of current user.")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to assign syndicate to original member")
+		}
+
+		// assign original member as committee
+		sc := &boiler.SyndicateCommittee{
+			SyndicateID: syndicate.ID,
+			PlayerID:    ogm.ID,
+		}
+		err = sc.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Interface("user", ogm).Msg("Failed to update syndicate id of current user.")
+			return http.StatusInternalServerError, terror.Error(err, "Failed assign original member as syndicate committee")
+		}
+
+		// assign original member as board of director, if syndicate is a private corporation
+		if syndicate.Type == boiler.SyndicateTypeCORPORATION {
+			sd := &boiler.SyndicateDirector{
+				SyndicateID: syndicate.ID,
+				PlayerID:    player.ID,
+			}
+			err = sd.Insert(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Interface("syndicate director", sd).Err(err).Msg("Failed to insert syndicate director")
+				return http.StatusInternalServerError, terror.Error(err, "Failed to assign original member as board of director")
+			}
+		}
+	}
+
+	// register syndicate on xsyn server
+	err = api.Passport.SyndicateCreateHandler(syndicate.ID, syndicate.FoundedByID, syndicate.Name)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("syndicate", syndicate).Msg("Failed to register syndicate on xsyn server.")
+		return http.StatusInternalServerError, terror.Error(err, err.Error())
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to create syndicate.")
+	}
+
+	// add syndicate to the system
+	err = api.SyndicateSystem.CreateSyndicate(syndicate.ID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to add syndicate to the system")
+	}
+
+	for _, ogm := range ogMembers {
+		ws.PublishMessage(fmt.Sprintf("/user/%s", ogm.ID), server.HubKeyUserSubscribe, ogm)
+	}
+
+	return helpers.EncodeJSON(w, true)
+}
 
 type SyndicateIssueMotionRequest struct {
 	LastForDays                     int                 `json:"last_for_days"`

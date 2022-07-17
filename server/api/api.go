@@ -236,7 +236,8 @@ func NewAPI(
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
-			r.Get("/syndicate/{id}/issue_motion", WithError(WithCookie(api, api.SyndicateMotionIssue)))
+			r.Post("/syndicate/issue_motion", WithError(WithCookie(api, api.SyndicateMotionIssue)))
+			r.Post("/syndicate/create", WithError(WithCookie(api, api.SyndicateCreate)))
 		})
 
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
@@ -265,13 +266,14 @@ func NewAPI(
 				s.WS("/online", "", nil)
 
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler), MustLogin)
+				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, api.BattleArena.WarMachineStatUpdatedSubscribe)
 			}))
 
 			// secured user route ws
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
-				s.WS("/*", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))

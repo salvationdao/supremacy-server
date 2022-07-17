@@ -62,7 +62,7 @@ func newMotionSystem(s *Syndicate) (*MotionSystem, error) {
 	return sms, nil
 }
 
-func (sms *MotionSystem) terminated() {
+func (sms *MotionSystem) terminate() {
 	sms.Lock()
 	defer sms.Unlock()
 	sms.isClosed.Store(true)
@@ -72,6 +72,22 @@ func (sms *MotionSystem) terminated() {
 		om.forceClosed.Store(true) // close motion without calculate result
 		om.isClosed.Store(true)    // terminate all the processing motion
 	}
+}
+
+func (sms *MotionSystem) forceCloseTypes(reason string, types ...string) {
+	sms.Lock()
+	defer sms.Unlock()
+
+	for _, t := range types {
+		for _, om := range sms.ongoingMotions {
+			if om.Type == t {
+				om.Reason = reason
+				om.forceClosed.Store(true)
+				om.isClosed.Store(true)
+			}
+		}
+	}
+
 }
 
 func (sms *MotionSystem) getOngoingMotionList() ([]*boiler.SyndicateMotion, error) {
@@ -324,21 +340,8 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			mechOwnerCutAfterChange = bsm.NewMechOwnerCutPercentage.Decimal
 		}
 
-		syndicateCutAfterChange := s.SyndicateCutPercentage
-		if bsm.NewSyndicateCutPercentage.Valid {
-			// exit fee cannot less than zero
-			if bsm.NewSyndicateCutPercentage.Decimal.LessThan(decimal.Zero) {
-				return nil, terror.Error(fmt.Errorf("syndicate cut cannot less than zero"), "Syndicate cut cannot less than zero.")
-			}
-
-			motion.NewSyndicateCutPercentage = bsm.NewSyndicateCutPercentage
-			motion.OldSyndicateCutPercentage = decimal.NewNullDecimal(s.SyndicateCutPercentage)
-
-			syndicateCutAfterChange = bsm.NewSyndicateCutPercentage.Decimal
-		}
-
 		// sum of the cut cannot be more than 100%
-		if !decimal.NewFromInt(100).Equal(deployMemberCutAfterChange.Add(memberAssistCutAfterChange).Add(mechOwnerCutAfterChange).Add(syndicateCutAfterChange)) {
+		if decimal.NewFromInt(100).LessThan(deployMemberCutAfterChange.Add(memberAssistCutAfterChange).Add(mechOwnerCutAfterChange)) {
 			return nil, terror.Error(fmt.Errorf("percentage not 100"), "Total percentage should be 100%.")
 		}
 
@@ -1000,11 +1003,11 @@ func (sm *Motion) updateSyndicate() {
 		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.JoinFee)
 	}
 	if sm.NewMonthlyDues.Valid {
-		sm.OldMonthlyDues = decimal.NewNullDecimal(syndicate.MonthlyDues)
+		sm.OldMonthlyDues = decimal.NewNullDecimal(syndicate.MemberMonthlyDues)
 		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldMonthlyDues)
 
-		syndicate.MonthlyDues = sm.NewMonthlyDues.Decimal
-		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MonthlyDues)
+		syndicate.MemberMonthlyDues = sm.NewMonthlyDues.Decimal
+		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MemberMonthlyDues)
 	}
 	if sm.NewDeployingMemberCutPercentage.Valid {
 		sm.OldDeployingMemberCutPercentage = decimal.NewNullDecimal(syndicate.DeployingMemberCutPercentage)
@@ -1027,13 +1030,6 @@ func (sm *Motion) updateSyndicate() {
 		syndicate.MechOwnerCutPercentage = sm.NewMechOwnerCutPercentage.Decimal
 		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.MechOwnerCutPercentage)
 	}
-	if sm.NewSyndicateCutPercentage.Valid {
-		sm.OldSyndicateCutPercentage = decimal.NewNullDecimal(syndicate.SyndicateCutPercentage)
-		updatedMotionCols = append(updatedMotionCols, boiler.SyndicateMotionColumns.OldSyndicateCutPercentage)
-
-		syndicate.SyndicateCutPercentage = sm.NewSyndicateCutPercentage.Decimal
-		updatedSyndicateCols = append(updatedSyndicateCols, boiler.SyndicateColumns.SyndicateCutPercentage)
-	}
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -1055,6 +1051,19 @@ func (sm *Motion) updateSyndicate() {
 	if err != nil {
 		gamelog.L.Error().Interface("updated syndicate", syndicate).Strs("updated column", updatedSyndicateCols).Err(err).Msg("Failed to update syndicate from motion")
 		return
+	}
+
+	// change syndicate name in passport, if it is updated
+	for _, updatedCol := range updatedSyndicateCols {
+		if updatedCol != boiler.SyndicateColumns.Name {
+			continue
+		}
+
+		err = sm.syndicate.system.Passport.SyndicateNameChangeHandler(syndicate.ID, syndicate.Name)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to update syndicate name")
+			return
+		}
 	}
 
 	err = tx.Commit()

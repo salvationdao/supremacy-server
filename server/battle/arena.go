@@ -469,7 +469,6 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
-		gamelog.L.Warn().Str("bribe", user.ID).Msg("current battle is nil")
 		return nil
 	}
 
@@ -786,35 +785,35 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-//func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-//	cctx := chi.RouteContext(ctx)
-//	slotNumber := cctx.URLParam("slotNumber")
-//	if slotNumber == "" {
-//		return fmt.Errorf("slot number is required")
-//	}
-//
-//	participantID, err := strconv.Atoi(slotNumber)
-//	if err != nil {
-//		return fmt.Errorf("invalid participant id")
-//	}
-//
-//	wm := arena.CurrentBattleWarMachine(participantID)
-//
-//	if wm != nil {
-//		wm.RLock()
-//		defer wm.RUnlock()
-//		reply(WarMachineStat{
-//			ParticipantID: participantID,
-//			Position:      wm.Position,
-//			Rotation:      wm.Rotation,
-//			Health:        wm.Health,
-//			Shield:        wm.Shield,
-//			IsHidden:      false,
-//		})
-//	}
-//
-//	return nil
-//}
+func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	slotNumber := cctx.URLParam("slotNumber")
+	if slotNumber == "" {
+		return fmt.Errorf("slot number is required")
+	}
+
+	participantID, err := strconv.Atoi(slotNumber)
+	if err != nil {
+		return fmt.Errorf("invalid participant id")
+	}
+
+	wm := arena.CurrentBattleWarMachine(participantID)
+
+	if wm != nil {
+		wm.RLock()
+		defer wm.RUnlock()
+		reply(WarMachineStat{
+			ParticipantID: participantID,
+			Position:      wm.Position,
+			Rotation:      wm.Rotation,
+			Health:        wm.Health,
+			Shield:        wm.Shield,
+			IsHidden:      false,
+		})
+	}
+
+	return nil
+}
 
 const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
@@ -1165,6 +1164,7 @@ func (arena *Arena) beginBattle() {
 
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount, btl *Battle) {
+		fmt.Println("Send viewer count")
 		ws.PublishMessage("/public/live_data", HubKeyViewerLiveCountUpdated, result)
 	})
 

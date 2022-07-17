@@ -5,6 +5,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -15,14 +16,14 @@ import (
 	"time"
 )
 
-type AccountantSystem struct {
+type AccountSystem struct {
 	syndicate *Syndicate
 	isLocked  bool
 	sync.Mutex
 }
 
-func NewAccountantSystem(s *Syndicate) *AccountantSystem {
-	f := &AccountantSystem{
+func NewAccountSystem(s *Syndicate) *AccountSystem {
+	f := &AccountSystem{
 		syndicate: s,
 		isLocked:  false,
 	}
@@ -30,7 +31,7 @@ func NewAccountantSystem(s *Syndicate) *AccountantSystem {
 	return f
 }
 
-func (as *AccountantSystem) liquidate(lastMemberID ...string) error {
+func (as *AccountSystem) liquidate() error {
 	as.Lock()
 	defer as.Unlock()
 
@@ -69,29 +70,11 @@ func (as *AccountantSystem) liquidate(lastMemberID ...string) error {
 	}
 
 	remainBalance := fund.Sub(tax)
-	if len(lastMemberID) > 0 {
-		// give all the fund to last member
-		transaction := xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           syndicateUUID,
-			ToUserID:             uuid.Must(uuid.FromString(lastMemberID[0])),
-			Amount:               remainBalance.String(),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("remain_fund_after_liquidate_syndicate:%s|%s|%d", as.syndicate.Type, as.syndicate.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupSyndicate),
-			Description:          fmt.Sprintf("Remain fund of liquidated syndicate: %s", as.syndicate.ID),
-			NotSafe:              true,
-		}
-		_, err := as.syndicate.system.Passport.SpendSupMessage(transaction)
-		if err != nil {
-			gamelog.L.Error().Interface("transaction", transaction).Err(err).Msg("Failed to send remain fund to last member.")
-			return terror.Error(err, "Failed to send remain fund to last member.")
-		}
-
-		return nil
-	}
 
 	// equally distribute fund to all the remaining members
-	members, err := as.syndicate.Players().All(gamedb.StdConn)
+	members, err := as.syndicate.Players(
+		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(as.syndicate.ID)),
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Interface("syndicate id", as.syndicate.ID).Err(err).Msg("Failed to load syndicate members.")
 		return terror.Error(err, "Failed to load syndicate members.")
@@ -108,7 +91,7 @@ func (as *AccountantSystem) liquidate(lastMemberID ...string) error {
 			TransactionReference: server.TransactionReference(fmt.Sprintf("remain_fund_after_liquidate_syndicate:%s|%s|%d", as.syndicate.Type, as.syndicate.ID, time.Now().UnixNano())),
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupSyndicate),
-			Description:          fmt.Sprintf("Remain fund of liquidated syndicate: %s", as.syndicate.ID),
+			Description:          fmt.Sprintf("Liquidated syndicate fund for remaining members: %s", as.syndicate.ID),
 			NotSafe:              true,
 		}
 		_, err := as.syndicate.system.Passport.SpendSupMessage(transaction)
@@ -121,7 +104,7 @@ func (as *AccountantSystem) liquidate(lastMemberID ...string) error {
 	return nil
 }
 
-func (as *AccountantSystem) receiveFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
+func (as *AccountSystem) receiveFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
 	as.Lock()
 	defer as.Unlock()
 
@@ -149,7 +132,7 @@ func (as *AccountantSystem) receiveFund(userID string, fund decimal.Decimal, ref
 	return nil
 }
 
-func (as *AccountantSystem) transferFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
+func (as *AccountSystem) transferFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
 	as.Lock()
 	defer as.Unlock()
 

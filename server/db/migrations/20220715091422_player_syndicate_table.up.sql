@@ -22,13 +22,12 @@ CREATE TABLE syndicates(
 
     -- payment detail
     join_fee numeric(28) NOT NULL default 0,
-    monthly_dues numeric(28) NOT NULL DEFAULT 0,
+    member_monthly_dues numeric(28) NOT NULL DEFAULT 0,
 
     -- battle win columns
     deploying_member_cut_percentage decimal NOT NULL DEFAULT 0,
     member_assist_cut_percentage decimal NOT NULL DEFAULT 0,
     mech_owner_cut_percentage decimal NOT NULL DEFAULT 0,
-    syndicate_cut_percentage decimal NOT NULL DEFAULT 0,
 
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),

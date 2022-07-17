@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -23,7 +25,7 @@ type Syndicate struct {
 	isLiquidated atomic.Bool
 
 	motionSystem     *MotionSystem
-	accountantSystem *AccountantSystem
+	accountantSystem *AccountSystem
 }
 
 func newSyndicate(ss *System, syndicate *boiler.Syndicate) (*Syndicate, error) {
@@ -38,12 +40,12 @@ func newSyndicate(ss *System, syndicate *boiler.Syndicate) (*Syndicate, error) {
 	}
 
 	s.motionSystem = motionSystem
-	s.accountantSystem = NewAccountantSystem(s)
+	s.accountantSystem = NewAccountSystem(s)
 
 	return s, nil
 }
 
-func (s *Syndicate) liquidate() error {
+func (s *Syndicate) liquidate(tx *sql.Tx) error {
 	// lock the syndicate
 	s.Lock()
 	defer s.Unlock()
@@ -51,17 +53,13 @@ func (s *Syndicate) liquidate() error {
 	s.isLiquidated.Store(true)
 
 	// stop all the ongoing motion in the syndicate
-	s.motionSystem.terminated()
+	s.motionSystem.terminate()
 
-	tx, err := gamedb.StdConn.Begin()
+	// liquidate fund
+	err := s.accountantSystem.liquidate()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction")
-		return terror.Error(err, "Failed to remove syndicate")
+		return err
 	}
-
-	defer func(tx *sql.Tx) {
-		_ = tx.Rollback()
-	}(tx)
 
 	// delete all directors from tables
 	_, err = boiler.SyndicateDirectors(boiler.SyndicateDirectorWhere.SyndicateID.EQ(s.ID)).DeleteAll(tx)
@@ -77,26 +75,32 @@ func (s *Syndicate) liquidate() error {
 		return terror.Error(err, "Failed to remove syndicate")
 	}
 
-	// set all member player to null
-	_, err = boiler.Players(
+	// get all the players
+	ps, err := boiler.Players(
 		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(s.ID)),
-	).UpdateAll(tx, boiler.M{boiler.PlayerColumns.SyndicateID: null.StringFromPtr(nil)})
+	).All(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to players' syndicate id")
 		return terror.Error(err, "Failed to remove syndicate")
 	}
 
+	_, err = ps.UpdateAll(tx, boiler.M{boiler.PlayerColumns.SyndicateID: null.StringFromPtr(nil)})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to remove player syndicate id.")
+		return terror.Error(err, "Failed to remove syndicate")
+	}
+
+	for _, p := range ps {
+		p.SyndicateID = null.StringFromPtr(nil)
+		ws.PublishMessage(fmt.Sprintf("/user/%s", p.ID), server.HubKeyUserSubscribe, p)
+	}
+
+	// archive syndicate
 	s.DeletedAt = null.TimeFrom(time.Now())
 	_, err = s.Update(tx, boil.Whitelist(boiler.SyndicateColumns.DeletedAt))
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Msg("Failed to archive syndicate.")
 		return terror.Error(err, "Failed to liquidate syndicate.")
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
-		return terror.Error(err, "Failed to remove syndicate.")
 	}
 
 	return nil

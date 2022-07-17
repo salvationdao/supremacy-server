@@ -35,11 +35,10 @@ type Syndicate struct {
 	Symbol                       string          `boiler:"symbol" boil:"symbol" json:"symbol" toml:"symbol" yaml:"symbol"`
 	LogoID                       null.String     `boiler:"logo_id" boil:"logo_id" json:"logo_id,omitempty" toml:"logo_id" yaml:"logo_id,omitempty"`
 	JoinFee                      decimal.Decimal `boiler:"join_fee" boil:"join_fee" json:"join_fee" toml:"join_fee" yaml:"join_fee"`
-	MonthlyDues                  decimal.Decimal `boiler:"monthly_dues" boil:"monthly_dues" json:"monthly_dues" toml:"monthly_dues" yaml:"monthly_dues"`
+	MemberMonthlyDues            decimal.Decimal `boiler:"member_monthly_dues" boil:"member_monthly_dues" json:"member_monthly_dues" toml:"member_monthly_dues" yaml:"member_monthly_dues"`
 	DeployingMemberCutPercentage decimal.Decimal `boiler:"deploying_member_cut_percentage" boil:"deploying_member_cut_percentage" json:"deploying_member_cut_percentage" toml:"deploying_member_cut_percentage" yaml:"deploying_member_cut_percentage"`
 	MemberAssistCutPercentage    decimal.Decimal `boiler:"member_assist_cut_percentage" boil:"member_assist_cut_percentage" json:"member_assist_cut_percentage" toml:"member_assist_cut_percentage" yaml:"member_assist_cut_percentage"`
 	MechOwnerCutPercentage       decimal.Decimal `boiler:"mech_owner_cut_percentage" boil:"mech_owner_cut_percentage" json:"mech_owner_cut_percentage" toml:"mech_owner_cut_percentage" yaml:"mech_owner_cut_percentage"`
-	SyndicateCutPercentage       decimal.Decimal `boiler:"syndicate_cut_percentage" boil:"syndicate_cut_percentage" json:"syndicate_cut_percentage" toml:"syndicate_cut_percentage" yaml:"syndicate_cut_percentage"`
 	CreatedAt                    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                    time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt                    null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -60,11 +59,10 @@ var SyndicateColumns = struct {
 	Symbol                       string
 	LogoID                       string
 	JoinFee                      string
-	MonthlyDues                  string
+	MemberMonthlyDues            string
 	DeployingMemberCutPercentage string
 	MemberAssistCutPercentage    string
 	MechOwnerCutPercentage       string
-	SyndicateCutPercentage       string
 	CreatedAt                    string
 	UpdatedAt                    string
 	DeletedAt                    string
@@ -80,11 +78,10 @@ var SyndicateColumns = struct {
 	Symbol:                       "symbol",
 	LogoID:                       "logo_id",
 	JoinFee:                      "join_fee",
-	MonthlyDues:                  "monthly_dues",
+	MemberMonthlyDues:            "member_monthly_dues",
 	DeployingMemberCutPercentage: "deploying_member_cut_percentage",
 	MemberAssistCutPercentage:    "member_assist_cut_percentage",
 	MechOwnerCutPercentage:       "mech_owner_cut_percentage",
-	SyndicateCutPercentage:       "syndicate_cut_percentage",
 	CreatedAt:                    "created_at",
 	UpdatedAt:                    "updated_at",
 	DeletedAt:                    "deleted_at",
@@ -102,11 +99,10 @@ var SyndicateTableColumns = struct {
 	Symbol                       string
 	LogoID                       string
 	JoinFee                      string
-	MonthlyDues                  string
+	MemberMonthlyDues            string
 	DeployingMemberCutPercentage string
 	MemberAssistCutPercentage    string
 	MechOwnerCutPercentage       string
-	SyndicateCutPercentage       string
 	CreatedAt                    string
 	UpdatedAt                    string
 	DeletedAt                    string
@@ -122,11 +118,10 @@ var SyndicateTableColumns = struct {
 	Symbol:                       "syndicates.symbol",
 	LogoID:                       "syndicates.logo_id",
 	JoinFee:                      "syndicates.join_fee",
-	MonthlyDues:                  "syndicates.monthly_dues",
+	MemberMonthlyDues:            "syndicates.member_monthly_dues",
 	DeployingMemberCutPercentage: "syndicates.deploying_member_cut_percentage",
 	MemberAssistCutPercentage:    "syndicates.member_assist_cut_percentage",
 	MechOwnerCutPercentage:       "syndicates.mech_owner_cut_percentage",
-	SyndicateCutPercentage:       "syndicates.syndicate_cut_percentage",
 	CreatedAt:                    "syndicates.created_at",
 	UpdatedAt:                    "syndicates.updated_at",
 	DeletedAt:                    "syndicates.deleted_at",
@@ -146,11 +141,10 @@ var SyndicateWhere = struct {
 	Symbol                       whereHelperstring
 	LogoID                       whereHelpernull_String
 	JoinFee                      whereHelperdecimal_Decimal
-	MonthlyDues                  whereHelperdecimal_Decimal
+	MemberMonthlyDues            whereHelperdecimal_Decimal
 	DeployingMemberCutPercentage whereHelperdecimal_Decimal
 	MemberAssistCutPercentage    whereHelperdecimal_Decimal
 	MechOwnerCutPercentage       whereHelperdecimal_Decimal
-	SyndicateCutPercentage       whereHelperdecimal_Decimal
 	CreatedAt                    whereHelpertime_Time
 	UpdatedAt                    whereHelpertime_Time
 	DeletedAt                    whereHelpernull_Time
@@ -166,11 +160,10 @@ var SyndicateWhere = struct {
 	Symbol:                       whereHelperstring{field: "\"syndicates\".\"symbol\""},
 	LogoID:                       whereHelpernull_String{field: "\"syndicates\".\"logo_id\""},
 	JoinFee:                      whereHelperdecimal_Decimal{field: "\"syndicates\".\"join_fee\""},
-	MonthlyDues:                  whereHelperdecimal_Decimal{field: "\"syndicates\".\"monthly_dues\""},
+	MemberMonthlyDues:            whereHelperdecimal_Decimal{field: "\"syndicates\".\"member_monthly_dues\""},
 	DeployingMemberCutPercentage: whereHelperdecimal_Decimal{field: "\"syndicates\".\"deploying_member_cut_percentage\""},
 	MemberAssistCutPercentage:    whereHelperdecimal_Decimal{field: "\"syndicates\".\"member_assist_cut_percentage\""},
 	MechOwnerCutPercentage:       whereHelperdecimal_Decimal{field: "\"syndicates\".\"mech_owner_cut_percentage\""},
-	SyndicateCutPercentage:       whereHelperdecimal_Decimal{field: "\"syndicates\".\"syndicate_cut_percentage\""},
 	CreatedAt:                    whereHelpertime_Time{field: "\"syndicates\".\"created_at\""},
 	UpdatedAt:                    whereHelpertime_Time{field: "\"syndicates\".\"updated_at\""},
 	DeletedAt:                    whereHelpernull_Time{field: "\"syndicates\".\"deleted_at\""},
@@ -230,9 +223,9 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "ceo_player_id", "admin_id", "seat_count", "name", "symbol", "logo_id", "join_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateAllColumns            = []string{"id", "type", "faction_id", "founded_by_id", "ceo_player_id", "admin_id", "seat_count", "name", "symbol", "logo_id", "join_fee", "member_monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicateColumnsWithoutDefault = []string{"type", "faction_id", "founded_by_id", "name", "symbol"}
-	syndicateColumnsWithDefault    = []string{"id", "ceo_player_id", "admin_id", "seat_count", "logo_id", "join_fee", "monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "syndicate_cut_percentage", "created_at", "updated_at", "deleted_at"}
+	syndicateColumnsWithDefault    = []string{"id", "ceo_player_id", "admin_id", "seat_count", "logo_id", "join_fee", "member_monthly_dues", "deploying_member_cut_percentage", "member_assist_cut_percentage", "mech_owner_cut_percentage", "created_at", "updated_at", "deleted_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}
 )
