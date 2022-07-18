@@ -1,6 +1,6 @@
-BEGIN;
-ALTER TYPE collection ADD VALUE 'supremacy-achievements';
-COMMIT;
+-- BEGIN;
+-- ALTER TYPE collection ADD VALUE 'supremacy-achievements';
+-- COMMIT;
 
 CREATE TABLE blueprint_keycards
 (
