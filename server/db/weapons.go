@@ -2,11 +2,13 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 
 	"github.com/volatiletech/null/v8"
 
@@ -145,30 +147,69 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		}
 	}
 
-	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin), nil
+	itemSale, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.CollectionItemID.EQ(boilerMechCollectionDetails.ID),
+		boiler.ItemSaleWhere.SoldAt.IsNull(),
+		boiler.ItemSaleWhere.DeletedAt.IsNull(),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+	).One(tx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	itemSaleID := null.String{}
+	if itemSale != nil {
+		itemSaleID = null.StringFrom(itemSale.ID)
+	}
+	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID), nil
 }
 
 func Weapons(id ...string) ([]*server.Weapon, error) {
 	var weapons []*server.Weapon
-	boilerMechs, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerWeapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, bm := range boilerMechs {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bm.ID)).One(gamedb.StdConn)
+	collectionItemToWeapon := map[string]string{}
+	collectionItemIDs := []string{}
+
+	for _, bw := range boilerWeapons {
+		boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bw.ID)).One(gamedb.StdConn)
 		if err != nil {
 			return nil, err
 		}
+		collectionItemToWeapon[bw.ID] = boilerWeaponCollectionDetails.ID
+		collectionItemIDs = append(collectionItemIDs, boilerWeaponCollectionDetails.ID)
 
 		var weaponSkin *server.WeaponSkin
-		if bm.EquippedWeaponSkinID.Valid {
-			weaponSkin, err = WeaponSkin(gamedb.StdConn, bm.EquippedWeaponSkinID.String)
+		if bw.EquippedWeaponSkinID.Valid {
+			weaponSkin, err = WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID.String)
 			if err != nil {
 				return nil, err
 			}
 		}
-		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails, weaponSkin))
+		weapons = append(weapons, server.WeaponFromBoiler(bw, boilerWeaponCollectionDetails, weaponSkin, null.String{}))
+	}
+
+	if len(collectionItemIDs) > 0 {
+		itemSales, err := boiler.ItemSales(
+			boiler.ItemSaleWhere.CollectionItemID.IN(collectionItemIDs),
+			boiler.ItemSaleWhere.SoldAt.IsNull(),
+			boiler.ItemSaleWhere.DeletedAt.IsNull(),
+			boiler.ItemSaleWhere.EndAt.GT(time.Now()),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		for i := range weapons {
+			if collectionItemID, ok := collectionItemToWeapon[weapons[i].ID]; ok {
+				for _, s := range itemSales {
+					if s.CollectionItemID == collectionItemID {
+						weapons[i].ItemSaleID = null.StringFrom(s.ID)
+					}
+				}
+			}
+		}
 	}
 
 	return weapons, nil
@@ -276,20 +317,71 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	return nil
 }
 
+// CheckWeaponAttached checks whether weapon item is already equipped.
+func CheckWeaponAttached(weaponID string) (bool, error) {
+	exists, err := boiler.Weapons(
+		qm.LeftOuterJoin(fmt.Sprintf(
+			`%s on %s = %s`,
+			boiler.TableNames.MechWeapons,
+			qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+		)),
+		boiler.WeaponWhere.ID.EQ(weaponID),
+		qm.Expr(
+			boiler.WeaponWhere.EquippedOn.IsNotNull(),
+			qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+		),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return exists, nil
+}
+
 type WeaponListOpts struct {
-	Search                   string
-	Filter                   *ListFilterRequest
-	Sort                     *ListSortRequest
-	PageSize                 int
-	Page                     int
-	OwnerID                  string
-	DisplayXsynMechs         bool
-	DisplayGenesisAndLimited bool
-	DisplayHidden            bool
-	ExcludeMarketLocked      bool
-	IncludeMarketListed      bool
-	FilterRarities           []string `json:"rarities"`
-	FilterWeaponTypes        []string `json:"weapon_types"`
+	Search                        string
+	Filter                        *ListFilterRequest
+	Sort                          *ListSortRequest
+	PageSize                      int
+	Page                          int
+	OwnerID                       string
+	DisplayXsynMechs              bool
+	DisplayGenesisAndLimited      bool
+	DisplayHidden                 bool
+	ExcludeMarketLocked           bool
+	IncludeMarketListed           bool
+	FilterRarities                []string               `json:"rarities"`
+	FilterWeaponTypes             []string               `json:"weapon_types"`
+	FilterEquippedStatuses        []string               `json:"equipped_statuses"`
+	FilterStatAmmo                *WeaponStatFilterRange `json:"stat_ammo"`
+	FilterStatDamage              *WeaponStatFilterRange `json:"stat_damage"`
+	FilterStatDamageFalloff       *WeaponStatFilterRange `json:"stat_damage_falloff"`
+	FilterStatDamageFalloffRate   *WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+	FilterStatRadius              *WeaponStatFilterRange `json:"stat_radius"`
+	FilterStatRadiusDamageFalloff *WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+	FilterStatRateOfFire          *WeaponStatFilterRange `json:"stat_rate_of_fire"`
+	FilterStatEnergyCosts         *WeaponStatFilterRange `json:"stat_energy_cost"`
+	FilterStatProjectileSpeed     *WeaponStatFilterRange `json:"stat_projectile_speed"`
+	FilterStatSpread              *WeaponStatFilterRange `json:"stat_spread"`
+}
+
+type WeaponStatFilterRange struct {
+	Min null.Int `json:"min"`
+	Max null.Int `json:"max"`
+}
+
+func GenerateWeaponStatFilterQueryMods(column string, filter *WeaponStatFilterRange) []qm.QueryMod {
+	output := []qm.QueryMod{}
+	if filter == nil {
+		return output
+	}
+	if filter.Min.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" >= ?", filter.Min))
+	}
+	if filter.Max.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" <= ?", filter.Max))
+	}
+	return output
 }
 
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
@@ -369,12 +461,86 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
 				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
 			}
-
 		}
 	}
 
 	if len(opts.FilterRarities) > 0 {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+	}
+
+	if len(opts.FilterEquippedStatuses) > 0 {
+		showEquipped := false
+		showUnequipped := false
+		for _, s := range opts.FilterEquippedStatuses {
+			if s == "equipped" {
+				showEquipped = true
+			} else if s == "unequipped" {
+				showUnequipped = true
+			}
+			if showEquipped && showUnequipped {
+				break
+			}
+		}
+
+		if showEquipped && !showUnequipped {
+			queryMods = append(queryMods,
+				qm.LeftOuterJoin(fmt.Sprintf(
+					`%s on %s = %s`,
+					boiler.TableNames.MechWeapons,
+					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				)),
+				qm.Expr(
+					boiler.WeaponWhere.EquippedOn.IsNotNull(),
+					qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+				),
+			)
+		} else if showUnequipped && !showEquipped {
+			queryMods = append(queryMods,
+				qm.LeftOuterJoin(fmt.Sprintf(
+					`%s on %s = %s`,
+					boiler.TableNames.MechWeapons,
+					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				)),
+				qm.Expr(
+					boiler.WeaponWhere.EquippedOn.IsNull(),
+					qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+				),
+			)
+		}
+	}
+
+	// Filter - Weapon Stats
+	if opts.FilterStatAmmo != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, opts.FilterStatAmmo)...)
+	}
+	if opts.FilterStatDamage != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, opts.FilterStatDamage)...)
+	}
+	if opts.FilterStatDamageFalloff != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, opts.FilterStatDamageFalloff)...)
+	}
+	if opts.FilterStatDamageFalloffRate != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, opts.FilterStatDamageFalloffRate)...)
+	}
+	if opts.FilterStatRadius != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, opts.FilterStatRadius)...)
+	}
+	if opts.FilterStatRadiusDamageFalloff != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, opts.FilterStatRadiusDamageFalloff)...)
+	}
+	if opts.FilterStatRateOfFire != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, opts.FilterStatRateOfFire)...)
+	}
+	if opts.FilterStatEnergyCosts != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, opts.FilterStatEnergyCosts)...)
+	}
+	if opts.FilterStatProjectileSpeed != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, opts.FilterStatProjectileSpeed)...)
+	}
+	if opts.FilterStatSpread != nil {
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, opts.FilterStatSpread)...)
 	}
 
 	// Search
@@ -425,6 +591,24 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+
+			fmt.Sprintf(
+				`(
+					SELECT _i.%s
+					FROM %s _i
+					WHERE _i.%s = %s
+						AND _i.%s IS NULL
+						AND _i.%s IS NULL
+						AND _i.%s > NOW()
+				) AS item_sale_id`,
+				boiler.ItemSaleColumns.ID,
+				boiler.TableNames.ItemSales,
+				boiler.ItemSaleColumns.CollectionItemID,
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+				boiler.ItemSaleColumns.SoldAt,
+				boiler.ItemSaleColumns.DeletedAt,
+				boiler.ItemSaleColumns.EndAt,
+			),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
@@ -459,6 +643,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			&wp.CollectionItem.AssetHidden,
 			&wp.ID,
 			&wp.Label,
+			&wp.ItemSaleID,
 		}
 
 		err = rows.Scan(scanArgs...)
@@ -499,18 +684,13 @@ func PlayerWeaponsList(
 	return weapons, nil
 }
 
-func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reason null.String) error {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, reason null.String) error {
 	itemIDsToUpdate := []string{}
 
 	// get equipped mech weapon skins
 	mWpnSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(weaponID)),
-	).All(tx)
+	).All(conn)
 	if err != nil {
 		return err
 	}
@@ -521,7 +701,7 @@ func WeaponSetAllEquippedAssetsAsHidden(trx boil.Executor, weaponID string, reas
 	// update!
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(itemIDsToUpdate),
-	).UpdateAll(tx, boiler.M{
+	).UpdateAll(conn, boiler.M{
 		"asset_hidden": reason,
 	})
 	if err != nil {

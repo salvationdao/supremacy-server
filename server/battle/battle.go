@@ -1185,11 +1185,12 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"game_map"`
-	WarMachines        []*WarMachine   `json:"war_machines"`
-	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
-	WarMachineLocation []byte          `json:"war_machine_location"`
-	BattleIdentifier   int             `json:"battle_identifier"`
+	GameMap            *server.GameMap  `json:"game_map"`
+	WarMachines        []*WarMachine    `json:"war_machines"`
+	SpawnedAI          []*WarMachine    `json:"spawned_ai"`
+	WarMachineLocation []byte           `json:"war_machine_location"`
+	BattleIdentifier   int              `json:"battle_identifier"`
+	AbilityDetails     []*AbilityDetail `json:"ability_details"`
 }
 
 type ViewerLiveCount struct {
@@ -1283,7 +1284,7 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 	}
 }
 
-func UpdatePayload(btl *Battle) *GameSettingsResponse {
+func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	var lt []byte
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
@@ -1292,19 +1293,35 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
+	// Indexes correspond to the game_client_ability_id in the db
+	abilityDetails := make([]*AbilityDetail, 20)
+	// Nuke
+	abilityDetails[1] = &AbilityDetail{
+		Radius: 5200,
+	}
+	// EMP
+	abilityDetails[12] = &AbilityDetail{
+		Radius: 10000,
+	}
+	// BLACKOUT
+	abilityDetails[16] = &AbilityDetail{
+		Radius: 20000,
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
 		WarMachineLocation: lt,
+		AbilityDetails:     abilityDetails,
 	}
 }
 
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, UpdatePayload(btl))
+	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1457,7 +1474,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
-		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
+		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1660,6 +1677,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
 				}
+
+				// sent instance to system ban manager
+				go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
 
 			} else {
 				// update user kill
@@ -1878,23 +1898,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	})
 
 	// clear up unfinished mech move command of the destroyed mech
-	impactedRowCount, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: time.Now()})
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
 	}
 
 	// broadcast changes
-	if impactedRowCount > 0 {
-		err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
-		}
+	err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 }
@@ -2055,15 +2070,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
 			Weapons:   WeaponsFromServer(mech.Weapons),
 			Utility:   UtilitiesFromServer(mech.Utility),
-
-			//Abilities:  nil,
-		}
-		// update the name to be valid if not
-		if len(newWarMachine.Name) < 3 {
-			newWarMachine.Name = mech.Owner.Username
-			if newWarMachine.Name == "" {
-				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-			}
+			Stats: &Stats{
+				TotalWins:       mech.Stats.TotalWins,
+				TotalDeaths:     mech.Stats.TotalDeaths,
+				TotalKills:      mech.Stats.TotalKills,
+				BattlesSurvived: mech.Stats.BattlesSurvived,
+				TotalLosses:     mech.Stats.TotalLosses,
+			},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
@@ -2076,7 +2089,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = mech.Owner.Username
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%s", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model

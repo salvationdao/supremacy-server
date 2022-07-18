@@ -35,6 +35,7 @@ type MarketplaceSaleItem struct {
 	Owner                MarketplaceUser                 `json:"owner,omitempty" boil:"players,bind"`
 	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
 	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
+	Weapon               MarketplaceSaleItemWeapon       `json:"weapon,omitempty" boil:",bind"`
 	CollectionItem       MarketplaceSaleCollectionItem   `json:"collection_item,omitempty" boil:",bind"`
 	LastBid              MarketplaceBidder               `json:"last_bid,omitempty" boil:",bind"`
 }
@@ -121,6 +122,21 @@ func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(localMarketplaceSaleItemMysteryCrate(b))
 }
 
+type MarketplaceSaleItemWeapon struct {
+	ID         null.String `json:"id" boil:"weapons.id"`
+	Label      null.String `json:"label" boil:"weapons.label"`
+	WeaponType null.String `json:"weapon_type" boil:"weapons.weapon_type"`
+	AvatarURL  null.String `json:"avatar_url" boil:"weapons.avatar_url"`
+}
+
+func (b MarketplaceSaleItemWeapon) MarshalJSON() ([]byte, error) {
+	if !b.ID.Valid {
+		return null.NullBytes, nil
+	}
+	type localMarketplaceSaleItemWeapon MarketplaceSaleItemWeapon
+	return json.Marshal(localMarketplaceSaleItemWeapon(b))
+}
+
 type MarketplaceSaleItem1155 struct {
 	ID             string                `json:"id" boil:"id"`
 	FactionID      string                `json:"faction_id" boil:"faction_id"`
@@ -191,6 +207,7 @@ type MarketplaceEventItem struct {
 	Owner                MarketplaceUser                 `json:"owner,omitempty" boil:"players,bind"`
 	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
 	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
+	Weapon               MarketplaceSaleItemWeapon       `json:"weapon,omitempty" boil:",bind"`
 	Keycard              AssetKeycardBlueprint           `json:"keycard,omitempty" boil:",bind"`
 	CollectionItem       MarketplaceSaleCollectionItem   `json:"collection_item,omitempty" boil:",bind"`
 	LastBid              MarketplaceBidder               `json:"last_bid,omitempty" boil:",bind"`

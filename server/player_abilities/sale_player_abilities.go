@@ -62,7 +62,7 @@ type SalePlayerAbilitiesSystem struct {
 }
 
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
-	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
+	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())), boiler.SalePlayerAbilityWhere.DeletedAt.IsNull()).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
 	}
@@ -111,7 +111,19 @@ func (pas *SalePlayerAbilitiesSystem) ResetUserPurchaseCounts() {
 	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 }
 
-func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID, saleAbilityID string) error {
+func (pas *SalePlayerAbilitiesSystem) CanUserPurchase(userID uuid.UUID) bool {
+	pas.RLock()
+	defer pas.RUnlock()
+
+	count, ok := pas.userPurchaseLimits[userID]
+	if !ok {
+		return true
+	}
+
+	return count < pas.UserPurchaseLimit
+}
+
+func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID uuid.UUID) error {
 	pas.Lock()
 	defer pas.Unlock()
 
@@ -161,6 +173,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				// If no abilities are on sale, refill sale abilities
 				saleAbilities, err := boiler.SalePlayerAbilities(
 					boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
+					boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
 					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 				).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
@@ -180,11 +193,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 							Q.current_price,
 							Q.available_until,
 							Q.amount_sold,
-							Q.sale_limit
+							Q.sale_limit,
+							Q.deleted_at
 						from (
-							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, sum(rarity_weight) over (order by id) S, R
+							select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, deleted_at, sum(rarity_weight) over (order by id) S, R
 							from sale_player_abilities spa
 							cross join cte
+							where spa.deleted_at is null
 						) Q
 						where S >= R
 						order by Q.id
@@ -257,7 +272,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					pas.ResetUserPurchaseCounts()
 
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
+					ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesList, struct {
 						NextRefreshTime              *time.Time                `json:"next_refresh_time"`
 						RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
 						SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
@@ -289,7 +304,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
@@ -309,13 +324,13 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability price
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
 				})
 
 				// Broadcast updated sale ability sold amount
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
+				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
 					ID:         saleAbility.ID,
 					AmountSold: saleAbility.AmountSold,
 				})

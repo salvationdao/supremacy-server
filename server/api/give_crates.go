@@ -4,16 +4,20 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -34,9 +38,16 @@ func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) fun
 
 func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, error) {
 	publicAddress := common.HexToAddress(chi.URLParam(r, "public_address"))
+	crateType := strings.ToUpper(chi.URLParam(r, "crate_type"))
 	user, err := boiler.Players(boiler.PlayerWhere.PublicAddress.EQ(null.StringFrom(publicAddress.String()))).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
+
+		return http.StatusInternalServerError, err
+	}
+	if crateType != boiler.CrateTypeMECH && crateType != boiler.CrateTypeWEAPON {
+		err := fmt.Errorf("invalid crate type")
+		gamelog.L.Error().Err(err).Msg("Invalid crate type")
 
 		return http.StatusInternalServerError, err
 	}
@@ -49,7 +60,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 	defer tx.Rollback()
 
 	storeCrate, err := boiler.StorefrontMysteryCrates(
-		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ("WEAPON"),
+		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(crateType),
 		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
 		qm.Load(boiler.StorefrontMysteryCrateRels.Faction),
 	).One(gamedb.StdConn)
@@ -107,6 +118,14 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(err, "Could not find crate, try again or contact support.")
 	}
 
+	crateRollback := func() {
+		crate.Opened = false
+		_, err = crate.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed rollback crate opened: %s", crate.ID))
+		}
+	}
+
 	items := OpenCrateResponse{}
 
 	blueprintItems, err := crate.MysteryCrateBlueprints().All(tx2)
@@ -114,6 +133,8 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get blueprint relationships from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 		return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
+
+	xsynAsserts := []*rpctypes.XsynAsset{}
 
 	for _, blueprintItem := range blueprintItems {
 		switch blueprintItem.BlueprintType {
@@ -185,47 +206,103 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 	}
 
 	if crate.Type == boiler.CrateTypeMECH {
-		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(tx2, user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		eod, err := db.MechEquippedOnDetails(tx2, items.Mech.ID)
 		if err != nil {
-			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get MechEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
+		//attach mech_skin to mech - mech
+		err = db.AttachMechSkinToMech(tx2, user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
+			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.MechSkin.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
+
 		err = db.AttachPowerCoreToMech(tx2, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
+			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach powercore to mech during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		items.PowerCore.EquippedOn = null.StringFrom(items.Mech.ID)
+		items.PowerCore.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
 		for _, weapon := range items.Weapons {
 			err = db.AttachWeaponToMech(tx2, user.ID, items.Mech.ID, weapon.ID)
 			if err != nil {
+				crateRollback()
 				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapons to mech during CRATE:OPEN crate: %s", crate.ID))
 				return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 			}
+			weapon.EquippedOn = null.StringFrom(items.Mech.ID)
+			weapon.EquippedOnDetails = eod
 		}
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
 		mech, err := db.Mech(tx2, items.Mech.ID)
 		if err != nil {
+			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.Mech = mech
+		mech.ChassisSkin = items.MechSkin
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
+		wod, err := db.WeaponEquippedOnDetails(tx2, items.Weapons[0].ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+
 		//attach weapon_skin to weapon -weapon
 		if len(items.Weapons) != 1 {
+			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
 		err = db.AttachWeaponSkinToWeapon(tx2, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
 		if err != nil {
+			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
+		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkin.EquippedOnDetails = wod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
+
+		weapon, err := db.Weapon(tx2, items.Weapons[0].ID)
+		if err != nil {
+			crateRollback()
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
+		}
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+	}
+
+	err = api.Passport.AssetsRegister(xsynAsserts) // register new assets
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
+		crateRollback()
+		return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
+	}
+
+	// delete crate on xsyn
+	err = api.Passport.DeleteAssetXSYN(crate.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets - DeleteAssetXSYN")
+		crateRollback()
+		return http.StatusInternalServerError, terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 	}
 
 	err = tx2.Commit()
