@@ -3,6 +3,9 @@ BEGIN;
 ALTER TABLE blueprint_mech_skin
     ADD CONSTRAINT fk_mech_models FOREIGN KEY (mech_model) REFERENCES mech_models(id);
 
+ALTER TABLE weapon_models
+    ADD FOREIGN KEY (default_skin_id) REFERENCES blueprint_weapon_skin(id);
+
 -- game_map
 CREATE TABLE game_maps
 (

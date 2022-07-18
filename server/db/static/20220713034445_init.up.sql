@@ -6,17 +6,48 @@ CREATE TABLE IF NOT EXISTS battle_abilities
     description              text                                       NOT NULL
 );
 
-DO $$
+CREATE TABLE factions
+(
+    id               uuid PRIMARY KEY         DEFAULT gen_random_uuid()           NOT NULL,
+    vote_price       text                     DEFAULT '1000000000000000000'::text NOT NULL,
+    contract_reward  text                     DEFAULT '1000000000000000000'::text NOT NULL,
+    label            text                                                         NOT NULL,
+    guild_id         uuid,
+    deleted_at       timestamp with time zone,
+    updated_at       timestamp with time zone DEFAULT now()                       NOT NULL,
+    created_at       timestamp with time zone DEFAULT now()                       NOT NULL,
+    primary_color    text                     DEFAULT '#000000'::text             NOT NULL,
+    secondary_color  text                     DEFAULT '#ffffff'::text             NOT NULL,
+    background_color text                     DEFAULT '#0D0D0D'::text             NOT NULL,
+    logo_url         text                     DEFAULT ''::text                    NOT NULL,
+    background_url   text                     DEFAULT ''::text                    NOT NULL,
+    description      text                     DEFAULT ''::text                    NOT NULL
+);
+
+
+CREATE TABLE brands
+(
+    id         uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
+    faction_id uuid                                               NOT NULL REFERENCES factions (id),
+    label      text                                               NOT NULL,
+    deleted_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now()             NOT NULL,
+    created_at timestamp with time zone DEFAULT now()             NOT NULL
+);
+
+DO
+$$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mech_type') THEN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'mech_type') THEN
             CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
         END IF;
     END
 $$;
 
-DO $$
+DO
+$$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'collection') THEN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'collection') THEN
             CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
         END IF;
     END
@@ -47,7 +78,7 @@ CREATE TABLE IF NOT EXISTS mech_models
     id                      uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
     label                   text                                               NOT NULL,
     created_at              timestamp with time zone DEFAULT now()             NOT NULL,
-    default_chassis_skin_id uuid                                               NOT NULL REFERENCES blueprint_mech_skin(id),
+    default_chassis_skin_id uuid                                               NOT NULL REFERENCES blueprint_mech_skin (id),
     brand_id                uuid,
     mech_type               MECH_TYPE
 );
@@ -77,9 +108,10 @@ CREATE TABLE IF NOT EXISTS blueprint_power_cores
     CONSTRAINT blueprint_power_cores_size_check CHECK ((size = ANY (ARRAY ['SMALL'::text, 'MEDIUM'::text, 'LARGE'::text])))
 );
 
-DO $$
+DO
+$$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'weapon_type') THEN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'weapon_type') THEN
             CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
                 'Machine Gun', 'Flamethrower', 'Missile Launcher', 'Laser Beam',
                 'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword');
@@ -92,7 +124,7 @@ $$;
 CREATE TABLE IF NOT EXISTS weapon_models
 (
     id              uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
-    brand_id        uuid,
+    brand_id        uuid REFERENCES brands (id),
     label           text                                               NOT NULL,
     weapon_type     WEAPON_TYPE                                        NOT NULL,
     default_skin_id uuid                                               NOT NULL,
@@ -124,46 +156,32 @@ CREATE TABLE IF NOT EXISTS blueprint_weapon_skin
 -- ALTER TABLE weapon_models
 --     ADD FOREIGN KEY ( default_skin_id) REFERENCES blueprint_weapon_skin(id);
 
-CREATE TABLE factions
-(
-    id               uuid PRIMARY KEY         DEFAULT gen_random_uuid()           NOT NULL,
-    vote_price       text                     DEFAULT '1000000000000000000'::text NOT NULL,
-    contract_reward  text                     DEFAULT '1000000000000000000'::text NOT NULL,
-    label            text                                                         NOT NULL,
-    guild_id         uuid,
-    deleted_at       timestamp with time zone,
-    updated_at       timestamp with time zone DEFAULT now()                       NOT NULL,
-    created_at       timestamp with time zone DEFAULT now()                       NOT NULL,
-    primary_color    text                     DEFAULT '#000000'::text             NOT NULL,
-    secondary_color  text                     DEFAULT '#ffffff'::text             NOT NULL,
-    background_color text                     DEFAULT '#0D0D0D'::text             NOT NULL,
-    logo_url         text                     DEFAULT ''::text                    NOT NULL,
-    background_url   text                     DEFAULT ''::text                    NOT NULL,
-    description      text                     DEFAULT ''::text                    NOT NULL
-);
 
 
-CREATE TABLE brands
-(
-    id         uuid                     PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-    faction_id uuid                                               NOT NULL REFERENCES factions (id),
-    label      text                                               NOT NULL,
-    deleted_at timestamp with time zone,
-    updated_at timestamp with time zone DEFAULT now()             NOT NULL,
-    created_at timestamp with time zone DEFAULT now()             NOT NULL
-);
 
+DO
+$$
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'ability_level') THEN
+            CREATE TYPE ABILITY_LEVEL AS ENUM ('MECH','FACTION','PLAYER');
+        END IF;
+    END
+$$;
 
-DROP TYPE IF EXISTS ABILITY_LEVEL;
-CREATE TYPE ABILITY_LEVEL AS ENUM ('MECH','FACTION','PLAYER');
+DO
+$$
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'location_select_type_enum') THEN
+            CREATE TYPE LOCATION_SELECT_TYPE_ENUM AS ENUM (
+                'LINE_SELECT',
+                'MECH_SELECT',
+                'LOCATION_SELECT',
+                'GLOBAL'
+                );
+        END IF;
+    END
+$$;
 
-DROP TYPE IF EXISTS LOCATION_SELECT_TYPE_ENUM;
-CREATE TYPE LOCATION_SELECT_TYPE_ENUM AS ENUM (
-    'LINE_SELECT',
-    'MECH_SELECT',
-    'LOCATION_SELECT',
-    'GLOBAL'
-    );
 
 CREATE TABLE IF NOT EXISTS game_abilities
 (
@@ -183,9 +201,10 @@ CREATE TABLE IF NOT EXISTS game_abilities
 );
 
 
-DO $$
+DO
+$$
     BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'crate_type') THEN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'crate_type') THEN
             CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
         END IF;
     END
@@ -198,7 +217,7 @@ CREATE TABLE IF NOT EXISTS storefront_mystery_crates
     price              numeric(28, 0)                                     NOT NULL,
     amount             integer                                            NOT NULL,
     amount_sold        integer                  DEFAULT 0                 NOT NULL,
-    faction_id         uuid                                               NOT NULL REFERENCES factions(id),
+    faction_id         uuid                                               NOT NULL REFERENCES factions (id),
     deleted_at         timestamp with time zone,
     updated_at         timestamp with time zone DEFAULT now()             NOT NULL,
     created_at         timestamp with time zone DEFAULT now()             NOT NULL,
