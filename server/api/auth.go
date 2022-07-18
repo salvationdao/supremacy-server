@@ -166,7 +166,7 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Player are not signed in.")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
 	}
 
 	// get user from passport
@@ -175,7 +175,7 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
 	}
 
-	// check existance
+	// check token existence
 	device, err := boiler.Devices(
 		boiler.DeviceWhere.Token.EQ(token),
 		boiler.DeviceWhere.DeletedAt.IsNull(),

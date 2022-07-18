@@ -124,3 +124,24 @@ func (pp *XsynXrpcClient) UserFactionEnlist(userID string, factionID string) err
 
 	return nil
 }
+
+type GenOneTimeTokenReq struct {
+	ApiKey string
+	UserID string
+}
+
+type GenOneTimeTokenResp struct {
+	Token     string    `json:"token"`
+	ExpiredAt time.Time `json:"expired_at"`
+}
+
+func (pp *XsynXrpcClient) GenOneTimeToken(userID string) (*GenOneTimeTokenResp, error) {
+	resp := &GenOneTimeTokenResp{}
+	err := pp.XrpcClient.Call("S.GenOneTimeToken", GenOneTimeTokenReq{pp.ApiKey, userID}, resp)
+
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "GenOneTimeToken").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to get user from passport server")
+	}
+	return resp, nil
+}

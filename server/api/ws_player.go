@@ -64,6 +64,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
+	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
+
 	return pc
 }
 
@@ -1043,5 +1045,17 @@ func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, 
 	}
 
 	reply(prefs)
+	return nil
+}
+
+const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
+
+func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get login token")
+	}
+
+	reply(resp)
 	return nil
 }
