@@ -108,7 +108,7 @@ jobs:
 
       - name: Get Static Data Repo
         run: |
-          git clone --branch main https://github.com/ninja-syndicate/supremacy-static-data.git
+          git clone --branch develop https://github.com/ninja-syndicate/supremacy-static-data.git
           mkdir -p deploy/static
           mv supremacy-static-data/*.csv deploy/static
 

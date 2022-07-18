@@ -148,6 +148,7 @@ func SyncMechModels(dt *DevTool) error {
 	}
 
 	count := 0
+
 	for _, mechModel := range MechModels {
 		brandID := &mechModel.BrandID.String
 		if mechModel.BrandID.String == "" || !mechModel.BrandID.Valid {
