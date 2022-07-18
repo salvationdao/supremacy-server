@@ -211,6 +211,20 @@ func (ss *System) AddJoinApplication(application *boiler.SyndicateJoinApplicatio
 	return nil
 }
 
+func (ss *System) VoteJoinApplication(syndicateID string, playerID string, applicationID string, userID string, isAgreed bool) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.recruitSystem.VoteApplication(applicationID, userID, isAgreed)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ss *System) SyndicateNameVerification(inputName string) (string, error) {
 	syndicateName := strings.TrimSpace(inputName)
 

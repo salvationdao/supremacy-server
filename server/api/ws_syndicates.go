@@ -34,6 +34,7 @@ func NewSyndicateController(api *API) *SyndicateWS {
 
 	api.SecureUserFactionCommand(HubKeySyndicateJoin, sc.SyndicateJoinHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateLeave, sc.SyndicateLeaveHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateVoteApplication, sc.SyndicateVoteApplicationHandler)
 
 	// update syndicate settings
 	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
@@ -369,6 +370,43 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/committees", syndicate.FactionID, syndicate.ID), server.HubKeySyndicateCommitteesSubscribe, scs)
 
 	reply(true)
+	return nil
+}
+
+type SyndicateVoteApplicationRequest struct {
+	Payload struct {
+		ApplicationID string `json:"application_id"`
+		IsAgreed      bool   `json:"is_agreed"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateVoteApplication = "SYNDICATE:VOTE:APPLICATION"
+
+func (sc *SyndicateWS) SyndicateVoteApplicationHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	// check is syndicate committee member
+	isCommittee, err := boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(user.SyndicateID.String),
+		boiler.SyndicateCommitteeWhere.PlayerID.EQ(user.ID),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", user.SyndicateID.String).Str("player id", user.ID).Msg("Failed to syndicate committee")
+		return terror.Error(err, "Failed to check committee members")
+	}
+
+	if !isCommittee {
+		return terror.Error(fmt.Errorf("not a committee"), "Only syndicate committee can vote on join application")
+	}
+
+	req := &SyndicateVoteApplicationRequest{}
+	err = json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
 	return nil
 }
 

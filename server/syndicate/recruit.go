@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
@@ -22,7 +23,7 @@ type RecruitSystem struct {
 
 	applicationMap map[string]*Application
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 func newRecruitSystem(s *Syndicate) *RecruitSystem {
@@ -34,6 +35,22 @@ func newRecruitSystem(s *Syndicate) *RecruitSystem {
 	rs.isLocked.Store(false)
 
 	return rs
+}
+
+func (rs *RecruitSystem) getApplication(id string) (*Application, error) {
+	rs.RLock()
+	defer rs.RUnlock()
+
+	a, ok := rs.applicationMap[id]
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("application not found"), "Application does not exist.")
+	}
+
+	if a.isClosed.Load() {
+		return nil, terror.Error(fmt.Errorf("application is finalised"), "Application is finalised")
+	}
+
+	return a, nil
 }
 
 func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApplication) error {
@@ -76,6 +93,7 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 
 	a := &Application{
 		SyndicateJoinApplication: application,
+		recruitSystem:            rs,
 		isClosed:                 atomic.Bool{},
 		onClose: func() {
 			rs.Lock()
@@ -94,16 +112,32 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 	return nil
 }
 
+func (rs *RecruitSystem) VoteApplication(applicationID string, userID string, isAgreed bool) error {
+
+	a, err := rs.getApplication(applicationID)
+	if err != nil {
+		return err
+	}
+
+	err = a.vote(userID, isAgreed)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type Application struct {
 	*boiler.SyndicateJoinApplication
-	isClosed atomic.Bool
+	recruitSystem *RecruitSystem
+	isClosed      atomic.Bool
 	sync.Mutex
 	onClose func()
 }
 
 func (a *Application) start() {
 	defer func() {
-		// NOTE: this is the ONLY place where a application is closed and removed from the system!
+		// NOTE: this is the ONLY place where an application is closed and removed from the system!
 		a.onClose()
 	}()
 
@@ -117,8 +151,81 @@ func (a *Application) start() {
 		// parse result
 		a.parseResult()
 
+		// do action
+		a.Action()
+
 		return
 	}
+}
+
+func (a *Application) vote(userID string, isAgreed bool) error {
+	a.Lock()
+	defer a.Unlock()
+
+	if a.isClosed.Load() {
+		return terror.Error(fmt.Errorf("application is finalised"), "The application is finalised.")
+	}
+
+	// check player has voted already
+	isVoted, err := boiler.ApplicationVoteExists(gamedb.StdConn, a.ID, userID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to check application vote in db.")
+		return terror.Error(err, "Failed to vote on the application.")
+	}
+
+	if isVoted {
+		return terror.Error(fmt.Errorf("already voted"), "You have already voted.")
+	}
+
+	av := &boiler.ApplicationVote{
+		ApplicationID: a.ID,
+		VotedByID:     userID,
+		IsAgreed:      isAgreed,
+	}
+
+	err = av.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("application vote", av).Msg("Failed to insert application vote.")
+		return terror.Error(fmt.Errorf("failed to vote"), "Failed to vote.")
+	}
+
+	totalVoters, err := boiler.SyndicateCommittees(
+		boiler.SyndicateCommitteeWhere.SyndicateID.EQ(a.SyndicateID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", a.SyndicateID).Msg("Failed to check total syndicate committees.")
+	}
+
+	// total vote count
+	agreedCount, err := a.ApplicationApplicationVotes(
+		boiler.ApplicationVoteWhere.IsAgreed.EQ(true),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("application id", a.ID).Msg("Failed to check vote count")
+		return nil
+	}
+
+	// close the vote, if more than half of committees agreed
+	if agreedCount > totalVoters/2 {
+		a.isClosed.Store(true)
+		return nil
+	}
+
+	disagreedCount, err := a.ApplicationApplicationVotes(
+		boiler.ApplicationVoteWhere.IsAgreed.EQ(false),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("application id", a.ID).Msg("Failed to check vote count")
+		return nil
+	}
+
+	// close the vote, if more than half of committees disagreed
+	if disagreedCount > totalVoters/2 || totalVoters == disagreedCount+agreedCount {
+		a.isClosed.Store(true)
+		return nil
+	}
+
+	return nil
 }
 
 func (a *Application) parseResult() {
@@ -126,6 +233,8 @@ func (a *Application) parseResult() {
 	defer a.Unlock()
 
 	a.isClosed.Store(true)
+
+	// TODO: admin or ceo interrupt
 
 	// get application vote
 	votes, err := a.ApplicationApplicationVotes().All(gamedb.StdConn)
@@ -136,13 +245,6 @@ func (a *Application) parseResult() {
 
 	agreedCount := 0
 	disagreedCount := 0
-
-	if len(votes) == 0 {
-		a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultREJECTED)
-		a.FinalisedAt = null.TimeFrom(time.Now())
-		a.Note = null.StringFrom("No committee voted before application is expired.")
-		return
-	}
 
 	for _, v := range votes {
 		if v.IsAgreed {
@@ -163,5 +265,78 @@ func (a *Application) parseResult() {
 	a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultACCEPTED)
 	a.FinalisedAt = null.TimeFrom(time.Now())
 	a.Note = null.StringFrom("Majority of the committees agreed.")
+}
 
+func (a *Application) Action() {
+	// load applicant
+	applicant, err := a.Applicant().One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load applicant.")
+		return
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+		return
+	}
+
+	defer tx.Rollback()
+
+	// insert application
+	_, err = a.Update(tx, boil.Whitelist(
+		boiler.SyndicateJoinApplicationColumns.Result,
+		boiler.SyndicateJoinApplicationColumns.FinalisedAt,
+		boiler.SyndicateJoinApplicationColumns.Note,
+	))
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to insert application to db.")
+		return
+	}
+
+	if a.Result.String == boiler.SyndicateJoinApplicationResultREJECTED {
+		// refund application fee to applicant
+		refundID, err := a.recruitSystem.syndicate.system.Passport.RefundSupsMessage(a.TXID.String)
+		if err != nil {
+			gamelog.L.Error().Str("player_id", a.ApplicantID).Str("amount", a.PaidAmount.String()).Err(err).Msg("Failed to submit syndicate join application fee.")
+			return
+		}
+
+		a.RefundTXID = null.StringFrom(refundID)
+		_, err = a.Update(tx, boil.Whitelist(
+			boiler.SyndicateJoinApplicationColumns.Result,
+			boiler.SyndicateJoinApplicationColumns.FinalisedAt,
+			boiler.SyndicateJoinApplicationColumns.Note,
+		))
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to insert application to db.")
+		}
+	} else {
+		applicant.SyndicateID = null.StringFrom(a.SyndicateID)
+		_, err := applicant.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
+		if err != nil {
+			gamelog.L.Error().Str("player id", applicant.ID).Str("syndicate id", a.SyndicateID).Err(err).Msg("Failed to update player syndicate id.")
+			return
+		}
+		err = a.recruitSystem.syndicate.accountSystem.receiveFund(
+			server.SupremacyGameUserID,
+			a.PaidAmount,
+			server.TransactionReference(fmt.Sprintf("syndicate_member_join_fee|%s|%s|%d", a.ApplicantID, a.SyndicateID, time.Now().UnixNano())),
+			fmt.Sprintf("Player '%s' #%d join fee.", applicant.Username.String, applicant.Gid),
+		)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to transfer syndicate join fee.")
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/join_applicant/%s", applicant.FactionID.String, a.SyndicateID, a.ID), server.HubKeySyndicateJoinApplicationUpdate, a)
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return
+	}
 }

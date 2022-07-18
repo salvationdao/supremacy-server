@@ -22,3 +22,4 @@ const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIB
 
 const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 const HubKeyUserSubscribe = "USER:SUBSCRIBE"
+const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
