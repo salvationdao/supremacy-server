@@ -81,7 +81,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:        salePlayerAbilities,
-		salePlayerAbilitiesPool:    make([]*boiler.SalePlayerAbility, 0),
+		salePlayerAbilitiesPool:    []*boiler.SalePlayerAbility{},
 		userPurchaseLimits:         make(map[uuid.UUID]int),
 		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
