@@ -28,6 +28,8 @@ func AuthRouter(api *API) chi.Router {
 	r.Get("/logout", WithError(api.LogoutHandler))
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
 
+	r.Get("/qr_code_login", WithError(api.AuthQRCodeLoginHandler))
+
 	return r
 }
 
@@ -157,6 +159,44 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	}
 
 	return helpers.EncodeJSON(w, player)
+}
+
+func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	// get api/auth/qr_code_login?token=...
+
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Player are not signed in.")
+	}
+
+	// get user from passport
+	user, err := api.TokenLogin(token)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+	}
+
+	// check existance
+	device, err := boiler.Devices(
+		boiler.DeviceWhere.Token.EQ(token),
+		boiler.DeviceWhere.DeletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("failed to query token from db ")
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+	}
+
+	if device == nil {
+		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+	}
+
+	// write cookie
+	err = api.WriteCookie(w, r, token)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to write cookie")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get user from token.")
+	}
+
+	return helpers.EncodeJSON(w, user)
 }
 
 func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
