@@ -53,3 +53,6 @@ WHERE
         where
             game_client_ability_id in (11)
     );
+
+ALTER TABLE
+    sale_player_abilities DROP COLUMN available_until;
