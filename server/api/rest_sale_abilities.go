@@ -124,11 +124,10 @@ func (sac *SaleAbilitiesController) Create(w http.ResponseWriter, r *http.Reques
 	}
 
 	spa := &boiler.SalePlayerAbility{
-		BlueprintID:    req.BlueprintID,
-		CurrentPrice:   initialCost,
-		AvailableUntil: null.TimeFrom(time.Now()),
-		SaleLimit:      req.SaleLimit,
-		RarityWeight:   req.RarityWeight,
+		BlueprintID:  req.BlueprintID,
+		CurrentPrice: initialCost,
+		SaleLimit:    req.SaleLimit,
+		RarityWeight: req.RarityWeight,
 	}
 	err = spa.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
