@@ -89,13 +89,23 @@ set profile_avatar_id = inserted_avatars.id
 from inserted_avatars
 where blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
 
-
 INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
-SELECT DISTINCT(p.id) , pa.id FROM players p 
+SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
 INNER JOIN collection_items ci ON ci.owner_id =  p.id 
-INNER JOIN blueprint_mech_skin bms ON bms.avatar_url = ci.avatar_url
-INNER JOIN profile_avatars pa ON pa.avatar_url = bms.avatar_url;
-
+inner join mech_skin ms ON ms.id = ci.item_id 
+INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id;
 
 ALTER TABLE players
     ADD COLUMN profile_avatar_id UUID REFERENCES profile_avatars (id);
+
+
+
+-- add to players_profile_avatars
+-- - when player buys item 
+-- - enlist in a faction 
+
+
+-- add to players_profile_avatars
+-- - sell item 
+
+-- shoiuld mech  skings have unique urls

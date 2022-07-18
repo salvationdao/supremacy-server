@@ -1171,7 +1171,7 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 
 	// get stats
 	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().
 			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
 		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
