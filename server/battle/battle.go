@@ -660,119 +660,119 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			FactionID: factionId,
 		}
 
-		contract, err := boiler.BattleContracts(boiler.BattleContractWhere.BattleID.EQ(
-			null.StringFrom(btl.BattleID)),
-			boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
-			boiler.BattleContractWhere.Cancelled.EQ(null.BoolFrom(false)),
-		).One(gamedb.StdConn)
+		//contract, err := boiler.BattleContracts(boiler.BattleContractWhere.BattleID.EQ(
+		//	null.StringFrom(btl.BattleID)),
+		//	boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
+		//	boiler.BattleContractWhere.Cancelled.EQ(null.BoolFrom(false)),
+		//).One(gamedb.StdConn)
 
-		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			if mws[i].OwnerID.String() != server.RedMountainPlayerID &&
-				mws[i].OwnerID.String() != server.BostonCyberneticsPlayerID &&
-				mws[i].OwnerID.String() != server.ZaibatsuPlayerID {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("no contract in database")
-			}
-			continue
-		} else if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", wm.ID).
-				Err(err).
-				Msg("failed to retrieve contract")
-			continue
-		}
+		//if err != nil && errors.Is(err, sql.ErrNoRows) {
+		//	if mws[i].OwnerID.String() != server.RedMountainPlayerID &&
+		//		mws[i].OwnerID.String() != server.BostonCyberneticsPlayerID &&
+		//		mws[i].OwnerID.String() != server.ZaibatsuPlayerID {
+		//		gamelog.L.Error().Str("log_name", "battle arena").
+		//			Str("Battle ID", btl.ID).
+		//			Str("Mech ID", wm.ID).
+		//			Err(err).
+		//			Msg("no contract in database")
+		//	}
+		//	continue
+		//} else if err != nil {
+		//	gamelog.L.Error().Str("log_name", "battle arena").
+		//		Str("Battle ID", btl.ID).
+		//		Str("Mech ID", wm.ID).
+		//		Err(err).
+		//		Msg("failed to retrieve contract")
+		//	continue
+		//}
 
-		contract.DidWin = null.BoolFrom(true)
-		factionAccountID, ok := server.FactionUsers[factionId.String()]
-		if !ok {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("Battle ID", btl.ID).
-				Str("faction ID", wm.FactionID).
-				Msg("unable to get hard coded syndicate player ID from faction ID")
-		} else {
-			//do contract payout for winning mech
-			gamelog.L.Info().
-				Str("Battle ID", btl.ID).
-				Str("Faction ID", wm.FactionID).
-				Str("Faction Account ID", factionAccountID).
-				Str("Player ID", wm.OwnedByID).
-				Str("Contract ID", contract.ID).
-				Str("Amount", contract.ContractReward.StringFixed(0)).
-				Msg("paying out mech winnings from contract reward")
-
-			factID := uuid.Must(uuid.FromString(factionAccountID))
-			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
-
-			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-					ToUserID:             factID,
-					Amount:               contract.ContractReward.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupBattle),
-					SubGroup:             wmwin.Hash,
-					Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
-					NotSafe:              false,
-				})
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").
-						Str("Faction ID", factionAccountID).
-						Str("Amount", contract.ContractReward.StringFixed(0)).
-						Err(err).
-						Msg("Could not transfer money from treasury into syndicate account!!")
-					continue
-				}
-				gamelog.L.Warn().
-					Str("Faction ID", factionAccountID).
-					Str("Amount", contract.ContractReward.StringFixed(0)).
-					Str("TXID", txid).
-					Err(err).
-					Msg("Had to transfer funds to the syndicate account")
-			}
-
-			if factID.String() == contract.PlayerID {
-				continue
-			}
-
-			// pay sups
-			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           factID,
-				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
-				Amount:               contract.ContractReward.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupBattle),
-				SubGroup:             wmwin.Hash,
-				Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
-				NotSafe:              false,
-			})
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("faction ID", wm.FactionID).
-					Str("Player ID", wm.OwnedByID).
-					Err(err).
-					Msg("unable to transfer funds to winning mech owner")
-				continue
-			}
-
-			contract.PaidOut = true
-			contract.TransactionID = null.StringFrom(txid)
-			_, err = contract.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("faction ID", wm.FactionID).
-					Str("Player ID", wm.OwnedByID).
-					Str("TX ID", txid).
-					Err(err).
-					Msg("unable to save transaction ID on contract")
-				continue
-			}
-		}
+		////contract.DidWin = null.BoolFrom(true)
+		//factionAccountID, ok := server.FactionUsers[factionId.String()]
+		//if !ok {
+		//	gamelog.L.Error().Str("log_name", "battle arena").
+		//		Str("Battle ID", btl.ID).
+		//		Str("faction ID", wm.FactionID).
+		//		Msg("unable to get hard coded syndicate player ID from faction ID")
+		//} else {
+		//	//do contract payout for winning mech
+		//	gamelog.L.Info().
+		//		Str("Battle ID", btl.ID).
+		//		Str("Faction ID", wm.FactionID).
+		//		Str("Faction Account ID", factionAccountID).
+		//		Str("Player ID", wm.OwnedByID).
+		//		Str("Contract ID", contract.ID).
+		//		Str("Amount", contract.ContractReward.StringFixed(0)).
+		//		Msg("paying out mech winnings from contract reward")
+		//
+		//	factID := uuid.Must(uuid.FromString(factionAccountID))
+		//	syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
+		//
+		//	if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
+		//		txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		//			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+		//			ToUserID:             factID,
+		//			Amount:               contract.ContractReward.StringFixed(0),
+		//			TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
+		//			Group:                string(server.TransactionGroupBattle),
+		//			SubGroup:             wmwin.Hash,
+		//			Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
+		//			NotSafe:              false,
+		//		})
+		//		if err != nil {
+		//			gamelog.L.Error().Str("log_name", "battle arena").
+		//				Str("Faction ID", factionAccountID).
+		//				Str("Amount", contract.ContractReward.StringFixed(0)).
+		//				Err(err).
+		//				Msg("Could not transfer money from treasury into syndicate account!!")
+		//			continue
+		//		}
+		//		gamelog.L.Warn().
+		//			Str("Faction ID", factionAccountID).
+		//			Str("Amount", contract.ContractReward.StringFixed(0)).
+		//			Str("TXID", txid).
+		//			Err(err).
+		//			Msg("Had to transfer funds to the syndicate account")
+		//	}
+		//
+		//	if factID.String() == contract.PlayerID {
+		//		continue
+		//	}
+		//
+		//	// pay sups
+		//	txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		//		FromUserID:           factID,
+		//		ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
+		//		Amount:               contract.ContractReward.StringFixed(0),
+		//		TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
+		//		Group:                string(server.TransactionGroupBattle),
+		//		SubGroup:             wmwin.Hash,
+		//		Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
+		//		NotSafe:              false,
+		//	})
+		//	if err != nil {
+		//		gamelog.L.Error().Str("log_name", "battle arena").
+		//			Str("Battle ID", btl.ID).
+		//			Str("faction ID", wm.FactionID).
+		//			Str("Player ID", wm.OwnedByID).
+		//			Err(err).
+		//			Msg("unable to transfer funds to winning mech owner")
+		//		continue
+		//	}
+		//
+		//	contract.PaidOut = true
+		//	contract.TransactionID = null.StringFrom(txid)
+		//	_, err = contract.Update(gamedb.StdConn, boil.Infer())
+		//	if err != nil {
+		//		gamelog.L.Error().Str("log_name", "battle arena").
+		//			Str("Battle ID", btl.ID).
+		//			Str("faction ID", wm.FactionID).
+		//			Str("Player ID", wm.OwnedByID).
+		//			Str("TX ID", txid).
+		//			Err(err).
+		//			Msg("unable to save transaction ID on contract")
+		//		continue
+		//	}
+		//}
 	}
 	err := db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {

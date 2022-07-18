@@ -740,6 +740,11 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 
 const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 
+type MechGameAbility struct {
+	boiler.GameAbility
+	CoolDownSeconds int `json:"cool_down_seconds"`
+}
+
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
@@ -748,29 +753,90 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return fmt.Errorf("slot number is required")
 	}
 
+	if arena.currentBattleState() != BattleStageStart {
+		return nil
+	}
+
 	participantID, err := strconv.Atoi(slotNumber)
 	if err != nil {
 		return fmt.Errorf("invalid participant id")
 	}
 
 	wm := arena.CurrentBattleWarMachine(participantID)
-
 	if wm == nil {
-		return nil
+		return fmt.Errorf("failed to load war machine")
 	}
-	if wm.FactionID != factionID {
-		gamelog.L.Warn().Str("war_machine_faction_id", wm.FactionID).Str("user_faction_id", factionID).Msg("War machine faction id does not match")
+
+	if wm.OwnedByID != user.ID {
+		reply([]*boiler.GameAbility{})
 		return nil
 	}
 
-	gameAbilities := []GameAbility{}
-	for _, ga := range wm.Abilities {
-		ga.RLock()
-		gameAbilities = append(gameAbilities, *ga)
-		ga.RUnlock()
+	// load game ability
+	gas, err := boiler.GameAbilities(
+		boiler.GameAbilityWhere.FactionID.EQ(wm.FactionID),
+		boiler.GameAbilityWhere.Level.EQ(boiler.AbilityLevelPLAYER),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("faction id", wm.FactionID).Str("ability level", boiler.AbilityLevelPLAYER).Err(err).Msg("Failed to get game abilities from db")
+		return terror.Error(err, "Failed to load game abilities.")
 	}
 
-	reply(gameAbilities)
+	reply(gas)
+
+	return nil
+}
+
+const HubKeyWarMachineAbilitySubscribe = "WAR:MACHINE:ABILITY:SUBSCRIBE"
+
+func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	slotNumber := cctx.URLParam("slotNumber")
+	if slotNumber == "" {
+		return fmt.Errorf("slot number is required")
+	}
+	mechAbilityID := cctx.URLParam("mech_ability_id")
+	if mechAbilityID == "" {
+		return fmt.Errorf("mech ability is required")
+	}
+
+	if arena.currentBattleState() != BattleStageStart {
+		return nil
+	}
+
+	participantID, err := strconv.Atoi(slotNumber)
+	if err != nil {
+		return fmt.Errorf("invalid participant id")
+	}
+
+	wm := arena.CurrentBattleWarMachine(participantID)
+	if wm == nil {
+		return fmt.Errorf("failed to load mech detail")
+	}
+
+	if wm.OwnedByID != user.ID {
+		return terror.Error(fmt.Errorf("does not own the mech"), "You do not own the mech.")
+	}
+
+	coolDownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
+
+	// calculate remain seconds
+	mat, err := boiler.MechAbilityTriggerLogs(
+		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
+		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
+		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
+		return terror.Error(err, "Failed to load game ability")
+	}
+
+	if mat != nil {
+		reply(coolDownSeconds - int(time.Now().Sub(mat.CreatedAt).Seconds()))
+	}
+
+	reply(0)
 
 	return nil
 }
