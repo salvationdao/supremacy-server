@@ -659,3 +659,27 @@ func SeedDefaultAvatars(playerID string, factionID string) error {
 
 	return nil
 }
+
+func GiveMechAvatar(playerID string, collectionItemID string) error {
+
+	bms, err := boiler.FindBlueprintMechSkin()
+
+	// get faction logo urls from profile avatars table
+	ava, err := boiler.ProfileAvatars(boiler.ProfileAvatarWhere.AvatarURL.EQ(fac.LogoURL)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// insert into player profile avatars
+	ppa := &boiler.PlayersProfileAvatar{
+		PlayerID:        playerID,
+		ProfileAvatarID: ava.ID,
+	}
+
+	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
