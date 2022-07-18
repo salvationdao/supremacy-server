@@ -125,6 +125,8 @@ func (sac *SaleAbilitiesController) Create(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create sale ability")
 	}
 
+	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+
 	return http.StatusOK, nil
 }
 
@@ -151,6 +153,8 @@ func (sac *SaleAbilitiesController) Delist(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to delist sale ability"))
 	}
+
+	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
 
 	return http.StatusOK, nil
 }
@@ -184,6 +188,8 @@ func (sac *SaleAbilitiesController) Relist(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to relist sale ability"))
 	}
 
+	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+
 	return http.StatusOK, nil
 }
 
@@ -210,6 +216,8 @@ func (sac *SaleAbilitiesController) Delete(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to delete sale ability"))
 	}
+
+	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
 
 	return http.StatusOK, nil
 }

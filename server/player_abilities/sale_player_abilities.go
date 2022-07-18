@@ -78,26 +78,10 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilities[sID] = s
 	}
 
-	saAvailable, err := boiler.SalePlayerAbilities(
-		boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
-		boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
-		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to initialise pool of sale abilities from db")
-	}
-	saPool := []*boiler.SalePlayerAbility{}
-	for _, sa := range saAvailable {
-		for i := 0; i < sa.RarityWeight; i++ {
-			saPool = append(saPool, sa)
-		}
-	}
-	gamelog.L.Debug().Msg(fmt.Sprintf("initialised pool of sale abilities with %d entries", len(saPool)))
-
 	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:        salePlayerAbilities,
-		salePlayerAbilitiesPool:    saPool,
+		salePlayerAbilitiesPool:    make([]*boiler.SalePlayerAbility, 0),
 		userPurchaseLimits:         make(map[uuid.UUID]int),
 		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
@@ -111,9 +95,35 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		closed:                     atomic.NewBool(false),
 	}
 
+	pas.RehydratePool()
+
 	go pas.SalePlayerAbilitiesUpdater()
 
 	return pas
+}
+
+func (pas *SalePlayerAbilitiesSystem) RehydratePool() {
+	pas.Lock()
+	defer pas.Unlock()
+
+	saAvailable, err := boiler.SalePlayerAbilities(
+		boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
+		boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
+		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to refresh pool of sale abilities from db")
+	}
+	saPool := []*boiler.SalePlayerAbility{}
+	for _, sa := range saAvailable {
+		for i := 0; i < sa.RarityWeight; i++ {
+			saPool = append(saPool, sa)
+		}
+	}
+
+	pas.salePlayerAbilitiesPool = saPool
+
+	gamelog.L.Debug().Msg(fmt.Sprintf("refreshed pool of sale abilities with %d entries", len(saPool)))
 }
 
 func (pas *SalePlayerAbilitiesSystem) NextRefresh() time.Time {
@@ -183,21 +193,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		case <-priceTicker.C:
 			if len(pas.salePlayerAbilitiesPool) == 0 {
 				gamelog.L.Debug().Msg("populating sale player abilities pool because it was empty")
-				saAvailable, err := boiler.SalePlayerAbilities(
-					boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
-					boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
-					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
-				).All(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("failed to initialise pool of sale abilities from db")
-				}
-				saPool := []*boiler.SalePlayerAbility{}
-				for _, sa := range saAvailable {
-					for i := 0; i < sa.RarityWeight; i++ {
-						saPool = append(saPool, sa)
-					}
-				}
-				gamelog.L.Debug().Msg(fmt.Sprintf("initialised pool of sale abilities with %d entries", len(saPool)))
+				pas.RehydratePool()
 			}
 
 			// Price ticker ticks every 5 seconds, updates prices of abilities and refreshes the sale ability list when all abilities on sale have expired
