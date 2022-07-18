@@ -2089,7 +2089,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%s", mech.Owner.Username, mech.Owner.Gid)
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%d", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model
