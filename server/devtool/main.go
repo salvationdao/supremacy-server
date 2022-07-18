@@ -25,14 +25,15 @@ func SyncTool(dt *DevTool) error {
 	if err != nil {
 		return err
 	}
-	err = SyncMechModels(dt)
-	if err != nil {
-		return err
-	}
 	err = SyncMechSkins(dt)
 	if err != nil {
 		return err
 	}
+	err = SyncMechModels(dt)
+	if err != nil {
+		return err
+	}
+
 	//SyncMysteryCrates(dt)
 	err = SyncWeaponSkins(dt)
 	if err != nil {

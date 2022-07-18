@@ -250,7 +250,7 @@ dev-sync-data:
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
 	cd ../../../
 	make sync
-	rm -rf ./devtool/temp-sync
+	rm -rf ./server/devtool/temp-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:

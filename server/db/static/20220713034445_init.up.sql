@@ -12,22 +12,13 @@ CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
 DROP TYPE IF EXISTS COLLECTION;
 CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
 
-CREATE TABLE IF NOT EXISTS mech_models
-(
-    id                      uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
-    label                   text                                               NOT NULL,
-    created_at              timestamp with time zone DEFAULT now()             NOT NULL,
-    default_chassis_skin_id uuid                                               NOT NULL REFERENCES blueprint_mech_skin(id),
-    brand_id                uuid,
-    mech_type               MECH_TYPE
-);
 
 
 CREATE TABLE IF NOT EXISTS blueprint_mech_skin
 (
     id                 uuid PRIMARY KEY         DEFAULT gen_random_uuid()   NOT NULL,
     collection         COLLECTION               DEFAULT 'supremacy-general' NOT NULL,
-    mech_model         uuid                                                 NOT NULL REFERENCES mech_models(id),
+    mech_model         uuid                                                 NOT NULL,
     label              text                                                 NOT NULL,
     tier               text                     DEFAULT 'MEGA'::text        NOT NULL,
     image_url          text,
@@ -41,6 +32,18 @@ CREATE TABLE IF NOT EXISTS blueprint_mech_skin
     mech_type          MECH_TYPE,
     stat_modifier      numeric(8, 0)
 );
+
+CREATE TABLE IF NOT EXISTS mech_models
+(
+    id                      uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
+    label                   text                                               NOT NULL,
+    created_at              timestamp with time zone DEFAULT now()             NOT NULL,
+    default_chassis_skin_id uuid                                               NOT NULL REFERENCES blueprint_mech_skin(id),
+    brand_id                uuid,
+    mech_type               MECH_TYPE
+);
+
+
 
 CREATE TABLE IF NOT EXISTS blueprint_power_cores
 (
@@ -188,4 +191,9 @@ CREATE TABLE IF NOT EXISTS storefront_mystery_crates
     background_color   text,
     animation_url      text,
     youtube_url        text
+);
+
+CREATE TABLE mech_skin_matrix (
+        mech_model_id UUID NOT NULL REFERENCES mech_models(id),
+        blueprint_mech_skin_id UUID NOT NULL REFERENCES blueprint_mech_skin(id)
 );

@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE blueprint_mech_skin
+    ADD CONSTRAINT fk_mech_models FOREIGN KEY (mech_model) REFERENCES mech_models(id);
+
 -- game_map
 CREATE TABLE game_maps
 (
