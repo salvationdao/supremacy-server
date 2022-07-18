@@ -39,6 +39,7 @@ type Player struct {
 	Rank             string          `boiler:"rank" boil:"rank" json:"rank" toml:"rank" yaml:"rank"`
 	SentMessageCount int             `boiler:"sent_message_count" boil:"sent_message_count" json:"sent_message_count" toml:"sent_message_count" yaml:"sent_message_count"`
 	AboutMe          null.String     `boiler:"about_me" boil:"about_me" json:"about_me,omitempty" toml:"about_me" yaml:"about_me,omitempty"`
+	ProfileAvatarID  null.String     `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -60,6 +61,7 @@ var PlayerColumns = struct {
 	Rank             string
 	SentMessageCount string
 	AboutMe          string
+	ProfileAvatarID  string
 }{
 	ID:               "id",
 	FactionID:        "faction_id",
@@ -76,6 +78,7 @@ var PlayerColumns = struct {
 	Rank:             "rank",
 	SentMessageCount: "sent_message_count",
 	AboutMe:          "about_me",
+	ProfileAvatarID:  "profile_avatar_id",
 }
 
 var PlayerTableColumns = struct {
@@ -94,6 +97,7 @@ var PlayerTableColumns = struct {
 	Rank             string
 	SentMessageCount string
 	AboutMe          string
+	ProfileAvatarID  string
 }{
 	ID:               "players.id",
 	FactionID:        "players.faction_id",
@@ -110,6 +114,7 @@ var PlayerTableColumns = struct {
 	Rank:             "players.rank",
 	SentMessageCount: "players.sent_message_count",
 	AboutMe:          "players.about_me",
+	ProfileAvatarID:  "players.profile_avatar_id",
 }
 
 // Generated where
@@ -130,6 +135,7 @@ var PlayerWhere = struct {
 	Rank             whereHelperstring
 	SentMessageCount whereHelperint
 	AboutMe          whereHelpernull_String
+	ProfileAvatarID  whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
@@ -146,11 +152,13 @@ var PlayerWhere = struct {
 	Rank:             whereHelperstring{field: "\"players\".\"rank\""},
 	SentMessageCount: whereHelperint{field: "\"players\".\"sent_message_count\""},
 	AboutMe:          whereHelpernull_String{field: "\"players\".\"about_me\""},
+	ProfileAvatarID:  whereHelpernull_String{field: "\"players\".\"profile_avatar_id\""},
 }
 
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
 	Faction                                  string
+	ProfileAvatar                            string
 	PlayerSettingsPreference                 string
 	IDPlayerStat                             string
 	OwnerAmmos                               string
@@ -195,6 +203,7 @@ var PlayerRels = struct {
 	OwnerWeaponSkins                         string
 }{
 	Faction:                                  "Faction",
+	ProfileAvatar:                            "ProfileAvatar",
 	PlayerSettingsPreference:                 "PlayerSettingsPreference",
 	IDPlayerStat:                             "IDPlayerStat",
 	OwnerAmmos:                               "OwnerAmmos",
@@ -242,6 +251,7 @@ var PlayerRels = struct {
 // playerR is where relationships are stored.
 type playerR struct {
 	Faction                                  *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	ProfileAvatar                            *ProfileAvatar                   `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
 	PlayerSettingsPreference                 *PlayerSettingsPreference        `boiler:"PlayerSettingsPreference" boil:"PlayerSettingsPreference" json:"PlayerSettingsPreference" toml:"PlayerSettingsPreference" yaml:"PlayerSettingsPreference"`
 	IDPlayerStat                             *PlayerStat                      `boiler:"IDPlayerStat" boil:"IDPlayerStat" json:"IDPlayerStat" toml:"IDPlayerStat" yaml:"IDPlayerStat"`
 	OwnerAmmos                               AmmoSlice                        `boiler:"OwnerAmmos" boil:"OwnerAmmos" json:"OwnerAmmos" toml:"OwnerAmmos" yaml:"OwnerAmmos"`
@@ -295,9 +305,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
@@ -555,6 +565,21 @@ func (o *Player) Faction(mods ...qm.QueryMod) factionQuery {
 
 	query := Factions(queryMods...)
 	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// ProfileAvatar pointed to by the foreign key.
+func (o *Player) ProfileAvatar(mods ...qm.QueryMod) profileAvatarQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ProfileAvatarID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := ProfileAvatars(queryMods...)
+	queries.SetFrom(query.Query, "\"profile_avatars\"")
 
 	return query
 }
@@ -1544,6 +1569,115 @@ func (playerL) LoadFaction(e boil.Executor, singular bool, maybePlayer interface
 				local.R.Faction = foreign
 				if foreign.R == nil {
 					foreign.R = &factionR{}
+				}
+				foreign.R.Players = append(foreign.R.Players, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadProfileAvatar allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerL) LoadProfileAvatar(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		if !queries.IsNil(object.ProfileAvatarID) {
+			args = append(args, object.ProfileAvatarID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ProfileAvatarID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ProfileAvatarID) {
+				args = append(args, obj.ProfileAvatarID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`profile_avatars`),
+		qm.WhereIn(`profile_avatars.id in ?`, args...),
+		qmhelper.WhereIsNull(`profile_avatars.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load ProfileAvatar")
+	}
+
+	var resultSlice []*ProfileAvatar
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice ProfileAvatar")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for profile_avatars")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for profile_avatars")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ProfileAvatar = foreign
+		if foreign.R == nil {
+			foreign.R = &profileAvatarR{}
+		}
+		foreign.R.Players = append(foreign.R.Players, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ProfileAvatarID, foreign.ID) {
+				local.R.ProfileAvatar = foreign
+				if foreign.R == nil {
+					foreign.R = &profileAvatarR{}
 				}
 				foreign.R.Players = append(foreign.R.Players, local)
 				break
@@ -5776,6 +5910,85 @@ func (o *Player) RemoveFaction(exec boil.Executor, related *Faction) error {
 
 	for i, ri := range related.R.Players {
 		if queries.Equal(o.FactionID, ri.FactionID) {
+			continue
+		}
+
+		ln := len(related.R.Players)
+		if ln > 1 && i < ln-1 {
+			related.R.Players[i] = related.R.Players[ln-1]
+		}
+		related.R.Players = related.R.Players[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetProfileAvatar of the player to the related item.
+// Sets o.R.ProfileAvatar to related.
+// Adds o to related.R.Players.
+func (o *Player) SetProfileAvatar(exec boil.Executor, insert bool, related *ProfileAvatar) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"players\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"profile_avatar_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ProfileAvatarID, related.ID)
+	if o.R == nil {
+		o.R = &playerR{
+			ProfileAvatar: related,
+		}
+	} else {
+		o.R.ProfileAvatar = related
+	}
+
+	if related.R == nil {
+		related.R = &profileAvatarR{
+			Players: PlayerSlice{o},
+		}
+	} else {
+		related.R.Players = append(related.R.Players, o)
+	}
+
+	return nil
+}
+
+// RemoveProfileAvatar relationship.
+// Sets o.R.ProfileAvatar to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Player) RemoveProfileAvatar(exec boil.Executor, related *ProfileAvatar) error {
+	var err error
+
+	queries.SetScanner(&o.ProfileAvatarID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("profile_avatar_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.ProfileAvatar = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Players {
+		if queries.Equal(o.ProfileAvatarID, ri.ProfileAvatarID) {
 			continue
 		}
 

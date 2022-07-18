@@ -574,10 +574,6 @@ type AvatarListOpts struct {
 func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 	var avatars []*boiler.ProfileAvatar
 
-	fmt.Println("ahhhhhhh")
-	fmt.Println("ahhhhhhh")
-	fmt.Println("ahhhhhhh")
-
 	queryMods := []qm.QueryMod{
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.PlayersProfileAvatars,
@@ -586,10 +582,6 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 		)),
 		qm.Where("players_profile_avatars.player_id = ?", opts.OwnerID),
 	}
-
-	fmt.Println("ahhhhhhh2")
-	fmt.Println("ahhhhhhh2")
-	fmt.Println("ahhhhhhh2")
 
 	total, err := boiler.ProfileAvatars(
 		queryMods...,
@@ -605,10 +597,6 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
-	fmt.Println("ahhhhhhh3")
-	fmt.Println("ahhhhhhh3")
-	fmt.Println("ahhhhhhh3")
-
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
@@ -619,11 +607,6 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 		qm.From(boiler.TableNames.ProfileAvatars),
 	)
 
-	fmt.Println("ahhhhhhh4")
-	fmt.Println("ahhhhhhh4")
-	fmt.Println("ahhhhhhh4")
-	fmt.Println("ahhhhhhh4")
-
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -631,12 +614,6 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 		return 0, nil, err
 	}
 	defer rows.Close()
-
-	fmt.Println("ahhhhhhh5")
-	fmt.Println("ahhhhhhh5")
-	fmt.Println("ahhhhhhh5")
-	fmt.Println("ahhhhhhh5")
-
 	for rows.Next() {
 		av := &boiler.ProfileAvatar{}
 

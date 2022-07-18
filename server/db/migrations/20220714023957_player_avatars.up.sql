@@ -95,3 +95,7 @@ SELECT DISTINCT(p.id) , pa.id FROM players p
 INNER JOIN collection_items ci ON ci.owner_id =  p.id 
 INNER JOIN blueprint_mech_skin bms ON bms.avatar_url = ci.avatar_url
 INNER JOIN profile_avatars pa ON pa.avatar_url = bms.avatar_url;
+
+
+ALTER TABLE players
+    ADD COLUMN profile_avatar_id UUID REFERENCES profile_avatars (id);
