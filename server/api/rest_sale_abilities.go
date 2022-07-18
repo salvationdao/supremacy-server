@@ -29,11 +29,15 @@ func SaleAbilitiesRouter(api *API) chi.Router {
 		api,
 	}
 	r := chi.NewRouter()
+	// Admin
 	r.Get("/all", WithToken(api.Config.ServerStreamKey, WithError(c.All)))
 	r.Post("/create", WithToken(api.Config.ServerStreamKey, WithError(c.Create)))
 	r.Post("/delist", WithToken(api.Config.ServerStreamKey, WithError(c.Delist)))
 	r.Post("/relist", WithToken(api.Config.ServerStreamKey, WithError(c.Relist)))
 	r.Post("/delete", WithToken(api.Config.ServerStreamKey, WithError(c.Delete)))
+
+	// Public
+	r.Get("/availability/{player_id}", WithError(c.Availability))
 
 	return r
 }
@@ -229,4 +233,18 @@ func (sac *SaleAbilitiesController) Delete(w http.ResponseWriter, r *http.Reques
 	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
 
 	return http.StatusOK, nil
+}
+
+type AvailabilityResponse struct {
+	CanPurchase bool `json:"can_purchase"`
+}
+
+func (sac *SaleAbilitiesController) Availability(w http.ResponseWriter, r *http.Request) (int, error) {
+	playerID := chi.URLParam(r, "player_id")
+
+	canPurchase := sac.API.SalePlayerAbilitiesSystem.CanUserPurchase(playerID)
+
+	return helpers.EncodeJSON(w, &AvailabilityResponse{
+		CanPurchase: canPurchase,
+	})
 }
