@@ -1345,7 +1345,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// give user mech avatar
-	db.GiveMechAvatar(userID)
+	err = db.GiveMechAvatar(user.ID, collectionItem.ItemID)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to give uesr mech avatar")
+	}
+
 	// Log event
 	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, user.ID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
 	if err != nil {
