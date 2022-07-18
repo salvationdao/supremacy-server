@@ -1,13 +1,9 @@
 package db
 
 import (
-	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server/db/boiler"
 	"server/gamedb"
-	"server/gamelog"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -15,22 +11,10 @@ import (
 )
 
 // BattleAbilityGetRandom return three random abilities
-func BattleAbilityGetRandom(abilityLabel string) (*boiler.BattleAbility, error) {
-	queries := []qm.QueryMod{}
-
-	if abilityLabel != "" {
-		queries = append(queries, boiler.BattleAbilityWhere.Label.EQ(abilityLabel))
-	}
-
-	battleAbilities, err := boiler.BattleAbilities(queries...).All(gamedb.StdConn)
+func BattleAbilityGetRandom() (*boiler.BattleAbility, error) {
+	battleAbilities, err := boiler.BattleAbilities().All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("query", queries).Msg("Failed to query battle abilities")
 		return nil, err
-	}
-
-	if battleAbilities == nil {
-		gamelog.L.Error().Str("ability label", abilityLabel).Msg("No battle ability found")
-		return nil, terror.Error(fmt.Errorf("no ability found"), "No ability found")
 	}
 
 	battleAbility := battleAbilities[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(battleAbilities))]

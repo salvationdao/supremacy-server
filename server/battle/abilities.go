@@ -97,12 +97,6 @@ type AbilityConfig struct {
 	FactionAbilityDropRate                     map[string]decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
-
-	RapidPriceDropRate               decimal.Decimal
-	RapidPriceDropStartAfterDuration time.Duration
-	ConstantPrice                    decimal.Decimal
-	ConstantPriceAfterDuration       time.Duration
-	ConstantAbilityLabel             string
 }
 
 type AbilityBroadcast struct {
@@ -161,7 +155,6 @@ func (as *AbilitiesSystem) storeBattle(btl *Battle) {
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	factionAbilities := map[uuid.UUID]map[string]*GameAbility{}
 	factionAbilityFloorPrice := db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(10, 18))
-	battleAbilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(10, 18))
 
 	// initialise new gabs ability pool
 	battleAbilityPool := &BattleAbilityPool{
@@ -171,11 +164,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		},
 		BattleAbility: &boiler.BattleAbility{},
 		Abilities:     &AbilitiesMap{m: make(map[string]*GameAbility)},
-		UniformedPrice: &FactionGABSPrice{
-			floorPrice:     battleAbilityFloorPrice,
-			SupsCostMap:    make(map[string]decimal.Decimal),
-			CurrentSupsMap: make(map[string]decimal.Decimal),
-		},
 	}
 
 	// initialise all war machine abilities list
@@ -184,10 +172,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	for factionID := range battle.factions {
-		// initialise uniformed price
-		battleAbilityPool.UniformedPrice.setSupsCost(factionID.String(), battleAbilityFloorPrice)
-		battleAbilityPool.UniformedPrice.setCurrentSups(factionID.String(), decimal.Zero)
-
 		// initialise faction unique abilities
 		factionAbilities[factionID] = map[string]*GameAbility{}
 
@@ -337,13 +321,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				battleAbilityCloseChan:      make(chan bool),
 				gameAbilityBroadcastChanMap: make(map[string]*GameAbilityBroadcast),
 			},
-
-			// battle ability price
-			RapidPriceDropRate:               db.GetDecimalWithDefault(db.KeyRapidPriceDropRate, decimal.NewFromFloat(0.9773)),
-			RapidPriceDropStartAfterDuration: time.Duration(db.GetIntWithDefault(db.KeyRapidPriceDropStartAfterDurationSeconds, 300)) * time.Second,
-			ConstantPrice:                    db.GetDecimalWithDefault(db.KeyConstantPrice, decimal.New(100, 18)),
-			ConstantPriceAfterDuration:       time.Duration(db.GetIntWithDefault(db.KeyConstantPriceAfterDurationSeconds, 600)) * time.Second,
-			ConstantAbilityLabel:             db.GetStrWithDefault(db.KeyConstantAbilityLabel, "NUKE"),
 		},
 	}
 
@@ -908,11 +885,15 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		return decimal.Zero, decimal.Zero, false, err
 	}
 
+	isAllSyndicates := false
+	if ga.BattleAbilityID == nil || *ga.BattleAbilityID == "" {
+		isAllSyndicates = true
+	}
+
 	bm.Start("get_user_contribution")
 	multiAmount := as.GetUserContributeMultiplier(amount)
 	bm.End("get_user_contribution")
 
-	// insert battle contribution
 	go func() {
 		battleContrib := &boiler.BattleContribution{
 			BattleID:          battleID,
@@ -921,7 +902,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 			DidTrigger:        isTriggered,
 			FactionID:         ga.FactionID,
 			AbilityLabel:      ga.Label,
-			IsAllSyndicates:   ga.BattleAbilityID.Valid,
+			IsAllSyndicates:   isAllSyndicates,
 			Amount:            amount,
 			ContributedAt:     now,
 			TransactionID:     null.StringFrom(txid),
@@ -944,7 +925,6 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	amount = amount.Truncate(0)
 
-	// insert spoil of war
 	go func() {
 		tx, err := gamedb.StdConn.Begin()
 		if err == nil {
@@ -983,20 +963,13 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	ga.CurrentSups = ga.CurrentSups.Add(amount)
 
 	if !isTriggered {
-
-		if ga.BattleAbilityID.Valid {
-			// if battle ability, store the updated battle ability to uniform price object
-			as.battleAbilityPool.UniformedPrice.setCurrentSups(ga.FactionID, ga.CurrentSups)
-
-		} else {
-			// otherwise, store updated faction ability price to db
-			bm.Start("update_faction_ability_price")
-			err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
-			bm.End("update_faction_ability_price")
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
-				return amount, multiAmount, false, err
-			}
+		// store updated price to db
+		bm.Start("update_faction_ability_price")
+		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
+		bm.End("update_faction_ability_price")
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
+			return amount, multiAmount, false, err
 		}
 
 		return amount, multiAmount, false, nil
@@ -1120,53 +1093,8 @@ type BattleAbilityPool struct {
 	BattleAbility *boiler.BattleAbility
 	Abilities     *AbilitiesMap // faction ability current, change on every bribing cycle
 
-	UniformedPrice     *FactionGABSPrice
 	TriggeredFactionID atomic.String
 	sync.RWMutex
-}
-
-type FactionGABSPrice struct {
-	floorPrice decimal.Decimal
-	// map[faction id] price
-	SupsCostMap    map[string]decimal.Decimal
-	CurrentSupsMap map[string]decimal.Decimal
-	sync.RWMutex
-}
-
-func (fgp *FactionGABSPrice) getSupsCost(factionID string) decimal.Decimal {
-	fgp.RLock()
-	defer fgp.RUnlock()
-	p, ok := fgp.SupsCostMap[factionID]
-	if !ok {
-		return fgp.floorPrice
-	}
-
-	return p
-}
-
-func (fgp *FactionGABSPrice) setSupsCost(factionID string, price decimal.Decimal) {
-	fgp.Lock()
-	defer fgp.Unlock()
-
-	fgp.SupsCostMap[factionID] = price
-}
-
-func (fgp *FactionGABSPrice) getCurrentSups(factionID string) decimal.Decimal {
-	fgp.RLock()
-	defer fgp.RUnlock()
-	p, ok := fgp.CurrentSupsMap[factionID]
-	if !ok {
-		return decimal.Zero
-	}
-
-	return p
-}
-
-func (fgp *FactionGABSPrice) setCurrentSups(factionID string, price decimal.Decimal) {
-	fgp.Lock()
-	defer fgp.Unlock()
-
-	fgp.CurrentSupsMap[factionID] = price
 }
 
 type LocationSelectAnnouncement struct {
@@ -1467,7 +1395,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 			bm := benchmark.New()
 
-			if battleAbility, ok := as.battleAbilityPool.Abilities.Load(cont.factionID); ok {
+			if factionAbility, ok := as.battleAbilityPool.Abilities.Load(cont.factionID); ok {
 				// check contribute is for the current offered ability
 				abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
 				if err != nil || abilityOfferingID.IsNil() {
@@ -1476,9 +1404,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				if abilityOfferingID != battleAbility.OfferingID {
+				if abilityOfferingID != factionAbility.OfferingID {
 					gamelog.L.Warn().Str("provided offering id", abilityOfferingID.String()).
-						Str("current offering id", battleAbility.OfferingID.String()).
+						Str("current offering id", factionAbility.OfferingID.String()).
 						Msg("incorrect offering id received")
 					cont.reply(false)
 					continue
@@ -1490,19 +1418,19 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					cont.reply(false)
 					continue
 				}
-				amount := battleAbility.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
+				amount := factionAbility.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
 				if amount.LessThan(minAmount) {
 					amount = minAmount
 				}
 
 				// contribute sups
 				bm.Start("sup_contribution")
-				actualSupSpent, multiAmount, abilityTriggered, err := battleAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
+				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount, cont.cannotTrigger)
 				bm.End("sup_contribution")
 				// tell frontend the contribution is success
 				if err != nil {
 					if err.Error() != "player is banned to trigger ability" {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", battleAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
+						gamelog.L.Error().Str("log_name", "battle arena").Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
 					}
 					cont.reply(false)
 					continue
@@ -1519,12 +1447,20 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				if abilityTriggered {
 					// increase price as the twice amount for normal value
-					battleAbility.SupsCost = battleAbility.SupsCost.Mul(decimal.NewFromInt(2))
-					battleAbility.CurrentSups = decimal.Zero
+					factionAbility.SupsCost = factionAbility.SupsCost.Mul(decimal.NewFromInt(2))
+					factionAbility.CurrentSups = decimal.Zero
 
-					// update uniform price
-					as.battleAbilityPool.UniformedPrice.setSupsCost(battleAbility.FactionID, battleAbility.SupsCost.Mul(decimal.NewFromInt(2)))
-					as.battleAbilityPool.UniformedPrice.setCurrentSups(battleAbility.FactionID, decimal.Zero)
+					// store updated price to db
+					bm.Start("ability_sups_update")
+					err := db.FactionAbilitiesSupsCostUpdate(factionAbility.ID, factionAbility.SupsCost, factionAbility.CurrentSups)
+					bm.End("ability_sups_update")
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").
+							Str("factionAbility_id", factionAbility.ID).
+							Str("sups_cost", factionAbility.SupsCost.String()).
+							Str("current_sups", factionAbility.CurrentSups.String()).
+							Err(err).Msg("could not update faction ability cost")
+					}
 				}
 
 				bm.Start("update_live_sups_cost")
@@ -1539,7 +1475,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				if abilityTriggered {
 					// generate location select order list
 					bm.Start("set_location_deciders")
-					as.locationDecidersSet(as.battle().ID, cont.factionID, battleAbility.OfferingID.String(), cont.userID)
+					as.locationDecidersSet(as.battle().ID, cont.factionID, factionAbility.OfferingID.String(), cont.userID)
 					bm.End("set_location_deciders")
 					// enter cooldown phase if there is no player to select location
 					if len(as.locationDeciders.list) == 0 {
@@ -1548,9 +1484,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 							Type: LocationSelectTypeCancelledNoPlayer,
 							Ability: &AbilityBrief{
-								Label:    battleAbility.Label,
-								ImageUrl: battleAbility.ImageUrl,
-								Colour:   battleAbility.Colour,
+								Label:    factionAbility.Label,
+								ImageUrl: factionAbility.ImageUrl,
+								Colour:   factionAbility.Colour,
 							},
 						})
 						bm.End("broadcast_no_player")
@@ -1593,9 +1529,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 					notification := GameNotificationAbility{
 						Ability: &AbilityBrief{
-							Label:    battleAbility.Label,
-							ImageUrl: battleAbility.ImageUrl,
-							Colour:   battleAbility.Colour,
+							Label:    factionAbility.Label,
+							ImageUrl: factionAbility.ImageUrl,
+							Colour:   factionAbility.Colour,
 						},
 					}
 
@@ -1629,14 +1565,8 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	// clean up triggered faction
 	as.battleAbilityPool.TriggeredFactionID.Store(uuid.Nil.String())
 
-	// only get nuke after certain duration
-	targetedBattleAbility := ""
-	if time.Now().Sub(as.startedAt).Seconds() > as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
-		targetedBattleAbility = as.abilityConfig.ConstantAbilityLabel
-	}
-
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(targetedBattleAbility)
+	ba, err := db.BattleAbilityGetRandom()
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 0, err
@@ -1658,25 +1588,33 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 
 	// set battle abilities of each faction
 	for _, ga := range gabsAbilities {
+		supsCost, err := decimal.NewFromString(ga.SupsCost)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability sups cost to decimal")
 
-		supsCost := as.battleAbilityPool.UniformedPrice.getSupsCost(ga.FactionID)
-		// set sups cost to constant price if battle duration has pass default seconds
-		if time.Now().Sub(as.startedAt).Seconds() >= as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
-			supsCost = as.abilityConfig.ConstantPrice
+			// set sups cost to initial price
+			supsCost = as.abilityConfig.BattleAbilityFloorPrice
 		}
-		currentSups := as.battleAbilityPool.UniformedPrice.getCurrentSups(ga.FactionID)
+		supsCost = supsCost.RoundDown(0)
+
+		currentSups, err := decimal.NewFromString(ga.CurrentSups)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to ability current sups to decimal")
+
+			// set current sups to initial price
+			currentSups = decimal.Zero
+		}
 
 		// initialise game ability
 		gameAbility := &GameAbility{
 			ID:                     ga.ID,
 			GameClientAbilityID:    byte(ga.GameClientAbilityID),
-			BattleAbilityID:        ga.BattleAbilityID,
 			ImageUrl:               ga.ImageURL,
 			Description:            ga.Description,
 			FactionID:              ga.FactionID,
 			Label:                  ga.Label,
-			SupsCost:               supsCost.RoundDown(0),
-			CurrentSups:            currentSups.RoundDown(0),
+			SupsCost:               supsCost,
+			CurrentSups:            currentSups,
 			Colour:                 ga.Colour,
 			TextColour:             ga.TextColour,
 			CooldownDurationSecond: ba.CooldownDurationSecond,
@@ -1693,7 +1631,6 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		ws.PublishMessage("/public/battle_ability", HubKeyBattleAbilityUpdated, GameAbility{
 			ID:                     ga.ID,
 			GameClientAbilityID:    byte(ga.GameClientAbilityID),
-			BattleAbilityID:        ga.BattleAbilityID,
 			ImageUrl:               ga.ImageUrl,
 			Description:            ga.Description,
 			FactionID:              ga.FactionID,
@@ -1706,6 +1643,8 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 			OfferingID:             uuid.Nil, // remove offering id to disable bribing
 		})
 	}
+
+	as.battleAbilityPool.Abilities.Load(server.RedMountainFactionID)
 
 	as.BroadcastAbilityProgressBar()
 
@@ -1839,33 +1778,16 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		return
 	}
 
-	durationSeconds := time.Now().Sub(as.startedAt).Seconds()
-
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
-
-		floorPrice := as.abilityConfig.BattleAbilityFloorPrice
-		if durationSeconds > as.abilityConfig.ConstantPriceAfterDuration.Seconds() {
-			// change floor price after constant price hit
-			floorPrice = as.abilityConfig.ConstantPrice
-		}
-
-		dropRate := as.abilityConfig.BattleAbilityDropRate[ability.FactionID]
-		// check duration and change drop rate and floor price
-		if as.abilityConfig.BattleAbilityDropRate[ability.FactionID].LessThan(decimal.NewFromInt(1)) &&
-			durationSeconds > as.abilityConfig.RapidPriceDropStartAfterDuration.Seconds() {
-			// enter rapid drop rate mode
-			dropRate = as.abilityConfig.RapidPriceDropRate
-		}
-
 		// cache old sups cost to not trigger the ability
 		oldSupsCost := ability.SupsCost
 
-		ability.SupsCost = ability.SupsCost.Mul(dropRate).RoundDown(0)
+		ability.SupsCost = ability.SupsCost.Mul(as.abilityConfig.BattleAbilityDropRate[ability.FactionID]).RoundDown(0)
 
 		// cap minimum price
-		if ability.SupsCost.LessThan(floorPrice) {
-			ability.SupsCost = floorPrice
+		if ability.SupsCost.LessThan(as.abilityConfig.BattleAbilityFloorPrice) {
+			ability.SupsCost = as.abilityConfig.BattleAbilityFloorPrice
 		}
 
 		// check ability is triggered and if there is no player vote on current ability
@@ -1887,9 +1809,15 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.GreaterThan(ability.CurrentSups) {
-			// store new uniform price
-			as.battleAbilityPool.UniformedPrice.setSupsCost(ability.FactionID, ability.SupsCost)
-			as.battleAbilityPool.UniformedPrice.setCurrentSups(ability.FactionID, ability.CurrentSups)
+			// store updated price to db
+			err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").
+					Str("ability_id", ability.ID).
+					Str("sups_cost", ability.SupsCost.String()).
+					Str("current_sups", ability.CurrentSups.String()).
+					Err(err).Msg("could not update faction ability cost")
+			}
 
 			return true
 		}
@@ -1897,10 +1825,14 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability triggered
 		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
 		ability.CurrentSups = decimal.Zero
-
-		// store ability uniform price
-		as.battleAbilityPool.UniformedPrice.setSupsCost(ability.FactionID, ability.SupsCost)
-		as.battleAbilityPool.UniformedPrice.setCurrentSups(ability.FactionID, ability.CurrentSups)
+		err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").
+				Str("ability_id", ability.ID).
+				Str("sups_cost", ability.SupsCost.String()).
+				Str("current_sups", ability.CurrentSups.String()).
+				Err(err).Msg("could not update faction ability cost")
+		}
 
 		// set location deciders list
 		as.locationDecidersSet(as.battle().ID, factionID, ability.OfferingID.String())
