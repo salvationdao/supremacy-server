@@ -1344,6 +1344,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// give user mech avatar
+	db.GiveMechAvatar(userID)
 	// Log event
 	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, user.ID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
 	if err != nil {
