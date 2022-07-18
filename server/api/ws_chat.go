@@ -56,6 +56,7 @@ const (
 )
 
 type MessageText struct {
+	ID              string           `json:"id"`
 	Message         string           `json:"message"`
 	MessageColor    string           `json:"message_color"`
 	FromUser        boiler.Player    `json:"from_user"`
@@ -227,6 +228,7 @@ func NewChatroom(factionID string) *Chatroom {
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
 			Data: &MessageText{
+				ID:              msg.ID,
 				Message:         msg.Text,
 				MessageColor:    msg.MessageColor,
 				FromUser:        *player,
@@ -501,22 +503,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to.")
 		}
 
-		chatMessage := &ChatMessage{
-			Type:   ChatMessageTypeText,
-			SentAt: time.Now(),
-			Data: MessageText{
-				Message:         msg,
-				MessageColor:    req.Payload.MessageColor,
-				FromUser:        player,
-				UserRank:        player.Rank,
-				FromUserStat:    playerStat,
-				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-				IsCitizen:       isCitizen,
-				Lang:            language,
-				Metadata:        jsonTextMsgMeta,
-			},
-		}
-
 		cm := boiler.ChatHistory{
 			FactionID:       player.FactionID.String,
 			PlayerID:        player.ID,
@@ -538,6 +524,23 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 		}
 
+		chatMessage := &ChatMessage{
+			Type:   ChatMessageTypeText,
+			SentAt: time.Now(),
+			Data: MessageText{
+				ID:              cm.ID,
+				Message:         msg,
+				MessageColor:    req.Payload.MessageColor,
+				FromUser:        player,
+				UserRank:        player.Rank,
+				FromUserStat:    playerStat,
+				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+				IsCitizen:       isCitizen,
+				Lang:            language,
+				Metadata:        jsonTextMsgMeta,
+			},
+		}
+
 		// Ability kills
 		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
@@ -548,22 +551,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	// global message
-	chatMessage := &ChatMessage{
-		Type:   ChatMessageTypeText,
-		SentAt: time.Now(),
-		Data: MessageText{
-			Message:         msg,
-			MessageColor:    req.Payload.MessageColor,
-			FromUser:        player,
-			UserRank:        player.Rank,
-			FromUserStat:    playerStat,
-			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-			IsCitizen:       isCitizen,
-			Lang:            language,
-			Metadata:        jsonTextMsgMeta,
-		},
-	}
-
 	cm := boiler.ChatHistory{
 		FactionID:       player.FactionID.String,
 		PlayerID:        player.ID,
@@ -583,6 +570,23 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
+	}
+
+	chatMessage := &ChatMessage{
+		Type:   ChatMessageTypeText,
+		SentAt: time.Now(),
+		Data: MessageText{
+			ID:              cm.ID,
+			Message:         msg,
+			MessageColor:    req.Payload.MessageColor,
+			FromUser:        player,
+			UserRank:        player.Rank,
+			FromUserStat:    playerStat,
+			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+			IsCitizen:       isCitizen,
+			Lang:            language,
+			Metadata:        jsonTextMsgMeta,
+		},
 	}
 
 	fc.API.GlobalChat.AddMessage(chatMessage)

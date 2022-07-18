@@ -365,3 +365,23 @@ func PlayerIPUpsert(playerID string, ip string) error {
 
 	return nil
 }
+
+func GetPlayer(playerID string) (*server.Player, error) {
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get player")
+		return nil, terror.Error(err, "Failed to get player")
+	}
+	features, err := GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		return nil, err
+	}
+
+	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		return nil, err
+	}
+	return serverPlayer, nil
+}

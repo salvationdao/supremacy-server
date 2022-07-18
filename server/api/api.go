@@ -545,17 +545,7 @@ func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 
 	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
 
-	features, err := db.GetPlayerFeaturesByID(player.ID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to find features")
-		return nil, err
-	}
-
-	serverPlayer, err := server.PlayerFromBoiler(player, features)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
-		return nil, err
-	}
+	serverPlayer, err := db.GetPlayer(player.ID)
 
 	return serverPlayer, nil
 }
