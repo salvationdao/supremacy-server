@@ -532,6 +532,9 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
+		if err.Error() == "session is expired" {
+			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+		}
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
 		return nil, err
 	}
