@@ -13,6 +13,7 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionItem
+	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
 	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
@@ -150,6 +151,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			AnimationURL:     collection.AnimationURL,
 			YoutubeURL:       collection.YoutubeURL,
 		},
+		CollectionItemID:     collection.ID,
 		ID:                   weapon.ID,
 		BrandID:              weapon.BrandID,
 		Label:                weapon.Label,
