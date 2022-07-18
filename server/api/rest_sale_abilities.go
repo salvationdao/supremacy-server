@@ -59,7 +59,7 @@ func (sac *SaleAbilitiesController) All(w http.ResponseWriter, r *http.Request) 
 
 		switch filter {
 		case string(SaleAbilityAllFilterOnSale):
-			qms = append(qms, boiler.SalePlayerAbilityWhere.RarityWeight.GTE(0)) // deleted_at is null check is automatically appended by boiler
+			qms = append(qms, boiler.SalePlayerAbilityWhere.RarityWeight.GT(0)) // deleted_at is null check is automatically appended by boiler
 			break
 		case string(SaleAbilityAllFilterDelisted):
 			qms = append(qms, boiler.SalePlayerAbilityWhere.RarityWeight.LT(0)) // deleted_at is null check is automatically appended by boiler
@@ -100,8 +100,8 @@ func (sac *SaleAbilitiesController) Create(w http.ResponseWriter, r *http.Reques
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Sale limit must be at least 1"))
 	}
 
-	if req.RarityWeight < 0 {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Rarity weight cannot be negative"))
+	if req.RarityWeight <= 0 {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Rarity weight cannot be negative or zero"))
 	}
 
 	initialCost, err := decimal.NewFromString(req.CostSups)
@@ -167,8 +167,8 @@ func (sac *SaleAbilitiesController) Relist(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
 
-	if req.RarityWeight < 0 {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Rarity weight cannot be negative"))
+	if req.RarityWeight <= 0 {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Rarity weight cannot be negative or zero"))
 	}
 
 	spa, err := boiler.FindSalePlayerAbility(gamedb.StdConn, req.SaleID)

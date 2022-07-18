@@ -10,7 +10,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"strings"
 	"sync"
 	"time"
 
@@ -42,9 +41,10 @@ type SaleAbilityAmountResponse struct {
 // Used for sale abilities
 type SalePlayerAbilitiesSystem struct {
 	// sale player abilities
-	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
-	userPurchaseLimits  map[uuid.UUID]int                       // map[player_id]purchase count for the current sale period
-	nextRefresh         time.Time                               // timestamp of when the next sale period will begin
+	salePlayerAbilities     map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
+	salePlayerAbilitiesPool []*boiler.SalePlayerAbility
+	userPurchaseLimits      map[uuid.UUID]int // map[player_id]purchase count for the current sale period
+	nextRefresh             time.Time         // timestamp of when the next sale period will begin
 
 	// KVs
 	UserPurchaseLimit          int
@@ -65,8 +65,9 @@ type SalePlayerAbilitiesSystem struct {
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	saleAbilities, err := boiler.SalePlayerAbilities(
 		boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
-		boiler.SalePlayerAbilityWhere.RarityWeight.GTE(0),
+		boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
 		boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
+		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
@@ -77,9 +78,26 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilities[sID] = s
 	}
 
+	saAvailable, err := boiler.SalePlayerAbilities(
+		boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
+		boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
+		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to initialise pool of sale abilities from db")
+	}
+	saPool := []*boiler.SalePlayerAbility{}
+	for _, sa := range saAvailable {
+		for i := 0; i < sa.RarityWeight; i++ {
+			saPool = append(saPool, sa)
+		}
+	}
+	gamelog.L.Debug().Msg(fmt.Sprintf("initialised pool of sale abilities with %d entries", len(saPool)))
+
 	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:        salePlayerAbilities,
+		salePlayerAbilitiesPool:    saPool,
 		userPurchaseLimits:         make(map[uuid.UUID]int),
 		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
@@ -160,10 +178,28 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	}()
 
 	oneHundred := decimal.NewFromFloat(100.0)
-ticker:
 	for {
 		select {
 		case <-priceTicker.C:
+			if len(pas.salePlayerAbilitiesPool) == 0 {
+				gamelog.L.Debug().Msg("populating sale player abilities pool because it was empty")
+				saAvailable, err := boiler.SalePlayerAbilities(
+					boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
+					boiler.SalePlayerAbilityWhere.DeletedAt.IsNull(),
+					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+				).All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("failed to initialise pool of sale abilities from db")
+				}
+				saPool := []*boiler.SalePlayerAbility{}
+				for _, sa := range saAvailable {
+					for i := 0; i < sa.RarityWeight; i++ {
+						saPool = append(saPool, sa)
+					}
+				}
+				gamelog.L.Debug().Msg(fmt.Sprintf("initialised pool of sale abilities with %d entries", len(saPool)))
+			}
+
 			// Price ticker ticks every 5 seconds, updates prices of abilities and refreshes the sale ability list when all abilities on sale have expired
 			// Check each ability that is on sale, remove them if expired or if their sale limit has been reached
 			for _, s := range pas.salePlayerAbilities {
@@ -174,7 +210,7 @@ ticker:
 				delete(pas.salePlayerAbilities, sID)
 			}
 
-			if len(pas.salePlayerAbilities) < 1 {
+			if len(pas.salePlayerAbilities) == 0 {
 				gamelog.L.Debug().Msg("repopulating sale abilities since there aren't any more")
 				// If no abilities are on sale, refill sale abilities
 				saleAbilities, err := boiler.SalePlayerAbilities(
@@ -186,85 +222,30 @@ ticker:
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 					// Find 3 random weighted abilities
-					weightedSaleAbilities := []*boiler.SalePlayerAbility{}
-					weightedSaleAbilityIDs := []string{}
-					attempts := 0
+					selected := map[string]*boiler.SalePlayerAbility{}
+					rand.Seed(time.Now().Unix())
 					for {
-						attempts++
-						if attempts > 5 {
-							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities in under 5 attempts, aborting", pas.Limit))
-							continue ticker
-						}
-						notIn := ""
-						if len(weightedSaleAbilityIDs) > 0 {
-							notIn += "and Q.id not in (" + strings.Join(weightedSaleAbilityIDs, ",") + ")"
-						}
+						s := pas.salePlayerAbilitiesPool[rand.Intn(len(pas.salePlayerAbilitiesPool))]
 
-						q := fmt.Sprintf(
-							`
-							with cte as (
-								select random() * (
-									select sum(rarity_weight)
-									from sale_player_abilities spa
-									where spa.deleted_at is null and spa.rarity_weight >= 0
-								) R
-							)
-							select 
-								Q.id,
-								Q.blueprint_id,
-								Q.current_price,
-								Q.available_until,
-								Q.amount_sold,
-								Q.sale_limit,
-								Q.rarity_weight,
-								Q.deleted_at
-							from (
-								select id, blueprint_id, current_price, available_until, amount_sold, sale_limit, rarity_weight, deleted_at, sum(rarity_weight) over (order by id) S, R
-								from sale_player_abilities spa
-								cross join cte
-								where spa.deleted_at is null and spa.rarity_weight >= 0
-							) Q
-							where S >= R %s
-							order by Q.id
-							limit 1;
-						`,
-							notIn,
-						)
-
-						w := &boiler.SalePlayerAbility{}
-						err := boiler.NewQuery(
-							qm.SQL(q),
-							qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
-						).Bind(nil, gamedb.StdConn, w)
-						if errors.Is(err, sql.ErrNoRows) {
-							gamelog.L.Debug().Err(err).Msg(fmt.Sprintf("couldn't find a random weighted sale ability, retrying. attempts: %d", attempts))
+						_, ok := selected[s.ID]
+						if ok {
+							// Is duplicate
 							continue
-						} else if err != nil {
-							gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random weighted sale abilities", pas.Limit))
-							continue ticker
 						}
+						selected[s.ID] = s
+						saleAbilities = append(saleAbilities, s)
 
-						weightedSaleAbilities = append(weightedSaleAbilities, w)
-						weightedSaleAbilityIDs = append(weightedSaleAbilityIDs, fmt.Sprintf("'%s'", w.ID))
-
-						if len(weightedSaleAbilities) == pas.Limit {
+						if len(selected) == pas.Limit {
 							break
 						}
 					}
-					if len(weightedSaleAbilities) == 0 {
-						gamelog.L.Warn().Msg("no sale abilities could be found in the db")
+
+					if len(selected) == 0 {
+						gamelog.L.Warn().Msg("no sale abilities could be found")
 						break
 					}
 
 					tenMinutesFromNow := time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
-					rand.Seed(time.Now().UnixNano())
-					randomIndexes := rand.Perm(len(weightedSaleAbilities))
-					for _, i := range randomIndexes[:pas.Limit] {
-						weightedSaleAbilities[i].AvailableUntil = null.TimeFrom(tenMinutesFromNow)
-						weightedSaleAbilities[i].AmountSold = 0 // reset amount sold
-						saleAbilities = append(saleAbilities, weightedSaleAbilities[i])
-					}
-
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
 						"available_until": tenMinutesFromNow,
 						"amount_sold":     0,
