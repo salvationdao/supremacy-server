@@ -43,6 +43,7 @@ type SalePlayerAbilitiesSystem struct {
 	// sale player abilities
 	salePlayerAbilities     map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
 	salePlayerAbilitiesPool []*boiler.SalePlayerAbility
+	totalSaleAbilities      int
 	userPurchaseLimits      map[uuid.UUID]int // map[player_id]purchase count for the current sale period
 	nextRefresh             time.Time         // timestamp of when the next sale period will begin
 
@@ -82,6 +83,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities:        salePlayerAbilities,
 		salePlayerAbilitiesPool:    []*boiler.SalePlayerAbility{},
+		totalSaleAbilities:         0,
 		userPurchaseLimits:         make(map[uuid.UUID]int),
 		nextRefresh:                time.Now().Add(time.Duration(timeBetweenRefreshSeconds) * time.Second),
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
@@ -121,6 +123,7 @@ func (pas *SalePlayerAbilitiesSystem) RehydratePool() {
 		}
 	}
 
+	pas.totalSaleAbilities = len(saAvailable)
 	pas.salePlayerAbilitiesPool = saPool
 
 	gamelog.L.Debug().Msg(fmt.Sprintf("refreshed pool of sale abilities with %d entries", len(saPool)))
@@ -220,13 +223,17 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					// Find 3 random weighted abilities
 					selected := map[string]*boiler.SalePlayerAbility{}
 					rand.Seed(time.Now().Unix())
+					attempts := 0
 					for {
+						attempts++
 						s := pas.salePlayerAbilitiesPool[rand.Intn(len(pas.salePlayerAbilitiesPool))]
 
 						_, ok := selected[s.ID]
 						if ok {
 							// Is duplicate
-							continue
+							if pas.Limit <= pas.totalSaleAbilities || attempts <= pas.totalSaleAbilities {
+								continue
+							}
 						}
 						selected[s.ID] = s
 						saleAbilities = append(saleAbilities, s)
