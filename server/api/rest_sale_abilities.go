@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/helpers"
@@ -69,13 +70,22 @@ func (sac *SaleAbilitiesController) All(w http.ResponseWriter, r *http.Request) 
 			break
 		}
 	}
+	qms = append(qms, qm.Load(boiler.SalePlayerAbilityRels.Blueprint))
 
 	spas, err := boiler.SalePlayerAbilities(qms...).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get sale abilities")
 	}
 
-	return helpers.EncodeJSON(w, spas)
+	detailedSaleAbilities := []*db.SaleAbilityDetailed{}
+	for _, s := range spas {
+		detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
+			SalePlayerAbility: s,
+			Ability:           s.R.Blueprint,
+		})
+	}
+
+	return helpers.EncodeJSON(w, detailedSaleAbilities)
 }
 
 type SaleAbilitiesCreateRequest struct {
