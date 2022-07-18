@@ -6,12 +6,21 @@ CREATE TABLE IF NOT EXISTS battle_abilities
     description              text                                       NOT NULL
 );
 
-DROP TYPE IF EXISTS MECH_TYPE;
-CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mech_type') THEN
+            CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
+        END IF;
+    END
+$$;
 
-DROP TYPE IF EXISTS COLLECTION;
-CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
-
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'collection') THEN
+            CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
+        END IF;
+    END
+$$;
 
 
 CREATE TABLE IF NOT EXISTS blueprint_mech_skin
@@ -68,10 +77,16 @@ CREATE TABLE IF NOT EXISTS blueprint_power_cores
     CONSTRAINT blueprint_power_cores_size_check CHECK ((size = ANY (ARRAY ['SMALL'::text, 'MEDIUM'::text, 'LARGE'::text])))
 );
 
-DROP TYPE IF EXISTS WEAPON_TYPE;
-CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
-    'Machine Gun', 'Flamethrower', 'Missile Launcher', 'Laser Beam',
-    'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword');
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'weapon_type') THEN
+            CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
+                'Machine Gun', 'Flamethrower', 'Missile Launcher', 'Laser Beam',
+                'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword');
+        END IF;
+    END
+$$;
+
 
 
 CREATE TABLE IF NOT EXISTS weapon_models
@@ -168,8 +183,13 @@ CREATE TABLE IF NOT EXISTS game_abilities
 );
 
 
-DROP TYPE IF EXISTS CRATE_TYPE;
-CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'crate_type') THEN
+            CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
+        END IF;
+    END
+$$;
 
 CREATE TABLE IF NOT EXISTS storefront_mystery_crates
 (
@@ -193,7 +213,3 @@ CREATE TABLE IF NOT EXISTS storefront_mystery_crates
     youtube_url        text
 );
 
-CREATE TABLE mech_skin_matrix (
-        mech_model_id UUID NOT NULL REFERENCES mech_models(id),
-        blueprint_mech_skin_id UUID NOT NULL REFERENCES blueprint_mech_skin(id)
-);
