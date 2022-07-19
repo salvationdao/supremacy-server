@@ -91,7 +91,7 @@ jobs:
           cp -r ./configs deploy/.
           cp -r ./server/db/migrations deploy/.
           mkdir -p deploy/static-migrations
-          cp -r ./server/db/static/ deploy/static-migrations/.
+          cp -r ./server/db/static/. deploy/static-migrations/.
           cp -r ./server/asset deploy/.
 
       - name: Build API server
