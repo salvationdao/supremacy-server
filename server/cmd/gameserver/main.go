@@ -423,8 +423,10 @@ func main() {
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "static_path", Value: "./devtool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 40, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Usage: "sync static data",
 				Action: func(c *cli.Context) error {
@@ -434,30 +436,32 @@ func main() {
 					databaseHost := c.String("database_host")
 					databasePort := c.String("database_port")
 					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
+
 					filePath := c.String("static_path")
 
 					params := url.Values{}
 					params.Add("sslmode", "disable")
 
-					connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+					sqlconn, err := sqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
 						databasePort,
 						databaseName,
-						params.Encode(),
+						databaseAppName,
+						Version,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
-					cfg, err := pgx.ParseConfig(connString)
 					if err != nil {
-						log.Fatal(err)
-					}
-					conn := stdlib.OpenDB(*cfg)
-					if err != nil {
-						log.Fatal(err)
+						return terror.Panic(err)
 					}
 
 					dt := &devtool.DevTool{
-						DB:       conn,
+						DB:       sqlconn,
 						FilePath: filePath,
 					}
 

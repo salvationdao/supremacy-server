@@ -74,6 +74,7 @@ jobs:
           cp -r ./scripts deploy/.
           cp -r ./configs deploy/.
           cp -r ./server/db/migrations deploy/.
+          cp -r ./server/db/static/ deploy/static-migrations/.
           cp -r ./server/asset deploy/.
 
       - name: Get build metadata

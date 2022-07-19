@@ -107,7 +107,8 @@ def main(argv):
     nginx_stop()
     db_dumped = dbdump()
     stop_service()
-    sync_static(new_ver_dir)
+    static_migration(new_ver_dir)
+    run_sync(new_ver_dir)
     migrate(db_dumped, new_ver_dir)
     change_online_version(new_ver_dir)
     change_owner()
@@ -296,12 +297,12 @@ def dbdump():
 
     return True
 
-def sync_static(new_ver_dir: str):
-    if not question("Run Static Sync"):
+def static_migration(new_ver_dir: str):
+    if not question("Run Static Migrations"):
         log.info("Skipping static sync")
         return
 
-    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?x-migrations-table=static_migrations" -path {target}/static up'.format(
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?x-migrations-table=static_migrations&application_name=migrate-static" -path {target}/static-migrations up'.format(
         target=new_ver_dir,
         dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
         host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
@@ -316,13 +317,12 @@ def sync_static(new_ver_dir: str):
 
         popen.stdout.close()
         popen.wait()
-        run_sync(new_ver_dir)
     except FileNotFoundError as e:
         log.exception("command not found: %s", e.filename)
         exit(1)
 
 def run_sync(new_ver_dir: str):
-    command = '{target}/gameserver sync --static_path "{target}/static"'.format(
+    command = '{target}/gameserver sync --static_path "{target}/static/"'.format(
         target=new_ver_dir
     )
     print(command)

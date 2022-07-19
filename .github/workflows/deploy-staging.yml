@@ -90,6 +90,8 @@ jobs:
           cp -r ./scripts deploy/.
           cp -r ./configs deploy/.
           cp -r ./server/db/migrations deploy/.
+          mkdir -p deploy/static-migrations
+          cp -r ./server/db/static/ deploy/static-migrations/.
           cp -r ./server/asset deploy/.
 
       - name: Build API server
@@ -188,11 +190,11 @@ jobs:
 
       - name: "DB: sync migrations"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable&x-migrations-table=static_migrations" -path ./static up'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable&x-migrations-table=static_migrations" -path ./static-migrations up'
 
       - name: "DB: sync static data"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver sync --static_path "../static"'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver sync --static_path "./static/"'
 
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment
