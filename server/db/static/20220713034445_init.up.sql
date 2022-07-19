@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS battle_abilities
     description              text                                       NOT NULL
 );
 
-CREATE TABLE factions
+CREATE TABLE IF NOT EXISTS factions
 (
     id               uuid PRIMARY KEY         DEFAULT gen_random_uuid()           NOT NULL,
     vote_price       text                     DEFAULT '1000000000000000000'::text NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE factions
 );
 
 
-CREATE TABLE brands
+CREATE TABLE IF NOT EXISTS brands
 (
     id         uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
     faction_id uuid                                               NOT NULL REFERENCES factions (id),
