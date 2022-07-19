@@ -54,7 +54,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	mech, err := db.Mech(nil, mechID.String())
+	mech, err := db.Mech(gamedb.StdConn, mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return err
@@ -69,6 +69,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	if mech.CollectionItem.LockedToMarketplace {
 		err := fmt.Errorf("mech is listed in marketplace")
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is listed in marketplace")
+		return err
+	}
+
+	if !mech.BattleReady {
+		err := fmt.Errorf("mech is cannot be used")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is not available for queuing")
 		return err
 	}
 
@@ -316,7 +322,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	mech, err := db.Mech(nil, mechID.String())
+	mech, err := db.Mech(gamedb.StdConn, mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")

@@ -336,3 +336,32 @@ func UpdatePunishVoteCost() error {
 
 	return nil
 }
+
+func PlayerIPUpsert(playerID string, ip string) error {
+	if playerID == "" {
+		return terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+	}
+
+	if ip == "" {
+		return terror.Error(fmt.Errorf("missing ip"), "Missing ip")
+	}
+
+	q := `
+		INSERT INTO 
+			player_ips (player_id, ip, first_seen_at, last_seen_at)
+		VALUES 
+			($1, $2, NOW(), NOW())
+		ON CONFLICT 
+			(player_id, ip) 
+		DO UPDATE SET
+			last_seen_at = NOW()
+	`
+
+	_, err := gamedb.StdConn.Exec(q, playerID, ip)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Str("ip", ip).Err(err).Msg("Failed to upsert player ip")
+		return terror.Error(err, "Failed to store player ip")
+	}
+
+	return nil
+}

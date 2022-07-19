@@ -51,6 +51,8 @@ type ChatMessageType string
 const (
 	ChatMessageTypeText       ChatMessageType = "TEXT"
 	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
+	ChatMessageTypeSystemBan  ChatMessageType = "SYSTEM_BAN"
+	ChatMessageTypeNewBattle  ChatMessageType = "NEW_BATTLE"
 )
 
 type MessageText struct {
@@ -62,6 +64,7 @@ type MessageText struct {
 	Lang            string           `json:"lang"`
 	TotalMultiplier string           `json:"total_multiplier"`
 	IsCitizen       bool             `json:"is_citizen"`
+	BattleNumber    int              `json:"battle_number"`
 }
 
 type MessagePunishVote struct {
@@ -76,6 +79,24 @@ type MessagePunishVote struct {
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
 	InstantPassByUsers    []*boiler.Player    `json:"instant_pass_by_users"`
+}
+
+type MessageSystemBan struct {
+	BannedByUser *boiler.Player `json:"banned_by_user"`
+	BannedUser   *boiler.Player `json:"banned_user"`
+
+	FactionID    null.String `json:"faction_id"`
+	BattleNumber null.Int    `json:"battle_number"`
+
+	Reason      string `json:"reason"`
+	BanDuration string `json:"ban_duration"`
+
+	IsPermanentBan bool     `json:"is_permanent_ban"`
+	Restrictions   []string `json:"restrictions"`
+}
+
+type MessageNewBattle struct {
+	BattleNumber int `json:"battle_number"`
 }
 
 // Chatroom holds a specific chat room
@@ -177,6 +198,18 @@ func NewChatroom(factionID string) *Chatroom {
 		}
 		stat := stats[player.ID]
 
+		if msg.MSGType == boiler.ChatMSGTypeEnumNEW_BATTLE {
+			cm := &ChatMessage{}
+			err := msg.Metadata.Unmarshal(cm)
+			if err != nil {
+				continue
+			}
+
+			cms[i] = cm
+			cmstoSend = append(cmstoSend, cms[i])
+			continue
+		}
+
 		cms[i] = &ChatMessage{
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
@@ -221,7 +254,66 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 
+	go api.MessageBroadcaster()
+
 	return chatHub
+}
+
+const (
+	RestrictionLocationSelect = "Select location"
+	RestrictionAbilityTrigger = "Trigger abilities"
+	RestrictionChatSend       = "Send chat"
+	RestrictionChatView       = "Receive chat"
+	RestrictionSupsContribute = "Contribute sups"
+)
+
+func (api *API) MessageBroadcaster() {
+	for {
+		select {
+		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
+
+			banMessage := &MessageSystemBan{
+				BannedByUser:   msg.SystemPlayer,
+				BannedUser:     msg.BannedPlayer,
+				FactionID:      msg.FactionID,
+				BattleNumber:   msg.PlayerBan.BattleNumber,
+				Reason:         msg.PlayerBan.Reason,
+				BanDuration:    msg.BanDuration,
+				IsPermanentBan: msg.PlayerBan.EndAt.After(time.Now().AddDate(0, 1, 0)),
+				Restrictions:   PlayerBanRestrictions(msg.PlayerBan),
+			}
+
+			cm := &ChatMessage{
+				Type:   ChatMessageTypeSystemBan,
+				SentAt: time.Now(),
+				Data:   banMessage,
+			}
+
+			switch msg.FactionID.String {
+			case server.RedMountainFactionID:
+				api.RedMountainChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+			case server.BostonCyberneticsFactionID:
+				api.BostonChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+			case server.ZaibatsuFactionID:
+				api.ZaibatsuChat.AddMessage(cm)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", msg.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+			default:
+				api.GlobalChat.AddMessage(cm)
+				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+			}
+		case newBattleInfo := <-api.BattleArena.NewBattleChan:
+			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo).Msg("failed to broadcast new battle info")
+				return
+			}
+		}
+	}
 }
 
 // FactionChatRequest sends chat message to specific faction.
@@ -230,6 +322,7 @@ type FactionChatRequest struct {
 		FactionID    server.FactionID `json:"faction_id"`
 		MessageColor string           `json:"message_color"`
 		Message      string           `json:"message"`
+		BattleNumber int              `json:"battle_number"`
 	} `json:"payload"`
 }
 
@@ -246,8 +339,8 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(2, 10, true)
-var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
+var bucket = leakybucket.NewCollector(2, 2, true)
+var minuteBucket = leakybucket.NewCollector(0.5, 1, true)
 
 // ChatMessageHandler sends chat message from player
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -275,18 +368,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	// check user is banned on chat
-	isBanned, err := player.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s and %s = ?",
-				boiler.TableNames.PunishOptions,
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
-				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
-				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
-			),
-			server.PunishmentOptionRestrictChat,
-		),
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanSendChat.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
@@ -361,7 +447,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	battleNum := 0
+	lastBattleNum := 0
 	lastBattle, err := boiler.Battles(
 		qm.Select(boiler.BattleColumns.BattleNumber),
 		qm.OrderBy(fmt.Sprintf("%s %s", boiler.BattleColumns.BattleNumber, "DESC")),
@@ -371,10 +457,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	if lastBattle != nil {
-		battleNum = lastBattle.BattleNumber
+		lastBattleNum = lastBattle.BattleNumber
 	}
 
-	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, battleNum)
+	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, lastBattleNum)
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -397,6 +483,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 				IsCitizen:       isCitizen,
 				Lang:            language,
+				BattleNumber:    req.Payload.BattleNumber,
 			},
 		}
 
@@ -442,6 +529,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 			IsCitizen:       isCitizen,
 			Lang:            language,
+			BattleNumber:    req.Payload.BattleNumber,
 		},
 	}
 
@@ -505,6 +593,79 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 		return true
 	})
 	reply(resp)
+	return nil
+}
+
+func (api *API) BroadcastNewBattle(battleNumber int) error {
+	factions, err := boiler.Factions().All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Could not get all factions, try again or contact support.")
+	}
+
+	cm := &ChatMessage{
+		Type:   ChatMessageTypeNewBattle,
+		SentAt: time.Now(),
+		Data:   MessageNewBattle{BattleNumber: battleNumber},
+	}
+
+	var jsonMeta null.JSON
+	err = jsonMeta.Marshal(cm)
+	if err != nil {
+		return err
+	}
+
+	for _, faction := range factions {
+		ch := &boiler.ChatHistory{
+			FactionID:       faction.ID,
+			PlayerID:        server.SupremacyBattleUserID,
+			MessageColor:    "",
+			Text:            "",
+			MSGType:         boiler.ChatMSGTypeEnumNEW_BATTLE,
+			ChatStream:      faction.ID,
+			UserRank:        "",
+			TotalMultiplier: "",
+			KillCount:       "",
+			IsCitizen:       false,
+			Lang:            "",
+			Metadata:        jsonMeta,
+		}
+		err = ch.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
+		}
+	}
+
+	ch := &boiler.ChatHistory{
+		FactionID:       server.RedMountainFactionID,
+		PlayerID:        server.SupremacyBattleUserID,
+		MessageColor:    "",
+		Text:            "",
+		MSGType:         boiler.ChatMSGTypeEnumNEW_BATTLE,
+		ChatStream:      "global",
+		UserRank:        "",
+		TotalMultiplier: "",
+		KillCount:       "",
+		IsCitizen:       false,
+		Lang:            "",
+		Metadata:        jsonMeta,
+	}
+	err = ch.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Could not create NEW_BATTLE message in chat history.")
+	}
+
+	api.RedMountainChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.RedMountainFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.BostonChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.BostonCyberneticsFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.ZaibatsuChat.AddMessage(cm)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.ZaibatsuFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{cm})
+
+	api.GlobalChat.AddMessage(cm)
+	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
+
 	return nil
 }
 
