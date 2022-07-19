@@ -7,6 +7,7 @@ var TableNames = struct {
 	Ammo                                               string
 	Availabilities                                     string
 	BattleAbilities                                    string
+	BattleAbilityOptInLogs                             string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
 	BattleContributions                                string
@@ -122,6 +123,7 @@ var TableNames = struct {
 	Ammo:                            "ammo",
 	Availabilities:                  "availabilities",
 	BattleAbilities:                 "battle_abilities",
+	BattleAbilityOptInLogs:          "battle_ability_opt_in_logs",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
 	BattleContributions:             "battle_contributions",

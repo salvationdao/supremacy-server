@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/kevinms/leakybucket-go"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server/battle"
 	"server/db/boiler"
 	"server/gamedb"
@@ -45,12 +48,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
 	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
 	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
-
-	// faction unique ability related (sup contribution)
-	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
-
 	return bc
 }
 
@@ -241,6 +239,46 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 			SurvivalPercentile: survivePercentile,
 		},
 	})
+
+	return nil
+}
+
+var optInBucket = leakybucket.NewCollector(1, 1, true)
+
+func (api *API) BattleAbilityOptIn(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if optInBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
+	btl := api.BattleArena.CurrentBattle()
+	if btl == nil {
+		return terror.Error(fmt.Errorf("battle is endded"), "Battle has not started yet.")
+	}
+
+	as := btl.AbilitySystem()
+	if as == nil {
+		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
+	}
+
+	if !battle.AbilitySystemIsAvailable(as) {
+		return terror.Error(fmt.Errorf("ability system si not available"), "Ability is not ready.")
+	}
+
+	if as.BattleAbilityPool.Stage.Phase.Load() != battle.BribeStageOptIn {
+		return terror.Error(fmt.Errorf("invlid phase"), "It is not in the stage for player to opt in.")
+	}
+
+	ba := *as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+	bao := boiler.BattleAbilityOptInLog{
+		BattleID:                btl.BattleID,
+		BattleAbilityOfferingID: as.BattleAbilityPool.BattleAbility.OfferingID,
+		FactionID:               factionID,
+		BattleAbilityID:         ba.ID,
+	}
+	err := bao.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to opt in battle ability")
+	}
 
 	return nil
 }

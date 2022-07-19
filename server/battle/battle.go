@@ -71,7 +71,7 @@ type Battle struct {
 	sync.RWMutex
 }
 
-func (btl *Battle) abilities() *AbilitiesSystem {
+func (btl *Battle) AbilitySystem() *AbilitiesSystem {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._abilities
@@ -330,10 +330,10 @@ func (btl *Battle) start() {
 		//TODO: something more dramatic
 	}
 
-	// set up the abilities for current battle
+	// set up the AbilitySystem() for current battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
@@ -490,19 +490,19 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 func (btl *Battle) endAbilities() {
 	defer func() {
 		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle abilities end!", r)
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle AbilitySystem() end!", r)
 		}
 	}()
 
-	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
+	gamelog.L.Info().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
 
-	if btl.abilities == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have abilities!")
+	if btl.AbilitySystem() == nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
 		return
 	}
 
-	btl.abilities().End()
-	btl.abilities().storeBattle(nil)
+	btl.AbilitySystem().End()
+	btl.AbilitySystem().storeBattle(nil)
 	btl.storeAbilities(nil)
 }
 func (btl *Battle) endSpoils() {

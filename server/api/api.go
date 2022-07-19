@@ -292,7 +292,6 @@ func NewAPI(
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
-				s.WS("/faction_ability", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
 			}))
