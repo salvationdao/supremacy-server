@@ -54,21 +54,6 @@ CREATE TABLE collection_items
 DROP TYPE IF EXISTS DAMAGE_TYPE;
 CREATE TYPE DAMAGE_TYPE AS ENUM ('Kinetic', 'Energy', 'Explosive');
 
--- DROP TYPE IF EXISTS MECH_MODEL;
---
--- -- creating table of war machine chassis modals
--- CREATE TABLE mech_models
--- (
---     id         UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
---     label      TEXT        NOT NULL,
---     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
--- );
---
--- INSERT INTO mech_models (label)
--- VALUES ('Law Enforcer X-1000'),
---        ('Olympus Mons LY07'),
---        ('Tenshi Mk1');
-
 /*
   UPDATING DEFAULTS
   For some reason the ai/default mechs had different models, fixing that
@@ -139,10 +124,6 @@ CREATE TABLE blueprint_chassis_skin
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (mech_models, label)
 );
-
--- ALTER TABLE mech_models
---     ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- default skin
-
 
 CREATE TABLE chassis_skin
 (
