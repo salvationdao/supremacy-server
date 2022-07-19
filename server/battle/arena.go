@@ -834,6 +834,7 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 
 	if mat != nil {
 		reply(coolDownSeconds - int(time.Now().Sub(mat.CreatedAt).Seconds()))
+		return nil
 	}
 
 	reply(0)
