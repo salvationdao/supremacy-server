@@ -1,3 +1,4 @@
+-- stores all avatars (faction logos, mech avatars)
 CREATE TABLE profile_avatars
 (
     id                          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
@@ -78,7 +79,8 @@ $$;
 ALTER TABLE blueprint_mech_skin
     ADD COLUMN profile_avatar_id UUID REFERENCES profile_avatars (id);
 
-
+-- insert avatars from blueprint mech skins (bms)
+-- set bms.profile_avatar_id 
 with inserted_avatars as (
     with bms as (select avatar_url, tier from blueprint_mech_skin)
     insert into profile_avatars(avatar_url, tier) 
@@ -89,6 +91,7 @@ set profile_avatar_id = inserted_avatars.id
 from inserted_avatars
 where blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
 
+-- insert mech owner avatars
 INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
 SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
 INNER JOIN collection_items ci ON ci.owner_id =  p.id 
@@ -100,12 +103,3 @@ ALTER TABLE players
 
 
 
--- add to players_profile_avatars
--- - when player buys item 
--- - enlist in a faction 
-
-
--- add to players_profile_avatars
--- - sell item 
-
--- shoiuld mech  skings have unique urls
