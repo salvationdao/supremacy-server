@@ -329,6 +329,14 @@ func (btl *Battle) QueueDefaultMechs() error {
 		return err
 	}
 
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
+		return fmt.Errorf(terror.Echo(err))
+	}
+
+	defer tx.Rollback()
+
 	for _, mech := range defMechs {
 		mech.Name = helpers.GenerateStupidName()
 		mechToUpdate := boiler.Mech{
@@ -354,45 +362,11 @@ func (btl *Battle) QueueDefaultMechs() error {
 			continue
 		}
 
-		result, err := db.QueueLength(uuid.FromStringOrNil(mech.FactionID.String))
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", mech.FactionID).Err(err).Msg("unable to retrieve queue length")
-			return err
-		}
-
-		queueStatus := CalcNextQueueStatus(result)
-
-		tx, err := gamedb.StdConn.Begin()
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
-			return fmt.Errorf(terror.Echo(err))
-		}
-
-		defer tx.Rollback()
-
-		bc := &boiler.BattleContract{
-			MechID:         mech.ID,
-			FactionID:      mech.FactionID.String,
-			PlayerID:       ownerID.String(),
-			ContractReward: queueStatus.ContractReward,
-			Fee:            queueStatus.QueueCost,
-		}
-		err = bc.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Interface("mech", mech).
-				Str("contractReward", queueStatus.ContractReward.String()).
-				Str("queueFee", queueStatus.QueueCost.String()).
-				Err(err).Msg("unable to create battle contract")
-			return terror.Error(err, "Unable to join queue, contact support or try again.")
-		}
-
 		bq := &boiler.BattleQueue{
-			MechID:           mech.ID,
-			QueuedAt:         time.Now(),
-			FactionID:        mech.FactionID.String,
-			OwnerID:          ownerID.String(),
-			BattleContractID: null.StringFrom(bc.ID),
+			MechID:    mech.ID,
+			QueuedAt:  time.Now(),
+			FactionID: mech.FactionID.String,
+			OwnerID:   ownerID.String(),
 		}
 
 		err = bq.Insert(tx, boil.Infer())
@@ -402,15 +376,13 @@ func (btl *Battle) QueueDefaultMechs() error {
 				Err(err).Msg("unable to insert mech into queue")
 			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
+	}
 
-		err = tx.Commit()
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Interface("mech", mech).
-				Err(err).Msg("unable to commit mech insertion into queue")
-			return terror.Error(err, "Unable to join queue, contact support or try again.")
-		}
-
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").
+			Err(err).Msg("unable to commit mech insertion into queue")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	return nil
