@@ -201,7 +201,6 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			serverMechCrate := server.StoreFrontMysteryCrateFromBoiler(storeMechCrate)
 
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, assignedMechCrate.ID), HubKeyMysteryCrateSubscribe, serverMechCrate)
-			go BroadcastCrateOwnershipUpdate(user.ID)
 
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeWEAPON_CRATE:
@@ -221,7 +220,6 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			serverWeaponCrate := server.StoreFrontMysteryCrateFromBoiler(storeWeaponCrate)
 
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, assignedWeaponCrate.ID), HubKeyMysteryCrateSubscribe, serverWeaponCrate)
-			go BroadcastCrateOwnershipUpdate(user.ID)
 
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeGENESIS_MECH:

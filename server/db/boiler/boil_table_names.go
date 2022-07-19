@@ -5,6 +5,7 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
+	Availabilities                                     string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -50,6 +51,7 @@ var TableNames = struct {
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
+	Features                                           string
 	FingerprintIps                                     string
 	Fingerprints                                       string
 	GameAbilities                                      string
@@ -61,6 +63,7 @@ var TableNames = struct {
 	KV                                                 string
 	Languages                                          string
 	MarketplaceEvents                                  string
+	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
@@ -76,7 +79,9 @@ var TableNames = struct {
 	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
+	PlayerBans                                         string
 	PlayerFingerprints                                 string
+	PlayerIps                                          string
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
@@ -86,13 +91,13 @@ var TableNames = struct {
 	PlayerSpoilsOfWar                                  string
 	PlayerStats                                        string
 	Players                                            string
+	PlayersFeatures                                    string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
 	Profanities                                        string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
-	PunishedPlayers                                    string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -115,6 +120,7 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
+	Availabilities:                  "availabilities",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -160,6 +166,7 @@ var TableNames = struct {
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
+	Features:                     "features",
 	FingerprintIps:               "fingerprint_ips",
 	Fingerprints:                 "fingerprints",
 	GameAbilities:                "game_abilities",
@@ -171,6 +178,7 @@ var TableNames = struct {
 	KV:                           "kv",
 	Languages:                    "languages",
 	MarketplaceEvents:            "marketplace_events",
+	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
@@ -186,7 +194,9 @@ var TableNames = struct {
 	MysteryCrateBlueprints:       "mystery_crate_blueprints",
 	PlayerAbilities:              "player_abilities",
 	PlayerActiveLogs:             "player_active_logs",
+	PlayerBans:                   "player_bans",
 	PlayerFingerprints:           "player_fingerprints",
+	PlayerIps:                    "player_ips",
 	PlayerKeycards:               "player_keycards",
 	PlayerKillLog:                "player_kill_log",
 	PlayerLanguages:              "player_languages",
@@ -196,13 +206,13 @@ var TableNames = struct {
 	PlayerSpoilsOfWar:            "player_spoils_of_war",
 	PlayerStats:                  "player_stats",
 	Players:                      "players",
+	PlayersFeatures:              "players_features",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
-	PunishedPlayers:              "punished_players",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",

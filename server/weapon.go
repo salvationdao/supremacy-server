@@ -13,6 +13,7 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionItem
+	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
 	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
@@ -35,8 +36,10 @@ type Weapon struct {
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
+	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
+	EquippedOnDetails *EquippedOnDetails
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -127,7 +130,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 	}
 }
 
-func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin) *Weapon {
+func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin, itemSaleID null.String) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
@@ -139,6 +142,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			OwnerID:          collection.OwnerID,
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
+			AssetHidden:      collection.AssetHidden,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
@@ -147,6 +151,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			AnimationURL:     collection.AnimationURL,
 			YoutubeURL:       collection.YoutubeURL,
 		},
+		CollectionItemID:     collection.ID,
 		ID:                   weapon.ID,
 		BrandID:              weapon.BrandID,
 		Label:                weapon.Label,
@@ -170,5 +175,6 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		EquippedOn:           weapon.EquippedOn,
 		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
 		WeaponSkin:           weaponSkin,
+		ItemSaleID:           itemSaleID,
 	}
 }

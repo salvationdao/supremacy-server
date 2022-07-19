@@ -30,12 +30,19 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		return nil, err
 	}
 	var player *boiler.Player
+
+	hexPublicAddress := ""
+	if PublicAddress != common.HexToAddress("") {
+		hexPublicAddress = PublicAddress.Hex()
+	}
+
 	if exists {
 		player, err = boiler.FindPlayer(tx, ID.String())
 		if err != nil {
 			return nil, err
 		}
-		player.PublicAddress = null.NewString(PublicAddress.Hex(), true)
+
+		player.PublicAddress = null.NewString(hexPublicAddress, hexPublicAddress != "")
 		player.Username = null.NewString(Username, true)
 		player.FactionID = null.NewString(FactionID.String(), !FactionID.IsNil())
 
@@ -46,7 +53,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	} else {
 		player = &boiler.Player{
 			ID:            ID.String(),
-			PublicAddress: null.NewString(PublicAddress.Hex(), true),
+			PublicAddress: null.NewString(hexPublicAddress, hexPublicAddress != ""),
 			Username:      null.NewString(Username, true),
 			FactionID:     null.NewString(FactionID.String(), !FactionID.IsNil()),
 		}
@@ -63,7 +70,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 }
 
 func GetUserLanguage(playerID string) string {
-	q := `SELECT mode() within group (order by lang) from chat_history WHERE player_id = $1 LIMIT 10;`
+	q := `SELECT MODE() WITHIN GROUP (ORDER BY lang) FROM chat_history WHERE player_id = $1 LIMIT 10;`
 	row := gamedb.StdConn.QueryRow(q, playerID)
 	lang := "English"
 	switch err := row.Scan(&lang); err {
@@ -228,10 +235,10 @@ func UserStatCreate(playerID string) (*boiler.PlayerStat, error) {
 func PlayerFactionContributionList(battleID string, factionID string, abilityOfferingID string) ([]uuid.UUID, error) {
 	playerList := []uuid.UUID{}
 	q := `
-		select bc.player_id from battle_contributions bc 
-			where bc.battle_id = $1 and bc.faction_id = $2 and bc.ability_offering_id = $3
-			group by player_id
-		order by sum(amount) desc 
+		SELECT bc.player_id FROM battle_contributions bc 
+			WHERE bc.battle_id = $1 AND bc.faction_id = $2 AND bc.ability_offering_id = $3
+			GROUP BY player_id
+		ORDER BY SUM(amount) DESC 
 	`
 
 	result, err := gamedb.StdConn.Query(q, battleID, factionID, abilityOfferingID)
@@ -332,6 +339,35 @@ func UpdatePunishVoteCost() error {
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to update players' report cost")
 		return terror.Error(err, "Failed to update players' report cost")
+	}
+
+	return nil
+}
+
+func PlayerIPUpsert(playerID string, ip string) error {
+	if playerID == "" {
+		return terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+	}
+
+	if ip == "" {
+		return terror.Error(fmt.Errorf("missing ip"), "Missing ip")
+	}
+
+	q := `
+		INSERT INTO 
+			player_ips (player_id, ip, first_seen_at, last_seen_at)
+		VALUES 
+			($1, $2, NOW(), NOW())
+		ON CONFLICT 
+			(player_id, ip) 
+		DO UPDATE SET
+			last_seen_at = NOW()
+	`
+
+	_, err := gamedb.StdConn.Exec(q, playerID, ip)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Str("ip", ip).Err(err).Msg("Failed to upsert player ip")
+		return terror.Error(err, "Failed to store player ip")
 	}
 
 	return nil

@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
-	"time"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -22,8 +20,7 @@ func (p SalePlayerAbilityColumn) IsValid() error {
 	case
 		boiler.SalePlayerAbilityColumns.ID,
 		boiler.SalePlayerAbilityColumns.BlueprintID,
-		boiler.SalePlayerAbilityColumns.CurrentPrice,
-		boiler.SalePlayerAbilityColumns.AvailableUntil:
+		boiler.SalePlayerAbilityColumns.CurrentPrice:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid sale player ability column"))
@@ -58,27 +55,6 @@ func (p BlueprintPlayerAbilityColumn) IsValid() error {
 type SaleAbilityDetailed struct {
 	*boiler.SalePlayerAbility
 	Ability *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
-}
-
-// CurrentSaleAbilitiesList returns a list of abilities that are currently on sale from the sale_player_abilities table.
-func CurrentSaleAbilitiesList() ([]*SaleAbilityDetailed, error) {
-	spas, err := boiler.SalePlayerAbilities(
-		boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
-		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	detailedSaleAbilities := []*SaleAbilityDetailed{}
-	for _, s := range spas {
-		detailedSaleAbilities = append(detailedSaleAbilities, &SaleAbilityDetailed{
-			SalePlayerAbility: s,
-			Ability:           s.R.Blueprint,
-		})
-	}
-
-	return detailedSaleAbilities, nil
 }
 
 type DetailedPlayerAbility struct {

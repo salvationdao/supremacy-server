@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -165,12 +164,12 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-var playerAbilityBucket = leakybucket.NewCollector(1, 1, true)
+var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
 
 func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	b := playerAbilityBucket.Add(user.ID, 1)
+	b := playerAbilityBucket.Add(user.ID, 2)
 	if b == 0 {
-		return nil
+		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
 	}
 
 	// skip, if current not battle
@@ -179,8 +178,24 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	// check player is banned
+	isBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to load player ban")
+		return terror.Error(err, "Failed to trigger ability")
+	}
+
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned for triggering ability"), "You are banned for triggering ability")
+	}
+
 	req := &PlayerAbilityUseRequest{}
-	err := json.Unmarshal(payload, req)
+	err = json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
@@ -429,11 +444,6 @@ type MechMoveCommandResponse struct {
 }
 
 func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		return nil
-	}
-
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
@@ -461,7 +471,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 
 	if mmc != nil {
 		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+		resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
 		if resp.RemainCooldownSeconds < 0 {
 			resp.RemainCooldownSeconds = 0
 		}
@@ -485,6 +495,127 @@ func (arena *Arena) mechCommandAuthorisedCheck(userID string, wm *WarMachine) er
 	return nil
 }
 
+const HubKeyWarMachineAbilityTrigger = "WAR:MACHINE:ABILITY:TRIGGER"
+
+type MechAbilityTriggerRequest struct {
+	Payload struct {
+		Hash          string `json:"mech_hash"`
+		GameAbilityID string `json:"game_ability_id"`
+	} `json:"payload"`
+}
+
+func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// check battle stage
+	if arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
+	}
+
+	req := &MechAbilityTriggerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get mech
+	wm := arena.CurrentBattleWarMachineByHash(req.Payload.Hash)
+	if wm == nil {
+		return terror.Error(fmt.Errorf("required mech not found"), "Targeted mech is not on the battlefield.")
+	}
+
+	err = arena.mechCommandAuthorisedCheck(user.ID, wm)
+	if err != nil {
+		gamelog.L.Warn().Str("mech id", wm.ID).Str("user id", user.ID).Msg("Unauthorised mech command - create")
+		return terror.Error(err, err.Error())
+	}
+
+	// get cooldown timer
+	abilityCooldownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
+
+	// get ability from db
+	lastTrigger, err := boiler.MechAbilityTriggerLogs(
+		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get last ability trigger")
+	}
+
+	if lastTrigger != nil {
+		return terror.Error(fmt.Errorf("ability is still cooling down"), fmt.Sprintf("The ability is still cooling down."))
+	}
+
+	// get game ability
+	ga, err := boiler.FindGameAbility(gamedb.StdConn, req.Payload.GameAbilityID)
+	if err != nil {
+		gamelog.L.Error().Str("ability id", req.Payload.GameAbilityID).Msg("Failed to get game ability from db")
+		return terror.Error(err, "Failed to load game ability")
+	}
+
+	if ga.FactionID != wm.FactionID {
+		return terror.Error(fmt.Errorf("invalid faction id"), "Targeted game ability is not from the same faction")
+	}
+
+	if ga.Level != boiler.AbilityLevelPLAYER {
+		return terror.Error(fmt.Errorf("non player ability ability"), "Targeted game ability is not a player level ability.")
+	}
+
+	// trigger the ability
+	now := time.Now()
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: byte(ga.GameClientAbilityID),
+		WarMachineHash:      &wm.Hash,
+		ParticipantID:       &wm.ParticipantID,
+		EventID:             uuid.Must(uuid.NewV4()),
+	}
+
+	// fire mech command
+	arena.Message("BATTLE:ABILITY", event)
+
+	// log mech move command
+	mat := &boiler.MechAbilityTriggerLog{
+		MechID:        wm.ID,
+		TriggeredByID: user.ID,
+		GameAbilityID: ga.ID,
+		CreatedAt:     now,
+	}
+
+	err = mat.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
+		return terror.Error(err, "Failed to record mech ability trigger")
+	}
+
+	// send notification
+	arena.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+		User: &UserBrief{
+			ID:        uuid.FromStringOrNil(user.ID),
+			Username:  user.Username.String,
+			FactionID: user.FactionID.String,
+		},
+		Ability: &AbilityBrief{
+			Label:    ga.Label,
+			ImageUrl: ga.ImageURL,
+			Colour:   ga.Colour,
+		},
+		WarMachine: &WarMachineBrief{
+			ParticipantID: wm.ParticipantID,
+			Hash:          wm.Hash,
+			ImageUrl:      wm.Image,
+			ImageAvatar:   wm.ImageAvatar,
+			Name:          wm.Name,
+			FactionID:     wm.FactionID,
+		},
+	})
+
+	// broadcast cool down seconds
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
+
+	return nil
+}
+
 type MechMoveCommandCreateRequest struct {
 	Payload struct {
 		Hash        string               `json:"mech_hash"`
@@ -492,14 +623,10 @@ type MechMoveCommandCreateRequest struct {
 	} `json:"payload"`
 }
 
+const MechMoveCooldownSeconds = 5
+
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -540,11 +667,11 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 	}
 
-	// check mech move command is triggered within 30 seconds
+	// check mech move command is triggered within 5 seconds
 	mmc, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-30*time.Second)),
+		boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-MechMoveCooldownSeconds*time.Second)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech move command from db")
@@ -552,7 +679,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	}
 
 	if mmc != nil {
-		return terror.Error(terror.ErrInvalidInput, "Command is still cooling down.")
+		return terror.Error(fmt.Errorf("Command is still cooling down."))
 	}
 
 	now := time.Now()
@@ -604,27 +731,13 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30,
+		RemainCooldownSeconds: MechMoveCooldownSeconds,
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionFired,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
 
 	reply(true)
 
@@ -642,12 +755,6 @@ type MechMoveCommandCancelRequest struct {
 
 // MechMoveCommandCancelHandler send cancel mech move command to game client
 func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check environment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
-		gamelog.L.Warn().Msg("Mech move command is not allowed in prod environment")
-		return terror.Error(terror.ErrForbidden, "Mech move command is not allowed in prod environment")
-	}
-
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
@@ -720,27 +827,13 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: 30 - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 	})
 
 	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionCancel,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
 
 	reply(true)
 

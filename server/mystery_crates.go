@@ -47,6 +47,7 @@ func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate, collection *boile
 			OwnerID:             collection.OwnerID,
 			MarketLocked:        collection.MarketLocked,
 			XsynLocked:          collection.XsynLocked,
+			AssetHidden:         collection.AssetHidden,
 			LockedToMarketplace: collection.LockedToMarketplace,
 			ImageURL:            collection.ImageURL,
 			CardAnimationURL:    collection.CardAnimationURL,

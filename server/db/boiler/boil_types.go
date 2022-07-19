@@ -137,6 +137,8 @@ const (
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
 	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
+	ChatMSGTypeEnumSYSTEM_BAN  = "SYSTEM_BAN"
+	ChatMSGTypeEnumNEW_BATTLE  = "NEW_BATTLE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -159,6 +161,13 @@ const (
 	CouponItemTypeWEAPON_CRATE = "WEAPON_CRATE"
 	CouponItemTypeMECH_CRATE   = "MECH_CRATE"
 	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
+)
+
+// Enum values for FeatureName
+const (
+	FeatureNameMECH_MOVE      = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
+	FeatureNamePUBLIC_PROFILE = "PUBLIC_PROFILE"
 )
 
 // Enum values for AbilityLevel
@@ -207,6 +216,13 @@ const (
 	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for BanFromType
+const (
+	BanFromTypeSYSTEM = "SYSTEM"
+	BanFromTypeADMIN  = "ADMIN"
+	BanFromTypePLAYER = "PLAYER"
 )
 
 // Enum values for PlayerRankEnum

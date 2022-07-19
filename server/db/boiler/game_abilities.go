@@ -36,6 +36,7 @@ type GameAbility struct {
 	CurrentSups         string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
 	Level               string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
 	LocationSelectType  string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
+	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -55,6 +56,7 @@ var GameAbilityColumns = struct {
 	CurrentSups         string
 	Level               string
 	LocationSelectType  string
+	DeletedAt           string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -69,6 +71,7 @@ var GameAbilityColumns = struct {
 	CurrentSups:         "current_sups",
 	Level:               "level",
 	LocationSelectType:  "location_select_type",
+	DeletedAt:           "deleted_at",
 }
 
 var GameAbilityTableColumns = struct {
@@ -85,6 +88,7 @@ var GameAbilityTableColumns = struct {
 	CurrentSups         string
 	Level               string
 	LocationSelectType  string
+	DeletedAt           string
 }{
 	ID:                  "game_abilities.id",
 	GameClientAbilityID: "game_abilities.game_client_ability_id",
@@ -99,6 +103,7 @@ var GameAbilityTableColumns = struct {
 	CurrentSups:         "game_abilities.current_sups",
 	Level:               "game_abilities.level",
 	LocationSelectType:  "game_abilities.location_select_type",
+	DeletedAt:           "game_abilities.deleted_at",
 }
 
 // Generated where
@@ -117,6 +122,7 @@ var GameAbilityWhere = struct {
 	CurrentSups         whereHelperstring
 	Level               whereHelperstring
 	LocationSelectType  whereHelperstring
+	DeletedAt           whereHelpernull_Time
 }{
 	ID:                  whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -131,6 +137,7 @@ var GameAbilityWhere = struct {
 	CurrentSups:         whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
 	Level:               whereHelperstring{field: "\"game_abilities\".\"level\""},
 	LocationSelectType:  whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
+	DeletedAt:           whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -138,10 +145,12 @@ var GameAbilityRels = struct {
 	BattleAbility             string
 	BattleAbilityTriggers     string
 	BattleEventsGameAbilities string
+	MechAbilityTriggerLogs    string
 }{
 	BattleAbility:             "BattleAbility",
 	BattleAbilityTriggers:     "BattleAbilityTriggers",
 	BattleEventsGameAbilities: "BattleEventsGameAbilities",
+	MechAbilityTriggerLogs:    "MechAbilityTriggerLogs",
 }
 
 // gameAbilityR is where relationships are stored.
@@ -149,6 +158,7 @@ type gameAbilityR struct {
 	BattleAbility             *BattleAbility               `boiler:"BattleAbility" boil:"BattleAbility" json:"BattleAbility" toml:"BattleAbility" yaml:"BattleAbility"`
 	BattleAbilityTriggers     BattleAbilityTriggerSlice    `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleEventsGameAbilities BattleEventsGameAbilitySlice `boiler:"BattleEventsGameAbilities" boil:"BattleEventsGameAbilities" json:"BattleEventsGameAbilities" toml:"BattleEventsGameAbilities" yaml:"BattleEventsGameAbilities"`
+	MechAbilityTriggerLogs    MechAbilityTriggerLogSlice   `boiler:"MechAbilityTriggerLogs" boil:"MechAbilityTriggerLogs" json:"MechAbilityTriggerLogs" toml:"MechAbilityTriggerLogs" yaml:"MechAbilityTriggerLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -160,9 +170,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
@@ -413,6 +423,7 @@ func (q gameAbilityQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *GameAbility) BattleAbility(mods ...qm.QueryMod) battleAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleAbilityID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -460,6 +471,28 @@ func (o *GameAbility) BattleEventsGameAbilities(mods ...qm.QueryMod) battleEvent
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_events_game_ability\".*"})
+	}
+
+	return query
+}
+
+// MechAbilityTriggerLogs retrieves all the mech_ability_trigger_log's MechAbilityTriggerLogs with an executor.
+func (o *GameAbility) MechAbilityTriggerLogs(mods ...qm.QueryMod) mechAbilityTriggerLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mech_ability_trigger_logs\".\"game_ability_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mech_ability_trigger_logs\".\"deleted_at\""),
+	)
+
+	query := MechAbilityTriggerLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_ability_trigger_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs\".*"})
 	}
 
 	return query
@@ -513,6 +546,7 @@ func (gameAbilityL) LoadBattleAbility(e boil.Executor, singular bool, maybeGameA
 	query := NewQuery(
 		qm.From(`battle_abilities`),
 		qm.WhereIn(`battle_abilities.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -759,6 +793,105 @@ func (gameAbilityL) LoadBattleEventsGameAbilities(e boil.Executor, singular bool
 				local.R.BattleEventsGameAbilities = append(local.R.BattleEventsGameAbilities, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleEventsGameAbilityR{}
+				}
+				foreign.R.GameAbility = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechAbilityTriggerLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
+	var slice []*GameAbility
+	var object *GameAbility
+
+	if singular {
+		object = maybeGameAbility.(*GameAbility)
+	} else {
+		slice = *maybeGameAbility.(*[]*GameAbility)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &gameAbilityR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &gameAbilityR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_ability_trigger_logs`),
+		qm.WhereIn(`mech_ability_trigger_logs.game_ability_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_ability_trigger_logs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mech_ability_trigger_logs")
+	}
+
+	var resultSlice []*MechAbilityTriggerLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_ability_trigger_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mech_ability_trigger_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_ability_trigger_logs")
+	}
+
+	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechAbilityTriggerLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechAbilityTriggerLogR{}
+			}
+			foreign.R.GameAbility = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.GameAbilityID {
+				local.R.MechAbilityTriggerLogs = append(local.R.MechAbilityTriggerLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechAbilityTriggerLogR{}
 				}
 				foreign.R.GameAbility = local
 				break
@@ -1025,9 +1158,61 @@ func (o *GameAbility) RemoveBattleEventsGameAbilities(exec boil.Executor, relate
 	return nil
 }
 
+// AddMechAbilityTriggerLogs adds the given related objects to the existing relationships
+// of the game_ability, optionally inserting them as new records.
+// Appends related to o.R.MechAbilityTriggerLogs.
+// Sets related.R.GameAbility appropriately.
+func (o *GameAbility) AddMechAbilityTriggerLogs(exec boil.Executor, insert bool, related ...*MechAbilityTriggerLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.GameAbilityID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.GameAbilityID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &gameAbilityR{
+			MechAbilityTriggerLogs: related,
+		}
+	} else {
+		o.R.MechAbilityTriggerLogs = append(o.R.MechAbilityTriggerLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechAbilityTriggerLogR{
+				GameAbility: o,
+			}
+		} else {
+			rel.R.GameAbility = o
+		}
+	}
+	return nil
+}
+
 // GameAbilities retrieves all the records using an executor.
 func GameAbilities(mods ...qm.QueryMod) gameAbilityQuery {
-	mods = append(mods, qm.From("\"game_abilities\""))
+	mods = append(mods, qm.From("\"game_abilities\""), qmhelper.WhereIsNull("\"game_abilities\".\"deleted_at\""))
 	return gameAbilityQuery{NewQuery(mods...)}
 }
 
@@ -1041,7 +1226,7 @@ func FindGameAbility(exec boil.Executor, iD string, selectCols ...string) (*Game
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"game_abilities\" where \"id\"=$1", sel,
+		"select %s from \"game_abilities\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1382,7 +1567,7 @@ func (o *GameAbility) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 
 // Delete deletes a single GameAbility record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *GameAbility) Delete(exec boil.Executor) (int64, error) {
+func (o *GameAbility) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no GameAbility provided for delete")
 	}
@@ -1391,8 +1576,26 @@ func (o *GameAbility) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), gameAbilityPrimaryKeyMapping)
-	sql := "DELETE FROM \"game_abilities\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), gameAbilityPrimaryKeyMapping)
+		sql = "DELETE FROM \"game_abilities\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"game_abilities\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(gameAbilityType, gameAbilityMapping, append(wl, gameAbilityPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1416,12 +1619,17 @@ func (o *GameAbility) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q gameAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q gameAbilityQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no gameAbilityQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1437,7 +1645,7 @@ func (q gameAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o GameAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o GameAbilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1450,14 +1658,31 @@ func (o GameAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), gameAbilityPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), gameAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"game_abilities\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, gameAbilityPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), gameAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"game_abilities\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, gameAbilityPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"game_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, gameAbilityPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1511,7 +1736,8 @@ func (o *GameAbilitySlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"game_abilities\".* FROM \"game_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, gameAbilityPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, gameAbilityPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1528,7 +1754,7 @@ func (o *GameAbilitySlice) ReloadAll(exec boil.Executor) error {
 // GameAbilityExists checks if the GameAbility row exists.
 func GameAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"game_abilities\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"game_abilities\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

@@ -1,5 +1,5 @@
-// +build tools
-// +build !windows,!plan9
+//go:build tools && !windows && !plan9
+// +build tools,!windows,!plan9
 
 package server
 
