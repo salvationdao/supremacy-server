@@ -73,6 +73,8 @@ type PlayerAssetMechListRequest struct {
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
+		FilterRarities      []string              `json:"rarities"`
+		FilterStatuses      []string              `json:"statuses"`
 	} `json:"payload"`
 }
 
@@ -149,6 +151,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		FilterRarities:      req.Payload.FilterRarities,
+		FilterStatuses:      req.Payload.FilterStatuses,
 	}
 	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
 		listOpts.QueueSort = &db.MechListQueueSortOpts{
@@ -715,7 +719,8 @@ func TrimName(username string) string {
 
 type OpenCrateRequest struct {
 	Payload struct {
-		Id string `json:"id"`
+		Id       string `json:"id"`
+		IsHangar bool   `json:"is_hangar"`
 	} `json:"payload"`
 }
 
@@ -743,10 +748,18 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	).One(gamedb.StdConn)
+	var collectionItem *boiler.CollectionItem
+	if req.Payload.IsHangar {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	} else {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	}
 	if err != nil {
 		return terror.Error(err, "Could not find collection item, try again or contact support.")
 	}
@@ -892,7 +905,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			items.PowerCore = powerCore
 		}
 	}
-
+	var hangarResp *db.SiloType
 	if crate.Type == boiler.CrateTypeMECH {
 		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
 		if err != nil {
@@ -944,6 +957,15 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		mech.ChassisSkin = items.MechSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 
+		if req.Payload.IsHangar {
+			hangarResp, err = db.GetUserMechHangarItemsWithMechID(mech, user.ID, tx)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get mech hangar items while opening crate")
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
+
 		err = db.GiveMechAvatar(mech.OwnerID, mech.ID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
@@ -982,6 +1004,15 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+
+		if req.Payload.IsHangar {
+			hangarResp, err = db.GetUserWeaponHangarItemsWithID(weapon, user.ID, tx)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get weapon hangar items while opening crate")
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
 	}
 
 	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
@@ -1006,6 +1037,11 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
+	if req.Payload.IsHangar {
+		reply(hangarResp)
+		return nil
+	}
+
 	reply(items)
 
 	return nil
@@ -1015,17 +1051,27 @@ const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
-		Search              string                `json:"search"`
-		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
-		PageSize            int                   `json:"page_size"`
-		Page                int                   `json:"page"`
-		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
-		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed bool                  `json:"include_market_listed"`
-		ExcludeEquipped     bool                  `json:"exclude_equipped"`
-		FilterRarities      []string              `json:"rarities"`
-		FilterWeaponTypes   []string              `json:"weapon_types"`
+		Search                        string                    `json:"search"`
+		Filter                        *db.ListFilterRequest     `json:"filter"`
+		Sort                          *db.ListSortRequest       `json:"sort"`
+		PageSize                      int                       `json:"page_size"`
+		Page                          int                       `json:"page"`
+		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
+		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		FilterRarities                []string                  `json:"rarities"`
+		FilterWeaponTypes             []string                  `json:"weapon_types"`
+		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
+		FilterStatAmmo                *db.WeaponStatFilterRange `json:"stat_ammo"`
+		FilterStatDamage              *db.WeaponStatFilterRange `json:"stat_damage"`
+		FilterStatDamageFalloff       *db.WeaponStatFilterRange `json:"stat_damage_falloff"`
+		FilterStatDamageFalloffRate   *db.WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+		FilterStatRadius              *db.WeaponStatFilterRange `json:"stat_radius"`
+		FilterStatRadiusDamageFalloff *db.WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+		FilterStatRateOfFire          *db.WeaponStatFilterRange `json:"stat_rate_of_fire"`
+		FilterStatEnergyCosts         *db.WeaponStatFilterRange `json:"stat_energy_cost"`
+		FilterStatProjectileSpeed     *db.WeaponStatFilterRange `json:"stat_projectile_speed"`
+		FilterStatSpread              *db.WeaponStatFilterRange `json:"stat_spread"`
 	} `json:"payload"`
 }
 
@@ -1071,18 +1117,28 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 	}
 
 	listOpts := &db.WeaponListOpts{
-		Search:              req.Payload.Search,
-		Filter:              req.Payload.Filter,
-		Sort:                req.Payload.Sort,
-		PageSize:            req.Payload.PageSize,
-		Page:                req.Payload.Page,
-		OwnerID:             user.ID,
-		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
-		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed: req.Payload.IncludeMarketListed,
-		ExcludeEquipped:     req.Payload.ExcludeEquipped,
-		FilterRarities:      req.Payload.FilterRarities,
-		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
+		Search:                        req.Payload.Search,
+		Filter:                        req.Payload.Filter,
+		Sort:                          req.Payload.Sort,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
 	}
 
 	total, weapons, err := db.WeaponList(listOpts)

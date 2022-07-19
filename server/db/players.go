@@ -30,12 +30,19 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		return nil, err
 	}
 	var player *boiler.Player
+
+	hexPublicAddress := ""
+	if PublicAddress != common.HexToAddress("") {
+		hexPublicAddress = PublicAddress.Hex()
+	}
+
 	if exists {
 		player, err = boiler.FindPlayer(tx, ID.String())
 		if err != nil {
 			return nil, err
 		}
-		player.PublicAddress = null.NewString(PublicAddress.Hex(), true)
+
+		player.PublicAddress = null.NewString(hexPublicAddress, hexPublicAddress != "")
 		player.Username = null.NewString(Username, true)
 		player.FactionID = null.NewString(FactionID.String(), !FactionID.IsNil())
 
@@ -46,7 +53,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	} else {
 		player = &boiler.Player{
 			ID:            ID.String(),
-			PublicAddress: null.NewString(PublicAddress.Hex(), true),
+			PublicAddress: null.NewString(hexPublicAddress, hexPublicAddress != ""),
 			Username:      null.NewString(Username, true),
 			FactionID:     null.NewString(FactionID.String(), !FactionID.IsNil()),
 		}

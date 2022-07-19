@@ -302,14 +302,51 @@ func (m *MarketplaceController) processFinishedAuctions() {
 	numProcessed := 0
 	for _, auctionItem := range auctions {
 		func() {
+			l := gamelog.L.With().
+				Str("item_id", auctionItem.ID.String()).
+				Str("user_id", auctionItem.AuctionBidUserID.String()).
+				Str("cost", auctionItem.AuctionBidPrice.String()).
+				Logger()
+
 			// Check if current bid is below reserved price and issue refunds.
 			if auctionItem.ItemLocked || (auctionItem.Auction && auctionItem.AuctionReservedPrice.Valid && auctionItem.AuctionReservedPrice.Decimal.GreaterThan(auctionItem.AuctionBidPrice)) {
+				factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
+				if !ok {
+					l.Error().Err(err).Str("bidTID", auctionItem.AuctionBidTXID).Msg("unable to get find faction account")
+					return
+				}
+				factID := uuid.Must(uuid.FromString(factionAccountID))
+				syndicateBalance := m.Passport.UserBalanceGet(factID)
+				if syndicateBalance.LessThanOrEqual(auctionItem.AuctionBidPrice) {
+					txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+						FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+						ToUserID:             factID,
+						Amount:               auctionItem.AuctionBidPrice.StringFixed(0),
+						TransactionReference: server.TransactionReference(fmt.Sprintf("bid_refunds|%s|%d", auctionItem.AuctionBidUserID, time.Now().UnixNano())),
+						Group:                string(server.TransactionGroupSupremacy),
+						SubGroup:             string(server.TransactionGroupMarketplace),
+						Description:          fmt.Sprintf("Bid Refund for Player: %s (item sale: %s)", auctionItem.AuctionBidUserID, auctionItem.ID),
+						NotSafe:              false,
+					})
+					if err != nil {
+						l.Error().
+							Str("Faction ID", factionAccountID).
+							Str("Amount", auctionItem.AuctionBidPrice.StringFixed(0)).
+							Err(err).
+							Msg("Could not transfer money from treasury into syndicate account!!")
+						return
+					}
+					l.Warn().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", auctionItem.AuctionBidPrice.StringFixed(0)).
+						Str("TXID", txid).
+						Err(err).
+						Msg("Had to transfer funds to the syndicate account")
+				}
+
 				rtxid, err := m.Passport.RefundSupsMessage(auctionItem.AuctionBidTXID)
 				if err != nil {
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
+					l.Error().
 						Str("bid_tx_id", auctionItem.AuctionBidTXID).
 						Err(err).
 						Msg("unable to refund cancelled auction bid transaction")
@@ -317,10 +354,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				}
 				err = db.MarketplaceSaleBidHistoryRefund(gamedb.StdConn, auctionItem.ID, auctionItem.AuctionBidTXID, rtxid, true)
 				if err != nil {
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
+					l.Error().
 						Str("bid_tx_id", auctionItem.AuctionBidTXID).
 						Str("refund_tx_id", rtxid).
 						Err(err).
@@ -329,10 +363,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				}
 				err = db.MarketplaceAddEvent(boiler.MarketplaceEventBidRefund, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 				if err != nil {
-					gamelog.L.Error().
-						Str("item_id", auctionItem.ID.String()).
-						Str("user_id", auctionItem.AuctionBidUserID.String()).
-						Str("cost", auctionItem.AuctionBidPrice.String()).
+					l.Error().
 						Str("bid_tx_id", auctionItem.AuctionBidTXID).
 						Str("refund_tx_id", rtxid).
 						Err(err).
@@ -367,7 +398,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
 			if !ok {
 				err = fmt.Errorf("failed to get hard coded syndicate player id")
-				gamelog.L.Error().
+				l.Error().
 					Str("owner_id", auctionItem.OwnerID.String()).
 					Str("faction_id", auctionItem.FactionID.String()).
 					Err(err).
@@ -388,24 +419,14 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				NotSafe:              true,
 			})
 			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to send sups to item seller.")
+				l.Error().Err(err).Msg("Failed to send sups to item seller.")
 				return
 			}
 
 			// Begin Transaction
 			tx, err := gamedb.StdConn.Begin()
 			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to start db transaction.")
+				l.Error().Err(err).Msg("Failed to start db transaction.")
 				return
 			}
 			defer tx.Rollback()
@@ -429,10 +450,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				err = fmt.Errorf("failed to complete payment transaction")
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
+				l.Error().
 					Err(err).
 					Msg("Failed to process transaction for Purchase Sale Item.")
 				return
@@ -441,10 +459,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			rpcAssetTransferRollback, err := TransferAssetsToXsyn(gamedb.StdConn, m.Passport, auctionItem.OwnerID.String(), auctionItem.AuctionBidUserID.String(), txid, auctionItem.Hash, auctionItem.ID.String())
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
+				l.Error().
 					Err(err).
 					Msg("Failed to process transaction for Purchase Sale Item m.Passport.TransferAsset.")
 				return
@@ -454,12 +469,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				rpcAssetTransferRollback()
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to transfer item to new owner")
+				l.Error().Err(err).Msg("Failed to transfer item to new owner")
 				return
 			}
 
@@ -476,12 +486,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				rpcAssetTransferRollback()
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to unlock marketplace listed collection item.")
+				l.Error().Err(err).Msg("Failed to unlock marketplace listed collection item.")
 				return
 			}
 
@@ -490,12 +495,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			if err != nil {
 				m.Passport.RefundSupsMessage(txid)
 				rpcAssetTransferRollback()
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to commit db transaction")
+				l.Error().Err(err).Msg("Failed to commit db transaction")
 				return
 			}
 
@@ -516,21 +516,11 @@ func (m *MarketplaceController) processFinishedAuctions() {
 			// Log Event
 			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to log purchase event.")
+				l.Error().Err(err).Msg("Failed to log purchase event.")
 			}
 			err = db.MarketplaceAddEvent(boiler.MarketplaceEventSold, auctionItem.OwnerID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 			if err != nil {
-				gamelog.L.Error().
-					Str("item_id", auctionItem.ID.String()).
-					Str("user_id", auctionItem.AuctionBidUserID.String()).
-					Str("cost", auctionItem.AuctionBidPrice.String()).
-					Err(err).
-					Msg("Failed to log sold event.")
+				l.Error().Err(err).Msg("Failed to log sold event.")
 			}
 
 			numProcessed++
@@ -593,7 +583,6 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 	default:
 		return fmt.Errorf("unhandled item type")
 	}
-
 	for _, hash := range attachedHashes {
 		err := rpcClient.TransferAsset(
 			itemSale.SoldTo.String,
