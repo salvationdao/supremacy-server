@@ -12,10 +12,6 @@ CREATE TABLE blobs (
     created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
--- Game Abilities
-ALTER TABLE game_abilities
-	ADD COLUMN description TEXT;
-
 UPDATE game_abilities
 SET image_url = '/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b',
 	description = 'Rain fury on the arena with a targeted airstrike.'
@@ -40,13 +36,6 @@ UPDATE game_abilities
 SET image_url = '/api/blobs/3b4ae24a-7ccb-4d3b-8d88-905b406da0e1',
 	description = 'Boston Cybernetic unique ability. Release the hounds!'
 WHERE label = 'ROBOT DOGS';
-
-ALTER TABLE game_abilities
-	ALTER COLUMN description SET NOT NULL;
-
--- battle Abilities
-ALTER TABLE battle_abilities
-	ADD COLUMN description TEXT;
 
 UPDATE battle_abilities SET description = 'Rain fury on the arena with a targeted airstrike.' WHERE label = 'AIRSTRIKE';
 UPDATE battle_abilities SET description = 'The show-stopper. A tactical nuke at your fingertips.' WHERE label = 'NUKE';
