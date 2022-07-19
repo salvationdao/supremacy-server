@@ -67,17 +67,13 @@ type SaleAbilitiesListResponse struct {
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	dspas, err := db.CurrentSaleAbilitiesList()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "CurrentSaleAbilitiesList").Err(err).Msg("unable to get current list of sale abilities")
-		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
-	}
+	dpas := pac.API.SalePlayerAbilitiesSystem.CurrentSaleList()
 
 	nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
 	reply(&SaleAbilitiesListResponse{
 		NextRefreshTime:              &nextRefresh,
 		RefreshPeriodDurationSeconds: db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),
-		SaleAbilities:                dspas,
+		SaleAbilities:                dpas,
 	})
 	return nil
 }
@@ -113,7 +109,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(err, "Unable to process sale ability purchase,  check your balance and try again.")
 	}
 
-	if spa.AvailableUntil.Time.Before(time.Now()) {
+	if !pac.API.SalePlayerAbilitiesSystem.IsAbilityAvailable(spa.ID) {
 		// If sale of player ability has already expired
 		gamelog.L.Debug().
 			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing expired ability")
@@ -128,7 +124,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Check if user has hit their purchase limit
-	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchase(userID)
+	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchase(userID.String())
 	if !canPurchase {
 		nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
 		minutes := int(time.Until(nextRefresh).Minutes())
@@ -220,7 +216,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Attempt to add to user's purchase count
-	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID)
+	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID.String())
 	if err != nil {
 		refundFunc()
 		gamelog.L.Warn().Err(err).Str("userID", userID.String()).Str("salePlayerAbilityID", spa.ID).Msg("failed to add to user's purchase count")
@@ -245,8 +241,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 
 	// Update price of sale ability
 	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
-		PlayerID:  userID,
-		AbilityID: uuid.FromStringOrNil(spa.ID),
+		AbilityID: spa.ID,
 	}
 	return nil
 }

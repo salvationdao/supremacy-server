@@ -94,7 +94,7 @@ type AbilityConfig struct {
 	BattleAbilityFloorPrice                    decimal.Decimal
 	BattleAbilityDropRate                      map[string]decimal.Decimal
 	FactionAbilityFloorPrice                   decimal.Decimal
-	FActionAbilityDropRate                     map[string]decimal.Decimal
+	FactionAbilityDropRate                     map[string]decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
@@ -314,7 +314,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			BattleAbilityFloorPrice:                    db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(10, 18)),
 			BattleAbilityDropRate:                      make(map[string]decimal.Decimal),
 			FactionAbilityFloorPrice:                   db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
-			FActionAbilityDropRate:                     make(map[string]decimal.Decimal),
+			FactionAbilityDropRate:                     make(map[string]decimal.Decimal),
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
@@ -325,7 +325,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	as.abilityConfig.BattleAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.993)))
-	as.abilityConfig.FActionAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)))
+	as.abilityConfig.FactionAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)))
 
 	go as.ProgressBarBroadcaster()
 	// setup game ability broadcast channel map
@@ -407,13 +407,22 @@ func (as *AbilitiesSystem) GetAbilityDropRate(dropRate decimal.Decimal) map[stri
 			return m
 		}
 
+		aiCount := make(map[string]int)
+		aiCount[server.RedMountainFactionID] = 0
+		aiCount[server.BostonCyberneticsFactionID] = 0
+		aiCount[server.ZaibatsuFactionID] = 0
 		for _, p := range ps {
-			if !p.IsAi {
+			if p.IsAi {
 				continue
 			}
-			// freeze drop rate if there is an AI mech
-			if p.FactionID.Valid {
-				m[p.FactionID.String] = decimal.NewFromInt(1)
+
+			aiCount[p.FactionID.String] += 1
+		}
+
+		for factionID, count := range aiCount {
+			// freeze drop rate if all the mech is  AI
+			if count == 0 {
+				m[factionID] = decimal.NewFromInt(1)
 			}
 		}
 	}
@@ -559,7 +568,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle() != nil && as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate[ability.FactionID])
+						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FactionAbilityDropRate[ability.FactionID])
 
 						// skip, if price is not changed
 						if !isChanged {
