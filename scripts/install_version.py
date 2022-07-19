@@ -113,8 +113,8 @@ def main(argv):
     migrate(db_dumped, new_ver_dir)
     change_online_version(new_ver_dir)
     change_owner()
-# start_service()
-# nginx_start()
+    # start_service()
+    # nginx_start()
 
 
 def download_meta(version: str):
@@ -300,7 +300,7 @@ def dbdump():
 
 def static_migration(new_ver_dir: str):
     if not question("Run Static Migrations"):
-        log.info("Skipping static sync")
+        log.info("Skipping static migrations")
         return
 
     command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?x-migrations-table=static_migrations&application_name=migrate-static" -path {target}/static-migrations up'.format(
@@ -347,7 +347,7 @@ def migrate(db_dumped: bool, new_ver_dir: str):
         # so ask again
         dbdump()
 
-    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}" -path {target}/migrations up'.format(
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?application_name=migrate-dev" -path {target}/migrations up'.format(
         target=new_ver_dir,
         dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
         host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),

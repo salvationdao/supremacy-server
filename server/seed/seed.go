@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"os"
 	"time"
@@ -41,7 +42,7 @@ func (s *Seeder) Run() error {
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Println("Seed streams")
 	_, err = s.streams(ctx)
 	if err != nil {

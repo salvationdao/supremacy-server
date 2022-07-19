@@ -49,11 +49,6 @@ CREATE TABLE collection_items
     UNIQUE (collection_slug, token_id)
 );
 
-
-
-DROP TYPE IF EXISTS DAMAGE_TYPE;
-CREATE TYPE DAMAGE_TYPE AS ENUM ('Kinetic', 'Energy', 'Explosive');
-
 /*
   UPDATING DEFAULTS
   For some reason the ai/default mechs had different models, fixing that

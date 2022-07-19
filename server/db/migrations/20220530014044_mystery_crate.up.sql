@@ -32,69 +32,69 @@ CREATE TABLE mystery_crate_blueprints
     updated_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
     created_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW()
 );
-
-DO
-$$
-    DECLARE
-        weapon_model WEAPON_MODELS%ROWTYPE;
-    BEGIN
-        FOR weapon_model IN SELECT * FROM weapon_models
-            LOOP
-                INSERT INTO blueprint_weapons (brand_id, label, slug, damage, weapon_type, is_melee)
-                VALUES ((SELECT id FROM brands WHERE id = weapon_model.brand_id),
-                        CONCAT((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', weapon_model.label),
-                        LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', '_'),
-                                     '_', REPLACE(weapon_model.label, ' ', '_'))),
-                        0,
-                        weapon_model.weapon_type,
-                        CASE
-                            WHEN weapon_model.weapon_type = 'Sword' THEN TRUE
-                            ELSE FALSE
-                            END);
-            END LOOP;
-    END;
-$$;
-
-ALTER TABLE blueprint_mechs
-    DROP COLUMN skin;
 --
-DO
-$$
-    DECLARE
-        mech_model MECH_MODELS%ROWTYPE;
-    BEGIN
-        FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
-            LOOP
-                INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
-                                             max_hitpoints, model_id, power_core_size)
-                VALUES (mech_model.brand_id,
-                        CONCAT((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
-                        LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', '_'), '_',
-                                     REPLACE(mech_model.label, ' ', '_'))),
-                        CASE --hardpoints
-                            WHEN mech_model.mech_type = 'PLATFORM' THEN 5
-                            ELSE 2
-                            END,
-                        CASE -- utility slots
-                            WHEN mech_model.mech_type = 'PLATFORM' THEN 2
-                            ELSE 4
-                            END,
-                        CASE --speed
-                            WHEN mech_model.mech_type = 'PLATFORM' THEN 1000
-                            ELSE 2000
-                            END,
-                        CASE --max_hitpoints
-                            WHEN mech_model.mech_type = 'PLATFORM' THEN 3000
-                            ELSE 1500
-                            END,
-                        mech_model.id,
-                        CASE --max_hitpoints
-                            WHEN mech_model.mech_type = 'PLATFORM' THEN 'MEDIUM'
-                            ELSE 'SMALL'
-                            END);
-            END LOOP;
-    END;
-$$;
+-- DO
+-- $$
+--     DECLARE
+--         weapon_model WEAPON_MODELS%ROWTYPE;
+--     BEGIN
+--         FOR weapon_model IN SELECT * FROM weapon_models
+--             LOOP
+--                 INSERT INTO blueprint_weapons (brand_id, label, slug, damage, weapon_type, is_melee)
+--                 VALUES ((SELECT id FROM brands WHERE id = weapon_model.brand_id),
+--                         CONCAT((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', weapon_model.label),
+--                         LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', '_'),
+--                                      '_', REPLACE(weapon_model.label, ' ', '_'))),
+--                         0,
+--                         weapon_model.weapon_type,
+--                         CASE
+--                             WHEN weapon_model.weapon_type = 'Sword' THEN TRUE
+--                             ELSE FALSE
+--                             END);
+--             END LOOP;
+--     END;
+-- $$;
+--
+-- ALTER TABLE blueprint_mechs
+--     DROP COLUMN skin;
+-- --
+-- DO
+-- $$
+--     DECLARE
+--         mech_model MECH_MODELS%ROWTYPE;
+--     BEGIN
+--         FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
+--             LOOP
+--                 INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
+--                                              max_hitpoints, model_id, power_core_size)
+--                 VALUES (mech_model.brand_id,
+--                         CONCAT((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
+--                         LOWER(CONCAT(REPLACE((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', '_'), '_',
+--                                      REPLACE(mech_model.label, ' ', '_'))),
+--                         CASE --hardpoints
+--                             WHEN mech_model.mech_type = 'PLATFORM' THEN 5
+--                             ELSE 2
+--                             END,
+--                         CASE -- utility slots
+--                             WHEN mech_model.mech_type = 'PLATFORM' THEN 2
+--                             ELSE 4
+--                             END,
+--                         CASE --speed
+--                             WHEN mech_model.mech_type = 'PLATFORM' THEN 1000
+--                             ELSE 2000
+--                             END,
+--                         CASE --max_hitpoints
+--                             WHEN mech_model.mech_type = 'PLATFORM' THEN 3000
+--                             ELSE 1500
+--                             END,
+--                         mech_model.id,
+--                         CASE --max_hitpoints
+--                             WHEN mech_model.mech_type = 'PLATFORM' THEN 'MEDIUM'
+--                             ELSE 'SMALL'
+--                             END);
+--             END LOOP;
+--     END;
+-- $$;
 
 -- seeding mystery crates
 -- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount

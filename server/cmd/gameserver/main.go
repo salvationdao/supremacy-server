@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"log"
 	"net/url"
 	"runtime"
@@ -16,11 +17,11 @@ import (
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
-	"server/devtool"
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
 	"server/sms"
+	"server/synctool"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
@@ -41,7 +42,6 @@ import (
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
@@ -424,7 +424,7 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.StringFlag{Name: "static_path", Value: "./devtool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
+					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 40, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
@@ -460,12 +460,12 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					dt := &devtool.DevTool{
+					dt := &synctool.StaticSyncTool{
 						DB:       sqlconn,
 						FilePath: filePath,
 					}
 
-					err = devtool.SyncTool(dt)
+					err = synctool.SyncTool(dt)
 					if err != nil {
 						return err
 					}

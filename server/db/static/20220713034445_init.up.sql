@@ -157,8 +157,6 @@ CREATE TABLE IF NOT EXISTS blueprint_weapon_skin
 --     ADD FOREIGN KEY ( default_skin_id) REFERENCES blueprint_weapon_skin(id);
 
 
-
-
 DO
 $$
     BEGIN
@@ -209,3 +207,62 @@ $$
         END IF;
     END
 $$;
+
+CREATE TABLE IF NOT EXISTS blueprint_mechs
+(
+    id                uuid                     PRIMARY KEY DEFAULT gen_random_uuid()   NOT NULL,
+    brand_id          uuid                                                 NOT NULL,
+    label             text                                                 NOT NULL,
+    slug              text                                                 NOT NULL,
+    weapon_hardpoints integer                                              NOT NULL,
+    utility_slots     integer                                              NOT NULL,
+    speed             integer                                              NOT NULL,
+    max_hitpoints     integer                                              NOT NULL,
+    deleted_at        timestamp with time zone,
+    updated_at        timestamp with time zone DEFAULT now()               NOT NULL,
+    created_at        timestamp with time zone DEFAULT now()               NOT NULL,
+    model_id          uuid                                                 NOT NULL,
+    collection        COLLECTION               DEFAULT 'supremacy-general' NOT NULL,
+    power_core_size   text                     DEFAULT 'SMALL'             NOT NULL,
+    tier              text                     DEFAULT 'MEGA'              NOT NULL,
+    CONSTRAINT blueprint_chassis_power_core_size_check CHECK ((power_core_size = ANY
+                                                               (ARRAY ['SMALL'::text, 'MEDIUM'::text, 'LARGE'::text])))
+);
+
+DO
+$$
+    BEGIN
+        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'damage_type') THEN
+            CREATE TYPE DAMAGE_TYPE AS ENUM ('Kinetic', 'Energy', 'Explosive');
+        END IF;
+    END
+$$;
+
+
+CREATE TABLE IF NOT EXISTS blueprint_weapons
+(
+    id                    uuid                     PRIMARY KEY DEFAULT gen_random_uuid()   NOT NULL,
+    brand_id              uuid REFERENCES brands (id),
+    label                 text                                                 NOT NULL,
+    slug                  text                                                 NOT NULL,
+    damage                integer                                              NOT NULL,
+    deleted_at            timestamp with time zone,
+    updated_at            timestamp with time zone DEFAULT now()               NOT NULL,
+    created_at            timestamp with time zone DEFAULT now()               NOT NULL,
+    game_client_weapon_id uuid,
+    weapon_type           WEAPON_TYPE                                          NOT NULL,
+    collection            COLLECTION               DEFAULT 'supremacy-general' NOT NULL,
+    default_damage_type   DAMAGE_TYPE              DEFAULT 'Kinetic'           NOT NULL,
+    damage_falloff        integer                  DEFAULT 0,
+    damage_falloff_rate   integer                  DEFAULT 0,
+    radius                integer                  DEFAULT 0,
+    radius_damage_falloff integer                  DEFAULT 0,
+    spread                numeric                  DEFAULT 0,
+    rate_of_fire          numeric                  DEFAULT 0,
+    projectile_speed      numeric                  DEFAULT 0,
+    max_ammo              integer                  DEFAULT 0,
+    is_melee              boolean                  DEFAULT false               NOT NULL,
+    tier                  text                     DEFAULT 'MEGA'              NOT NULL,
+    energy_cost           numeric                  DEFAULT 0,
+    weapon_model_id       uuid                                                 NOT NULL
+);

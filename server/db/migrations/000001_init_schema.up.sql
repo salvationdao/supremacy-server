@@ -6,7 +6,11 @@ ALTER TABLE blueprint_mech_skin
 ALTER TABLE weapon_models
     ADD FOREIGN KEY (default_skin_id) REFERENCES blueprint_weapon_skin(id);
 
+ALTER TABLE blueprint_mechs
+    ADD FOREIGN KEY (model_id) REFERENCES mech_models(id);
 
+ALTER TABLE blueprint_weapons
+    ADD FOREIGN KEY (weapon_model_id) REFERENCES weapon_models(id);
 
 -- game_map
 CREATE TABLE game_maps

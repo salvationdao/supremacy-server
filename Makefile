@@ -194,7 +194,7 @@ serve-test:
 .PHONY: sync
 sync:
 	cd server && go run cmd/gameserver/main.go sync
-	rm -rf ./server/devtool/temp-sync
+	rm -rf ./synctool/temp-sync
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -244,13 +244,12 @@ dev-give-mech-crates:
 
 .PHONY: dev-sync-data
 dev-sync-data:
-	cd ./server/devtool
+	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
 	cd ../../../
 	make sync
-	rm -rf ./server/devtool/temp-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:

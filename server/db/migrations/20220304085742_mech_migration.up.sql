@@ -56,20 +56,20 @@ CREATE TABLE templates
     created_at           TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE blueprint_weapons
-(
-    id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    brand_id    UUID REFERENCES brands (id),
-
-    label       TEXT UNIQUE      NOT NULL,
-    slug        TEXT UNIQUE      NOT NULL,
-    damage      INTEGER          NOT NULL,
-    weapon_type TEXT             NOT NULL CHECK (weapon_type IN ('TURRET', 'ARM')),
-
-    deleted_at  TIMESTAMPTZ,
-    updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
+-- CREATE TABLE blueprint_weapons
+-- (
+--     id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+--     brand_id    UUID REFERENCES brands (id),
+--
+--     label       TEXT UNIQUE      NOT NULL,
+--     slug        TEXT UNIQUE      NOT NULL,
+--     damage      INTEGER          NOT NULL,
+--     weapon_type TEXT             NOT NULL CHECK (weapon_type IN ('TURRET', 'ARM')),
+--
+--     deleted_at  TIMESTAMPTZ,
+--     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+--     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+-- );
 
 CREATE TABLE blueprint_modules
 (
@@ -270,18 +270,18 @@ VALUES ('ad124964-e062-4ab8-9cce-e0309fd6b31d', '009f71fc-3594-4d24-a6e2-f05070d
 
 -- Default weapons
 -- 6 Weapons
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'Laser Sword', 'laser_sword', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'Sword', 'sword', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'Laser Sword', 'laser_sword', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'Sword', 'sword', -1, 'ARM');
 
 -- Default modules
 -- Shield only
