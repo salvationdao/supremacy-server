@@ -1344,12 +1344,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	// give user mech avatar
-	err = db.GiveMechAvatar(user.ID, collectionItem.ItemID)
-	if err != nil {
-		l.Error().Err(err).Msg("failed to give uesr mech avatar")
-	}
-
 	// Log event
 	err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, user.ID, decimal.NewNullDecimal(saleItemCost), saleItem.ID, boiler.TableNames.ItemSales)
 	if err != nil {
@@ -1390,6 +1384,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})
+		}
+
+		err = db.GiveMechAvatar(user.ID, ci.ItemID)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to give player mech avatar")
 		}
 	}
 

@@ -130,7 +130,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 	}
 
 	// give user default profile avatar images
-	err = db.SeedDefaultAvatars(player.ID, player.FactionID.String)
+	err = db.GiveDefaultAvatars(player.ID, player.FactionID.String)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

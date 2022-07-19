@@ -468,6 +468,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				ID:                  auctionItem.CollectionItemID.String(),
 				LockedToMarketplace: false,
 			}
+
 			_, err = collectionItem.Update(tx, boil.Whitelist(
 				boiler.CollectionItemColumns.ID,
 				boiler.CollectionItemColumns.LockedToMarketplace,
@@ -496,6 +497,20 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Err(err).
 					Msg("Failed to commit db transaction")
 				return
+			}
+
+			ci, err := boiler.CollectionItems(
+				boiler.CollectionItemWhere.ID.EQ(auctionItem.CollectionItemID.String()),
+			).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("collection item id", auctionItem.CollectionItemID.String()).Err(err).Msg("failed to get collection item from db")
+			}
+
+			if ci.ItemType == boiler.ItemTypeMech {
+				err = db.GiveMechAvatar(auctionItem.AuctionBidUserID.String(), ci.ItemID)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to give player mech avatar")
+				}
 			}
 
 			// Log Event
@@ -532,7 +547,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclient.XsynXrpcClient, itemSaleID string) error {
 	l := gamelog.L.With().Interface("itemSaleID", itemSaleID).Str("func", "HandleMarketplaceAuctionAssetTransfer").Logger()
 	attachedHashes := []string{}
-
 
 	itemSale, err := boiler.FindItemSale(conn, itemSaleID)
 	if err != nil {
@@ -579,7 +593,6 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 	default:
 		return fmt.Errorf("unhandled item type")
 	}
-
 
 	for _, hash := range attachedHashes {
 		err := rpcClient.TransferAsset(

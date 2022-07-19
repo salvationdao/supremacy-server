@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -633,8 +634,8 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 	return total, avatars, nil
 }
 
-// run this once they enlist in a faction
-func SeedDefaultAvatars(playerID string, factionID string) error {
+// GiveDefaultAvatars
+func GiveDefaultAvatars(playerID string, factionID string) error {
 	fac, err := boiler.Factions(boiler.FactionWhere.ID.EQ(factionID)).One(gamedb.StdConn)
 	if err != nil {
 		return err
@@ -660,21 +661,40 @@ func SeedDefaultAvatars(playerID string, factionID string) error {
 	return nil
 }
 
-func GiveMechAvatar(playerID string, itemID string) error {
+// GiveMechAvatar gives player mech avatar
+func GiveMechAvatar(playerID string, mechID string) error {
+	// get mech
+	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
+	if err != nil {
+		return err
+	}
+
 	// get mech skin
-	ms ,err :=boiler.MechSkins(boiler.MechSkinWhere.ID.EQ(itemID)).One(gamedb.StdConn)
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mech.ID))).One(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
 
 	// get blueprint mech skin
-	bms ,err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
+	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
 
-
 	if !bms.ProfileAvatarID.Valid {
+		return nil
+	}
+
+	// check if player already has this avatar
+	exists, err := boiler.PlayersProfileAvatars(
+		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
+		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if exists != nil {
 		return nil
 	}
 

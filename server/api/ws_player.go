@@ -126,7 +126,7 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 	}
 
 	// give user default profile avatar images
-	err = db.SeedDefaultAvatars(user.ID, user.FactionID.String)
+	err = db.GiveDefaultAvatars(user.ID, user.FactionID.String)
 	if err != nil {
 		return err
 	}
