@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,13 +23,11 @@ import (
 
 // SalePlayerAbility is an object representing the database table.
 type SalePlayerAbility struct {
-	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID  string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	CurrentPrice decimal.Decimal `boiler:"current_price" boil:"current_price" json:"current_price" toml:"current_price" yaml:"current_price"`
-	AmountSold   int             `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
-	SaleLimit    int             `boiler:"sale_limit" boil:"sale_limit" json:"sale_limit" toml:"sale_limit" yaml:"sale_limit"`
-	RarityWeight int             `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
-	DeletedAt    null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintID  string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	AmountSold   int       `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
+	RarityWeight int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
+	DeletedAt    null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *salePlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L salePlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,17 +36,13 @@ type SalePlayerAbility struct {
 var SalePlayerAbilityColumns = struct {
 	ID           string
 	BlueprintID  string
-	CurrentPrice string
 	AmountSold   string
-	SaleLimit    string
 	RarityWeight string
 	DeletedAt    string
 }{
 	ID:           "id",
 	BlueprintID:  "blueprint_id",
-	CurrentPrice: "current_price",
 	AmountSold:   "amount_sold",
-	SaleLimit:    "sale_limit",
 	RarityWeight: "rarity_weight",
 	DeletedAt:    "deleted_at",
 }
@@ -57,17 +50,13 @@ var SalePlayerAbilityColumns = struct {
 var SalePlayerAbilityTableColumns = struct {
 	ID           string
 	BlueprintID  string
-	CurrentPrice string
 	AmountSold   string
-	SaleLimit    string
 	RarityWeight string
 	DeletedAt    string
 }{
 	ID:           "sale_player_abilities.id",
 	BlueprintID:  "sale_player_abilities.blueprint_id",
-	CurrentPrice: "sale_player_abilities.current_price",
 	AmountSold:   "sale_player_abilities.amount_sold",
-	SaleLimit:    "sale_player_abilities.sale_limit",
 	RarityWeight: "sale_player_abilities.rarity_weight",
 	DeletedAt:    "sale_player_abilities.deleted_at",
 }
@@ -77,17 +66,13 @@ var SalePlayerAbilityTableColumns = struct {
 var SalePlayerAbilityWhere = struct {
 	ID           whereHelperstring
 	BlueprintID  whereHelperstring
-	CurrentPrice whereHelperdecimal_Decimal
 	AmountSold   whereHelperint
-	SaleLimit    whereHelperint
 	RarityWeight whereHelperint
 	DeletedAt    whereHelpernull_Time
 }{
 	ID:           whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
 	BlueprintID:  whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
-	CurrentPrice: whereHelperdecimal_Decimal{field: "\"sale_player_abilities\".\"current_price\""},
 	AmountSold:   whereHelperint{field: "\"sale_player_abilities\".\"amount_sold\""},
-	SaleLimit:    whereHelperint{field: "\"sale_player_abilities\".\"sale_limit\""},
 	RarityWeight: whereHelperint{field: "\"sale_player_abilities\".\"rarity_weight\""},
 	DeletedAt:    whereHelpernull_Time{field: "\"sale_player_abilities\".\"deleted_at\""},
 }
@@ -113,9 +98,9 @@ func (*salePlayerAbilityR) NewStruct() *salePlayerAbilityR {
 type salePlayerAbilityL struct{}
 
 var (
-	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "amount_sold", "sale_limit", "rarity_weight", "deleted_at"}
-	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id", "current_price"}
-	salePlayerAbilityColumnsWithDefault    = []string{"id", "amount_sold", "sale_limit", "rarity_weight", "deleted_at"}
+	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "amount_sold", "rarity_weight", "deleted_at"}
+	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id"}
+	salePlayerAbilityColumnsWithDefault    = []string{"id", "amount_sold", "rarity_weight", "deleted_at"}
 	salePlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	salePlayerAbilityGeneratedColumns      = []string{}
 )
