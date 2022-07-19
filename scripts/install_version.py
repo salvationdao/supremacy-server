@@ -32,7 +32,7 @@ except ImportError as e:
     exit(1)
 
 
-REPO = 'ninja-syndicate/supremacy-gameserver'
+REPO = 'ninja-syndicate/supremacy-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
 CLIENT = "ninja_syndicate"
@@ -104,16 +104,17 @@ def main(argv):
 
     new_ver_dir = extract(rel_path)
     copy_env(new_ver_dir)
-    nginx_stop()
-    db_dumped = dbdump()
-    stop_service()
+    #nginx_stop()
+    # db_dumped = dbdump()
+    db_dumped = True
+    #stop_service()
     static_migration(new_ver_dir)
     run_sync(new_ver_dir)
     migrate(db_dumped, new_ver_dir)
     change_online_version(new_ver_dir)
     change_owner()
-    start_service()
-    nginx_start()
+# start_service()
+# nginx_start()
 
 
 def download_meta(version: str):
@@ -471,7 +472,7 @@ def start_service():
 
 def question(question, positive='y', negative='n'):
     question = question + \
-        ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
+               ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
     while "the answer is invalid":
         reply = str(input(question)).lower().strip()
         log.debug("reply %s", reply)
