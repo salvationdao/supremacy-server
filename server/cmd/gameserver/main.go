@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"log"
 	"net/url"
 	"runtime"
@@ -20,6 +21,7 @@ import (
 	"server/gamelog"
 	"server/profanities"
 	"server/sms"
+	"server/synctool"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
@@ -40,7 +42,6 @@ import (
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
@@ -410,6 +411,65 @@ func main() {
 						os.Exit(1)
 					}
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
+					return nil
+				},
+			},
+			{
+				Name:    "sync",
+				Aliases: []string{"sy"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 40, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 50, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
+				},
+				Usage: "sync static data",
+				Action: func(c *cli.Context) error {
+					fmt.Println("RUNNING SYNC")
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
+
+					filePath := c.String("static_path")
+
+					params := url.Values{}
+					params.Add("sslmode", "disable")
+
+					sqlconn, err := sqlConnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						databaseAppName,
+						Version,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
+					dt := &synctool.StaticSyncTool{
+						DB:       sqlconn,
+						FilePath: filePath,
+					}
+
+					err = synctool.SyncTool(dt)
+					if err != nil {
+						return err
+					}
+
 					return nil
 				},
 			},
