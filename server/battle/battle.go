@@ -1474,7 +1474,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
-		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
+		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1898,23 +1898,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	})
 
 	// clear up unfinished mech move command of the destroyed mech
-	impactedRowCount, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: time.Now()})
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
 	}
 
 	// broadcast changes
-	if impactedRowCount > 0 {
-		err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
-		}
+	err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
 }
@@ -2094,7 +2089,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = mech.Owner.Username
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%d", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model

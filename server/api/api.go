@@ -212,6 +212,8 @@ func NewAPI(
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
+			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
+			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
 			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
@@ -232,6 +234,8 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(false, false))
+
 				s.Mount("/commander", api.Commander)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
@@ -241,14 +245,11 @@ func NewAPI(
 
 				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
 
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler), MustLogin)
+
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
-			}))
-
-			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, false))
-				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))
 			}))
 
 			// battle arena route ws
@@ -262,7 +263,7 @@ func NewAPI(
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
-				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WSTrack("/*", "user_id", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
@@ -460,14 +461,17 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				if token == "" {
 					token, ok = r.Context().Value("token").(string)
 					if !ok || token == "" {
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
+						if required {
+							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
+							http.Error(w, "Unauthorized", http.StatusUnauthorized)
+							return
+						}
 					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
 					if required {
-						gamelog.L.Error().Err(err).Msg("decrypting cookie error")
+						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -478,7 +482,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			user, err := api.TokenLogin(token)
 			if err != nil {
 				if required {
-					gamelog.L.Error().Err(err).Msg("authentication error")
+					gamelog.L.Debug().Err(err).Msg("authentication error")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -507,7 +511,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
-					gamelog.L.Error().Err(fmt.Errorf("user id check failed")).
+					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
 						Str("userID", userID).
 						Str("user.ID", user.ID).
 						Str("r.URL.Path", r.URL.Path).
@@ -529,6 +533,9 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
+		if err.Error() == "session is expired" {
+			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+		}
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
 		return nil, err
 	}

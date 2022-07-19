@@ -618,20 +618,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
 
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionFired,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
-
 	reply(true)
 
 	return nil
@@ -727,20 +713,6 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
-	arena.BroadcastMechCommandNotification(&MechCommandNotification{
-		MechID:       wm.ID,
-		MechLabel:    wm.Name,
-		MechImageUrl: wm.ImageAvatar,
-		FactionID:    wm.FactionID,
-		Action:       MechCommandActionCancel,
-		FiredByUser: &UserBrief{
-			ID:        uuid.FromStringOrNil(user.ID),
-			Username:  user.Username.String,
-			FactionID: user.FactionID.String,
-			Gid:       user.Gid,
-		},
-	})
 
 	reply(true)
 

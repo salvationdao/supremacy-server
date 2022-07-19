@@ -469,25 +469,25 @@ UPDATE mech_models
 SET faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
 WHERE label = 'Olympus Mons LY07';
 
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('WAR ENFORCER', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('02ba91b7-55dc-450a-9fbd-e7337ae97a2b', 'WAR ENFORCER', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('ANNIHILATOR', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('7068ab3e-89dc-4ac1-bcbb-1089096a5eda', 'ANNIHILATOR', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Daison Avionics'),
         (SELECT id FROM factions WHERE label = 'Boston Cybernetics'));
 
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('KENJI', 'HUMANOID', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('3dc5888b-f5ff-4d08-a520-26fd3681707f', 'KENJI', 'HUMANOID', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('SHIROKUMA', 'PLATFORM', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('0639ebde-fbba-498b-88ac-f7122ead9c90', 'SHIROKUMA', 'PLATFORM', (SELECT id FROM brands WHERE label = 'X3 Wartech'),
         (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'));
 
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('ARIES', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('fc9546d0-9682-468e-af1f-24eb1735315b', 'ARIES', 'HUMANOID', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
-INSERT INTO mech_models (label, mech_type, brand_id, faction_id)
-VALUES ('VIKING', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
+INSERT INTO mech_models (id, label, mech_type, brand_id, faction_id)
+VALUES ('df1ac803-0a90-4631-b9e0-b62a44bdadff', 'VIKING', 'PLATFORM', (SELECT id FROM brands WHERE label = 'Unified Martian Corporation'),
         (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'));
 
 ALTER TABLE mech_models
