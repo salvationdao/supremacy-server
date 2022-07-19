@@ -78,7 +78,7 @@ type API struct {
 	LanguageDetector          lingua.LanguageDetector
 	Cookie                    *securebytes.SecureBytes
 	IsCookieSecure            bool
-	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
+	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilityManager
 	Commander                 *ws.Commander
 	SecureUserCommander       *ws.Commander
 	SecureFactionCommander    *ws.Commander

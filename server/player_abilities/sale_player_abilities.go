@@ -34,7 +34,7 @@ type SaleAbilityAmountResponse struct {
 }
 
 // Used for sale abilities
-type SalePlayerAbilitiesSystem struct {
+type SalePlayerAbilityManager struct {
 	// sale player abilities
 	salePlayerAbilities          map[string]*boiler.SalePlayerAbility // map[ability_id]*Ability
 	salePlayerAbilitiesWithDupes []*db.SaleAbilityDetailed
@@ -59,9 +59,9 @@ type SalePlayerAbilitiesSystem struct {
 	sync.RWMutex
 }
 
-func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
+func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {
 	timeBetweenRefreshSeconds := db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600) // default 10 minutes (600 seconds)
-	pas := &SalePlayerAbilitiesSystem{
+	pas := &SalePlayerAbilityManager{
 		salePlayerAbilities:          map[string]*boiler.SalePlayerAbility{},
 		salePlayerAbilitiesWithDupes: []*db.SaleAbilityDetailed{},
 		salePlayerAbilitiesPool:      []*boiler.SalePlayerAbility{},
@@ -86,14 +86,14 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	return pas
 }
 
-func (pas *SalePlayerAbilitiesSystem) CurrentSaleList() []*db.SaleAbilityDetailed {
+func (pas *SalePlayerAbilityManager) CurrentSaleList() []*db.SaleAbilityDetailed {
 	pas.RLock()
 	defer pas.RUnlock()
 
 	return pas.salePlayerAbilitiesWithDupes
 }
 
-func (pas *SalePlayerAbilitiesSystem) RehydratePool() {
+func (pas *SalePlayerAbilityManager) RehydratePool() {
 	pas.Lock()
 	defer pas.Unlock()
 
@@ -118,14 +118,14 @@ func (pas *SalePlayerAbilitiesSystem) RehydratePool() {
 	gamelog.L.Debug().Msg(fmt.Sprintf("refreshed pool of sale abilities with %d entries", len(saPool)))
 }
 
-func (pas *SalePlayerAbilitiesSystem) NextRefresh() time.Time {
+func (pas *SalePlayerAbilityManager) NextRefresh() time.Time {
 	pas.RLock()
 	defer pas.RUnlock()
 
 	return pas.nextRefresh
 }
 
-func (pas *SalePlayerAbilitiesSystem) Refresh() {
+func (pas *SalePlayerAbilityManager) Refresh() {
 	pas.Lock()
 	defer pas.Unlock()
 
@@ -136,13 +136,13 @@ func (pas *SalePlayerAbilitiesSystem) Refresh() {
 	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
 }
 
-func (pas *SalePlayerAbilitiesSystem) IsAbilityAvailable(saleID string) bool {
+func (pas *SalePlayerAbilityManager) IsAbilityAvailable(saleID string) bool {
 	_, ok := pas.salePlayerAbilities[saleID]
 
 	return ok
 }
 
-func (pas *SalePlayerAbilitiesSystem) CanUserPurchase(userID string) bool {
+func (pas *SalePlayerAbilityManager) CanUserPurchase(userID string) bool {
 	pas.RLock()
 	defer pas.RUnlock()
 
@@ -154,7 +154,7 @@ func (pas *SalePlayerAbilitiesSystem) CanUserPurchase(userID string) bool {
 	return count < pas.UserPurchaseLimit
 }
 
-func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID string) error {
+func (pas *SalePlayerAbilityManager) AddToUserPurchaseCount(userID string) error {
 	pas.Lock()
 	defer pas.Unlock()
 
@@ -177,7 +177,7 @@ func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID string) erro
 	return nil
 }
 
-func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
+func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(time.Duration(pas.PriceTickerIntervalSeconds) * time.Second)
 
 	defer func() {
