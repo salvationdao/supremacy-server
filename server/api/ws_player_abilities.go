@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -159,7 +160,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	inventoryLimit := db.GetIntWithDefault(db.KeyPlayerAbilityInventoryLimit, 10)
 	if pa.Count > inventoryLimit {
 		gamelog.L.Debug().Interface("playerAbility", pa).Msg("user has reached their player ability inventory count")
-		return terror.Error(fmt.Errorf("You have reached your limit of 10 "))
+		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
 	}
 
 	_, err = pa.Update(tx, boil.Infer())
