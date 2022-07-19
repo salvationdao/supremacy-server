@@ -347,7 +347,7 @@ def migrate(db_dumped: bool, new_ver_dir: str):
         # so ask again
         dbdump()
 
-    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?application_name=migrate-dev" -path {target}/migrations up'.format(
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?application_name=migrate" -path {target}/migrations up'.format(
         target=new_ver_dir,
         dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
         host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
