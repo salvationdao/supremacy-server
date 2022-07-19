@@ -63,6 +63,8 @@ const KeySystemBanTeamKillBanBaseDurationHours KVKey = "system_ban_team_kill_ban
 const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ban_duration_multiplier"
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
+const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

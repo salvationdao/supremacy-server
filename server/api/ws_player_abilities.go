@@ -36,6 +36,8 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		api.SecureUserCommand(server.HubKeySaleAbilityClaim, pac.SaleAbilityClaimHandler)
 	}
 
+	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.BattleArena.MechAbilityTriggerHandler)
+
 	return pac
 }
 
