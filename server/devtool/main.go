@@ -34,7 +34,11 @@ func SyncTool(dt *DevTool) error {
 		return err
 	}
 
-	//SyncMysteryCrates(dt)
+	//err = SyncMysteryCrates(dt)
+	//if err != nil {
+	//	return err
+	//}
+
 	err = SyncWeaponSkins(dt)
 	if err != nil {
 		return err

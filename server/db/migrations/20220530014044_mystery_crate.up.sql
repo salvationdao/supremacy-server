@@ -617,3 +617,46 @@ $$
             END LOOP;
     END;
 $$;
+
+--seeding storefront
+-- for each faction, seed each type of crate and find how much are for sale
+
+CREATE TABLE IF NOT EXISTS storefront_mystery_crates
+(
+    id                 uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
+    mystery_crate_type CRATE_TYPE                                         NOT NULL,
+    price              numeric(28, 0)                                     NOT NULL,
+    amount             integer                                            NOT NULL,
+    amount_sold        integer                  DEFAULT 0                 NOT NULL,
+    faction_id         uuid                                               NOT NULL REFERENCES factions (id),
+    deleted_at         timestamp with time zone,
+    updated_at         timestamp with time zone DEFAULT now()             NOT NULL,
+    created_at         timestamp with time zone DEFAULT now()             NOT NULL,
+    label              text                     DEFAULT ''::text          NOT NULL,
+    description        text                     DEFAULT ''::text          NOT NULL,
+    image_url          text,
+    card_animation_url text,
+    avatar_url         text,
+    large_image_url    text,
+    background_color   text,
+    animation_url      text,
+    youtube_url        text
+);
+
+DO
+$$
+    DECLARE
+        faction FACTIONS%ROWTYPE;
+    BEGIN
+        FOR faction IN SELECT * FROM factions
+            LOOP
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
+                        faction.id, 3000000000000000000000);
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                VALUES ('WEAPON',
+                        (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
+                        faction.id, 1800000000000000000000);
+            END LOOP;
+    END;
+$$;
