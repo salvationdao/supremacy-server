@@ -41,6 +41,7 @@ var bm = bluemonday.StrictPolicy()
 
 // ChatMessage contains chat message data to send.
 type ChatMessage struct {
+	ID     string          `json:"id"`
 	Type   ChatMessageType `json:"type"`
 	SentAt time.Time       `json:"sent_at"`
 	Data   interface{}     `json:"data"`
@@ -70,6 +71,7 @@ type MessageText struct {
 }
 
 type MessagePunishVote struct {
+	ID           string        `json:"id"`
 	IssuedByUser boiler.Player `json:"issued_by_user"`
 	ReportedUser boiler.Player `json:"reported_user"`
 
@@ -84,6 +86,7 @@ type MessagePunishVote struct {
 }
 
 type MessageSystemBan struct {
+	ID           string         `json:"id"`
 	BannedByUser *boiler.Player `json:"banned_by_user"`
 	BannedUser   *boiler.Player `json:"banned_user"`
 
@@ -225,6 +228,7 @@ func NewChatroom(factionID string) *Chatroom {
 		}
 
 		cms[i] = &ChatMessage{
+			ID:     msg.ID,
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
 			Data: &MessageText{
@@ -236,6 +240,7 @@ func NewChatroom(factionID string) *Chatroom {
 				FromUserStat:    stat,
 				TotalMultiplier: msg.TotalMultiplier,
 				IsCitizen:       msg.IsCitizen,
+				Metadata:        msg.Metadata,
 			},
 		}
 		cmstoSend = append(cmstoSend, cms[i])
@@ -289,6 +294,7 @@ func (api *API) MessageBroadcaster() {
 		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
 
 			banMessage := &MessageSystemBan{
+				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
 				BannedUser:     msg.BannedPlayer,
 				FactionID:      msg.FactionID,
@@ -300,6 +306,7 @@ func (api *API) MessageBroadcaster() {
 			}
 
 			cm := &ChatMessage{
+				ID:     banMessage.ID,
 				Type:   ChatMessageTypeSystemBan,
 				SentAt: time.Now(),
 				Data:   banMessage,
@@ -525,9 +532,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 
 		chatMessage := &ChatMessage{
+			ID:     cm.ID,
 			Type:   ChatMessageTypeText,
 			SentAt: time.Now(),
-			Data: MessageText{
+			Data: &MessageText{
 				ID:              cm.ID,
 				Message:         msg,
 				MessageColor:    req.Payload.MessageColor,
@@ -573,9 +581,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	chatMessage := &ChatMessage{
+		ID:     cm.ID,
 		Type:   ChatMessageTypeText,
 		SentAt: time.Now(),
-		Data: MessageText{
+		Data: &MessageText{
 			ID:              cm.ID,
 			Message:         msg,
 			MessageColor:    req.Payload.MessageColor,
@@ -631,10 +640,36 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 	}
 
 	chatHistory.Metadata = jsonTextMsgMeta
+	fmt.Println(string(jsonTextMsgMeta.JSON))
 
-	_, err = chatHistory.Update(gamedb.StdConn, boil.Infer())
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
 	if err != nil {
 		return terror.Error(err, "Could not update chat history")
+	}
+
+	// change metadata of s specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.Range(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.Range(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.Range(fn)
+	default:
+		fc.API.GlobalChat.Range(fn)
 	}
 
 	reply(true)
