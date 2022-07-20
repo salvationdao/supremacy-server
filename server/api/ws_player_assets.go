@@ -19,6 +19,7 @@ import (
 	"unicode"
 
 	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
@@ -1177,5 +1178,11 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
 	}
-	return helpers.EncodeJSON(w, output)
+
+	// Don't put quote values in for decimal stat values
+	decimal.MarshalJSONWithoutQuotes = true
+	status, resp := helpers.EncodeJSON(w, output)
+	decimal.MarshalJSONWithoutQuotes = false
+
+	return status, resp
 }
