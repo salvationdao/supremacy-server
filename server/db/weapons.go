@@ -714,7 +714,7 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 
 type WeaponMaxStats struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
-	Damage              null.Int            `json:"damage,omitempty"`
+	Damage              int                 `json:"damage"`
 	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
 	Radius              null.Int            `json:"radius,omitempty"`
