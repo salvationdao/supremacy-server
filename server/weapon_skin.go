@@ -21,7 +21,6 @@ type WeaponSkin struct {
 	EquippedOn    null.String `json:"equipped_on,omitempty"`
 	Tier          string      `json:"tier"`
 	CreatedAt     time.Time   `json:"created_at"`
-	WeaponModelID string      `json:"weapon_model_id"`
 
 	EquippedOnDetails *EquippedOnDetails
 }
@@ -122,6 +121,5 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 		EquippedOn:    weaponSkin.EquippedOn,
 		Tier:          weaponSkin.Tier,
 		CreatedAt:     weaponSkin.CreatedAt,
-		WeaponModelID: weaponSkin.WeaponModelID,
 	}
 }
