@@ -13,47 +13,33 @@ import (
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
 )
 
-type Purchase struct {
+type Claim struct {
 	AbilityID string // sale ability id
-}
-
-type SaleAbilityPriceResponse struct {
-	ID           string `json:"id"`
-	CurrentPrice string `json:"current_price"`
-}
-
-type SaleAbilityAmountResponse struct {
-	ID         string `json:"id"`
-	AmountSold int    `json:"amount_sold"`
 }
 
 // Used for sale abilities
 type SalePlayerAbilitiesSystem struct {
 	// sale player abilities
-	salePlayerAbilities          map[string]*boiler.SalePlayerAbility // map[ability_id]*Ability
+	salePlayerAbilities          map[string]*boiler.SalePlayerAbility // map[sale_id]*Ability
 	salePlayerAbilitiesWithDupes []*db.SaleAbilityDetailed
 	salePlayerAbilitiesPool      []*boiler.SalePlayerAbility
 	totalSaleAbilities           int
-	userPurchaseLimits           map[string]int // map[player_id]purchase count for the current sale period
 	nextRefresh                  time.Time      // timestamp of when the next sale period will begin
+	userClaimLimits              map[string]int // map[player_id]purchase count for the current sale period
 
 	// KVs
-	UserPurchaseLimit          int
+	UserClaimLimit             int
 	PriceTickerIntervalSeconds int
 	TimeBetweenRefreshSeconds  int
-	ReductionPercentage        decimal.Decimal
-	InflationPercentage        decimal.Decimal
-	FloorPrice                 decimal.Decimal
-	Limit                      int
+	DisplayLimit               int
 
 	// on sale ability purchase
-	Purchase chan *Purchase
+	Claim chan *Claim
 
 	closed *atomic.Bool
 	sync.RWMutex
@@ -66,16 +52,13 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 		salePlayerAbilitiesWithDupes: []*db.SaleAbilityDetailed{},
 		salePlayerAbilitiesPool:      []*boiler.SalePlayerAbility{},
 		totalSaleAbilities:           0,
-		userPurchaseLimits:           make(map[string]int),
+		userClaimLimits:              make(map[string]int),
 		nextRefresh:                  time.Now(),
-		UserPurchaseLimit:            db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
+		UserClaimLimit:               db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),              // default 1 purchase per user per ability
 		PriceTickerIntervalSeconds:   db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5), // default 5 seconds
 		TimeBetweenRefreshSeconds:    timeBetweenRefreshSeconds,
-		ReductionPercentage:          db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
-		InflationPercentage:          db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
-		FloorPrice:                   db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
-		Limit:                        db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3
-		Purchase:                     make(chan *Purchase),
+		DisplayLimit:                 db.GetIntWithDefault(db.KeySaleAbilityLimit, 3), // default 3
+		Claim:                        make(chan *Claim),
 		closed:                       atomic.NewBool(false),
 	}
 
@@ -130,7 +113,7 @@ func (pas *SalePlayerAbilitiesSystem) Refresh() {
 	defer pas.Unlock()
 
 	// Reset map
-	pas.userPurchaseLimits = make(map[string]int)
+	pas.userClaimLimits = make(map[string]int)
 
 	// Update sale period
 	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
@@ -142,37 +125,37 @@ func (pas *SalePlayerAbilitiesSystem) IsAbilityAvailable(saleID string) bool {
 	return ok
 }
 
-func (pas *SalePlayerAbilitiesSystem) CanUserPurchase(userID string) bool {
+func (pas *SalePlayerAbilitiesSystem) CanUserClaim(userID string) bool {
 	pas.RLock()
 	defer pas.RUnlock()
 
-	count, ok := pas.userPurchaseLimits[userID]
+	count, ok := pas.userClaimLimits[userID]
 	if !ok {
 		return true
 	}
 
-	return count < pas.UserPurchaseLimit
+	return count < pas.UserClaimLimit
 }
 
-func (pas *SalePlayerAbilitiesSystem) AddToUserPurchaseCount(userID string) error {
+func (pas *SalePlayerAbilitiesSystem) AddToUserClaimCount(userID string) error {
 	pas.Lock()
 	defer pas.Unlock()
 
-	count, ok := pas.userPurchaseLimits[userID]
+	count, ok := pas.userClaimLimits[userID]
 	if !ok {
 		count = 0
 	}
 
-	if count == pas.UserPurchaseLimit {
+	if count == pas.UserClaimLimit {
 		minutes := int(time.Until(pas.nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
 			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh).Seconds()))
 		}
-		return fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pas.UserPurchaseLimit, msg)
+		return fmt.Errorf("You have hit your claim limit of %d during this sale period. %s", pas.UserClaimLimit, msg)
 	}
 
-	pas.userPurchaseLimits[userID] = count + 1
+	pas.userClaimLimits[userID] = count + 1
 
 	return nil
 }
@@ -185,7 +168,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		pas.closed.Store(true)
 	}()
 
-	oneHundred := decimal.NewFromFloat(100.0)
 	for {
 		select {
 		case <-priceTicker.C:
@@ -210,14 +192,14 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					_, ok := selected[s.ID]
 					if ok {
 						// Is duplicate
-						if pas.Limit <= pas.totalSaleAbilities || len(saleAbilities) < pas.totalSaleAbilities {
+						if pas.DisplayLimit <= pas.totalSaleAbilities || len(saleAbilities) < pas.totalSaleAbilities {
 							continue
 						}
 					}
 					selected[s.ID] = struct{}{}
 					saleAbilities = append(saleAbilities, s)
 
-					if len(saleAbilities) == pas.Limit {
+					if len(saleAbilities) == pas.DisplayLimit {
 						break
 					}
 				}
@@ -225,19 +207,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if len(saleAbilities) == 0 {
 					gamelog.L.Warn().Msg("no sale abilities could be found")
 					break
-				}
-
-				for i, sa := range saleAbilities {
-					sa.AmountSold = 0
-					saleAbilities[i] = sa
-				}
-
-				_, err := saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-					"amount_sold": 0,
-				})
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
-					continue
 				}
 
 				// Reset user purchase counts
@@ -268,49 +237,16 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					pas.salePlayerAbilitiesWithDupes = append(pas.salePlayerAbilitiesWithDupes, s)
 				}
 			}
-
-			for _, s := range pas.salePlayerAbilities {
-				s.CurrentPrice = s.CurrentPrice.Mul(oneHundred.Sub(pas.ReductionPercentage).Div(oneHundred))
-				if s.CurrentPrice.LessThan(pas.FloorPrice) {
-					s.CurrentPrice = pas.FloorPrice
-				}
-
-				_, err := s.Update(gamedb.StdConn, boil.Whitelist(boiler.SalePlayerAbilityColumns.CurrentPrice))
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Interface("sale ability", s).Msg("failed to update sale ability price")
-					continue
-				}
-
-				// Broadcast updated sale ability
-				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
-					ID:           s.ID,
-					CurrentPrice: s.CurrentPrice.StringFixed(0),
-				})
-			}
-		case purchase := <-pas.Purchase:
+		case purchase := <-pas.Claim:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
-				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(pas.InflationPercentage).Div(oneHundred))
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
 				_, err := saleAbility.Update(gamedb.StdConn, boil.Whitelist(
-					boiler.SalePlayerAbilityColumns.CurrentPrice,
 					boiler.SalePlayerAbilityColumns.AmountSold,
 				))
 				if err != nil {
-					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
+					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Interface("sale ability", saleAbility).Msg("failed to update sale ability amount sold")
 					break
 				}
-
-				// Broadcast updated sale ability price
-				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
-					ID:           saleAbility.ID,
-					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
-				})
-
-				// Broadcast updated sale ability sold amount
-				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesAmountSubscribe, SaleAbilityAmountResponse{
-					ID:         saleAbility.ID,
-					AmountSold: saleAbility.AmountSold,
-				})
 			}
 		}
 	}

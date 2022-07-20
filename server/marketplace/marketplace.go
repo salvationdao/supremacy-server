@@ -408,10 +408,40 @@ func (m *MarketplaceController) processFinishedAuctions() {
 
 			// Transfer Sups to Owner
 			salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
+			salesCutAmount := auctionItem.AuctionBidPrice.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee))
+			factionAccountUUID := uuid.Must(uuid.FromString(factionAccountID))
+
+			syndicateBalance := m.Passport.UserBalanceGet(factionAccountUUID)
+			if syndicateBalance.LessThanOrEqual(salesCutAmount) {
+				txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             factionAccountUUID,
+					Amount:               salesCutAmount.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupMarketplace),
+					Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
+					NotSafe:              false,
+				})
+				if err != nil {
+					l.Error().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", salesCutAmount.StringFixed(0)).
+						Err(err).
+						Msg("Could not transfer money from treasury into syndicate account!!")
+					return
+				}
+				l.Warn().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", salesCutAmount.StringFixed(0)).
+					Str("TXID", txid).
+					Err(err).
+					Msg("Had to transfer funds to the syndicate account")
+			}
 			txid, err := m.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+				FromUserID:           factionAccountUUID,
 				ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
-				Amount:               auctionItem.AuctionBidPrice.Mul(decimal.NewFromInt(1).Sub(salesCutPercentageFee)).String(),
+				Amount:               salesCutAmount.String(),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|auction|%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupSupremacy),
 				SubGroup:             string(server.TransactionGroupMarketplace),

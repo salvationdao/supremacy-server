@@ -1,16 +1,3 @@
-/*
-  WEAPON SKINS
- */
-
-CREATE TABLE blueprint_weapon_skin
-(
-    id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    label       TEXT        NOT NULL,
-    weapon_type WEAPON_TYPE NOT NULL,
-    tier        TEXT        NOT NULL DEFAULT 'MEGA',
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE weapon_skin
 (
     id           UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
@@ -27,60 +14,6 @@ CREATE TABLE weapon_skin
 /*
   WEAPONS
  */
-
-
-ALTER TABLE blueprint_weapons
-    DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN game_client_weapon_id UUID,
-    ADD COLUMN weapon_type           WEAPON_TYPE,
-    ADD COLUMN collection            COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN default_damage_type   DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
-    ADD COLUMN damage_falloff        INT     DEFAULT 0,
-    ADD COLUMN damage_falloff_rate   INT     DEFAULT 0,
-    ADD COLUMN radius                INT     DEFAULT 0,
-    ADD COLUMN radius_damage_falloff INT     DEFAULT 0,
-    ADD COLUMN spread                NUMERIC DEFAULT 0,
-    ADD COLUMN rate_of_fire          NUMERIC DEFAULT 0,
-    ADD COLUMN projectile_speed      NUMERIC DEFAULT 0,
-    ADD COLUMN max_ammo              INT     DEFAULT 0,
-    ADD COLUMN is_melee              BOOL        NOT NULL DEFAULT FALSE,
-    ADD COLUMN tier                  TEXT        NOT NULL DEFAULT 'MEGA',
-    ADD COLUMN energy_cost           NUMERIC DEFAULT 0;
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Sniper Rifle',
-    game_client_weapon_id = 'a155bef8-f0e1-4d11-8a23-a93b0bb74d10'
-WHERE label = 'Sniper Rifle';
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Sword',
-    is_melee              = TRUE,
-    game_client_weapon_id = '6109e547-5a48-4a76-a3f2-e73ef41505b3'
-WHERE label = 'Laser Sword';
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Missile Launcher',
-    game_client_weapon_id = '7c082a33-ff87-454f-bf8c-925945dd0ff4'
-WHERE label = 'Rocket Pod';
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Cannon',
-    game_client_weapon_id = 'a009fbf9-4fe3-48b0-8f34-e207c2b355dc'
-WHERE label = 'Auto Cannon';
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Plasma Gun',
-    game_client_weapon_id = '26f37473-ccd6-47d0-993e-2b82d725617d'
-WHERE label = 'Plasma Rifle';
-
-UPDATE blueprint_weapons
-SET weapon_type           = 'Sword',
-    is_melee              = TRUE,
-    game_client_weapon_id = '02c27475-c0ea-4825-8739-9a0b2cdc4201'
-WHERE label = 'Sword';
-
-ALTER TABLE blueprint_weapons
-    ALTER COLUMN weapon_type SET NOT NULL;
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
