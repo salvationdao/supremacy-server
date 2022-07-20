@@ -729,16 +729,16 @@ func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
 	output := &WeaponMaxStats{}
 	err := boiler.Weapons(
 		qm.Select(
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.MaxAmmo),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.Damage),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.DamageFalloff),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.DamageFalloffRate),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.Radius),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.RadiusDamageFalloff),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.Spread),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.RateOfFire),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.ProjectileSpeed),
-			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.EnergyCost),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Damage),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloffRate),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Radius),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RadiusDamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Spread),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RateOfFire),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.ProjectileSpeed),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.EnergyCost),
 		),
 	).QueryRow(conn).Scan(
 		&output.MaxAmmo,
