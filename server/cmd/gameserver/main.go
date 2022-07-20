@@ -484,7 +484,7 @@ func main() {
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 				},
 				Action: func(c *cli.Context) error {
-					fmt.Println("Seeding avatars")
+					fmt.Println("SEEDING AVATARS")
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -514,11 +514,8 @@ func main() {
 					}
 					err = SeedProfileAvatars(sqlconn)
 					if err != nil {
-						fmt.Println("err")
-						fmt.Println("err")
-						fmt.Println("err")
-						fmt.Println("err", err)
-
+						fmt.Println("Failed to seed player profile avatars.")
+						return err
 					}
 
 					return nil
@@ -759,6 +756,8 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 
 func SeedProfileAvatars(conn *sql.DB) error {
 
+	// seed faction logos as avatars
+	// assigns them to faction players
 	_, err := boiler.NewQuery(
 		qm.SQL(
 			fmt.Sprintf(`
@@ -813,11 +812,8 @@ func SeedProfileAvatars(conn *sql.DB) error {
 						SELECT players.id, rm_logo_id from players
 						INNER join factions on players.faction_id = factions.id 
 						WHERE factions.label = 'Red Mountain Offworld Mining Corporation';
-					
-			
 				END;
 			$$;
-			
 				`,
 			),
 		),
