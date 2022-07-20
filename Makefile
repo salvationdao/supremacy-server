@@ -247,7 +247,7 @@ dev-sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
 	make sync
 
