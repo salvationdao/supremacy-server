@@ -39,22 +39,23 @@ type SiloSkin struct {
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	q := `
-	SELECT 	ci.item_type    as type,
-			ci.id           as ownership_id,
-       		m.model_id  	as static_id,
-       		ms.blueprint_id as skin_id
+	SELECT
+    distinct on ( ms.blueprint_id) ms.blueprint_id as skin_id,
+                                   ci.item_type    as type,
+                                   ci.id           as ownership_id,
+                                   m.model_id  	as static_id
 	FROM collection_items ci
-         	INNER JOIN mechs m on
-    			m.id = ci.item_id
-         	INNER JOIN mech_skin ms on
-        		ms.id = coalesce(
-            			m.chassis_skin_id,
-            			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
-        				)
+         INNER JOIN mechs m on
+        	m.id = ci.item_id
+         INNER JOIN mech_skin ms on
+        	ms.id = coalesce(
+            	m.chassis_skin_id,
+            	(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
+        	)
 	WHERE ci.owner_id = $1
   	AND ci.item_type = 'mech'
-	AND ci.xsyn_locked=false
-	ORDER BY m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
+  	AND ci.xsyn_locked=false
+	ORDER BY ms.blueprint_id, m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -67,19 +68,12 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	mechSiloType := make([]*SiloType, 0)
 	defer rows.Close()
 
-nextRow:
 	for rows.Next() {
 		mst := SiloType{}
 
 		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
-		}
-
-		for _, m := range mechSiloType {
-			if *m.SkinIDStr == *mst.SkinIDStr && *m.StaticID == *mst.StaticID {
-				continue nextRow
-			}
 		}
 
 		mechSiloType = append(mechSiloType, &mst)
