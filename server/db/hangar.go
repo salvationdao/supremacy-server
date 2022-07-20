@@ -65,12 +65,20 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 	mechSiloType := make([]*SiloType, 0)
 	defer rows.Close()
+
+nextRow:
 	for rows.Next() {
 		mst := &SiloType{}
 
 		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
+		}
+
+		for _, m := range mechSiloType {
+			if m.SkinIDStr == mst.SkinIDStr && m.StaticID == mst.StaticID {
+				continue nextRow
+			}
 		}
 
 		mechSiloType = append(mechSiloType, mst)
