@@ -101,3 +101,6 @@ $$
             END LOOP;
     END;
 $$;
+
+ALTER TABLE weapon_skin
+    DROP COLUMN IF EXISTS weapon_model_id;
