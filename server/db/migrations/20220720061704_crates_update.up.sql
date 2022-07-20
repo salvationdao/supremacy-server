@@ -104,3 +104,7 @@ $$;
 
 ALTER TABLE weapon_skin
     DROP COLUMN IF EXISTS weapon_model_id;
+
+-- fix powercore images
+UPDATE collection_items SET image_url = avatar_url WHERE item_type = 'power_core';
+UPDATE blueprint_power_cores SET image_url = avatar_url;
