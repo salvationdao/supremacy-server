@@ -101,7 +101,7 @@ CREATE TABLE mystery_crate_blueprints
 DO
 $$
     BEGIN
-        FOR count IN 1..1000 --change to 5000, -- dev changed to not take years
+        FOR count IN 1..5000 --change to 5000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
@@ -119,7 +119,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR count IN 1..2600 -- change to 13000, -- dev changed to not take years
+        FOR count IN 1..13000 -- change to 13000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',
@@ -623,24 +623,24 @@ $$;
 
 CREATE TABLE IF NOT EXISTS storefront_mystery_crates
 (
-    id                 uuid PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
+    id                 UUID PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
     mystery_crate_type CRATE_TYPE                                         NOT NULL,
-    price              numeric(28, 0)                                     NOT NULL,
-    amount             integer                                            NOT NULL,
-    amount_sold        integer                  DEFAULT 0                 NOT NULL,
-    faction_id         uuid                                               NOT NULL REFERENCES factions (id),
-    deleted_at         timestamp with time zone,
-    updated_at         timestamp with time zone DEFAULT now()             NOT NULL,
-    created_at         timestamp with time zone DEFAULT now()             NOT NULL,
-    label              text                     DEFAULT ''::text          NOT NULL,
-    description        text                     DEFAULT ''::text          NOT NULL,
-    image_url          text,
-    card_animation_url text,
-    avatar_url         text,
-    large_image_url    text,
-    background_color   text,
-    animation_url      text,
-    youtube_url        text
+    price              NUMERIC(28, 0)                                     NOT NULL,
+    amount             INTEGER                                            NOT NULL,
+    amount_sold        INTEGER                  DEFAULT 0                 NOT NULL,
+    faction_id         UUID                                               NOT NULL REFERENCES factions (id),
+    deleted_at         TIMESTAMP WITH TIME ZONE,
+    updated_at         TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    created_at         TIMESTAMP WITH TIME ZONE DEFAULT NOW()             NOT NULL,
+    label              TEXT                     DEFAULT ''::TEXT          NOT NULL,
+    description        TEXT                     DEFAULT ''::TEXT          NOT NULL,
+    image_url          TEXT,
+    card_animation_url TEXT,
+    avatar_url         TEXT,
+    large_image_url    TEXT,
+    background_color   TEXT,
+    animation_url      TEXT,
+    youtube_url        TEXT
 );
 
 DO
