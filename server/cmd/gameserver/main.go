@@ -430,7 +430,7 @@ func main() {
 				},
 				Usage: "sync static data",
 				Action: func(c *cli.Context) error {
-					fmt.Println("RUNNING SYNC")
+					fmt.Println("Running Sync")
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
 					databaseHost := c.String("database_host")
@@ -441,9 +441,6 @@ func main() {
 					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
 					filePath := c.String("static_path")
-
-					params := url.Values{}
-					params.Add("sslmode", "disable")
 
 					sqlconn, err := sqlConnect(
 						databaseUser,
@@ -458,6 +455,11 @@ func main() {
 					)
 					if err != nil {
 						return terror.Panic(err)
+					}
+
+					err = sqlconn.Ping()
+					if err != nil {
+						return terror.Panic(err, "Failed to ping to DB")
 					}
 
 					dt := &synctool.StaticSyncTool{
