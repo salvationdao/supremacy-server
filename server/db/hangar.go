@@ -71,7 +71,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	for rows.Next() {
 		mst := SiloType{}
 
-		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
+		err := rows.Scan(&mst.SkinIDStr, &mst.Type, &mst.OwnershipID, &mst.StaticID)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
