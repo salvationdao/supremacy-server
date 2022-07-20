@@ -138,7 +138,7 @@ func (sac *SaleAbilitiesController) Create(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(err, "Failed to create sale ability")
 	}
 
-	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+	sac.API.SalePlayerAbilitiesManager.RehydratePool()
 
 	return http.StatusOK, nil
 }
@@ -167,7 +167,7 @@ func (sac *SaleAbilitiesController) Delist(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to delist sale ability"))
 	}
 
-	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+	sac.API.SalePlayerAbilitiesManager.RehydratePool()
 
 	return http.StatusOK, nil
 }
@@ -201,7 +201,7 @@ func (sac *SaleAbilitiesController) Relist(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to relist sale ability"))
 	}
 
-	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+	sac.API.SalePlayerAbilitiesManager.RehydratePool()
 
 	return http.StatusOK, nil
 }
@@ -230,7 +230,7 @@ func (sac *SaleAbilitiesController) Delete(w http.ResponseWriter, r *http.Reques
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("Failed to delete sale ability"))
 	}
 
-	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
+	sac.API.SalePlayerAbilitiesManager.RehydratePool()
 
 	return http.StatusOK, nil
 }
@@ -242,7 +242,7 @@ type AvailabilityResponse struct {
 func (sac *SaleAbilitiesController) Availability(w http.ResponseWriter, r *http.Request) (int, error) {
 	playerID := chi.URLParam(r, "player_id")
 
-	canPurchase := sac.API.SalePlayerAbilitiesSystem.CanUserPurchase(playerID)
+	canPurchase := sac.API.SalePlayerAbilitiesManager.CanUserPurchase(playerID)
 
 	return helpers.EncodeJSON(w, &AvailabilityResponse{
 		CanPurchase: canPurchase,

@@ -69,9 +69,9 @@ type SaleAbilitiesListResponse struct {
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	dpas := pac.API.SalePlayerAbilitiesSystem.CurrentSaleList()
+	dpas := pac.API.SalePlayerAbilitiesManager.CurrentSaleList()
 
-	nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
+	nextRefresh := pac.API.SalePlayerAbilitiesManager.NextRefresh()
 	reply(&SaleAbilitiesListResponse{
 		NextRefreshTime:              &nextRefresh,
 		RefreshPeriodDurationSeconds: db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),
@@ -111,7 +111,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(err, "Unable to process sale ability purchase,  check your balance and try again.")
 	}
 
-	if !pac.API.SalePlayerAbilitiesSystem.IsAbilityAvailable(spa.ID) {
+	if !pac.API.SalePlayerAbilitiesManager.IsAbilityAvailable(spa.ID) {
 		// If sale of player ability has already expired
 		gamelog.L.Debug().
 			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing expired ability")
@@ -126,15 +126,15 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Check if user has hit their purchase limit
-	canPurchase := pac.API.SalePlayerAbilitiesSystem.CanUserPurchase(userID.String())
+	canPurchase := pac.API.SalePlayerAbilitiesManager.CanUserPurchase(userID.String())
 	if !canPurchase {
-		nextRefresh := pac.API.SalePlayerAbilitiesSystem.NextRefresh()
+		nextRefresh := pac.API.SalePlayerAbilitiesManager.NextRefresh()
 		minutes := int(time.Until(nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
 			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(nextRefresh).Seconds()))
 		}
-		return terror.Error(fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pac.API.SalePlayerAbilitiesSystem.UserPurchaseLimit, msg))
+		return terror.Error(fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pac.API.SalePlayerAbilitiesManager.UserPurchaseLimit, msg))
 	}
 
 	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
@@ -218,11 +218,11 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Attempt to add to user's purchase count
-	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID.String())
+	err = pac.API.SalePlayerAbilitiesManager.AddToUserPurchaseCount(userID.String())
 	if err != nil {
 		refundFunc()
 		gamelog.L.Warn().Err(err).Str("userID", userID.String()).Str("salePlayerAbilityID", spa.ID).Msg("failed to add to user's purchase count")
-		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
+		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesManager.NextRefresh()).Minutes())))
 	}
 
 	err = tx.Commit()
@@ -242,7 +242,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
+	pac.API.SalePlayerAbilitiesManager.Purchase <- &player_abilities.Purchase{
 		AbilityID: spa.ID,
 	}
 	return nil
