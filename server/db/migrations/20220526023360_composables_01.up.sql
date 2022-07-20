@@ -146,7 +146,7 @@ CREATE TABLE blueprint_chassis_animation
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection      COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     label           TEXT        NOT NULL,
-    mech_models      UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_models (id),
     tier            TEXT        NOT NULL DEFAULT 'MEGA',
     intro_animation BOOL                 DEFAULT TRUE,
     outro_animation BOOL                 DEFAULT TRUE,
