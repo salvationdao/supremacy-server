@@ -17,6 +17,16 @@ func MustLogin(ctx context.Context) bool {
 	return true
 }
 
+func MustHaveFaction(ctx context.Context) bool {
+	// get user from xsyn service
+	u, err := server.RetrieveUser(ctx)
+	if err != nil {
+		return false
+	}
+
+	return u.FactionID.Valid
+}
+
 func (api *API) Command(key string, fn ws.CommandFunc) {
 	api.Commander.Command(key, fn)
 }

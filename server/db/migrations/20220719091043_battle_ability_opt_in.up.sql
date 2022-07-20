@@ -14,5 +14,6 @@ CREATE TABLE battle_ability_opt_in_logs(
 );
 
 create index battle_ability_opt_in_logs_created_at_descending ON battle_ability_opt_in_logs(created_at DESC);
+create index battle_ability_opt_in_logs_offering_id ON battle_ability_opt_in_logs(battle_ability_offering_id);
 
 create index idx_player_active_log_active_at_descending on player_active_logs(active_at desc);

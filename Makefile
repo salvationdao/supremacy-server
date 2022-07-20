@@ -127,7 +127,7 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate dev-sync-data
+db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate db-boiler dev-sync-data
 
 .PHONY: db-reset-windows
 db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows

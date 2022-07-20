@@ -453,9 +453,9 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 
 	as := btl.AbilitySystem()
 
-	if AbilitySystemIsAvailable(as) {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("AbilitySystem is nil even with current battle not being nil")
-		return terror.Error(terror.ErrForbidden)
+	if !AbilitySystemIsAvailable(as) {
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("AbilitySystem is nil")
+		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed")
 	}
 
 	err = as.LocationSelect(user.ID, factionID, req.Payload.StartCoords, req.Payload.EndCoords)
@@ -514,6 +514,30 @@ func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Contex
 				TextColour:             ga.TextColour,
 				CooldownDurationSecond: ba.CooldownDurationSecond,
 			})
+		}
+	}
+	return nil
+}
+
+const HubKeyBattleAbilityOptInCheck = "BATTLE:ABILITY:OPT:IN:CHECK"
+
+// BattleAbilityOptInSubscribeHandler return battle ability for non login player
+func (arena *Arena) BattleAbilityOptInSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	// get a random faction id
+	if arena.CurrentBattle() != nil {
+		as := arena.CurrentBattle().AbilitySystem()
+		if AbilitySystemIsAvailable(as) {
+			offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
+
+			isOptedIn, err := boiler.BattleAbilityOptInLogs(
+				boiler.BattleAbilityOptInLogWhere.BattleAbilityOfferingID.EQ(offeringID),
+				boiler.BattleAbilityOptInLogWhere.PlayerID.EQ(user.ID),
+			).Exists(gamedb.StdConn)
+			if err != nil {
+				return terror.Error(err, "Failed to check opt in stat")
+			}
+
+			reply(isOptedIn)
 		}
 	}
 	return nil
