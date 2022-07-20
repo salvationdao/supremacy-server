@@ -14,6 +14,7 @@ import (
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -79,6 +80,7 @@ type API struct {
 	Cookie                     *securebytes.SecureBytes
 	IsCookieSecure             bool
 	SalePlayerAbilitiesManager *player_abilities.SalePlayerAbilityManager
+	SystemMessagingManager     *system_messages.SystemMessagingManager
 	Commander                  *ws.Commander
 	SecureUserCommander        *ws.Commander
 	SecureFactionCommander     *ws.Commander
@@ -112,6 +114,7 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
 ) *API {
 	// initialise api
 	api := &API{
@@ -126,6 +129,7 @@ func NewAPI(
 		LanguageDetector:           languageDetector,
 		IsCookieSecure:             config.CookieSecure,
 		SalePlayerAbilitiesManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SystemMessagingManager:     smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),

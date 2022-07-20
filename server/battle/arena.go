@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 	"strconv"
@@ -54,6 +55,7 @@ type Arena struct {
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
 	SystemBanManager         *SystemBanManager
+	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	sync.RWMutex
 }
@@ -221,6 +223,7 @@ type Opts struct {
 	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
+	SystemMessagingManager   *system_messages.SystemMessagingManager
 }
 
 type MessageType byte
@@ -252,6 +255,7 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
+		SystemMessagingManager:   opts.SystemMessagingManager,
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 
