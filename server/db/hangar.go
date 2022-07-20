@@ -44,16 +44,17 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
        		m.model_id  	as static_id,
        		ms.blueprint_id as skin_id
 	FROM collection_items ci
-         	INNER JOIN mechs m on
-    			m.id = ci.item_id
-         	INNER JOIN mech_skin ms on
-        		ms.id = coalesce(
-            			m.chassis_skin_id,
-            			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
-        				)
+	INNER JOIN mechs m on
+		m.id = ci.item_id
+	INNER JOIN mech_skin ms on
+		ms.id = coalesce(
+				m.chassis_skin_id,
+				(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
+				)
 	WHERE ci.owner_id = $1
   	AND ci.item_type = 'mech'
-	AND ci.xsyn_locked=false;
+	AND ci.xsyn_locked=false
+	ORDER BY m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
