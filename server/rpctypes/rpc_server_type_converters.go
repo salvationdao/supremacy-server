@@ -863,10 +863,6 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 				Value:     i.Label,
 			},
 			{
-				TraitType: "Weapon Model",
-				Value:     i.WeaponModelID, // TODO: bring in weapons matrix and have a list of weapons it can fit on
-			},
-			{
 				TraitType: "Tier",
 				Value:     i.Tier,
 			},

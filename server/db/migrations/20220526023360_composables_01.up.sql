@@ -104,30 +104,30 @@ CREATE TABLE power_cores
   CHASSIS SKINS
  */
 
-CREATE TABLE blueprint_chassis_skin
-(
-    id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    collection         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    mech_models         UUID        NOT NULL REFERENCES mech_models (id),
-    label              TEXT        NOT NULL,
-    tier               TEXT        NOT NULL DEFAULT 'MEGA',
-    image_url          TEXT,
-    animation_url      TEXT,
-    card_animation_url TEXT,
-    large_image_url    TEXT,
-    avatar_url         TEXT,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (mech_models, label)
-);
+-- CREATE TABLE blueprint_chassis_skin
+-- (
+--     id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+--     collection         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
+--     mech_model         UUID        NOT NULL REFERENCES mech_models (id),
+--     label              TEXT        NOT NULL,
+--     tier               TEXT        NOT NULL DEFAULT 'MEGA',
+--     image_url          TEXT,
+--     animation_url      TEXT,
+--     card_animation_url TEXT,
+--     large_image_url    TEXT,
+--     avatar_url         TEXT,
+--     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     UNIQUE (mech_model, label)
+-- );
 
 CREATE TABLE chassis_skin
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    blueprint_id             UUID REFERENCES blueprint_chassis_skin (id),
+    blueprint_id             UUID REFERENCES blueprint_mech_skin (id),
     genesis_token_id         BIGINT,
     limited_release_token_id BIGINT,
     label                    TEXT        NOT NULL,
-    mech_models               UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model               UUID        NOT NULL REFERENCES mech_models (id),
     equipped_on              UUID REFERENCES chassis (id),
     image_url                TEXT,
     animation_url            TEXT,
@@ -146,7 +146,7 @@ CREATE TABLE blueprint_chassis_animation
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection      COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     label           TEXT        NOT NULL,
-    mech_models      UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_models (id),
     tier            TEXT        NOT NULL DEFAULT 'MEGA',
     intro_animation BOOL                 DEFAULT TRUE,
     outro_animation BOOL                 DEFAULT TRUE,
@@ -158,7 +158,7 @@ CREATE TABLE chassis_animation
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     blueprint_id    UUID        NOT NULL REFERENCES blueprint_chassis_animation (id),
     label           TEXT        NOT NULL,
-    mech_models      UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_models (id),
     equipped_on     UUID REFERENCES chassis (id),
     intro_animation BOOL                 DEFAULT TRUE,
     outro_animation BOOL                 DEFAULT TRUE,
@@ -230,29 +230,29 @@ WHERE c.id = limited_release.chassis_id;
 
 
 -- extract and insert current skin blueprints
-WITH new_skins AS (SELECT DISTINCT c.skin,
-                                   c.model,
-                                   image_url,
-                                   animation_url,
-                                   card_animation_url,
-                                   avatar_url,
-                                   large_image_url,
-                                   t.tier
-                   FROM templates t
-                            INNER JOIN blueprint_chassis c ON t.blueprint_chassis_id = c.id)
-INSERT
-INTO blueprint_chassis_skin(mech_models, label, tier, image_url, animation_url, card_animation_url, large_image_url,
-                            avatar_url)
-SELECT (SELECT id FROM mech_models WHERE label = new_skins.model),
-       new_skins.skin,
-       new_skins.tier,
-       new_skins.image_url,
-       new_skins.animation_url,
-       new_skins.card_animation_url,
-       new_skins.large_image_url,
-       new_skins.avatar_url
-FROM new_skins
-ON CONFLICT (mech_models, label) DO NOTHING;
+-- WITH new_skins AS (SELECT DISTINCT c.skin,
+--                                    c.model,
+--                                    image_url,
+--                                    animation_url,
+--                                    card_animation_url,
+--                                    avatar_url,
+--                                    large_image_url,
+--                                    t.tier
+--                    FROM templates t
+--                             INNER JOIN blueprint_chassis c ON t.blueprint_chassis_id = c.id)
+-- INSERT
+-- INTO blueprint_mech_skin(mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url,
+--                             avatar_url)
+-- SELECT (SELECT id FROM mech_models WHERE label = new_skins.model),
+--        new_skins.skin,
+--        new_skins.tier,
+--        new_skins.image_url,
+--        new_skins.animation_url,
+--        new_skins.card_animation_url,
+--        new_skins.large_image_url,
+--        new_skins.avatar_url
+-- FROM new_skins
+-- ON CONFLICT (mech_model, label) DO NOTHING;
 
 -- extract and insert current equipped skins
 WITH new_skins AS (SELECT DISTINCT c.skin,
@@ -266,7 +266,7 @@ WITH new_skins AS (SELECT DISTINCT c.skin,
                    FROM mechs m
                             INNER JOIN chassis c ON m.chassis_id = c.id)
 INSERT
-INTO chassis_skin(equipped_on, mech_models, label, image_url, large_image_url, animation_url,
+INTO chassis_skin(equipped_on, mech_model, label, image_url, large_image_url, animation_url,
                   card_animation_url,
                   avatar_url)
 SELECT new_skins.chassis_id,
@@ -342,7 +342,7 @@ ALTER TABLE blueprint_chassis
     ADD COLUMN collection      COLLECTION NOT NULL DEFAULT 'supremacy-general',
     ADD COLUMN power_core_size TEXT       NOT NULL DEFAULT 'SMALL' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier            TEXT       NOT NULL DEFAULT 'MEGA',
-    ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
+    ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_mech_skin (id); -- this column is used temp and gets removed.
 
 UPDATE blueprint_chassis bc
 SET tier = (SELECT tier FROM templates WHERE blueprint_chassis_id = bc.id);
@@ -359,9 +359,9 @@ ALTER TABLE blueprint_chassis
 -- SET THE CONNECTED SKINS
 UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
-                       FROM blueprint_chassis_skin bcs
+                       FROM blueprint_mech_skin bcs
                        WHERE bcs.label = bc.skin
-                         AND bcs.mech_models = bc.model_id);
+                         AND bcs.mech_model = bc.model_id);
 
 -- fix ones we missed somehow
 UPDATE chassis_skin
@@ -370,9 +370,9 @@ WHERE label = 'Gundam';
 
 UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
-                    FROM blueprint_chassis_skin bms
+                    FROM blueprint_mech_skin bms
                     WHERE bms.label = ms.label
-                      AND ms.mech_models = bms.mech_models);
+                      AND ms.mech_model = bms.mech_model);
 
 -- here
 ALTER TABLE chassis_skin
