@@ -45,6 +45,7 @@ jobs:
           echo -e "Host hub.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host bridge.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host loghelpers.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_loghelpers\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host static-data.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_static-data\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo '${{ secrets.GH_DEPLOY_WS_PK }}' > ~/.ssh/id_ed25519_ws
           chmod 600 ~/.ssh/id_ed25519_ws
           echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
@@ -53,12 +54,15 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_bridge
           echo '${{ secrets.GH_DEPLOY_LOGHELPERS_PK }}' > ~/.ssh/id_ed25519_loghelpers
           chmod 600 ~/.ssh/id_ed25519_loghelpers
+          echo '${{ secrets.GH_DEPLOY_SUPREMACY_STATIC_DATA }}' > ~/.ssh/id_ed25519_static-data
+          chmod 600 ~/.ssh/id_ed25519_static-data
           git config --global user.name "Github CI"
           git config --global user.email "team@syndicate.ninja"
           git config --global --add url."git@ws.github.com:ninja-syndicate/ws".insteadOf "https://github.com/ninja-syndicate/ws"
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
           git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
+          git config --global --add url."git@static-data.github.com:ninja-syndicate/supremacy-static-data.git".insteadOf "https://github.com/ninja-syndicate/supremacy-static-data.git"
 
       - name: calculate version increment
         if: ${{ !env.ACT }} # if running in local test environment
@@ -86,6 +90,8 @@ jobs:
           cp -r ./scripts deploy/.
           cp -r ./configs deploy/.
           cp -r ./server/db/migrations deploy/.
+          mkdir -p deploy/static-migrations
+          cp -r ./server/db/static/. deploy/static-migrations/.
           cp -r ./server/asset deploy/.
 
       - name: Build API server
@@ -101,6 +107,12 @@ jobs:
       - name: Add info text
         run: |
           deploy/gameserver version --full > deploy/BuildInfo.txt
+
+      - name: Get Static Data Repo
+        run: |
+          git clone --branch develop https://github.com/ninja-syndicate/supremacy-static-data.git
+          mkdir -p deploy/static
+          mv supremacy-static-data/*.csv deploy/static
 
       - name: Update tags
         if: ${{ !env.ACT }} # if running in local test environment
@@ -175,6 +187,14 @@ jobs:
       - name: stop api-server
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl stop gameserver'
+
+      - name: "DB: sync migrations"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable&x-migrations-table=static_migrations" -path ./static-migrations up'
+
+      - name: "DB: sync static data"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver sync --static_path "./static/"'
 
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment

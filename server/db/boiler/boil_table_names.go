@@ -63,6 +63,7 @@ var TableNames = struct {
 	KV                                                 string
 	Languages                                          string
 	MarketplaceEvents                                  string
+	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
@@ -177,6 +178,7 @@ var TableNames = struct {
 	KV:                           "kv",
 	Languages:                    "languages",
 	MarketplaceEvents:            "marketplace_events",
+	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",

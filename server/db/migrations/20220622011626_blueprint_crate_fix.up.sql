@@ -4,21 +4,24 @@ WHERE blueprint_id =
       (SELECT id FROM blueprint_weapon_skin WHERE label = 'Dantes Inferno' AND weapon_type = 'Flamethrower');
 DELETE
 FROM mystery_crate_blueprints
-WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Damascus' AND weapon_type = 'Flamethrower');
+WHERE blueprint_id =
+      (SELECT id FROM blueprint_weapon_skin WHERE label = 'Watered Steel' AND weapon_type = 'Flamethrower');
 
 DELETE
 FROM mystery_crate_blueprints
-WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'BOTW' AND weapon_type = 'Lightning Gun');
+WHERE blueprint_id =
+      (SELECT id FROM blueprint_weapon_skin WHERE label = 'Calm Before the Store' AND weapon_type = 'Lightning Gun');
 DELETE
 FROM mystery_crate_blueprints
-WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Neko' AND weapon_type = 'Lightning Gun');
+WHERE blueprint_id =
+      (SELECT id FROM blueprint_weapon_skin WHERE label = 'Catastrophe' AND weapon_type = 'Lightning Gun');
 
 DELETE
 FROM mystery_crate_blueprints
-WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Cybernetics' AND weapon_type = 'BFG');
+WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Ready To Quench' AND weapon_type = 'BFG');
 DELETE
 FROM mystery_crate_blueprints
-WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Doom' AND weapon_type = 'BFG');
+WHERE blueprint_id = (SELECT id FROM blueprint_weapon_skin WHERE label = 'Lord of Hell' AND weapon_type = 'BFG');
 
 -- get rid of weapon skins in mech crates
 DELETE
@@ -31,7 +34,7 @@ WHERE mc.id = mcb.mystery_crate_id
 DO
 $$
     DECLARE
-        mystery_crate_blueprint mystery_crate_blueprints%ROWTYPE;
+        mystery_crate_blueprint MYSTERY_CRATE_BLUEPRINTS%ROWTYPE;
         i                       INTEGER;
     BEGIN
         i := 1;
@@ -48,7 +51,7 @@ $$
                              VALUES (mystery_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN',
                                      (SELECT id
                                       FROM blueprint_weapon_skin
-                                      WHERE label = 'Damascus'
+                                      WHERE label = 'Watered Steel'
                                         AND weapon_type = 'Flamethrower'));
                              i := i + 1;
                     WHEN i > 700
@@ -68,7 +71,7 @@ $$;
 DO
 $$
     DECLARE
-        mystery_crate_blueprint mystery_crate_blueprints%ROWTYPE;
+        mystery_crate_blueprint MYSTERY_CRATE_BLUEPRINTS%ROWTYPE;
         i                       INTEGER;
     BEGIN
         i := 1;
@@ -85,7 +88,7 @@ $$
                              VALUES (mystery_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN',
                                      (SELECT id
                                       FROM blueprint_weapon_skin
-                                      WHERE label = 'Neko'
+                                      WHERE label = 'Catastrophe'
                                         AND weapon_type = 'Lightning Gun'));
                              i := i + 1;
                     WHEN i > 700
@@ -93,7 +96,7 @@ $$
                              VALUES (mystery_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN',
                                      (SELECT id
                                       FROM blueprint_weapon_skin
-                                      WHERE label = 'BOTW'
+                                      WHERE label = 'Calm Before the Storm'
                                         AND weapon_type = 'Lightning Gun'));
                              i := i + 1;
                     END CASE;
@@ -105,7 +108,7 @@ $$;
 DO
 $$
     DECLARE
-        mystery_crate_blueprint mystery_crate_blueprints%ROWTYPE;
+        mystery_crate_blueprint MYSTERY_CRATE_BLUEPRINTS%ROWTYPE;
         i                       INTEGER;
     BEGIN
         i := 1;
@@ -122,7 +125,7 @@ $$
                              VALUES (mystery_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN',
                                      (SELECT id
                                       FROM blueprint_weapon_skin
-                                      WHERE label = 'Cybernetics'
+                                      WHERE label = 'Ready To Quench'
                                         AND weapon_type = 'BFG'));
                              i := i + 1;
                     WHEN i > 700
@@ -130,7 +133,7 @@ $$
                              VALUES (mystery_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN',
                                      (SELECT id
                                       FROM blueprint_weapon_skin
-                                      WHERE label = 'Doom'
+                                      WHERE label = 'Lord of Hell'
                                         AND weapon_type = 'BFG'));
                              i := i + 1;
                     END CASE;
