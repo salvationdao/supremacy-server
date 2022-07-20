@@ -95,6 +95,8 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for MechType
 const (

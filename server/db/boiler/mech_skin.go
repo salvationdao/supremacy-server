@@ -179,10 +179,10 @@ var MechSkinRels = struct {
 
 // mechSkinR is where relationships are stored.
 type mechSkinR struct {
-	Blueprint         *BlueprintMechSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	EquippedOnMech    *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	MechSkinMechModel *MechModel         `boiler:"MechSkinMechModel" boil:"MechSkinMechModel" json:"MechSkinMechModel" toml:"MechSkinMechModel" yaml:"MechSkinMechModel"`
-	ChassisSkinMechs  MechSlice          `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
+	Blueprint         *BlueprintChassisSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	EquippedOnMech    *Mech                 `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	MechSkinMechModel *MechModel            `boiler:"MechSkinMechModel" boil:"MechSkinMechModel" json:"MechSkinMechModel" toml:"MechSkinMechModel" yaml:"MechSkinMechModel"`
+	ChassisSkinMechs  MechSlice             `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -444,15 +444,15 @@ func (q mechSkinQuery) Exists(exec boil.Executor) (bool, error) {
 }
 
 // Blueprint pointed to by the foreign key.
-func (o *MechSkin) Blueprint(mods ...qm.QueryMod) blueprintMechSkinQuery {
+func (o *MechSkin) Blueprint(mods ...qm.QueryMod) blueprintChassisSkinQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BlueprintID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := BlueprintMechSkins(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mech_skin\"")
+	query := BlueprintChassisSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_chassis_skin\"")
 
 	return query
 }
@@ -550,8 +550,8 @@ func (mechSkinL) LoadBlueprint(e boil.Executor, singular bool, maybeMechSkin int
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_mech_skin`),
-		qm.WhereIn(`blueprint_mech_skin.id in ?`, args...),
+		qm.From(`blueprint_chassis_skin`),
+		qm.WhereIn(`blueprint_chassis_skin.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -559,19 +559,19 @@ func (mechSkinL) LoadBlueprint(e boil.Executor, singular bool, maybeMechSkin int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintMechSkin")
+		return errors.Wrap(err, "failed to eager load BlueprintChassisSkin")
 	}
 
-	var resultSlice []*BlueprintMechSkin
+	var resultSlice []*BlueprintChassisSkin
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMechSkin")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintChassisSkin")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_mech_skin")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_chassis_skin")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_skin")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_skin")
 	}
 
 	if len(mechSkinAfterSelectHooks) != 0 {
@@ -590,7 +590,7 @@ func (mechSkinL) LoadBlueprint(e boil.Executor, singular bool, maybeMechSkin int
 		foreign := resultSlice[0]
 		object.R.Blueprint = foreign
 		if foreign.R == nil {
-			foreign.R = &blueprintMechSkinR{}
+			foreign.R = &blueprintChassisSkinR{}
 		}
 		foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, object)
 		return nil
@@ -601,7 +601,7 @@ func (mechSkinL) LoadBlueprint(e boil.Executor, singular bool, maybeMechSkin int
 			if local.BlueprintID == foreign.ID {
 				local.R.Blueprint = foreign
 				if foreign.R == nil {
-					foreign.R = &blueprintMechSkinR{}
+					foreign.R = &blueprintChassisSkinR{}
 				}
 				foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, local)
 				break
@@ -927,7 +927,7 @@ func (mechSkinL) LoadChassisSkinMechs(e boil.Executor, singular bool, maybeMechS
 // SetBlueprint of the mechSkin to the related item.
 // Sets o.R.Blueprint to related.
 // Adds o to related.R.BlueprintMechSkins.
-func (o *MechSkin) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintMechSkin) error {
+func (o *MechSkin) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintChassisSkin) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -960,7 +960,7 @@ func (o *MechSkin) SetBlueprint(exec boil.Executor, insert bool, related *Bluepr
 	}
 
 	if related.R == nil {
-		related.R = &blueprintMechSkinR{
+		related.R = &blueprintChassisSkinR{
 			BlueprintMechSkins: MechSkinSlice{o},
 		}
 	} else {
