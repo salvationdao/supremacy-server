@@ -600,14 +600,15 @@ func SyncWeaponSkins(dt *StaticSyncTool) error {
 			Label:            record[1],
 			WeaponType:       record[2],
 			Tier:             record[3],
-			ImageUrl:         record[4],
-			CardAnimationUrl: record[5],
-			AvatarUrl:        record[6],
-			LargeImageUrl:    record[7],
-			BackgroundColor:  record[8],
-			AnimationUrl:     record[9],
-			YoutubeUrl:       record[10],
-			Collection:       record[11],
+			CreatedAt:        record[4],
+			ImageUrl:         record[5],
+			CardAnimationUrl: record[6],
+			AvatarUrl:        record[7],
+			LargeImageUrl:    record[8],
+			BackgroundColor:  record[9],
+			AnimationUrl:     record[10],
+			YoutubeUrl:       record[11],
+			Collection:       record[12],
 			WeaponModelID:    record[13],
 			StatModifier:     record[14],
 		}
@@ -655,7 +656,14 @@ func SyncWeaponSkins(dt *StaticSyncTool) error {
 		if weaponSkin.StatModifier == "" {
 			statModifier = nil
 		}
-
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
+		fmt.Println(weaponSkin.Collection)
 		_, err = dt.DB.Exec(`
 			INSERT INTO blueprint_weapon_skin(id, label, weapon_type, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, collection, weapon_model_id, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)

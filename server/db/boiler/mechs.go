@@ -261,7 +261,7 @@ var MechRels = struct {
 
 // mechR is where relationships are stored.
 type mechR struct {
-	Blueprint                    *BlueprintChassis            `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	Blueprint                    *BlueprintMech               `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	Brand                        *Brand                       `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	ChassisSkin                  *MechSkin                    `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
 	IntroAnimation               *MechAnimation               `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
@@ -551,7 +551,7 @@ func (q mechQuery) Exists(exec boil.Executor) (bool, error) {
 }
 
 // Blueprint pointed to by the foreign key.
-func (o *Mech) Blueprint(mods ...qm.QueryMod) blueprintChassisQuery {
+func (o *Mech) Blueprint(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BlueprintID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -559,8 +559,8 @@ func (o *Mech) Blueprint(mods ...qm.QueryMod) blueprintChassisQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := BlueprintChasses(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis\"")
+	query := BlueprintMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mechs\"")
 
 	return query
 }
@@ -1140,9 +1140,9 @@ func (mechL) LoadBlueprint(e boil.Executor, singular bool, maybeMech interface{}
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_chassis`),
-		qm.WhereIn(`blueprint_chassis.id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis.deleted_at`),
+		qm.From(`blueprint_mechs`),
+		qm.WhereIn(`blueprint_mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1150,19 +1150,19 @@ func (mechL) LoadBlueprint(e boil.Executor, singular bool, maybeMech interface{}
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintChassis")
+		return errors.Wrap(err, "failed to eager load BlueprintMech")
 	}
 
-	var resultSlice []*BlueprintChassis
+	var resultSlice []*BlueprintMech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintChassis")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMech")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_chassis")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_mechs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mechs")
 	}
 
 	if len(mechAfterSelectHooks) != 0 {
@@ -1181,7 +1181,7 @@ func (mechL) LoadBlueprint(e boil.Executor, singular bool, maybeMech interface{}
 		foreign := resultSlice[0]
 		object.R.Blueprint = foreign
 		if foreign.R == nil {
-			foreign.R = &blueprintChassisR{}
+			foreign.R = &blueprintMechR{}
 		}
 		foreign.R.BlueprintMechs = append(foreign.R.BlueprintMechs, object)
 		return nil
@@ -1192,7 +1192,7 @@ func (mechL) LoadBlueprint(e boil.Executor, singular bool, maybeMech interface{}
 			if local.BlueprintID == foreign.ID {
 				local.R.Blueprint = foreign
 				if foreign.R == nil {
-					foreign.R = &blueprintChassisR{}
+					foreign.R = &blueprintMechR{}
 				}
 				foreign.R.BlueprintMechs = append(foreign.R.BlueprintMechs, local)
 				break
@@ -4019,7 +4019,7 @@ func (mechL) LoadEquippedOnWeapons(e boil.Executor, singular bool, maybeMech int
 // SetBlueprint of the mech to the related item.
 // Sets o.R.Blueprint to related.
 // Adds o to related.R.BlueprintMechs.
-func (o *Mech) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintChassis) error {
+func (o *Mech) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintMech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -4052,7 +4052,7 @@ func (o *Mech) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintC
 	}
 
 	if related.R == nil {
-		related.R = &blueprintChassisR{
+		related.R = &blueprintMechR{
 			BlueprintMechs: MechSlice{o},
 		}
 	} else {

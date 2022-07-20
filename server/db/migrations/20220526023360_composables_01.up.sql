@@ -175,7 +175,7 @@ ALTER TABLE chassis
 --     unused/unneeded columns
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_chassis (id),
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_mechs (id),
     ADD COLUMN is_default               BOOL NOT NULL DEFAULT FALSE,
     ADD COLUMN is_insured               BOOL NOT NULL DEFAULT FALSE,
     ADD COLUMN name                     TEXT NOT NULL DEFAULT '',

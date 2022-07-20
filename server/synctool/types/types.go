@@ -83,6 +83,7 @@ type WeaponSkin struct {
 	WeaponType       string `json:"weapon_typep"`
 	Tier             string `json:"tier"`
 	ImageUrl         string `json:"image_url"`
+	CreatedAt        string `json:"created_at"`
 	CardAnimationUrl string `json:"card_animation_url"`
 	AvatarUrl        string `json:"avatar_url"`
 	LargeImageUrl    string `json:"large_image_url"`
