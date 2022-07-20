@@ -17,7 +17,8 @@ CREATE TABLE players_profile_avatars
     profile_avatar_id           UUID             NOT NULL REFERENCES profile_avatars (id),
     updated_at                  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
     deleted_at                  TIMESTAMPTZ,
-    created_at                  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    created_at                  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    UNIQUE (player_id, profile_avatar_id)
 );
 
 DO
@@ -91,7 +92,7 @@ set profile_avatar_id = inserted_avatars.id
 from inserted_avatars
 where blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
 
--- insert mech owner avatars
+-- insert mech avatars for owner 
 INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
 SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
 INNER JOIN collection_items ci ON ci.owner_id =  p.id 

@@ -809,7 +809,7 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 	return nil
 }
 
-// GiveMechAvatar gives player mech avatar
+// GiveMechAvatar gives player mech skin avatar from mech
 func GiveMechAvatar(playerID string, mechID string) error {
 	// get mech
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
@@ -819,6 +819,51 @@ func GiveMechAvatar(playerID string, mechID string) error {
 
 	// get mech skin
 	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mech.ID))).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// get blueprint mech skin
+	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	if !bms.ProfileAvatarID.Valid {
+		return nil
+	}
+
+	// check if player already has this avatar
+	exists, err := boiler.PlayersProfileAvatars(
+		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
+		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if exists != nil {
+		return nil
+	}
+
+	// insert into player profile avatars
+	ppa := &boiler.PlayersProfileAvatar{
+		PlayerID:        playerID,
+		ProfileAvatarID: bms.ProfileAvatarID.String,
+	}
+
+	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GiveMechAvatar gives player mech skin avatar from mech
+func GiveMechSkinAvatar(playerID string, mechSkinID string) error {
+	// get mech skin
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.ID.EQ(mechSkinID)).One(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
