@@ -14,7 +14,6 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -29,11 +28,15 @@ func SaleAbilitiesRouter(api *API) chi.Router {
 		api,
 	}
 	r := chi.NewRouter()
+	// Admin
 	r.Get("/all", WithToken(api.Config.ServerStreamKey, WithError(c.All)))
 	r.Post("/create", WithToken(api.Config.ServerStreamKey, WithError(c.Create)))
 	r.Post("/delist", WithToken(api.Config.ServerStreamKey, WithError(c.Delist)))
 	r.Post("/relist", WithToken(api.Config.ServerStreamKey, WithError(c.Relist)))
 	r.Post("/delete", WithToken(api.Config.ServerStreamKey, WithError(c.Delete)))
+
+	// Public
+	r.Get("/availability/{player_id}", WithError(c.Availability))
 
 	return r
 }
@@ -90,8 +93,6 @@ func (sac *SaleAbilitiesController) All(w http.ResponseWriter, r *http.Request) 
 
 type SaleAbilitiesCreateRequest struct {
 	BlueprintID  string `json:"blueprint_id"`
-	CostSups     string `json:"cost_sups"`
-	SaleLimit    int    `json:"sale_limit"`
 	RarityWeight int    `json:"rarity_weight"`
 }
 
@@ -106,27 +107,12 @@ func (sac *SaleAbilitiesController) Create(w http.ResponseWriter, r *http.Reques
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Player ability blueprint ID must be provided"))
 	}
 
-	if req.SaleLimit < 1 {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Sale limit must be at least 1"))
-	}
-
 	if req.RarityWeight <= 0 {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Rarity weight cannot be negative or zero"))
 	}
 
-	initialCost, err := decimal.NewFromString(req.CostSups)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to create sale ability")
-	}
-
-	if initialCost.LessThan(decimal.NewFromInt(0)) {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Initial cost cannot be less than 0 sups"))
-	}
-
 	spa := &boiler.SalePlayerAbility{
 		BlueprintID:  req.BlueprintID,
-		CurrentPrice: initialCost,
-		SaleLimit:    req.SaleLimit,
 		RarityWeight: req.RarityWeight,
 	}
 	err = spa.Insert(gamedb.StdConn, boil.Infer())
@@ -229,4 +215,18 @@ func (sac *SaleAbilitiesController) Delete(w http.ResponseWriter, r *http.Reques
 	sac.API.SalePlayerAbilitiesSystem.RehydratePool()
 
 	return http.StatusOK, nil
+}
+
+type AvailabilityResponse struct {
+	CanPurchase bool `json:"can_purchase"`
+}
+
+func (sac *SaleAbilitiesController) Availability(w http.ResponseWriter, r *http.Request) (int, error) {
+	playerID := chi.URLParam(r, "player_id")
+
+	canPurchase := sac.API.SalePlayerAbilitiesSystem.CanUserClaim(playerID)
+
+	return helpers.EncodeJSON(w, &AvailabilityResponse{
+		CanPurchase: canPurchase,
+	})
 }

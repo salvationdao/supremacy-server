@@ -179,7 +179,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		factionUniqueAbilities, err := boiler.GameAbilities(
 			boiler.GameAbilityWhere.FactionID.EQ(factionID.String()),
 			boiler.GameAbilityWhere.BattleAbilityID.IsNull(),
-			boiler.GameAbilityWhere.Level.NEQ(boiler.AbilityLevelMECH),
+			boiler.GameAbilityWhere.Level.EQ(boiler.AbilityLevelFACTION),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
@@ -356,13 +356,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				factionAbilities = append(factionAbilities, ability)
 			}
 		}
-		ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
 	}
 
 	// broadcast war machine abilities
 	for _, wm := range battle.WarMachines {
 		if len(wm.Abilities) > 0 {
-			ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
 		}
 	}
 
@@ -1623,7 +1623,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		ws.PublishMessage(fmt.Sprintf("/ability/%s", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
 	// broadcast battle ability to non-login or non-faction players
@@ -1998,9 +1998,9 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 				if data.ShouldReset {
 					switch abilityLevel {
 					case boiler.AbilityLevelFACTION:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, data)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyAbilityPriceUpdated, data)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
 					}
 					shouldBroadcast.Store(false)
 					continue
@@ -2026,9 +2026,9 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 				if shouldBroadcast.Load() {
 					switch abilityLevel {
 					case boiler.AbilityLevelFACTION:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					}
 					shouldBroadcast.Store(false)
 				}
