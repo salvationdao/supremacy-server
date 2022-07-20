@@ -55,13 +55,13 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		newWeaponSkin.ID,
 		blueprintWeaponSkin.Tier,
 		ownerID.String(),
-		weaponModel.R.DefaultSkin.ImageURL,
-		weaponModel.R.DefaultSkin.CardAnimationURL,
-		weaponModel.R.DefaultSkin.AvatarURL,
-		weaponModel.R.DefaultSkin.LargeImageURL,
-		weaponModel.R.DefaultSkin.BackgroundColor,
-		weaponModel.R.DefaultSkin.AnimationURL,
-		weaponModel.R.DefaultSkin.YoutubeURL,
+		blueprintWeaponSkin.ImageURL,
+		blueprintWeaponSkin.CardAnimationURL,
+		blueprintWeaponSkin.AvatarURL,
+		blueprintWeaponSkin.LargeImageURL,
+		blueprintWeaponSkin.BackgroundColor,
+		blueprintWeaponSkin.AnimationURL,
+		blueprintWeaponSkin.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
