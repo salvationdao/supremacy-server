@@ -204,19 +204,3 @@ func (s *S) AssetTransferHandler(req *AssetTransferReq, resp *AssetTransferResp)
 	resp.OtherTransferredAssetHashes = asset.HandleTransferEvent(s.passportRPC, req.TransferEvent, false)
 	return nil
 }
-
-
-type AssetGetMetadataReq struct {
-	AssetHash string `json:"asset_hash"`
-}
-
-type AssetGetMetadataResp struct {
-	XsynAsset *rpctypes.XsynAsset `json:"xsyn_asset"`
-}
-
-func (s *S) AssetGetMetadataHandler(req *AssetTransferReq, resp *AssetTransferResp) error {
-
-
-
-	return nil
-}
