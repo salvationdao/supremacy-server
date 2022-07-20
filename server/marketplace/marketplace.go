@@ -543,6 +543,13 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				}
 			}
 
+			if ci.ItemType == boiler.ItemTypeMechSkin {
+				err = db.GiveMechSkinAvatar(auctionItem.AuctionBidUserID.String(), ci.ItemID)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to give player mech avatar")
+				}
+			}
+
 			// Log Event
 			err = db.MarketplaceAddEvent(boiler.MarketplaceEventPurchase, auctionItem.AuctionBidUserID.String(), decimal.NewNullDecimal(auctionItem.AuctionBidPrice), auctionItem.ID.String(), boiler.TableNames.ItemSales)
 			if err != nil {
