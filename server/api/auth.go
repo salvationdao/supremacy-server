@@ -170,27 +170,24 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 	}
 
 	// get user from passport
-	user, err := api.TokenLogin(token)
+	user, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
 	}
 
-	// check token existence
-	device, err := boiler.Devices(
-		boiler.DeviceWhere.Token.EQ(token),
-		boiler.DeviceWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("failed to query token from db ")
-		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+	d := boiler.Device{
+		PlayerID: user.ID,
+		Name:     r.UserAgent(),
 	}
 
-	if device == nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+	err = d.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("user id", user.ID).Msg("Failed to insert user device.")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to add user device.")
 	}
 
 	// write cookie
-	err = api.WriteCookie(w, r, token)
+	err = api.WriteCookie(w, r, user.Token)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to write cookie")
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get user from token.")

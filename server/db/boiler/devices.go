@@ -25,7 +25,7 @@ import (
 type Device struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	PlayerID  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	Token     string    `boiler:"token" boil:"token" json:"token" toml:"token" yaml:"token"`
+	Name      string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -37,14 +37,14 @@ type Device struct {
 var DeviceColumns = struct {
 	ID        string
 	PlayerID  string
-	Token     string
+	Name      string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "id",
 	PlayerID:  "player_id",
-	Token:     "token",
+	Name:      "name",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
 	DeletedAt: "deleted_at",
@@ -53,14 +53,14 @@ var DeviceColumns = struct {
 var DeviceTableColumns = struct {
 	ID        string
 	PlayerID  string
-	Token     string
+	Name      string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
 }{
 	ID:        "devices.id",
 	PlayerID:  "devices.player_id",
-	Token:     "devices.token",
+	Name:      "devices.name",
 	CreatedAt: "devices.created_at",
 	UpdatedAt: "devices.updated_at",
 	DeletedAt: "devices.deleted_at",
@@ -71,14 +71,14 @@ var DeviceTableColumns = struct {
 var DeviceWhere = struct {
 	ID        whereHelperstring
 	PlayerID  whereHelperstring
-	Token     whereHelperstring
+	Name      whereHelperstring
 	CreatedAt whereHelpertime_Time
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
 	ID:        whereHelperstring{field: "\"devices\".\"id\""},
 	PlayerID:  whereHelperstring{field: "\"devices\".\"player_id\""},
-	Token:     whereHelperstring{field: "\"devices\".\"token\""},
+	Name:      whereHelperstring{field: "\"devices\".\"name\""},
 	CreatedAt: whereHelpertime_Time{field: "\"devices\".\"created_at\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"devices\".\"updated_at\""},
 	DeletedAt: whereHelpernull_Time{field: "\"devices\".\"deleted_at\""},
@@ -105,8 +105,8 @@ func (*deviceR) NewStruct() *deviceR {
 type deviceL struct{}
 
 var (
-	deviceAllColumns            = []string{"id", "player_id", "token", "created_at", "updated_at", "deleted_at"}
-	deviceColumnsWithoutDefault = []string{"player_id", "token"}
+	deviceAllColumns            = []string{"id", "player_id", "name", "created_at", "updated_at", "deleted_at"}
+	deviceColumnsWithoutDefault = []string{"player_id", "name"}
 	deviceColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	devicePrimaryKeyColumns     = []string{"id"}
 	deviceGeneratedColumns      = []string{}
