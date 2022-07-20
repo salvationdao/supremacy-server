@@ -755,5 +755,5 @@ func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return output, nil
 }
