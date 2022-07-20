@@ -437,8 +437,9 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
 	}
 
+	btl := arena.CurrentBattle()
 	// skip, if current not battle
-	if arena.CurrentBattle() == nil {
+	if btl == nil {
 		gamelog.L.Warn().Msg("no current battle")
 		return nil
 	}
@@ -450,18 +451,14 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID, err := uuid.FromString(user.ID)
-	if err != nil || userID.IsNil() {
-		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", user.ID)
-		return terror.Error(terror.ErrForbidden)
-	}
+	as := btl.AbilitySystem()
 
-	if arena.CurrentBattle().AbilitySystem() == nil {
+	if AbilitySystemIsAvailable(as) {
 		gamelog.L.Error().Str("log_name", "battle arena").Msg("AbilitySystem is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	err = arena.CurrentBattle().AbilitySystem().LocationSelect(userID, req.Payload.StartCoords, req.Payload.EndCoords)
+	err = as.LocationSelect(user.ID, factionID, req.Payload.StartCoords, req.Payload.EndCoords)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msgf("Unable to select location")
 		return terror.Error(err, "Unable to select location")
@@ -493,46 +490,32 @@ func (arena *Arena) MinimapUpdatesSubscribeHandler(ctx context.Context, key stri
 	return nil
 }
 
+const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
+
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
 func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// get a random faction id
 	if arena.CurrentBattle() != nil {
-		btl := arena.CurrentBattle()
-		if btl.AbilitySystem() != nil {
-			ga, _ := btl.AbilitySystem().FactionBattleAbilityGet(server.RedMountainFactionID)
-			if ga != nil {
-				reply(GameAbility{
-					ID:                     ga.ID,
-					GameClientAbilityID:    byte(ga.GameClientAbilityID),
-					ImageUrl:               ga.ImageUrl,
-					Description:            ga.Description,
-					FactionID:              ga.FactionID,
-					Label:                  ga.Label,
-					SupsCost:               ga.SupsCost,
-					CurrentSups:            ga.CurrentSups,
-					Colour:                 ga.Colour,
-					TextColour:             ga.TextColour,
-					CooldownDurationSecond: ga.CooldownDurationSecond,
-					OfferingID:             uuid.Nil, // remove offering id to disable bribing
-				})
+		as := arena.CurrentBattle().AbilitySystem()
+		if AbilitySystemIsAvailable(as) {
+			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+			ga, err := ba.GameAbilities().One(gamedb.StdConn)
+			if err != nil {
+				return terror.Error(err, "Failed to get battle ability")
 			}
+			reply(GameAbility{
+				ID:                     ga.ID,
+				GameClientAbilityID:    byte(ga.GameClientAbilityID),
+				ImageUrl:               ga.ImageURL,
+				Description:            ga.Description,
+				FactionID:              ga.FactionID,
+				Label:                  ga.Label,
+				Colour:                 ga.Colour,
+				TextColour:             ga.TextColour,
+				CooldownDurationSecond: ba.CooldownDurationSecond,
+			})
 		}
 	}
-	return nil
-}
-
-const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
-
-func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// return data if, current battle is not null
-	if arena.CurrentBattle() != nil {
-		btl := arena.CurrentBattle()
-		if btl.AbilitySystem() != nil {
-			ability, _ := btl.AbilitySystem().FactionBattleAbilityGet(factionID)
-			reply(ability)
-		}
-	}
-
 	return nil
 }
 

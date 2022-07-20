@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
@@ -12,6 +13,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sort"
 	"sync"
 	"time"
 
@@ -20,7 +22,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
@@ -39,7 +40,17 @@ type AbilitiesSystem struct {
 	startedAt         time.Time
 	BattleAbilityPool *AbilityPool
 	isClosed          atomic.Bool
+
+	locationSelectChan chan *locationSelect
+
 	sync.RWMutex
+}
+
+type locationSelect struct {
+	userID     string
+	factionID  string
+	startPoint server.CellLocation
+	endPoint   *server.CellLocation
 }
 
 type optIn struct {
@@ -111,12 +122,12 @@ type BattleAbility struct {
 	sync.RWMutex
 }
 
-func (ba *BattleAbility) store(battleAbility *boiler.BattleAbility, offeringID string) {
+func (ba *BattleAbility) store(battleAbility *boiler.BattleAbility) {
 	ba.Lock()
 	defer ba.Unlock()
 
 	ba.BattleAbility = battleAbility
-	ba.OfferingID = offeringID
+	ba.OfferingID = uuid.Must(uuid.NewV4()).String()
 }
 
 func (ba *BattleAbility) LoadOfferingID() string {
@@ -134,7 +145,8 @@ func (ba *BattleAbility) LoadBattleAbility() *boiler.BattleAbility {
 }
 
 type LocationDeciders struct {
-	m map[string][]string
+	m               map[string][]string
+	currentDeciders map[string]string
 	sync.RWMutex
 }
 
@@ -144,7 +156,46 @@ func (ld *LocationDeciders) clear() {
 
 	for key := range ld.m {
 		ld.m[key] = []string{}
+		ld.currentDeciders[key] = ""
 	}
+}
+
+func (ld *LocationDeciders) currentDecider(factionID string) string {
+	ld.RLock()
+	defer ld.RUnlock()
+
+	id, ok := ld.currentDeciders[factionID]
+	if !ok {
+		return ""
+	}
+	return id
+}
+
+func (ld *LocationDeciders) currentDeciderClear(factionID string) {
+	ld.RLock()
+	defer ld.RUnlock()
+
+	ld.currentDeciders[factionID] = ""
+}
+
+func (ld *LocationDeciders) maxSelectorAmount() int {
+	ld.RLock()
+	defer ld.RUnlock()
+
+	if len(ld.m) == 0 {
+		return 0
+	}
+
+	lengths := []int{}
+	for _, m := range ld.m {
+		lengths = append(lengths, len(m))
+	}
+
+	sort.Slice(lengths, func(i, j int) bool {
+		return lengths[i] > lengths[j]
+	})
+
+	return lengths[0]
 }
 
 func (ld *LocationDeciders) store(factionID string, userID string) {
@@ -158,23 +209,6 @@ func (ld *LocationDeciders) store(factionID string, userID string) {
 	ld.m[factionID] = append(ld.m[factionID], userID)
 }
 
-func (ld *LocationDeciders) pop(factionID string) {
-	ld.Lock()
-	defer ld.Unlock()
-	li, ok := ld.m[factionID]
-
-	if !ok || len(li) == 0 {
-		return
-	}
-
-	if len(li) == 1 {
-		ld.m[factionID] = []string{}
-		return
-	}
-
-	ld.m[factionID] = li[1:]
-}
-
 func (ld *LocationDeciders) length(factionID string) int {
 	ld.RLock()
 	defer ld.RUnlock()
@@ -185,11 +219,31 @@ func (ld *LocationDeciders) length(factionID string) int {
 	return 0
 }
 
+func (ld *LocationDeciders) pop(factionID string) {
+	ld.Lock()
+	defer ld.Unlock()
+	ids, ok := ld.m[factionID]
+	if !ok || len(ids) == 0 {
+		return
+	}
+
+	if len(ids) == 1 {
+		ld.m[factionID] = []string{}
+		return
+	}
+
+	ld.m[factionID] = ids[1:]
+}
+
 func (ld *LocationDeciders) first(factionID string) string {
-	ld.RLock()
-	defer ld.RUnlock()
+	ld.Lock()
+	defer ld.Unlock()
+
+	// update current decider as well
+	ld.currentDeciders[factionID] = ""
 
 	if ids, ok := ld.m[factionID]; ok && len(ids) > 0 {
+		ld.currentDeciders[factionID] = ids[0]
 		return ids[0]
 	}
 
@@ -224,7 +278,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
 			},
 		},
-		isClosed: atomic.Bool{},
+		isClosed:           atomic.Bool{},
+		locationSelectChan: make(chan *locationSelect),
 	}
 	as.isClosed.Store(false)
 
@@ -285,7 +340,6 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 		Colour:                 ga.Colour,
 		TextColour:             ga.TextColour,
 		CooldownDurationSecond: ba.CooldownDurationSecond,
-		OfferingID:             uuid.Must(uuid.NewV4()), // remove offering id to disable bribing
 	})
 
 	return ba.CooldownDurationSecond, nil
@@ -396,21 +450,57 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			case BribeStageHold:
 				continue
 
-			// at the end of bribing phase
+			// at the end of opt in phase
 			// no ability is triggered, switch to cooldown phase
 			case BribeStageOptIn:
 				if !AbilitySystemIsAvailable(as) {
 					// fire close
 					continue
 				}
-				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
+
+				as.locationDecidersSet()
+
+				// get another ability if no one opt in
+				if as.BattleAbilityPool.LocationDeciders.maxSelectorAmount() == 0 {
+					// set new battle ability
+					cooldownSecond, err := as.SetNewBattleAbility()
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
+					}
+
+					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
+					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+					// broadcast stage to frontend
+					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+					continue
 				}
 
-				as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
-				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+				// broadcast the announcement to the next location decider
+				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+				// announce winner
+				gas, err := ba.GameAbilities().All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("battle ability", ba.Label).Err(err).Msg("Failed to load game ability for notification")
+				}
+
+				// assign ability user
+				for _, ga := range gas {
+					userID := as.BattleAbilityPool.LocationDeciders.first(ga.FactionID)
+					if userID != "" {
+						ws.PublishMessage(fmt.Sprintf("/user/%s", userID), HubKeyBribingWinnerSubscribe, struct {
+							GameAbility *boiler.GameAbility `json:"game_ability"`
+							EndTime     time.Time           `json:"end_time"`
+						}{
+							GameAbility: ga,
+							EndTime:     as.BattleAbilityPool.Stage.EndTime(),
+						})
+
+						// broadcast faction notification
+					}
+				}
+
+				as.BattleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
+				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.BattleAbilityPool.config.BattleAbilityLocationSelectDuration * time.Second))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
@@ -421,80 +511,88 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
-				// get game ability
-				ga, err := ba.GameAbilities().One(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Error().Str("battle ability", ba.Label).Err(err).Msg("Failed to load game ability for notification")
+				// pop out the first decider
+				for factionID := range as.BattleAbilityPool.LocationDeciders.currentDeciders {
+					as.BattleAbilityPool.LocationDeciders.pop(factionID)
 				}
 
-				// get the next location decider
-				currentUserID, nextUserID, ok := as.nextLocationDeciderGet()
-				if !ok {
-					if as.BattleAbilityPool == nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Msg("ability pool is nil")
-						continue
-					}
-
-					// broadcast no ability
-					as.broadcastLocationSelectNotification(&GameNotificationLocationSelect{
-						Type: LocationSelectTypeCancelledNoPlayer,
-						Ability: &AbilityBrief{
-							Label:    ga.Label,
-							ImageUrl: ga.ImageURL,
-							Colour:   ga.Colour,
-						},
-					})
-
+				// if no selector in the pool, get into cool down stage
+				if as.BattleAbilityPool.LocationDeciders.maxSelectorAmount() == 0 {
 					// set new battle ability
 					cooldownSecond, err := as.SetNewBattleAbility()
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 					}
-					// enter cooldown phase, if there is no user left for location select
+
 					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+					// broadcast stage to frontend
 					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 					continue
 				}
 
-				notification := &GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailedTimeout,
-					Ability: &AbilityBrief{
-						Label:    ga.Label,
-						ImageUrl: ga.ImageURL,
-						Colour:   ga.Colour,
-					},
+				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+				// get game ability
+				gas, err := ba.GameAbilities().All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("battle ability", ba.Label).Err(err).Msg("Failed to load game ability for notification")
 				}
 
-				// get current player
-				currentPlayer, err := BuildUserDetailWithFaction(currentUserID)
-				if err == nil {
-					notification.CurrentUser = currentPlayer
-				}
+				// assign ability user
+				wg := sync.WaitGroup{}
+				for _, ga := range gas {
+					wg.Add(1)
+					go func(ga *boiler.GameAbility) {
+						lastUserID := as.BattleAbilityPool.LocationDeciders.currentDecider(ga.FactionID)
+						if lastUserID != "" {
+							// send failed select notification
+							notification := &GameNotificationLocationSelect{
+								Type: LocationSelectTypeFailedTimeout,
+								Ability: &AbilityBrief{
+									Label:    gas[0].Label,
+									ImageUrl: gas[0].ImageURL,
+									Colour:   gas[0].Colour,
+								},
+							}
 
-				// get next player
-				nextPlayer, err := BuildUserDetailWithFaction(nextUserID)
-				if err == nil {
-					notification.NextUser = nextPlayer
-				}
+							// get current player
+							currentPlayer, err := BuildUserDetailWithFaction(uuid.FromStringOrNil(lastUserID))
+							if err == nil {
+								notification.CurrentUser = currentPlayer
+							}
 
-				go as.broadcastLocationSelectNotification(notification)
+							go as.broadcastLocationSelectNotification(notification)
+
+							// get next location decider
+							userID := as.BattleAbilityPool.LocationDeciders.first(ga.FactionID)
+							if userID != "" {
+								// get next player
+								nextPlayer, err := BuildUserDetailWithFaction(uuid.FromStringOrNil(userID))
+								if err == nil {
+									notification.NextUser = nextPlayer
+								}
+
+								ws.PublishMessage(fmt.Sprintf("/user/%s", userID), HubKeyBribingWinnerSubscribe, struct {
+									GameAbility *boiler.GameAbility `json:"game_ability"`
+									EndTime     time.Time           `json:"end_time"`
+								}{
+									GameAbility: ga,
+									EndTime:     as.BattleAbilityPool.Stage.EndTime(),
+								})
+
+								// broadcast faction notification
+							}
+						}
+						wg.Done()
+					}(ga)
+				}
+				wg.Wait()
 
 				// extend location select phase duration
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.BattleAbilityPool.config.BattleAbilityLocationSelectDuration))
 				// broadcast stage to frontend
 				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
-
-				// broadcast the announcement to the next location decider
-				ws.PublishMessage(fmt.Sprintf("/user/%s", nextUserID), HubKeyBribingWinnerSubscribe, struct {
-					GameAbility *boiler.GameAbility `json:"game_ability"`
-					EndTime     time.Time           `json:"end_time"`
-				}{
-					GameAbility: ga,
-					EndTime:     as.BattleAbilityPool.Stage.EndTime(),
-				})
 
 			// at the end of cooldown phase
 			// random choose a battle ability for next bribing session
@@ -510,6 +608,109 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			default:
 				gamelog.L.Error().Str("log_name", "battle arena").Msg("hit default case switch on abilities loop")
 			}
+
+		// location select chan
+		case ls := <-as.locationSelectChan:
+			// check battle end
+			if AbilitySystemIsAvailable(as) {
+				gamelog.L.Warn().Str("func", "LocationSelect").Msg("Ability system is not available.")
+				continue
+			}
+
+			btl, ok := as.battle()
+			if !ok {
+				continue
+			}
+
+			// check eligibility
+			if as.BattleAbilityPool.LocationDeciders.currentDecider(ls.factionID) != ls.userID {
+				continue
+			}
+
+			offeringID := uuid.Must(uuid.NewV4())
+			userUUID := uuid.FromStringOrNil(ls.userID)
+
+			// clear up current faction location decider
+			as.BattleAbilityPool.LocationDeciders.currentDeciderClear(ls.factionID)
+
+			// start ability trigger process
+			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+			ga, err := ba.GameAbilities().One(gamedb.StdConn)
+			if err != nil {
+				continue
+			}
+
+			// get player detail
+			player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ls.userID)).One(gamedb.StdConn)
+			if err != nil {
+				continue
+			}
+
+			faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(ls.factionID)).One(gamedb.StdConn)
+			if err != nil {
+				continue
+			}
+
+			event := &server.GameAbilityEvent{
+				IsTriggered:         true,
+				GameClientAbilityID: byte(ga.GameClientAbilityID),
+				TriggeredByUserID:   &userUUID,
+				TriggeredByUsername: &player.Username.String,
+				EventID:             offeringID,
+				FactionID:           &ls.factionID,
+			}
+
+			event.GameLocation = btl.getGameWorldCoordinatesFromCellXY(&ls.startPoint)
+
+			if ga.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && ls.endPoint != nil {
+				event.GameLocationEnd = btl.getGameWorldCoordinatesFromCellXY(ls.endPoint)
+			}
+
+			// trigger location select
+			btl.arena.Message("BATTLE:ABILITY", event)
+
+			bat := boiler.BattleAbilityTrigger{
+				PlayerID:          null.StringFrom(ls.userID),
+				BattleID:          btl.ID,
+				FactionID:         ga.FactionID,
+				IsAllSyndicates:   true,
+				AbilityLabel:      ga.Label,
+				GameAbilityID:     ga.ID,
+				AbilityOfferingID: offeringID.String(),
+			}
+			err = bat.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
+			}
+
+			_, err = db.UserStatAddTotalAbilityTriggered(ls.userID)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", ls.userID).Err(err).Msg("failed to update user ability triggered amount")
+			}
+
+			btl.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+				Type: LocationSelectTypeTrigger,
+				Ability: &AbilityBrief{
+					Label:    ga.Label,
+					ImageUrl: ga.ImageURL,
+					Colour:   ga.Colour,
+				},
+				CurrentUser: &UserBrief{
+					ID:        userUUID,
+					Username:  player.Username.String,
+					FactionID: player.FactionID.String,
+					Gid:       player.Gid,
+					Faction: &Faction{
+						ID:    faction.ID,
+						Label: faction.Label,
+						Theme: &Theme{
+							PrimaryColor:    faction.PrimaryColor,
+							SecondaryColor:  faction.SecondaryColor,
+							BackgroundColor: faction.BackgroundColor,
+						},
+					},
+				},
+			})
 		}
 	}
 }
@@ -521,6 +722,13 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 
 	if !AbilitySystemIsAvailable(as) {
 		return
+	}
+
+	// check ability is advance
+	locationSelectorAmount := 2
+	if as.BattleAbilityPool.BattleAbility.Label == as.BattleAbilityPool.config.AdvanceAbilityLabel {
+		// drop selector amount to one
+		locationSelectorAmount = 1
 	}
 
 	offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
@@ -544,63 +752,8 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 		return
 	}
 
-	// shuffle players
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(bao), func(i, j int) { bao[i], bao[j] = bao[j], bao[i] })
-
-	for _, ba := range bao {
-		// skip, if player is not connected
-		if !ws.IsConnected(ba.PlayerID) {
-			continue
-		}
-
-		// check player is active (no mouse movement)
-		exist := false
-		for _, ap := range aps {
-			if ap.PlayerID == ba.PlayerID {
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			continue
-		}
-
-		//
-		if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) == 2 {
-			continue
-		}
-
-		// set player ability
-		as.BattleAbilityPool.LocationDeciders.store(ba.FactionID, ba.PlayerID)
-	}
-
-	playerList, err := db.PlayerFactionContributionList(battleID, factionID, abilityOfferingID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
-	}
-
-	// sort the order of the list
-	tempList := []uuid.UUID{}
-	for _, tid := range triggerByUserID {
-		tempList = append(tempList, tid)
-	}
-	for _, pid := range playerList {
-		exists := false
-		for _, tid := range triggerByUserID {
-			if pid == tid {
-				exists = true
-				break
-			}
-		}
-		if exists {
-			continue
-		}
-		tempList = append(tempList, pid)
-	}
-
 	// get location select limited players
-	punishedPlayers, err := boiler.PlayerBans(
+	pbs, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
 		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.BanLocationSelect.EQ(true),
@@ -608,54 +761,68 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get limited select players from db")
 	}
-	// initialise location select list
-	as.locationDeciders.list = []uuid.UUID{}
 
-	for _, pid := range tempList {
-		isPunished := false
-		// check user is banned
-		for _, pp := range punishedPlayers {
+	// shuffle players
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(bao), func(i, j int) { bao[i], bao[j] = bao[j], bao[i] })
 
-			if pp.BannedPlayerID == pid.String() {
-				isPunished = true
-				break
+	wg := sync.WaitGroup{}
+	for factionID := range as.BattleAbilityPool.LocationDeciders.m {
+		wg.Add(1)
+		go func(factionID string) {
+			for _, ba := range bao {
+				if ba.FactionID != factionID {
+					continue
+				}
+
+				// skip, if player is not connected
+				if !ws.IsConnected(ba.PlayerID) {
+					continue
+				}
+
+				// check user is banned
+				isBanned := false
+				for _, pb := range pbs {
+					if pb.BannedPlayerID == ba.PlayerID {
+						isBanned = true
+						break
+					}
+				}
+
+				// skip, if player is banned
+				if isBanned {
+					continue
+				}
+
+				// check player is active (no mouse movement)
+				exist := false
+				for _, ap := range aps {
+					if ap.PlayerID == ba.PlayerID {
+						exist = true
+						break
+					}
+				}
+
+				// skip, if player does not exist
+				if !exist {
+					continue
+				}
+
+				if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) >= locationSelectorAmount {
+					continue
+				}
+
+				// set location decider list
+				as.BattleAbilityPool.LocationDeciders.store(ba.FactionID, ba.PlayerID)
 			}
-		}
 
-		// append to the list if player is not punished
-		if !isPunished {
-			as.locationDeciders.list = append(as.locationDeciders.list, pid)
-		}
+			wg.Done()
+		}(factionID)
 	}
-}
+	// wait until all process done
+	wg.Wait()
 
-// nextLocationDeciderGet return the uuid of the next player to select the location for ability
-func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the nextLocationDeciderGet!", r)
-		}
-	}()
-	if as.locationDeciders == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("nil check failed as.locationDeciders")
-
-		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
-	}
-
-	// clean up the location select list if there is no user left to select location
-	if len(as.locationDeciders.list) <= 1 {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("no as.locationDeciders <= 1")
-		as.locationDeciders.list = []uuid.UUID{}
-		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
-	}
-
-	currentUserID := as.locationDeciders.list[0]
-	nextUserID := as.locationDeciders.list[1]
-
-	// remove the first user from the list
-	as.locationDeciders.list = as.locationDeciders.list[1:]
-
-	return currentUserID, nextUserID, true
+	return
 }
 
 func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStageNormalised {
@@ -665,128 +832,24 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStageNormalised {
 	return nil
 }
 
-func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID string) (*GameAbility, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the FactionBattleAbilityGet!", r)
-		}
-	}()
-	if as.BattleAbilityPool == nil {
-		return nil, fmt.Errorf("BattleAbilityPool is nil, fid: %s", factionID)
-	}
-	if as.BattleAbilityPool.Abilities == nil {
-		return nil, fmt.Errorf("BattleAbilityPool.Abilities is nil, fid: %s", factionID)
-	}
-
-	ability, ok := as.BattleAbilityPool.Abilities.Load(factionID)
-	if !ok {
-		gamelog.L.Warn().Str("func", "FactionBattleAbilityGet").Msg("unable to retrieve abilities for faction")
-		return nil, fmt.Errorf("game ability does not exist for faction %s", factionID)
-	}
-
-	return ability, nil
-}
-
-func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, startPoint server.CellLocation, endPoint *server.CellLocation) error {
+func (as *AbilitiesSystem) LocationSelect(userID string, factionID string, startPoint server.CellLocation, endPoint *server.CellLocation) error {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the LocationSelect!", r)
 		}
 	}()
 	// check battle end
-	if as.battle().stage.Load() == BattleStageEnd {
-		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
+	if AbilitySystemIsAvailable(as) {
+		gamelog.L.Warn().Str("func", "LocationSelect").Msg("Ability system is not available.")
 		return nil
 	}
 
 	// check eligibility
-	if len(as.locationDeciders.list) <= 0 || as.locationDeciders.list[0] != userID {
-		return terror.Error(terror.ErrForbidden)
+	if as.BattleAbilityPool.LocationDeciders.currentDecider(factionID) != userID {
+		return terror.Error(terror.ErrForbidden, "Not eligible to target location.")
 	}
 
-	ability, _ := as.BattleAbilityPool.Abilities.Load(as.BattleAbilityPool.TriggeredFactionID.Load())
-	// get player detail
-	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(userID.String())).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "player not exists")
-	}
-
-	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(as.BattleAbilityPool.TriggeredFactionID.Load())).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "player not exists")
-	}
-
-	event := &server.GameAbilityEvent{
-		IsTriggered:         true,
-		GameClientAbilityID: ability.GameClientAbilityID,
-		TriggeredByUserID:   &userID,
-		TriggeredByUsername: &player.Username.String,
-		EventID:             ability.OfferingID,
-		FactionID:           &faction.ID,
-	}
-
-	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(&startPoint)
-
-	if ability.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && endPoint != nil {
-		event.GameLocationEnd = as.battle().getGameWorldCoordinatesFromCellXY(endPoint)
-	}
-
-	// trigger location select
-	as.battle().arena.Message("BATTLE:ABILITY", event)
-
-	bat := boiler.BattleAbilityTrigger{
-		PlayerID:          null.StringFrom(userID.String()),
-		BattleID:          as.battle().ID,
-		FactionID:         ability.FactionID,
-		IsAllSyndicates:   true,
-		AbilityLabel:      ability.Label,
-		GameAbilityID:     ability.ID,
-		AbilityOfferingID: ability.OfferingID.String(),
-	}
-	err = bat.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
-	}
-
-	_, err = db.UserStatAddTotalAbilityTriggered(userID.String())
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", userID.String()).Err(err).Msg("failed to update user ability triggered amount")
-	}
-
-	as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-		Type: LocationSelectTypeTrigger,
-		Ability: &AbilityBrief{
-			Label:    ability.Label,
-			ImageUrl: ability.ImageUrl,
-			Colour:   ability.Colour,
-		},
-		CurrentUser: &UserBrief{
-			ID:        userID,
-			Username:  player.Username.String,
-			FactionID: player.FactionID.String,
-			Gid:       player.Gid,
-			Faction: &Faction{
-				ID:    faction.ID,
-				Label: faction.Label,
-				Theme: &Theme{
-					PrimaryColor:    faction.PrimaryColor,
-					SecondaryColor:  faction.SecondaryColor,
-					BackgroundColor: faction.BackgroundColor,
-				},
-			},
-		},
-	})
-
-	//// enter the cooldown phase
-	cooldownSecond, err := as.SetNewBattleAbility()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
-	}
-
-	as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
-	as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
-	// broadcast stage to frontend
-	ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+	as.locationSelectChan <- &locationSelect{userID, factionID, startPoint, endPoint}
 
 	return nil
 }
