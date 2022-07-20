@@ -323,16 +323,24 @@ def static_migration(new_ver_dir: str):
         exit(1)
 
 def run_sync(new_ver_dir: str):
-    command = '{target}/gameserver sync --static_path "{target}/static/"'.format(
-        target=new_ver_dir
+    command = '{target}/gameserver sync --database_user={user} --database_pass={pword} --database_host={host} --database_port={port} --database_name={dbname} --static_path "{target}/static/"'.format(
+        target=new_ver_dir,
+        dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
+        host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
+        port=os.environ.get("{}_DATABASE_PORT".format(ENV_PREFIX)),
+        user=os.environ.get("{}_DATABASE_USER".format(ENV_PREFIX)),
+        pword=os.environ.get("{}_DATABASE_PASS".format(ENV_PREFIX))
     )
     print(command)
     try:
         popen = subprocess.Popen(
-            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
-
+            command, stdout=subprocess.PIPE,stderr=subprocess.PIPE, shell=True, universal_newlines=True)
+        stdout, stderr = popen.communicate()
         popen.stdout.close()
         popen.wait()
+        print(stdout)
+        print(stderr)
+
     except FileNotFoundError as e:
         log.exception("command not found: %s", e.filename)
         exit(1)
