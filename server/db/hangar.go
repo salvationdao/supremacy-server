@@ -53,7 +53,8 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
         				)
 	WHERE ci.owner_id = $1
   	AND ci.item_type = 'mech'
-	AND ci.xsyn_locked=false;
+	AND ci.xsyn_locked=false
+	ORDER BY m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -68,7 +69,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 nextRow:
 	for rows.Next() {
-		mst := &SiloType{}
+		mst := SiloType{}
 
 		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
 		if err != nil {
@@ -76,12 +77,12 @@ nextRow:
 		}
 
 		for _, m := range mechSiloType {
-			if m.SkinIDStr == mst.SkinIDStr && m.StaticID == mst.StaticID {
+			if *m.SkinIDStr == *mst.SkinIDStr && *m.StaticID == *mst.StaticID {
 				continue nextRow
 			}
 		}
 
-		mechSiloType = append(mechSiloType, mst)
+		mechSiloType = append(mechSiloType, &mst)
 	}
 
 	for _, mechSilo := range mechSiloType {
