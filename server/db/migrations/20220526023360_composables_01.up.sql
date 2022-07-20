@@ -158,7 +158,7 @@ CREATE TABLE chassis_animation
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     blueprint_id    UUID        NOT NULL REFERENCES blueprint_chassis_animation (id),
     label           TEXT        NOT NULL,
-    mech_models      UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_models (id),
     equipped_on     UUID REFERENCES chassis (id),
     intro_animation BOOL                 DEFAULT TRUE,
     outro_animation BOOL                 DEFAULT TRUE,

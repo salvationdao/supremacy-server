@@ -32,6 +32,11 @@ CREATE TABLE mystery_crate_blueprints
     updated_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
     created_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE weapons
+    ADD COLUMN weapon_model_id         UUID REFERENCES weapon_models(id),
+    ADD COLUMN equipped_weapon_skin_id UUID REFERENCES weapon_skin(id);
+
 --
 -- DO
 -- $$
