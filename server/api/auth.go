@@ -163,7 +163,7 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 }
 
 func (api *API) AuthAppTokenLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	token := r.URL.Query().Get("token")
+	token := r.Header.Get("token")
 	if token == "" {
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
 	}
@@ -181,24 +181,32 @@ func (api *API) AuthAppTokenLoginHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	// get api/auth/qr_code_login?token=...
-
+	// Get one time token
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
 	}
 
-	// Get user from passport
-	user, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
+	// Get user token from passport
+	tokenResp, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
 	}
 
+	// Get user with token
+	user, err := api.TokenLogin(tokenResp.Token)
+	if err != nil {
+		if errors.Is(err, errors.New("Session is expired")) {
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate player")
+	}
+
+	// Add mobile device to table
 	d := boiler.Device{
 		PlayerID: user.ID,
 		Name:     r.UserAgent(),
 	}
-
 	err = d.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Str("user id", user.ID).Msg("Failed to insert user device.")
@@ -206,7 +214,7 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 	}
 
 	// Write token to header
-	w.Header().Set("xsyn-token", user.Token)
+	w.Header().Set("xsyn-token", tokenResp.Token)
 
 	return helpers.EncodeJSON(w, user)
 }
