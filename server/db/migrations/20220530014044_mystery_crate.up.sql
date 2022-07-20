@@ -34,8 +34,8 @@ CREATE TABLE mystery_crate_blueprints
 );
 
 ALTER TABLE weapons
-    ADD COLUMN weapon_model_id         UUID REFERENCES weapon_models(id),
-    ADD COLUMN equipped_weapon_skin_id UUID REFERENCES weapon_skin(id);
+    ADD COLUMN weapon_model_id         UUID REFERENCES weapon_models (id),
+    ADD COLUMN equipped_weapon_skin_id UUID REFERENCES weapon_skin (id);
 
 --
 -- DO
@@ -655,13 +655,32 @@ $$
     BEGIN
         FOR faction IN SELECT * FROM factions
             LOOP
-                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price, label, description)
                 VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
-                        faction.id, 3000000000000000000000);
-                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
+                        faction.id, 3000000000000000000000, CASE
+                                                                WHEN faction.label = 'Boston Cybernetics' THEN
+                                                                    'Boston Cybernetics War Machine Crate'
+                                                                WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                                                                    'Zaibatsu Heavy Industries War Machine Crate'
+                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                    THEN
+                                                                    'Red Mountain War Machine Crate'
+                            END,
+                        'Contains a battle ready war machine with two weapons.');
+                INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price, label, description)
                 VALUES ('WEAPON',
                         (SELECT COUNT(*) FROM mystery_crate WHERE type = 'WEAPON' AND faction_id = faction.id),
-                        faction.id, 1800000000000000000000);
+                        faction.id, 1800000000000000000000, CASE
+                                                                WHEN faction.label = 'Boston Cybernetics' THEN
+                                                                    'Boston Cybernetics Weapons Crate'
+                                                                WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                                                                    'Zaibatsu Heavy Industries Weapons Crate'
+                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                    THEN
+                                                                    'Red Mountain Weapons Crate'
+                            END,
+                        'Contains a random weapon and weapon sub model attachment.');
             END LOOP;
     END;
 $$;
+
