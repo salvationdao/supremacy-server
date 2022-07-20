@@ -156,17 +156,20 @@ var BlueprintMechWhere = struct {
 
 // BlueprintMechRels is where relationship names are stored.
 var BlueprintMechRels = struct {
-	Availability string
-	Model        string
+	Availability   string
+	Model          string
+	BlueprintMechs string
 }{
-	Availability: "Availability",
-	Model:        "Model",
+	Availability:   "Availability",
+	Model:          "Model",
+	BlueprintMechs: "BlueprintMechs",
 }
 
 // blueprintMechR is where relationships are stored.
 type blueprintMechR struct {
-	Availability *Availability `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
-	Model        *MechModel    `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	Availability   *Availability `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
+	Model          *MechModel    `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	BlueprintMechs MechSlice     `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -455,6 +458,28 @@ func (o *BlueprintMech) Model(mods ...qm.QueryMod) mechModelQuery {
 	return query
 }
 
+// BlueprintMechs retrieves all the mech's Mechs with an executor via blueprint_id column.
+func (o *BlueprintMech) BlueprintMechs(mods ...qm.QueryMod) mechQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mechs\".\"blueprint_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mechs\".\"deleted_at\""),
+	)
+
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mechs\".*"})
+	}
+
+	return query
+}
+
 // LoadAvailability allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (blueprintMechL) LoadAvailability(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
@@ -667,6 +692,105 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 	return nil
 }
 
+// LoadBlueprintMechs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadBlueprintMechs(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.blueprint_id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mechs")
+	}
+
+	var resultSlice []*Mech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mechs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BlueprintMechs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechR{}
+			}
+			foreign.R.Blueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BlueprintID {
+				local.R.BlueprintMechs = append(local.R.BlueprintMechs, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechR{}
+				}
+				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetAvailability of the blueprintMech to the related item.
 // Sets o.R.Availability to related.
 // Adds o to related.R.BlueprintMechs.
@@ -789,6 +913,58 @@ func (o *BlueprintMech) SetModel(exec boil.Executor, insert bool, related *MechM
 		related.R.ModelBlueprintMechs = append(related.R.ModelBlueprintMechs, o)
 	}
 
+	return nil
+}
+
+// AddBlueprintMechs adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.BlueprintMechs.
+// Sets related.R.Blueprint appropriately.
+func (o *BlueprintMech) AddBlueprintMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BlueprintID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mechs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BlueprintID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			BlueprintMechs: related,
+		}
+	} else {
+		o.R.BlueprintMechs = append(o.R.BlueprintMechs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechR{
+				Blueprint: o,
+			}
+		} else {
+			rel.R.Blueprint = o
+		}
+	}
 	return nil
 }
 
