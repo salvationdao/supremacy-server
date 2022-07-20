@@ -28,6 +28,7 @@ func AuthRouter(api *API) chi.Router {
 	r.Get("/logout", WithError(api.LogoutHandler))
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
 
+	r.Post("/companion_app_token_login", WithError(api.AuthAppTokenLoginHandler))
 	r.Get("/qr_code_login", WithError(api.AuthQRCodeLoginHandler))
 
 	return r
@@ -161,6 +162,24 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	return helpers.EncodeJSON(w, player)
 }
 
+func (api *API) AuthAppTokenLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
+	}
+
+	// check user from token
+	player, err := api.TokenLogin(token)
+	if err != nil {
+		if errors.Is(err, errors.New("Session is expired")) {
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate player")
+	}
+
+	return helpers.EncodeJSON(w, player)
+}
+
 func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 	// get api/auth/qr_code_login?token=...
 
@@ -169,7 +188,7 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
 	}
 
-	// get user from passport
+	// Get user from passport
 	user, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
@@ -186,12 +205,8 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 		return http.StatusInternalServerError, terror.Error(err, "Failed to add user device.")
 	}
 
-	// write cookie
-	err = api.WriteCookie(w, r, user.Token)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to write cookie")
-		return http.StatusInternalServerError, terror.Error(err, "Failed to get user from token.")
-	}
+	// Write token to header
+	w.Header().Set("xsyn-token", user.Token)
 
 	return helpers.EncodeJSON(w, user)
 }
