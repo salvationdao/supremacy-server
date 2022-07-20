@@ -108,7 +108,7 @@ CREATE TABLE blueprint_chassis_skin
 (
     id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    mech_models         UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model         UUID        NOT NULL REFERENCES mech_models (id),
     label              TEXT        NOT NULL,
     tier               TEXT        NOT NULL DEFAULT 'MEGA',
     image_url          TEXT,
@@ -117,7 +117,7 @@ CREATE TABLE blueprint_chassis_skin
     large_image_url    TEXT,
     avatar_url         TEXT,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (mech_models, label)
+    UNIQUE (mech_model, label)
 );
 
 CREATE TABLE chassis_skin
@@ -127,7 +127,7 @@ CREATE TABLE chassis_skin
     genesis_token_id         BIGINT,
     limited_release_token_id BIGINT,
     label                    TEXT        NOT NULL,
-    mech_models               UUID        NOT NULL REFERENCES mech_models (id),
+    mech_model               UUID        NOT NULL REFERENCES mech_models (id),
     equipped_on              UUID REFERENCES chassis (id),
     image_url                TEXT,
     animation_url            TEXT,
@@ -241,7 +241,7 @@ WITH new_skins AS (SELECT DISTINCT c.skin,
                    FROM templates t
                             INNER JOIN blueprint_chassis c ON t.blueprint_chassis_id = c.id)
 INSERT
-INTO blueprint_chassis_skin(mech_models, label, tier, image_url, animation_url, card_animation_url, large_image_url,
+INTO blueprint_chassis_skin(mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url,
                             avatar_url)
 SELECT (SELECT id FROM mech_models WHERE label = new_skins.model),
        new_skins.skin,
@@ -252,7 +252,7 @@ SELECT (SELECT id FROM mech_models WHERE label = new_skins.model),
        new_skins.large_image_url,
        new_skins.avatar_url
 FROM new_skins
-ON CONFLICT (mech_models, label) DO NOTHING;
+ON CONFLICT (mech_model, label) DO NOTHING;
 
 -- extract and insert current equipped skins
 WITH new_skins AS (SELECT DISTINCT c.skin,
@@ -266,7 +266,7 @@ WITH new_skins AS (SELECT DISTINCT c.skin,
                    FROM mechs m
                             INNER JOIN chassis c ON m.chassis_id = c.id)
 INSERT
-INTO chassis_skin(equipped_on, mech_models, label, image_url, large_image_url, animation_url,
+INTO chassis_skin(equipped_on, mech_model, label, image_url, large_image_url, animation_url,
                   card_animation_url,
                   avatar_url)
 SELECT new_skins.chassis_id,
@@ -361,7 +361,7 @@ UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
                        FROM blueprint_chassis_skin bcs
                        WHERE bcs.label = bc.skin
-                         AND bcs.mech_models = bc.model_id);
+                         AND bcs.mech_model = bc.model_id);
 
 -- fix ones we missed somehow
 UPDATE chassis_skin
@@ -372,7 +372,7 @@ UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
                     FROM blueprint_chassis_skin bms
                     WHERE bms.label = ms.label
-                      AND ms.mech_models = bms.mech_models);
+                      AND ms.mech_model = bms.mech_model);
 
 -- here
 ALTER TABLE chassis_skin
