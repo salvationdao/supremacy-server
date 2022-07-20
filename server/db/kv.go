@@ -21,9 +21,11 @@ const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 const KeySaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
 const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
-const QueueLengthAdd KVKey = "queue_length_add"
 
+const KeyPlayerAbilityInventoryLimit KVKey = "player_ability_inventory_limit"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
+
+const QueueLengthAdd KVKey = "queue_length_add"
 
 type KVKey string
 

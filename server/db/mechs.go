@@ -40,8 +40,8 @@ SELECT
 	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
 	collection_items.image_url,
-	collection_items.avatar_url,
 	collection_items.card_animation_url,
+	collection_items.avatar_url,
 	collection_items.large_image_url,
 	collection_items.background_color,
 	collection_items.animation_url,
@@ -140,7 +140,7 @@ LEFT OUTER JOIN (
 					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
 					FROM weapon_skin __ws
 					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
-			) _ws ON _ws.id = _w.equipped_weapon_skin_id
+			) _ws ON _ws.equipped_on = _w.id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id

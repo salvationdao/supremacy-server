@@ -19,8 +19,7 @@ func (p SalePlayerAbilityColumn) IsValid() error {
 	switch string(p) {
 	case
 		boiler.SalePlayerAbilityColumns.ID,
-		boiler.SalePlayerAbilityColumns.BlueprintID,
-		boiler.SalePlayerAbilityColumns.CurrentPrice:
+		boiler.SalePlayerAbilityColumns.BlueprintID:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid sale player ability column"))

@@ -499,7 +499,9 @@ func (arena *Arena) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Contex
 		as := arena.CurrentBattle().AbilitySystem()
 		if AbilitySystemIsAvailable(as) {
 			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
-			ga, err := ba.GameAbilities().One(gamedb.StdConn)
+			ga, err := boiler.GameAbilities(
+				boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
+			).One(gamedb.StdConn)
 			if err != nil {
 				return terror.Error(err, "Failed to get battle ability")
 			}
@@ -692,13 +694,18 @@ const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // BribeStageSubscribe subscribe on bribing stage change
 func (arena *Arena) BribeStageSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	fmt.Println("bribe stage subscribe")
 	// return data if, current battle is not null
 	if arena.CurrentBattle() != nil {
+		fmt.Println("battle exist")
 		btl := arena.CurrentBattle()
-		if btl.AbilitySystem() != nil {
+		if AbilitySystemIsAvailable(btl.AbilitySystem()) {
+			fmt.Println("ability system good")
 			reply(btl.AbilitySystem().BribeStageGet())
 		}
 	}
+
+	fmt.Println("bribe stage end subscribe")
 
 	return nil
 }

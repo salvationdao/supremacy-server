@@ -32,7 +32,7 @@ except ImportError as e:
     exit(1)
 
 
-REPO = 'ninja-syndicate/supremacy-gameserver'
+REPO = 'ninja-syndicate/supremacy-server'
 BASE_URL = "https://api.github.com/repos/{repo}".format(repo=REPO)
 TOKEN = os.environ.get("GITHUB_PAT", "")
 CLIENT = "ninja_syndicate"
@@ -104,14 +104,17 @@ def main(argv):
 
     new_ver_dir = extract(rel_path)
     copy_env(new_ver_dir)
-    nginx_stop()
-    db_dumped = dbdump()
-    stop_service()
+    #nginx_stop()
+    # db_dumped = dbdump()
+    db_dumped = True
+    #stop_service()
+    static_migration(new_ver_dir)
+    run_sync(new_ver_dir)
     migrate(db_dumped, new_ver_dir)
     change_online_version(new_ver_dir)
     change_owner()
-    start_service()
-    nginx_start()
+    # start_service()
+    # nginx_start()
 
 
 def download_meta(version: str):
@@ -295,6 +298,52 @@ def dbdump():
 
     return True
 
+def static_migration(new_ver_dir: str):
+    if not question("Run Static Migrations"):
+        log.info("Skipping static migrations")
+        return
+
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?x-migrations-table=static_migrations&application_name=migrate-static" -path {target}/static-migrations up'.format(
+        target=new_ver_dir,
+        dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
+        host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
+        port=os.environ.get("{}_DATABASE_PORT".format(ENV_PREFIX)),
+        user=os.environ.get("{}_DATABASE_USER".format(ENV_PREFIX)),
+        pword=os.environ.get("{}_DATABASE_PASS".format(ENV_PREFIX))
+    )
+    print(command)
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE, shell=True, universal_newlines=True)
+
+        popen.stdout.close()
+        popen.wait()
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
+
+def run_sync(new_ver_dir: str):
+    command = '{target}/gameserver sync --database_user={user} --database_pass={pword} --database_host={host} --database_port={port} --database_name={dbname} --static_path "{target}/static/"'.format(
+        target=new_ver_dir,
+        dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
+        host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
+        port=os.environ.get("{}_DATABASE_PORT".format(ENV_PREFIX)),
+        user=os.environ.get("{}_DATABASE_USER".format(ENV_PREFIX)),
+        pword=os.environ.get("{}_DATABASE_PASS".format(ENV_PREFIX))
+    )
+    print(command)
+    try:
+        popen = subprocess.Popen(
+            command, stdout=subprocess.PIPE,stderr=subprocess.PIPE, shell=True, universal_newlines=True)
+        stdout, stderr = popen.communicate()
+        popen.stdout.close()
+        popen.wait()
+        print(stdout)
+        print(stderr)
+
+    except FileNotFoundError as e:
+        log.exception("command not found: %s", e.filename)
+        exit(1)
 
 def migrate(db_dumped: bool, new_ver_dir: str):
     if not question("Run Migrations"):
@@ -306,7 +355,7 @@ def migrate(db_dumped: bool, new_ver_dir: str):
         # so ask again
         dbdump()
 
-    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}" -path {target}/migrations up'.format(
+    command = '{target}/migrate -database "postgres://{user}:{pword}@{host}:{port}/{dbname}?application_name=migrate" -path {target}/migrations up'.format(
         target=new_ver_dir,
         dbname=os.environ.get("{}_DATABASE_NAME".format(ENV_PREFIX)),
         host=os.environ.get("{}_DATABASE_HOST".format(ENV_PREFIX)),
@@ -431,7 +480,7 @@ def start_service():
 
 def question(question, positive='y', negative='n'):
     question = question + \
-        ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
+               ' ({positive}/{negative}): '.format(positive=positive, negative=negative)
     while "the answer is invalid":
         reply = str(input(question)).lower().strip()
         log.debug("reply %s", reply)

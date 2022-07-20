@@ -168,6 +168,7 @@ func NewAPI(
 	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
+	_ = NewLeaderboardController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -250,12 +251,8 @@ func NewAPI(
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
-			}))
-
-			// battle arena route ws
-			r.Mount("/battle", ws.NewServer(func(s *ws.Server) {
-				s.WS("/*", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
+				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/live_data", "", nil)
 			}))
 

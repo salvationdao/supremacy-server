@@ -174,9 +174,9 @@ var TemplatesOldRels = struct {
 
 // templatesOldR is where relationships are stored.
 type templatesOldR struct {
-	BlueprintChassis  *BlueprintMech `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
-	Faction           *Faction       `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	TemplateMechsOlds MechsOldSlice  `boiler:"TemplateMechsOlds" boil:"TemplateMechsOlds" json:"TemplateMechsOlds" toml:"TemplateMechsOlds" yaml:"TemplateMechsOlds"`
+	BlueprintChassis  *BlueprintChassis `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
+	Faction           *Faction          `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	TemplateMechsOlds MechsOldSlice     `boiler:"TemplateMechsOlds" boil:"TemplateMechsOlds" json:"TemplateMechsOlds" toml:"TemplateMechsOlds" yaml:"TemplateMechsOlds"`
 }
 
 // NewStruct creates a new relationship struct
@@ -438,7 +438,7 @@ func (q templatesOldQuery) Exists(exec boil.Executor) (bool, error) {
 }
 
 // BlueprintChassis pointed to by the foreign key.
-func (o *TemplatesOld) BlueprintChassis(mods ...qm.QueryMod) blueprintMechQuery {
+func (o *TemplatesOld) BlueprintChassis(mods ...qm.QueryMod) blueprintChassisQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BlueprintChassisID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -446,8 +446,8 @@ func (o *TemplatesOld) BlueprintChassis(mods ...qm.QueryMod) blueprintMechQuery 
 
 	queryMods = append(queryMods, mods...)
 
-	query := BlueprintMechs(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mechs\"")
+	query := BlueprintChasses(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_chassis\"")
 
 	return query
 }
@@ -531,9 +531,9 @@ func (templatesOldL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeT
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_mechs`),
-		qm.WhereIn(`blueprint_mechs.id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_mechs.deleted_at`),
+		qm.From(`blueprint_chassis`),
+		qm.WhereIn(`blueprint_chassis.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_chassis.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -541,19 +541,19 @@ func (templatesOldL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeT
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintMech")
+		return errors.Wrap(err, "failed to eager load BlueprintChassis")
 	}
 
-	var resultSlice []*BlueprintMech
+	var resultSlice []*BlueprintChassis
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMech")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintChassis")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_mechs")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_chassis")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mechs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis")
 	}
 
 	if len(templatesOldAfterSelectHooks) != 0 {
@@ -572,9 +572,9 @@ func (templatesOldL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeT
 		foreign := resultSlice[0]
 		object.R.BlueprintChassis = foreign
 		if foreign.R == nil {
-			foreign.R = &blueprintMechR{}
+			foreign.R = &blueprintChassisR{}
 		}
-		foreign.R.BlueprintChassisTemplatesOld = object
+		foreign.R.TemplatesOld = object
 		return nil
 	}
 
@@ -583,9 +583,9 @@ func (templatesOldL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeT
 			if local.BlueprintChassisID == foreign.ID {
 				local.R.BlueprintChassis = foreign
 				if foreign.R == nil {
-					foreign.R = &blueprintMechR{}
+					foreign.R = &blueprintChassisR{}
 				}
-				foreign.R.BlueprintChassisTemplatesOld = local
+				foreign.R.TemplatesOld = local
 				break
 			}
 		}
@@ -800,8 +800,8 @@ func (templatesOldL) LoadTemplateMechsOlds(e boil.Executor, singular bool, maybe
 
 // SetBlueprintChassis of the templatesOld to the related item.
 // Sets o.R.BlueprintChassis to related.
-// Adds o to related.R.BlueprintChassisTemplatesOld.
-func (o *TemplatesOld) SetBlueprintChassis(exec boil.Executor, insert bool, related *BlueprintMech) error {
+// Adds o to related.R.TemplatesOld.
+func (o *TemplatesOld) SetBlueprintChassis(exec boil.Executor, insert bool, related *BlueprintChassis) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -834,11 +834,11 @@ func (o *TemplatesOld) SetBlueprintChassis(exec boil.Executor, insert bool, rela
 	}
 
 	if related.R == nil {
-		related.R = &blueprintMechR{
-			BlueprintChassisTemplatesOld: o,
+		related.R = &blueprintChassisR{
+			TemplatesOld: o,
 		}
 	} else {
-		related.R.BlueprintChassisTemplatesOld = o
+		related.R.TemplatesOld = o
 	}
 
 	return nil

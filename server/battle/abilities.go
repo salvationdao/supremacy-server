@@ -9,6 +9,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
+	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -391,7 +392,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 		boiler.GameAbilityWhere.FactionID.EQ(server.RedMountainFactionID),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("FactionBattleAbilityGet failed to retrieve shit")
+		gamelog.L.Error().Err(err).Str("battle ability id", ba.ID).Str("faction id", server.RedMountainFactionID).Msg("failed to retrieve faction battle ability")
 		return ba.CooldownDurationSecond, err
 	}
 
@@ -473,7 +474,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		}
 
 		as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSeconds) * time.Second))
-		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+		ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	}
 
 	// initial a ticker for current battle
@@ -529,7 +530,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
+				bm := benchmark.New()
+				bm.Start("location select deciders")
 				as.locationDecidersSet()
+				bm.End("location select deciders")
+				bm.Alert(100)
 
 				maxTargetingRound := as.BattleAbilityPool.LocationDeciders.maxSelectorAmount()
 
@@ -544,14 +549,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 					// broadcast stage to frontend
-					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 					continue
 				}
 
 				// broadcast the announcement to the next location decider
 				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
 				// announce winner
-				gas, err := ba.GameAbilities(
+				gas, err := boiler.GameAbilities(
 					boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
 				).All(gamedb.StdConn)
 				if err != nil {
@@ -582,7 +587,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 				as.BattleAbilityPool.Stage.StoreEndTime(now.Add(time.Duration(maxTargetingRound) * as.BattleAbilityPool.config.BattleAbilityLocationSelectDuration))
 				// broadcast stage to frontend
-				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 			// at the end of location select phase
 			// pass the location select to next player
@@ -609,7 +614,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 					// broadcast stage to frontend
-					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 					continue
 				}
 
@@ -619,7 +624,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
 				// get game ability
-				gas, err := ba.GameAbilities(
+				gas, err := boiler.GameAbilities(
 					boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
 				).All(gamedb.StdConn)
 				if err != nil {
@@ -684,7 +689,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageOptIn)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.BattleAbilityPool.config.BattleAbilityOptInDuration))
 				// broadcast stage to frontend
-				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 				continue
 			default:
@@ -950,7 +955,7 @@ func (as *AbilitiesSystem) End() {
 	as.BattleAbilityPool.Stage.Phase.Store(BribeStageHold)
 	as.BattleAbilityPool.Stage.StoreEndTime(time.Now().AddDate(1, 0, 0))
 	// broadcast stage to frontend
-	ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+	ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	as.isClosed.Store(true)
 
 	as.storeBattle(nil)
