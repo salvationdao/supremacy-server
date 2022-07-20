@@ -714,6 +714,7 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 
 type WeaponMaxStats struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	Damage              null.Int            `json:"damage,omitempty"`
 	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
 	Radius              null.Int            `json:"radius,omitempty"`
@@ -729,6 +730,7 @@ func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
 	err := boiler.Weapons(
 		qm.Select(
 			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.Damage),
 			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.DamageFalloff),
 			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.DamageFalloffRate),
 			fmt.Sprintf(`MAX(%[1]s)`, boiler.WeaponColumns.Radius),
@@ -740,6 +742,7 @@ func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
 		),
 	).QueryRow(conn).Scan(
 		&output.MaxAmmo,
+		&output.Damage,
 		&output.DamageFalloff,
 		&output.DamageFalloffRate,
 		&output.Radius,
