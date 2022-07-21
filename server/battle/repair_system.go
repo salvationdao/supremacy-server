@@ -135,6 +135,15 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 		return nil
 	}
 
+	// delete any mech repair case
+	_, err := boiler.MechRepairCases(
+		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
+	).DeleteAll(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to clean up any mech repair cases")
+		return terror.Error(err, "Failed to clean up any mech repair cases")
+	}
+
 	now := time.Now()
 
 	mh := decimal.NewFromInt(int64(maxHealth))
@@ -148,6 +157,7 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 
 	mrc := &boiler.MechRepairCase{
 		MechID:              mechID,
+		Status:              boiler.MechRepairStatusPENDING,
 		Fee:                 db.GetDecimalWithDefault(db.KeyMechStandardRepairFee, decimal.New(5, 18)),
 		FastRepairFee:       db.GetDecimalWithDefault(db.KeyMechFastRepairFee, decimal.New(30, 18)),
 		RepairPeriodMinutes: int(durationMinutes),
@@ -155,7 +165,7 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 		RemainHealth:        rh,
 	}
 
-	err := mrc.Insert(gamedb.StdConn, boil.Infer())
+	err = mrc.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Interface("mech repair case", mrc).Err(err).Msg("Failed to insert mech repair case.")
 		return terror.Error(err, "Failed to register mech repair case")
