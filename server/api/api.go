@@ -256,7 +256,7 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, nil)
+				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/live_data", "", nil)

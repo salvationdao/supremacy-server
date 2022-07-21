@@ -189,13 +189,16 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 func (rs *RepairSystem) IsStillRepairing(mechID string) (bool, error) {
 	mrc, err := boiler.MechRepairCases(
 		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-		boiler.MechRepairCaseWhere.EndedAt.IsNotNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, terror.Error(err, "Failed to check mech repair status")
 	}
 
-	return mrc != nil, nil
+	if mrc == nil || mrc.EndedAt.Valid {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (rs *RepairSystem) StartStandardRepair(userID string, mechID string) error {
