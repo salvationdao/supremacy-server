@@ -136,10 +136,10 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
+db-reset: db-drop db-drop-sync db-migrate-sync sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
-.PHONY: db-reset_dev
-db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
+.PHONY: db-reset-dev
+db-reset-dev: db-drop db-drop-sync db-migrate-sync sync-data-dev db-migrate-up-to-seed db-seed db-migrate db-boiler
 
 .PHONY: db-reset-windows
 db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
@@ -199,6 +199,11 @@ sync:
 	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
 
+.PHONY: sync-dev
+sync-dev:
+	cd server && go run devsync/main.go sync
+	rm -rf ./synctool/temp-sync
+
 .PHONY: docker-db-dump
 docker-db-dump:
 	mkdir -p ./tmp
@@ -245,14 +250,23 @@ dev-give-mech-crate:
 dev-give-mech-crates:
 	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
-.PHONY: dev-sync-data
-dev-sync-data:
+.PHONY: sync-data
+sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
 	make sync
+
+.PHONY: sync-data-dev
+sync-data-dev:
+	cd ./server/synctool
+	mkdir temp-sync
+	cd temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make sync-dev
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
