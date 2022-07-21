@@ -207,18 +207,19 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	q := `
 	SELECT 	ci.item_type		 	as type,
-			ci.id    				as ownership_id,
-			smc.id 					as mystery_crate_id,
-			mc.locked_until        	as can_open_on
-	FROM 	collection_items ci
-         	INNER JOIN mystery_crate mc on
-    			mc.id = ci.item_id AND mc.opened = false
-         	INNER JOIN storefront_mystery_crates smc on
-            	smc.mystery_crate_type = mc."type"
-        	AND smc.faction_id = mc.faction_id
+          ci.id    					as ownership_id,
+          smc.id 					as mystery_crate_id,
+          mc.locked_until        	as can_open_on
+	FROM collection_items ci
+            INNER JOIN mystery_crate mc on
+            mc.id = ci.item_id AND mc.opened = false
+    	INNER JOIN storefront_mystery_crates smc on
+    	smc.mystery_crate_type = mc."type"
+    	AND smc.faction_id = mc.faction_id
 	WHERE ci.owner_id = $1
-  			AND ci.item_type = 'mystery_crate'
-			AND ci.xsyn_locked=false;
+  		AND ci.item_type = 'mystery_crate'
+  		AND ci.xsyn_locked=false
+	ORDER BY mc.type;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
