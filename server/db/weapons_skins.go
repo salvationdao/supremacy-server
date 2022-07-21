@@ -71,16 +71,11 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 }
 
 func WeaponSkin(trx boil.Executor, id string) (*server.WeaponSkin, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
-	boilerWeaponSkin, err := boiler.FindWeaponSkin(tx, id)
+	boilerWeaponSkin, err := boiler.FindWeaponSkin(trx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(trx)
 	if err != nil {
 		return nil, err
 	}

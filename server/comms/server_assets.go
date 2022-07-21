@@ -85,7 +85,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{obj})[0]
 	case boiler.ItemTypeMechSkin:
-		obj, err := db.MechSkin(nil, ci.ItemID)
+		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)
