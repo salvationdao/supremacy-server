@@ -728,6 +728,7 @@ type OpenCrateRequest struct {
 }
 
 type OpenCrateResponse struct {
+	ID          string               `json:"id"`
 	Mech        *server.Mech         `json:"mech,omitempty"`
 	MechSkins   []*server.MechSkin   `json:"mech_skins,omitempty"`
 	Weapons     []*server.Weapon     `json:"weapon,omitempty"`
@@ -737,10 +738,10 @@ type OpenCrateResponse struct {
 
 const HubKeyOpenCrate = "CRATE:OPEN"
 
-var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
+var openCrateBucket = leakybucket.NewCollector(1, 1, true)
 
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	v := openCrateBucket.Add(1)
+	v := openCrateBucket.Add(user.ID, 1)
 	if v == 0 {
 		return terror.Error(fmt.Errorf("too many requests"), "Currently handling request, please try again.")
 	}
@@ -813,6 +814,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	}
 
 	items := OpenCrateResponse{}
+	items.ID = req.Payload.Id
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

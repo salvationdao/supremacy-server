@@ -1,14 +1,19 @@
 package synctool
 
 import (
+	"bufio"
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"server/synctool/types"
 	"strconv"
+	"time"
 )
 
 type StaticSyncTool struct {
@@ -17,58 +22,143 @@ type StaticSyncTool struct {
 }
 
 func SyncTool(dt *StaticSyncTool) error {
-	err := SyncFactions(dt)
-	if err != nil {
-		return err
-	}
-	err = SyncBrands(dt)
-	if err != nil {
-		return err
-	}
-	err = SyncMechSkins(dt)
-	if err != nil {
-		return err
-	}
-	err = SyncMechModels(dt)
-	if err != nil {
-		return err
-	}
 
-	//err = SyncMysteryCrates(dt)
+	f, err := readFile(fmt.Sprintf("%sfactions.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncFactions(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sbrands.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncBrands(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%smech_skins.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncMechSkins(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%smech_models.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncMechModels(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	//err = SyncMysteryCrates(f, dt.DB)
 	//if err != nil {
 	//	return err
 	//}
 
-	err = SyncWeaponSkins(dt)
+	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
-	err = SyncWeaponModel(dt)
+	err = SyncWeaponSkins(f, dt.DB)
 	if err != nil {
 		return err
 	}
+	f.Close()
 
-	err = SyncBattleAbilities(dt)
+	f, err = readFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
+	err = SyncWeaponModel(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
 
-	err = SyncPowerCores(dt)
+	f, err = readFile(fmt.Sprintf("%sbattle_abilities.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
+	err = SyncBattleAbilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
 
-	err = SyncStaticMech(dt)
+	f, err = readFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
+	err = SyncPowerCores(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
 
-	err = SyncStaticWeapon(dt)
+	f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
+	err = SyncStaticMech(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncStaticWeapon(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
 
 	return nil
+}
+
+func DownloadFile(ctx context.Context, url string, timout time.Duration) (io.Reader, error) {
+	// Set up client
+	client := &http.Client{
+		Timeout: timout,
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Writer the body to file
+	readr := bufio.NewReader(resp.Body)
+
+	return readr, nil
+}
+
+func readFile(fileName string) (*os.File, error) {
+	f, err := os.OpenFile(fileName, os.O_RDONLY, os.ModeAppend)
+	if err != nil {
+		log.Fatalf("CANT OPEN FILE: %s", fileName)
+		return nil, err
+	}
+	return f, nil
 }
 
 func RemoveFKContraints(dt StaticSyncTool) error {
@@ -129,14 +219,7 @@ func RemoveFKContraints(dt StaticSyncTool) error {
 	return nil
 }
 
-func SyncMechModels(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%smech_models.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
+func SyncMechModels(f io.Reader, db *sql.DB) error {
 
 	r := csv.NewReader(f)
 
@@ -170,7 +253,7 @@ func SyncMechModels(dt *StaticSyncTool) error {
 			brandID = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO mech_models (id, label, default_chassis_skin_id, brand_id, mech_type)
 			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (id)
@@ -190,15 +273,7 @@ func SyncMechModels(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncMechSkins(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%smech_skins.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -273,7 +348,7 @@ func SyncMechSkins(dt *StaticSyncTool) error {
 			youtubeURL = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO blueprint_mech_skin(id,collection, mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url, avatar_url,background_color, youtube_url, mech_type, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)
@@ -294,15 +369,7 @@ func SyncMechSkins(dt *StaticSyncTool) error {
 
 }
 
-func SyncFactions(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sfactions.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncFactions(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -341,7 +408,7 @@ func SyncFactions(dt *StaticSyncTool) error {
 		if faction.GuildID == "" {
 			guildID = nil
 		}
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO factions (id, label, guild_id, primary_color, secondary_color, background_color, logo_url, background_url, description)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 			ON CONFLICT (id)
@@ -362,15 +429,7 @@ func SyncFactions(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncBrands(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sbrands.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncBrands(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -394,7 +453,7 @@ func SyncBrands(dt *StaticSyncTool) error {
 	}
 
 	for _, brand := range Brands {
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO brands(id, label, faction_id)
 			VALUES ($1,$2,$3)
 			ON CONFLICT (id)
@@ -413,15 +472,7 @@ func SyncBrands(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncMysteryCrates(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%smystery_crates.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncMysteryCrates(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -484,7 +535,7 @@ func SyncMysteryCrates(dt *StaticSyncTool) error {
 		if mysteryCrate.YoutubeUrl == "" {
 			youtubeURL = nil
 		}
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO storefront_mystery_crates (id,mystery_crate_type,faction_id, label, description, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
@@ -503,15 +554,7 @@ func SyncMysteryCrates(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncWeaponModel(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -554,7 +597,7 @@ func SyncWeaponModel(dt *StaticSyncTool) error {
 			defaultSkinID = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at, updated_at)
 			VALUES ($1,$2,$3,$4,$5,$6,$7)
 			ON CONFLICT (id)
@@ -573,15 +616,7 @@ func SyncWeaponModel(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncWeaponSkins(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -657,7 +692,7 @@ func SyncWeaponSkins(dt *StaticSyncTool) error {
 			statModifier = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO blueprint_weapon_skin(id, label, weapon_type, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, collection, weapon_model_id, stat_modifier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)
@@ -676,15 +711,7 @@ func SyncWeaponSkins(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncBattleAbilities(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sbattle_abilities.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -709,7 +736,7 @@ func SyncBattleAbilities(dt *StaticSyncTool) error {
 	}
 
 	for _, battleAbility := range BattleAbilities {
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO battle_abilities(id, label, cooldown_duration_second, description)
 			VALUES ($1,$2,$3,$4)
 			ON CONFLICT (id)
@@ -727,15 +754,7 @@ func SyncBattleAbilities(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncPowerCores(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncPowerCores(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -808,7 +827,7 @@ func SyncPowerCores(dt *StaticSyncTool) error {
 			youtubeURL = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO blueprint_power_cores(id, collection, label, size, capacity, max_draw_rate, recharge_rate, armour, max_hitpoints, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 			ON CONFLICT (id)
@@ -828,15 +847,7 @@ func SyncPowerCores(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncStaticMech(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%smechs.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncStaticMech(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -877,7 +888,7 @@ func SyncStaticMech(dt *StaticSyncTool) error {
 			deletedAt = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO blueprint_mechs(id, brand_id, label, slug, weapon_hardpoints, utility_slots, speed, max_hitpoints, deleted_at, updated_at, created_at, model_id, collection, power_core_size, tier)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 			ON CONFLICT (id)
@@ -897,15 +908,7 @@ func SyncStaticMech(dt *StaticSyncTool) error {
 	return nil
 }
 
-func SyncStaticWeapon(dt *StaticSyncTool) error {
-	f, err := os.OpenFile(fmt.Sprintf("%sweapons.csv", dt.FilePath), os.O_RDONLY, 0755)
-	if err != nil {
-		log.Fatal("CANT OPEN FILE")
-		return err
-	}
-
-	defer f.Close()
-
+func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
 	if _, err := r.Read(); err != nil {
@@ -965,7 +968,7 @@ func SyncStaticWeapon(dt *StaticSyncTool) error {
 			brandID = nil
 		}
 
-		_, err = dt.DB.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO blueprint_weapons(id, brand_id, label, slug, damage, deleted_at, updated_at, created_at, game_client_weapon_id, weapon_type, collection, default_damage_type, damage_falloff, damage_falloff_rate, radius, radius_damage_falloff, spread, rate_of_fire, projectile_speed, max_ammo, is_melee, tier, energy_cost, weapon_model_id)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
 			ON CONFLICT (id)
