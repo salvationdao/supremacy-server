@@ -142,10 +142,15 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 					weaponSkin = &weapon.EquippedWeaponSkinID.String
 				}
 
+				weaponModel, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
+				if err != nil {
+					continue
+				}
+
 				newAttribute := MechSiloAccessories{
 					Type:        "weapon",
 					OwnershipID: weaponCollection.ID,
-					StaticID:    weapon.BlueprintID,
+					StaticID:    weaponModel.WeaponModelID,
 					Skin: &SiloSkin{
 						Type:        "skin",
 						OwnershipID: weaponSkin,
