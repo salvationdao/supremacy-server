@@ -114,7 +114,10 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	// check user from token
 	player, err := api.TokenLogin(token)
 	if err != nil {
-		err := api.DeleteCookie(w, r)
+		if errors.Is(err, errors.New("session is expired")) {
+			api.DeleteCookie(w, r)
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
@@ -136,10 +139,7 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
+			api.DeleteCookie(w, r)
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
@@ -160,10 +160,7 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Player is not login")
 	}
 
-	err = api.DeleteCookie(w, r)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to delete cookie")
-	}
+	api.DeleteCookie(w, r)
 
 	return http.StatusOK, nil
 }
@@ -177,9 +174,9 @@ type Fingerprint struct {
 	UserAgent  string  `json:"user_agent"`
 }
 
-func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
+func FingerprintUpsert(tx *sql.Tx, fingerprint Fingerprint, playerID string) error {
 	// Attempt to find fingerprint or create one
-	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(gamedb.StdConn)
+	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(tx)
 	if err != nil {
 		return err
 	}
@@ -193,19 +190,19 @@ func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
 			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(fingerprint.Confidence)),
 			UserAgent:  null.StringFrom(fingerprint.UserAgent),
 		}
-		err = fp.Insert(gamedb.StdConn, boil.Infer())
+		err = fp.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
 	}
 
-	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(gamedb.StdConn)
+	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(tx)
 	if err != nil {
 		return err
 	}
 
 	// Link fingerprint to user
-	playerFingerprintExists, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID), boiler.PlayerFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(gamedb.StdConn)
+	playerFingerprintExists, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID), boiler.PlayerFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(tx)
 	if err != nil {
 		return err
 	}
@@ -215,7 +212,7 @@ func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
 			PlayerID:      playerID,
 			FingerprintID: f.ID,
 		}
-		err = newPlayerFingerprint.Insert(gamedb.StdConn, boil.Infer())
+		err = newPlayerFingerprint.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
@@ -295,7 +292,7 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 	}
 	// fingerprint
 	if fingerprint != nil {
-		err = FingerprintUpsert(*fingerprint, playerID)
+		err = FingerprintUpsert(tx, *fingerprint, playerID)
 		if err != nil {
 			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player finger print upsert")
 			return terror.Error(err, "browser identification fail.")
@@ -349,7 +346,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -372,8 +369,6 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		SameSite: http.SameSiteNoneMode,
 	}
 	http.SetCookie(w, cookie)
-
-	return nil
 }
 
 func domain(host string) string {
