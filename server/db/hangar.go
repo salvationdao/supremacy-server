@@ -354,6 +354,12 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 					continue
 				}
 				weaponStringID = defaultSkin.ID
+			} else {
+				weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(gamedb.StdConn)
+				if err != nil {
+					continue
+				}
+				weaponStringID = weaponSkin.BlueprintID
 			}
 
 			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
@@ -365,10 +371,15 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 				weaponSkin = &weapon.EquippedWeaponSkinID.String
 			}
 
+			weaponModel, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
+			if err != nil {
+				continue
+			}
+
 			newAttribute := MechSiloAccessories{
 				Type:        "weapon",
 				OwnershipID: weaponCollection.ID,
-				StaticID:    weapon.BlueprintID,
+				StaticID:    weaponModel.WeaponModelID,
 				Skin: &SiloSkin{
 					Type:        "skin",
 					OwnershipID: weaponSkin,
