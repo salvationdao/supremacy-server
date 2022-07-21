@@ -139,7 +139,7 @@ db-update-assets:
 db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
+db-reset-windows: db-drop db-drop-sync db-migrate-sync dev-sync-data-windows db-migrate-up-to-seed db-seed-windows db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -195,6 +195,11 @@ serve-test:
 sync:
 	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
+
+.PHONY: sync-windows
+sync-windows:
+	cd ./server && go run ./cmd/gameserver/main.go sync
+	Powershell rm -r -Force .\server\synctool\temp-sync\
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -253,6 +258,5 @@ dev-sync-data:
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
-	cd ./server/devtool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	cd ./server && go run ./devtool/main.go -sync_mech
-	Powershell rm -r -Force .\server\devtool\temp-sync\
+	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	make sync-windows
