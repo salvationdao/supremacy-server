@@ -233,3 +233,9 @@ const (
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
+
+// Enum values for SystemMessageType
+const (
+	SystemMessageTypeMECH_QUEUE           = "MECH_QUEUE"
+	SystemMessageTypeMECH_BATTLE_COMPLETE = "MECH_BATTLE_COMPLETE"
+)
