@@ -125,7 +125,6 @@ type GenesisOrLimitedMechResp struct {
 
 func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *GenesisOrLimitedMechResp) error {
 	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMechHandler")
-	var mech *server.Mech
 
 	switch req.CollectionSlug {
 	case "supremacy-genesis":
@@ -139,22 +138,12 @@ func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *Gene
 			return err
 		}
 
-		collection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ID)).One(gamedb.StdConn)
+		mech, err := db.Mech(gamedb.StdConn, mechBoiler.ID)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
+			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
 			return err
 		}
-
-		var skinCollection *boiler.CollectionItem
-		if mechBoiler.ChassisSkinID.Valid {
-			skinCollection, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ChassisSkinID.String)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("mechBoiler.ChassisSkinID.String", mechBoiler.ChassisSkinID.String).Msg("failed to find skin collection item")
-				return err
-			}
-		}
-
-		mech = server.MechFromBoiler(mechBoiler, collection, skinCollection)
+		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
 	case "supremacy-limited-release":
 		mechBoiler, err := boiler.Mechs(
 			boiler.MechWhere.LimitedReleaseTokenID.EQ(null.Int64From(int64(req.TokenID))),
@@ -166,29 +155,18 @@ func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *Gene
 			return err
 		}
 
-		collection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ID)).One(gamedb.StdConn)
+		mech, err := db.Mech(gamedb.StdConn, mechBoiler.ID)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
+			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
 			return err
 		}
-
-		var skinCollection *boiler.CollectionItem
-		if mechBoiler.ChassisSkinID.Valid {
-			skinCollection, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ChassisSkinID.String)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("mechBoiler.ChassisSkinID.String", mechBoiler.ChassisSkinID.String).Msg("failed to find skin collection item")
-				return err
-			}
-		}
-
-		mech = server.MechFromBoiler(mechBoiler, collection, skinCollection)
+		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
 	default:
 		err := fmt.Errorf("invalid collection slug")
 		gamelog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("collection slug is invalid")
 		return err
 	}
 
-	resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
 	return nil
 }
 
