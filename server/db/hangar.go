@@ -377,7 +377,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			newAttribute := MechSiloAccessories{
 				Type:        "weapon",
 				OwnershipID: weaponCollection.ID,
-				StaticID:    weapon.BlueprintID,
+				StaticID:    weapon.WeaponModelID.String,
 				Skin: &SiloSkin{
 					Type:        "skin",
 					OwnershipID: weaponSkinCollectionID,
