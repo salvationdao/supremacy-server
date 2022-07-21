@@ -18,7 +18,7 @@ import (
 )
 
 func NewWSWarMachineController(api *API) {
-	api.SecureUserFactionCommand(HubKeyGetMysteryCrates, api.WarMachineRepair)
+	api.SecureUserFactionCommand(HubKeyWarMachineRepair, api.WarMachineRepair)
 
 }
 
@@ -38,7 +38,7 @@ func (api *API) WarMachineRepair(ctx context.Context, user *boiler.Player, facti
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	mech, err := boiler.CollectionItems(
+	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
 	).One(gamedb.StdConn)
@@ -47,18 +47,18 @@ func (api *API) WarMachineRepair(ctx context.Context, user *boiler.Player, facti
 		return terror.Error(err, "Failed to load war machine detail.")
 	}
 
-	if mech.OwnerID != user.ID {
+	if ci.OwnerID != user.ID {
 		return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
 	}
 
 	switch req.Payload.RepairType {
 	case boiler.MechRepairLogTypeSTART_STANDARD_REPAIR:
-		err = api.BattleArena.RepairSystem.StartStandardRepair(user.ID, mech.ID)
+		err = api.BattleArena.RepairSystem.StartStandardRepair(user.ID, ci.ItemID)
 		if err != nil {
 			return err
 		}
 	case boiler.MechRepairLogTypeSTART_FAST_REPAIR:
-		err = api.BattleArena.RepairSystem.StartFastRepair(user.ID, mech.ID)
+		err = api.BattleArena.RepairSystem.StartFastRepair(user.ID, ci.ItemID)
 		if err != nil {
 			return err
 		}

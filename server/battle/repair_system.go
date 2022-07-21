@@ -114,6 +114,7 @@ func (rs *RepairSystem) start() {
 					for _, ci := range cis {
 						if ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
 							ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair_status", ci.R.Owner.FactionID.String, ci.ItemID), server.WarMachineRepairStatusSubscribe, nil)
+							ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair-update", ci.R.Owner.FactionID.String, ci.ItemID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 						}
 					}
 				}(mechIDs)
@@ -153,7 +154,11 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 	drm := db.GetDecimalWithDefault(db.KeyMechRepairDefaultDurationMinutes, decimal.NewFromInt(360))
 
 	// calculate portion of the remaining health
-	durationMinutes := decimal.NewFromInt(1).Add(drm.Mul(damagedPortion)).IntPart()
+	durationMinutes := drm.Mul(damagedPortion).IntPart()
+
+	if durationMinutes == 0 {
+		durationMinutes = 1
+	}
 
 	mrc := &boiler.MechRepairCase{
 		MechID:              mechID,
@@ -182,6 +187,8 @@ func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainH
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to log mech repair event.")
 	}
+
+	BroadcastMechRepairStatus(mrc)
 
 	return nil
 }
@@ -286,7 +293,10 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 
 	damagedPortion := mrc.MaxHealth.Sub(mrc.RemainHealth).Div(mrc.MaxHealth)
 	drm := db.GetDecimalWithDefault(db.KeyMechFastRepairDurationMinutes, decimal.NewFromInt(30))
-	durationMinutes := decimal.NewFromInt(1).Add(drm.Mul(damagedPortion)).IntPart()
+	durationMinutes := drm.Mul(damagedPortion).IntPart()
+	if durationMinutes == 0 {
+		durationMinutes = 1
+	}
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -405,8 +415,8 @@ func BroadcastMechRepairStatus(mrc *boiler.MechRepairCase) {
 		// add a second delay
 		mrs.RemainSeconds = null.IntFrom(1 + int(mrc.ExpectedEndAt.Time.Sub(mrc.StartedAt.Time).Seconds()))
 	}
-
 	if ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair_status", ci.R.Owner.FactionID.String, mrc.MechID), server.WarMachineRepairStatusSubscribe, mrs)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair-update", ci.R.Owner.FactionID.String, mrc.MechID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 	}
 }
