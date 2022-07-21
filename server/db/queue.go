@@ -5,6 +5,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -16,6 +17,27 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	resp := &server.MechArenaInfo{
 		Status: server.MechArenaStatusIdle,
 	}
+
+	mrc, err := boiler.MechRepairCases(
+		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to load mech rapair stat")
+		return nil, terror.Error(err, "Failed to load mech stat")
+	}
+	if mrc != nil && !mrc.EndedAt.Valid {
+		switch mrc.Status {
+		case boiler.MechRepairStatusPENDING:
+			resp.Status = server.MechArenaStatusDamaged
+		case boiler.MechRepairStatusSTANDARD_REPAIR:
+			resp.Status = server.MechArenaStatusStandardRepair
+		case boiler.MechRepairStatusFAST_REPAIR:
+			resp.Status = server.MechArenaStatusFastRepair
+		}
+
+		return resp, nil
+	}
+
 	// check ownership of the mech
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(userID),

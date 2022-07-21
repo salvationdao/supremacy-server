@@ -669,6 +669,41 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	}
 }
 
+func (btl *Battle) processWarMachineRepair() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at register mech repair cases", r)
+		}
+	}()
+	for _, wm := range btl.WarMachines {
+		wm.Lock()
+		mechID := wm.ID
+		maxHealth := wm.MaxHealth
+		health := wm.Health
+		ownerID := wm.OwnedByID
+		wm.Unlock()
+
+		go func() {
+			// skip, if player is AI
+			p, err := boiler.FindPlayer(gamedb.StdConn, ownerID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load mech owner detail")
+				return
+			}
+
+			if p.IsAi {
+				return
+			}
+
+			// register mech repair case
+			err = btl.arena.RepairSystem.RegisterMechRepairCase(mechID, maxHealth, health)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
+			}
+		}()
+	}
+}
+
 func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	defer func() {
 		if r := recover(); r != nil {
@@ -917,8 +952,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 
-	// TODO: process mech repair
-	//btl.processWarMachineRepair(payload)
+	btl.processWarMachineRepair()
 
 	btl.endMultis(endInfo)
 

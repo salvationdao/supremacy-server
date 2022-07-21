@@ -209,6 +209,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		}
 
 		resp = append(resp, Reward{
+			Crate:       assignedCrate,
 			Label:       storeCrate.MysteryCrateType,
 			ImageURL:    storeCrate.ImageURL,
 			LockedUntil: null.TimeFrom(assignedCrate.LockedUntil),

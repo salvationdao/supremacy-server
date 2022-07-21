@@ -54,6 +54,7 @@ type Arena struct {
 	telegram                 server.Telegram
 	SystemBanManager         *SystemBanManager
 	NewBattleChan            chan *NewBattleChan
+	RepairSystem             *RepairSystem
 	sync.RWMutex
 }
 
@@ -249,6 +250,7 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
+		RepairSystem:             New(opts.RPCClient),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 
@@ -660,23 +662,45 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
+// WarMachineStatSubscribe subscribe on bribing stage change
+func (arena *Arena) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	slotNumber := cctx.URLParam("slotNumber")
+	if slotNumber == "" {
+		return fmt.Errorf("slot number is required")
+	}
+
+	participantID, err := strconv.Atoi(slotNumber)
+	if err != nil || participantID == 0 {
+		return fmt.Errorf("invlid participant id")
+	}
+
+	// return data if, current battle is not null
+	wm := arena.CurrentBattleWarMachine(participantID)
+	if wm != nil {
+		reply(WarMachineStat{
+			ParticipantID: participantID,
+			Position:      wm.Position,
+			Rotation:      wm.Rotation,
+			Health:        wm.Health,
+			Shield:        wm.Shield,
+			IsHidden:      wm.IsHidden,
+		})
+	}
+	return nil
+}
+
 const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // BribeStageSubscribe subscribe on bribing stage change
 func (arena *Arena) BribeStageSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	fmt.Println("bribe stage subscribe")
 	// return data if, current battle is not null
 	if arena.CurrentBattle() != nil {
-		fmt.Println("battle exist")
 		btl := arena.CurrentBattle()
 		if AbilitySystemIsAvailable(btl.AbilitySystem()) {
-			fmt.Println("ability system good")
 			reply(btl.AbilitySystem().BribeStageGet())
 		}
 	}
-
-	fmt.Println("bribe stage end subscribe")
-
 	return nil
 }
 

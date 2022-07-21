@@ -2,9 +2,8 @@ package api
 
 import (
 	"context"
-	"server"
-
 	"github.com/ninja-syndicate/ws"
+	"server"
 )
 
 func MustLogin(ctx context.Context) bool {
