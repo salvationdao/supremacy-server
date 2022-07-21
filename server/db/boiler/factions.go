@@ -169,7 +169,6 @@ var FactionRels = struct {
 	Players                 string
 	PunishVotes             string
 	StorefrontMysteryCrates string
-	Syndicates              string
 	TemplatesOlds           string
 }{
 	IDFactionStat:           "IDFactionStat",
@@ -192,7 +191,6 @@ var FactionRels = struct {
 	Players:                 "Players",
 	PunishVotes:             "PunishVotes",
 	StorefrontMysteryCrates: "StorefrontMysteryCrates",
-	Syndicates:              "Syndicates",
 	TemplatesOlds:           "TemplatesOlds",
 }
 
@@ -218,7 +216,6 @@ type factionR struct {
 	Players                 PlayerSlice                 `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	PunishVotes             PunishVoteSlice             `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
 	StorefrontMysteryCrates StorefrontMysteryCrateSlice `boiler:"StorefrontMysteryCrates" boil:"StorefrontMysteryCrates" json:"StorefrontMysteryCrates" toml:"StorefrontMysteryCrates" yaml:"StorefrontMysteryCrates"`
-	Syndicates              SyndicateSlice              `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
 	TemplatesOlds           TemplatesOldSlice           `boiler:"TemplatesOlds" boil:"TemplatesOlds" json:"TemplatesOlds" toml:"TemplatesOlds" yaml:"TemplatesOlds"`
 }
 
@@ -897,28 +894,6 @@ func (o *Faction) StorefrontMysteryCrates(mods ...qm.QueryMod) storefrontMystery
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"storefront_mystery_crates\".*"})
-	}
-
-	return query
-}
-
-// Syndicates retrieves all the syndicate's Syndicates with an executor.
-func (o *Faction) Syndicates(mods ...qm.QueryMod) syndicateQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"syndicates\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"syndicates\".\"deleted_at\""),
-	)
-
-	query := Syndicates(queryMods...)
-	queries.SetFrom(query.Query, "\"syndicates\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"syndicates\".*"})
 	}
 
 	return query
@@ -2918,105 +2893,6 @@ func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, mayb
 	return nil
 }
 
-// LoadSyndicates allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadSyndicates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`syndicates`),
-		qm.WhereIn(`syndicates.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`syndicates.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load syndicates")
-	}
-
-	var resultSlice []*Syndicate
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice syndicates")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on syndicates")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
-	}
-
-	if len(syndicateAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.Syndicates = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &syndicateR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.Syndicates = append(local.R.Syndicates, foreign)
-				if foreign.R == nil {
-					foreign.R = &syndicateR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadTemplatesOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (factionL) LoadTemplatesOlds(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
@@ -4291,58 +4167,6 @@ func (o *Faction) AddStorefrontMysteryCrates(exec boil.Executor, insert bool, re
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &storefrontMysteryCrateR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddSyndicates adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.Syndicates.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddSyndicates(exec boil.Executor, insert bool, related ...*Syndicate) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"syndicates\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			Syndicates: related,
-		}
-	} else {
-		o.R.Syndicates = append(o.R.Syndicates, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &syndicateR{
 				Faction: o,
 			}
 		} else {

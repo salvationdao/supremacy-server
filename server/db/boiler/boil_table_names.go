@@ -5,7 +5,6 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
-	ApplicationVotes                                   string
 	Availabilities                                     string
 	BattleAbilities                                    string
 	BattleAbilityOptInLogs                             string
@@ -102,8 +101,6 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
-	QuestionnaireAnswer                                string
-	QuestionnaireOptions                               string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -111,18 +108,6 @@ var TableNames = struct {
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
-	SyndicateCommittees                                string
-	SyndicateDirectors                                 string
-	SyndicateElectionCandidates                        string
-	SyndicateElectionVotes                             string
-	SyndicateElections                                 string
-	SyndicateEventLog                                  string
-	SyndicateJoinApplications                          string
-	SyndicateMotionVotes                               string
-	SyndicateMotions                                   string
-	SyndicateQuestionnaires                            string
-	SyndicateRules                                     string
-	Syndicates                                         string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
 	Templates                                          string
@@ -139,7 +124,6 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
-	ApplicationVotes:                "application_votes",
 	Availabilities:                  "availabilities",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityOptInLogs:          "battle_ability_opt_in_logs",
@@ -236,8 +220,6 @@ var TableNames = struct {
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
-	QuestionnaireAnswer:          "questionnaire_answer",
-	QuestionnaireOptions:         "questionnaire_options",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
@@ -245,18 +227,6 @@ var TableNames = struct {
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",
-	SyndicateCommittees:          "syndicate_committees",
-	SyndicateDirectors:           "syndicate_directors",
-	SyndicateElectionCandidates:  "syndicate_election_candidates",
-	SyndicateElectionVotes:       "syndicate_election_votes",
-	SyndicateElections:           "syndicate_elections",
-	SyndicateEventLog:            "syndicate_event_log",
-	SyndicateJoinApplications:    "syndicate_join_applications",
-	SyndicateMotionVotes:         "syndicate_motion_votes",
-	SyndicateMotions:             "syndicate_motions",
-	SyndicateQuestionnaires:      "syndicate_questionnaires",
-	SyndicateRules:               "syndicate_rules",
-	Syndicates:                   "syndicates",
 	TelegramNotifications:        "telegram_notifications",
 	TemplateBlueprints:           "template_blueprints",
 	Templates:                    "templates",
