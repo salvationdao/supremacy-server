@@ -246,6 +246,7 @@ func NewAPI(
 				s.Use(api.AuthWS(false, false))
 
 				s.Mount("/commander", api.Commander)
+				s.WS("/online", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 
@@ -481,7 +482,12 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				}
 			}
 
-			user, err := api.TokenLogin(token)
+			if token == "" && !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			user, err := api.TokenLogin(token, !required)
 			if err != nil {
 				if required {
 					gamelog.L.Debug().Err(err).Msg("authentication error")
@@ -532,19 +538,26 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 }
 
 // TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
+func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Player, error) {
+	ignoreError := len(ignoreErr) > 0 && ignoreErr[0] == true
+
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
-		if err.Error() == "session is expired" {
-			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+		if !ignoreError {
+			if err.Error() == "session is expired" {
+				gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+			}
+			gamelog.L.Error().Err(err).Msg("Failed to login with token")
 		}
-		gamelog.L.Error().Err(err).Msg("Failed to login with token")
 		return nil, err
 	}
 
 	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update player detail")
+		if !ignoreError {
+			gamelog.L.Error().Err(err).Msg("Failed to update player detail")
+
+		}
 		return nil, err
 	}
 
@@ -552,13 +565,17 @@ func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 
 	features, err := db.GetPlayerFeaturesByID(player.ID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		if !ignoreError {
+			gamelog.L.Error().Err(err).Msg("Failed to find features")
+		}
 		return nil, err
 	}
 
 	serverPlayer, err := server.PlayerFromBoiler(player, features)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		if !ignoreError {
+			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		}
 		return nil, err
 	}
 
