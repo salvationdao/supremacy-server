@@ -64,12 +64,19 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerUtilitiesToXsynAsset([]*server.Utility{obj})[0]
 	case boiler.ItemTypeWeapon:
-		obj, err := db.Weapon(nil, ci.ItemID)
+		obj, err := db.Weapon(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon in Asset rpc call ")
 			return terror.Error(err)
 		}
 		resp.Asset = rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{obj})[0]
+	case boiler.ItemTypeWeaponSkin:
+		obj, err := db.WeaponSkin(gamedb.StdConn, ci.ItemID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon skin in Asset rpc call ")
+			return terror.Error(err)
+		}
+		resp.Asset = rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{obj})[0]
 	case boiler.ItemTypeMech:
 		obj, err := db.Mech(gamedb.StdConn, ci.ItemID)
 		if err != nil {
@@ -92,7 +99,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerMechAnimationsToXsynAsset([]*server.MechAnimation{obj})[0]
 	case boiler.ItemTypePowerCore:
-		obj, err := db.PowerCore(nil, ci.ItemID)
+		obj, err := db.PowerCore(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get PowerCore in Asset rpc call ")
 			return terror.Error(err)
