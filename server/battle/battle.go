@@ -934,7 +934,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	// broadcast system message to mech owners
 	q, err := boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).All(gamedb.StdConn)
-	go btl.arena.SystemMessagingManager.BroadcastMechBattleCompleteMessage(q)
+	go btl.arena.SystemMessagingManager.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
 
 	_, err = q.DeleteAll(gamedb.StdConn)
 	if err != nil {
