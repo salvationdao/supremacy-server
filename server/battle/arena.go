@@ -825,36 +825,6 @@ type WarMachineStat struct {
 
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
-func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	slotNumber := cctx.URLParam("slotNumber")
-	if slotNumber == "" {
-		return fmt.Errorf("slot number is required")
-	}
-
-	participantID, err := strconv.Atoi(slotNumber)
-	if err != nil {
-		return fmt.Errorf("invalid participant id")
-	}
-
-	wm := arena.CurrentBattleWarMachine(participantID)
-
-	if wm != nil {
-		wm.RLock()
-		defer wm.RUnlock()
-		reply(WarMachineStat{
-			ParticipantID: participantID,
-			Position:      wm.Position,
-			Rotation:      wm.Rotation,
-			Health:        wm.Health,
-			Shield:        wm.Shield,
-			IsHidden:      false,
-		})
-	}
-
-	return nil
-}
-
 const HubKeyBribeStageUpdateSubscribe = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // BribeStageSubscribe subscribe on bribing stage change
