@@ -482,7 +482,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				}
 			}
 
-			if token == "" && !required {
+			if !required && token == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
