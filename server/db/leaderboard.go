@@ -55,10 +55,10 @@ type PlayerMechsOwned struct {
 
 func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 	q := `
-        WITH ci AS (SELECT owner_id, COUNT(id) AS mechs_owned FROM collection_items ci WHERE "item_type" = 'mech' GROUP BY owner_id LIMIT 10)
-        SELECT p.id, p.username, p.faction_id, p.gid, p.rank, ci.mechs_owned FROM players p
-        INNER JOIN ci on p.id = ci.owner_id
-        ORDER BY ci.mechs_owned DESC;
+		WITH ci AS (SELECT owner_id, COUNT(id) AS mechs_owned FROM collection_items ci WHERE "item_type" = 'mech' GROUP BY owner_id ORDER BY COUNT(id) DESC LIMIT 10)
+		SELECT p.id, p.username, p.faction_id, p.gid, p.rank, ci.mechs_owned FROM players p
+		INNER JOIN ci on p.id = ci.owner_id
+		ORDER BY ci.mechs_owned DESC;
     `
 	rows, err := gamedb.StdConn.Query(q)
 	if err != nil {
