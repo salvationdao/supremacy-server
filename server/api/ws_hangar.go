@@ -56,9 +56,9 @@ func (hc *HangarController) GetUserHangarItems(ctx context.Context, user *boiler
 		Silos:   make([]*db.SiloType, 0),
 	}
 
+	hangarResp.Silos = append(hangarResp.Silos, mysteryCrateItems...)
 	hangarResp.Silos = append(hangarResp.Silos, mechItems...)
 	hangarResp.Silos = append(hangarResp.Silos, weaponItems...)
-	hangarResp.Silos = append(hangarResp.Silos, mysteryCrateItems...)
 
 	reply(hangarResp)
 

@@ -14,6 +14,7 @@ import (
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
+	"server/synctool"
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
@@ -68,22 +69,22 @@ type FactionVotePrice struct {
 
 // API server
 type API struct {
-	ctx                        context.Context
-	server                     *http.Server
-	Routes                     chi.Router
-	BattleArena                *battle.Arena
-	HTMLSanitize               *bluemonday.Policy
-	SMS                        server.SMS
-	Passport                   *xsyn_rpcclient.XsynXrpcClient
-	Telegram                   server.Telegram
-	LanguageDetector           lingua.LanguageDetector
-	Cookie                     *securebytes.SecureBytes
-	IsCookieSecure             bool
-	SalePlayerAbilitiesManager *player_abilities.SalePlayerAbilityManager
-	SystemMessagingManager     *system_messages.SystemMessagingManager
-	Commander                  *ws.Commander
-	SecureUserCommander        *ws.Commander
-	SecureFactionCommander     *ws.Commander
+	ctx                      context.Context
+	server                   *http.Server
+	Routes                   chi.Router
+	BattleArena              *battle.Arena
+	HTMLSanitize             *bluemonday.Policy
+	SMS                      server.SMS
+	Passport                 *xsyn_rpcclient.XsynXrpcClient
+	Telegram                 server.Telegram
+	LanguageDetector         lingua.LanguageDetector
+	Cookie                   *securebytes.SecureBytes
+	IsCookieSecure           bool
+	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SystemMessagingManager   *system_messages.SystemMessagingManager
+	Commander                *ws.Commander
+	SecureUserCommander      *ws.Commander
+	SecureFactionCommander   *ws.Commander
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
@@ -101,6 +102,8 @@ type API struct {
 	ProfanityManager *profanities.ProfanityManager
 
 	Config *server.Config
+
+	SyncConfig *synctool.StaticSyncTool
 }
 
 // NewAPI registers routes
@@ -115,21 +118,22 @@ func NewAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	smm *system_messages.SystemMessagingManager,
+	syncConfig *synctool.StaticSyncTool,
 ) *API {
 	// initialise api
 	api := &API{
-		Config:                     config,
-		ctx:                        ctx,
-		Routes:                     chi.NewRouter(),
-		HTMLSanitize:               HTMLSanitize,
-		BattleArena:                battleArenaClient,
-		Passport:                   pp,
-		SMS:                        sms,
-		Telegram:                   telegram,
-		LanguageDetector:           languageDetector,
-		IsCookieSecure:             config.CookieSecure,
-		SalePlayerAbilitiesManager: player_abilities.NewSalePlayerAbilitiesSystem(),
-		SystemMessagingManager:     smm,
+		Config:                   config,
+		ctx:                      ctx,
+		Routes:                   chi.NewRouter(),
+		HTMLSanitize:             HTMLSanitize,
+		BattleArena:              battleArenaClient,
+		Passport:                 pp,
+		SMS:                      sms,
+		Telegram:                 telegram,
+		LanguageDetector:         languageDetector,
+		IsCookieSecure:           config.CookieSecure,
+		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -145,6 +149,7 @@ func NewAPI(
 		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
 		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
 		ProfanityManager: pm,
+		SyncConfig:       syncConfig,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -172,6 +177,7 @@ func NewAPI(
 	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
+	_ = NewLeaderboardController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -213,6 +219,7 @@ func NewAPI(
 			r.Get("/video_server", WithError(api.GetStreamsHandler))
 			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
+			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
@@ -231,6 +238,7 @@ func NewAPI(
 
 		})
 
+		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {
@@ -253,7 +261,8 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+
+				s.WS("/mech", battle.HubKeyWarMachineStatUpdated, nil)
 			}))
 
 			// battle arena route ws

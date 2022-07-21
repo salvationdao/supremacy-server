@@ -5,18 +5,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/rpctypes"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
@@ -725,19 +728,19 @@ type OpenCrateRequest struct {
 }
 
 type OpenCrateResponse struct {
-	Mech       *server.Mech       `json:"mech,omitempty"`
-	MechSkin   *server.MechSkin   `json:"mech_skin,omitempty"`
-	Weapons    []*server.Weapon   `json:"weapon,omitempty"`
-	WeaponSkin *server.WeaponSkin `json:"weapon_skin,omitempty"`
-	PowerCore  *server.PowerCore  `json:"power_core,omitempty"`
+	Mech        *server.Mech         `json:"mech,omitempty"`
+	MechSkins   []*server.MechSkin   `json:"mech_skins,omitempty"`
+	Weapons     []*server.Weapon     `json:"weapon,omitempty"`
+	WeaponSkins []*server.WeaponSkin `json:"weapon_skins,omitempty"`
+	PowerCore   *server.PowerCore    `json:"power_core,omitempty"`
 }
 
 const HubKeyOpenCrate = "CRATE:OPEN"
 
-var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
+var openCrateBucket = leakybucket.NewCollector(1, 1, true)
 
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	v := openCrateBucket.Add(1)
+	v := openCrateBucket.Add(user.ID, 1)
 	if v == 0 {
 		return terror.Error(fmt.Errorf("too many requests"), "Currently handling request, please try again.")
 	}
@@ -872,7 +875,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
 			}
-			items.MechSkin = mechSkin
+			items.MechSkins = append(items.MechSkins, mechSkin)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -886,7 +889,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
 			}
-			items.WeaponSkin = weaponSkin
+			items.WeaponSkins = append(items.WeaponSkins, weaponSkin)
 		case boiler.TemplateItemTypePOWER_CORE:
 			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
@@ -913,16 +916,23 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
+		rarerSkin := items.MechSkins[0]
+		for _, skin := range items.MechSkins {
+			if skin.Tier != "COLOSSAL" {
+				rarerSkin = skin
+			}
+		}
+
 		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
-		items.MechSkin.EquippedOnDetails = eod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
+		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		rarerSkin.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
 
 		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
@@ -935,7 +945,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
-		for _, weapon := range items.Weapons {
+		for i, weapon := range items.Weapons {
 			err = db.AttachWeaponToMech(tx, user.ID, items.Mech.ID, weapon.ID)
 			if err != nil {
 				crateRollback()
@@ -944,6 +954,26 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 			weapon.EquippedOn = null.StringFrom(items.Mech.ID)
 			weapon.EquippedOnDetails = eod
+
+			wod, err := db.WeaponEquippedOnDetails(tx, items.Weapons[0].ID)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+				return terror.Error(err, "Could not open crate, try again or contact support.")
+			}
+
+			//attach weapon_skin to weapon -weapon
+			err = db.AttachWeaponSkinToWeapon(tx, user.ID, weapon.ID, items.WeaponSkins[i].ID)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
+				return terror.Error(err, "Could not open crate, try again or contact support.")
+			}
+
+			weapon.WeaponSkin = items.WeaponSkins[i]
+			weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
+			weapon.WeaponSkin.EquippedOnDetails = wod
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[i]})...)
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
@@ -953,7 +983,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		mech.ChassisSkin = items.MechSkin
+		mech.ChassisSkin = rarerSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 
 		if req.Payload.IsHangar {
@@ -981,15 +1011,15 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
+		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
-		items.WeaponSkin.EquippedOnDetails = wod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
+		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkins[0].EquippedOnDetails = wod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 		weapon, err := db.Weapon(tx, items.Weapons[0].ID)
 		if err != nil {
@@ -1168,4 +1198,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Weapons: playerAssWeapons,
 	})
 	return nil
+}
+
+func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	output, err := db.GetWeaponMaxStats(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
+	}
+
+	// Don't put quote values in for decimal stat values
+	decimal.MarshalJSONWithoutQuotes = true
+	status, resp := helpers.EncodeJSON(w, output)
+	decimal.MarshalJSONWithoutQuotes = false
+
+	return status, resp
 }

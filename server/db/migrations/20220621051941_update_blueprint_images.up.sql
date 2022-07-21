@@ -1,38 +1,3 @@
---only updating genesis weapon avatar_url bc I don't have the files for the nexus weapons or other media
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/zai/sniper/genesis_zai_weapon_snp_neon_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Sniper Rifle';
-
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/zai/sword/genesis_zai_weapon_swd_neon_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Laser Sword';
-
-
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/bc/sword/genesis_bc_weapon_swd_blue-white_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Sword';
-
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/bc/plasma-rifle/genesis_bc_weapon_plas_blue-white_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Plasma Rifle';
-
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/rm/cannon/genesis_rm_weapon_cnn_vintage_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Auto Cannon';
-
-UPDATE blueprint_weapon_skin bws
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/genesis/weapons/png/zai/rocket-pod/genesis_zai_weapon_rktpod_icon.png'
-WHERE bws.tier = 'MEGA'
-  AND bws.label = 'Rocket Pod';
-
-UPDATE blueprint_power_cores
-SET avatar_url = 'https://afiles.ninja-cdn.com/passport/nexus/utility/utility_power-core.png';
-
 UPDATE collection_items AS ci
 SET image_url          = bms.image_url,
     card_animation_url = bms.card_animation_url,
@@ -128,6 +93,3 @@ WHERE rkt.item_id = ci.item_id;
 UPDATE collection_items
 SET avatar_url = 'https://afiles.ninja-cdn.com/passport/nexus/utility/genesis_zai_utility_orb-shield.png'
 WHERE "item_type" = 'utility';
-
-ALTER TABLE weapon_models
-    ADD CONSTRAINT fk_weapon_model_default_skin FOREIGN KEY (default_skin_id) REFERENCES blueprint_weapon_skin (id);

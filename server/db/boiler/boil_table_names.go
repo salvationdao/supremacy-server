@@ -27,6 +27,7 @@ var TableNames = struct {
 	Blobs                                              string
 	BlockMarketplace                                   string
 	BlueprintAmmo                                      string
+	BlueprintChassis                                   string
 	BlueprintKeycards                                  string
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
@@ -101,6 +102,7 @@ var TableNames = struct {
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
+	StaticMigrations                                   string
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
@@ -142,6 +144,7 @@ var TableNames = struct {
 	Blobs:                        "blobs",
 	BlockMarketplace:             "block_marketplace",
 	BlueprintAmmo:                "blueprint_ammo",
+	BlueprintChassis:             "blueprint_chassis",
 	BlueprintKeycards:            "blueprint_keycards",
 	BlueprintMechAnimation:       "blueprint_mech_animation",
 	BlueprintMechSkin:            "blueprint_mech_skin",
@@ -216,6 +219,7 @@ var TableNames = struct {
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
+	StaticMigrations:             "static_migrations",
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",

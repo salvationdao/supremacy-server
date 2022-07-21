@@ -386,11 +386,11 @@ type MechsByOwnerIDResp struct {
 }
 
 type AssetReq struct {
-	AssetID uuid.UUID
+	AssetHash string `json:"asset_hash"`
 }
 
 type AssetResp struct {
-	Asset *XsynAsset
+	Asset *XsynAsset `json:"asset"`
 }
 
 type TemplateRegisterReq struct {

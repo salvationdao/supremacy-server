@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"os"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/h2non/filetype"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/terror/v2"
 )
 
 type Seeder struct {
@@ -37,20 +37,8 @@ func (s *Seeder) Run() error {
 		return err
 	}
 
-	fmt.Println("seed factions")
-	_, err = s.factions(ctx)
-	if err != nil {
-		return err
-	}
-
 	fmt.Println("Seed assets")
 	_, err = s.assets(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Seed faction abilities")
-	err = factionAbilities(ctx, s.Conn)
 	if err != nil {
 		return err
 	}
