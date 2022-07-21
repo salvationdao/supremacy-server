@@ -138,6 +138,9 @@ db-update-assets:
 .PHONY: db-reset
 db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
+.PHONY: db-reset_dev
+db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
+
 .PHONY: db-reset-windows
 db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
 
@@ -193,7 +196,7 @@ serve-test:
 
 .PHONY: sync
 sync:
-	cd server && go run synctool/main.go sync
+	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
 
 .PHONY: docker-db-dump

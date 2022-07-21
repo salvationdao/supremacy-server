@@ -737,10 +737,10 @@ type OpenCrateResponse struct {
 
 const HubKeyOpenCrate = "CRATE:OPEN"
 
-var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
+var openCrateBucket = leakybucket.NewCollector(1, 1, true)
 
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	v := openCrateBucket.Add(1)
+	v := openCrateBucket.Add(user.ID, 1)
 	if v == 0 {
 		return terror.Error(fmt.Errorf("too many requests"), "Currently handling request, please try again.")
 	}
