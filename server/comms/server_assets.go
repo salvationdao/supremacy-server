@@ -2,6 +2,7 @@ package comms
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
 	"server"
 	"server/asset"
 	"server/db"
@@ -10,6 +11,7 @@ import (
 	"server/gamelog"
 	"server/rpctypes"
 	"server/xsyn_rpcclient"
+	"strings"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -23,13 +25,37 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 
 	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.Hash.EQ(req.AssetHash),
-		).One(gamedb.StdConn)
+	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("AssetHash", req.AssetHash).Msg(" failed to get collection item in Asset rpc call ")
 		return terror.Error(err)
 	}
 
 	switch ci.ItemType {
+	case boiler.ItemTypeMysteryCrate:
+		idAsUUID, err := uuid.FromString(ci.ItemID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get mystery crate in Asset rpc call ")
+			return terror.Error(err)
+		}
+
+		obj, err := db.PlayerMysteryCrate(idAsUUID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get mystery crate in Asset rpc call ")
+			return terror.Error(err)
+		}
+
+		// oof we forgot to store the original faction id on the crate so we need to do a string check...
+		factionName := ""
+		if strings.Contains(obj.Label, "Red Mountain") {
+			factionName = " Red Mountain Offworld Mining Corporation"
+		} else if strings.Contains(obj.Label, "Boston") {
+			factionName = "Boston Cybernetics"
+		} else if strings.Contains(obj.Label, "Zaibatsu") {
+			factionName = "Zaibatsu Heavy Industries"
+		}
+
+		resp.Asset = rpctypes.ServerMysteryCrateToXsynAsset(obj, factionName)
 	case boiler.ItemTypeUtility:
 		obj, err := db.Utility(ci.ItemID)
 		if err != nil {
