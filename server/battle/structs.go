@@ -202,8 +202,6 @@ type GameAbility struct {
 
 	CooldownDurationSecond int `json:"cooldown_duration_second"`
 
-	OfferingID uuid.UUID `json:"ability_offering_id"` // for tracking ability trigger
-
 	sync.RWMutex
 }
 

@@ -19,16 +19,6 @@ ALTER COLUMN
 SET
     NOT NULL;
 
--- New location_select_ability type
-DROP TYPE IF EXISTS LOCATION_SELECT_TYPE_ENUM;
-
-CREATE TYPE LOCATION_SELECT_TYPE_ENUM AS ENUM (
-    'LINE_SELECT',
-    'MECH_SELECT',
-    'LOCATION_SELECT',
-    'GLOBAL'
-    );
-
 ALTER TABLE
     blueprint_player_abilities DROP CONSTRAINT blueprint_player_abilities_location_select_type_check;
 

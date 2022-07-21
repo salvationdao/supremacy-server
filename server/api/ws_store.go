@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"server"
 	"server/battle"
 	"server/db"
@@ -208,6 +209,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		}
 
 		resp = append(resp, Reward{
+			Crate:       assignedCrate,
 			Label:       storeCrate.MysteryCrateType,
 			ImageURL:    storeCrate.ImageURL,
 			LockedUntil: null.TimeFrom(assignedCrate.LockedUntil),
@@ -245,6 +247,12 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 
 	//update purchased value
 	assignedCrate.Purchased = true
+
+	// set newly bought crates openable on staging/dev (this is so people cannot open already purchased crates and see what is in them)
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+		assignedCrate.LockedUntil = time.Now()
+	}
+
 	_, err = assignedCrate.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to update assigned crate information")

@@ -50,10 +50,11 @@ type CodeRedemptionRequest struct {
 }
 
 type Reward struct {
-	Label       string              `json:"label"`
-	ImageURL    null.String         `json:"image_url"`
-	LockedUntil null.Time           `json:"locked_until"`
-	Amount      decimal.NullDecimal `json:"amount"`
+	Crate       *server.MysteryCrate `json:"mystery_crate,omitempty"`
+	Label       string               `json:"label"`
+	ImageURL    null.String          `json:"image_url"`
+	LockedUntil null.Time            `json:"locked_until"`
+	Amount      decimal.NullDecimal  `json:"amount"`
 }
 
 type CodeRedemptionResponse struct {

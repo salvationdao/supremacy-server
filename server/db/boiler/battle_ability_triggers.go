@@ -441,6 +441,7 @@ func (o *BattleAbilityTrigger) Faction(mods ...qm.QueryMod) factionQuery {
 func (o *BattleAbilityTrigger) GameAbility(mods ...qm.QueryMod) gameAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.GameAbilityID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -719,6 +720,7 @@ func (battleAbilityTriggerL) LoadGameAbility(e boil.Executor, singular bool, may
 	query := NewQuery(
 		qm.From(`game_abilities`),
 		qm.WhereIn(`game_abilities.id in ?`, args...),
+		qmhelper.WhereIsNull(`game_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

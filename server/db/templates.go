@@ -275,7 +275,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		mechAnimations = append(mechAnimations, insertedMechAnimations)
 	}
 
-	// inserts mech animation blueprints
+	// inserts mech skin blueprints
 	for _, mechSkin := range tmpl.BlueprintMechSkin {
 		mechSkin.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		mechSkin.GenesisTokenID = tokenIDs.GenesisTokenID
@@ -350,6 +350,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 				Str("powerCores[0].ID", powerCores[0].ID).
 				Msg("failed to join powercore to mech")
 		}
+
 		// join skin
 		err = AttachMechSkinToMech(nil, ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
 		if err != nil {

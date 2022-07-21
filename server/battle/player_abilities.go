@@ -495,6 +495,127 @@ func (arena *Arena) mechCommandAuthorisedCheck(userID string, wm *WarMachine) er
 	return nil
 }
 
+const HubKeyWarMachineAbilityTrigger = "WAR:MACHINE:ABILITY:TRIGGER"
+
+type MechAbilityTriggerRequest struct {
+	Payload struct {
+		Hash          string `json:"mech_hash"`
+		GameAbilityID string `json:"game_ability_id"`
+	} `json:"payload"`
+}
+
+func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// check battle stage
+	if arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
+	}
+
+	req := &MechAbilityTriggerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get mech
+	wm := arena.CurrentBattleWarMachineByHash(req.Payload.Hash)
+	if wm == nil {
+		return terror.Error(fmt.Errorf("required mech not found"), "Targeted mech is not on the battlefield.")
+	}
+
+	err = arena.mechCommandAuthorisedCheck(user.ID, wm)
+	if err != nil {
+		gamelog.L.Warn().Str("mech id", wm.ID).Str("user id", user.ID).Msg("Unauthorised mech command - create")
+		return terror.Error(err, err.Error())
+	}
+
+	// get cooldown timer
+	abilityCooldownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
+
+	// get ability from db
+	lastTrigger, err := boiler.MechAbilityTriggerLogs(
+		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get last ability trigger")
+	}
+
+	if lastTrigger != nil {
+		return terror.Error(fmt.Errorf("ability is still cooling down"), fmt.Sprintf("The ability is still cooling down."))
+	}
+
+	// get game ability
+	ga, err := boiler.FindGameAbility(gamedb.StdConn, req.Payload.GameAbilityID)
+	if err != nil {
+		gamelog.L.Error().Str("ability id", req.Payload.GameAbilityID).Msg("Failed to get game ability from db")
+		return terror.Error(err, "Failed to load game ability")
+	}
+
+	if ga.FactionID != wm.FactionID {
+		return terror.Error(fmt.Errorf("invalid faction id"), "Targeted game ability is not from the same faction")
+	}
+
+	if ga.Level != boiler.AbilityLevelPLAYER {
+		return terror.Error(fmt.Errorf("non player ability ability"), "Targeted game ability is not a player level ability.")
+	}
+
+	// trigger the ability
+	now := time.Now()
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: byte(ga.GameClientAbilityID),
+		WarMachineHash:      &wm.Hash,
+		ParticipantID:       &wm.ParticipantID,
+		EventID:             uuid.Must(uuid.NewV4()),
+	}
+
+	// fire mech command
+	arena.Message("BATTLE:ABILITY", event)
+
+	// log mech move command
+	mat := &boiler.MechAbilityTriggerLog{
+		MechID:        wm.ID,
+		TriggeredByID: user.ID,
+		GameAbilityID: ga.ID,
+		CreatedAt:     now,
+	}
+
+	err = mat.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
+		return terror.Error(err, "Failed to record mech ability trigger")
+	}
+
+	// send notification
+	arena.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+		User: &UserBrief{
+			ID:        uuid.FromStringOrNil(user.ID),
+			Username:  user.Username.String,
+			FactionID: user.FactionID.String,
+		},
+		Ability: &AbilityBrief{
+			Label:    ga.Label,
+			ImageUrl: ga.ImageURL,
+			Colour:   ga.Colour,
+		},
+		WarMachine: &WarMachineBrief{
+			ParticipantID: wm.ParticipantID,
+			Hash:          wm.Hash,
+			ImageUrl:      wm.Image,
+			ImageAvatar:   wm.ImageAvatar,
+			Name:          wm.Name,
+			FactionID:     wm.FactionID,
+		},
+	})
+
+	// broadcast cool down seconds
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
+
+	return nil
+}
+
 type MechMoveCommandCreateRequest struct {
 	Payload struct {
 		Hash        string               `json:"mech_hash"`
@@ -715,6 +836,53 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	}
 
 	reply(true)
+
+	return nil
+}
+
+const HubKeyBattleAbilityOptIn = "BATTLE:ABILITY:OPT:IN"
+
+var optInBucket = leakybucket.NewCollector(1, 1, true)
+
+func (arena *Arena) BattleAbilityOptIn(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if optInBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
+	btl := arena.CurrentBattle()
+	if btl == nil {
+		return terror.Error(fmt.Errorf("battle is endded"), "Battle has not started yet.")
+	}
+
+	as := btl.AbilitySystem()
+	if as == nil {
+		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
+	}
+
+	if !AbilitySystemIsAvailable(as) {
+		return terror.Error(fmt.Errorf("ability system si not available"), "Ability is not ready.")
+	}
+
+	if as.BattleAbilityPool.Stage.Phase.Load() != BribeStageOptIn {
+		return terror.Error(fmt.Errorf("invlid phase"), "It is not in the stage for player to opt in.")
+	}
+
+	ba := *as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+	offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
+
+	bao := boiler.BattleAbilityOptInLog{
+		BattleID:                btl.BattleID,
+		PlayerID:                user.ID,
+		BattleAbilityOfferingID: offeringID,
+		FactionID:               factionID,
+		BattleAbilityID:         ba.ID,
+	}
+	err := bao.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to opt in battle ability")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s/battle_ability/check_opt_in", user.ID), HubKeyBattleAbilityOptInCheck, true)
 
 	return nil
 }

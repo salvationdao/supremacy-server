@@ -1,26 +1,3 @@
--- Add syndicate info
-ALTER TABLE factions
-    ADD COLUMN label TEXT UNIQUE;
-UPDATE factions
-SET label = 'Zaibatsu Heavy Industries'
-WHERE id = '880db344-e405-428d-84e5-6ebebab1fe6d';
-UPDATE factions
-SET label = 'Red Mountain Offworld Mining Corporation'
-WHERE id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
-UPDATE factions
-SET label = 'Boston Cybernetics'
-WHERE id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
-ALTER TABLE factions
-    ALTER COLUMN label SET NOT NULL;
-ALTER TABLE factions
-    ADD COLUMN guild_id UUID;
-ALTER TABLE factions
-    ADD COLUMN deleted_at TIMESTAMPTZ;
-ALTER TABLE factions
-    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-ALTER TABLE factions
-    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-
 CREATE TABLE players
 (
     id             UUID PRIMARY KEY NOT NULL,
@@ -35,17 +12,6 @@ CREATE TABLE players
 
 ALTER TABLE users
     ADD COLUMN player_id UUID REFERENCES players (id);
-
-CREATE TABLE brands
-(
-    id         UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    faction_id UUID             NOT NULL REFERENCES factions (id),
-    label      TEXT UNIQUE      NOT NULL,
-
-    deleted_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE blueprint_chassis
 (
@@ -90,20 +56,20 @@ CREATE TABLE templates
     created_at           TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE blueprint_weapons
-(
-    id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    brand_id    UUID REFERENCES brands (id),
-
-    label       TEXT UNIQUE      NOT NULL,
-    slug        TEXT UNIQUE      NOT NULL,
-    damage      INTEGER          NOT NULL,
-    weapon_type TEXT             NOT NULL CHECK (weapon_type IN ('TURRET', 'ARM')),
-
-    deleted_at  TIMESTAMPTZ,
-    updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
+-- CREATE TABLE blueprint_weapons
+-- (
+--     id          UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+--     brand_id    UUID REFERENCES brands (id),
+--
+--     label       TEXT UNIQUE      NOT NULL,
+--     slug        TEXT UNIQUE      NOT NULL,
+--     damage      INTEGER          NOT NULL,
+--     weapon_type TEXT             NOT NULL CHECK (weapon_type IN ('TURRET', 'ARM')),
+--
+--     deleted_at  TIMESTAMPTZ,
+--     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+--     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+-- );
 
 CREATE TABLE blueprint_modules
 (
@@ -262,17 +228,6 @@ CREATE TABLE chassis_modules
 );
 
 
--- Brands
--- 1 for each faction
-INSERT INTO brands (id, faction_id, label)
-VALUES ('2b203c87-ad8c-4ce2-af17-e079835fdbcb', '880db344-e405-428d-84e5-6ebebab1fe6d', 'Zaibatsu Heavy Industries');
-INSERT INTO brands (id, faction_id, label)
-VALUES ('953ad4fc-3aa9-471f-a852-f39e9f36cd04', '98bf7bb3-1a7c-4f21-8843-458d62884060',
-        'Red Mountain Offworld Mining Corporation');
-INSERT INTO brands (id, faction_id, label)
-VALUES ('009f71fc-3594-4d24-a6e2-f05070d66f40', '7c6dde21-b067-46cf-9e56-155c88a520e2', 'Boston Cybernetics');
-
-
 -- Players
 -- 1 for each faction
 INSERT INTO players (id, faction_id, username, public_address, is_ai)
@@ -315,18 +270,18 @@ VALUES ('ad124964-e062-4ab8-9cce-e0309fd6b31d', '009f71fc-3594-4d24-a6e2-f05070d
 
 -- Default weapons
 -- 6 Weapons
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'Laser Sword', 'laser_sword', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
-INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'Sword', 'sword', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'Laser Sword', 'laser_sword', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
+-- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
+-- VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'Sword', 'sword', -1, 'ARM');
 
 -- Default modules
 -- Shield only

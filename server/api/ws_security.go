@@ -19,6 +19,16 @@ func (api *API) SecureUserFactionCommand(key string, fn server.SecureFactionComm
 	api.SecureFactionCommander.Command(string(key), server.MustSecureFaction(fn))
 }
 
+func MustHaveFaction(ctx context.Context) bool {
+	// get user from xsyn service
+	u, err := server.RetrieveUser(ctx)
+	if err != nil {
+		return false
+	}
+
+	return u.FactionID.Valid
+}
+
 func MustLogin(ctx context.Context) bool {
 	// get user from xsyn service
 	_, err := server.RetrieveUser(ctx)

@@ -43,7 +43,7 @@ func (pac *PlayerAbilitiesController) All(w http.ResponseWriter, r *http.Request
 	return helpers.EncodeJSON(w, pas)
 }
 
-type GivePlayerAbilityRequest struct {
+type PlayerAbilitiesGiveRequest struct {
 	Amount      int    `json:"amount"`
 	BlueprintID string `json:"blueprint_id"`
 
@@ -53,7 +53,7 @@ type GivePlayerAbilityRequest struct {
 }
 
 func (pac *PlayerAbilitiesController) Give(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &GivePlayerAbilityRequest{}
+	req := &PlayerAbilitiesGiveRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
@@ -121,7 +121,7 @@ func (pac *PlayerAbilitiesController) Give(w http.ResponseWriter, r *http.Reques
 	return http.StatusOK, nil
 }
 
-type RemovePlayerAbilityRequest struct {
+type PlayerAbilitiesRemoveRequest struct {
 	Amount      int    `json:"amount"`
 	BlueprintID string `json:"blueprint_id"`
 	RemoveAll   bool   `json:"remove_all"`
@@ -132,7 +132,7 @@ type RemovePlayerAbilityRequest struct {
 }
 
 func (pac *PlayerAbilitiesController) Remove(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &RemovePlayerAbilityRequest{}
+	req := &PlayerAbilitiesRemoveRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))

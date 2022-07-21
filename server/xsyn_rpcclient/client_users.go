@@ -55,7 +55,7 @@ func (pp *XsynXrpcClient) OneTimeTokenLogin(tokenBase64, device, action string) 
 	err := pp.XrpcClient.Call("S.OneTimeTokenLogin", OneTimeTokenReq{pp.ApiKey, tokenBase64, device, action}, resp)
 
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "OneTimeTokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
@@ -78,7 +78,7 @@ func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
 
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "TokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
