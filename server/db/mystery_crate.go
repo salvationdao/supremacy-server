@@ -10,7 +10,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -130,9 +129,7 @@ func PlayerMysteryCrateList(
 	}
 
 	// Get Mystery Crates
-	boil.DebugMode = true
 	collectionItems, err := boiler.CollectionItems(queryMods...).All(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return total, nil, terror.Error(err)
 	}
