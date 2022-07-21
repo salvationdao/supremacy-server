@@ -40,8 +40,8 @@ SELECT
 	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
 	collection_items.image_url,
-	collection_items.avatar_url,
 	collection_items.card_animation_url,
+	collection_items.avatar_url,
 	collection_items.large_image_url,
 	collection_items.background_color,
 	collection_items.animation_url,
@@ -92,7 +92,14 @@ SELECT
 			AND _i.deleted_at IS NULL
 			AND _i.end_at > NOW()
 		LIMIT 1
-	) AS item_sale_id
+	) AS item_sale_id,
+	(
+		SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
+		FROM blueprint_mechs _bm 
+			LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
+		WHERE _bm.id = mechs.blueprint_id
+		LIMIT 1
+	) AS battle_ready
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
@@ -133,7 +140,7 @@ LEFT OUTER JOIN (
 					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
 					FROM weapon_skin __ws
 					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
-			) _ws ON _ws.id = _w.equipped_weapon_skin_id
+			) _ws ON _ws.equipped_on = _w.id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id
@@ -260,6 +267,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleReady,
 		)
 		if err != nil {
 			return nil, err
@@ -366,6 +374,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleReady,
 		)
 		if err != nil {
 			return nil, err
@@ -646,6 +655,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		hasInBattleToggled := false
 		hasMarketplaceToggled := false
 		hasInQueueToggled := false
+		hasBattleReadyToggled := false
 
 		statusFilters := []qm.QueryMod{}
 
@@ -728,9 +738,33 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 					boiler.BattleQueueColumns.BattleID,
 				)))
+			} else if s == "BATTLE_READY" {
+				if hasBattleReadyToggled {
+					continue
+				}
+				hasBattleReadyToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT 1 
+						FROM %s _bm
+							LEFT JOIN %s _a ON _a.%s = _bm.%s
+						WHERE _bm.%s = %s 
+							AND (
+								_a.%s IS NULL
+								OR _a.%s <= NOW()
+							)
+					)`,
+					boiler.TableNames.BlueprintMechs,
+					boiler.TableNames.Availabilities,
+					boiler.AvailabilityColumns.ID,
+					boiler.BlueprintMechColumns.AvailabilityID,
+					boiler.BlueprintMechColumns.ID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+					boiler.AvailabilityColumns.ID,
+					boiler.AvailabilityColumns.AvailableAt,
+				)))
 			}
-			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled {
-				statusFilters = []qm.QueryMod{} // we don't need the filtering at this point
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled && hasBattleReadyToggled {
 				break
 			}
 		}

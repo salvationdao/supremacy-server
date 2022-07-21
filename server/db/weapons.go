@@ -10,6 +10,7 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -709,4 +710,50 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 	}
 
 	return nil
+}
+
+type WeaponMaxStats struct {
+	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	Damage              int                 `json:"damage"`
+	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
+	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
+	Radius              null.Int            `json:"radius,omitempty"`
+	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
+	Spread              decimal.NullDecimal `json:"spread,omitempty"`
+	RateOfFire          decimal.NullDecimal `json:"rate_of_fire,omitempty"`
+	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
+	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
+}
+
+func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
+	output := &WeaponMaxStats{}
+	err := boiler.Weapons(
+		qm.Select(
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Damage),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloffRate),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Radius),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RadiusDamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Spread),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RateOfFire),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.ProjectileSpeed),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.EnergyCost),
+		),
+	).QueryRow(conn).Scan(
+		&output.MaxAmmo,
+		&output.Damage,
+		&output.DamageFalloff,
+		&output.DamageFalloffRate,
+		&output.Radius,
+		&output.RadiusDamageFalloff,
+		&output.Spread,
+		&output.RateOfFire,
+		&output.ProjectileSpeed,
+		&output.EnergyCost,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
 }
