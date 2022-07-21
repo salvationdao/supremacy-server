@@ -131,6 +131,12 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 						continue
 					}
 					weaponStringID = defaultSkin.ID
+				} else {
+					weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(gamedb.StdConn)
+					if err != nil {
+						continue
+					}
+					weaponStringID = weaponSkin.BlueprintID
 				}
 
 				weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
