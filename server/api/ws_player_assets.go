@@ -728,6 +728,7 @@ type OpenCrateRequest struct {
 }
 
 type OpenCrateResponse struct {
+	ID          string               `json:"id"`
 	Mech        *server.Mech         `json:"mech,omitempty"`
 	MechSkins   []*server.MechSkin   `json:"mech_skins,omitempty"`
 	Weapons     []*server.Weapon     `json:"weapon,omitempty"`
@@ -813,6 +814,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	}
 
 	items := OpenCrateResponse{}
+	items.ID = req.Payload.Id
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
