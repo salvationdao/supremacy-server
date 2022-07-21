@@ -231,11 +231,19 @@ func (rs *RepairSystem) StartStandardRepair(userID string, mechID string) error 
 		return terror.Error(fmt.Errorf("repair process has already started"), "The repair process has already started.")
 	}
 
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Msg("Failed to begin db transaction.")
+		return terror.Error(err, "Failed to pay instant repair fee.")
+	}
+
+	defer tx.Rollback()
+
 	// start the process
 	mrc.StartedAt = null.TimeFrom(now)
 	mrc.ExpectedEndAt = null.TimeFrom(now.Add(time.Duration(mrc.RepairPeriodMinutes) * time.Minute))
 	mrc.Status = boiler.MechRepairStatusSTANDARD_REPAIR
-	_, err = mrc.Update(gamedb.StdConn, boil.Whitelist(
+	_, err = mrc.Update(tx, boil.Whitelist(
 		boiler.MechRepairCaseColumns.StartedAt,
 		boiler.MechRepairCaseColumns.ExpectedEndAt,
 		boiler.MechRepairCaseColumns.Status,
@@ -243,6 +251,26 @@ func (rs *RepairSystem) StartStandardRepair(userID string, mechID string) error 
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to update mech repair process.")
 		return terror.Error(err, "Failed to start repair process.")
+	}
+
+	_, err = rs.passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.FromStringOrNil(userID),
+		ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
+		Amount:               mrc.Fee.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_mech_standard_repair_fee|%s|%d", mrc.MechID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          "Paying mech standard repair fee " + mechID + ".",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", mrc.MechID).Err(err).Msg("Failed to pay asset repair fee")
+		return terror.Error(err, "Failed to pay asset repair fee")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to pay instant repair fee.")
 	}
 
 	// mech repair log
@@ -268,7 +296,6 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 
 	mrc, err := boiler.MechRepairCases(
 		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-		boiler.MechRepairCaseWhere.EndedAt.IsNotNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to load mech repair case.")
@@ -325,8 +352,8 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 	mrc.ExpectedEndAt = null.TimeFrom(mrc.StartedAt.Time.Add(time.Duration(durationMinutes) * time.Minute))
 	mrc.FastRepairTXID = null.StringFrom("SPEED_UP_TX") // will be replaced after sups spend is success
 
-	// check repair is ended
-	if mrc.ExpectedEndAt.Time.After(now) {
+	// check repair is already ended
+	if mrc.ExpectedEndAt.Time.Before(now) {
 		mrc.EndedAt = null.TimeFrom(now)
 	}
 
@@ -343,15 +370,15 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 		return terror.Error(err, "Failed to pay instant repair fee")
 	}
 
-	// pay instant repair fee
+	// pay speed up repair fee
 	txID, err := rs.passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.FromStringOrNil(userID),
 		ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
 		Amount:               fastRepairFee.StringFixed(0),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_mech_repair_fee|%s|%d", mrc.MechID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_mech_fast_repair_fee|%s|%d", mrc.MechID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
-		Description:          "Paying mech repair fee " + mechID + ".",
+		Description:          "Paying mech fast repair fee " + mechID + ".",
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -365,7 +392,7 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 	}
 
 	mrc.FastRepairTXID = null.StringFrom(txID)
-	_, err = mrc.Update(tx, boil.Whitelist(boiler.MechRepairCaseColumns.FastRepairFee))
+	_, err = mrc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechRepairCaseColumns.FastRepairFee))
 	if err != nil {
 		gamelog.L.Error().Interface("mech repair case", mrc).Err(err).Msg("Failed to update the instant repair txid of mech repair case.")
 	}
