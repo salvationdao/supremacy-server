@@ -48,46 +48,6 @@ func GetPlayerMechSurvives() ([]*PlayerMechSurvives, error) {
 	return resp, nil
 }
 
-type PlayerBattleContributions struct {
-	Player             *boiler.Player  `json:"player"`
-	TotalContributions decimal.Decimal `db:"total_contributions" json:"total_contributions"`
-}
-
-func GetPlayerBattleContributions() ([]*PlayerBattleContributions, error) {
-	q := `
-        WITH bc AS (SELECT player_id, SUM(amount) AS total_contributions from battle_contributions bc where bc.refund_transaction_id isnull group by player_id limit 10)
-        SELECT p.id, p.username, p.faction_id, p.gid, p.rank, bc.total_contributions FROM players p
-        INNER JOIN bc on p.id = bc.player_id
-        ORDER BY bc.total_contributions DESC;
-    `
-	rows, err := gamedb.StdConn.Query(q)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player battle contributions.")
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	resp := []*PlayerBattleContributions{}
-	for rows.Next() {
-		battleContributions := &PlayerBattleContributions{
-			Player: &boiler.Player{},
-		}
-
-		err := rows.Scan(&battleContributions.Player.ID, &battleContributions.Player.Username, &battleContributions.Player.FactionID, &battleContributions.Player.Gid, &battleContributions.Player.Rank, &battleContributions.TotalContributions)
-
-		if err != nil {
-			gamelog.L.Error().
-				Str("db func", "GetPlayerContributions").Err(err).Msg("unable to scan player battle contributions into struct")
-			return nil, err
-		}
-
-		resp = append(resp, battleContributions)
-	}
-
-	return resp, nil
-}
-
 type PlayerMechsOwned struct {
 	Player     *boiler.Player  `json:"player"`
 	MechsOwned decimal.Decimal `db:"mechs_owned" json:"mechs_owned"`
