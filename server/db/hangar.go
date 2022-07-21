@@ -238,7 +238,7 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
 
-		canOpenOnStr := canOpenOn.Format("2006-01-02T15:04:05.000MST")
+		canOpenOnStr := canOpenOn.UTC().Format("2006-01-02T15:04:05.000Z")
 
 		mst.CanOpenOn = &canOpenOnStr
 
