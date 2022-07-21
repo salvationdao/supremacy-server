@@ -11,3 +11,5 @@ const HubKeyBattleMechHistoryList = "BATTLE:MECH:HISTORY:LIST"
 const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+
+const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"

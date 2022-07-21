@@ -917,8 +917,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 
-	// TODO: process mech repair
-	//btl.processWarMachineRepair(payload)
+	btl.processWarMachineRepair()
 
 	btl.endMultis(endInfo)
 

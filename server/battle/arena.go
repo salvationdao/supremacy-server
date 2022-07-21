@@ -54,6 +54,7 @@ type Arena struct {
 	telegram                 server.Telegram
 	SystemBanManager         *SystemBanManager
 	NewBattleChan            chan *NewBattleChan
+	RepairSystem             *RepairSystem
 	sync.RWMutex
 }
 
@@ -249,6 +250,7 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
+		RepairSystem:             New(opts.RPCClient),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 
