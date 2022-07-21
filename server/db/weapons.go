@@ -10,6 +10,7 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -711,6 +712,55 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 	return nil
 }
 
+
+
+type WeaponMaxStats struct {
+	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	Damage              int                 `json:"damage"`
+	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
+	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
+	Radius              null.Int            `json:"radius,omitempty"`
+	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
+	Spread              decimal.NullDecimal `json:"spread,omitempty"`
+	RateOfFire          decimal.NullDecimal `json:"rate_of_fire,omitempty"`
+	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
+	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
+}
+
+func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
+	output := &WeaponMaxStats{}
+	err := boiler.Weapons(
+		qm.Select(
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Damage),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloffRate),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Radius),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RadiusDamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Spread),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RateOfFire),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.ProjectileSpeed),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.EnergyCost),
+		),
+	).QueryRow(conn).Scan(
+		&output.MaxAmmo,
+		&output.Damage,
+		&output.DamageFalloff,
+		&output.DamageFalloffRate,
+		&output.Radius,
+		&output.RadiusDamageFalloff,
+		&output.Spread,
+		&output.RateOfFire,
+		&output.ProjectileSpeed,
+		&output.EnergyCost,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+
 type AvatarListOpts struct {
 	Search   string
 	Filter   *ListFilterRequest
@@ -860,47 +910,3 @@ func GiveMechAvatar(playerID string, mechID string) error {
 	return nil
 }
 
-// GiveMechAvatar gives player mech skin avatar from mech
-func GiveMechSkinAvatar(playerID string, mechSkinID string) error {
-	// get mech skin
-	ms, err := boiler.MechSkins(boiler.MechSkinWhere.ID.EQ(mechSkinID)).One(gamedb.StdConn)
-	if err != nil {
-		return err
-	}
-
-	// get blueprint mech skin
-	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
-	if err != nil {
-		return err
-	}
-
-	if !bms.ProfileAvatarID.Valid {
-		return nil
-	}
-
-	// check if player already has this avatar
-	exists, err := boiler.PlayersProfileAvatars(
-		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
-		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-
-	if exists != nil {
-		return nil
-	}
-
-	// insert into player profile avatars
-	ppa := &boiler.PlayersProfileAvatar{
-		PlayerID:        playerID,
-		ProfileAvatarID: bms.ProfileAvatarID.String,
-	}
-
-	err = ppa.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

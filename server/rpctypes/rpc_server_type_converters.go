@@ -386,6 +386,8 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 	var assets []*XsynAsset
 
 	for _, i := range mechs {
+		isGenesisOrLimited := i.IsCompleteGenesis() || i.IsCompleteLimited()
+
 		asJson, err := json.Marshal(i)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
@@ -407,6 +409,10 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			YoutubeURL:       i.YoutubeURL,
 			AvatarURL:        i.AvatarURL,
 			CardAnimationURL: i.CardAnimationURL,
+		}
+
+		if isGenesisOrLimited && i.ChassisSkin != nil {
+			asset.Tier = i.ChassisSkin.Tier
 		}
 
 		// convert stats to attributes to

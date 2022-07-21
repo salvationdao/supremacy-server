@@ -5,18 +5,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/rpctypes"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
@@ -1201,4 +1204,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Weapons: playerAssWeapons,
 	})
 	return nil
+}
+
+func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	output, err := db.GetWeaponMaxStats(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
+	}
+
+	// Don't put quote values in for decimal stat values
+	decimal.MarshalJSONWithoutQuotes = true
+	status, resp := helpers.EncodeJSON(w, output)
+	decimal.MarshalJSONWithoutQuotes = false
+
+	return status, resp
 }
