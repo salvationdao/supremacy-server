@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"log"
 	"net/url"
 	"runtime"
@@ -21,10 +20,12 @@ import (
 	"server/gamelog"
 	"server/profanities"
 	"server/sms"
-	"server/system_messages"
 	"server/synctool"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -364,9 +365,9 @@ func main() {
 
 					start = time.Now()
 					// initialise system messaging manager
-					gamelog.L.Info().Msg("Setting up profanity manager")
+					gamelog.L.Info().Msg("Setting up system messaging manager")
 					smm := system_messages.NewSystemMessagingManager()
-					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
+					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
 
 					start = time.Now()
 					// initialise battle arena
@@ -734,7 +735,7 @@ func SetupAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	smm *system_messages.SystemMessagingManager,
-	staticSyncURL string
+	staticSyncURL string,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
