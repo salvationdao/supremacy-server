@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
+	"server/gamedb"
 	"server/gamelog"
 
 	"github.com/volatiletech/null/v8"
@@ -481,7 +482,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 
 		if i.ChassisSkinID.Valid {
 			if i.ChassisSkin == nil {
-				i.ChassisSkin, err = db.MechSkin(nil, i.ChassisSkinID.String)
+				i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
 					continue
@@ -745,7 +746,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			},
 		}
 
-		if i.DamageFalloff.Valid {
+		if i.DamageFalloff.Valid && i.DamageFalloff.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff",
@@ -753,7 +754,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.DamageFalloffRate.Valid {
+		if i.DamageFalloffRate.Valid && i.DamageFalloffRate.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff rate",
@@ -761,7 +762,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.Radius.Valid {
+		if i.Radius.Valid && i.Radius.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Area of effect",
@@ -769,7 +770,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.Spread.Valid {
+		if i.Spread.Valid && !i.Spread.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Spread",
@@ -777,7 +778,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.RateOfFire.Valid {
+		if i.RateOfFire.Valid && !i.RateOfFire.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Rate of fire",
@@ -785,7 +786,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.ProjectileSpeed.Valid {
+		if i.ProjectileSpeed.Valid && !i.ProjectileSpeed.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Projectile Speed",
@@ -793,7 +794,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.EnergyCost.Valid {
+		if i.EnergyCost.Valid && !i.EnergyCost.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
@@ -801,7 +802,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.MaxAmmo.Valid {
+		if i.MaxAmmo.Valid && i.MaxAmmo.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Max Ammo",
