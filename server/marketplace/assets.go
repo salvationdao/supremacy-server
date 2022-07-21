@@ -66,7 +66,7 @@ func TransferAssetsToXsyn(
 	}
 
 	// Check whether to transfer mech only
-	transferMechOnly, _, err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
+	transferMechOnly,  err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

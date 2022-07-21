@@ -516,10 +516,11 @@ func main() {
 					}
 					err = SeedProfileAvatars(sqlconn)
 					if err != nil {
-						fmt.Println("Failed to seed player profile avatars.")
+						fmt.Println("Failed to seed player profile avatars.", err)
 						return err
 					}
 
+					fmt.Println("FINISH SEEDING AVATARS")
 					return nil
 				},
 			},
@@ -762,7 +763,7 @@ func SeedProfileAvatars(conn *sql.DB) error {
 	// assigns them to faction players
 	_, err := boiler.NewQuery(
 		qm.SQL(
-			fmt.Sprintf(`
+			`
 			DO
 			$$
 				DECLARE
@@ -817,7 +818,6 @@ func SeedProfileAvatars(conn *sql.DB) error {
 				END;
 			$$;
 				`,
-			),
 		),
 	).Exec(conn)
 	if err != nil {
@@ -826,8 +826,7 @@ func SeedProfileAvatars(conn *sql.DB) error {
 
 	// insert avatars based on blueprint mech skins
 	_, err = boiler.NewQuery(
-		qm.SQL(
-			fmt.Sprintf(`
+		qm.SQL(`
 			with inserted_avatars as (
 				with bms as (select avatar_url, tier from blueprint_mech_skin)
 				insert into profile_avatars(avatar_url, tier) 
@@ -837,7 +836,6 @@ func SeedProfileAvatars(conn *sql.DB) error {
 			set profile_avatar_id = inserted_avatars.id 
 			from inserted_avatars
 			where blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;`,
-			),
 		),
 	).Exec(conn)
 	if err != nil {
@@ -847,18 +845,15 @@ func SeedProfileAvatars(conn *sql.DB) error {
 	// insert mech avatars for owners
 	_, err = boiler.NewQuery(
 		qm.SQL(
-			fmt.Sprintf(`
-				INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
-				SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
-				INNER JOIN collection_items ci ON ci.owner_id =  p.id 
-				inner join mech_skin ms ON ms.id = ci.item_id 
-				INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id;`,
-			),
+			`
+			INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
+			SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
+			INNER JOIN collection_items ci ON ci.owner_id =  p.id 
+			inner join mech_skin ms ON ms.id = ci.item_id 
+			INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id;`,
 		),
 	).Exec(conn)
 	if err != nil {
-		fmt.Println("333333")
-
 		return err
 	}
 	return nil

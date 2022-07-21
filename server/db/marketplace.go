@@ -1688,7 +1688,7 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 }
 
 // MarketplaceItemIsGenesisOrLimitedMech checks whether sale item is a genesis mech for sale.
-func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, *server.Mech, error) {
+func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool,  error) {
 	mechRow, err := boiler.Mechs(
 		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 		qm.InnerJoin(fmt.Sprintf(
@@ -1703,15 +1703,15 @@ func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string
 	).One(conn)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil, nil
+			return false,  nil
 		}
-		return false, nil, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
 	mech, err := Mech(conn, mechRow.ID)
 	if err != nil {
-		return false, nil, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
-	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(), mech, nil
+	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(),  nil
 }
