@@ -712,8 +712,6 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 	return nil
 }
 
-
-
 type WeaponMaxStats struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
 	Damage              int                 `json:"damage"`
@@ -759,7 +757,6 @@ func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
 	}
 	return output, nil
 }
-
 
 type AvatarListOpts struct {
 	Search   string
@@ -841,6 +838,9 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 
 	// get faction logo urls from profile avatars table
 	ava, err := boiler.ProfileAvatars(boiler.ProfileAvatarWhere.AvatarURL.EQ(fac.LogoURL)).One(gamedb.StdConn)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -909,4 +909,3 @@ func GiveMechAvatar(playerID string, mechID string) error {
 
 	return nil
 }
-
