@@ -94,7 +94,7 @@ type AbilityConfig struct {
 	BattleAbilityFloorPrice                    decimal.Decimal
 	BattleAbilityDropRate                      map[string]decimal.Decimal
 	FactionAbilityFloorPrice                   decimal.Decimal
-	FActionAbilityDropRate                     map[string]decimal.Decimal
+	FactionAbilityDropRate                     map[string]decimal.Decimal
 
 	Broadcaster *AbilityBroadcast
 }
@@ -179,7 +179,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		factionUniqueAbilities, err := boiler.GameAbilities(
 			boiler.GameAbilityWhere.FactionID.EQ(factionID.String()),
 			boiler.GameAbilityWhere.BattleAbilityID.IsNull(),
-			boiler.GameAbilityWhere.Level.NEQ(boiler.AbilityLevelMECH),
+			boiler.GameAbilityWhere.Level.EQ(boiler.AbilityLevelFACTION),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
@@ -314,7 +314,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			BattleAbilityFloorPrice:                    db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(10, 18)),
 			BattleAbilityDropRate:                      make(map[string]decimal.Decimal),
 			FactionAbilityFloorPrice:                   db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
-			FActionAbilityDropRate:                     make(map[string]decimal.Decimal),
+			FactionAbilityDropRate:                     make(map[string]decimal.Decimal),
 			Broadcaster: &AbilityBroadcast{
 				BroadcastRateMilliseconds:   time.Duration(db.GetIntWithDefault(db.KeyAbilityBroadcastRateMilliseconds, 125)) * time.Millisecond,
 				battleAbilityBroadcastChan:  make(chan []AbilityBattleProgress, 1000),
@@ -325,7 +325,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	as.abilityConfig.BattleAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.993)))
-	as.abilityConfig.FActionAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)))
+	as.abilityConfig.FactionAbilityDropRate = as.GetAbilityDropRate(db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)))
 
 	go as.ProgressBarBroadcaster()
 	// setup game ability broadcast channel map
@@ -356,13 +356,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				factionAbilities = append(factionAbilities, ability)
 			}
 		}
-		ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
 	}
 
 	// broadcast war machine abilities
 	for _, wm := range battle.WarMachines {
 		if len(wm.Abilities) > 0 {
-			ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
 		}
 	}
 
@@ -568,7 +568,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle() != nil && as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate[ability.FactionID])
+						isChanged := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FactionAbilityDropRate[ability.FactionID])
 
 						// skip, if price is not changed
 						if !isChanged {
@@ -1623,7 +1623,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		ws.PublishMessage(fmt.Sprintf("/ability/%s", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/battle_ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
 	// broadcast battle ability to non-login or non-faction players
@@ -1998,9 +1998,9 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 				if data.ShouldReset {
 					switch abilityLevel {
 					case boiler.AbilityLevelFACTION:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, data)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyAbilityPriceUpdated, data)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", factionID, participantID), HubKeyAbilityPriceUpdated, data)
 					}
 					shouldBroadcast.Store(false)
 					continue
@@ -2026,9 +2026,9 @@ func (as *AbilitiesSystem) GameAbilityBroadcaster(ability *GameAbility) {
 				if shouldBroadcast.Load() {
 					switch abilityLevel {
 					case boiler.AbilityLevelFACTION:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_ability", factionID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_ability/%d", factionID, participantID), HubKeyAbilityPriceUpdated, gameAbilityPrice)
 					}
 					shouldBroadcast.Store(false)
 				}

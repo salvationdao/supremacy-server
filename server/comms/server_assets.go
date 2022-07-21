@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"encoding/json"
 	"fmt"
 	"server"
 	"server/asset"
@@ -22,14 +21,13 @@ import (
 func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 	gamelog.L.Debug().Msg("comms.Asset")
 
-	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(req.AssetID.String())).One(gamedb.StdConn)
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.Hash.EQ(req.AssetHash),
+		).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("req.AssetID.String()", req.AssetID.String()).Msg(" failed to get collection item in Asset rpc call ")
+		gamelog.L.Error().Err(err).Str("AssetHash", req.AssetHash).Msg(" failed to get collection item in Asset rpc call ")
 		return terror.Error(err)
 	}
-
-	var item any
-	var name string
 
 	switch ci.ItemType {
 	case boiler.ItemTypeUtility:
@@ -38,72 +36,48 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Utility in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerUtilitiesToXsynAsset([]*server.Utility{obj})[0]
 	case boiler.ItemTypeWeapon:
 		obj, err := db.Weapon(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{obj})[0]
 	case boiler.ItemTypeMech:
 		obj, err := db.Mech(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Mech in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{obj})[0]
 	case boiler.ItemTypeMechSkin:
 		obj, err := db.MechSkin(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{obj})[0]
 	case boiler.ItemTypeMechAnimation:
 		obj, err := db.MechAnimation(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechAnimation in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerMechAnimationsToXsynAsset([]*server.MechAnimation{obj})[0]
 	case boiler.ItemTypePowerCore:
 		obj, err := db.PowerCore(nil, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get PowerCore in Asset rpc call ")
 			return terror.Error(err)
 		}
-		item = obj
-		name = obj.Label
+		resp.Asset = rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{obj})[0]
 	default:
 		err := fmt.Errorf("invalid type")
 		gamelog.L.Error().Err(err).Interface("ci", ci).Msg("invalid item type in Asset rpc call ")
 		return terror.Error(err)
 	}
 
-	asJson, err := json.Marshal(item)
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("item", item).Msg(" failed to marshall item in Asset rpc call ")
-		return terror.Error(err)
-	}
-
-	resp.Asset = &rpctypes.XsynAsset{
-		ID:             ci.ID,
-		CollectionSlug: ci.CollectionSlug,
-		TokenID:        ci.TokenID,
-		Tier:           ci.Tier,
-		Hash:           ci.Hash,
-		OwnerID:        ci.OwnerID,
-		AssetType:      null.StringFrom(ci.ItemType),
-		Data:           asJson,
-		Name:           name,
-		XsynLocked:     ci.XsynLocked,
-	}
 	return nil
 }
 

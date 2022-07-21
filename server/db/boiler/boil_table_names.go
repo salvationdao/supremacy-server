@@ -5,6 +5,7 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
+	Availabilities                                     string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -26,6 +27,7 @@ var TableNames = struct {
 	Blobs                                              string
 	BlockMarketplace                                   string
 	BlueprintAmmo                                      string
+	BlueprintChassis                                   string
 	BlueprintKeycards                                  string
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
@@ -62,6 +64,7 @@ var TableNames = struct {
 	KV                                                 string
 	Languages                                          string
 	MarketplaceEvents                                  string
+	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
@@ -99,6 +102,7 @@ var TableNames = struct {
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
+	StaticMigrations                                   string
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
@@ -118,6 +122,7 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
+	Availabilities:                  "availabilities",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -139,6 +144,7 @@ var TableNames = struct {
 	Blobs:                        "blobs",
 	BlockMarketplace:             "block_marketplace",
 	BlueprintAmmo:                "blueprint_ammo",
+	BlueprintChassis:             "blueprint_chassis",
 	BlueprintKeycards:            "blueprint_keycards",
 	BlueprintMechAnimation:       "blueprint_mech_animation",
 	BlueprintMechSkin:            "blueprint_mech_skin",
@@ -175,6 +181,7 @@ var TableNames = struct {
 	KV:                           "kv",
 	Languages:                    "languages",
 	MarketplaceEvents:            "marketplace_events",
+	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
@@ -212,6 +219,7 @@ var TableNames = struct {
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
+	StaticMigrations:             "static_migrations",
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",

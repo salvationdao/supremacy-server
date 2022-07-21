@@ -1,7 +1,3 @@
-BEGIN;
-ALTER TYPE collection ADD VALUE 'supremacy-achievements';
-COMMIT;
-
 CREATE TABLE blueprint_keycards
 (
     id               UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),

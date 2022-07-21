@@ -168,6 +168,7 @@ func NewAPI(
 	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
+	_ = NewLeaderboardController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -213,6 +214,7 @@ func NewAPI(
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
+			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
 			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
@@ -248,7 +250,8 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+
+				s.WS("/mech", battle.HubKeyWarMachineStatUpdated, nil)
 			}))
 
 			// battle arena route ws
@@ -262,7 +265,7 @@ func NewAPI(
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
-				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WSTrack("/*", "user_id", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
@@ -290,14 +293,11 @@ func NewAPI(
 				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
-			}))
 
-			// handle abilities ws
-			r.Mount("/ability/{faction_id}", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthUserFactionWS(true))
-				s.WS("/*", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
-				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
-				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
+				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
+				s.WS("/faction_ability", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
+				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
+				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
 			}))
 		})
 	})
@@ -533,6 +533,9 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 func (api *API) TokenLogin(tokenBase64 string) (*server.Player, error) {
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
+		if err.Error() == "session is expired" {
+			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+		}
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
 		return nil, err
 	}

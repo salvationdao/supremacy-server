@@ -41,7 +41,6 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		EquippedOn:    null.String{},
 		Tier:          blueprintWeaponSkin.Tier,
 		CreatedAt:     blueprintWeaponSkin.CreatedAt,
-		WeaponModelID: blueprintWeaponSkin.WeaponModelID,
 	}
 
 	err = newWeaponSkin.Insert(tx, boil.Infer())
@@ -56,13 +55,13 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		newWeaponSkin.ID,
 		blueprintWeaponSkin.Tier,
 		ownerID.String(),
-		weaponModel.R.DefaultSkin.ImageURL,
-		weaponModel.R.DefaultSkin.CardAnimationURL,
-		weaponModel.R.DefaultSkin.AvatarURL,
-		weaponModel.R.DefaultSkin.LargeImageURL,
-		weaponModel.R.DefaultSkin.BackgroundColor,
-		weaponModel.R.DefaultSkin.AnimationURL,
-		weaponModel.R.DefaultSkin.YoutubeURL,
+		blueprintWeaponSkin.ImageURL,
+		blueprintWeaponSkin.CardAnimationURL,
+		blueprintWeaponSkin.AvatarURL,
+		blueprintWeaponSkin.LargeImageURL,
+		blueprintWeaponSkin.BackgroundColor,
+		blueprintWeaponSkin.AnimationURL,
+		blueprintWeaponSkin.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -143,13 +142,6 @@ func AttachWeaponSkinToWeapon(tx boil.Executor, ownerID, weaponID, weaponSkinID 
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponSkinID", weaponSkinID).Msg("failed to find weapon skin")
 		return terror.Error(err)
-	}
-
-	// wrong model
-	if weapon.WeaponModelID != null.StringFrom(weaponSkin.WeaponModelID) {
-		err := fmt.Errorf("weaponSkin model mismatch")
-		gamelog.L.Error().Err(err).Str("weapon.WeaponModelID", weapon.WeaponModelID.String).Str("weaponSkin.WeaponModelID", weaponSkin.WeaponModelID).Msg("weapon skin doesn't fit this weapon")
-		return terror.Error(err, "This weapon skin doesn't fit this weapon.")
 	}
 
 	// error out, already has a weapon skin

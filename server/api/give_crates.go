@@ -176,7 +176,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return http.StatusInternalServerError, terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
 			}
-			items.MechSkin = mechSkin
+			items.MechSkins = append(items.MechSkins, mechSkin)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -188,7 +188,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return http.StatusInternalServerError, terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
 			}
-			items.WeaponSkin = weaponSkin
+			items.WeaponSkins = append(items.WeaponSkins, weaponSkin)
 		case boiler.TemplateItemTypePOWER_CORE:
 			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
@@ -213,16 +213,24 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
+		rarerSkin := items.MechSkins[0]
+		for _, skin := range items.MechSkins {
+			if skin.Tier != "COLOSSAL" {
+				rarerSkin = skin
+			}
+		}
+
+
 		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(tx2, user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
-		items.MechSkin.EquippedOnDetails = eod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
+		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		rarerSkin.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
 
 		err = db.AttachPowerCoreToMech(tx2, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
@@ -253,7 +261,7 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		mech.ChassisSkin = items.MechSkin
+		mech.ChassisSkin = rarerSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
 	}
 
@@ -271,15 +279,15 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		err = db.AttachWeaponSkinToWeapon(tx2, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
+		err = db.AttachWeaponSkinToWeapon(tx2, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
-		items.WeaponSkin.EquippedOnDetails = wod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
+		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkins[0].EquippedOnDetails = wod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 		weapon, err := db.Weapon(tx2, items.Weapons[0].ID)
 		if err != nil {
