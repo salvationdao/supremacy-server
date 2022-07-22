@@ -1207,7 +1207,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
+	ws.PublishMessage("/public/game_settings", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1360,6 +1360,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
+		fmt.Println("send")
 		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
