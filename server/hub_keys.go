@@ -23,3 +23,7 @@ const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIB
 const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 const HubKeyUserSubscribe = "USER:SUBSCRIBE"
 const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
+
+const HubKeySystemMessageList = "SYSTEM:MESSAGE:LIST"
+const HubKeySystemMessageDismiss = "SYSTEM:MESSAGE:DISMISS"
+const HubKeySystemMessageListUpdatedSubscribe = "SYSTEM:MESSAGE:LIST:UPDATED"

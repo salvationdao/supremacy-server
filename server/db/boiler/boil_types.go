@@ -250,6 +250,7 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+<<<<<<< HEAD
 // Enum values for SyndicateElectionType
 const (
 	SyndicateElectionTypeADMIN = "ADMIN"
@@ -312,4 +313,10 @@ const (
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
 	SyndicateTypeDECENTRALISED = "DECENTRALISED"
+=======
+// Enum values for SystemMessageType
+const (
+	SystemMessageTypeMECH_QUEUE           = "MECH_QUEUE"
+	SystemMessageTypeMECH_BATTLE_COMPLETE = "MECH_BATTLE_COMPLETE"
+>>>>>>> origin/develop
 )

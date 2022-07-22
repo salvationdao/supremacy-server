@@ -1,16 +1,13 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/ninja-software/terror/v2"
 	"github.com/urfave/cli/v2"
 	"log"
-	"net/url"
 	"os"
 	"runtime"
+	"server/gamedb"
 	"server/synctool"
 	"time"
 )
@@ -58,7 +55,7 @@ func main() {
 
 					filePath := c.String("static_path")
 
-					sqlconn, err := sqlConnect(
+					sqlconn, err := gamedb.SqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
@@ -99,43 +96,4 @@ func main() {
 		log.Fatal(err)
 		os.Exit(1) // so ci knows it no good
 	}
-}
-
-func sqlConnect(
-	databaseTxUser string,
-	databaseTxPass string,
-	databaseHost string,
-	databasePort string,
-	databaseName string,
-	DatabaseApplicationName string,
-	APIVersion string,
-	maxIdle int,
-	maxOpen int,
-) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-	if DatabaseApplicationName != "" {
-		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
-	}
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		params.Encode(),
-	)
-	cfg, err := pgx.ParseConfig(connString)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := stdlib.OpenDB(*cfg)
-	if err != nil {
-		return nil, err
-	}
-	conn.SetMaxIdleConns(maxIdle)
-	conn.SetMaxOpenConns(maxOpen)
-	return conn, nil
-
 }
