@@ -111,7 +111,6 @@ var TableNames = struct {
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
-<<<<<<< HEAD
 	SyndicateCommittees                                string
 	SyndicateDirectors                                 string
 	SyndicateElectionCandidates                        string
@@ -124,9 +123,7 @@ var TableNames = struct {
 	SyndicateQuestionnaires                            string
 	SyndicateRules                                     string
 	Syndicates                                         string
-=======
 	SystemMessages                                     string
->>>>>>> origin/develop
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
 	Templates                                          string
@@ -249,7 +246,6 @@ var TableNames = struct {
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",
-<<<<<<< HEAD
 	SyndicateCommittees:          "syndicate_committees",
 	SyndicateDirectors:           "syndicate_directors",
 	SyndicateElectionCandidates:  "syndicate_election_candidates",
@@ -262,9 +258,7 @@ var TableNames = struct {
 	SyndicateQuestionnaires:      "syndicate_questionnaires",
 	SyndicateRules:               "syndicate_rules",
 	Syndicates:                   "syndicates",
-=======
 	SystemMessages:               "system_messages",
->>>>>>> origin/develop
 	TelegramNotifications:        "telegram_notifications",
 	TemplateBlueprints:           "template_blueprints",
 	Templates:                    "templates",

@@ -175,9 +175,9 @@ type Fingerprint struct {
 	UserAgent  string  `json:"user_agent"`
 }
 
-func FingerprintUpsert( fingerprint Fingerprint, playerID string) error {
+func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
 	// Attempt to find fingerprint or create one
-	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(tx)
+	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
