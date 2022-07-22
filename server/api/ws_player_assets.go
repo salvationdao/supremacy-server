@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"regexp"
 	"server"
@@ -49,8 +50,6 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
-	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
-	api.SecureUserFactionCommand(HubKeyPlayerAssetWeaponDetail, pac.PlayerAssetWeaponDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
@@ -58,7 +57,6 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
-	api.Command(HubKeyPlayerAssetMechDetailPublic, pac.PlayerAssetMechDetailPublic)
 
 	return pac
 }
@@ -326,24 +324,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 	return nil
 }
 
-type PlayerAssetMechDetailRequest struct {
-	Payload struct {
-		MechID string `json:"mech_id"`
-	} `json:"payload"`
-}
-
 const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetMechDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
 	}
 
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
@@ -371,15 +363,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 const HubKeyPlayerAssetMechDetailPublic = "PLAYER:ASSET:MECH:DETAIL:PUBLIC"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetMechDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
 	}
 
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
@@ -402,24 +394,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	return nil
 }
 
-type PlayerAssetWeaponDetailRequest struct {
-	Payload struct {
-		WeaponID string `json:"weapon_id"`
-	} `json:"payload"`
-}
-
 const HubKeyPlayerAssetWeaponDetail = "PLAYER:ASSET:WEAPON:DETAIL"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetWeaponDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+	cctx := chi.RouteContext(ctx)
+	weaponID := cctx.URLParam("weapon_id")
+	if weaponID == "" {
+		return terror.Error(fmt.Errorf("missing weapon id"), "Missing weapon id.")
 	}
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
+		boiler.CollectionItemWhere.ItemID.EQ(weaponID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
