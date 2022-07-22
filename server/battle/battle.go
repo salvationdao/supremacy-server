@@ -1360,7 +1360,6 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
-		fmt.Println("send")
 		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
