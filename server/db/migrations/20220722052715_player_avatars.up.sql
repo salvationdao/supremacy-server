@@ -26,9 +26,3 @@ ALTER TABLE blueprint_mech_skin
 
 ALTER TABLE players
     ADD COLUMN profile_avatar_id UUID REFERENCES profile_avatars (id);
-
-
-
-
-
-

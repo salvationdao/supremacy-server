@@ -238,6 +238,10 @@ dev-give-weapon-crates:
 dev-give-mech-crate:
 	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/mech/${public_address}
 
+.PHONE: seed-avatars
+seed-avatars:
+	cd ./server && go run cmd/gameserver/main.go seed-avatars
+
 .PHONE: dev-give-mech-crates
 dev-give-mech-crates:
 	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
