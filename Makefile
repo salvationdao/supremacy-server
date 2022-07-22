@@ -196,6 +196,11 @@ sync:
 	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
 
+.PHONY: dev-sync
+dev-sync:
+	cd server && go run devsync/main.go sync
+	rm -rf ./synctool/temp-sync
+
 .PHONY: docker-db-dump
 docker-db-dump:
 	mkdir -p ./tmp
@@ -242,6 +247,15 @@ dev-give-mech-crate:
 dev-give-mech-crates:
 	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
+.PHONY: sync-data
+sync-data:
+	cd ./server/synctool
+	mkdir temp-sync
+	cd temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make sync
+
 .PHONY: dev-sync-data
 dev-sync-data:
 	cd ./server/synctool
@@ -249,7 +263,7 @@ dev-sync-data:
 	cd temp-sync
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
-	make sync
+	make dev-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:

@@ -472,6 +472,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 							http.Error(w, "Unauthorized", http.StatusUnauthorized)
 							return
 						}
+						next.ServeHTTP(w, r)
+						return
 					}
 				}
 			} else {
