@@ -2,6 +2,7 @@ package system_messages
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -10,23 +11,11 @@ import (
 
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type SystemMessagingManager struct {
-}
-
-type SystemMessageType string
-
-const (
-	SystemMessageMechQueue          SystemMessageType = "MECH_QUEUE"
-	SystemMessageMechBattleComplete SystemMessageType = "MECH_BATTLE_COMPLETE"
-)
-
-type SystemMessage struct {
-	Type    SystemMessageType `json:"type"`
-	Message string            `json:"message"`
-	Data    interface{}       `json:"data,omitempty"`
 }
 
 func NewSystemMessagingManager() *SystemMessagingManager {
@@ -37,7 +26,7 @@ func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.Bat
 	for _, q := range queue {
 		mech, err := q.Mech().One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Debug().Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
+			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 			continue
 		}
 
@@ -45,10 +34,19 @@ func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.Bat
 		if mech.Name != "" {
 			label = mech.Name
 		}
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageSubscribe, &SystemMessage{
-			Type:    SystemMessageMechQueue,
-			Message: fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
-		})
+
+		msg := &boiler.SystemMessage{
+			PlayerID: q.OwnerID,
+			Type:     boiler.SystemMessageTypeMECH_QUEUE,
+			Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
+		}
+		err = msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
+			continue
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 }
 
@@ -100,7 +98,7 @@ func (smm *SystemMessagingManager) BroadcastMechBattleCompleteMessage(queue []*b
 	for _, q := range queue {
 		mech, err := q.Mech().One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Debug().Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
+			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 			continue
 		}
 
@@ -108,14 +106,25 @@ func (smm *SystemMessagingManager) BroadcastMechBattleCompleteMessage(queue []*b
 		if mech.Name != "" {
 			label = mech.Name
 		}
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageSubscribe, &SystemMessage{
-			Type:    SystemMessageMechBattleComplete,
-			Message: fmt.Sprintf("Your mech, %s, has just completed a battle in the arena.", label),
-			Data: &SystemMessageDataMechBattleComplete{
-				MechID:     q.MechID,
-				FactionWon: wonFactionID == q.FactionID,
-				Briefs:     results,
-			},
+
+		data, err := json.Marshal(SystemMessageDataMechBattleComplete{
+			MechID:     q.MechID,
+			FactionWon: wonFactionID == q.FactionID,
+			Briefs:     results,
 		})
+
+		msg := &boiler.SystemMessage{
+			PlayerID: q.OwnerID,
+			Type:     boiler.SystemMessageTypeMECH_BATTLE_COMPLETE,
+			Message:  fmt.Sprintf("Your mech, %s, has just completed a battle in the arena.", label),
+			Data:     null.JSONFrom(data),
+		}
+		err = msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
+			continue
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 }

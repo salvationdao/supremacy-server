@@ -23,12 +23,13 @@ import (
 
 // SystemMessage is an object representing the database table.
 type SystemMessage struct {
-	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID    string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	Type        string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	Message     null.String `boiler:"message" boil:"message" json:"message,omitempty" toml:"message" yaml:"message,omitempty"`
-	Data        null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
-	IsDismissed bool        `boiler:"is_dismissed" boil:"is_dismissed" json:"is_dismissed" toml:"is_dismissed" yaml:"is_dismissed"`
+	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID    string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	Type        string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Message     string    `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
+	Data        null.JSON `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
+	IsDismissed bool      `boiler:"is_dismissed" boil:"is_dismissed" json:"is_dismissed" toml:"is_dismissed" yaml:"is_dismissed"`
+	SentAt      time.Time `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
 
 	R *systemMessageR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L systemMessageL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var SystemMessageColumns = struct {
 	Message     string
 	Data        string
 	IsDismissed string
+	SentAt      string
 }{
 	ID:          "id",
 	PlayerID:    "player_id",
@@ -48,6 +50,7 @@ var SystemMessageColumns = struct {
 	Message:     "message",
 	Data:        "data",
 	IsDismissed: "is_dismissed",
+	SentAt:      "sent_at",
 }
 
 var SystemMessageTableColumns = struct {
@@ -57,6 +60,7 @@ var SystemMessageTableColumns = struct {
 	Message     string
 	Data        string
 	IsDismissed string
+	SentAt      string
 }{
 	ID:          "system_messages.id",
 	PlayerID:    "system_messages.player_id",
@@ -64,6 +68,7 @@ var SystemMessageTableColumns = struct {
 	Message:     "system_messages.message",
 	Data:        "system_messages.data",
 	IsDismissed: "system_messages.is_dismissed",
+	SentAt:      "system_messages.sent_at",
 }
 
 // Generated where
@@ -72,16 +77,18 @@ var SystemMessageWhere = struct {
 	ID          whereHelperstring
 	PlayerID    whereHelperstring
 	Type        whereHelperstring
-	Message     whereHelpernull_String
+	Message     whereHelperstring
 	Data        whereHelpernull_JSON
 	IsDismissed whereHelperbool
+	SentAt      whereHelpertime_Time
 }{
 	ID:          whereHelperstring{field: "\"system_messages\".\"id\""},
 	PlayerID:    whereHelperstring{field: "\"system_messages\".\"player_id\""},
 	Type:        whereHelperstring{field: "\"system_messages\".\"type\""},
-	Message:     whereHelpernull_String{field: "\"system_messages\".\"message\""},
+	Message:     whereHelperstring{field: "\"system_messages\".\"message\""},
 	Data:        whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
 	IsDismissed: whereHelperbool{field: "\"system_messages\".\"is_dismissed\""},
+	SentAt:      whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
 }
 
 // SystemMessageRels is where relationship names are stored.
@@ -105,9 +112,9 @@ func (*systemMessageR) NewStruct() *systemMessageR {
 type systemMessageL struct{}
 
 var (
-	systemMessageAllColumns            = []string{"id", "player_id", "type", "message", "data", "is_dismissed"}
-	systemMessageColumnsWithoutDefault = []string{"player_id", "type"}
-	systemMessageColumnsWithDefault    = []string{"id", "message", "data", "is_dismissed"}
+	systemMessageAllColumns            = []string{"id", "player_id", "type", "message", "data", "is_dismissed", "sent_at"}
+	systemMessageColumnsWithoutDefault = []string{"player_id", "type", "message"}
+	systemMessageColumnsWithDefault    = []string{"id", "data", "is_dismissed", "sent_at"}
 	systemMessagePrimaryKeyColumns     = []string{"id"}
 	systemMessageGeneratedColumns      = []string{}
 )
