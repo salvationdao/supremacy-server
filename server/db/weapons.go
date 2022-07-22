@@ -725,8 +725,48 @@ type WeaponMaxStats struct {
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 }
 
-func GetWeaponMaxStats(conn boil.Executor) (*WeaponMaxStats, error) {
+func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, error) {
 	output := &WeaponMaxStats{}
+
+	if userID != "" {
+		err := boiler.CollectionItems(
+			qm.Select(
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.MaxAmmo)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Damage)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloffRate)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Radius)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RadiusDamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Spread)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RateOfFire)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ProjectileSpeed)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EnergyCost)),
+			),
+			qm.InnerJoin(fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Weapons,
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			)),
+			boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		).QueryRow(conn).Scan(
+			&output.MaxAmmo,
+			&output.Damage,
+			&output.DamageFalloff,
+			&output.DamageFalloffRate,
+			&output.Radius,
+			&output.RadiusDamageFalloff,
+			&output.Spread,
+			&output.RateOfFire,
+			&output.ProjectileSpeed,
+			&output.EnergyCost,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return output, nil
+	}
+
 	err := boiler.Weapons(
 		qm.Select(
 			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),

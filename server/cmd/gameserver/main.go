@@ -25,8 +25,8 @@ import (
 	"server/xsyn_rpcclient"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
 	"github.com/urfave/cli/v2"
@@ -39,8 +39,6 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
@@ -270,7 +268,7 @@ func main() {
 						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
 					}
 
-					sqlconn, err := sqlConnect(
+					sqlconn, err := gamedb.SqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
@@ -400,7 +398,7 @@ func main() {
 					start = time.Now()
 
 					if syncKeycard { // TODO: Remove after syncing keycards
-						UpdateKeycard(rpcClient, keycardCSVPath)
+						UpdateKeycard(api, rpcClient, keycardCSVPath)
 						gamelog.L.Info().Msgf("UpdateKeycard took %s", time.Since(start))
 						start = time.Now()
 					}
@@ -448,7 +446,7 @@ func main() {
 
 					filePath := c.String("static_path")
 
-					sqlconn, err := sqlConnect(
+					sqlconn, err := gamedb.SqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
@@ -570,7 +568,7 @@ type KeyCardUpdate struct {
 	BlueprintID   string
 }
 
-func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
+func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 	gamelog.L.Info().Msg("Syncing Keycards with Passport")
 	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
 	if !updated {
@@ -695,7 +693,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
@@ -921,43 +919,4 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	// API Server
 	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
 	return serverAPI, nil
-}
-
-func sqlConnect(
-	databaseTxUser string,
-	databaseTxPass string,
-	databaseHost string,
-	databasePort string,
-	databaseName string,
-	DatabaseApplicationName string,
-	APIVersion string,
-	maxIdle int,
-	maxOpen int,
-) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-	if DatabaseApplicationName != "" {
-		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
-	}
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		params.Encode(),
-	)
-	cfg, err := pgx.ParseConfig(connString)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := stdlib.OpenDB(*cfg)
-	if err != nil {
-		return nil, err
-	}
-	conn.SetMaxIdleConns(maxIdle)
-	conn.SetMaxOpenConns(maxOpen)
-	return conn, nil
-
 }
