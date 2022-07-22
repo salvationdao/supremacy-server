@@ -14,6 +14,7 @@ import (
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
+	"server/synctool"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -99,6 +100,8 @@ type API struct {
 	ProfanityManager *profanities.ProfanityManager
 
 	Config *server.Config
+
+	SyncConfig *synctool.StaticSyncTool
 }
 
 // NewAPI registers routes
@@ -112,6 +115,7 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	syncConfig *synctool.StaticSyncTool,
 ) *API {
 	// initialise api
 	api := &API{
@@ -141,6 +145,7 @@ func NewAPI(
 		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
 		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
 		ProfanityManager: pm,
+		SyncConfig:       syncConfig,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -229,6 +234,7 @@ func NewAPI(
 
 		})
 
+		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {

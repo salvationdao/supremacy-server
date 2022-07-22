@@ -30,7 +30,6 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 	api.Command(HubKeyPlayerMechKills, leaderboardHub.GetPlayerMechKillsHandler)
 	api.Command(HubKeyPlayerAbilityKills, leaderboardHub.GetPlayerAbilityKillsHandler)
 	api.Command(HubKeyPlayerAbilityTriggers, leaderboardHub.GetPlayerAbilityTriggersHandler)
-	api.Command(HubKeyPlayerBattleContributions, leaderboardHub.GetPlayerBattleContributionsHandler)
 	api.Command(HubKeyPlayerMechsOwned, leaderboardHub.GetPlayerMechsOwnedHandler)
 
 	return leaderboardHub
@@ -235,23 +234,6 @@ func (lc *LeaderboardController) GetPlayerAbilityTriggersHandler(ctx context.Con
 			Player:                row.R.IDPlayer,
 			TotalAbilityTriggered: row.TotalAbilityTriggered,
 		})
-	}
-
-	reply(resp)
-	return nil
-}
-
-/**
-* Get top players most mech survivals based on the mechs they own
- */
-const HubKeyPlayerBattleContributions = "LEADERBOARD:PLAYER:BATTLE:CONTRIBUTIONS"
-
-func (lc *LeaderboardController) GetPlayerBattleContributionsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	resp, err := db.GetPlayerBattleContributions()
-
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player battle contributions.")
-		return terror.Error(err, "Failed to get leaderboard player battle contributions.")
 	}
 
 	reply(resp)

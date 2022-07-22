@@ -615,8 +615,8 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 	}
 	for _, hash := range attachedHashes {
 		err := rpcClient.TransferAsset(
-			itemSale.SoldTo.String,
 			colItem.OwnerID,
+			itemSale.SoldTo.String,
 			hash,
 			itemSale.SoldTXID,
 			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {
