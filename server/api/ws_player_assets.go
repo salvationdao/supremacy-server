@@ -1203,7 +1203,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 }
 
 func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
-	output, err := db.GetWeaponMaxStats(gamedb.StdConn)
+	userID := r.URL.Query().Get("user_id")   // the stat identifier e.g. speed
+
+	output, err := db.GetWeaponMaxStats(gamedb.StdConn, userID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
 	}
