@@ -66,6 +66,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		(
 			CASE
 				WHEN collection_items.item_type = 'weapon' THEN COALESCE(wsc.tier, collection_items.tier)
+				WHEN collection_items.item_type = 'mech' THEN COALESCE(msc.tier, collection_items.tier)
 				ELSE collection_items.tier
 			END
 		) AS "collection_items.tier",
@@ -110,6 +111,16 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s msc ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeMechSkin,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
