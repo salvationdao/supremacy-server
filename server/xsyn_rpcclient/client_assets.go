@@ -1,11 +1,12 @@
 package xsyn_rpcclient
 
 import (
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"server"
 	"server/gamelog"
 	"server/rpctypes"
 	"strings"
+
+	"github.com/volatiletech/sqlboiler/v4/types"
 
 	"github.com/volatiletech/null/v8"
 )
@@ -50,8 +51,8 @@ func (pp *XsynXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]ser
 }
 
 type RegisterAssetReq struct {
-	ApiKey string              `json:"api_key"`
-	Asset  *rpctypes.XsynAsset `json:"asset"`
+	ApiKey string                `json:"api_key"`
+	Asset  []*rpctypes.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -59,7 +60,7 @@ type RegisterAssetResp struct {
 }
 
 // AssetRegister registers a item on xsyn
-func (pp *XsynXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
+func (pp *XsynXrpcClient) AssetRegister(ass ...*rpctypes.XsynAsset) error {
 	resp := &RegisterAssetResp{}
 	err := pp.XrpcClient.Call("S.AssetRegisterHandler", RegisterAssetReq{
 		pp.ApiKey,
