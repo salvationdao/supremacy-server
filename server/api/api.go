@@ -15,6 +15,7 @@ import (
 	"server/player_abilities"
 	"server/profanities"
 	"server/synctool"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -68,21 +69,22 @@ type FactionVotePrice struct {
 
 // API server
 type API struct {
-	ctx                       context.Context
-	server                    *http.Server
-	Routes                    chi.Router
-	BattleArena               *battle.Arena
-	HTMLSanitize              *bluemonday.Policy
-	SMS                       server.SMS
-	Passport                  *xsyn_rpcclient.XsynXrpcClient
-	Telegram                  server.Telegram
-	LanguageDetector          lingua.LanguageDetector
-	Cookie                    *securebytes.SecureBytes
-	IsCookieSecure            bool
-	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
-	Commander                 *ws.Commander
-	SecureUserCommander       *ws.Commander
-	SecureFactionCommander    *ws.Commander
+	ctx                      context.Context
+	server                   *http.Server
+	Routes                   chi.Router
+	BattleArena              *battle.Arena
+	HTMLSanitize             *bluemonday.Policy
+	SMS                      server.SMS
+	Passport                 *xsyn_rpcclient.XsynXrpcClient
+	Telegram                 server.Telegram
+	LanguageDetector         lingua.LanguageDetector
+	Cookie                   *securebytes.SecureBytes
+	IsCookieSecure           bool
+	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SystemMessagingManager   *system_messages.SystemMessagingManager
+	Commander                *ws.Commander
+	SecureUserCommander      *ws.Commander
+	SecureFactionCommander   *ws.Commander
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
@@ -115,21 +117,23 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
 	syncConfig *synctool.StaticSyncTool,
 ) *API {
 	// initialise api
 	api := &API{
-		Config:                    config,
-		ctx:                       ctx,
-		Routes:                    chi.NewRouter(),
-		HTMLSanitize:              HTMLSanitize,
-		BattleArena:               battleArenaClient,
-		Passport:                  pp,
-		SMS:                       sms,
-		Telegram:                  telegram,
-		LanguageDetector:          languageDetector,
-		IsCookieSecure:            config.CookieSecure,
-		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(),
+		Config:                   config,
+		ctx:                      ctx,
+		Routes:                   chi.NewRouter(),
+		HTMLSanitize:             HTMLSanitize,
+		BattleArena:              battleArenaClient,
+		Passport:                 pp,
+		SMS:                      sms,
+		Telegram:                 telegram,
+		LanguageDetector:         languageDetector,
+		IsCookieSecure:           config.CookieSecure,
+		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -174,6 +178,7 @@ func NewAPI(
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	_ = NewLeaderboardController(api)
+	_ = NewSystemMessagesController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -273,7 +278,7 @@ func NewAPI(
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
-
+				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 			}))
 
 			// secured faction route ws

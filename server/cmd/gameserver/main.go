@@ -5,8 +5,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"log"
 	"net/url"
 	"runtime"
@@ -22,8 +20,13 @@ import (
 	"server/profanities"
 	"server/sms"
 	"server/synctool"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+
+	"github.com/volatiletech/null/v8"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
@@ -348,6 +351,7 @@ func main() {
 
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 					gamelog.L.Info().Msgf("NewLanguageDetectorBuilder took %s", time.Since(start))
+
 					start = time.Now()
 					// initialise profanity manager
 					gamelog.L.Info().Msg("Setting up profanity manager")
@@ -356,8 +360,15 @@ func main() {
 						return terror.Error(err, "Profanity manager init failed")
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
+					// initialise system messaging manager
+					gamelog.L.Info().Msg("Setting up system messaging manager")
+					smm := system_messages.NewSystemMessagingManager()
+					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
+
+					start = time.Now()
+					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
@@ -365,6 +376,7 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						SystemMessagingManager:   smm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -373,7 +385,7 @@ func main() {
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, smm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -710,7 +722,19 @@ func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath str
 
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *xsyn_rpcclient.XsynXrpcClient, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector, pm *profanities.ProfanityManager, staticSyncURL string) (*api.API, error) {
+func SetupAPI(
+	ctxCLI *cli.Context,
+	ctx context.Context,
+	log *zerolog.Logger,
+	battleArenaClient *battle.Arena,
+	passport *xsyn_rpcclient.XsynXrpcClient,
+	sms server.SMS,
+	telegram server.Telegram,
+	languageDetector lingua.LanguageDetector,
+	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
+	staticSyncURL string,
+) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -765,6 +789,6 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, smm, syncConfig)
 	return serverAPI, nil
 }
