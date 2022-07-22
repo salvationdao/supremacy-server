@@ -646,9 +646,20 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}
 	}
 	if len(opts.FilterRarities) > 0 {
-		queryMods = append(queryMods, qm.Expr(
-			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
-		))
+		vals := []interface{}{}
+		for _, r := range opts.FilterRarities {
+			vals = append(vals, r)
+		}
+		queryMods = append(queryMods,
+			qm.LeftOuterJoin(fmt.Sprintf(
+				"%s msc ON msc.%s = %s AND msc.%s = ?",
+				boiler.TableNames.CollectionItems,
+				boiler.CollectionItemColumns.ItemID,
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+				boiler.CollectionItemColumns.ItemType,
+			), boiler.ItemTypeMechSkin),
+			qm.AndIn("msc.tier IN ?", vals...),
+		)
 	}
 	if len(opts.FilterStatuses) > 0 {
 		hasIdleToggled := false
