@@ -68,9 +68,15 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get crate for purchase, please try again or contact support.")
 	}
 
-	assignedCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeCrate, tx, api)
+	assignedCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeCrate, tx, api)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+	}
+
+	err = api.Passport.AssetRegister(xa)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
 	}
 
 	err = tx.Commit()
@@ -219,7 +225,6 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 				rarerSkin = skin
 			}
 		}
-
 
 		//attach mech_skin to mech - mech
 		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)

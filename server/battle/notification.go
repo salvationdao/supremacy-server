@@ -205,6 +205,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		return
 	}
 
+	// broadcast system message to mech owners
+	arena.SystemMessagingManager.BroadcastMechQueueMessage(q)
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
