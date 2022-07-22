@@ -1442,7 +1442,7 @@ func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *
 	total, avatars, err := db.AvatarList(listOpts)
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
-		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+		return terror.Error(err, "Failed to find your avatars, please try again or contact support.")
 	}
 
 	reply(&PlayerAvatarListResp{
