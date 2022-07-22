@@ -257,13 +257,9 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
-
 				s.WS("/mech", battle.HubKeyWarMachineStatUpdated, nil)
-			}))
 
-			// battle arena route ws
-			r.Mount("/battle", ws.NewServer(func(s *ws.Server) {
-				s.WS("/*", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
+				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
 			}))
