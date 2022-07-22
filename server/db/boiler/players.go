@@ -192,6 +192,7 @@ var PlayerRels = struct {
 	InstantPassByPunishVotes                 string
 	IssuedByPunishVotes                      string
 	ReportedPlayerPunishVotes                string
+	SystemMessages                           string
 	OwnerWeaponSkins                         string
 }{
 	Faction:                                  "Faction",
@@ -236,6 +237,7 @@ var PlayerRels = struct {
 	InstantPassByPunishVotes:                 "InstantPassByPunishVotes",
 	IssuedByPunishVotes:                      "IssuedByPunishVotes",
 	ReportedPlayerPunishVotes:                "ReportedPlayerPunishVotes",
+	SystemMessages:                           "SystemMessages",
 	OwnerWeaponSkins:                         "OwnerWeaponSkins",
 }
 
@@ -283,6 +285,7 @@ type playerR struct {
 	InstantPassByPunishVotes                 PunishVoteSlice                  `boiler:"InstantPassByPunishVotes" boil:"InstantPassByPunishVotes" json:"InstantPassByPunishVotes" toml:"InstantPassByPunishVotes" yaml:"InstantPassByPunishVotes"`
 	IssuedByPunishVotes                      PunishVoteSlice                  `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
 	ReportedPlayerPunishVotes                PunishVoteSlice                  `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
+	SystemMessages                           SystemMessageSlice               `boiler:"SystemMessages" boil:"SystemMessages" json:"SystemMessages" toml:"SystemMessages" yaml:"SystemMessages"`
 	OwnerWeaponSkins                         WeaponSkinSlice                  `boiler:"OwnerWeaponSkins" boil:"OwnerWeaponSkins" json:"OwnerWeaponSkins" toml:"OwnerWeaponSkins" yaml:"OwnerWeaponSkins"`
 }
 
@@ -1419,6 +1422,27 @@ func (o *Player) ReportedPlayerPunishVotes(mods ...qm.QueryMod) punishVoteQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"punish_votes\".*"})
+	}
+
+	return query
+}
+
+// SystemMessages retrieves all the system_message's SystemMessages with an executor.
+func (o *Player) SystemMessages(mods ...qm.QueryMod) systemMessageQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"system_messages\".\"player_id\"=?", o.ID),
+	)
+
+	query := SystemMessages(queryMods...)
+	queries.SetFrom(query.Query, "\"system_messages\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"system_messages\".*"})
 	}
 
 	return query
@@ -5612,6 +5636,104 @@ func (playerL) LoadReportedPlayerPunishVotes(e boil.Executor, singular bool, may
 	return nil
 }
 
+// LoadSystemMessages allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadSystemMessages(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`system_messages`),
+		qm.WhereIn(`system_messages.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load system_messages")
+	}
+
+	var resultSlice []*SystemMessage
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice system_messages")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on system_messages")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for system_messages")
+	}
+
+	if len(systemMessageAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.SystemMessages = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &systemMessageR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.SystemMessages = append(local.R.SystemMessages, foreign)
+				if foreign.R == nil {
+					foreign.R = &systemMessageR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadOwnerWeaponSkins allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadOwnerWeaponSkins(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -8366,6 +8488,58 @@ func (o *Player) AddReportedPlayerPunishVotes(exec boil.Executor, insert bool, r
 			}
 		} else {
 			rel.R.ReportedPlayer = o
+		}
+	}
+	return nil
+}
+
+// AddSystemMessages adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.SystemMessages.
+// Sets related.R.Player appropriately.
+func (o *Player) AddSystemMessages(exec boil.Executor, insert bool, related ...*SystemMessage) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"system_messages\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, systemMessagePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			SystemMessages: related,
+		}
+	} else {
+		o.R.SystemMessages = append(o.R.SystemMessages, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &systemMessageR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
 		}
 	}
 	return nil
