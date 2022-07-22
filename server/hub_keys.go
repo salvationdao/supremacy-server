@@ -13,4 +13,5 @@ const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
 const HubKeySystemMessageList = "SYSTEM:MESSAGE:LIST"
+const HubKeySystemMessageDismiss = "SYSTEM:MESSAGE:DISMISS"
 const HubKeySystemMessageListUpdatedSubscribe = "SYSTEM:MESSAGE:LIST:UPDATED"
