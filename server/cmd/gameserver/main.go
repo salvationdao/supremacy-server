@@ -24,7 +24,6 @@ import (
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/terror/v2"
