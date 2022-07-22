@@ -966,7 +966,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to update battle queue notifications")
 	}
 
-	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
+	// broadcast system message to mech owners
+	q, err := boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).All(gamedb.StdConn)
+	go btl.arena.SystemMessagingManager.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
+
+	_, err = q.DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
@@ -1095,7 +1099,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}(user)
 
@@ -1417,41 +1421,6 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-// repair is moved to mech level
-//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-//	if btl.ID != dp.BattleID {
-//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-//		btl.arena.reset()
-//		return
-//	}
-//
-//	// get item id from hash
-//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-//		return
-//	}
-//
-//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-//		return
-//	}
-//
-//	btlHistory := boiler.BattleHistory{
-//		BattleID:        btl.BattleID,
-//		WarMachineOneID: wm.ID,
-//		RelatedID:       null.NewString(dp.EventID, true),
-//		EventType:       "pickup",
-//	}
-//
-//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-//	if err != nil {
-//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-//		return
-//	}
-//}
-
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
 	if btl.ID != dp.BattleID {
@@ -1632,7 +1601,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}
 

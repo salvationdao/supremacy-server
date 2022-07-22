@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 	"strconv"
@@ -53,6 +54,7 @@ type Arena struct {
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
 	SystemBanManager         *SystemBanManager
+	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	RepairSystem             *RepairSystem
 	sync.RWMutex
@@ -221,6 +223,7 @@ type Opts struct {
 	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
+	SystemMessagingManager   *system_messages.SystemMessagingManager
 }
 
 type MessageType byte
@@ -250,6 +253,7 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
+		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairSystem:             New(opts.RPCClient),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
@@ -342,7 +346,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
-		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Name))
+		_, _ = mechToUpdate.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
 
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
@@ -351,7 +355,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			return err
 		}
 
-		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(gamedb.StdConn)
+		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(tx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mech.ID).Err(err).Msg("check mech exists in queue")
 			return terror.Error(err, "Failed to check whether mech is in the battle queue")
@@ -1046,8 +1050,6 @@ func (arena *Arena) beginBattle() {
 
 	go arena.NotifyUpcomingWarMachines()
 }
-
-const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	userID, err := uuid.FromString(user.ID)

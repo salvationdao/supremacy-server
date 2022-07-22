@@ -201,6 +201,11 @@ sync-dev:
 	cd server && go run devsync/main.go sync
 	rm -rf ./synctool/temp-sync
 
+.PHONY: dev-sync-windows
+dev-sync-windows:
+	cd ./server && go run ./devsync/main.go sync
+	Powershell rm -r -Force .\server\synctool\temp-sync\
+
 .PHONY: docker-db-dump
 docker-db-dump:
 	mkdir -p ./tmp

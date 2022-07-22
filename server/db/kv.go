@@ -74,6 +74,9 @@ const KeyMechFastRepairDurationMinutes KVKey = "mech_fast_repair_duration_minute
 const KeyMechStandardRepairFee KVKey = "mech_standard_repair_fee"
 const KeyMechFastRepairFee KVKey = "mech_fast_repair_fee"
 
+const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
+const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

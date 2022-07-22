@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"server/db"
 	"server/db/boiler"
@@ -237,6 +238,10 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 		return terror.Error(err, "Failed to update player.")
 	}
 
+	if publicAddress.Valid {
+		publicAddress = null.StringFrom(common.HexToAddress(publicAddress.String).Hex())
+	}
+
 	defer tx.Rollback()
 
 	// insert player if not exists
@@ -334,7 +339,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    b64,
-		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		Expires:  time.Now().AddDate(0, 0, 1), // sync with token expiry
 		Secure:   api.IsCookieSecure,
 		Path:     "/",
 		HttpOnly: true,

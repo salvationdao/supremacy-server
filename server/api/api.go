@@ -15,6 +15,8 @@ import (
 	"server/player_abilities"
 	"server/profanities"
 	"server/synctool"
+	"server/system_messages"
+	"server/syndicate"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -68,21 +70,22 @@ type FactionVotePrice struct {
 
 // API server
 type API struct {
-	ctx                       context.Context
-	server                    *http.Server
-	Routes                    chi.Router
-	BattleArena               *battle.Arena
-	HTMLSanitize              *bluemonday.Policy
-	SMS                       server.SMS
-	Passport                  *xsyn_rpcclient.XsynXrpcClient
-	Telegram                  server.Telegram
-	LanguageDetector          lingua.LanguageDetector
-	Cookie                    *securebytes.SecureBytes
-	IsCookieSecure            bool
-	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
-	Commander                 *ws.Commander
-	SecureUserCommander       *ws.Commander
-	SecureFactionCommander    *ws.Commander
+	ctx                      context.Context
+	server                   *http.Server
+	Routes                   chi.Router
+	BattleArena              *battle.Arena
+	HTMLSanitize             *bluemonday.Policy
+	SMS                      server.SMS
+	Passport                 *xsyn_rpcclient.XsynXrpcClient
+	Telegram                 server.Telegram
+	LanguageDetector         lingua.LanguageDetector
+	Cookie                   *securebytes.SecureBytes
+	IsCookieSecure           bool
+	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SystemMessagingManager   *system_messages.SystemMessagingManager
+	Commander                *ws.Commander
+	SecureUserCommander      *ws.Commander
+	SecureFactionCommander   *ws.Commander
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
@@ -98,6 +101,8 @@ type API struct {
 	BostonChat       *Chatroom
 	ZaibatsuChat     *Chatroom
 	ProfanityManager *profanities.ProfanityManager
+
+	SyndicateSystem *syndicate.System
 
 	Config *server.Config
 
@@ -115,21 +120,30 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
 	syncConfig *synctool.StaticSyncTool,
-) *API {
+) (*API, error) {
+	// spin up syndicate system
+	ss, err := syndicate.NewSystem(pp, pm)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to spin up syndicate system")
+		return nil, err
+	}
+
 	// initialise api
 	api := &API{
-		Config:                    config,
-		ctx:                       ctx,
-		Routes:                    chi.NewRouter(),
-		HTMLSanitize:              HTMLSanitize,
-		BattleArena:               battleArenaClient,
-		Passport:                  pp,
-		SMS:                       sms,
-		Telegram:                  telegram,
-		LanguageDetector:          languageDetector,
-		IsCookieSecure:            config.CookieSecure,
-		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(),
+		Config:                   config,
+		ctx:                      ctx,
+		Routes:                   chi.NewRouter(),
+		HTMLSanitize:             HTMLSanitize,
+		BattleArena:              battleArenaClient,
+		Passport:                 pp,
+		SMS:                      sms,
+		Telegram:                 telegram,
+		LanguageDetector:         languageDetector,
+		IsCookieSecure:           config.CookieSecure,
+		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -145,6 +159,7 @@ func NewAPI(
 		BostonChat:       NewChatroom(server.BostonCyberneticsFactionID),
 		ZaibatsuChat:     NewChatroom(server.ZaibatsuFactionID),
 		ProfanityManager: pm,
+		SyndicateSystem:  ss,
 		SyncConfig:       syncConfig,
 	}
 
@@ -173,8 +188,10 @@ func NewAPI(
 	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
+	sdc := NewSyndicateController(api)
 	_ = NewLeaderboardController(api)
 	NewWSWarMachineController(api)
+	_ = NewSystemMessagesController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -233,6 +250,8 @@ func NewAPI(
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
+			r.Post("/syndicate/issue_motion", WithError(WithCookie(api, api.SyndicateMotionIssue)))
+			r.Post("/syndicate/create", WithError(WithCookie(api, api.SyndicateCreate)))
 		})
 
 		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
@@ -243,7 +262,7 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false))
+				s.Use(api.AuthWS(false, false, "/sale_abilities"))
 
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
@@ -258,9 +277,11 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
+				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
+
+				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
-				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/live_data", "", nil)
 			}))
 
@@ -268,12 +289,13 @@ func NewAPI(
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
-				s.WSTrack("/*", "user_id", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
+				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 			}))
 
 			// secured faction route ws
@@ -285,6 +307,9 @@ func NewAPI(
 				s.WS("/punish_vote/{punish_vote_id}/command_override", HubKeyPunishVoteCommandOverrideCountSubscribe, server.MustSecureFaction(pc.PunishVoteCommandOverrideCountSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
 				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
+
+				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechDetail))
+				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
@@ -301,6 +326,12 @@ func NewAPI(
 
 				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
+
+				// syndicate related
+				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(sdc.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(sdc.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(sdc.SyndicateCommitteesSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(sdc.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
 			}))
 		})
 	})
@@ -332,7 +363,7 @@ func NewAPI(
 	})
 	factionMvpUpdate.Log = gamelog.L
 
-	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
+	err = factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
@@ -345,7 +376,7 @@ func NewAPI(
 
 	api.FactionActivePlayerSetup()
 
-	return api
+	return api, nil
 }
 
 // Run the API service
@@ -452,7 +483,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 	}
 }
 
-func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handler) http.Handler {
+func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
@@ -469,6 +500,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 							http.Error(w, "Unauthorized", http.StatusUnauthorized)
 							return
 						}
+						next.ServeHTTP(w, r)
+						return
 					}
 				}
 			} else {
@@ -482,18 +515,26 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				}
 			}
 
-			if !required && token == "" {
-				next.ServeHTTP(w, r)
-				return
-			}
+			if !required {
+				path := r.URL.Path
 
-			user, err := api.TokenLogin(token, !required)
-			if err != nil {
-				if required {
-					gamelog.L.Debug().Err(err).Msg("authentication error")
+				exists := false
+				for _, p := range onlyAuthPaths {
+					if p == path {
+						exists = true
+						break
+					}
+				}
+
+				if !exists {
+					next.ServeHTTP(w, r)
 					return
 				}
-				next.ServeHTTP(w, r)
+			}
+
+			user, err := api.TokenLogin(token)
+			if err != nil {
+				gamelog.L.Debug().Err(err).Msg("authentication error")
 				return
 			}
 
@@ -556,7 +597,6 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to update player detail")
-
 		}
 		return nil, err
 	}
@@ -571,7 +611,7 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
-	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	serverPlayer := server.PlayerFromBoiler(player, features)
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")

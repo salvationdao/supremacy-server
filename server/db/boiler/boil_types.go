@@ -249,3 +249,73 @@ const (
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
+
+// Enum values for SyndicateElectionType
+const (
+	SyndicateElectionTypeADMIN = "ADMIN"
+	SyndicateElectionTypeCEO   = "CEO"
+)
+
+// Enum values for SyndicateEventType
+const (
+	SyndicateEventTypeMEMBER_JOIN     = "MEMBER_JOIN"
+	SyndicateEventTypeMEMBER_LEAVE    = "MEMBER_LEAVE"
+	SyndicateEventTypeUPDATE_PROFILE  = "UPDATE_PROFILE"
+	SyndicateEventTypeCONTRIBUTE_FUND = "CONTRIBUTE_FUND"
+)
+
+// Enum values for SyndicateJoinApplicationResult
+const (
+	SyndicateJoinApplicationResultACCEPTED = "ACCEPTED"
+	SyndicateJoinApplicationResultREJECTED = "REJECTED"
+	SyndicateJoinApplicationResultCANCELED = "CANCELED"
+)
+
+// Enum values for SyndicateMotionType
+const (
+	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"
+	SyndicateMotionTypeCHANGE_ENTRY_FEE      = "CHANGE_ENTRY_FEE"
+	SyndicateMotionTypeCHANGE_MONTHLY_DUES   = "CHANGE_MONTHLY_DUES"
+	SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT = "CHANGE_BATTLE_WIN_CUT"
+	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
+	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
+	SyndicateMotionTypeCHANGE_RULE           = "CHANGE_RULE"
+	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
+	SyndicateMotionTypeAPPOINT_COMMITTEE     = "APPOINT_COMMITTEE"
+	SyndicateMotionTypeREMOVE_COMMITTEE      = "REMOVE_COMMITTEE"
+	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
+	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
+	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
+	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"
+)
+
+// Enum values for SyndicateMotionResult
+const (
+	SyndicateMotionResultPASSED       = "PASSED"
+	SyndicateMotionResultFAILED       = "FAILED"
+	SyndicateMotionResultFORCE_CLOSED = "FORCE_CLOSED"
+)
+
+// Enum values for QuestionnaireUsage
+const (
+	QuestionnaireUsageJOIN_REQUEST = "JOIN_REQUEST"
+)
+
+// Enum values for QuestionnaireType
+const (
+	QuestionnaireTypeTEXT          = "TEXT"
+	QuestionnaireTypeSINGLE_SELECT = "SINGLE_SELECT"
+	QuestionnaireTypeMULTI_SELECT  = "MULTI_SELECT"
+)
+
+// Enum values for SyndicateType
+const (
+	SyndicateTypeCORPORATION   = "CORPORATION"
+	SyndicateTypeDECENTRALISED = "DECENTRALISED"
+)
+
+// Enum values for SystemMessageType
+const (
+	SystemMessageTypeMECH_QUEUE           = "MECH_QUEUE"
+	SystemMessageTypeMECH_BATTLE_COMPLETE = "MECH_BATTLE_COMPLETE"
+)
