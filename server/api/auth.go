@@ -175,7 +175,7 @@ type Fingerprint struct {
 	UserAgent  string  `json:"user_agent"`
 }
 
-func FingerprintUpsert(tx *sql.Tx, fingerprint Fingerprint, playerID string) error {
+func FingerprintUpsert( fingerprint Fingerprint, playerID string) error {
 	// Attempt to find fingerprint or create one
 	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(tx)
 	if err != nil {
@@ -191,19 +191,19 @@ func FingerprintUpsert(tx *sql.Tx, fingerprint Fingerprint, playerID string) err
 			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(fingerprint.Confidence)),
 			UserAgent:  null.StringFrom(fingerprint.UserAgent),
 		}
-		err = fp.Insert(tx, boil.Infer())
+		err = fp.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			return err
 		}
 	}
 
-	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(tx)
+	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
 
 	// Link fingerprint to user
-	playerFingerprintExists, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID), boiler.PlayerFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(tx)
+	playerFingerprintExists, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID), boiler.PlayerFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func FingerprintUpsert(tx *sql.Tx, fingerprint Fingerprint, playerID string) err
 			PlayerID:      playerID,
 			FingerprintID: f.ID,
 		}
-		err = newPlayerFingerprint.Insert(tx, boil.Infer())
+		err = newPlayerFingerprint.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			return err
 		}
@@ -320,13 +320,12 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 	}
 	// fingerprint
 	if fingerprint != nil {
-		err = FingerprintUpsert(tx, *fingerprint, playerID)
+		err = FingerprintUpsert(*fingerprint, playerID)
 		if err != nil {
 			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("player finger print upsert")
 			return terror.Error(err, "browser identification fail.")
 		}
 	}
-
 	return nil
 }
 
