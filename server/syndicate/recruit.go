@@ -214,7 +214,7 @@ func (a *Application) vote(userID string, isAgreed bool) error {
 	}
 	currentVoteCount := agreedCount + disagreedCount
 
-	// close the vote, if more than half of committees agreed
+	// close the vote
 	if agreedCount > totalVoters/2 || disagreedCount > totalVoters/2 || currentVoteCount == totalVoters {
 		a.isClosed.Store(true)
 		return nil

@@ -873,7 +873,7 @@ func (sm *Motion) vote(user *boiler.Player, isAgreed bool) error {
 	}
 	currentVoteCount := agreedCount + disagreedCount
 
-	// close the vote, if more than half of committees agreed
+	// close the vote
 	if agreedCount > totalVoters/2 || disagreedCount > totalVoters/2 || currentVoteCount == totalVoters {
 		sm.isClosed.Store(true)
 		return nil
