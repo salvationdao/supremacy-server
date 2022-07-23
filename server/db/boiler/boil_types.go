@@ -291,9 +291,11 @@ const (
 
 // Enum values for SyndicateMotionResult
 const (
-	SyndicateMotionResultPASSED       = "PASSED"
-	SyndicateMotionResultFAILED       = "FAILED"
-	SyndicateMotionResultFORCE_CLOSED = "FORCE_CLOSED"
+	SyndicateMotionResultPASSED          = "PASSED"
+	SyndicateMotionResultFAILED          = "FAILED"
+	SyndicateMotionResultTERMINATED      = "TERMINATED"
+	SyndicateMotionResultLEADER_ACCEPTED = "LEADER_ACCEPTED"
+	SyndicateMotionResultLEADER_REJECTED = "LEADER_REJECTED"
 )
 
 // Enum values for QuestionnaireUsage

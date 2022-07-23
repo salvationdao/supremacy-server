@@ -117,7 +117,9 @@ DROP TYPE IF EXISTS SYNDICATE_MOTION_RESULT;
 CREATE TYPE SYNDICATE_MOTION_RESULT AS ENUM (
     'PASSED',
     'FAILED',
-    'FORCE_CLOSED'
+    'TERMINATED',
+    'LEADER_ACCEPTED',
+    'LEADER_REJECTED'
 );
 
 CREATE TABLE syndicate_motions(
@@ -192,6 +194,18 @@ CREATE TABLE syndicate_motion_votes(
 );
 
 CREATE INDEX IF NOT EXISTS idx_motion_vote_motion_id on syndicate_motion_votes(motion_id);
+
+-- this table is for corporation syndicate only, any passed motion should be accepted by ceo or admin
+CREATE TABLE syndicate_pending_motions(
+    id uuid primary key default gen_random_uuid(),
+    syndicate_id uuid not null references syndicates(id),
+    motion_id uuid not null references syndicate_motions(id),
+    final_decision text,
+    created_at timestamptz not null default NOW(),
+    updated_at timestamptz not null default NOW(),
+    deleted_at timestamptz
+);
+
 
 DROP TYPE IF EXISTS SYNDICATE_ELECTION_TYPE;
 CREATE TYPE SYNDICATE_ELECTION_TYPE AS ENUM (

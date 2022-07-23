@@ -120,6 +120,7 @@ var TableNames = struct {
 	SyndicateJoinApplications                          string
 	SyndicateMotionVotes                               string
 	SyndicateMotions                                   string
+	SyndicatePendingMotions                            string
 	SyndicateQuestionnaires                            string
 	SyndicateRules                                     string
 	Syndicates                                         string
@@ -255,6 +256,7 @@ var TableNames = struct {
 	SyndicateJoinApplications:    "syndicate_join_applications",
 	SyndicateMotionVotes:         "syndicate_motion_votes",
 	SyndicateMotions:             "syndicate_motions",
+	SyndicatePendingMotions:      "syndicate_pending_motions",
 	SyndicateQuestionnaires:      "syndicate_questionnaires",
 	SyndicateRules:               "syndicate_rules",
 	Syndicates:                   "syndicates",

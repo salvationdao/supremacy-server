@@ -69,8 +69,8 @@ func (sms *MotionSystem) terminate() {
 
 	// force close all the motion
 	for _, om := range sms.ongoingMotions {
-		om.forceClosed.Store(true) // close motion without calculate result
-		om.isClosed.Store(true)    // terminate all the processing motion
+		om.forceClosed.Store(boiler.SyndicateMotionResultTERMINATED) // close motion without calculate result
+		om.isClosed.Store(true)                                      // terminate all the processing motion
 	}
 }
 
@@ -81,9 +81,7 @@ func (sms *MotionSystem) forceCloseTypes(reason string, types ...string) {
 	for _, t := range types {
 		for _, om := range sms.ongoingMotions {
 			if om.Type == t {
-				om.Reason = reason
-				om.forceClosed.Store(true)
-				om.isClosed.Store(true)
+				om.forceClosed.Store(boiler.SyndicateMotionResultTERMINATED)
 			}
 		}
 	}
@@ -188,7 +186,7 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, logo *boiler.Blo
 		SyndicateMotion: bsm,
 		syndicate:       sms.syndicate,
 		isClosed:        atomic.Bool{},
-		forceClosed:     atomic.Bool{},
+		forceClosed:     atomic.String{},
 		onClose: func() {
 			sms.Lock()
 			defer sms.Unlock()
@@ -203,7 +201,7 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, logo *boiler.Blo
 		},
 	}
 	m.isClosed.Store(false)
-	m.forceClosed.Store(false)
+	m.forceClosed.Store("")
 
 	totalAvailableVoter, err := sms.syndicate.getTotalAvailableMotionVoter()
 	if err != nil {
@@ -213,7 +211,7 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, logo *boiler.Blo
 
 	// instantly pass, if total available voting player is no more than 3
 	if totalAvailableVoter <= 3 {
-		m.parseResult()
+		m.action()
 		return nil
 	}
 
@@ -662,7 +660,7 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 	}
 
 	if bsm.FinalisedAt.Valid || bsm.Result.Valid {
-		return terror.Error(fmt.Errorf("motion is already endded"), "Motion is already ended.")
+		return terror.Error(fmt.Errorf("motion is already ended"), "Motion is already ended.")
 	}
 
 	for _, om := range sms.ongoingMotions {
@@ -743,7 +741,7 @@ type Motion struct {
 	sync.Mutex
 
 	isClosed    atomic.Bool
-	forceClosed atomic.Bool
+	forceClosed atomic.String
 	onClose     func()
 }
 
@@ -756,12 +754,15 @@ func (sm *Motion) start() {
 	for {
 		time.Sleep(1 * time.Second)
 		// if motion is not ended and not closed
-		if sm.EndAt.After(time.Now()) && !sm.isClosed.Load() && !sm.forceClosed.Load() {
+		if sm.EndAt.After(time.Now()) && !sm.isClosed.Load() && sm.forceClosed.Load() != "" {
 			continue
 		}
 
 		// calculate result
 		sm.parseResult()
+
+		// execute result
+		sm.action()
 
 		return
 	}
@@ -786,7 +787,7 @@ func (sm *Motion) vote(user *boiler.Player, isAgreed bool) error {
 	defer sm.Unlock()
 
 	// only fire the function when motion is still open
-	if sm.isClosed.Load() || sm.forceClosed.Load() {
+	if sm.isClosed.Load() || sm.forceClosed.Load() != "" {
 		return terror.Error(fmt.Errorf("motion is closed"), "Motion is closed")
 	}
 
@@ -846,8 +847,20 @@ func (sm *Motion) parseResult() {
 	sm.isClosed.Store(true)
 
 	// only update result, if force closed
-	if sm.forceClosed.Load() {
-		sm.broadcastEndResult(boiler.SyndicateMotionResultFORCE_CLOSED, "Forced close")
+	if sm.forceClosed.Load() != "" {
+		// parse force close reason
+		switch sm.forceClosed.Load() {
+		case boiler.SyndicateMotionResultTERMINATED:
+			sm.broadcastEndResult(boiler.SyndicateMotionResultTERMINATED, "Terminated by system.")
+		case "CEO_ACCEPT":
+			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_ACCEPTED, "Accepted by syndicate ceo.")
+		case "CEO_REJECT":
+			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_REJECTED, "Rejected by syndicate ceo.")
+		case "ADMIN_REJECT":
+			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_ACCEPTED, "Accepted by syndicate admin.")
+		case "AMIN_REJECT":
+			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_REJECTED, "Rejected by syndicate admin.")
+		}
 		return
 	}
 
@@ -874,13 +887,53 @@ func (sm *Motion) parseResult() {
 	totalVote := decimal.NewFromInt(int64(agreedCount + disagreedCount))
 
 	// check whether vote is failed, if more than three members voted
-	if totalVote.GreaterThan(decimal.NewFromInt(3)) {
-		rate := decimal.NewFromInt(int64(agreedCount * 100)).Div(totalVote)
-		if (rate.LessThanOrEqual(decimal.NewFromInt(50))) || (sm.Type == boiler.SyndicateMotionTypeDEPOSE_CEO && rate.LessThanOrEqual(decimal.NewFromInt(80))) {
-			// broadcast end result
-			sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, "Not enough votes")
-			return
+	rate := decimal.NewFromInt(int64(agreedCount * 100)).Div(totalVote)
+	if (rate.LessThanOrEqual(decimal.NewFromInt(50))) || (sm.Type == boiler.SyndicateMotionTypeDEPOSE_CEO && rate.LessThanOrEqual(decimal.NewFromInt(80))) {
+		// broadcast end result
+		sm.broadcastEndResult(boiler.SyndicateMotionResultFAILED, "Not enough votes")
+		return
+	}
+
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Most members agreed")
+}
+
+func (sm *Motion) action() {
+	if !sm.Result.Valid {
+		return
+	}
+
+	// do not trigger action if motion failed
+	switch sm.Result.String {
+	case boiler.SyndicateMotionResultFAILED, boiler.SyndicateMotionResultLEADER_REJECTED:
+		return
+	}
+
+	// if motion type is any following types, fire action straight away
+	switch sm.Type {
+	case boiler.SyndicateMotionTypeDEPOSE_CEO:
+		sm.deposeCEO()
+	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
+		sm.appointDirector()
+	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
+		sm.removeDirector()
+	}
+
+	// check syndicate type
+	if sm.syndicate.Type == boiler.SyndicateTypeCORPORATION &&
+		sm.Result.String != boiler.SyndicateMotionResultLEADER_ACCEPTED {
+		// send to pending table for syndicate ceo or admin to approved
+
+		spm := boiler.SyndicatePendingMotion{
+			SyndicateID: sm.SyndicateID,
+			MotionID:    sm.ID,
 		}
+
+		err := spm.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to insert syndicate pending motion.")
+		}
+
+		return
 	}
 
 	// process action
@@ -902,14 +955,8 @@ func (sm *Motion) parseResult() {
 		sm.appointCommittee()
 	case boiler.SyndicateMotionTypeREMOVE_COMMITTEE:
 		sm.removeCommittee()
-	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR:
-		sm.appointDirector()
-	case boiler.SyndicateMotionTypeREMOVE_DIRECTOR:
-		sm.removeDirector()
 	case boiler.SyndicateMotionTypeDEPOSE_ADMIN:
 		sm.deposeAdmin()
-	case boiler.SyndicateMotionTypeDEPOSE_CEO:
-		sm.deposeCEO()
 	}
 }
 

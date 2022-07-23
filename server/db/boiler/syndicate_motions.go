@@ -297,32 +297,35 @@ var SyndicateMotionWhere = struct {
 
 // SyndicateMotionRels is where relationship names are stored.
 var SyndicateMotionRels = struct {
-	IssuedBy                   string
-	Member                     string
-	NewLogo                    string
-	OldLogo                    string
-	Rule                       string
-	Syndicate                  string
-	MotionSyndicateMotionVotes string
+	IssuedBy                      string
+	Member                        string
+	NewLogo                       string
+	OldLogo                       string
+	Rule                          string
+	Syndicate                     string
+	MotionSyndicateMotionVotes    string
+	MotionSyndicatePendingMotions string
 }{
-	IssuedBy:                   "IssuedBy",
-	Member:                     "Member",
-	NewLogo:                    "NewLogo",
-	OldLogo:                    "OldLogo",
-	Rule:                       "Rule",
-	Syndicate:                  "Syndicate",
-	MotionSyndicateMotionVotes: "MotionSyndicateMotionVotes",
+	IssuedBy:                      "IssuedBy",
+	Member:                        "Member",
+	NewLogo:                       "NewLogo",
+	OldLogo:                       "OldLogo",
+	Rule:                          "Rule",
+	Syndicate:                     "Syndicate",
+	MotionSyndicateMotionVotes:    "MotionSyndicateMotionVotes",
+	MotionSyndicatePendingMotions: "MotionSyndicatePendingMotions",
 }
 
 // syndicateMotionR is where relationships are stored.
 type syndicateMotionR struct {
-	IssuedBy                   *Player                  `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
-	Member                     *Player                  `boiler:"Member" boil:"Member" json:"Member" toml:"Member" yaml:"Member"`
-	NewLogo                    *Blob                    `boiler:"NewLogo" boil:"NewLogo" json:"NewLogo" toml:"NewLogo" yaml:"NewLogo"`
-	OldLogo                    *Blob                    `boiler:"OldLogo" boil:"OldLogo" json:"OldLogo" toml:"OldLogo" yaml:"OldLogo"`
-	Rule                       *SyndicateRule           `boiler:"Rule" boil:"Rule" json:"Rule" toml:"Rule" yaml:"Rule"`
-	Syndicate                  *Syndicate               `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
-	MotionSyndicateMotionVotes SyndicateMotionVoteSlice `boiler:"MotionSyndicateMotionVotes" boil:"MotionSyndicateMotionVotes" json:"MotionSyndicateMotionVotes" toml:"MotionSyndicateMotionVotes" yaml:"MotionSyndicateMotionVotes"`
+	IssuedBy                      *Player                     `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
+	Member                        *Player                     `boiler:"Member" boil:"Member" json:"Member" toml:"Member" yaml:"Member"`
+	NewLogo                       *Blob                       `boiler:"NewLogo" boil:"NewLogo" json:"NewLogo" toml:"NewLogo" yaml:"NewLogo"`
+	OldLogo                       *Blob                       `boiler:"OldLogo" boil:"OldLogo" json:"OldLogo" toml:"OldLogo" yaml:"OldLogo"`
+	Rule                          *SyndicateRule              `boiler:"Rule" boil:"Rule" json:"Rule" toml:"Rule" yaml:"Rule"`
+	Syndicate                     *Syndicate                  `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
+	MotionSyndicateMotionVotes    SyndicateMotionVoteSlice    `boiler:"MotionSyndicateMotionVotes" boil:"MotionSyndicateMotionVotes" json:"MotionSyndicateMotionVotes" toml:"MotionSyndicateMotionVotes" yaml:"MotionSyndicateMotionVotes"`
+	MotionSyndicatePendingMotions SyndicatePendingMotionSlice `boiler:"MotionSyndicatePendingMotions" boil:"MotionSyndicatePendingMotions" json:"MotionSyndicatePendingMotions" toml:"MotionSyndicatePendingMotions" yaml:"MotionSyndicatePendingMotions"`
 }
 
 // NewStruct creates a new relationship struct
@@ -690,6 +693,28 @@ func (o *SyndicateMotion) MotionSyndicateMotionVotes(mods ...qm.QueryMod) syndic
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"syndicate_motion_votes\".*"})
+	}
+
+	return query
+}
+
+// MotionSyndicatePendingMotions retrieves all the syndicate_pending_motion's SyndicatePendingMotions with an executor via motion_id column.
+func (o *SyndicateMotion) MotionSyndicatePendingMotions(mods ...qm.QueryMod) syndicatePendingMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_pending_motions\".\"motion_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_pending_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicatePendingMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_pending_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_pending_motions\".*"})
 	}
 
 	return query
@@ -1440,6 +1465,105 @@ func (syndicateMotionL) LoadMotionSyndicateMotionVotes(e boil.Executor, singular
 	return nil
 }
 
+// LoadMotionSyndicatePendingMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (syndicateMotionL) LoadMotionSyndicatePendingMotions(e boil.Executor, singular bool, maybeSyndicateMotion interface{}, mods queries.Applicator) error {
+	var slice []*SyndicateMotion
+	var object *SyndicateMotion
+
+	if singular {
+		object = maybeSyndicateMotion.(*SyndicateMotion)
+	} else {
+		slice = *maybeSyndicateMotion.(*[]*SyndicateMotion)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &syndicateMotionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &syndicateMotionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_pending_motions`),
+		qm.WhereIn(`syndicate_pending_motions.motion_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_pending_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_pending_motions")
+	}
+
+	var resultSlice []*SyndicatePendingMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_pending_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_pending_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_pending_motions")
+	}
+
+	if len(syndicatePendingMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MotionSyndicatePendingMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicatePendingMotionR{}
+			}
+			foreign.R.Motion = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MotionID {
+				local.R.MotionSyndicatePendingMotions = append(local.R.MotionSyndicatePendingMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicatePendingMotionR{}
+				}
+				foreign.R.Motion = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetIssuedBy of the syndicateMotion to the related item.
 // Sets o.R.IssuedBy to related.
 // Adds o to related.R.IssuedBySyndicateMotions.
@@ -1891,6 +2015,58 @@ func (o *SyndicateMotion) AddMotionSyndicateMotionVotes(exec boil.Executor, inse
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &syndicateMotionVoteR{
+				Motion: o,
+			}
+		} else {
+			rel.R.Motion = o
+		}
+	}
+	return nil
+}
+
+// AddMotionSyndicatePendingMotions adds the given related objects to the existing relationships
+// of the syndicate_motion, optionally inserting them as new records.
+// Appends related to o.R.MotionSyndicatePendingMotions.
+// Sets related.R.Motion appropriately.
+func (o *SyndicateMotion) AddMotionSyndicatePendingMotions(exec boil.Executor, insert bool, related ...*SyndicatePendingMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MotionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_pending_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"motion_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicatePendingMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MotionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &syndicateMotionR{
+			MotionSyndicatePendingMotions: related,
+		}
+	} else {
+		o.R.MotionSyndicatePendingMotions = append(o.R.MotionSyndicatePendingMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicatePendingMotionR{
 				Motion: o,
 			}
 		} else {

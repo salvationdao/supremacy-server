@@ -104,7 +104,7 @@ func (as *AccountSystem) liquidate() error {
 	return nil
 }
 
-func (as *AccountSystem) receiveFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
+func (as *AccountSystem) receiveFund(fromID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
 	as.Lock()
 	defer as.Unlock()
 
@@ -114,7 +114,7 @@ func (as *AccountSystem) receiveFund(userID string, fund decimal.Decimal, refere
 
 	// distribute fun to remaining members
 	transaction := xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(userID),
+		FromUserID:           uuid.FromStringOrNil(fromID),
 		ToUserID:             uuid.FromStringOrNil(as.syndicate.ID),
 		Amount:               fund.String(),
 		TransactionReference: reference,
@@ -132,7 +132,7 @@ func (as *AccountSystem) receiveFund(userID string, fund decimal.Decimal, refere
 	return nil
 }
 
-func (as *AccountSystem) transferFund(userID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
+func (as *AccountSystem) transferFund(toID string, fund decimal.Decimal, reference server.TransactionReference, description string) error {
 	as.Lock()
 	defer as.Unlock()
 
@@ -143,7 +143,7 @@ func (as *AccountSystem) transferFund(userID string, fund decimal.Decimal, refer
 	// distribute fun to remaining members
 	transaction := xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.FromStringOrNil(as.syndicate.ID),
-		ToUserID:             uuid.FromStringOrNil(userID),
+		ToUserID:             uuid.FromStringOrNil(toID),
 		Amount:               fund.String(),
 		TransactionReference: reference,
 		Group:                string(server.TransactionGroupSupremacy),

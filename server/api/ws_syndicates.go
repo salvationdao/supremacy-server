@@ -254,6 +254,14 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 		if err != nil {
 			return err
 		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
+			return terror.Error(err, "Failed to exit syndicate")
+		}
+		reply(true)
+		return nil
 	} else {
 		// remove player from the syndicate
 		user.SyndicateID = null.StringFromPtr(nil)
