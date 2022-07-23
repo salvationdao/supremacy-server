@@ -70,10 +70,10 @@ func (sms *MotionSystem) terminate() {
 	// force close all the motion
 	for _, om := range sms.ongoingMotions {
 		om.forceClosed.Store(boiler.SyndicateMotionResultTERMINATED) // close motion without calculate result
-		om.isClosed.Store(true)                                      // terminate all the processing motion
 	}
 }
 
+// forceCloseTypes close a specific type of motion
 func (sms *MotionSystem) forceCloseTypes(reason string, types ...string) {
 	sms.Lock()
 	defer sms.Unlock()
@@ -85,7 +85,37 @@ func (sms *MotionSystem) forceCloseTypes(reason string, types ...string) {
 			}
 		}
 	}
+}
 
+func (sms *MotionSystem) finaliseMotion(playerPosition string, motionID string, isAccepted bool) error {
+	sms.Lock()
+	defer sms.Unlock()
+
+	if sms.isClosed.Load() {
+		return terror.Error(fmt.Errorf("motion system is closed"), "Motion system is already closed.")
+	}
+
+	sm, ok := sms.ongoingMotions[motionID]
+	if !ok {
+		return terror.Error(fmt.Errorf("motion not exist"), "Motion does not exist")
+	}
+
+	if sm.isClosed.Load() {
+		return terror.Error(fmt.Errorf("motion is closed"), "Motion is already closed.")
+	}
+
+	if sm.forceClosed.Load() != "" {
+		return terror.Error(fmt.Errorf("motion is finalised"), "Motion is already finalised.")
+	}
+
+	// finalise motion
+	decision := fmt.Sprintf("%s_ACCEPT", playerPosition)
+	if !isAccepted {
+		decision = fmt.Sprintf("%s_REJECT", playerPosition)
+	}
+	sm.forceClosed.Store(decision)
+
+	return nil
 }
 
 func (sms *MotionSystem) getOngoingMotionList() ([]*boiler.SyndicateMotion, error) {
@@ -754,7 +784,7 @@ func (sm *Motion) start() {
 	for {
 		time.Sleep(1 * time.Second)
 		// if motion is not ended and not closed
-		if sm.EndAt.After(time.Now()) && !sm.isClosed.Load() && sm.forceClosed.Load() != "" {
+		if sm.EndAt.After(time.Now()) && !sm.isClosed.Load() && sm.forceClosed.Load() == "" {
 			continue
 		}
 

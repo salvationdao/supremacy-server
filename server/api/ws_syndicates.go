@@ -29,13 +29,18 @@ func NewSyndicateController(api *API) {
 		return
 	}
 
-	api.SecureUserFactionCommand(HubKeySyndicateJoin, api.SyndicateJoinHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateLeave, api.SyndicateLeaveHandler)
+
+	// join
+	api.SecureUserFactionCommand(HubKeySyndicateJoin, api.SyndicateJoinHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateVoteApplication, api.SyndicateVoteApplicationHandler)
 
 	// motion
 	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, api.SyndicateVoteMotionHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateMotionList, api.SyndicateMotionListHandler)
+
+	// leader action
+	api.SecureUserFactionCommand(HubKeySyndicateLeaderFinaliseMotion, api.SyndicateLeaderFinaliseMotionHandler)
 }
 
 type SyndicateJoinRequest struct {
@@ -478,6 +483,49 @@ func (api *API) SyndicateMotionListHandler(ctx context.Context, user *boiler.Pla
 
 	reply(&SyndicateMotionListResponse{sms, total})
 
+	return nil
+}
+
+type SyndicateLeaderFinaliseMotionRequest struct {
+	Payload struct {
+		IsAccepted bool   `json:"is_accepted"`
+		MotionID   string `json:"motion_id"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateLeaderFinaliseMotion = "SYNDICATE:LEADER:FINALISE:MOTION"
+
+func (api *API) SyndicateLeaderFinaliseMotionHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	position := ""
+	if s.AdminID.String == user.ID {
+		position = "ADMIN"
+	} else if s.CeoPlayerID.String == user.ID {
+		position = "CEO"
+	} else {
+		return terror.Error(terror.ErrForbidden, "Only syndicate leader can finalise motion.")
+	}
+
+	// start action
+	req := &SyndicateLeaderFinaliseMotionRequest{}
+	err = json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	err = api.SyndicateSystem.LeaderFinaliseMotion(s.ID, position, req.Payload.MotionID, req.Payload.IsAccepted)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

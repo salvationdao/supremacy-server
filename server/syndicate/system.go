@@ -157,6 +157,21 @@ func (ss *System) ForceCloseMotionsByType(syndicateID string, reason string, mot
 	return nil
 }
 
+// LeaderFinaliseMotion finalise motion from syndicate leader such as CEO and ADMIN
+func (ss *System) LeaderFinaliseMotion(syndicateID string, playerPosition string, motionID string, isAccepted bool) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.motionSystem.finaliseMotion(playerPosition, motionID, isAccepted)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetOngoingMotions get the motions from the syndicate
 func (ss *System) GetOngoingMotions(user *boiler.Player) ([]*boiler.SyndicateMotion, error) {
 	// get syndicate
