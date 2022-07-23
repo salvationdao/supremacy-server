@@ -69,6 +69,11 @@ func (s *Syndicate) liquidate(tx *sql.Tx) error {
 	// stop all the ongoing motion in the syndicate
 	s.motionSystem.terminate()
 
+	// TODO: terminate recruit system
+
+	// stop election system
+	s.electionSystem.isClosed.Store(true)
+
 	// liquidate fund
 	err := s.accountSystem.liquidate()
 	if err != nil {

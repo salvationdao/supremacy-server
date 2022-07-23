@@ -256,6 +256,16 @@ const (
 	SyndicateElectionTypeCEO   = "CEO"
 )
 
+// Enum values for SyndicateElectionResult
+const (
+	SyndicateElectionResultWINNER_APPEAR   = "WINNER_APPEAR"
+	SyndicateElectionResultTIE             = "TIE"
+	SyndicateElectionResultTIE_SECOND_TIME = "TIE_SECOND_TIME"
+	SyndicateElectionResultNO_VOTE         = "NO_VOTE"
+	SyndicateElectionResultNO_CANDIDATE    = "NO_CANDIDATE"
+	SyndicateElectionResultTERMINATED      = "TERMINATED"
+)
+
 // Enum values for SyndicateEventType
 const (
 	SyndicateEventTypeMEMBER_JOIN     = "MEMBER_JOIN"

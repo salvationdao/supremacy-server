@@ -213,6 +213,16 @@ CREATE TYPE SYNDICATE_ELECTION_TYPE AS ENUM (
     'CEO' -- board of directors exclusive
 );
 
+DROP TYPE IF EXISTS SYNDICATE_ELECTION_RESULT;
+CREATE TYPE SYNDICATE_ELECTION_RESULT AS ENUM (
+    'WINNER_APPEAR',
+    'TIE',
+    'TIE_SECOND_TIME',
+    'NO_VOTE',
+    'NO_CANDIDATE',
+    'TERMINATED'
+);
+
 CREATE TABLE syndicate_elections(
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     syndicate_id uuid not null references syndicates(id),
@@ -222,10 +232,16 @@ CREATE TABLE syndicate_elections(
     started_at timestamptz not null,
     candidate_register_close_at timestamptz not null,
     end_at timestamptz not null,
+    finalised_at timestamptz,
+    result SYNDICATE_ELECTION_RESULT,
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),
     deleted_at timestamptz
 );
+
+CREATE INDEX IF NOT EXISTS idx_syndicate_election_created_at_descending on syndicate_elections(created_at desc);
+CREATE INDEX IF NOT EXISTS idx_syndicate_election_syndicate_id on syndicate_elections(syndicate_id);
+CREATE INDEX IF NOT EXISTS idx_syndicate_election_search on syndicate_elections(syndicate_id, finalised_at);
 
 CREATE TABLE syndicate_election_candidates(
     syndicate_election_id uuid not null references syndicate_elections(id),
@@ -340,3 +356,5 @@ CREATE TABLE application_votes(
 ALTER TABLE blobs
     ADD COLUMN IF NOT EXISTS is_remote boolean NOT NULL DEFAULT FALSE,
     ALTER "file" DROP NOT NULL;
+
+-- syndicate audit logs

@@ -31,6 +31,8 @@ type SyndicateElection struct {
 	StartedAt                time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
 	CandidateRegisterCloseAt time.Time   `boiler:"candidate_register_close_at" boil:"candidate_register_close_at" json:"candidate_register_close_at" toml:"candidate_register_close_at" yaml:"candidate_register_close_at"`
 	EndAt                    time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	FinalisedAt              null.Time   `boiler:"finalised_at" boil:"finalised_at" json:"finalised_at,omitempty" toml:"finalised_at" yaml:"finalised_at,omitempty"`
+	Result                   null.String `boiler:"result" boil:"result" json:"result,omitempty" toml:"result" yaml:"result,omitempty"`
 	CreatedAt                time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt                time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt                null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -48,6 +50,8 @@ var SyndicateElectionColumns = struct {
 	StartedAt                string
 	CandidateRegisterCloseAt string
 	EndAt                    string
+	FinalisedAt              string
+	Result                   string
 	CreatedAt                string
 	UpdatedAt                string
 	DeletedAt                string
@@ -60,6 +64,8 @@ var SyndicateElectionColumns = struct {
 	StartedAt:                "started_at",
 	CandidateRegisterCloseAt: "candidate_register_close_at",
 	EndAt:                    "end_at",
+	FinalisedAt:              "finalised_at",
+	Result:                   "result",
 	CreatedAt:                "created_at",
 	UpdatedAt:                "updated_at",
 	DeletedAt:                "deleted_at",
@@ -74,6 +80,8 @@ var SyndicateElectionTableColumns = struct {
 	StartedAt                string
 	CandidateRegisterCloseAt string
 	EndAt                    string
+	FinalisedAt              string
+	Result                   string
 	CreatedAt                string
 	UpdatedAt                string
 	DeletedAt                string
@@ -86,6 +94,8 @@ var SyndicateElectionTableColumns = struct {
 	StartedAt:                "syndicate_elections.started_at",
 	CandidateRegisterCloseAt: "syndicate_elections.candidate_register_close_at",
 	EndAt:                    "syndicate_elections.end_at",
+	FinalisedAt:              "syndicate_elections.finalised_at",
+	Result:                   "syndicate_elections.result",
 	CreatedAt:                "syndicate_elections.created_at",
 	UpdatedAt:                "syndicate_elections.updated_at",
 	DeletedAt:                "syndicate_elections.deleted_at",
@@ -102,6 +112,8 @@ var SyndicateElectionWhere = struct {
 	StartedAt                whereHelpertime_Time
 	CandidateRegisterCloseAt whereHelpertime_Time
 	EndAt                    whereHelpertime_Time
+	FinalisedAt              whereHelpernull_Time
+	Result                   whereHelpernull_String
 	CreatedAt                whereHelpertime_Time
 	UpdatedAt                whereHelpertime_Time
 	DeletedAt                whereHelpernull_Time
@@ -114,6 +126,8 @@ var SyndicateElectionWhere = struct {
 	StartedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"started_at\""},
 	CandidateRegisterCloseAt: whereHelpertime_Time{field: "\"syndicate_elections\".\"candidate_register_close_at\""},
 	EndAt:                    whereHelpertime_Time{field: "\"syndicate_elections\".\"end_at\""},
+	FinalisedAt:              whereHelpernull_Time{field: "\"syndicate_elections\".\"finalised_at\""},
+	Result:                   whereHelpernull_String{field: "\"syndicate_elections\".\"result\""},
 	CreatedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"created_at\""},
 	UpdatedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"updated_at\""},
 	DeletedAt:                whereHelpernull_Time{field: "\"syndicate_elections\".\"deleted_at\""},
@@ -155,9 +169,9 @@ func (*syndicateElectionR) NewStruct() *syndicateElectionR {
 type syndicateElectionL struct{}
 
 var (
-	syndicateElectionAllColumns            = []string{"id", "syndicate_id", "type", "parent_election_id", "winner_id", "started_at", "candidate_register_close_at", "end_at", "created_at", "updated_at", "deleted_at"}
+	syndicateElectionAllColumns            = []string{"id", "syndicate_id", "type", "parent_election_id", "winner_id", "started_at", "candidate_register_close_at", "end_at", "finalised_at", "result", "created_at", "updated_at", "deleted_at"}
 	syndicateElectionColumnsWithoutDefault = []string{"syndicate_id", "type", "started_at", "candidate_register_close_at", "end_at"}
-	syndicateElectionColumnsWithDefault    = []string{"id", "parent_election_id", "winner_id", "created_at", "updated_at", "deleted_at"}
+	syndicateElectionColumnsWithDefault    = []string{"id", "parent_election_id", "winner_id", "finalised_at", "result", "created_at", "updated_at", "deleted_at"}
 	syndicateElectionPrimaryKeyColumns     = []string{"id"}
 	syndicateElectionGeneratedColumns      = []string{}
 )
