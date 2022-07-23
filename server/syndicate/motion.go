@@ -233,7 +233,7 @@ func (sms *MotionSystem) addMotion(bsm *boiler.SyndicateMotion, logo *boiler.Blo
 	m.isClosed.Store(false)
 	m.forceClosed.Store("")
 
-	totalAvailableVoter, err := sms.syndicate.getTotalAvailableMotionVoter()
+	totalAvailableVoter, err := db.GetSyndicateTotalAvailableMotionVoters(sms.syndicate.ID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to total syndicate users")
 		return err
@@ -563,7 +563,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
-		isDirector, err := sms.syndicate.isDirector(userID)
+		isDirector, err := db.IsSyndicateDirector(sms.syndicate.ID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -585,7 +585,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not syndicate memeber"), "Player is not a member of the syndicate")
 		}
 
-		isDirector, err = sms.syndicate.isDirector(player.ID)
+		isDirector, err = db.IsSyndicateDirector(sms.syndicate.ID, player.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -608,7 +608,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
-		isDirector, err := sms.syndicate.isDirector(userID)
+		isDirector, err := db.IsSyndicateDirector(sms.syndicate.ID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -639,7 +639,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not syndicate memeber"), "Player is not a member of the syndicate")
 		}
 
-		isDirector, err = sms.syndicate.isDirector(player.ID)
+		isDirector, err = db.IsSyndicateDirector(sms.syndicate.ID, player.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -662,7 +662,7 @@ func (sms *MotionSystem) validateIncomingMotion(userID string, bsm *boiler.Syndi
 			return nil, terror.Error(fmt.Errorf("not corporation syndicate"), "Only corporation syndicate can appoint director.")
 		}
 
-		isDirector, err := sms.syndicate.isDirector(userID)
+		isDirector, err := db.IsSyndicateDirector(sms.syndicate.ID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -717,7 +717,6 @@ func (sms *MotionSystem) duplicatedMotionCheck(bsm *boiler.SyndicateMotion) erro
 			if bsm.NewSymbol.Valid && om.NewSymbol.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate symbol.")
 			}
-
 			if bsm.NewLogoID.Valid && om.NewLogoID.Valid {
 				return terror.Error(fmt.Errorf("duplicate motion content"), "There is already an ongoing motion for changing syndicate logo.")
 			}
@@ -803,7 +802,7 @@ func (sm *Motion) vote(user *boiler.Player, isAgreed bool) error {
 	// check vote right
 	switch sm.Type {
 	case boiler.SyndicateMotionTypeAPPOINT_DIRECTOR, boiler.SyndicateMotionTypeREMOVE_DIRECTOR, boiler.SyndicateMotionTypeDEPOSE_CEO:
-		isDirector, err := sm.syndicate.isDirector(user.ID)
+		isDirector, err := db.IsSyndicateDirector(sm.SyndicateID, user.ID)
 		if err != nil {
 			return terror.Error(err, "Failed to get check syndicate director")
 		}

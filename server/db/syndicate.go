@@ -132,3 +132,52 @@ func GetSyndicateCommittees(syndicateID string) ([]*server.Player, error) {
 
 	return players, nil
 }
+
+func IsSyndicateDirector(syndicateID string, userID string) (bool, error) {
+	// check availability
+	exist, err := boiler.SyndicateDirectors(
+		boiler.SyndicateDirectorWhere.SyndicateID.EQ(syndicateID),
+		boiler.SyndicateDirectorWhere.PlayerID.EQ(userID),
+	).Exists(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("syndicate id", syndicateID).Str("player id", userID).Msg("Failed to check syndicate director list from db.")
+		return false, terror.Error(err, "Failed to submit new motion to syndicate")
+	}
+
+	return exist, nil
+}
+
+// GetSyndicateTotalAvailableMotionVoters return total of available motion voter base on syndicate type
+func GetSyndicateTotalAvailableMotionVoters(syndicateID string) (int64, error) {
+	var total int64
+	var err error
+
+	s, err := boiler.FindSyndicate(gamedb.StdConn, syndicateID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Msg("Failed to get syndicate detail from db")
+		return 0, terror.Error(err, "Failed to load syndicate detail.")
+	}
+
+	switch s.Type {
+	case boiler.SyndicateTypeCORPORATION:
+		total, err = s.SyndicateDirectors().Count(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Msg("Failed to get syndicate director number")
+			return 0, terror.Error(err, "Failed to get syndicate directors number")
+		}
+
+		return total, nil
+	case boiler.SyndicateTypeDECENTRALISED:
+		total, err = s.Players().Count(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Msg("Failed to get syndicate members number")
+			return 0, terror.Error(err, "Failed to get syndicate members number")
+		}
+
+		return total, nil
+
+	default:
+		gamelog.L.Error().Err(err).Str("syndicate id", s.ID).Str("syndicate type", s.Type).Msg("Failed to get total available motion voters")
+		return 0, terror.Error(fmt.Errorf("invalid syndicate type"), "Invalid syndicate type")
+	}
+}
