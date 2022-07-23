@@ -924,7 +924,7 @@ func (sm *Motion) parseResult() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Most members agreed")
+	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
 }
 
 func (sm *Motion) action() {
@@ -1149,8 +1149,6 @@ func (sm *Motion) updateSyndicate() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
-
 	sm.broadcastUpdatedSyndicate()
 }
 
@@ -1217,8 +1215,6 @@ func (sm *Motion) addRule() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
-
 	sm.broadcastUpdateRules()
 }
 
@@ -1271,8 +1267,6 @@ func (sm *Motion) removeRule() {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
 		return
 	}
-
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
 
 	sm.broadcastUpdateRules()
 }
@@ -1367,8 +1361,6 @@ func (sm *Motion) changeRule() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
-
 	sm.broadcastUpdateRules()
 }
 
@@ -1422,8 +1414,6 @@ func (sm *Motion) removeMember() {
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, player)
-
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
 }
 
 func (sm *Motion) appointCommittee() {
@@ -1480,9 +1470,6 @@ func (sm *Motion) appointCommittee() {
 		return
 	}
 
-	// broadcast result
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
-
 	// load new director list
 	scs, err := db.GetSyndicateCommittees(sm.SyndicateID)
 	if err != nil {
@@ -1531,9 +1518,6 @@ func (sm *Motion) removeCommittee() {
 		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Str("player id", player.ID).Err(err).Msg("Failed to delete syndicate committee")
 		return
 	}
-
-	// broadcast result
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, fmt.Sprintf("Majority of members agreed."))
 
 	// load new committee list
 	scs, err := db.GetSyndicateCommittees(sm.SyndicateID)
@@ -1587,8 +1571,6 @@ func (sm *Motion) appointDirector() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
-
 	// load new director list
 	sds, err := db.GetSyndicateDirectors(sm.SyndicateID)
 	if err != nil {
@@ -1617,8 +1599,6 @@ func (sm *Motion) removeDirector() {
 		return
 	}
 
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
-
 	// broadcast syndicate director list
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/directors", sm.syndicate.FactionID, sm.SyndicateID), server.HubKeySyndicateDirectorsSubscribe, sds)
 }
@@ -1635,8 +1615,6 @@ func (sm *Motion) deposeAdmin() {
 		gamelog.L.Error().Err(err).Str("syndicate id", sm.SyndicateID).Msg("Failed to depose ceo of the syndicate.")
 		return
 	}
-
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of members agreed.")
 
 	sm.broadcastUpdatedSyndicate()
 
@@ -1656,8 +1634,6 @@ func (sm *Motion) deposeCEO() {
 		gamelog.L.Error().Err(err).Str("syndicate id", sm.SyndicateID).Msg("Failed to depose ceo of the syndicate.")
 		return
 	}
-
-	sm.broadcastEndResult(boiler.SyndicateMotionResultPASSED, "Majority of directors agreed.")
 
 	sm.broadcastUpdatedSyndicate()
 
