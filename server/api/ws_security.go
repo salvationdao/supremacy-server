@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
+	"os"
 	"server"
 )
 
@@ -40,6 +41,11 @@ func MustLogin(ctx context.Context) bool {
 }
 
 func MustMatchSyndicate(ctx context.Context) bool {
+	// NOTE: syndicate is temporary disabled on production
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		return false
+	}
+
 	cctx := chi.RouteContext(ctx)
 	syndicateID := cctx.URLParam("syndicate_id")
 

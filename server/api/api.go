@@ -15,8 +15,8 @@ import (
 	"server/player_abilities"
 	"server/profanities"
 	"server/synctool"
-	"server/system_messages"
 	"server/syndicate"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -188,7 +188,7 @@ func NewAPI(
 	pasc := NewPlayerAssetsController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
-	sdc := NewSyndicateController(api)
+	NewSyndicateController(api)
 	_ = NewLeaderboardController(api)
 	NewWSWarMachineController(api)
 	_ = NewSystemMessagesController(api)
@@ -250,8 +250,7 @@ func NewAPI(
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
-			r.Post("/syndicate/issue_motion", WithError(WithCookie(api, api.SyndicateMotionIssue)))
-			r.Post("/syndicate/create", WithError(WithCookie(api, api.SyndicateCreate)))
+			r.Mount("/syndicate", SyndicateRouter(api))
 		})
 
 		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
@@ -328,10 +327,10 @@ func NewAPI(
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
 
 				// syndicate related
-				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(sdc.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
-				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(sdc.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
-				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(sdc.SyndicateCommitteesSubscribeHandler), MustMatchSyndicate)
-				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(sdc.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(api.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(api.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(api.SyndicateCommitteesSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(api.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
 			}))
 		})
 	})

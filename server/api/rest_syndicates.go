@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/h2non/filetype"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -12,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -20,6 +22,20 @@ import (
 	"strings"
 	"time"
 )
+
+func SyndicateRouter(api *API) chi.Router {
+	r := chi.NewRouter()
+
+	// NOTE: syndicate is temporary disabled on production
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		return r
+	}
+
+	r.Post("/syndicate/issue_motion", WithError(WithCookie(api, api.SyndicateMotionIssue)))
+	r.Post("/syndicate/create", WithError(WithCookie(api, api.SyndicateCreate)))
+
+	return r
+}
 
 type SyndicateCreateRequest struct {
 	Name                         string                        `json:"name"`

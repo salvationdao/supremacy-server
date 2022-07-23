@@ -10,10 +10,10 @@ import (
 	"github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
-	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -22,25 +22,20 @@ import (
 	"time"
 )
 
-type SyndicateWS struct {
-	Log *zerolog.Logger
-	API *API
-}
+func NewSyndicateController(api *API) {
 
-func NewSyndicateController(api *API) *SyndicateWS {
-	sc := &SyndicateWS{
-		API: api,
+	// NOTE: syndicate is temporary disabled on production
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+		return
 	}
 
-	api.SecureUserFactionCommand(HubKeySyndicateJoin, sc.SyndicateJoinHandler)
-	api.SecureUserFactionCommand(HubKeySyndicateLeave, sc.SyndicateLeaveHandler)
-	api.SecureUserFactionCommand(HubKeySyndicateVoteApplication, sc.SyndicateVoteApplicationHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateJoin, api.SyndicateJoinHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateLeave, api.SyndicateLeaveHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateVoteApplication, api.SyndicateVoteApplicationHandler)
 
-	// update syndicate settings
-	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, sc.SyndicateVoteMotionHandler)
-	api.SecureUserFactionCommand(HubKeySyndicateMotionList, sc.SyndicateMotionListHandler)
-
-	return sc
+	// motion
+	api.SecureUserFactionCommand(HubKeySyndicateVoteMotion, api.SyndicateVoteMotionHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateMotionList, api.SyndicateMotionListHandler)
 }
 
 type SyndicateJoinRequest struct {
@@ -60,7 +55,7 @@ const HubKeySyndicateJoin = "SYNDICATE:JOIN"
 
 var joinSyndicateBucket = leakybucket.NewCollector(1, 1, true)
 
-func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if user.SyndicateID.Valid {
 		return terror.Error(fmt.Errorf("player already has syndicate"), "You already have a syndicate")
 	}
@@ -202,7 +197,7 @@ func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Pl
 	}
 
 	// check user balance
-	err = sc.API.SyndicateSystem.AddJoinApplication(app)
+	err = api.SyndicateSystem.AddJoinApplication(app)
 	if err != nil {
 		return terror.Error(err, "Failed to submit application")
 	}
@@ -218,7 +213,7 @@ func (sc *SyndicateWS) SyndicateJoinHandler(ctx context.Context, user *boiler.Pl
 
 const HubKeySyndicateLeave = "SYNDICATE:LEAVE"
 
-func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if !user.SyndicateID.Valid {
 		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet")
 	}
@@ -250,7 +245,7 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 	// if the player is the last member of the syndicate
 	if remainSyndicateMemberCount == 1 {
 		// liquidate syndicate
-		err = sc.API.SyndicateSystem.LiquidateSyndicate(tx, syndicate.ID)
+		err = api.SyndicateSystem.LiquidateSyndicate(tx, syndicate.ID)
 		if err != nil {
 			return err
 		}
@@ -303,7 +298,7 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 
 			if syndicate.Type == boiler.SyndicateTypeDECENTRALISED {
 				// terminate any depose admin motion
-				err = sc.API.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "Admin player has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
+				err = api.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "Admin player has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
 				if err != nil {
 					return err
 				}
@@ -330,7 +325,7 @@ func (sc *SyndicateWS) SyndicateLeaveHandler(ctx context.Context, user *boiler.P
 			}
 
 			// terminate depose ceo motion
-			err = sc.API.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "CEO has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
+			err = api.SyndicateSystem.ForceCloseMotionsByType(syndicate.ID, "CEO has already left the syndicate", boiler.SyndicateMotionTypeDEPOSE_ADMIN)
 			if err != nil {
 				return err
 			}
@@ -390,7 +385,7 @@ type SyndicateVoteApplicationRequest struct {
 
 const HubKeySyndicateVoteApplication = "SYNDICATE:VOTE:APPLICATION"
 
-func (sc *SyndicateWS) SyndicateVoteApplicationHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateVoteApplicationHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if !user.SyndicateID.Valid {
 		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
 	}
@@ -427,7 +422,7 @@ type SyndicateMotionVoteRequest struct {
 
 const HubKeySyndicateVoteMotion = "SYNDICATE:VOTE:MOTION"
 
-func (sc *SyndicateWS) SyndicateVoteMotionHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateVoteMotionHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if !user.SyndicateID.Valid {
 		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
 	}
@@ -438,7 +433,7 @@ func (sc *SyndicateWS) SyndicateVoteMotionHandler(ctx context.Context, user *boi
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	err = sc.API.SyndicateSystem.VoteMotion(user, req.Payload.MotionID, req.Payload.IsAgreed)
+	err = api.SyndicateSystem.VoteMotion(user, req.Payload.MotionID, req.Payload.IsAgreed)
 	if err != nil {
 		return err
 	}
@@ -462,7 +457,7 @@ type SyndicateMotionListResponse struct {
 
 const HubKeySyndicateMotionList = "SYNDICATE:MOTION:LIST"
 
-func (sc *SyndicateWS) SyndicateMotionListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateMotionListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if !user.SyndicateID.Valid {
 		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
 	}
@@ -489,7 +484,7 @@ func (sc *SyndicateWS) SyndicateMotionListHandler(ctx context.Context, user *boi
 // subscription handlers
 
 // SyndicateGeneralDetailSubscribeHandler return syndicate general detail (join fee, exit fee, name, symbol_url, available_seat_count)
-func (sc *SyndicateWS) SyndicateGeneralDetailSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateGeneralDetailSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	syndicateID := cctx.URLParam("syndicate_id")
 	if syndicateID == "" {
@@ -511,7 +506,7 @@ func (sc *SyndicateWS) SyndicateGeneralDetailSubscribeHandler(ctx context.Contex
 }
 
 // SyndicateDirectorsSubscribeHandler return the directors of the syndicate
-func (sc *SyndicateWS) SyndicateDirectorsSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateDirectorsSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	syndicateID := cctx.URLParam("syndicate_id")
 	if syndicateID == "" {
@@ -533,7 +528,7 @@ func (sc *SyndicateWS) SyndicateDirectorsSubscribeHandler(ctx context.Context, u
 }
 
 // SyndicateCommitteesSubscribeHandler return the committees of the syndicate
-func (sc *SyndicateWS) SyndicateCommitteesSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateCommitteesSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	syndicateID := cctx.URLParam("syndicate_id")
 	if syndicateID == "" {
@@ -555,7 +550,7 @@ func (sc *SyndicateWS) SyndicateCommitteesSubscribeHandler(ctx context.Context, 
 }
 
 // SyndicateOngoingMotionSubscribeHandler return ongoing motion list
-func (sc *SyndicateWS) SyndicateOngoingMotionSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) SyndicateOngoingMotionSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	syndicateID := cctx.URLParam("syndicate_id")
 	if syndicateID == "" {
@@ -566,7 +561,7 @@ func (sc *SyndicateWS) SyndicateOngoingMotionSubscribeHandler(ctx context.Contex
 		return terror.Error(terror.ErrInvalidInput, "The player does not belong to the syndicate")
 	}
 
-	oms, err := sc.API.SyndicateSystem.GetOngoingMotions(user)
+	oms, err := api.SyndicateSystem.GetOngoingMotions(user)
 	if err != nil {
 		return terror.Error(err, "Failed to get ongoing motions")
 	}
