@@ -897,9 +897,9 @@ func (sm *Motion) parseResult() {
 			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_ACCEPTED, "Accepted by syndicate ceo.")
 		case "CEO_REJECT":
 			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_REJECTED, "Rejected by syndicate ceo.")
-		case "ADMIN_REJECT":
+		case "ADMIN_ACCEPT":
 			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_ACCEPTED, "Accepted by syndicate admin.")
-		case "AMIN_REJECT":
+		case "ADMIN_REJECT":
 			sm.broadcastEndResult(boiler.SyndicateMotionResultLEADER_REJECTED, "Rejected by syndicate admin.")
 		}
 		return

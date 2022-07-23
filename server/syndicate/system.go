@@ -172,6 +172,21 @@ func (ss *System) LeaderFinaliseMotion(syndicateID string, playerPosition string
 	return nil
 }
 
+// LeaderFinaliseJoinApplication finalise join application from syndicate leader such as CEO and ADMIN
+func (ss *System) LeaderFinaliseJoinApplication(syndicateID string, playerPosition string, applicationID string, isAccepted bool) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.recruitSystem.finaliseApplication(playerPosition, applicationID, isAccepted)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetOngoingMotions get the motions from the syndicate
 func (ss *System) GetOngoingMotions(user *boiler.Player) ([]*boiler.SyndicateMotion, error) {
 	// get syndicate

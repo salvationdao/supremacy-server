@@ -19,7 +19,7 @@ import (
 
 type RecruitSystem struct {
 	syndicate *Syndicate
-	isLocked  atomic.Bool
+	isClosed  atomic.Bool
 
 	applicationMap map[string]*Application
 
@@ -29,10 +29,10 @@ type RecruitSystem struct {
 func newRecruitSystem(s *Syndicate) *RecruitSystem {
 	rs := &RecruitSystem{
 		syndicate:      s,
-		isLocked:       atomic.Bool{},
+		isClosed:       atomic.Bool{},
 		applicationMap: make(map[string]*Application),
 	}
-	rs.isLocked.Store(false)
+	rs.isClosed.Store(false)
 
 	return rs
 }
@@ -58,7 +58,7 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 	rs.Lock()
 	defer rs.Unlock()
 
-	if rs.isLocked.Load() {
+	if rs.isClosed.Load() {
 		return terror.Error(fmt.Errorf("recurit system is closed"), "Recruit system is closed.")
 	}
 
@@ -95,6 +95,7 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 		SyndicateJoinApplication: application,
 		recruitSystem:            rs,
 		isClosed:                 atomic.Bool{},
+		forceClosed:              atomic.String{},
 		onClose: func() {
 			rs.Lock()
 			defer rs.Unlock()
@@ -104,6 +105,7 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 	}
 
 	a.isClosed.Store(false)
+	a.forceClosed.Store("")
 
 	go a.start()
 
@@ -131,6 +133,7 @@ type Application struct {
 	*boiler.SyndicateJoinApplication
 	recruitSystem *RecruitSystem
 	isClosed      atomic.Bool
+	forceClosed   atomic.String
 	sync.Mutex
 	onClose func()
 }
@@ -144,7 +147,7 @@ func (a *Application) start() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
 		<-ticker.C
-		if a.ExpireAt.After(time.Now()) || !a.isClosed.Load() {
+		if a.ExpireAt.After(time.Now()) || !a.isClosed.Load() || a.forceClosed.Load() == "" {
 			continue
 		}
 
@@ -223,13 +226,68 @@ func (a *Application) vote(userID string, isAgreed bool) error {
 	return nil
 }
 
+func (rs *RecruitSystem) finaliseApplication(playerPosition string, applicationID string, isAccepted bool) error {
+	rs.Lock()
+	defer rs.Unlock()
+
+	if rs.isClosed.Load() {
+		return terror.Error(fmt.Errorf("recruit system is closed"), "Recruit system is already closed.")
+	}
+
+	a, ok := rs.applicationMap[applicationID]
+	if !ok {
+		return terror.Error(fmt.Errorf("application not exist"), "Application does not exist")
+	}
+
+	if a.isClosed.Load() {
+		return terror.Error(fmt.Errorf("application is closed"), "application is already closed.")
+	}
+
+	if a.forceClosed.Load() != "" {
+		return terror.Error(fmt.Errorf("application is finalised"), "application is already finalised.")
+	}
+
+	// finalise application
+	decision := fmt.Sprintf("%s_ACCEPT", playerPosition)
+	if !isAccepted {
+		decision = fmt.Sprintf("%s_REJECT", playerPosition)
+	}
+	a.forceClosed.Store(decision)
+
+	return nil
+}
+
 func (a *Application) parseResult() {
 	a.Lock()
 	defer a.Unlock()
 
 	a.isClosed.Store(true)
 
-	// TODO: admin or ceo interrupt
+	now := time.Now()
+
+	// admin and ceo interruption
+	if a.forceClosed.Load() != "" {
+		// parse force close reason
+		switch a.forceClosed.Load() {
+		case "CEO_ACCEPT":
+			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultACCEPTED)
+			a.Note = null.StringFrom("Accepted by syndicate ceo.")
+
+		case "CEO_REJECT":
+			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultREJECTED)
+			a.Note = null.StringFrom("Rejected by syndicate ceo.")
+
+		case "ADMIN_ACCEPT":
+			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultACCEPTED)
+			a.Note = null.StringFrom("Accepted by syndicate admin.")
+
+		case "ADMIN_REJECT":
+			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultREJECTED)
+			a.Note = null.StringFrom("Rejected by syndicate admin.")
+		}
+		a.FinalisedAt = null.TimeFrom(now)
+		return
+	}
 
 	// get application vote
 	votes, err := a.ApplicationApplicationVotes().All(gamedb.StdConn)
@@ -251,14 +309,14 @@ func (a *Application) parseResult() {
 
 	if agreedCount <= disagreedCount {
 		a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultREJECTED)
-		a.FinalisedAt = null.TimeFrom(time.Now())
+		a.FinalisedAt = null.TimeFrom(now)
 		a.Note = null.StringFrom("Not enough committees agreed on the application.")
 		return
 	}
 
 	// when passed
 	a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultACCEPTED)
-	a.FinalisedAt = null.TimeFrom(time.Now())
+	a.FinalisedAt = null.TimeFrom(now)
 	a.Note = null.StringFrom("Majority of the committees agreed.")
 }
 
@@ -278,7 +336,7 @@ func (a *Application) Action() {
 
 	defer tx.Rollback()
 
-	// insert application
+	// update application
 	_, err = a.Update(tx, boil.Whitelist(
 		boiler.SyndicateJoinApplicationColumns.Result,
 		boiler.SyndicateJoinApplicationColumns.FinalisedAt,

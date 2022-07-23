@@ -41,6 +41,7 @@ func NewSyndicateController(api *API) {
 
 	// leader action
 	api.SecureUserFactionCommand(HubKeySyndicateLeaderFinaliseMotion, api.SyndicateLeaderFinaliseMotionHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateLeaderFinaliseJoinApplication, api.SyndicateLeaderFinaliseJoinApplicationHandler)
 }
 
 type SyndicateJoinRequest struct {
@@ -526,6 +527,50 @@ func (api *API) SyndicateLeaderFinaliseMotionHandler(ctx context.Context, user *
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+type SyndicateLeaderFinaliseJoinAppRequest struct {
+	Payload struct {
+		IsAccepted    bool   `json:"is_accepted"`
+		ApplicationID string `json:"application_id"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateLeaderFinaliseJoinApplication = "SYNDICATE:LEADER:FINALISE:JOIN:APPLICATION"
+
+func (api *API) SyndicateLeaderFinaliseJoinApplicationHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	position := ""
+	if s.AdminID.String == user.ID {
+		position = "ADMIN"
+	} else if s.CeoPlayerID.String == user.ID {
+		position = "CEO"
+	} else {
+		return terror.Error(terror.ErrForbidden, "Only syndicate leader can finalise join application.")
+	}
+
+	// start action
+	req := &SyndicateLeaderFinaliseJoinAppRequest{}
+	err = json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	err = api.SyndicateSystem.LeaderFinaliseJoinApplication(s.ID, position, req.Payload.ApplicationID, req.Payload.IsAccepted)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
