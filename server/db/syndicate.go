@@ -141,7 +141,7 @@ func IsSyndicateDirector(syndicateID string, userID string) (bool, error) {
 	).Exists(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Str("syndicate id", syndicateID).Str("player id", userID).Msg("Failed to check syndicate director list from db.")
-		return false, terror.Error(err, "Failed to submit new motion to syndicate")
+		return false, terror.Error(err, "Failed to check whether user is a director of the syndicate")
 	}
 
 	return exist, nil

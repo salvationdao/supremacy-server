@@ -329,3 +329,59 @@ func (ss *System) SyndicateSymbolVerification(inputSymbol string) (string, error
 
 	return symbol, nil
 }
+
+func (ss *System) HeldElection(syndicateID string) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.electionSystem.heldElection()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ss *System) RegisterElectionCandidate(syndicateID string, candidateID string) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.electionSystem.registerCandidate(candidateID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ss *System) ResignElectionCandidate(syndicateID string, candidateID string) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.electionSystem.candidateResign(candidateID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ss *System) VoteElectionCandidate(syndicateID string, voterID string, candidateID string) error {
+	s, err := ss.getSyndicate(syndicateID)
+	if err != nil {
+		return err
+	}
+
+	err = s.electionSystem.vote(voterID, candidateID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -42,6 +42,13 @@ func NewSyndicateController(api *API) {
 	// leader action
 	api.SecureUserFactionCommand(HubKeySyndicateLeaderFinaliseMotion, api.SyndicateLeaderFinaliseMotionHandler)
 	api.SecureUserFactionCommand(HubKeySyndicateLeaderFinaliseJoinApplication, api.SyndicateLeaderFinaliseJoinApplicationHandler)
+
+	// election
+	api.SecureUserFactionCommand(HubKeySyndicateElectionHeld, api.SyndicateElectionHeldHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateElectionCandidateRegister, api.SyndicateElectionCandidateRegisterHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateElectionCandidateResign, api.SyndicateElectionCandidateResignHandler)
+	api.SecureUserFactionCommand(HubKeySyndicateElectionVote, api.SyndicateElectionVoteHandler)
+
 }
 
 type SyndicateJoinRequest struct {
@@ -231,6 +238,28 @@ func (api *API) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, 
 		return terror.Error(err, "Failed to load syndicate detail")
 	}
 
+	// check user is an election candidate
+	sec, err := boiler.SyndicateElectionCandidates(
+		boiler.SyndicateElectionCandidateWhere.CandidateID.EQ(user.ID),
+		boiler.SyndicateElectionCandidateWhere.SyndicateID.EQ(user.SyndicateID.String),
+		qm.Where(
+			fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+				boiler.TableNames.SyndicateElections,
+				qm.Rels(boiler.TableNames.SyndicateElections, boiler.SyndicateElectionColumns.ID),
+				qm.Rels(boiler.TableNames.SyndicateElectionCandidates, boiler.SyndicateElectionCandidateColumns.SyndicateElectionID),
+				qm.Rels(boiler.TableNames.SyndicateElections, boiler.SyndicateElectionColumns.FinalisedAt),
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("syndicate id", user.SyndicateID.String).Str("candidate id", user.ID).Msg("Failed to check syndicate election candidate list.")
+		return terror.Error(err, "Failed to leave syndicate.")
+	}
+	if sec != nil {
+		return terror.Error(fmt.Errorf("is election candidate"), "Election candidate is not allowed to leave the syndicate.")
+	}
+
 	// check syndicate remaining member count
 	remainSyndicateMemberCount, err := boiler.Players(
 		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(syndicate.ID)),
@@ -345,6 +374,21 @@ func (api *API) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, 
 				gamelog.L.Error().Err(err).Str("Syndicate id", syndicate.ID).Str("syndicate type", syndicate.Type).Msg("Failed to change syndicate type")
 				return terror.Error(err, "Failed to change syndicate type")
 			}
+
+			// terminate ongoing syndicate election
+			_, err = boiler.SyndicateElections(
+				boiler.SyndicateElectionWhere.SyndicateID.EQ(user.SyndicateID.String),
+				boiler.SyndicateElectionWhere.FinalisedAt.IsNull(),
+			).UpdateAll(gamedb.StdConn,
+				boiler.M{
+					boiler.SyndicateElectionColumns.FinalisedAt: null.TimeFrom(time.Now()),
+					boiler.SyndicateElectionColumns.Result:      null.StringFrom(boiler.SyndicateElectionResultTERMINATED),
+				},
+			)
+
+			// remove ongoing election in the frontend
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/ongoing_election", factionID, user.SyndicateID.String), server.HubKeySyndicateOngoingElectionSubscribe, nil)
+
 		}
 	}
 
@@ -567,6 +611,145 @@ func (api *API) SyndicateLeaderFinaliseJoinApplicationHandler(ctx context.Contex
 	}
 
 	err = api.SyndicateSystem.LeaderFinaliseJoinApplication(s.ID, position, req.Payload.ApplicationID, req.Payload.IsAccepted)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+const HubKeySyndicateElectionHeld = "SYNDICATE:ELECTION:HELD"
+
+func (api *API) SyndicateElectionHeldHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	if s.Type == boiler.SyndicateTypeCORPORATION {
+		isDirector, err := db.IsSyndicateDirector(s.ID, user.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isDirector {
+			return terror.Error(fmt.Errorf("not director"), "Only director can held election.")
+		}
+	}
+
+	err = api.SyndicateSystem.HeldElection(s.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+const HubKeySyndicateElectionCandidateRegister = "SYNDICATE:ELECTION:CANDIDATE:REGISTER"
+
+func (api *API) SyndicateElectionCandidateRegisterHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	if s.Type == boiler.SyndicateTypeCORPORATION {
+		isDirector, err := db.IsSyndicateDirector(s.ID, user.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isDirector {
+			return terror.Error(fmt.Errorf("not director"), "Only director can held election.")
+		}
+	}
+
+	err = api.SyndicateSystem.RegisterElectionCandidate(s.ID, user.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+const HubKeySyndicateElectionCandidateResign = "SYNDICATE:ELECTION:CANDIDATE:RESIGN"
+
+func (api *API) SyndicateElectionCandidateResignHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	if s.Type == boiler.SyndicateTypeCORPORATION {
+		isDirector, err := db.IsSyndicateDirector(s.ID, user.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isDirector {
+			return terror.Error(fmt.Errorf("not director"), "Only director can held election.")
+		}
+	}
+
+	err = api.SyndicateSystem.ResignElectionCandidate(s.ID, user.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type SyndicateElectionVoteRequest struct {
+	Payload struct {
+		CandidateID string `json:"candidate_id"`
+	} `json:"payload"`
+}
+
+const HubKeySyndicateElectionVote = "SYNDICATE:ELECTION:VOTE"
+
+func (api *API) SyndicateElectionVoteHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	// verification
+	if !user.SyndicateID.Valid {
+		return terror.Error(fmt.Errorf("player has no syndicate"), "You have not join any syndicate yet.")
+	}
+
+	s, err := user.Syndicate().One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "")
+	}
+
+	if s.Type == boiler.SyndicateTypeCORPORATION {
+		isDirector, err := db.IsSyndicateDirector(s.ID, user.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isDirector {
+			return terror.Error(fmt.Errorf("not director"), "Only director can held election.")
+		}
+	}
+
+	req := &SyndicateElectionVoteRequest{}
+	err = json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	err = api.SyndicateSystem.VoteElectionCandidate(s.ID, user.ID, req.Payload.CandidateID)
 	if err != nil {
 		return err
 	}

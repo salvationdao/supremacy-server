@@ -363,6 +363,10 @@ func (es *ElectionSystem) heldElection() error {
 	es.Lock()
 	defer es.Unlock()
 
+	if es.isClosed.Load() {
+		return terror.Error(fmt.Errorf("election system is closed"), "Syndicate election system is closed.")
+	}
+
 	now := time.Now()
 	// get current syndicate
 	syndicate, err := boiler.FindSyndicate(gamedb.StdConn, es.syndicateID)
@@ -456,9 +460,13 @@ func (es *ElectionSystem) heldElection() error {
 	return nil
 }
 
-func (es *ElectionSystem) registerCandidate(userID string) error {
+func (es *ElectionSystem) registerCandidate(candidateID string) error {
 	es.Lock()
 	defer es.Unlock()
+
+	if es.isClosed.Load() {
+		return terror.Error(fmt.Errorf("election system is closed"), "Syndicate election system is closed.")
+	}
 
 	// load syndicate election
 	se, err := boiler.SyndicateElections(
@@ -474,10 +482,14 @@ func (es *ElectionSystem) registerCandidate(userID string) error {
 		return terror.Error(fmt.Errorf("no election"), "There is no ongoing election.")
 	}
 
+	if se.CandidateRegisterCloseAt.Before(time.Now()) {
+		return terror.Error(fmt.Errorf("registration window closed"), "Candidate registration period is over.")
+	}
+
 	// check player is already registered
 	sec, err := boiler.SyndicateElectionCandidates(
 		boiler.SyndicateElectionCandidateWhere.SyndicateElectionID.EQ(se.ID),
-		boiler.SyndicateElectionCandidateWhere.CandidateID.EQ(userID),
+		boiler.SyndicateElectionCandidateWhere.CandidateID.EQ(candidateID),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to load syndicate election candidate")
@@ -490,7 +502,7 @@ func (es *ElectionSystem) registerCandidate(userID string) error {
 
 	sec = &boiler.SyndicateElectionCandidate{
 		SyndicateElectionID: se.ID,
-		CandidateID:         userID,
+		CandidateID:         candidateID,
 		SyndicateID:         se.SyndicateID,
 	}
 
@@ -506,6 +518,10 @@ func (es *ElectionSystem) registerCandidate(userID string) error {
 func (es *ElectionSystem) candidateResign(userID string) error {
 	es.Lock()
 	defer es.Unlock()
+
+	if es.isClosed.Load() {
+		return terror.Error(fmt.Errorf("election system is closed"), "Syndicate election system is closed.")
+	}
 
 	// load syndicate election
 	se, err := boiler.SyndicateElections(
@@ -552,6 +568,10 @@ func (es *ElectionSystem) candidateResign(userID string) error {
 func (es *ElectionSystem) vote(voterID string, candidateID string) error {
 	es.Lock()
 	defer es.Unlock()
+
+	if es.isClosed.Load() {
+		return terror.Error(fmt.Errorf("election system is closed"), "Syndicate election system is closed.")
+	}
 
 	// load syndicate election
 	se, err := boiler.SyndicateElections(
