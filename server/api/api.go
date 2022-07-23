@@ -331,6 +331,7 @@ func NewAPI(
 				s.WS("/syndicate/{syndicate_id}/directors", server.HubKeySyndicateDirectorsSubscribe, server.MustSecureFaction(api.SyndicateDirectorsSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/committees", server.HubKeySyndicateCommitteesSubscribe, server.MustSecureFaction(api.SyndicateCommitteesSubscribeHandler), MustMatchSyndicate)
 				s.WS("/syndicate/{syndicate_id}/ongoing_motions", server.HubKeySyndicateOngoingMotionSubscribe, server.MustSecureFaction(api.SyndicateOngoingMotionSubscribeHandler), MustMatchSyndicate)
+				s.WS("/syndicate/{syndicate_id}/ongoing_election", server.HubKeySyndicateOngoingElectionSubscribe, server.MustSecureFaction(api.SyndicateOngoingElectionSubscribeHandler), MustMatchSyndicate)
 			}))
 		})
 	})

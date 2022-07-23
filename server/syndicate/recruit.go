@@ -26,7 +26,7 @@ type RecruitSystem struct {
 	sync.RWMutex
 }
 
-func newRecruitSystem(s *Syndicate) *RecruitSystem {
+func newRecruitSystem(s *Syndicate) (*RecruitSystem, error) {
 	rs := &RecruitSystem{
 		syndicate:      s,
 		isClosed:       atomic.Bool{},
@@ -34,7 +34,39 @@ func newRecruitSystem(s *Syndicate) *RecruitSystem {
 	}
 	rs.isClosed.Store(false)
 
-	return rs
+	// load incomplete applications
+	as, err := boiler.SyndicateJoinApplications(
+		boiler.SyndicateJoinApplicationWhere.SyndicateID.EQ(s.ID),
+		boiler.SyndicateJoinApplicationWhere.FinalisedAt.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to load syndicate join application")
+	}
+
+	// load applications into system
+	for _, application := range as {
+		a := &Application{
+			SyndicateJoinApplication: application,
+			recruitSystem:            rs,
+			isClosed:                 atomic.Bool{},
+			forceClosed:              atomic.String{},
+			onClose: func() {
+				rs.Lock()
+				defer rs.Unlock()
+
+				delete(rs.applicationMap, application.ID)
+			},
+		}
+
+		a.isClosed.Store(false)
+		a.forceClosed.Store("")
+
+		go a.start()
+
+		rs.applicationMap[application.ID] = a
+	}
+
+	return rs, nil
 }
 
 func (rs *RecruitSystem) getApplication(id string) (*Application, error) {

@@ -23,93 +23,100 @@ import (
 
 // SyndicateElection is an object representing the database table.
 type SyndicateElection struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	SyndicateID      string      `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
-	Type             string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	ParentElectionID null.String `boiler:"parent_election_id" boil:"parent_election_id" json:"parent_election_id,omitempty" toml:"parent_election_id" yaml:"parent_election_id,omitempty"`
-	WinnerID         null.String `boiler:"winner_id" boil:"winner_id" json:"winner_id,omitempty" toml:"winner_id" yaml:"winner_id,omitempty"`
-	StartedAt        time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	EndAt            time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                       string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	SyndicateID              string      `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id" toml:"syndicate_id" yaml:"syndicate_id"`
+	Type                     string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	ParentElectionID         null.String `boiler:"parent_election_id" boil:"parent_election_id" json:"parent_election_id,omitempty" toml:"parent_election_id" yaml:"parent_election_id,omitempty"`
+	WinnerID                 null.String `boiler:"winner_id" boil:"winner_id" json:"winner_id,omitempty" toml:"winner_id" yaml:"winner_id,omitempty"`
+	StartedAt                time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	CandidateRegisterCloseAt time.Time   `boiler:"candidate_register_close_at" boil:"candidate_register_close_at" json:"candidate_register_close_at" toml:"candidate_register_close_at" yaml:"candidate_register_close_at"`
+	EndAt                    time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	CreatedAt                time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt                time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt                null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *syndicateElectionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syndicateElectionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SyndicateElectionColumns = struct {
-	ID               string
-	SyndicateID      string
-	Type             string
-	ParentElectionID string
-	WinnerID         string
-	StartedAt        string
-	EndAt            string
-	CreatedAt        string
-	UpdatedAt        string
-	DeletedAt        string
+	ID                       string
+	SyndicateID              string
+	Type                     string
+	ParentElectionID         string
+	WinnerID                 string
+	StartedAt                string
+	CandidateRegisterCloseAt string
+	EndAt                    string
+	CreatedAt                string
+	UpdatedAt                string
+	DeletedAt                string
 }{
-	ID:               "id",
-	SyndicateID:      "syndicate_id",
-	Type:             "type",
-	ParentElectionID: "parent_election_id",
-	WinnerID:         "winner_id",
-	StartedAt:        "started_at",
-	EndAt:            "end_at",
-	CreatedAt:        "created_at",
-	UpdatedAt:        "updated_at",
-	DeletedAt:        "deleted_at",
+	ID:                       "id",
+	SyndicateID:              "syndicate_id",
+	Type:                     "type",
+	ParentElectionID:         "parent_election_id",
+	WinnerID:                 "winner_id",
+	StartedAt:                "started_at",
+	CandidateRegisterCloseAt: "candidate_register_close_at",
+	EndAt:                    "end_at",
+	CreatedAt:                "created_at",
+	UpdatedAt:                "updated_at",
+	DeletedAt:                "deleted_at",
 }
 
 var SyndicateElectionTableColumns = struct {
-	ID               string
-	SyndicateID      string
-	Type             string
-	ParentElectionID string
-	WinnerID         string
-	StartedAt        string
-	EndAt            string
-	CreatedAt        string
-	UpdatedAt        string
-	DeletedAt        string
+	ID                       string
+	SyndicateID              string
+	Type                     string
+	ParentElectionID         string
+	WinnerID                 string
+	StartedAt                string
+	CandidateRegisterCloseAt string
+	EndAt                    string
+	CreatedAt                string
+	UpdatedAt                string
+	DeletedAt                string
 }{
-	ID:               "syndicate_elections.id",
-	SyndicateID:      "syndicate_elections.syndicate_id",
-	Type:             "syndicate_elections.type",
-	ParentElectionID: "syndicate_elections.parent_election_id",
-	WinnerID:         "syndicate_elections.winner_id",
-	StartedAt:        "syndicate_elections.started_at",
-	EndAt:            "syndicate_elections.end_at",
-	CreatedAt:        "syndicate_elections.created_at",
-	UpdatedAt:        "syndicate_elections.updated_at",
-	DeletedAt:        "syndicate_elections.deleted_at",
+	ID:                       "syndicate_elections.id",
+	SyndicateID:              "syndicate_elections.syndicate_id",
+	Type:                     "syndicate_elections.type",
+	ParentElectionID:         "syndicate_elections.parent_election_id",
+	WinnerID:                 "syndicate_elections.winner_id",
+	StartedAt:                "syndicate_elections.started_at",
+	CandidateRegisterCloseAt: "syndicate_elections.candidate_register_close_at",
+	EndAt:                    "syndicate_elections.end_at",
+	CreatedAt:                "syndicate_elections.created_at",
+	UpdatedAt:                "syndicate_elections.updated_at",
+	DeletedAt:                "syndicate_elections.deleted_at",
 }
 
 // Generated where
 
 var SyndicateElectionWhere = struct {
-	ID               whereHelperstring
-	SyndicateID      whereHelperstring
-	Type             whereHelperstring
-	ParentElectionID whereHelpernull_String
-	WinnerID         whereHelpernull_String
-	StartedAt        whereHelpertime_Time
-	EndAt            whereHelpertime_Time
-	CreatedAt        whereHelpertime_Time
-	UpdatedAt        whereHelpertime_Time
-	DeletedAt        whereHelpernull_Time
+	ID                       whereHelperstring
+	SyndicateID              whereHelperstring
+	Type                     whereHelperstring
+	ParentElectionID         whereHelpernull_String
+	WinnerID                 whereHelpernull_String
+	StartedAt                whereHelpertime_Time
+	CandidateRegisterCloseAt whereHelpertime_Time
+	EndAt                    whereHelpertime_Time
+	CreatedAt                whereHelpertime_Time
+	UpdatedAt                whereHelpertime_Time
+	DeletedAt                whereHelpernull_Time
 }{
-	ID:               whereHelperstring{field: "\"syndicate_elections\".\"id\""},
-	SyndicateID:      whereHelperstring{field: "\"syndicate_elections\".\"syndicate_id\""},
-	Type:             whereHelperstring{field: "\"syndicate_elections\".\"type\""},
-	ParentElectionID: whereHelpernull_String{field: "\"syndicate_elections\".\"parent_election_id\""},
-	WinnerID:         whereHelpernull_String{field: "\"syndicate_elections\".\"winner_id\""},
-	StartedAt:        whereHelpertime_Time{field: "\"syndicate_elections\".\"started_at\""},
-	EndAt:            whereHelpertime_Time{field: "\"syndicate_elections\".\"end_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"syndicate_elections\".\"created_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"syndicate_elections\".\"updated_at\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"syndicate_elections\".\"deleted_at\""},
+	ID:                       whereHelperstring{field: "\"syndicate_elections\".\"id\""},
+	SyndicateID:              whereHelperstring{field: "\"syndicate_elections\".\"syndicate_id\""},
+	Type:                     whereHelperstring{field: "\"syndicate_elections\".\"type\""},
+	ParentElectionID:         whereHelpernull_String{field: "\"syndicate_elections\".\"parent_election_id\""},
+	WinnerID:                 whereHelpernull_String{field: "\"syndicate_elections\".\"winner_id\""},
+	StartedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"started_at\""},
+	CandidateRegisterCloseAt: whereHelpertime_Time{field: "\"syndicate_elections\".\"candidate_register_close_at\""},
+	EndAt:                    whereHelpertime_Time{field: "\"syndicate_elections\".\"end_at\""},
+	CreatedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"created_at\""},
+	UpdatedAt:                whereHelpertime_Time{field: "\"syndicate_elections\".\"updated_at\""},
+	DeletedAt:                whereHelpernull_Time{field: "\"syndicate_elections\".\"deleted_at\""},
 }
 
 // SyndicateElectionRels is where relationship names are stored.
@@ -148,8 +155,8 @@ func (*syndicateElectionR) NewStruct() *syndicateElectionR {
 type syndicateElectionL struct{}
 
 var (
-	syndicateElectionAllColumns            = []string{"id", "syndicate_id", "type", "parent_election_id", "winner_id", "started_at", "end_at", "created_at", "updated_at", "deleted_at"}
-	syndicateElectionColumnsWithoutDefault = []string{"syndicate_id", "type", "started_at", "end_at"}
+	syndicateElectionAllColumns            = []string{"id", "syndicate_id", "type", "parent_election_id", "winner_id", "started_at", "candidate_register_close_at", "end_at", "created_at", "updated_at", "deleted_at"}
+	syndicateElectionColumnsWithoutDefault = []string{"syndicate_id", "type", "started_at", "candidate_register_close_at", "end_at"}
 	syndicateElectionColumnsWithDefault    = []string{"id", "parent_election_id", "winner_id", "created_at", "updated_at", "deleted_at"}
 	syndicateElectionPrimaryKeyColumns     = []string{"id"}
 	syndicateElectionGeneratedColumns      = []string{}

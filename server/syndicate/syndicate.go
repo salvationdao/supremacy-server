@@ -24,25 +24,37 @@ type Syndicate struct {
 
 	isLiquidated atomic.Bool
 
-	motionSystem  *MotionSystem
-	accountSystem *AccountSystem
-	recruitSystem *RecruitSystem
+	motionSystem   *MotionSystem
+	accountSystem  *AccountSystem
+	recruitSystem  *RecruitSystem
+	electionSystem *ElectionSystem
 }
 
 func newSyndicate(ss *System, syndicate *boiler.Syndicate) (*Syndicate, error) {
+	var err error
 	s := &Syndicate{
 		system:    ss,
 		Syndicate: syndicate,
 	}
-	motionSystem, err := newMotionSystem(s)
+	s.motionSystem, err = newMotionSystem(s)
 	if err != nil {
 		gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to spin up syndicate motion system.")
-		return nil, terror.Error(err, "Failed to spin up syndicate motion system.")
+		return nil, err
 	}
 
-	s.motionSystem = motionSystem
-	s.accountSystem = NewAccountSystem(s)
-	s.recruitSystem = newRecruitSystem(s)
+	s.recruitSystem, err = newRecruitSystem(s)
+	if err != nil {
+		gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to spin up syndicate recruit system.")
+		return nil, err
+	}
+
+	s.electionSystem, err = newElectionSystem(s)
+	if err != nil {
+		gamelog.L.Error().Interface("syndicate", syndicate).Err(err).Msg("Failed to spin up syndicate election system.")
+		return nil, err
+	}
+
+	s.accountSystem = newAccountSystem(s)
 
 	return s, nil
 }

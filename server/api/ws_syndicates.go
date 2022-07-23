@@ -663,3 +663,30 @@ func (api *API) SyndicateOngoingMotionSubscribeHandler(ctx context.Context, user
 
 	return nil
 }
+
+// SyndicateOngoingElectionSubscribeHandler return ongoing election
+func (api *API) SyndicateOngoingElectionSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	syndicateID := cctx.URLParam("syndicate_id")
+	if syndicateID == "" {
+		return terror.Error(terror.ErrInvalidInput, "Missing syndicate id")
+	}
+
+	if user.SyndicateID.String != syndicateID {
+		return terror.Error(terror.ErrInvalidInput, "The player does not belong to the syndicate")
+	}
+
+	se, err := boiler.SyndicateElections(
+		boiler.SyndicateElectionWhere.SyndicateID.EQ(syndicateID),
+		boiler.SyndicateElectionWhere.EndAt.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get syndicate election")
+	}
+
+	if se != nil {
+		reply(se)
+	}
+
+	return nil
+}

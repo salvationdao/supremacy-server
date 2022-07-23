@@ -220,6 +220,7 @@ CREATE TABLE syndicate_elections(
     parent_election_id uuid references syndicate_elections(id), -- if tie result, auto start another election
     winner_id uuid references players(id),
     started_at timestamptz not null,
+    candidate_register_close_at timestamptz not null,
     end_at timestamptz not null,
     created_at timestamptz not null default NOW(),
     updated_at timestamptz not null default NOW(),

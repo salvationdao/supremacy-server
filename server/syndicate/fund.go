@@ -22,7 +22,7 @@ type AccountSystem struct {
 	sync.Mutex
 }
 
-func NewAccountSystem(s *Syndicate) *AccountSystem {
+func newAccountSystem(s *Syndicate) *AccountSystem {
 	f := &AccountSystem{
 		syndicate: s,
 		isLocked:  false,
