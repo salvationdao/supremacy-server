@@ -276,9 +276,9 @@ const (
 
 // Enum values for SyndicateJoinApplicationResult
 const (
-	SyndicateJoinApplicationResultACCEPTED = "ACCEPTED"
-	SyndicateJoinApplicationResultREJECTED = "REJECTED"
-	SyndicateJoinApplicationResultCANCELED = "CANCELED"
+	SyndicateJoinApplicationResultACCEPTED   = "ACCEPTED"
+	SyndicateJoinApplicationResultREJECTED   = "REJECTED"
+	SyndicateJoinApplicationResultTERMINATED = "TERMINATED"
 )
 
 // Enum values for SyndicateMotionType

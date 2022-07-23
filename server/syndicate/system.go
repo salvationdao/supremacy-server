@@ -247,7 +247,7 @@ func (ss *System) VoteJoinApplication(syndicateID string, playerID string, appli
 		return err
 	}
 
-	err = s.recruitSystem.VoteApplication(applicationID, userID, isAgreed)
+	err = s.recruitSystem.voteApplication(applicationID, userID, isAgreed)
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,6 @@ type RecruitSystem struct {
 func newRecruitSystem(s *Syndicate) (*RecruitSystem, error) {
 	rs := &RecruitSystem{
 		syndicate:      s,
-		isClosed:       atomic.Bool{},
 		applicationMap: make(map[string]*Application),
 	}
 	rs.isClosed.Store(false)
@@ -48,8 +47,6 @@ func newRecruitSystem(s *Syndicate) (*RecruitSystem, error) {
 		a := &Application{
 			SyndicateJoinApplication: application,
 			recruitSystem:            rs,
-			isClosed:                 atomic.Bool{},
-			forceClosed:              atomic.String{},
 			onClose: func() {
 				rs.Lock()
 				defer rs.Unlock()
@@ -69,9 +66,25 @@ func newRecruitSystem(s *Syndicate) (*RecruitSystem, error) {
 	return rs, nil
 }
 
+func (rs *RecruitSystem) terminate() {
+	rs.Lock()
+	defer rs.Unlock()
+
+	rs.isClosed.Store(true)
+
+	for _, a := range rs.applicationMap {
+		a.forceClosed.Store(boiler.SyndicateJoinApplicationResultTERMINATED)
+	}
+
+}
+
 func (rs *RecruitSystem) getApplication(id string) (*Application, error) {
 	rs.RLock()
 	defer rs.RUnlock()
+
+	if rs.isClosed.Load() {
+		return nil, terror.Error(fmt.Errorf("recuit system is closed"), "Syndicate recruit system is closed.")
+	}
 
 	a, ok := rs.applicationMap[id]
 	if !ok {
@@ -126,8 +139,6 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 	a := &Application{
 		SyndicateJoinApplication: application,
 		recruitSystem:            rs,
-		isClosed:                 atomic.Bool{},
-		forceClosed:              atomic.String{},
 		onClose: func() {
 			rs.Lock()
 			defer rs.Unlock()
@@ -146,7 +157,8 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 	return nil
 }
 
-func (rs *RecruitSystem) VoteApplication(applicationID string, userID string, isAgreed bool) error {
+func (rs *RecruitSystem) voteApplication(applicationID string, userID string, isAgreed bool) error {
+	// NOTE: do not lock rs, otherwise deadlock will occur.
 
 	a, err := rs.getApplication(applicationID)
 	if err != nil {
@@ -196,6 +208,10 @@ func (a *Application) start() {
 func (a *Application) vote(userID string, isAgreed bool) error {
 	a.Lock()
 	defer a.Unlock()
+
+	if a.recruitSystem.isClosed.Load() {
+		return terror.Error(fmt.Errorf("recuit system is closed"), "Syndicate recruit system is closed.")
+	}
 
 	if a.isClosed.Load() {
 		return terror.Error(fmt.Errorf("application is finalised"), "The application is finalised.")
@@ -301,6 +317,10 @@ func (a *Application) parseResult() {
 	if a.forceClosed.Load() != "" {
 		// parse force close reason
 		switch a.forceClosed.Load() {
+		case boiler.SyndicateJoinApplicationResultTERMINATED:
+			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultTERMINATED)
+			a.Note = null.StringFrom("Terminated by system.")
+
 		case "CEO_ACCEPT":
 			a.Result = null.StringFrom(boiler.SyndicateJoinApplicationResultACCEPTED)
 			a.Note = null.StringFrom("Accepted by syndicate ceo.")
@@ -379,7 +399,9 @@ func (a *Application) Action() {
 		return
 	}
 
-	if a.Result.String == boiler.SyndicateJoinApplicationResultREJECTED {
+	switch a.Result.String {
+	case boiler.SyndicateJoinApplicationResultREJECTED,
+		boiler.SyndicateJoinApplicationResultTERMINATED:
 		// refund application fee to applicant
 		refundID, err := a.recruitSystem.syndicate.system.Passport.RefundSupsMessage(a.TXID.String)
 		if err != nil {
@@ -389,14 +411,13 @@ func (a *Application) Action() {
 
 		a.RefundTXID = null.StringFrom(refundID)
 		_, err = a.Update(tx, boil.Whitelist(
-			boiler.SyndicateJoinApplicationColumns.Result,
-			boiler.SyndicateJoinApplicationColumns.FinalisedAt,
-			boiler.SyndicateJoinApplicationColumns.Note,
+			boiler.SyndicateJoinApplicationColumns.RefundTXID,
 		))
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to insert application to db.")
 		}
-	} else {
+
+	case boiler.SyndicateJoinApplicationResultACCEPTED:
 		applicant.SyndicateID = null.StringFrom(a.SyndicateID)
 		_, err := applicant.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID))
 		if err != nil {
@@ -413,15 +434,18 @@ func (a *Application) Action() {
 			gamelog.L.Error().Err(err).Msg("Failed to transfer syndicate join fee.")
 			return
 		}
-
-		ws.PublishMessage(fmt.Sprintf("/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
 	}
-
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/join_applicant/%s", applicant.FactionID.String, a.SyndicateID, a.ID), server.HubKeySyndicateJoinApplicationUpdate, a)
 
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 		return
 	}
+
+	// TODO: send message to applicant
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/join_applicant/%s", applicant.FactionID.String, a.SyndicateID, a.ID), server.HubKeySyndicateJoinApplicationUpdate, a)
+
 }
