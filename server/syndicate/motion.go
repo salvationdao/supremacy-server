@@ -847,23 +847,34 @@ func (sm *Motion) vote(user *boiler.Player, isAgreed bool) error {
 		return terror.Error(err, "Failed to vote the motion")
 	}
 
-	totalVoteCount, err := boiler.Players(
+	totalVoters, err := boiler.Players(
 		boiler.PlayerWhere.SyndicateID.EQ(null.StringFrom(sm.SyndicateID)),
 	).Count(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("syndicate id", sm.SyndicateID).Err(err).Msg("Failed to total syndicate users")
 		return nil
 	}
-	currentVoteCount, err := boiler.SyndicateMotionVotes(
+	votes, err := boiler.SyndicateMotionVotes(
 		boiler.SyndicateMotionVoteWhere.MotionID.EQ(sm.ID),
-	).Count(gamedb.StdConn)
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("syndicate motion id", sm.ID).Err(err).Msg("Failed to current voted users")
 		return nil
 	}
 
-	// close the vote, if only all the player have voted
-	if totalVoteCount == currentVoteCount {
+	agreedCount := int64(0)
+	disagreedCount := int64(0)
+	for _, v := range votes {
+		if v.IsAgreed {
+			agreedCount += 1
+			continue
+		}
+		disagreedCount += 1
+	}
+	currentVoteCount := agreedCount + disagreedCount
+
+	// close the vote, if more than half of committees agreed
+	if agreedCount > totalVoters/2 || disagreedCount > totalVoters/2 || currentVoteCount == totalVoters {
 		sm.isClosed.Store(true)
 		return nil
 	}
@@ -934,7 +945,10 @@ func (sm *Motion) action() {
 
 	// do not trigger action if motion failed
 	switch sm.Result.String {
-	case boiler.SyndicateMotionResultFAILED, boiler.SyndicateMotionResultLEADER_REJECTED:
+	case
+		boiler.SyndicateMotionResultTERMINATED,
+		boiler.SyndicateMotionResultFAILED,
+		boiler.SyndicateMotionResultLEADER_REJECTED:
 		return
 	}
 

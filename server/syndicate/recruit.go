@@ -197,30 +197,25 @@ func (a *Application) vote(userID string, isAgreed bool) error {
 	}
 
 	// total vote count
-	agreedCount, err := a.ApplicationApplicationVotes(
-		boiler.ApplicationVoteWhere.IsAgreed.EQ(true),
-	).Count(gamedb.StdConn)
+	votes, err := a.ApplicationApplicationVotes().All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("application id", a.ID).Msg("Failed to check vote count")
 		return nil
 	}
+
+	agreedCount := int64(0)
+	disagreedCount := int64(0)
+	for _, v := range votes {
+		if v.IsAgreed {
+			agreedCount += 1
+			continue
+		}
+		disagreedCount += 1
+	}
+	currentVoteCount := agreedCount + disagreedCount
 
 	// close the vote, if more than half of committees agreed
-	if agreedCount > totalVoters/2 {
-		a.isClosed.Store(true)
-		return nil
-	}
-
-	disagreedCount, err := a.ApplicationApplicationVotes(
-		boiler.ApplicationVoteWhere.IsAgreed.EQ(false),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("application id", a.ID).Msg("Failed to check vote count")
-		return nil
-	}
-
-	// close the vote, if more than half of committees disagreed
-	if disagreedCount > totalVoters/2 || totalVoters == disagreedCount+agreedCount {
+	if agreedCount > totalVoters/2 || disagreedCount > totalVoters/2 || currentVoteCount == totalVoters {
 		a.isClosed.Store(true)
 		return nil
 	}
