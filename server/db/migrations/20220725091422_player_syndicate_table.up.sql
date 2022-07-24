@@ -61,23 +61,6 @@ ALTER TABLE players
 
 CREATE INDEX IF NOT EXISTS idx_player_syndicate on players(syndicate_id);
 
-DROP TYPE IF EXISTS SYNDICATE_EVENT_TYPE;
-CREATE TYPE SYNDICATE_EVENT_TYPE AS ENUM (
-    'MEMBER_JOIN',
-    'MEMBER_LEAVE',
-    'UPDATE_PROFILE',
-    'CONTRIBUTE_FUND'
-);
-
-CREATE TABLE syndicate_event_log(
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    involved_player_id uuid not null references players (id),
-    type SYNDICATE_EVENT_TYPE NOT NULL,
-    created_at timestamptz not null default NOW(),
-    updated_at timestamptz not null default NOW(),
-    deleted_at timestamptz
-);
-
 CREATE TABLE syndicate_rules(
     id uuid primary key default gen_random_uuid(),
     syndicate_id uuid not null references syndicates(id),
@@ -356,5 +339,3 @@ CREATE TABLE application_votes(
 ALTER TABLE blobs
     ADD COLUMN IF NOT EXISTS is_remote boolean NOT NULL DEFAULT FALSE,
     ALTER "file" DROP NOT NULL;
-
--- syndicate audit logs

@@ -266,14 +266,6 @@ const (
 	SyndicateElectionResultTERMINATED      = "TERMINATED"
 )
 
-// Enum values for SyndicateEventType
-const (
-	SyndicateEventTypeMEMBER_JOIN     = "MEMBER_JOIN"
-	SyndicateEventTypeMEMBER_LEAVE    = "MEMBER_LEAVE"
-	SyndicateEventTypeUPDATE_PROFILE  = "UPDATE_PROFILE"
-	SyndicateEventTypeCONTRIBUTE_FUND = "CONTRIBUTE_FUND"
-)
-
 // Enum values for SyndicateJoinApplicationResult
 const (
 	SyndicateJoinApplicationResultACCEPTED   = "ACCEPTED"
