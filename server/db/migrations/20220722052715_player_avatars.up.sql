@@ -98,5 +98,13 @@ WHERE blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
 INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
 SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
 INNER JOIN collection_items ci ON ci.owner_id =  p.id 
-inner JOIN mech_skin ms ON ms.id = ci.item_id 
+INNER JOIN mech_skin ms ON ms.id = ci.item_id 
 INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id;
+
+-- remove PUBLIC_PROFILE feature flag
+DELETE FROM players_features 
+WHERE feature_name = 'PUBLIC_PROFILE';
+
+DELETE FROM features 
+WHERE name = 'PUBLIC_PROFILE';
+

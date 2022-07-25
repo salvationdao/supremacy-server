@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS game_abilities
     id                     uuid PRIMARY KEY          DEFAULT gen_random_uuid() NOT NULL,
     game_client_ability_id integer                                             NOT NULL,
     faction_id             uuid                                                NOT NULL REFERENCES factions (id),
-    battle_ability_id      uuid,
+    battle_ability_id      uuid references battle_abilities(id),
     label                  text                                                NOT NULL,
     colour                 text                                                NOT NULL,
     image_url              text                                                NOT NULL,

@@ -39,6 +39,8 @@ type User struct {
 	Sups        BigInt `json:"sups"`
 	Gid         int    `json:"gid" db:"gid"`
 
+	SyndicateID null.String `json:"syndicate_id,omitempty"`
+
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
 }
