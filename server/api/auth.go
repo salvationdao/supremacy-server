@@ -28,7 +28,6 @@ func AuthRouter(api *API) chi.Router {
 	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
-	r.Post("/player", WithError(api.GetPlayerHandler))
 
 	return r
 }
@@ -392,16 +391,4 @@ func domain(host string) string {
 	parts := strings.Split(host, ".")
 	//this is rigid as fuck
 	return parts[len(parts)-2] + "." + parts[len(parts)-1]
-}
-
-func (api *API) GetPlayerHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &struct {
-		UserID string `json:"user_id"`
-	}{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	player, err := db.GetPlayer(req.UserID)
-	return helpers.EncodeJSON(w, player)
 }
