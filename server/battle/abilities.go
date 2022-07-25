@@ -1139,7 +1139,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	if !resume {
 		as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(as.battleAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second))
-		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+		ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 	}
 	bn := as.battle().BattleNumber
 
@@ -1177,7 +1177,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		case <-as.endGabs:
 			as.battleAbilityPool.Stage.Phase.Store(BribeStageHold)
 			as.battleAbilityPool.Stage.StoreEndTime(time.Now().AddDate(1, 0, 0))
-			ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+			ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 			endProgress <- true
 			return
 		case <-mainTicker.C:
@@ -1236,7 +1236,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 				// broadcast stage to frontend
-				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 			// at the end of location select phase
 			// pass the location select to next player
@@ -1280,7 +1280,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					// enter cooldown phase, if there is no user left for location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
-					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 					continue
 				}
 
@@ -1331,7 +1331,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 				// broadcast stage to frontend
-				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 				ab, ok = as.battleAbilityPool.Abilities.Load(as.battleAbilityPool.TriggeredFactionID.Load())
 
@@ -1349,7 +1349,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.battleAbilityPool.Stage.Phase.Store(BribeStageBribe)
 				as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityBribeDurationSeconds))
 				// broadcast stage to frontend
-				ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 				continue
 			default:
@@ -1503,7 +1503,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 						as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 						bm.Start("broadcast_bribe_stage")
-						ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+						ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 						bm.End("broadcast_bribe_stage")
 						continue
 					}
@@ -1514,7 +1514,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 					// broadcast stage change
 					bm.Start("broadcast_bribe_stage")
-					ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 					bm.End("broadcast_bribe_stage")
 
 					ab, _ := as.battleAbilityPool.Abilities.Load(as.battleAbilityPool.TriggeredFactionID.Load())
@@ -1856,7 +1856,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 		as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.abilityConfig.BattleAbilityLocationSelectDurationSeconds))
 		// broadcast stage change
-		ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+		ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 		// broadcast the announcement to the next location decider
 		ws.PublishMessage(fmt.Sprintf("/user/%s", as.locationDeciders.list[0]), HubKeyBribingWinnerSubscribe, &LocationSelectAnnouncement{
@@ -1953,7 +1953,7 @@ func (as *AbilitiesSystem) ProgressBarBroadcaster() {
 			select {
 			case <-ticker.C:
 				if shouldBroadcast.Load() {
-					ws.PublishMessage("/battle/live_data", HubKeyBattleAbilityProgressBarUpdated, progressBarData)
+					ws.PublishMessage("/public/live_data", HubKeyBattleAbilityProgressBarUpdated, progressBarData)
 					shouldBroadcast.Store(false)
 				}
 			case <-as.abilityConfig.Broadcaster.battleAbilityCloseChan:
@@ -2305,7 +2305,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, startPoint server.Ce
 	as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 	as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 	// broadcast stage to frontend
-	ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
+	ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
 	return nil
 }

@@ -932,7 +932,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to update battle queue notifications")
 	}
 
-	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
+	// broadcast system message to mech owners
+	q, err := boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).All(gamedb.StdConn)
+	go btl.arena.SystemMessagingManager.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
+
+	_, err = q.DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
@@ -1207,7 +1211,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
+	ws.PublishMessage("/public/game_settings", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
