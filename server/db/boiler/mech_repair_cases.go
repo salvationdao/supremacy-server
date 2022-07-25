@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,133 +23,87 @@ import (
 
 // MechRepairCase is an object representing the database table.
 type MechRepairCase struct {
-	ID                  string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID              string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	Fee                 decimal.Decimal `boiler:"fee" boil:"fee" json:"fee" toml:"fee" yaml:"fee"`
-	FastRepairFee       decimal.Decimal `boiler:"fast_repair_fee" boil:"fast_repair_fee" json:"fast_repair_fee" toml:"fast_repair_fee" yaml:"fast_repair_fee"`
-	FastRepairTXID      null.String     `boiler:"fast_repair_tx_id" boil:"fast_repair_tx_id" json:"fast_repair_tx_id,omitempty" toml:"fast_repair_tx_id" yaml:"fast_repair_tx_id,omitempty"`
-	Status              string          `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
-	RepairPeriodMinutes int             `boiler:"repair_period_minutes" boil:"repair_period_minutes" json:"repair_period_minutes" toml:"repair_period_minutes" yaml:"repair_period_minutes"`
-	MaxHealth           decimal.Decimal `boiler:"max_health" boil:"max_health" json:"max_health" toml:"max_health" yaml:"max_health"`
-	RemainHealth        decimal.Decimal `boiler:"remain_health" boil:"remain_health" json:"remain_health" toml:"remain_health" yaml:"remain_health"`
-	StartedAt           null.Time       `boiler:"started_at" boil:"started_at" json:"started_at,omitempty" toml:"started_at" yaml:"started_at,omitempty"`
-	ExpectedEndAt       null.Time       `boiler:"expected_end_at" boil:"expected_end_at" json:"expected_end_at,omitempty" toml:"expected_end_at" yaml:"expected_end_at,omitempty"`
-	EndedAt             null.Time       `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
-	CreatedAt           time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt           time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID         string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	FullyRecoverAt time.Time   `boiler:"fully_recover_at" boil:"fully_recover_at" json:"fully_recover_at" toml:"fully_recover_at" yaml:"fully_recover_at"`
+	RecoveredAt    null.Time   `boiler:"recovered_at" boil:"recovered_at" json:"recovered_at,omitempty" toml:"recovered_at" yaml:"recovered_at,omitempty"`
+	RepairOfferID  null.String `boiler:"repair_offer_id" boil:"repair_offer_id" json:"repair_offer_id,omitempty" toml:"repair_offer_id" yaml:"repair_offer_id,omitempty"`
 
 	R *mechRepairCaseR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechRepairCaseL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechRepairCaseColumns = struct {
-	ID                  string
-	MechID              string
-	Fee                 string
-	FastRepairFee       string
-	FastRepairTXID      string
-	Status              string
-	RepairPeriodMinutes string
-	MaxHealth           string
-	RemainHealth        string
-	StartedAt           string
-	ExpectedEndAt       string
-	EndedAt             string
-	CreatedAt           string
-	UpdatedAt           string
+	ID             string
+	MechID         string
+	CreatedAt      string
+	UpdatedAt      string
+	FullyRecoverAt string
+	RecoveredAt    string
+	RepairOfferID  string
 }{
-	ID:                  "id",
-	MechID:              "mech_id",
-	Fee:                 "fee",
-	FastRepairFee:       "fast_repair_fee",
-	FastRepairTXID:      "fast_repair_tx_id",
-	Status:              "status",
-	RepairPeriodMinutes: "repair_period_minutes",
-	MaxHealth:           "max_health",
-	RemainHealth:        "remain_health",
-	StartedAt:           "started_at",
-	ExpectedEndAt:       "expected_end_at",
-	EndedAt:             "ended_at",
-	CreatedAt:           "created_at",
-	UpdatedAt:           "updated_at",
+	ID:             "id",
+	MechID:         "mech_id",
+	CreatedAt:      "created_at",
+	UpdatedAt:      "updated_at",
+	FullyRecoverAt: "fully_recover_at",
+	RecoveredAt:    "recovered_at",
+	RepairOfferID:  "repair_offer_id",
 }
 
 var MechRepairCaseTableColumns = struct {
-	ID                  string
-	MechID              string
-	Fee                 string
-	FastRepairFee       string
-	FastRepairTXID      string
-	Status              string
-	RepairPeriodMinutes string
-	MaxHealth           string
-	RemainHealth        string
-	StartedAt           string
-	ExpectedEndAt       string
-	EndedAt             string
-	CreatedAt           string
-	UpdatedAt           string
+	ID             string
+	MechID         string
+	CreatedAt      string
+	UpdatedAt      string
+	FullyRecoverAt string
+	RecoveredAt    string
+	RepairOfferID  string
 }{
-	ID:                  "mech_repair_cases.id",
-	MechID:              "mech_repair_cases.mech_id",
-	Fee:                 "mech_repair_cases.fee",
-	FastRepairFee:       "mech_repair_cases.fast_repair_fee",
-	FastRepairTXID:      "mech_repair_cases.fast_repair_tx_id",
-	Status:              "mech_repair_cases.status",
-	RepairPeriodMinutes: "mech_repair_cases.repair_period_minutes",
-	MaxHealth:           "mech_repair_cases.max_health",
-	RemainHealth:        "mech_repair_cases.remain_health",
-	StartedAt:           "mech_repair_cases.started_at",
-	ExpectedEndAt:       "mech_repair_cases.expected_end_at",
-	EndedAt:             "mech_repair_cases.ended_at",
-	CreatedAt:           "mech_repair_cases.created_at",
-	UpdatedAt:           "mech_repair_cases.updated_at",
+	ID:             "mech_repair_cases.id",
+	MechID:         "mech_repair_cases.mech_id",
+	CreatedAt:      "mech_repair_cases.created_at",
+	UpdatedAt:      "mech_repair_cases.updated_at",
+	FullyRecoverAt: "mech_repair_cases.fully_recover_at",
+	RecoveredAt:    "mech_repair_cases.recovered_at",
+	RepairOfferID:  "mech_repair_cases.repair_offer_id",
 }
 
 // Generated where
 
 var MechRepairCaseWhere = struct {
-	ID                  whereHelperstring
-	MechID              whereHelperstring
-	Fee                 whereHelperdecimal_Decimal
-	FastRepairFee       whereHelperdecimal_Decimal
-	FastRepairTXID      whereHelpernull_String
-	Status              whereHelperstring
-	RepairPeriodMinutes whereHelperint
-	MaxHealth           whereHelperdecimal_Decimal
-	RemainHealth        whereHelperdecimal_Decimal
-	StartedAt           whereHelpernull_Time
-	ExpectedEndAt       whereHelpernull_Time
-	EndedAt             whereHelpernull_Time
-	CreatedAt           whereHelpertime_Time
-	UpdatedAt           whereHelpertime_Time
+	ID             whereHelperstring
+	MechID         whereHelperstring
+	CreatedAt      whereHelpertime_Time
+	UpdatedAt      whereHelpertime_Time
+	FullyRecoverAt whereHelpertime_Time
+	RecoveredAt    whereHelpernull_Time
+	RepairOfferID  whereHelpernull_String
 }{
-	ID:                  whereHelperstring{field: "\"mech_repair_cases\".\"id\""},
-	MechID:              whereHelperstring{field: "\"mech_repair_cases\".\"mech_id\""},
-	Fee:                 whereHelperdecimal_Decimal{field: "\"mech_repair_cases\".\"fee\""},
-	FastRepairFee:       whereHelperdecimal_Decimal{field: "\"mech_repair_cases\".\"fast_repair_fee\""},
-	FastRepairTXID:      whereHelpernull_String{field: "\"mech_repair_cases\".\"fast_repair_tx_id\""},
-	Status:              whereHelperstring{field: "\"mech_repair_cases\".\"status\""},
-	RepairPeriodMinutes: whereHelperint{field: "\"mech_repair_cases\".\"repair_period_minutes\""},
-	MaxHealth:           whereHelperdecimal_Decimal{field: "\"mech_repair_cases\".\"max_health\""},
-	RemainHealth:        whereHelperdecimal_Decimal{field: "\"mech_repair_cases\".\"remain_health\""},
-	StartedAt:           whereHelpernull_Time{field: "\"mech_repair_cases\".\"started_at\""},
-	ExpectedEndAt:       whereHelpernull_Time{field: "\"mech_repair_cases\".\"expected_end_at\""},
-	EndedAt:             whereHelpernull_Time{field: "\"mech_repair_cases\".\"ended_at\""},
-	CreatedAt:           whereHelpertime_Time{field: "\"mech_repair_cases\".\"created_at\""},
-	UpdatedAt:           whereHelpertime_Time{field: "\"mech_repair_cases\".\"updated_at\""},
+	ID:             whereHelperstring{field: "\"mech_repair_cases\".\"id\""},
+	MechID:         whereHelperstring{field: "\"mech_repair_cases\".\"mech_id\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"mech_repair_cases\".\"created_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"mech_repair_cases\".\"updated_at\""},
+	FullyRecoverAt: whereHelpertime_Time{field: "\"mech_repair_cases\".\"fully_recover_at\""},
+	RecoveredAt:    whereHelpernull_Time{field: "\"mech_repair_cases\".\"recovered_at\""},
+	RepairOfferID:  whereHelpernull_String{field: "\"mech_repair_cases\".\"repair_offer_id\""},
 }
 
 // MechRepairCaseRels is where relationship names are stored.
 var MechRepairCaseRels = struct {
-	Mech string
+	Mech        string
+	RepairOffer string
 }{
-	Mech: "Mech",
+	Mech:        "Mech",
+	RepairOffer: "RepairOffer",
 }
 
 // mechRepairCaseR is where relationships are stored.
 type mechRepairCaseR struct {
-	Mech *Mech `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	Mech        *Mech        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	RepairOffer *RepairOffer `boiler:"RepairOffer" boil:"RepairOffer" json:"RepairOffer" toml:"RepairOffer" yaml:"RepairOffer"`
 }
 
 // NewStruct creates a new relationship struct
@@ -162,9 +115,9 @@ func (*mechRepairCaseR) NewStruct() *mechRepairCaseR {
 type mechRepairCaseL struct{}
 
 var (
-	mechRepairCaseAllColumns            = []string{"id", "mech_id", "fee", "fast_repair_fee", "fast_repair_tx_id", "status", "repair_period_minutes", "max_health", "remain_health", "started_at", "expected_end_at", "ended_at", "created_at", "updated_at"}
-	mechRepairCaseColumnsWithoutDefault = []string{"mech_id", "fee", "fast_repair_fee", "repair_period_minutes", "max_health", "remain_health"}
-	mechRepairCaseColumnsWithDefault    = []string{"id", "fast_repair_tx_id", "status", "started_at", "expected_end_at", "ended_at", "created_at", "updated_at"}
+	mechRepairCaseAllColumns            = []string{"id", "mech_id", "created_at", "updated_at", "fully_recover_at", "recovered_at", "repair_offer_id"}
+	mechRepairCaseColumnsWithoutDefault = []string{"mech_id", "fully_recover_at"}
+	mechRepairCaseColumnsWithDefault    = []string{"id", "created_at", "updated_at", "recovered_at", "repair_offer_id"}
 	mechRepairCasePrimaryKeyColumns     = []string{"id"}
 	mechRepairCaseGeneratedColumns      = []string{}
 )
@@ -426,6 +379,21 @@ func (o *MechRepairCase) Mech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
+// RepairOffer pointed to by the foreign key.
+func (o *MechRepairCase) RepairOffer(mods ...qm.QueryMod) repairOfferQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RepairOfferID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := RepairOffers(queryMods...)
+	queries.SetFrom(query.Query, "\"repair_offers\"")
+
+	return query
+}
+
 // LoadMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (mechRepairCaseL) LoadMech(e boil.Executor, singular bool, maybeMechRepairCase interface{}, mods queries.Applicator) error {
@@ -531,6 +499,115 @@ func (mechRepairCaseL) LoadMech(e boil.Executor, singular bool, maybeMechRepairC
 	return nil
 }
 
+// LoadRepairOffer allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mechRepairCaseL) LoadRepairOffer(e boil.Executor, singular bool, maybeMechRepairCase interface{}, mods queries.Applicator) error {
+	var slice []*MechRepairCase
+	var object *MechRepairCase
+
+	if singular {
+		object = maybeMechRepairCase.(*MechRepairCase)
+	} else {
+		slice = *maybeMechRepairCase.(*[]*MechRepairCase)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechRepairCaseR{}
+		}
+		if !queries.IsNil(object.RepairOfferID) {
+			args = append(args, object.RepairOfferID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechRepairCaseR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RepairOfferID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RepairOfferID) {
+				args = append(args, obj.RepairOfferID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`repair_offers`),
+		qm.WhereIn(`repair_offers.id in ?`, args...),
+		qmhelper.WhereIsNull(`repair_offers.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load RepairOffer")
+	}
+
+	var resultSlice []*RepairOffer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice RepairOffer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for repair_offers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_offers")
+	}
+
+	if len(mechRepairCaseAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RepairOffer = foreign
+		if foreign.R == nil {
+			foreign.R = &repairOfferR{}
+		}
+		foreign.R.MechRepairCases = append(foreign.R.MechRepairCases, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RepairOfferID, foreign.ID) {
+				local.R.RepairOffer = foreign
+				if foreign.R == nil {
+					foreign.R = &repairOfferR{}
+				}
+				foreign.R.MechRepairCases = append(foreign.R.MechRepairCases, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetMech of the mechRepairCase to the related item.
 // Sets o.R.Mech to related.
 // Adds o to related.R.MechRepairCases.
@@ -574,6 +651,85 @@ func (o *MechRepairCase) SetMech(exec boil.Executor, insert bool, related *Mech)
 		related.R.MechRepairCases = append(related.R.MechRepairCases, o)
 	}
 
+	return nil
+}
+
+// SetRepairOffer of the mechRepairCase to the related item.
+// Sets o.R.RepairOffer to related.
+// Adds o to related.R.MechRepairCases.
+func (o *MechRepairCase) SetRepairOffer(exec boil.Executor, insert bool, related *RepairOffer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mech_repair_cases\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"repair_offer_id"}),
+		strmangle.WhereClause("\"", "\"", 2, mechRepairCasePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RepairOfferID, related.ID)
+	if o.R == nil {
+		o.R = &mechRepairCaseR{
+			RepairOffer: related,
+		}
+	} else {
+		o.R.RepairOffer = related
+	}
+
+	if related.R == nil {
+		related.R = &repairOfferR{
+			MechRepairCases: MechRepairCaseSlice{o},
+		}
+	} else {
+		related.R.MechRepairCases = append(related.R.MechRepairCases, o)
+	}
+
+	return nil
+}
+
+// RemoveRepairOffer relationship.
+// Sets o.R.RepairOffer to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *MechRepairCase) RemoveRepairOffer(exec boil.Executor, related *RepairOffer) error {
+	var err error
+
+	queries.SetScanner(&o.RepairOfferID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("repair_offer_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RepairOffer = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.MechRepairCases {
+		if queries.Equal(o.RepairOfferID, ri.RepairOfferID) {
+			continue
+		}
+
+		ln := len(related.R.MechRepairCases)
+		if ln > 1 && i < ln-1 {
+			related.R.MechRepairCases[i] = related.R.MechRepairCases[ln-1]
+		}
+		related.R.MechRepairCases = related.R.MechRepairCases[:ln-1]
+		break
+	}
 	return nil
 }
 
