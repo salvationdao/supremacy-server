@@ -18,8 +18,77 @@ import (
 type SystemMessagingManager struct {
 }
 
+type SystemMessageDataType string
+
+const (
+	SystemMessageDataTypeMechQueue          SystemMessageDataType = "MECH_QUEUE"
+	SystemMessageDataTypeMechBattleComplete SystemMessageDataType = "MECH_BATTLE_COMPLETE"
+)
+
 func NewSystemMessagingManager() *SystemMessagingManager {
 	return &SystemMessagingManager{}
+}
+
+func (smm *SystemMessagingManager) BroadcastGlobalMessage(message string, dataType *SystemMessageDataType, data *interface{}) {
+	marshalled, err := json.Marshal(data)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal system message data")
+		return
+	}
+
+	msg := &boiler.SystemMessage{
+		DataType: null.StringFromPtr((*string)(dataType)),
+		Message:  message,
+		Data:     null.JSONFrom(marshalled),
+	}
+	err = msg.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
+		return
+	}
+
+	sms, err := boiler.SystemMessages(
+		boiler.SystemMessageWhere.PlayerID.IsNull(),
+		boiler.SystemMessageWhere.FactionID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get global system messages")
+		return
+	}
+
+	ws.PublishMessage("/public/system_messages", server.HubKeySystemMessageGlobalListSubscribe, &sms)
+}
+
+func (smm *SystemMessagingManager) BroadcastFactionMessage(factionID string, message string, dataType *SystemMessageDataType, data *interface{}) {
+	marshalled, err := json.Marshal(data)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal system message data")
+		return
+	}
+
+	msg := &boiler.SystemMessage{
+		FactionID: null.StringFrom(factionID),
+		DataType:  null.StringFromPtr((*string)(dataType)),
+		Message:   message,
+		Data:      null.JSONFrom(marshalled),
+	}
+	err = msg.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new faction system message into db")
+		return
+	}
+
+	sms, err := boiler.SystemMessages(
+		boiler.SystemMessageWhere.FactionID.EQ(null.StringFrom(factionID)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("factionID", factionID).Msg("failed to get faction system messages")
+		return
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/system_messages", factionID), server.HubKeySystemMessageFactionListSubscribe, &sms)
 }
 
 func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
@@ -36,8 +105,8 @@ func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.Bat
 		}
 
 		msg := &boiler.SystemMessage{
-			PlayerID: q.OwnerID,
-			Type:     boiler.SystemMessageTypeMECH_QUEUE,
+			PlayerID: null.StringFrom(q.OwnerID),
+			DataType: null.StringFrom(string(SystemMessageDataTypeMechQueue)),
 			Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
 		}
 		err = msg.Insert(gamedb.StdConn, boil.Infer())
@@ -107,15 +176,20 @@ func (smm *SystemMessagingManager) BroadcastMechBattleCompleteMessage(queue []*b
 			label = mech.Name
 		}
 
-		data, err := json.Marshal(SystemMessageDataMechBattleComplete{
+		toMarshal := SystemMessageDataMechBattleComplete{
 			MechID:     q.MechID,
 			FactionWon: wonFactionID == q.FactionID,
 			Briefs:     results,
-		})
+		}
+		data, err := json.Marshal(toMarshal)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("objectToMarshal", toMarshal).Msg("failed to marshal system message data")
+			continue
+		}
 
 		msg := &boiler.SystemMessage{
-			PlayerID: q.OwnerID,
-			Type:     boiler.SystemMessageTypeMECH_BATTLE_COMPLETE,
+			PlayerID: null.StringFrom(q.OwnerID),
+			DataType: null.StringFrom(string(SystemMessageDataTypeMechBattleComplete)),
 			Message:  fmt.Sprintf("Your mech, %s, has just completed a battle in the arena.", label),
 			Data:     null.JSONFrom(data),
 		}

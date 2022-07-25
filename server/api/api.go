@@ -178,7 +178,7 @@ func NewAPI(
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	_ = NewLeaderboardController(api)
-	_ = NewSystemMessagesController(api)
+	smc := NewSystemMessagesController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -268,6 +268,8 @@ func NewAPI(
 				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
+
+				s.WS("/system_messages", server.HubKeySystemMessageGlobalListSubscribe, smc.SystemMessageGlobalListSubscribeHandler)
 			}))
 
 			// secured user route ws
@@ -309,6 +311,8 @@ func NewAPI(
 				s.WS("/faction_ability", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
+
+				s.WS("/system_messages", server.HubKeySystemMessageFactionListSubscribe, server.MustSecureFaction(smc.SystemMessageFactionListSubscribeHandler))
 			}))
 		})
 	})

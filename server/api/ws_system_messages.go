@@ -11,6 +11,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -24,8 +25,8 @@ func NewSystemMessagesController(api *API) *SystemMessagesController {
 		api,
 	}
 
-	api.SecureUserCommand(server.HubKeySystemMessageList, smc.SystemMessageList)
-	api.SecureUserCommand(server.HubKeySystemMessageDismiss, smc.SystemMessageDismiss)
+	api.SecureUserCommand(server.HubKeySystemMessageList, smc.SystemMessageListHandler)
+	api.SecureUserCommand(server.HubKeySystemMessageDismiss, smc.SystemMessageDismissHandler)
 
 	return smc
 }
@@ -43,7 +44,7 @@ type SystemMessageListResponse struct {
 	SystemMessages boiler.SystemMessageSlice `json:"system_messages"`
 }
 
-func (smc *SystemMessagesController) SystemMessageList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &SystemMessageListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -62,7 +63,7 @@ func (smc *SystemMessagesController) SystemMessageList(ctx context.Context, user
 
 	queryMods := []qm.QueryMod{}
 	queryMods = append(queryMods,
-		boiler.SystemMessageWhere.PlayerID.EQ(user.ID),
+		boiler.SystemMessageWhere.PlayerID.EQ(null.StringFrom(user.ID)),
 		boiler.SystemMessageWhere.IsDismissed.EQ(false),
 	)
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
@@ -88,6 +89,35 @@ func (smc *SystemMessagesController) SystemMessageList(ctx context.Context, user
 	return nil
 }
 
+func (smc *SystemMessagesController) SystemMessageGlobalListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	sms, err := boiler.SystemMessages(
+		boiler.SystemMessageWhere.PlayerID.IsNull(),
+		boiler.SystemMessageWhere.FactionID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to fetch global system messages. Please try again later.")
+	}
+
+	reply(&sms)
+
+	return nil
+}
+
+func (smc *SystemMessagesController) SystemMessageFactionListSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	sms, err := boiler.SystemMessages(
+		boiler.SystemMessageWhere.FactionID.EQ(null.StringFrom(factionID)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to fetch global system messages. Please try again later.")
+	}
+
+	reply(&sms)
+
+	return nil
+}
+
 type SystemMessageDismissRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -95,7 +125,7 @@ type SystemMessageDismissRequest struct {
 	} `json:"payload"`
 }
 
-func (smc *SystemMessagesController) SystemMessageDismiss(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &SystemMessageDismissRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
