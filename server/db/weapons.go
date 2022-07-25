@@ -54,12 +54,7 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 	return eid, nil
 }
 
-func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewWeapon(tx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	//getting weapon model to get default skin id to get image url on blueprint weapon skins
 	weaponModel, err := boiler.WeaponModels(
 		boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
