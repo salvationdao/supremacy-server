@@ -385,7 +385,7 @@ func GetPlayer(playerID string) (*server.Player, error) {
 		return nil, err
 	}
 
-	serverPlayer, err := server.PlayerFromBoiler(player, features)
+	serverPlayer := server.PlayerFromBoiler(player, features)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
 		return nil, err
