@@ -275,7 +275,7 @@ dev-sync-data:
 	make dev-sync
 
 .PHONY: mac-sync-data
-dev-sync-data:
+mac-sync-data:
 	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
 	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
