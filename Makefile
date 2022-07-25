@@ -136,10 +136,10 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-drop-sync db-migrate-sync sync-data-dev db-migrate-up-to-seed db-seed db-migrate db-boiler
+db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
+db-reset-windows: db-drop db-drop-sync db-migrate-sync dev-sync-data-windows db-migrate-up-to-seed db-seed-windows db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -196,8 +196,8 @@ sync:
 	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
 
-.PHONY: sync-dev
-sync-dev:
+.PHONY: dev-sync
+dev-sync:
 	cd server && go run devsync/main.go sync
 	rm -rf ./synctool/temp-sync
 
@@ -261,17 +261,23 @@ sync-data:
 	cd ../../../
 	make sync
 
-.PHONY: sync-data-dev
-sync-data-dev:
+.PHONY: dev-sync-data
+dev-sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
-	make sync-dev
+	make dev-sync
+
+.PHONY: mac-sync-data
+mac-sync-data:
+	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
+	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make dev-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
-	cd ./server/devtool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	cd ./server && go run ./devtool/main.go -sync_mech
-	Powershell rm -r -Force .\server\devtool\temp-sync\
+	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	make dev-sync-windows
