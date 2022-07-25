@@ -29,7 +29,7 @@ func NewSystemMessagingManager() *SystemMessagingManager {
 	return &SystemMessagingManager{}
 }
 
-func (smm *SystemMessagingManager) BroadcastGlobalMessage(message string, dataType *SystemMessageDataType, data *interface{}) {
+func (smm *SystemMessagingManager) BroadcastGlobalMessage(title string, message string, dataType *SystemMessageDataType, data *interface{}) {
 	marshalled, err := json.Marshal(data)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal system message data")
@@ -60,7 +60,7 @@ func (smm *SystemMessagingManager) BroadcastGlobalMessage(message string, dataTy
 	ws.PublishMessage("/public/system_messages", server.HubKeySystemMessageGlobalListSubscribe, &sms)
 }
 
-func (smm *SystemMessagingManager) BroadcastFactionMessage(factionID string, message string, dataType *SystemMessageDataType, data *interface{}) {
+func (smm *SystemMessagingManager) BroadcastFactionMessage(factionID string, title string, message string, dataType *SystemMessageDataType, data *interface{}) {
 	marshalled, err := json.Marshal(data)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal system message data")
@@ -107,6 +107,7 @@ func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.Bat
 		msg := &boiler.SystemMessage{
 			PlayerID: null.StringFrom(q.OwnerID),
 			DataType: null.StringFrom(string(SystemMessageDataTypeMechQueue)),
+			Title:    "Queue Update",
 			Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
 		}
 		err = msg.Insert(gamedb.StdConn, boil.Infer())
@@ -190,6 +191,7 @@ func (smm *SystemMessagingManager) BroadcastMechBattleCompleteMessage(queue []*b
 		msg := &boiler.SystemMessage{
 			PlayerID: null.StringFrom(q.OwnerID),
 			DataType: null.StringFrom(string(SystemMessageDataTypeMechBattleComplete)),
+			Title:    "Battle Update",
 			Message:  fmt.Sprintf("Your mech, %s, has just completed a battle in the arena.", label),
 			Data:     null.JSONFrom(data),
 		}

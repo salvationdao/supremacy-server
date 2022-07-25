@@ -23,79 +23,86 @@ import (
 
 // SystemMessage is an object representing the database table.
 type SystemMessage struct {
-	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID    null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
-	Message     string      `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
-	Data        null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
-	IsDismissed bool        `boiler:"is_dismissed" boil:"is_dismissed" json:"is_dismissed" toml:"is_dismissed" yaml:"is_dismissed"`
-	SentAt      time.Time   `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
-	DataType    null.String `boiler:"data_type" boil:"data_type" json:"data_type,omitempty" toml:"data_type" yaml:"data_type,omitempty"`
-	FactionID   null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID  null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
+	Message   string      `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
+	Data      null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
+	SentAt    time.Time   `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
+	Title     string      `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
+	DataType  null.String `boiler:"data_type" boil:"data_type" json:"data_type,omitempty" toml:"data_type" yaml:"data_type,omitempty"`
+	FactionID null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	ReadAt    null.Time   `boiler:"read_at" boil:"read_at" json:"read_at,omitempty" toml:"read_at" yaml:"read_at,omitempty"`
 
 	R *systemMessageR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L systemMessageL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SystemMessageColumns = struct {
-	ID          string
-	PlayerID    string
-	Message     string
-	Data        string
-	IsDismissed string
-	SentAt      string
-	DataType    string
-	FactionID   string
+	ID        string
+	PlayerID  string
+	Message   string
+	Data      string
+	SentAt    string
+	Title     string
+	DataType  string
+	FactionID string
+	ReadAt    string
 }{
-	ID:          "id",
-	PlayerID:    "player_id",
-	Message:     "message",
-	Data:        "data",
-	IsDismissed: "is_dismissed",
-	SentAt:      "sent_at",
-	DataType:    "data_type",
-	FactionID:   "faction_id",
+	ID:        "id",
+	PlayerID:  "player_id",
+	Message:   "message",
+	Data:      "data",
+	SentAt:    "sent_at",
+	Title:     "title",
+	DataType:  "data_type",
+	FactionID: "faction_id",
+	ReadAt:    "read_at",
 }
 
 var SystemMessageTableColumns = struct {
-	ID          string
-	PlayerID    string
-	Message     string
-	Data        string
-	IsDismissed string
-	SentAt      string
-	DataType    string
-	FactionID   string
+	ID        string
+	PlayerID  string
+	Message   string
+	Data      string
+	SentAt    string
+	Title     string
+	DataType  string
+	FactionID string
+	ReadAt    string
 }{
-	ID:          "system_messages.id",
-	PlayerID:    "system_messages.player_id",
-	Message:     "system_messages.message",
-	Data:        "system_messages.data",
-	IsDismissed: "system_messages.is_dismissed",
-	SentAt:      "system_messages.sent_at",
-	DataType:    "system_messages.data_type",
-	FactionID:   "system_messages.faction_id",
+	ID:        "system_messages.id",
+	PlayerID:  "system_messages.player_id",
+	Message:   "system_messages.message",
+	Data:      "system_messages.data",
+	SentAt:    "system_messages.sent_at",
+	Title:     "system_messages.title",
+	DataType:  "system_messages.data_type",
+	FactionID: "system_messages.faction_id",
+	ReadAt:    "system_messages.read_at",
 }
 
 // Generated where
 
 var SystemMessageWhere = struct {
-	ID          whereHelperstring
-	PlayerID    whereHelpernull_String
-	Message     whereHelperstring
-	Data        whereHelpernull_JSON
-	IsDismissed whereHelperbool
-	SentAt      whereHelpertime_Time
-	DataType    whereHelpernull_String
-	FactionID   whereHelpernull_String
+	ID        whereHelperstring
+	PlayerID  whereHelpernull_String
+	Message   whereHelperstring
+	Data      whereHelpernull_JSON
+	SentAt    whereHelpertime_Time
+	Title     whereHelperstring
+	DataType  whereHelpernull_String
+	FactionID whereHelpernull_String
+	ReadAt    whereHelpernull_Time
 }{
-	ID:          whereHelperstring{field: "\"system_messages\".\"id\""},
-	PlayerID:    whereHelpernull_String{field: "\"system_messages\".\"player_id\""},
-	Message:     whereHelperstring{field: "\"system_messages\".\"message\""},
-	Data:        whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
-	IsDismissed: whereHelperbool{field: "\"system_messages\".\"is_dismissed\""},
-	SentAt:      whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
-	DataType:    whereHelpernull_String{field: "\"system_messages\".\"data_type\""},
-	FactionID:   whereHelpernull_String{field: "\"system_messages\".\"faction_id\""},
+	ID:        whereHelperstring{field: "\"system_messages\".\"id\""},
+	PlayerID:  whereHelpernull_String{field: "\"system_messages\".\"player_id\""},
+	Message:   whereHelperstring{field: "\"system_messages\".\"message\""},
+	Data:      whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
+	SentAt:    whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
+	Title:     whereHelperstring{field: "\"system_messages\".\"title\""},
+	DataType:  whereHelpernull_String{field: "\"system_messages\".\"data_type\""},
+	FactionID: whereHelpernull_String{field: "\"system_messages\".\"faction_id\""},
+	ReadAt:    whereHelpernull_Time{field: "\"system_messages\".\"read_at\""},
 }
 
 // SystemMessageRels is where relationship names are stored.
@@ -122,9 +129,9 @@ func (*systemMessageR) NewStruct() *systemMessageR {
 type systemMessageL struct{}
 
 var (
-	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "is_dismissed", "sent_at", "data_type", "faction_id"}
-	systemMessageColumnsWithoutDefault = []string{"message"}
-	systemMessageColumnsWithDefault    = []string{"id", "player_id", "data", "is_dismissed", "sent_at", "data_type", "faction_id"}
+	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "sent_at", "title", "data_type", "faction_id", "read_at"}
+	systemMessageColumnsWithoutDefault = []string{"message", "title"}
+	systemMessageColumnsWithDefault    = []string{"id", "player_id", "data", "sent_at", "data_type", "faction_id", "read_at"}
 	systemMessagePrimaryKeyColumns     = []string{"id"}
 	systemMessageGeneratedColumns      = []string{}
 )
