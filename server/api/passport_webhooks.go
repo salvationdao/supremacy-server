@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/helpers"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
@@ -87,7 +88,10 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, err
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, req.User)
+	// broadcast syndicate id
+	req.User.SyndicateID = player.SyndicateID
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -128,6 +132,12 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, err
 	}
 
+	// give user default profile avatar images
+	err = db.GiveDefaultAvatars(player.ID, player.FactionID.String)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	user := &server.User{
 		ID:            server.UserID(uuid.FromStringOrNil(player.ID)),
 		Username:      player.Username.String,
@@ -135,6 +145,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		FactionID:     req.FactionID,
 		Faction:       &server.Faction{},
 		Gid:           player.Gid,
+		SyndicateID:   player.SyndicateID,
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
@@ -151,7 +162,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, user)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`

@@ -85,7 +85,7 @@ func (arena *Arena) PlayerRankUpdater() {
 							}
 
 							if us != nil {
-								ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), HubKeyUserStatSubscribe, us)
+								ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
 							}
 						}(bu, player)
 

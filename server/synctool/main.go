@@ -98,6 +98,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sgame_abilities.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncGameAbilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -426,7 +436,6 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 	fmt.Println("Finish syncing Factions")
 	return nil
 
-	return nil
 }
 
 func SyncBrands(f io.Reader, db *sql.DB) error {
@@ -747,6 +756,73 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
 			continue
 		}
+	}
+
+	fmt.Println("Finish syncing battle abilities")
+
+	return nil
+}
+
+func SyncGameAbilities(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		ga := &types.GameAbility{
+			ID:          record[0],
+			FactionID:   record[2],
+			Label:       record[4],
+			Colour:      record[5],
+			ImageUrl:    record[6],
+			SupsCost:    record[7],
+			Description: record[8],
+			TextColour:  record[9],
+			CurrentSups: record[10],
+			Level:       record[11],
+		}
+		gcID, err := strconv.Atoi(record[1])
+		if err == nil {
+			ga.GameClientAbilityID = gcID
+		}
+
+		if record[3] != "" {
+			ga.BattleAbilityID = &record[3]
+		}
+
+		_, err = db.Exec(`
+			INSERT INTO game_abilities (id, game_client_ability_id, faction_id, battle_ability_id, label, colour, image_url, sups_cost, description, text_colour, current_sups, level)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+			ON CONFLICT (id)
+			DO 
+			    UPDATE SET id=$1, game_client_ability_id=$2, faction_id=$3, battle_ability_id=$4, label=$5, colour=$6, image_url=$7, sups_cost=$8, description=$9, text_colour=$10, current_sups=$11, level=$12;
+		`,
+			ga.ID,
+			ga.GameClientAbilityID,
+			ga.FactionID,
+			ga.BattleAbilityID,
+			ga.Label,
+			ga.Colour,
+			ga.ImageUrl,
+			ga.SupsCost,
+			ga.Description,
+			ga.TextColour,
+			ga.CurrentSups,
+			ga.Level,
+		)
+		if err != nil {
+			fmt.Println(err.Error(), ga.ID, ga.Label)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+ga.ID, ga.GameClientAbilityID, ga.Label)
 	}
 
 	fmt.Println("Finish syncing battle abilities")

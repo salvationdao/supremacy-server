@@ -1,3 +1,4 @@
+DROP TYPE IF EXISTS system_message_type;
 CREATE TYPE system_message_type AS ENUM ('MECH_QUEUE', 'MECH_BATTLE_COMPLETE');
 
 CREATE TABLE system_messages (

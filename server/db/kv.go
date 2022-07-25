@@ -51,6 +51,8 @@ const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentag
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
 const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
+const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_show_up_until_seconds"
+const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
 const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
@@ -64,6 +66,16 @@ const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ba
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
+
+// repair
+
+const KeyMechRepairDefaultDurationMinutes KVKey = "mech_repair_default_duration_minutes"
+const KeyMechFastRepairDurationMinutes KVKey = "mech_fast_repair_duration_minutes"
+const KeyMechStandardRepairFee KVKey = "mech_standard_repair_fee"
+const KeyMechFastRepairFee KVKey = "mech_fast_repair_fee"
+
+const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
+const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

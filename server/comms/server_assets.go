@@ -57,7 +57,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 
 		resp.Asset = rpctypes.ServerMysteryCrateToXsynAsset(obj, factionName)
 	case boiler.ItemTypeUtility:
-		obj, err := db.Utility(ci.ItemID)
+		obj, err := db.Utility(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Utility in Asset rpc call ")
 			return terror.Error(err)
@@ -92,7 +92,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{obj})[0]
 	case boiler.ItemTypeMechAnimation:
-		obj, err := db.MechAnimation(ci.ItemID)
+		obj, err := db.MechAnimation(gamedb.StdConn, ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechAnimation in Asset rpc call ")
 			return terror.Error(err)
