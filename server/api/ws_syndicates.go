@@ -24,8 +24,8 @@ import (
 
 func NewSyndicateController(api *API) {
 
-	// NOTE: syndicate is temporary disabled on production
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+	// NOTE: syndicate is ONLY available on development at the moment
+	if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
 		return
 	}
 
