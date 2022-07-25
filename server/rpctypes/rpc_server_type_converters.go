@@ -447,7 +447,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:       i.MaxHitpoints,
 			},
 			{
-				DisplayType: BoostNumber,
 				TraitType:   "Power Core Size",
 				Value:       i.PowerCoreSize,
 			},
@@ -502,6 +501,11 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 					Value:     i.ChassisSkin.Label,
 					AssetHash: i.Hash,
 				})
+		}
+
+		err = asset.Attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, asset)
@@ -573,7 +577,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -608,6 +612,11 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				Value:     i.EquippedOnDetails.Label,
 				AssetHash: i.EquippedOnDetails.Hash,
 			})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -645,7 +654,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -693,6 +702,11 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			})
 		}
 
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -726,7 +740,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			continue
 		}
 
-		attributes := []*Attribute{
+		attributes := Attributes{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -831,6 +845,11 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -864,7 +883,7 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -895,6 +914,11 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 				Value:     i.EquippedOnDetails.Label,
 				AssetHash: i.EquippedOnDetails.Hash,
 			})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -932,7 +956,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		}
 
 		// TODO create these dynamically depending on utility type
-		attributes := []*Attribute{
+		attributes := Attributes{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -965,6 +989,11 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			})
 		}
 
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -995,7 +1024,7 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	}
 
 	// convert stats to attributes to
-	attributes := []*Attribute{
+	attributes := Attributes{
 		{
 			TraitType: "Type",
 			Value:     mysteryCrate.Type,
@@ -1007,6 +1036,11 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 			TraitType: "Faction",
 			Value:     factionName,
 		})
+	}
+
+	err = attributes.AreValid()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 	}
 
 	asset := &XsynAsset{
