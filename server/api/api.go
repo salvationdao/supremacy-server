@@ -190,7 +190,7 @@ func NewAPI(
 	_ = NewCouponsController(api)
 	NewSyndicateController(api)
 	_ = NewLeaderboardController(api)
-	smc := NewSystemMessagesController(api)
+	_ = NewSystemMessagesController(api)
 	NewWSWarMachineController(api)
 
 	api.Routes.Use(middleware.RequestID)
@@ -282,8 +282,6 @@ func NewAPI(
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
-
-				s.WS("/system_messages", server.HubKeySystemMessageGlobalListSubscribe, smc.SystemMessageGlobalListSubscribeHandler)
 			}))
 
 			// secured user route ws
@@ -327,8 +325,6 @@ func NewAPI(
 
 				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
-
-				s.WS("/system_messages", server.HubKeySystemMessageFactionListSubscribe, server.MustSecureFaction(smc.SystemMessageFactionListSubscribeHandler))
 
 				// syndicate related
 				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(api.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)

@@ -42,6 +42,7 @@ type SystemMessageListRequest struct {
 
 type SystemMessageListResponse struct {
 	Total          int                       `json:"total"`
+	TotalUnread    int                       `json:"total_unread"`
 	SystemMessages boiler.SystemMessageSlice `json:"system_messages"`
 }
 
@@ -68,7 +69,15 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 	)
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
 	if err != nil {
-		return terror.Error(err, "Failed to get fetch system messages. Please try again later.")
+		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
+	}
+
+	unreadQueryMods := []qm.QueryMod{}
+	unreadQueryMods = append(unreadQueryMods, queryMods...)
+	unreadQueryMods = append(unreadQueryMods, boiler.SystemMessageWhere.ReadAt.IsNull())
+	totalUnread, err := boiler.SystemMessages(unreadQueryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
 	}
 
 	queryMods = append(queryMods,
@@ -83,37 +92,9 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 
 	reply(&SystemMessageListResponse{
 		Total:          int(total),
+		TotalUnread:    int(totalUnread),
 		SystemMessages: sms,
 	})
-
-	return nil
-}
-
-func (smc *SystemMessagesController) SystemMessageGlobalListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	sms, err := boiler.SystemMessages(
-		boiler.SystemMessageWhere.PlayerID.IsNull(),
-		boiler.SystemMessageWhere.FactionID.IsNull(),
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to fetch global system messages. Please try again later.")
-	}
-
-	reply(&sms)
-
-	return nil
-}
-
-func (smc *SystemMessagesController) SystemMessageFactionListSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	sms, err := boiler.SystemMessages(
-		boiler.SystemMessageWhere.FactionID.EQ(null.StringFrom(factionID)),
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to fetch global system messages. Please try again later.")
-	}
-
-	reply(&sms)
 
 	return nil
 }
