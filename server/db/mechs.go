@@ -46,7 +46,7 @@ SELECT
 	collection_items.background_color,
 	collection_items.animation_url,
 	collection_items.youtube_url,
-	p.username,
+	COALESCE(p.username, ''),
 	COALESCE(mech_stats.total_wins, 0),
 	COALESCE(mech_stats.total_deaths, 0),
 	COALESCE(mech_stats.total_kills, 0),
@@ -204,6 +204,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	result, err := conn.Query(query, mechID)
 	if err != nil {
+		fmt.Println("here 11")
 		return nil, err
 	}
 	defer result.Close()
@@ -270,11 +271,14 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.BattleReady,
 		)
 		if err != nil {
+			fmt.Println("here 22")
+			gamelog.L.Error().Err(err).Msg("failed to get mech")
 			return nil, err
 		}
 	}
 
 	if mc.ID == "" {
+		fmt.Println("here 33")
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
 
@@ -469,12 +473,7 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	mechModel, err := boiler.MechModels(
 		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
 		qm.Load(boiler.MechModelRels.DefaultChassisSkin),
@@ -527,11 +526,13 @@ func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.B
 		bpms.YoutubeURL,
 	)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to insert col item")
 		return nil, terror.Error(err)
 	}
 
 	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get mech")
 		return nil, terror.Error(err)
 	}
 	return mech, nil
