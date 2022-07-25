@@ -70,8 +70,8 @@ var TableNames = struct {
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
+	MechRepairCaseLogs                                 string
 	MechRepairCases                                    string
-	MechRepairLogs                                     string
 	MechSkin                                           string
 	MechStats                                          string
 	MechUtility                                        string
@@ -207,8 +207,8 @@ var TableNames = struct {
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
+	MechRepairCaseLogs:           "mech_repair_case_logs",
 	MechRepairCases:              "mech_repair_cases",
-	MechRepairLogs:               "mech_repair_logs",
 	MechSkin:                     "mech_skin",
 	MechStats:                    "mech_stats",
 	MechUtility:                  "mech_utility",

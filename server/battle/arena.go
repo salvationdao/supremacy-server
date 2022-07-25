@@ -905,6 +905,11 @@ func (arena *Arena) start() {
 				btl.start()
 
 			case "BATTLE:WAR_MACHINE_DESTROYED":
+				// do not process, if battle already ended
+				if btl.stage.Load() == BattleStageEnd {
+					continue
+				}
+
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
@@ -916,6 +921,9 @@ func (arena *Arena) start() {
 				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
 
 			case "BATTLE:END":
+				// set battle stage
+				btl.stage.Store(BattleStageEnd)
+
 				var dataPayload *BattleEndPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")

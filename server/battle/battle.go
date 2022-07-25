@@ -1254,6 +1254,10 @@ func (btl *Battle) Tick(payload []byte) {
 		return
 	}
 
+	if btl.stage.Load() == BattleStageEnd {
+		return
+	}
+
 	btl.lastTick = &payload
 
 	// return if the war machines list is not ready
