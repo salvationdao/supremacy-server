@@ -417,8 +417,9 @@ func (a Attributes) AreValid() error {
 	errCount := 0
 	for _, val := range a {
 		if val.DisplayType != "" {
-			_, ok := val.Value.(int)
-			if !ok {
+			_, intOk := val.Value.(int)
+			_, floatOK := val.Value.(float32)
+			if !intOk && !floatOK {
 				gamelog.L.Error().Err(fmt.Errorf("invalid attribute value %v for display type %s", val.Value, val.DisplayType)).Msg("invalid value in metadata")
 				errCount++
 			}
