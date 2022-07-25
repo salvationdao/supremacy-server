@@ -1198,11 +1198,10 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 	// get / set avatar
 	var avatar *PlayerAvatar
 	if player.ProfileAvatarID.Valid && player.R != nil && player.R.ProfileAvatar != nil {
-		ava := player.R.ProfileAvatar
 		avatar = &PlayerAvatar{
-			ID:        ava.ID,
-			AvatarURL: ava.AvatarURL,
-			Tier:      ava.Tier,
+			ID:        player.R.ProfileAvatar.ID,
+			AvatarURL: player.R.ProfileAvatar.AvatarURL,
+			Tier:      player.R.ProfileAvatar.Tier,
 		}
 
 	}

@@ -901,14 +901,8 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 
 // GiveMechAvatar gives player mech skin avatar from mech
 func GiveMechAvatar(playerID string, mechID string) error {
-	// get mech
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID)
-	if err != nil {
-		return err
-	}
-
 	// get mech skin
-	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mech.ID))).One(gamedb.StdConn)
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
