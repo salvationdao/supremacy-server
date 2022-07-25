@@ -26,8 +26,8 @@ import (
 func SyndicateRouter(api *API) chi.Router {
 	r := chi.NewRouter()
 
-	// NOTE: syndicate is temporary disabled on production
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+	// NOTE: syndicate is ONLY available on development at the moment
+	if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
 		return r
 	}
 
