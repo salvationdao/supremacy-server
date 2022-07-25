@@ -7,6 +7,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -64,7 +65,6 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 	queryMods := []qm.QueryMod{}
 	queryMods = append(queryMods,
 		boiler.SystemMessageWhere.PlayerID.EQ(null.StringFrom(user.ID)),
-		boiler.SystemMessageWhere.IsDismissed.EQ(false),
 	)
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
 	if err != nil {
@@ -141,11 +141,11 @@ func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Con
 		return terror.Error(err, "Failed to dismiss system message. Please try again later.")
 	}
 
-	if sm.IsDismissed {
+	if sm.ReadAt.Valid {
 		return nil
 	}
 
-	sm.IsDismissed = true
+	sm.ReadAt = null.TimeFrom(time.Now())
 	_, err = sm.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to dismiss system message. Please try again later.")
