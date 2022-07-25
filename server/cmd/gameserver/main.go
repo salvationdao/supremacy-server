@@ -21,11 +21,13 @@ import (
 	"server/profanities"
 	"server/sms"
 	"server/synctool"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
@@ -350,6 +352,7 @@ func main() {
 
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 					gamelog.L.Info().Msgf("NewLanguageDetectorBuilder took %s", time.Since(start))
+
 					start = time.Now()
 					// initialise profanity manager
 					gamelog.L.Info().Msg("Setting up profanity manager")
@@ -358,8 +361,15 @@ func main() {
 						return terror.Error(err, "Profanity manager init failed")
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
+					// initialise system messaging manager
+					gamelog.L.Info().Msg("Setting up system messaging manager")
+					smm := system_messages.NewSystemMessagingManager()
+					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
+
+					start = time.Now()
+					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
@@ -367,6 +377,7 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						SystemMessagingManager:   smm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -375,7 +386,7 @@ func main() {
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, smm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -476,54 +487,6 @@ func main() {
 						return err
 					}
 
-					return nil
-				},
-			},
-			{
-				Name: "seed-avatars",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-				},
-				Action: func(c *cli.Context) error {
-					fmt.Println("SEEDING AVATARS")
-
-					databaseUser := c.String("database_user")
-					databasePass := c.String("database_pass")
-					databaseHost := c.String("database_host")
-					databasePort := c.String("database_port")
-					databaseName := c.String("database_name")
-					databaseAppName := c.String("database_application_name")
-					databaseMaxIdleConns := c.Int("database_max_idle_conns")
-					databaseMaxOpenConns := c.Int("database_max_open_conns")
-
-					params := url.Values{}
-					params.Add("sslmode", "disable")
-
-					sqlconn, err := sqlConnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxIdleConns,
-						databaseMaxOpenConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
-					err = SeedProfileAvatars(sqlconn)
-					if err != nil {
-						fmt.Println("Failed to seed player profile avatars.", err)
-						return err
-					}
-
-					fmt.Println("FINISH SEEDING AVATARS")
 					return nil
 				},
 			},
@@ -862,7 +825,19 @@ func SeedProfileAvatars(conn *sql.DB) error {
 	return nil
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *xsyn_rpcclient.XsynXrpcClient, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector, pm *profanities.ProfanityManager, staticSyncURL string) (*api.API, error) {
+func SetupAPI(
+	ctxCLI *cli.Context,
+	ctx context.Context,
+	log *zerolog.Logger,
+	battleArenaClient *battle.Arena,
+	passport *xsyn_rpcclient.XsynXrpcClient,
+	sms server.SMS,
+	telegram server.Telegram,
+	languageDetector lingua.LanguageDetector,
+	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
+	staticSyncURL string,
+) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -917,6 +892,6 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, smm, syncConfig)
 	return serverAPI, nil
 }
