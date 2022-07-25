@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"server"
 	"server/gamelog"
 
 	"github.com/ninja-software/terror/v2"
@@ -61,24 +62,21 @@ func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request
 	return fn
 }
 
-func WithCookie(api *API, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+func WithCookie(api *API, next func(user *server.Player, w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
+	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
 		token := ""
 		cookie, err := r.Cookie("xsyn-token")
 		if err != nil {
-			fmt.Fprintf(w, "cookie not found: %v", err)
-			return
+			return http.StatusForbidden, fmt.Errorf("cookie not found")
 		}
 		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-			fmt.Fprintf(w, "decryption error: %v", err)
-			return
+			return http.StatusForbidden, fmt.Errorf("invalid cookie")
 		}
-		_, err = api.TokenLogin(token)
+		user, err := api.TokenLogin(token)
 		if err != nil {
-			fmt.Fprintf(w, "authentication error: %v", err)
-			return
+			return http.StatusForbidden, fmt.Errorf("authentication failed")
 		}
-		next(w, r)
+		return next(user, w, r)
 	}
 	return fn
 }

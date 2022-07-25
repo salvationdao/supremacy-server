@@ -114,3 +114,25 @@ type AssetLockToServiceReq struct {
 	OwnerID        string `json:"owner_id,omitempty"`
 	Hash           string `json:"hash,omitempty"`
 }
+
+type SyndicateCreateReq struct {
+	ApiKey      string `json:"api_key"`
+	SyndicateID string `json:"syndicate_id"`
+	FoundedByID string `json:"founded_by_id"`
+	Name        string `json:"name"`
+}
+type SyndicateCreateResp struct{}
+
+type SyndicateNameCreateReq struct {
+	ApiKey      string `json:"api_key"`
+	SyndicateID string `json:"syndicate_id"`
+	Name        string `json:"name"`
+}
+type SyndicateNameChangeResp struct{}
+
+type SyndicateLiquidateReq struct {
+	ApiKey        string   `json:"api_key"`
+	SyndicateID   string   `json:"syndicate_id"`
+	RemainUserIDs []string `json:"remain_user_ids"`
+}
+type SyndicateLiquidateResp struct{}
