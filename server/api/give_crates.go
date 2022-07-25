@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -321,6 +323,93 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 	err = tx2.Commit()
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Could not open mystery crate, please try again or contact support.")
+	}
+
+	return http.StatusOK, nil
+}
+
+type GiveCrateRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+		Type     string `json:"type"` // weapon || mech
+	} `json:"payload"`
+}
+
+func (api *API) ProdGiveCrates(w http.ResponseWriter, r *http.Request) (int, error) {
+
+	req := &GiveCrateRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	crateType := req.Payload.Type
+	user, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.Payload.PlayerID)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
+
+		return http.StatusInternalServerError, err
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		return http.StatusInternalServerError, terror.Error(err, "Issue claiming mystery crate, please try again or contact support.")
+	}
+
+	// get mech crates
+	storeMechCrate, err := boiler.StorefrontMysteryCrates(
+		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeMECH),
+		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")
+	}
+
+	// get weapon crates
+	storeWeaponCrate, err := boiler.StorefrontMysteryCrates(
+		boiler.StorefrontMysteryCrateWhere.MysteryCrateType.EQ(boiler.CrateTypeWEAPON),
+		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(user.FactionID.String),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get mech crate for claim, please try again or contact support.")
+	}
+
+	switch crateType {
+
+	case "mech":
+		assignedMechCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeMechCrate, tx, api)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Issue claiming mech crate, please try again or contact support.")
+		}
+
+		err = api.Passport.AssetRegister(xa)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+		}
+		serverMechCrate := server.StoreFrontMysteryCrateFromBoiler(storeMechCrate)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedMechCrate.ID), HubKeyMysteryCrateSubscribe, serverMechCrate)
+
+	case "weapon":
+		assignedWeaponCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeWeaponCrate, tx, api)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Issue claiming weapon crate, please try again or contact support.")
+		}
+		err = api.Passport.AssetRegister(xa)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+		}
+
+		serverWeaponCrate := server.StoreFrontMysteryCrateFromBoiler(storeWeaponCrate)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedWeaponCrate.ID), HubKeyMysteryCrateSubscribe, serverWeaponCrate)
+	}
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
+		return http.StatusInternalServerError, terror.Error(err, "Issue claiming mystery crate, please try again or contact support.")
 	}
 
 	return http.StatusOK, nil
