@@ -116,10 +116,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
+			api.DeleteCookie(w, r)
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
@@ -143,10 +140,7 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
+			api.DeleteCookie(w, r)
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
@@ -167,10 +161,7 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Player is not login")
 	}
 
-	err = api.DeleteCookie(w, r)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to delete cookie")
-	}
+	api.DeleteCookie(w, r)
 
 	return http.StatusOK, nil
 }
@@ -335,7 +326,6 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 			return terror.Error(err, "browser identification fail.")
 		}
 	}
-
 	return nil
 }
 
@@ -360,7 +350,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -383,8 +373,6 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		SameSite: http.SameSiteNoneMode,
 	}
 	http.SetCookie(w, cookie)
-
-	return nil
 }
 
 func domain(host string) string {

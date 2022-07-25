@@ -71,7 +71,7 @@ type Battle struct {
 	sync.RWMutex
 }
 
-func (btl *Battle) abilities() *AbilitiesSystem {
+func (btl *Battle) AbilitySystem() *AbilitiesSystem {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._abilities
@@ -330,10 +330,10 @@ func (btl *Battle) start() {
 		//TODO: something more dramatic
 	}
 
-	// set up the abilities for current battle
+	// set up the AbilitySystem() for current battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
@@ -490,19 +490,19 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 func (btl *Battle) endAbilities() {
 	defer func() {
 		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle abilities end!", r)
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle AbilitySystem() end!", r)
 		}
 	}()
 
-	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
+	gamelog.L.Info().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
 
-	if btl.abilities == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have abilities!")
+	if btl.AbilitySystem() == nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
 		return
 	}
 
-	btl.abilities().End()
-	btl.abilities().storeBattle(nil)
+	btl.AbilitySystem().End()
+	btl.AbilitySystem().storeBattle(nil)
 	btl.storeAbilities(nil)
 }
 func (btl *Battle) endSpoils() {
@@ -666,6 +666,41 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
+	}
+}
+
+func (btl *Battle) processWarMachineRepair() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at register mech repair cases", r)
+		}
+	}()
+	for _, wm := range btl.WarMachines {
+		wm.Lock()
+		mechID := wm.ID
+		maxHealth := wm.MaxHealth
+		health := wm.Health
+		ownerID := wm.OwnedByID
+		wm.Unlock()
+
+		go func() {
+			// skip, if player is AI
+			p, err := boiler.FindPlayer(gamedb.StdConn, ownerID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load mech owner detail")
+				return
+			}
+
+			if p.IsAi {
+				return
+			}
+
+			// register mech repair case
+			err = btl.arena.RepairSystem.RegisterMechRepairCase(mechID, maxHealth, health)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
+			}
+		}()
 	}
 }
 
@@ -917,8 +952,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 
-	// TODO: process mech repair
-	//btl.processWarMachineRepair(payload)
+	btl.processWarMachineRepair()
 
 	btl.endMultis(endInfo)
 
@@ -1065,7 +1099,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}(user)
 
@@ -1387,41 +1421,6 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-// repair is moved to mech level
-//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-//	if btl.ID != dp.BattleID {
-//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-//		btl.arena.reset()
-//		return
-//	}
-//
-//	// get item id from hash
-//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-//		return
-//	}
-//
-//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-//		return
-//	}
-//
-//	btlHistory := boiler.BattleHistory{
-//		BattleID:        btl.BattleID,
-//		WarMachineOneID: wm.ID,
-//		RelatedID:       null.NewString(dp.EventID, true),
-//		EventType:       "pickup",
-//	}
-//
-//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-//	if err != nil {
-//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-//		return
-//	}
-//}
-
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
 	if btl.ID != dp.BattleID {
@@ -1602,7 +1601,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}
 

@@ -28,12 +28,13 @@ type Blob struct {
 	MimeType      string      `boiler:"mime_type" boil:"mime_type" json:"mime_type" toml:"mime_type" yaml:"mime_type"`
 	FileSizeBytes int64       `boiler:"file_size_bytes" boil:"file_size_bytes" json:"file_size_bytes" toml:"file_size_bytes" yaml:"file_size_bytes"`
 	Extension     string      `boiler:"extension" boil:"extension" json:"extension" toml:"extension" yaml:"extension"`
-	File          []byte      `boiler:"file" boil:"file" json:"file" toml:"file" yaml:"file"`
+	File          null.Bytes  `boiler:"file" boil:"file" json:"file,omitempty" toml:"file" yaml:"file,omitempty"`
 	Views         int         `boiler:"views" boil:"views" json:"views" toml:"views" yaml:"views"`
 	Hash          null.String `boiler:"hash" boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IsRemote      bool        `boiler:"is_remote" boil:"is_remote" json:"is_remote" toml:"is_remote" yaml:"is_remote"`
 
 	R *blobR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blobL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +52,7 @@ var BlobColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	IsRemote      string
 }{
 	ID:            "id",
 	FileName:      "file_name",
@@ -63,6 +65,7 @@ var BlobColumns = struct {
 	DeletedAt:     "deleted_at",
 	UpdatedAt:     "updated_at",
 	CreatedAt:     "created_at",
+	IsRemote:      "is_remote",
 }
 
 var BlobTableColumns = struct {
@@ -77,6 +80,7 @@ var BlobTableColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	IsRemote      string
 }{
 	ID:            "blobs.id",
 	FileName:      "blobs.file_name",
@@ -89,6 +93,7 @@ var BlobTableColumns = struct {
 	DeletedAt:     "blobs.deleted_at",
 	UpdatedAt:     "blobs.updated_at",
 	CreatedAt:     "blobs.created_at",
+	IsRemote:      "blobs.is_remote",
 }
 
 // Generated where
@@ -116,14 +121,29 @@ func (w whereHelperint64) NIN(slice []int64) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
-type whereHelper__byte struct{ field string }
+type whereHelpernull_Bytes struct{ field string }
 
-func (w whereHelper__byte) EQ(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelper__byte) NEQ(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelper__byte) LT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelper__byte) LTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelper__byte) GT(x []byte) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelper__byte) GTE(x []byte) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelpernull_Bytes) EQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Bytes) NEQ(x null.Bytes) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Bytes) LT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Bytes) LTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Bytes) GT(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Bytes) GTE(x null.Bytes) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Bytes) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Bytes) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var BlobWhere = struct {
 	ID            whereHelperstring
@@ -131,32 +151,44 @@ var BlobWhere = struct {
 	MimeType      whereHelperstring
 	FileSizeBytes whereHelperint64
 	Extension     whereHelperstring
-	File          whereHelper__byte
+	File          whereHelpernull_Bytes
 	Views         whereHelperint
 	Hash          whereHelpernull_String
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
+	IsRemote      whereHelperbool
 }{
 	ID:            whereHelperstring{field: "\"blobs\".\"id\""},
 	FileName:      whereHelperstring{field: "\"blobs\".\"file_name\""},
 	MimeType:      whereHelperstring{field: "\"blobs\".\"mime_type\""},
 	FileSizeBytes: whereHelperint64{field: "\"blobs\".\"file_size_bytes\""},
 	Extension:     whereHelperstring{field: "\"blobs\".\"extension\""},
-	File:          whereHelper__byte{field: "\"blobs\".\"file\""},
+	File:          whereHelpernull_Bytes{field: "\"blobs\".\"file\""},
 	Views:         whereHelperint{field: "\"blobs\".\"views\""},
 	Hash:          whereHelpernull_String{field: "\"blobs\".\"hash\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"blobs\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"blobs\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"blobs\".\"created_at\""},
+	IsRemote:      whereHelperbool{field: "\"blobs\".\"is_remote\""},
 }
 
 // BlobRels is where relationship names are stored.
 var BlobRels = struct {
-}{}
+	NewLogoSyndicateMotions string
+	OldLogoSyndicateMotions string
+	LogoSyndicates          string
+}{
+	NewLogoSyndicateMotions: "NewLogoSyndicateMotions",
+	OldLogoSyndicateMotions: "OldLogoSyndicateMotions",
+	LogoSyndicates:          "LogoSyndicates",
+}
 
 // blobR is where relationships are stored.
 type blobR struct {
+	NewLogoSyndicateMotions SyndicateMotionSlice `boiler:"NewLogoSyndicateMotions" boil:"NewLogoSyndicateMotions" json:"NewLogoSyndicateMotions" toml:"NewLogoSyndicateMotions" yaml:"NewLogoSyndicateMotions"`
+	OldLogoSyndicateMotions SyndicateMotionSlice `boiler:"OldLogoSyndicateMotions" boil:"OldLogoSyndicateMotions" json:"OldLogoSyndicateMotions" toml:"OldLogoSyndicateMotions" yaml:"OldLogoSyndicateMotions"`
+	LogoSyndicates          SyndicateSlice       `boiler:"LogoSyndicates" boil:"LogoSyndicates" json:"LogoSyndicates" toml:"LogoSyndicates" yaml:"LogoSyndicates"`
 }
 
 // NewStruct creates a new relationship struct
@@ -168,9 +200,9 @@ func (*blobR) NewStruct() *blobR {
 type blobL struct{}
 
 var (
-	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "deleted_at", "updated_at", "created_at"}
-	blobColumnsWithoutDefault = []string{"file_name", "mime_type", "file_size_bytes", "extension", "file"}
-	blobColumnsWithDefault    = []string{"id", "views", "hash", "deleted_at", "updated_at", "created_at"}
+	blobAllColumns            = []string{"id", "file_name", "mime_type", "file_size_bytes", "extension", "file", "views", "hash", "deleted_at", "updated_at", "created_at", "is_remote"}
+	blobColumnsWithoutDefault = []string{"file_name", "mime_type", "file_size_bytes", "extension"}
+	blobColumnsWithDefault    = []string{"id", "file", "views", "hash", "deleted_at", "updated_at", "created_at", "is_remote"}
 	blobPrimaryKeyColumns     = []string{"id"}
 	blobGeneratedColumns      = []string{}
 )
@@ -415,6 +447,744 @@ func (q blobQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// NewLogoSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via new_logo_id column.
+func (o *Blob) NewLogoSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"new_logo_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
+	}
+
+	return query
+}
+
+// OldLogoSyndicateMotions retrieves all the syndicate_motion's SyndicateMotions with an executor via old_logo_id column.
+func (o *Blob) OldLogoSyndicateMotions(mods ...qm.QueryMod) syndicateMotionQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicate_motions\".\"old_logo_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicate_motions\".\"deleted_at\""),
+	)
+
+	query := SyndicateMotions(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicate_motions\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicate_motions\".*"})
+	}
+
+	return query
+}
+
+// LogoSyndicates retrieves all the syndicate's Syndicates with an executor via logo_id column.
+func (o *Blob) LogoSyndicates(mods ...qm.QueryMod) syndicateQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"syndicates\".\"logo_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"syndicates\".\"deleted_at\""),
+	)
+
+	query := Syndicates(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicates\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"syndicates\".*"})
+	}
+
+	return query
+}
+
+// LoadNewLogoSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadNewLogoSyndicateMotions(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.new_logo_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.NewLogoSyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.NewLogo = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.NewLogoID) {
+				local.R.NewLogoSyndicateMotions = append(local.R.NewLogoSyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.NewLogo = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOldLogoSyndicateMotions allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadOldLogoSyndicateMotions(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicate_motions`),
+		qm.WhereIn(`syndicate_motions.old_logo_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicate_motions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicate_motions")
+	}
+
+	var resultSlice []*SyndicateMotion
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicate_motions")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicate_motions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicate_motions")
+	}
+
+	if len(syndicateMotionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OldLogoSyndicateMotions = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateMotionR{}
+			}
+			foreign.R.OldLogo = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.OldLogoID) {
+				local.R.OldLogoSyndicateMotions = append(local.R.OldLogoSyndicateMotions, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateMotionR{}
+				}
+				foreign.R.OldLogo = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadLogoSyndicates allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blobL) LoadLogoSyndicates(e boil.Executor, singular bool, maybeBlob interface{}, mods queries.Applicator) error {
+	var slice []*Blob
+	var object *Blob
+
+	if singular {
+		object = maybeBlob.(*Blob)
+	} else {
+		slice = *maybeBlob.(*[]*Blob)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blobR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blobR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicates`),
+		qm.WhereIn(`syndicates.logo_id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load syndicates")
+	}
+
+	var resultSlice []*Syndicate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice syndicates")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on syndicates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
+	}
+
+	if len(syndicateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.LogoSyndicates = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &syndicateR{}
+			}
+			foreign.R.Logo = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.LogoID) {
+				local.R.LogoSyndicates = append(local.R.LogoSyndicates, foreign)
+				if foreign.R == nil {
+					foreign.R = &syndicateR{}
+				}
+				foreign.R.Logo = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddNewLogoSyndicateMotions adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.NewLogoSyndicateMotions.
+// Sets related.R.NewLogo appropriately.
+func (o *Blob) AddNewLogoSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.NewLogoID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"new_logo_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.NewLogoID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			NewLogoSyndicateMotions: related,
+		}
+	} else {
+		o.R.NewLogoSyndicateMotions = append(o.R.NewLogoSyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				NewLogo: o,
+			}
+		} else {
+			rel.R.NewLogo = o
+		}
+	}
+	return nil
+}
+
+// SetNewLogoSyndicateMotions removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.NewLogo's NewLogoSyndicateMotions accordingly.
+// Replaces o.R.NewLogoSyndicateMotions with related.
+// Sets related.R.NewLogo's NewLogoSyndicateMotions accordingly.
+func (o *Blob) SetNewLogoSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	query := "update \"syndicate_motions\" set \"new_logo_id\" = null where \"new_logo_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.NewLogoSyndicateMotions {
+			queries.SetScanner(&rel.NewLogoID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.NewLogo = nil
+		}
+
+		o.R.NewLogoSyndicateMotions = nil
+	}
+	return o.AddNewLogoSyndicateMotions(exec, insert, related...)
+}
+
+// RemoveNewLogoSyndicateMotions relationships from objects passed in.
+// Removes related items from R.NewLogoSyndicateMotions (uses pointer comparison, removal does not keep order)
+// Sets related.R.NewLogo.
+func (o *Blob) RemoveNewLogoSyndicateMotions(exec boil.Executor, related ...*SyndicateMotion) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.NewLogoID, nil)
+		if rel.R != nil {
+			rel.R.NewLogo = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("new_logo_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.NewLogoSyndicateMotions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.NewLogoSyndicateMotions)
+			if ln > 1 && i < ln-1 {
+				o.R.NewLogoSyndicateMotions[i] = o.R.NewLogoSyndicateMotions[ln-1]
+			}
+			o.R.NewLogoSyndicateMotions = o.R.NewLogoSyndicateMotions[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddOldLogoSyndicateMotions adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.OldLogoSyndicateMotions.
+// Sets related.R.OldLogo appropriately.
+func (o *Blob) AddOldLogoSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.OldLogoID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicate_motions\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"old_logo_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicateMotionPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.OldLogoID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			OldLogoSyndicateMotions: related,
+		}
+	} else {
+		o.R.OldLogoSyndicateMotions = append(o.R.OldLogoSyndicateMotions, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateMotionR{
+				OldLogo: o,
+			}
+		} else {
+			rel.R.OldLogo = o
+		}
+	}
+	return nil
+}
+
+// SetOldLogoSyndicateMotions removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.OldLogo's OldLogoSyndicateMotions accordingly.
+// Replaces o.R.OldLogoSyndicateMotions with related.
+// Sets related.R.OldLogo's OldLogoSyndicateMotions accordingly.
+func (o *Blob) SetOldLogoSyndicateMotions(exec boil.Executor, insert bool, related ...*SyndicateMotion) error {
+	query := "update \"syndicate_motions\" set \"old_logo_id\" = null where \"old_logo_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.OldLogoSyndicateMotions {
+			queries.SetScanner(&rel.OldLogoID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.OldLogo = nil
+		}
+
+		o.R.OldLogoSyndicateMotions = nil
+	}
+	return o.AddOldLogoSyndicateMotions(exec, insert, related...)
+}
+
+// RemoveOldLogoSyndicateMotions relationships from objects passed in.
+// Removes related items from R.OldLogoSyndicateMotions (uses pointer comparison, removal does not keep order)
+// Sets related.R.OldLogo.
+func (o *Blob) RemoveOldLogoSyndicateMotions(exec boil.Executor, related ...*SyndicateMotion) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.OldLogoID, nil)
+		if rel.R != nil {
+			rel.R.OldLogo = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("old_logo_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.OldLogoSyndicateMotions {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.OldLogoSyndicateMotions)
+			if ln > 1 && i < ln-1 {
+				o.R.OldLogoSyndicateMotions[i] = o.R.OldLogoSyndicateMotions[ln-1]
+			}
+			o.R.OldLogoSyndicateMotions = o.R.OldLogoSyndicateMotions[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddLogoSyndicates adds the given related objects to the existing relationships
+// of the blob, optionally inserting them as new records.
+// Appends related to o.R.LogoSyndicates.
+// Sets related.R.Logo appropriately.
+func (o *Blob) AddLogoSyndicates(exec boil.Executor, insert bool, related ...*Syndicate) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.LogoID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"syndicates\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"logo_id"}),
+				strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.LogoID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blobR{
+			LogoSyndicates: related,
+		}
+	} else {
+		o.R.LogoSyndicates = append(o.R.LogoSyndicates, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &syndicateR{
+				Logo: o,
+			}
+		} else {
+			rel.R.Logo = o
+		}
+	}
+	return nil
+}
+
+// SetLogoSyndicates removes all previously related items of the
+// blob replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Logo's LogoSyndicates accordingly.
+// Replaces o.R.LogoSyndicates with related.
+// Sets related.R.Logo's LogoSyndicates accordingly.
+func (o *Blob) SetLogoSyndicates(exec boil.Executor, insert bool, related ...*Syndicate) error {
+	query := "update \"syndicates\" set \"logo_id\" = null where \"logo_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.LogoSyndicates {
+			queries.SetScanner(&rel.LogoID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Logo = nil
+		}
+
+		o.R.LogoSyndicates = nil
+	}
+	return o.AddLogoSyndicates(exec, insert, related...)
+}
+
+// RemoveLogoSyndicates relationships from objects passed in.
+// Removes related items from R.LogoSyndicates (uses pointer comparison, removal does not keep order)
+// Sets related.R.Logo.
+func (o *Blob) RemoveLogoSyndicates(exec boil.Executor, related ...*Syndicate) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.LogoID, nil)
+		if rel.R != nil {
+			rel.R.Logo = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("logo_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.LogoSyndicates {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.LogoSyndicates)
+			if ln > 1 && i < ln-1 {
+				o.R.LogoSyndicates[i] = o.R.LogoSyndicates[ln-1]
+			}
+			o.R.LogoSyndicates = o.R.LogoSyndicates[:ln-1]
+			break
+		}
+	}
+
+	return nil
 }
 
 // Blobs retrieves all the records using an executor.

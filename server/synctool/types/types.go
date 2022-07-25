@@ -102,6 +102,21 @@ type BattleAbility struct {
 	Description      string `json:"description"`
 }
 
+type GameAbility struct {
+	ID                  string  `json:"id"`
+	GameClientAbilityID int     `json:"game_client_ability_id"`
+	FactionID           string  `json:"faction_id"`
+	BattleAbilityID     *string `json:"battle_ability_id"`
+	Label               string  `json:"label"`
+	Colour              string  `json:"colour"`
+	ImageUrl            string  `json:"image_url"`
+	SupsCost            string  `json:"sups_cost"`
+	Description         string  `json:"description"`
+	TextColour          string  `json:"text_colour"`
+	CurrentSups         string  `json:"current_sups"`
+	Level               string  `json:"level"`
+}
+
 type PowerCores struct {
 	ID               string `json:"id"`
 	Collection       string `json:"collection"`
