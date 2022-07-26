@@ -98,6 +98,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sweapon_model_skin_compatibilities.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncWeaponModelSkinCompatibilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%sbattle_abilities.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -365,14 +375,13 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			continue
 		}
 		count++
-		fmt.Printf("UPDATED: %s:%s \n",mechModelSkinCompat.MechSkinID, mechModelSkinCompat.MechModelID)
+		fmt.Printf("UPDATED: %s:%s \n", mechModelSkinCompat.MechSkinID, mechModelSkinCompat.MechModelID)
 	}
 
 	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
 
 	return nil
 }
-
 
 func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
@@ -424,7 +433,7 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			mechSkin.Label,
 			mechSkin.Tier,
 			statModifier,
-			)
+		)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)
 			continue
@@ -700,83 +709,139 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 	var WeaponSkins []types.WeaponSkin
 	for _, record := range records {
 		weaponSkin := &types.WeaponSkin{
-			ID:               record[0],
-			Label:            record[1],
-			WeaponType:       record[2],
-			Tier:             record[3],
-			CreatedAt:        record[4],
-			ImageUrl:         record[5],
-			CardAnimationUrl: record[6],
-			AvatarUrl:        record[7],
-			LargeImageUrl:    record[8],
-			BackgroundColor:  record[9],
-			AnimationUrl:     record[10],
-			YoutubeUrl:       record[11],
-			Collection:       record[12],
-			WeaponModelID:    record[13],
-			StatModifier:     record[14],
+			ID:           record[0],
+			Label:        record[1],
+			Tier:         record[2],
+			Collection:   record[4],
+			StatModifier: record[5],
 		}
 
 		WeaponSkins = append(WeaponSkins, *weaponSkin)
 	}
 
 	for _, weaponSkin := range WeaponSkins {
-		imageURL := &weaponSkin.ImageUrl
-		if weaponSkin.ImageUrl == "" {
-			imageURL = nil
-		}
-
-		cardAnimationURL := &weaponSkin.CardAnimationUrl
-		if weaponSkin.CardAnimationUrl == "" {
-			cardAnimationURL = nil
-		}
-
-		avatarURL := &weaponSkin.AvatarUrl
-		if weaponSkin.AvatarUrl == "" {
-			avatarURL = nil
-		}
-
-		largeImageURL := &weaponSkin.LargeImageUrl
-		if weaponSkin.LargeImageUrl == "" {
-			largeImageURL = nil
-		}
-
-		backgroundColor := &weaponSkin.BackgroundColor
-		if weaponSkin.BackgroundColor == "" {
-			backgroundColor = nil
-		}
-
-		animationURL := &weaponSkin.AnimationUrl
-		if weaponSkin.AnimationUrl == "" {
-			animationURL = nil
-		}
-
-		youtubeURL := &weaponSkin.YoutubeUrl
-		if weaponSkin.YoutubeUrl == "" {
-			youtubeURL = nil
-		}
-
-		statModifier := &weaponSkin.StatModifier
-		if weaponSkin.StatModifier == "" {
-			statModifier = nil
-		}
-
 		_, err = db.Exec(`
-			INSERT INTO blueprint_weapon_skin(id, label, weapon_type, tier, image_url, card_animation_url, avatar_url, large_image_url, background_color, animation_url, youtube_url, collection, weapon_model_id, stat_modifier)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			INSERT INTO blueprint_weapon_skin(
+			                                  id,
+			                                  label,
+			                                  tier,
+			                                  collection,
+			                                  stat_modifier
+			                                  )
+			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, label=$2, weapon_type=$3, tier=$4, image_url=$5, card_animation_url=$6, avatar_url=$7, large_image_url=$8, background_color=$9, animation_url=$10, youtube_url=$11, collection=$12, weapon_model_id=$13, stat_modifier=$14;
-		`, weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL, weaponSkin.Collection, weaponSkin.WeaponModelID, statModifier)
+			    UPDATE SET 
+			               id=$1,
+			               label=$2,
+			               tier=$3,
+			               collection=$4,
+			               stat_modifier=$5;
+		`,
+			weaponSkin.ID,
+			weaponSkin.Label,
+			weaponSkin.Tier,
+			weaponSkin.Collection,
+			null.NewString(weaponSkin.StatModifier, weaponSkin.StatModifier != ""),
+		)
 		if err != nil {
-			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
+			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+weaponSkin.ID, weaponSkin.Label, weaponSkin.WeaponType, weaponSkin.Tier, weaponSkin.WeaponModelID)
+		fmt.Println("UPDATED: "+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
 	}
 
 	fmt.Println("Finish syncing weapon skins")
+	return nil
+}
+
+func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var weaponModelSkinCompatibities []*types.WeaponModelSkinCompatibility
+	for _, record := range records {
+		weaponModelSkinCompatibity := &types.WeaponModelSkinCompatibility{
+			WeaponSkinID:     record[0],
+			WeaponModelID:    record[1],
+			ImageUrl:         record[2],
+			CardAnimationUrl: record[3],
+			AvatarUrl:        record[4],
+			LargeImageUrl:    record[5],
+			BackgroundColor:  record[6],
+			AnimationUrl:     record[7],
+			YoutubeUrl:       record[8],
+		}
+
+		weaponModelSkinCompatibities = append(weaponModelSkinCompatibities, weaponModelSkinCompatibity)
+	}
+
+	count := 0
+	for _, weaponModelSkinCompat := range weaponModelSkinCompatibities {
+		_, err = db.Exec(`
+			INSERT INTO weapon_model_skin_compatibilities (
+												blueprint_weapon_skin_id,
+												weapon_model_id,
+												image_url,
+												card_animation_url,
+												avatar_url,
+												large_image_url,
+												background_color,
+												animation_url,
+												youtube_url
+			)
+			VALUES ($1,$2,$3,$4,$5, $6, $7, $8, $9)
+			ON CONFLICT (blueprint_weapon_skin_id, weapon_model_id)
+			DO
+				UPDATE SET 	blueprint_weapon_skin_id = $1,
+							weapon_model_id = $2,
+							image_url = $3,
+							card_animation_url = $4,
+							avatar_url = $5,
+							large_image_url = $6,
+							background_color = $7,
+							animation_url = $8,
+							youtube_url = $9;
+		`,
+			weaponModelSkinCompat.WeaponSkinID,
+			weaponModelSkinCompat.WeaponModelID,
+			null.NewString(weaponModelSkinCompat.ImageUrl, weaponModelSkinCompat.ImageUrl != ""),
+			null.NewString(weaponModelSkinCompat.AnimationUrl, weaponModelSkinCompat.AnimationUrl != ""),
+			null.NewString(weaponModelSkinCompat.CardAnimationUrl, weaponModelSkinCompat.CardAnimationUrl != ""),
+			null.NewString(weaponModelSkinCompat.LargeImageUrl, weaponModelSkinCompat.LargeImageUrl != ""),
+			null.NewString(weaponModelSkinCompat.AvatarUrl, weaponModelSkinCompat.AvatarUrl != ""),
+			null.NewString(weaponModelSkinCompat.BackgroundColor, weaponModelSkinCompat.BackgroundColor != ""),
+			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
+		)
+		if err != nil {
+			fmt.Println(weaponModelSkinCompat.WeaponSkinID)
+			fmt.Println(weaponModelSkinCompat.WeaponModelID)
+			fmt.Println(weaponModelSkinCompat.ImageUrl)
+			fmt.Println(weaponModelSkinCompat.AnimationUrl)
+			fmt.Println(weaponModelSkinCompat.CardAnimationUrl)
+			fmt.Println(weaponModelSkinCompat.LargeImageUrl)
+			fmt.Println(weaponModelSkinCompat.AvatarUrl)
+			fmt.Println(weaponModelSkinCompat.BackgroundColor)
+			fmt.Println(weaponModelSkinCompat.YoutubeUrl)
+			fmt.Println("ERROR: " + err.Error())
+			continue
+		}
+		count++
+		fmt.Printf("UPDATED: %s:%s \n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID)
+	}
+
+	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
+
 	return nil
 }
 

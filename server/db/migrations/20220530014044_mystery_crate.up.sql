@@ -350,26 +350,7 @@ BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (weaponcrate_id, 'WEAPON_SKIN', (SELECT id
                                             FROM blueprint_weapon_skin
-                                            WHERE weapon_type = weapontype::WEAPON_TYPE
-                                              AND blueprint_weapon_skin.weapon_model_id =
-                                                  CASE
-                                                      WHEN faction.label = 'Boston Cybernetics'
-                                                          THEN (SELECT id
-                                                                FROM weapon_models
-                                                                WHERE weapon_type = weapontype::WEAPON_TYPE
-                                                                  AND brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech'))
-                                                      WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                          THEN (SELECT id
-                                                                FROM weapon_models
-                                                                WHERE weapon_type = weapontype::WEAPON_TYPE
-                                                                  AND brand_id = (SELECT id FROM brands WHERE label = 'Warsui'))
-                                                      WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                          THEN (SELECT id
-                                                                FROM weapon_models
-                                                                WHERE weapon_type = weapontype::WEAPON_TYPE
-                                                                  AND brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics'))
-                                                      END
-                                              AND label =
+                                            WHERE label =
                                                   CASE
                                                       WHEN type = 'MECH'
                                                           THEN skin_label
@@ -388,10 +369,11 @@ CREATE FUNCTION insert_weapon_into_crate(crate_id UUID, weapontype TEXT, faction
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-    VALUES (crate_id, 'WEAPON', (SELECT id
-                                 FROM blueprint_weapons
-                                 WHERE weapon_type = weapontype::WEAPON_TYPE
-                                   AND brand_id =
+    VALUES (crate_id, 'WEAPON', (SELECT bw.id
+                                 FROM blueprint_weapons bw
+                                 INNER JOIN weapon_models wm ON wm.id = bw.weapon_model_id
+                                 WHERE wm.weapon_type = weapontype::WEAPON_TYPE
+                                   AND wm.brand_id =
                                        CASE
                                            WHEN faction.label = 'Boston Cybernetics'
                                                THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')

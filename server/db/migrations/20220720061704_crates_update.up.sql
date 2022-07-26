@@ -29,13 +29,11 @@ $$
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Archon Gunmetal'
-                                                                                               AND weapon_type = 'Flak'));
+                                                                                             WHERE label = 'Archon Gunmetal'));
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Archon Gunmetal'
-                                                                                               AND weapon_type = 'Machine Gun'));
+                                                                                             WHERE label = 'Archon Gunmetal'));
 
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'MECH_SKIN',
@@ -51,13 +49,11 @@ $$
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Verdant Warsui'
-                                                                                               AND weapon_type = 'Flak'));
+                                                                                             WHERE label = 'Verdant Warsui'));
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Verdant Warsui'
-                                                                                               AND weapon_type = 'Machine Gun'));
+                                                                                             WHERE label = 'Verdant Warsui'));
 
 
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -74,13 +70,11 @@ $$
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Pyro Crimson'
-                                                                                               AND weapon_type = 'Flak'));
+                                                                                             WHERE label = 'Pyro Crimson'));
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                              VALUES (vmech_crate_blueprint.mystery_crate_id, 'WEAPON_SKIN', (SELECT id
                                                                                              FROM blueprint_weapon_skin
-                                                                                             WHERE label = 'Pyro Crimson'
-                                                                                               AND weapon_type = 'Machine Gun'));
+                                                                                             WHERE label = 'Pyro Crimson'));
 
 
                              INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)

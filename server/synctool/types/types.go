@@ -81,21 +81,24 @@ type WeaponModel struct {
 }
 
 type WeaponSkin struct {
-	ID               string `json:"id"`
-	Label            string `json:"label"`
-	WeaponType       string `json:"weapon_typep"`
-	Tier             string `json:"tier"`
-	ImageUrl         string `json:"image_url"`
-	CreatedAt        string `json:"created_at"`
-	CardAnimationUrl string `json:"card_animation_url"`
-	AvatarUrl        string `json:"avatar_url"`
-	LargeImageUrl    string `json:"large_image_url"`
-	BackgroundColor  string `json:"background_color"`
-	AnimationUrl     string `json:"animation_url"`
-	YoutubeUrl       string `json:"youtube_url"`
-	Collection       string `json:"collection"`
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	Tier         string `json:"tier"`
+	CreatedAt    string `json:"created_at"`
+	Collection   string `json:"collection"`
+	StatModifier string `json:"stat_modifier"`
+}
+
+type WeaponModelSkinCompatibility struct {
+	WeaponSkinID     string `json:"weapon_skin_id"`
 	WeaponModelID    string `json:"weapon_model_id"`
-	StatModifier     string `json:"stat_modifier"`
+	ImageUrl         string `json:"image_url"`
+	AnimationUrl     string `json:"animation_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	BackgroundColor  string `json:"background_color"`
+	YoutubeUrl       string `json:"youtube_url"`
 }
 
 type BattleAbility struct {
