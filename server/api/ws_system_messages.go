@@ -35,8 +35,9 @@ func NewSystemMessagesController(api *API) *SystemMessagesController {
 type SystemMessageListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Page     int `json:"page"`
-		PageSize int `json:"page_size"`
+		Page     int  `json:"page"`
+		PageSize int  `json:"page_size"`
+		HideRead bool `json:"hide_read"`
 	} `json:"payload"`
 }
 
@@ -67,6 +68,13 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 	queryMods = append(queryMods,
 		boiler.SystemMessageWhere.PlayerID.EQ(user.ID),
 	)
+
+	if req.Payload.HideRead {
+		queryMods = append(queryMods,
+			boiler.SystemMessageWhere.ReadAt.IsNull(),
+		)
+	}
+
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
