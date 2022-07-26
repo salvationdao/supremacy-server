@@ -183,7 +183,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 	// remain hours
 	// register a new repair offer
-	ro := boiler.RepairOffer{
+	ro := &boiler.RepairOffer{
 		RepairCaseID:      mrc.ID,
 		BlocksTotal:       mrc.BlocksTotal - mrc.BlocksRepaired,
 		OfferedSupsAmount: req.Payload.OfferedSups,
@@ -220,7 +220,14 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Failed to offer repair contract.")
 	}
 
-	// TODO: broadcast to repair contract market
+	//  broadcast to repair offer market
+	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, server.RepairOffer{
+		RepairOffer:       ro,
+		BlocksTotal:       mrc.BlocksTotal,
+		BlocksRequired:    mrc.BlocksRepaired,
+		SupsWorthPerBlock: req.Payload.OfferedSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
+		WorkingAgentCount: 0,
+	})
 
 	return nil
 }
@@ -278,8 +285,12 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return err
 	}
 
-	if isOwner {
-		return terror.Error(fmt.Errorf("cannot take your own offer"), "Cannot take your own offer")
+	if !ro.IsSelf && isOwner {
+		return terror.Error(fmt.Errorf("cannot take your own offer"), "This offer is not available for repair case owner.")
+	}
+
+	if ro.IsSelf && !isOwner {
+		return terror.Error(fmt.Errorf("owner only"), "Only owner can take this offer.")
 	}
 
 	// insert repair agent
@@ -339,11 +350,33 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to complete repair agent task.")
 	}
 
+	// check repair case
+	rc, err := boiler.FindRepairCase(gamedb.StdConn, ra.RepairCaseID)
+	if err != nil {
+		return terror.Error(err, "Failed to load repair case.")
+	}
+
+	// update repair case if repair complete
+	if rc.BlocksRepaired == rc.BlocksTotal {
+		// TODO: broadcast complete
+
+		// TODO: close repair case
+
+		// TODO: refund unclaimed sups
+
+		// TODO: close offer
+
+		// TODO: expire all the working agents
+
+	}
+
 	// claim sups
 	ro, err := db.RepairOfferDetail(ra.RepairOfferID)
 	if err != nil {
 		return err
 	}
+
+	// check
 
 	// broadcast result
 	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ra.RepairOfferID), server.HubKeyRepairOfferSubscribe, ro)

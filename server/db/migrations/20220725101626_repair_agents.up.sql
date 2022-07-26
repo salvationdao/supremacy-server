@@ -83,7 +83,7 @@ CREATE OR REPLACE FUNCTION check_repair_block() RETURNS TRIGGER AS
 $check_repair_block$
 DECLARE
     can_write_block BOOLEAN DEFAULT FALSE;
-BEGIN    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
+BEGIN
 
 SELECT (
            SELECT ro.expires_at > NOW() AND ro.closed_at IS NULL AND
@@ -98,6 +98,7 @@ INTO can_write_block;
 -- update blocks required in repair cases and continue the process
 IF can_write_block THEN
     UPDATE repair_cases SET blocks_repaired = blocks_repaired + 1 WHERE id = NEW.repair_case_id;
+    UPDATE repair_agents SET finished_at = now(), finished_reason = 'SUCCEEDED' WHERE id = NEW.repair_agent_id;
     RETURN NEW;
 ELSE
     RAISE EXCEPTION 'unable to write block';
