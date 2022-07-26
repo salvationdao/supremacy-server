@@ -188,15 +188,6 @@ const (
 	MarketplaceEventCancelled = "cancelled"
 )
 
-// Enum values for MechRepairCaseLogType
-const (
-	MechRepairCaseLogTypeREGISTER              = "REGISTER"
-	MechRepairCaseLogTypeSTART_REPAIR_PROCESS  = "START_REPAIR_PROCESS"
-	MechRepairCaseLogTypeOFFER_REPAIR_CONTRACT = "OFFER_REPAIR_CONTRACT"
-	MechRepairCaseLogTypeREPAIR_AGENT_COMPLETE = "REPAIR_AGENT_COMPLETE"
-	MechRepairCaseLogTypeCOMPLETE              = "COMPLETE"
-)
-
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"
@@ -243,11 +234,18 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
-// Enum values for RepairAgentStatus
+// Enum values for RepairAgentFinishReason
 const (
-	RepairAgentStatusWIP     = "WIP"
-	RepairAgentStatusFAILED  = "FAILED"
-	RepairAgentStatusSUCCESS = "SUCCESS"
+	RepairAgentFinishReasonABANDONED = "ABANDONED"
+	RepairAgentFinishReasonEXPIRED   = "EXPIRED"
+	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for RepairFinishReason
+const (
+	RepairFinishReasonEXPIRED   = "EXPIRED"
+	RepairFinishReasonSTOPPED   = "STOPPED"
+	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
 )
 
 // Enum values for SyndicateElectionType

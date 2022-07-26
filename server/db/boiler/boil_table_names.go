@@ -70,8 +70,6 @@ var TableNames = struct {
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
-	MechRepairCaseLogs                                 string
-	MechRepairCases                                    string
 	MechSkin                                           string
 	MechStats                                          string
 	MechUtility                                        string
@@ -105,6 +103,8 @@ var TableNames = struct {
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
 	RepairAgents                                       string
+	RepairBlocks                                       string
+	RepairCases                                        string
 	RepairOffers                                       string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
@@ -207,8 +207,6 @@ var TableNames = struct {
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
-	MechRepairCaseLogs:           "mech_repair_case_logs",
-	MechRepairCases:              "mech_repair_cases",
 	MechSkin:                     "mech_skin",
 	MechStats:                    "mech_stats",
 	MechUtility:                  "mech_utility",
@@ -242,6 +240,8 @@ var TableNames = struct {
 	QuestionnaireAnswer:          "questionnaire_answer",
 	QuestionnaireOptions:         "questionnaire_options",
 	RepairAgents:                 "repair_agents",
+	RepairBlocks:                 "repair_blocks",
+	RepairCases:                  "repair_cases",
 	RepairOffers:                 "repair_offers",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",

@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"github.com/shopspring/decimal"
+	"server/db/boiler"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -47,4 +49,12 @@ func (b AssetKeycardBlueprint) MarshalJSON() ([]byte, error) {
 	}
 	type localAssetKeycardBlueprint AssetKeycardBlueprint
 	return json.Marshal(localAssetKeycardBlueprint(b))
+}
+
+type RepairOffer struct {
+	*boiler.RepairOffer
+	BlocksTotal       int             `db:"blocks_total" json:"blocks_total"`
+	BlocksRequired    int             `db:"blocks_required" json:"blocks_required"`
+	SupsWorthPerBlock decimal.Decimal `db:"sups_worth_per_block" json:"sups_worth_per_block"`
+	WorkingAgentCount int             `db:"working_agent_count" json:"working_agent_count"`
 }

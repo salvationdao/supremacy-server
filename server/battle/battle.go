@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"math/rand"
 	"server"
 	"server/db"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"go.uber.org/atomic"
@@ -676,12 +676,13 @@ func (btl *Battle) processWarMachineRepair() {
 		}
 	}()
 	for _, wm := range btl.WarMachines {
-		wm.Lock()
+		wm.RLock()
 		mechID := wm.ID
+		modelID := wm.ModelID
 		maxHealth := wm.MaxHealth
 		health := wm.Health
 		ownerID := wm.OwnedByID
-		wm.Unlock()
+		wm.RUnlock()
 
 		go func() {
 			// skip, if player is AI
@@ -696,7 +697,7 @@ func (btl *Battle) processWarMachineRepair() {
 			}
 
 			// register mech repair case
-			err = btl.arena.RepairSystem.RegisterMechRepairCase(mechID, maxHealth, health)
+			err = RegisterMechRepairCase(mechID, modelID, maxHealth, health)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
 			}
@@ -1992,6 +1993,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				model = "WREX"
 			}
 			newWarMachine.Model = model
+			newWarMachine.ModelID = mech.ModelID
 		}
 
 		// check model skin

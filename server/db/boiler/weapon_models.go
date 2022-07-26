@@ -31,6 +31,7 @@ type WeaponModel struct {
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	RepairBlocks  int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
 
 	R *weaponModelR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponModelL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,6 +46,7 @@ var WeaponModelColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	RepairBlocks  string
 }{
 	ID:            "id",
 	BrandID:       "brand_id",
@@ -54,6 +56,7 @@ var WeaponModelColumns = struct {
 	DeletedAt:     "deleted_at",
 	UpdatedAt:     "updated_at",
 	CreatedAt:     "created_at",
+	RepairBlocks:  "repair_blocks",
 }
 
 var WeaponModelTableColumns = struct {
@@ -65,6 +68,7 @@ var WeaponModelTableColumns = struct {
 	DeletedAt     string
 	UpdatedAt     string
 	CreatedAt     string
+	RepairBlocks  string
 }{
 	ID:            "weapon_models.id",
 	BrandID:       "weapon_models.brand_id",
@@ -74,6 +78,7 @@ var WeaponModelTableColumns = struct {
 	DeletedAt:     "weapon_models.deleted_at",
 	UpdatedAt:     "weapon_models.updated_at",
 	CreatedAt:     "weapon_models.created_at",
+	RepairBlocks:  "weapon_models.repair_blocks",
 }
 
 // Generated where
@@ -87,6 +92,7 @@ var WeaponModelWhere = struct {
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
+	RepairBlocks  whereHelperint
 }{
 	ID:            whereHelperstring{field: "\"weapon_models\".\"id\""},
 	BrandID:       whereHelpernull_String{field: "\"weapon_models\".\"brand_id\""},
@@ -96,6 +102,7 @@ var WeaponModelWhere = struct {
 	DeletedAt:     whereHelpernull_Time{field: "\"weapon_models\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"weapon_models\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"weapon_models\".\"created_at\""},
+	RepairBlocks:  whereHelperint{field: "\"weapon_models\".\"repair_blocks\""},
 }
 
 // WeaponModelRels is where relationship names are stored.
@@ -128,9 +135,9 @@ func (*weaponModelR) NewStruct() *weaponModelR {
 type weaponModelL struct{}
 
 var (
-	weaponModelAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at"}
+	weaponModelAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at", "repair_blocks"}
 	weaponModelColumnsWithoutDefault = []string{"label", "weapon_type", "default_skin_id"}
-	weaponModelColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
+	weaponModelColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "repair_blocks"}
 	weaponModelPrimaryKeyColumns     = []string{"id"}
 	weaponModelGeneratedColumns      = []string{}
 )

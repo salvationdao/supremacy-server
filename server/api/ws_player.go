@@ -74,6 +74,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 
+	// repair agent
+
 	return pc
 }
 

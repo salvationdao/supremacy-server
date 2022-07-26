@@ -91,12 +91,17 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// check mech is still in repair
-	inRepair, err := arena.RepairSystem.IsStillRepairing(mech.ID)
-	if err != nil {
-		return err
+
+	rc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(mech.ID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", mech.ID).Msg("Failed to get repair case")
+		return terror.Error(err, "Failed to queue mech.")
 	}
 
-	if inRepair {
+	if rc != nil {
 		return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is not fully recovered.")
 	}
 

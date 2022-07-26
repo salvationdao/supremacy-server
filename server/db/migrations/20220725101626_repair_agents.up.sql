@@ -7,79 +7,144 @@ DROP INDEX IF EXISTS idx_mech_repair_log_type;
 DROP INDEX IF EXISTS idx_mech_repair_log_search;
 DROP TABLE IF EXISTS mech_repair_logs;
 DROP TABLE IF EXISTS mech_repair_cases;
+DROP TABLE IF EXISTS repair_cases;
 DROP TYPE IF EXISTS mech_repair_status;
 DROP TYPE IF EXISTS MECH_REPAIR_LOG_TYPE;
 
-CREATE TABLE mech_repair_cases(
+ALTER TABLE mech_models
+    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 3;
+
+ALTER TABLE weapon_models
+    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 3;
+
+CREATE TABLE repair_cases(
     id uuid primary key default gen_random_uuid(),
     mech_id uuid not null references mechs(id),
-
-    required_seconds int not null,
-    default_instant_repair_fee numeric(28) not null,
-
     -- set after player click repair, used for recording
-    started_at timestamptz,
-    default_complete_time timestamptz,
-
+    blocks_total integer not null,
+    blocks_repaired integer not null default 0,
     completed_at timestamptz,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    deleted_at timestamptz
+    deleted_at timestamptz,
+    constraint repair_case_blocks_total_gt_zero check (blocks_total > 0),
+    constraint repair_case_blocks_repaired_gte_zero check (blocks_repaired >= 0),
+    constraint repair_case_blocks_repaired_lte_required_blocks check (blocks_repaired <= blocks_total)
 );
+
+DROP TYPE IF EXISTS REPAIR_FINISH_REASON;
+CREATE TYPE REPAIR_FINISH_REASON AS ENUM ('EXPIRED', 'STOPPED', 'SUCCEEDED');
 
 CREATE TABLE repair_offers(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    mech_repair_case_id uuid not null references mech_repair_cases(id),
-    repairing_mech_id uuid not null references mechs(id),
-    offered_by_id uuid not null references players(id),
+    repair_case_id uuid not null references repair_cases(id),
+    is_self BOOLEAN NOT NULL default false,
+    blocks_total integer not null,
     offered_sups_amount numeric(28) not null, -- how much player offer for the entire repair offer
-    sups_worth_per_hour numeric(28) not null, -- pre-calculated
-    paid_amount numeric(28) not null, -- sups that already paid
+    expires_at timestamptz not null,
+    finished_reason REPAIR_FINISH_REASON null,
+    closed_at timestamptz,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    deleted_at timestamptz
+    deleted_at timestamptz,
+    constraint repair_offer_total_blocks_gt_zero check (blocks_total > 0)
 );
 
-CREATE INDEX idx_repair_offer_repairing_mech_id ON repair_offers(repairing_mech_id);
-
-DROP TYPE IF EXISTS REPAIR_AGENT_STATUS;
-CREATE TYPE REPAIR_AGENT_STATUS AS ENUM ('WIP', 'FAILED', 'SUCCESS');
+DROP TYPE IF EXISTS REPAIR_AGENT_FINISH_REASON;
+CREATE TYPE REPAIR_AGENT_FINISH_REASON AS ENUM ('ABANDONED', 'EXPIRED', 'SUCCEEDED');
 
 CREATE TABLE repair_agents(
     id uuid primary key default gen_random_uuid(),
-    mech_repair_case_id uuid not null references mech_repair_cases(id),
+    repair_case_id uuid not null references repair_cases(id),
     repair_offer_id uuid not null references repair_offers(id),
-    agent_id uuid not null references players(id),
+    player_id uuid not null references players(id),
 
-    status REPAIR_AGENT_STATUS NOT NULL DEFAULT 'WIP',
-    repair_code uuid not null default gen_random_uuid(),
     started_at timestamptz not null default now(),
-    ended_at timestamptz,
+    finished_at timestamptz null,
+    finished_reason REPAIR_AGENT_FINISH_REASON null,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     deleted_at timestamptz
 );
 
-DROP TYPE IF EXISTS MECH_REPAIR_CASE_LOG_TYPE;
-CREATE TYPE MECH_REPAIR_CASE_LOG_TYPE AS ENUM (
-    'REGISTER',
-    'START_REPAIR_PROCESS',
-    'OFFER_REPAIR_CONTRACT',
-    'REPAIR_AGENT_COMPLETE',
-    'COMPLETE'
-);
-
-CREATE TABLE mech_repair_case_logs(
+CREATE TABLE repair_blocks(
     id uuid primary key default gen_random_uuid(),
-    mech_id uuid not null references mechs(id),
-    mech_repair_case_id uuid not null references mech_repair_cases(id),
-    type MECH_REPAIR_CASE_LOG_TYPE not null,
-    repair_offer_id uuid references repair_offers(id),
-    repair_agent_id uuid references repair_agents(id),
-    created_at timestamptz not null default now()
+    repair_case_id UUID not null references repair_cases(id),
+    repair_offer_id UUID not null references repair_offers(id),
+    repair_agent_id UUID not null references repair_agents(id),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
 );
 
-create index idx_mech_repair_case_logs_created_at_descending on mech_repair_case_logs(created_at desc);
-create index idx_mech_repair_case_logs_mech_id on mech_repair_case_logs(mech_repair_case_id);
+-- repair block trigger
+CREATE OR REPLACE FUNCTION check_repair_block() RETURNS TRIGGER AS
+$check_repair_block$
+DECLARE
+    can_write_block BOOLEAN DEFAULT FALSE;
+BEGIN    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
+
+SELECT (
+           SELECT ro.expires_at > NOW() AND ro.closed_at IS NULL AND
+                  ro.deleted_at IS NULL AND
+                  rc.completed_at IS NULL AND
+                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_total
+           FROM repair_offers ro
+                    INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
+           WHERE ro.id = NEW.repair_offer_id
+       )
+INTO can_write_block;
+-- update blocks required in repair cases and continue the process
+IF can_write_block THEN
+    UPDATE repair_cases SET blocks_repaired = blocks_repaired + 1 WHERE id = NEW.repair_case_id;
+    RETURN NEW;
+ELSE
+    RAISE EXCEPTION 'unable to write block';
+END IF;
+END
+$check_repair_block$
+    LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_check_repair_block ON repair_blocks;
+
+CREATE TRIGGER trigger_check_repair_block
+    BEFORE INSERT
+    ON repair_blocks
+    FOR EACH ROW
+EXECUTE PROCEDURE check_repair_block();
+
+-- repair agent check
+CREATE OR REPLACE FUNCTION check_repair_agent() RETURNS TRIGGER AS
+$check_repair_agent$
+DECLARE
+    can_register BOOLEAN DEFAULT FALSE;
+BEGIN    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
+
+SELECT (
+           SELECT ro.expires_at > NOW() AND ro.closed_at IS NULL AND
+                  ro.deleted_at IS NULL AND
+                  rc.completed_at IS NULL AND
+                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_total
+           FROM repair_offers ro
+                    INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
+           WHERE ro.id = NEW.repair_offer_id
+       )
+INTO can_register;
+-- update blocks required in repair cases and continue the process
+IF can_register THEN
+    RETURN NEW;
+ELSE
+    RAISE EXCEPTION 'unable to register repair agent';
+END IF;
+END
+$check_repair_agent$
+    LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_check_repair_agent ON repair_agents;
+
+CREATE TRIGGER trigger_check_repair_agent
+    BEFORE INSERT
+    ON repair_agents
+    FOR EACH ROW
+EXECUTE PROCEDURE check_repair_agent();

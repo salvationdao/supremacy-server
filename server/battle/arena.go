@@ -56,7 +56,6 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
-	RepairSystem             *RepairSystem
 	sync.RWMutex
 }
 
@@ -254,7 +253,6 @@ func NewArena(opts *Opts) *Arena {
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
 		SystemMessagingManager:   opts.SystemMessagingManager,
-		RepairSystem:             New(opts.RPCClient),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 	}
 

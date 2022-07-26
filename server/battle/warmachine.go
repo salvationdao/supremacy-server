@@ -22,9 +22,10 @@ type WarMachine struct {
 	MaxShield     uint32 `json:"maxShield"`
 	Health        uint32 `json:"health"`
 
-	Model string `json:"model"`
-	Skin  string `json:"skin"`
-	Speed int    `json:"speed"`
+	ModelID string `json:"modelID"`
+	Model   string `json:"model"`
+	Skin    string `json:"skin"`
+	Speed   int    `json:"speed"`
 
 	Faction *Faction `json:"faction"`
 	Tier    string   `json:"tier"`

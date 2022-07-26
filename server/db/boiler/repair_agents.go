@@ -23,121 +23,114 @@ import (
 
 // RepairAgent is an object representing the database table.
 type RepairAgent struct {
-	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechRepairCaseID string    `boiler:"mech_repair_case_id" boil:"mech_repair_case_id" json:"mech_repair_case_id" toml:"mech_repair_case_id" yaml:"mech_repair_case_id"`
-	RepairOfferID    string    `boiler:"repair_offer_id" boil:"repair_offer_id" json:"repair_offer_id" toml:"repair_offer_id" yaml:"repair_offer_id"`
-	AgentID          string    `boiler:"agent_id" boil:"agent_id" json:"agent_id" toml:"agent_id" yaml:"agent_id"`
-	Status           string    `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
-	RepairCode       string    `boiler:"repair_code" boil:"repair_code" json:"repair_code" toml:"repair_code" yaml:"repair_code"`
-	StartedAt        time.Time `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	EndedAt          null.Time `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
-	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	RepairCaseID   string      `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
+	RepairOfferID  string      `boiler:"repair_offer_id" boil:"repair_offer_id" json:"repair_offer_id" toml:"repair_offer_id" yaml:"repair_offer_id"`
+	PlayerID       string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	StartedAt      time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	FinishedAt     null.Time   `boiler:"finished_at" boil:"finished_at" json:"finished_at,omitempty" toml:"finished_at" yaml:"finished_at,omitempty"`
+	FinishedReason null.String `boiler:"finished_reason" boil:"finished_reason" json:"finished_reason,omitempty" toml:"finished_reason" yaml:"finished_reason,omitempty"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *repairAgentR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L repairAgentL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var RepairAgentColumns = struct {
-	ID               string
-	MechRepairCaseID string
-	RepairOfferID    string
-	AgentID          string
-	Status           string
-	RepairCode       string
-	StartedAt        string
-	EndedAt          string
-	CreatedAt        string
-	UpdatedAt        string
-	DeletedAt        string
+	ID             string
+	RepairCaseID   string
+	RepairOfferID  string
+	PlayerID       string
+	StartedAt      string
+	FinishedAt     string
+	FinishedReason string
+	CreatedAt      string
+	UpdatedAt      string
+	DeletedAt      string
 }{
-	ID:               "id",
-	MechRepairCaseID: "mech_repair_case_id",
-	RepairOfferID:    "repair_offer_id",
-	AgentID:          "agent_id",
-	Status:           "status",
-	RepairCode:       "repair_code",
-	StartedAt:        "started_at",
-	EndedAt:          "ended_at",
-	CreatedAt:        "created_at",
-	UpdatedAt:        "updated_at",
-	DeletedAt:        "deleted_at",
+	ID:             "id",
+	RepairCaseID:   "repair_case_id",
+	RepairOfferID:  "repair_offer_id",
+	PlayerID:       "player_id",
+	StartedAt:      "started_at",
+	FinishedAt:     "finished_at",
+	FinishedReason: "finished_reason",
+	CreatedAt:      "created_at",
+	UpdatedAt:      "updated_at",
+	DeletedAt:      "deleted_at",
 }
 
 var RepairAgentTableColumns = struct {
-	ID               string
-	MechRepairCaseID string
-	RepairOfferID    string
-	AgentID          string
-	Status           string
-	RepairCode       string
-	StartedAt        string
-	EndedAt          string
-	CreatedAt        string
-	UpdatedAt        string
-	DeletedAt        string
+	ID             string
+	RepairCaseID   string
+	RepairOfferID  string
+	PlayerID       string
+	StartedAt      string
+	FinishedAt     string
+	FinishedReason string
+	CreatedAt      string
+	UpdatedAt      string
+	DeletedAt      string
 }{
-	ID:               "repair_agents.id",
-	MechRepairCaseID: "repair_agents.mech_repair_case_id",
-	RepairOfferID:    "repair_agents.repair_offer_id",
-	AgentID:          "repair_agents.agent_id",
-	Status:           "repair_agents.status",
-	RepairCode:       "repair_agents.repair_code",
-	StartedAt:        "repair_agents.started_at",
-	EndedAt:          "repair_agents.ended_at",
-	CreatedAt:        "repair_agents.created_at",
-	UpdatedAt:        "repair_agents.updated_at",
-	DeletedAt:        "repair_agents.deleted_at",
+	ID:             "repair_agents.id",
+	RepairCaseID:   "repair_agents.repair_case_id",
+	RepairOfferID:  "repair_agents.repair_offer_id",
+	PlayerID:       "repair_agents.player_id",
+	StartedAt:      "repair_agents.started_at",
+	FinishedAt:     "repair_agents.finished_at",
+	FinishedReason: "repair_agents.finished_reason",
+	CreatedAt:      "repair_agents.created_at",
+	UpdatedAt:      "repair_agents.updated_at",
+	DeletedAt:      "repair_agents.deleted_at",
 }
 
 // Generated where
 
 var RepairAgentWhere = struct {
-	ID               whereHelperstring
-	MechRepairCaseID whereHelperstring
-	RepairOfferID    whereHelperstring
-	AgentID          whereHelperstring
-	Status           whereHelperstring
-	RepairCode       whereHelperstring
-	StartedAt        whereHelpertime_Time
-	EndedAt          whereHelpernull_Time
-	CreatedAt        whereHelpertime_Time
-	UpdatedAt        whereHelpertime_Time
-	DeletedAt        whereHelpernull_Time
+	ID             whereHelperstring
+	RepairCaseID   whereHelperstring
+	RepairOfferID  whereHelperstring
+	PlayerID       whereHelperstring
+	StartedAt      whereHelpertime_Time
+	FinishedAt     whereHelpernull_Time
+	FinishedReason whereHelpernull_String
+	CreatedAt      whereHelpertime_Time
+	UpdatedAt      whereHelpertime_Time
+	DeletedAt      whereHelpernull_Time
 }{
-	ID:               whereHelperstring{field: "\"repair_agents\".\"id\""},
-	MechRepairCaseID: whereHelperstring{field: "\"repair_agents\".\"mech_repair_case_id\""},
-	RepairOfferID:    whereHelperstring{field: "\"repair_agents\".\"repair_offer_id\""},
-	AgentID:          whereHelperstring{field: "\"repair_agents\".\"agent_id\""},
-	Status:           whereHelperstring{field: "\"repair_agents\".\"status\""},
-	RepairCode:       whereHelperstring{field: "\"repair_agents\".\"repair_code\""},
-	StartedAt:        whereHelpertime_Time{field: "\"repair_agents\".\"started_at\""},
-	EndedAt:          whereHelpernull_Time{field: "\"repair_agents\".\"ended_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"repair_agents\".\"created_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"repair_agents\".\"updated_at\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"repair_agents\".\"deleted_at\""},
+	ID:             whereHelperstring{field: "\"repair_agents\".\"id\""},
+	RepairCaseID:   whereHelperstring{field: "\"repair_agents\".\"repair_case_id\""},
+	RepairOfferID:  whereHelperstring{field: "\"repair_agents\".\"repair_offer_id\""},
+	PlayerID:       whereHelperstring{field: "\"repair_agents\".\"player_id\""},
+	StartedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"started_at\""},
+	FinishedAt:     whereHelpernull_Time{field: "\"repair_agents\".\"finished_at\""},
+	FinishedReason: whereHelpernull_String{field: "\"repair_agents\".\"finished_reason\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"created_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"updated_at\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"repair_agents\".\"deleted_at\""},
 }
 
 // RepairAgentRels is where relationship names are stored.
 var RepairAgentRels = struct {
-	Agent              string
-	MechRepairCase     string
-	RepairOffer        string
-	MechRepairCaseLogs string
+	Player       string
+	RepairCase   string
+	RepairOffer  string
+	RepairBlocks string
 }{
-	Agent:              "Agent",
-	MechRepairCase:     "MechRepairCase",
-	RepairOffer:        "RepairOffer",
-	MechRepairCaseLogs: "MechRepairCaseLogs",
+	Player:       "Player",
+	RepairCase:   "RepairCase",
+	RepairOffer:  "RepairOffer",
+	RepairBlocks: "RepairBlocks",
 }
 
 // repairAgentR is where relationships are stored.
 type repairAgentR struct {
-	Agent              *Player                `boiler:"Agent" boil:"Agent" json:"Agent" toml:"Agent" yaml:"Agent"`
-	MechRepairCase     *MechRepairCase        `boiler:"MechRepairCase" boil:"MechRepairCase" json:"MechRepairCase" toml:"MechRepairCase" yaml:"MechRepairCase"`
-	RepairOffer        *RepairOffer           `boiler:"RepairOffer" boil:"RepairOffer" json:"RepairOffer" toml:"RepairOffer" yaml:"RepairOffer"`
-	MechRepairCaseLogs MechRepairCaseLogSlice `boiler:"MechRepairCaseLogs" boil:"MechRepairCaseLogs" json:"MechRepairCaseLogs" toml:"MechRepairCaseLogs" yaml:"MechRepairCaseLogs"`
+	Player       *Player          `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	RepairCase   *RepairCase      `boiler:"RepairCase" boil:"RepairCase" json:"RepairCase" toml:"RepairCase" yaml:"RepairCase"`
+	RepairOffer  *RepairOffer     `boiler:"RepairOffer" boil:"RepairOffer" json:"RepairOffer" toml:"RepairOffer" yaml:"RepairOffer"`
+	RepairBlocks RepairBlockSlice `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
 }
 
 // NewStruct creates a new relationship struct
@@ -149,9 +142,9 @@ func (*repairAgentR) NewStruct() *repairAgentR {
 type repairAgentL struct{}
 
 var (
-	repairAgentAllColumns            = []string{"id", "mech_repair_case_id", "repair_offer_id", "agent_id", "status", "repair_code", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
-	repairAgentColumnsWithoutDefault = []string{"mech_repair_case_id", "repair_offer_id", "agent_id"}
-	repairAgentColumnsWithDefault    = []string{"id", "status", "repair_code", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
+	repairAgentAllColumns            = []string{"id", "repair_case_id", "repair_offer_id", "player_id", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
+	repairAgentColumnsWithoutDefault = []string{"repair_case_id", "repair_offer_id", "player_id"}
+	repairAgentColumnsWithDefault    = []string{"id", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
 	repairAgentPrimaryKeyColumns     = []string{"id"}
 	repairAgentGeneratedColumns      = []string{}
 )
@@ -398,10 +391,10 @@ func (q repairAgentQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// Agent pointed to by the foreign key.
-func (o *RepairAgent) Agent(mods ...qm.QueryMod) playerQuery {
+// Player pointed to by the foreign key.
+func (o *RepairAgent) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.AgentID),
+		qm.Where("\"id\" = ?", o.PlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -413,17 +406,17 @@ func (o *RepairAgent) Agent(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// MechRepairCase pointed to by the foreign key.
-func (o *RepairAgent) MechRepairCase(mods ...qm.QueryMod) mechRepairCaseQuery {
+// RepairCase pointed to by the foreign key.
+func (o *RepairAgent) RepairCase(mods ...qm.QueryMod) repairCaseQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.MechRepairCaseID),
+		qm.Where("\"id\" = ?", o.RepairCaseID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := MechRepairCases(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_repair_cases\"")
+	query := RepairCases(queryMods...)
+	queries.SetFrom(query.Query, "\"repair_cases\"")
 
 	return query
 }
@@ -443,30 +436,30 @@ func (o *RepairAgent) RepairOffer(mods ...qm.QueryMod) repairOfferQuery {
 	return query
 }
 
-// MechRepairCaseLogs retrieves all the mech_repair_case_log's MechRepairCaseLogs with an executor.
-func (o *RepairAgent) MechRepairCaseLogs(mods ...qm.QueryMod) mechRepairCaseLogQuery {
+// RepairBlocks retrieves all the repair_block's RepairBlocks with an executor.
+func (o *RepairAgent) RepairBlocks(mods ...qm.QueryMod) repairBlockQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mech_repair_case_logs\".\"repair_agent_id\"=?", o.ID),
+		qm.Where("\"repair_blocks\".\"repair_agent_id\"=?", o.ID),
 	)
 
-	query := MechRepairCaseLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_repair_case_logs\"")
+	query := RepairBlocks(queryMods...)
+	queries.SetFrom(query.Query, "\"repair_blocks\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mech_repair_case_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"repair_blocks\".*"})
 	}
 
 	return query
 }
 
-// LoadAgent allows an eager lookup of values, cached into the
+// LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (repairAgentL) LoadAgent(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
+func (repairAgentL) LoadPlayer(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
 	var slice []*RepairAgent
 	var object *RepairAgent
 
@@ -481,7 +474,7 @@ func (repairAgentL) LoadAgent(e boil.Executor, singular bool, maybeRepairAgent i
 		if object.R == nil {
 			object.R = &repairAgentR{}
 		}
-		args = append(args, object.AgentID)
+		args = append(args, object.PlayerID)
 
 	} else {
 	Outer:
@@ -491,12 +484,12 @@ func (repairAgentL) LoadAgent(e boil.Executor, singular bool, maybeRepairAgent i
 			}
 
 			for _, a := range args {
-				if a == obj.AgentID {
+				if a == obj.PlayerID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.AgentID)
+			args = append(args, obj.PlayerID)
 
 		}
 	}
@@ -545,22 +538,22 @@ func (repairAgentL) LoadAgent(e boil.Executor, singular bool, maybeRepairAgent i
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Agent = foreign
+		object.R.Player = foreign
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.AgentRepairAgents = append(foreign.R.AgentRepairAgents, object)
+		foreign.R.RepairAgents = append(foreign.R.RepairAgents, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.AgentID == foreign.ID {
-				local.R.Agent = foreign
+			if local.PlayerID == foreign.ID {
+				local.R.Player = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.AgentRepairAgents = append(foreign.R.AgentRepairAgents, local)
+				foreign.R.RepairAgents = append(foreign.R.RepairAgents, local)
 				break
 			}
 		}
@@ -569,9 +562,9 @@ func (repairAgentL) LoadAgent(e boil.Executor, singular bool, maybeRepairAgent i
 	return nil
 }
 
-// LoadMechRepairCase allows an eager lookup of values, cached into the
+// LoadRepairCase allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
+func (repairAgentL) LoadRepairCase(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
 	var slice []*RepairAgent
 	var object *RepairAgent
 
@@ -586,7 +579,7 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 		if object.R == nil {
 			object.R = &repairAgentR{}
 		}
-		args = append(args, object.MechRepairCaseID)
+		args = append(args, object.RepairCaseID)
 
 	} else {
 	Outer:
@@ -596,12 +589,12 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 			}
 
 			for _, a := range args {
-				if a == obj.MechRepairCaseID {
+				if a == obj.RepairCaseID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.MechRepairCaseID)
+			args = append(args, obj.RepairCaseID)
 
 		}
 	}
@@ -611,9 +604,9 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 	}
 
 	query := NewQuery(
-		qm.From(`mech_repair_cases`),
-		qm.WhereIn(`mech_repair_cases.id in ?`, args...),
-		qmhelper.WhereIsNull(`mech_repair_cases.deleted_at`),
+		qm.From(`repair_cases`),
+		qm.WhereIn(`repair_cases.id in ?`, args...),
+		qmhelper.WhereIsNull(`repair_cases.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -621,19 +614,19 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechRepairCase")
+		return errors.Wrap(err, "failed to eager load RepairCase")
 	}
 
-	var resultSlice []*MechRepairCase
+	var resultSlice []*RepairCase
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechRepairCase")
+		return errors.Wrap(err, "failed to bind eager loaded slice RepairCase")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_repair_cases")
+		return errors.Wrap(err, "failed to close results of eager load for repair_cases")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_repair_cases")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_cases")
 	}
 
 	if len(repairAgentAfterSelectHooks) != 0 {
@@ -650,9 +643,9 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.MechRepairCase = foreign
+		object.R.RepairCase = foreign
 		if foreign.R == nil {
-			foreign.R = &mechRepairCaseR{}
+			foreign.R = &repairCaseR{}
 		}
 		foreign.R.RepairAgents = append(foreign.R.RepairAgents, object)
 		return nil
@@ -660,10 +653,10 @@ func (repairAgentL) LoadMechRepairCase(e boil.Executor, singular bool, maybeRepa
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.MechRepairCaseID == foreign.ID {
-				local.R.MechRepairCase = foreign
+			if local.RepairCaseID == foreign.ID {
+				local.R.RepairCase = foreign
 				if foreign.R == nil {
-					foreign.R = &mechRepairCaseR{}
+					foreign.R = &repairCaseR{}
 				}
 				foreign.R.RepairAgents = append(foreign.R.RepairAgents, local)
 				break
@@ -779,9 +772,9 @@ func (repairAgentL) LoadRepairOffer(e boil.Executor, singular bool, maybeRepairA
 	return nil
 }
 
-// LoadMechRepairCaseLogs allows an eager lookup of values, cached into the
+// LoadRepairBlocks allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
+func (repairAgentL) LoadRepairBlocks(e boil.Executor, singular bool, maybeRepairAgent interface{}, mods queries.Applicator) error {
 	var slice []*RepairAgent
 	var object *RepairAgent
 
@@ -805,7 +798,7 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
@@ -819,8 +812,8 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 	}
 
 	query := NewQuery(
-		qm.From(`mech_repair_case_logs`),
-		qm.WhereIn(`mech_repair_case_logs.repair_agent_id in ?`, args...),
+		qm.From(`repair_blocks`),
+		qm.WhereIn(`repair_blocks.repair_agent_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -828,22 +821,22 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load mech_repair_case_logs")
+		return errors.Wrap(err, "failed to eager load repair_blocks")
 	}
 
-	var resultSlice []*MechRepairCaseLog
+	var resultSlice []*RepairBlock
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mech_repair_case_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice repair_blocks")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mech_repair_case_logs")
+		return errors.Wrap(err, "failed to close results in eager load on repair_blocks")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_repair_case_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_blocks")
 	}
 
-	if len(mechRepairCaseLogAfterSelectHooks) != 0 {
+	if len(repairBlockAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -851,10 +844,10 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 		}
 	}
 	if singular {
-		object.R.MechRepairCaseLogs = resultSlice
+		object.R.RepairBlocks = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &mechRepairCaseLogR{}
+				foreign.R = &repairBlockR{}
 			}
 			foreign.R.RepairAgent = object
 		}
@@ -863,10 +856,10 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.RepairAgentID) {
-				local.R.MechRepairCaseLogs = append(local.R.MechRepairCaseLogs, foreign)
+			if local.ID == foreign.RepairAgentID {
+				local.R.RepairBlocks = append(local.R.RepairBlocks, foreign)
 				if foreign.R == nil {
-					foreign.R = &mechRepairCaseLogR{}
+					foreign.R = &repairBlockR{}
 				}
 				foreign.R.RepairAgent = local
 				break
@@ -877,10 +870,10 @@ func (repairAgentL) LoadMechRepairCaseLogs(e boil.Executor, singular bool, maybe
 	return nil
 }
 
-// SetAgent of the repairAgent to the related item.
-// Sets o.R.Agent to related.
-// Adds o to related.R.AgentRepairAgents.
-func (o *RepairAgent) SetAgent(exec boil.Executor, insert bool, related *Player) error {
+// SetPlayer of the repairAgent to the related item.
+// Sets o.R.Player to related.
+// Adds o to related.R.RepairAgents.
+func (o *RepairAgent) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -890,7 +883,7 @@ func (o *RepairAgent) SetAgent(exec boil.Executor, insert bool, related *Player)
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"repair_agents\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"agent_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
 		strmangle.WhereClause("\"", "\"", 2, repairAgentPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -903,30 +896,30 @@ func (o *RepairAgent) SetAgent(exec boil.Executor, insert bool, related *Player)
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.AgentID = related.ID
+	o.PlayerID = related.ID
 	if o.R == nil {
 		o.R = &repairAgentR{
-			Agent: related,
+			Player: related,
 		}
 	} else {
-		o.R.Agent = related
+		o.R.Player = related
 	}
 
 	if related.R == nil {
 		related.R = &playerR{
-			AgentRepairAgents: RepairAgentSlice{o},
+			RepairAgents: RepairAgentSlice{o},
 		}
 	} else {
-		related.R.AgentRepairAgents = append(related.R.AgentRepairAgents, o)
+		related.R.RepairAgents = append(related.R.RepairAgents, o)
 	}
 
 	return nil
 }
 
-// SetMechRepairCase of the repairAgent to the related item.
-// Sets o.R.MechRepairCase to related.
+// SetRepairCase of the repairAgent to the related item.
+// Sets o.R.RepairCase to related.
 // Adds o to related.R.RepairAgents.
-func (o *RepairAgent) SetMechRepairCase(exec boil.Executor, insert bool, related *MechRepairCase) error {
+func (o *RepairAgent) SetRepairCase(exec boil.Executor, insert bool, related *RepairCase) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -936,7 +929,7 @@ func (o *RepairAgent) SetMechRepairCase(exec boil.Executor, insert bool, related
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"repair_agents\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_repair_case_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"repair_case_id"}),
 		strmangle.WhereClause("\"", "\"", 2, repairAgentPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -949,17 +942,17 @@ func (o *RepairAgent) SetMechRepairCase(exec boil.Executor, insert bool, related
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.MechRepairCaseID = related.ID
+	o.RepairCaseID = related.ID
 	if o.R == nil {
 		o.R = &repairAgentR{
-			MechRepairCase: related,
+			RepairCase: related,
 		}
 	} else {
-		o.R.MechRepairCase = related
+		o.R.RepairCase = related
 	}
 
 	if related.R == nil {
-		related.R = &mechRepairCaseR{
+		related.R = &repairCaseR{
 			RepairAgents: RepairAgentSlice{o},
 		}
 	} else {
@@ -1015,23 +1008,23 @@ func (o *RepairAgent) SetRepairOffer(exec boil.Executor, insert bool, related *R
 	return nil
 }
 
-// AddMechRepairCaseLogs adds the given related objects to the existing relationships
+// AddRepairBlocks adds the given related objects to the existing relationships
 // of the repair_agent, optionally inserting them as new records.
-// Appends related to o.R.MechRepairCaseLogs.
+// Appends related to o.R.RepairBlocks.
 // Sets related.R.RepairAgent appropriately.
-func (o *RepairAgent) AddMechRepairCaseLogs(exec boil.Executor, insert bool, related ...*MechRepairCaseLog) error {
+func (o *RepairAgent) AddRepairBlocks(exec boil.Executor, insert bool, related ...*RepairBlock) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.RepairAgentID, o.ID)
+			rel.RepairAgentID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"mech_repair_case_logs\" SET %s WHERE %s",
+				"UPDATE \"repair_blocks\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"repair_agent_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechRepairCaseLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, repairBlockPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1043,100 +1036,27 @@ func (o *RepairAgent) AddMechRepairCaseLogs(exec boil.Executor, insert bool, rel
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.RepairAgentID, o.ID)
+			rel.RepairAgentID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &repairAgentR{
-			MechRepairCaseLogs: related,
+			RepairBlocks: related,
 		}
 	} else {
-		o.R.MechRepairCaseLogs = append(o.R.MechRepairCaseLogs, related...)
+		o.R.RepairBlocks = append(o.R.RepairBlocks, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &mechRepairCaseLogR{
+			rel.R = &repairBlockR{
 				RepairAgent: o,
 			}
 		} else {
 			rel.R.RepairAgent = o
 		}
 	}
-	return nil
-}
-
-// SetMechRepairCaseLogs removes all previously related items of the
-// repair_agent replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.RepairAgent's MechRepairCaseLogs accordingly.
-// Replaces o.R.MechRepairCaseLogs with related.
-// Sets related.R.RepairAgent's MechRepairCaseLogs accordingly.
-func (o *RepairAgent) SetMechRepairCaseLogs(exec boil.Executor, insert bool, related ...*MechRepairCaseLog) error {
-	query := "update \"mech_repair_case_logs\" set \"repair_agent_id\" = null where \"repair_agent_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.MechRepairCaseLogs {
-			queries.SetScanner(&rel.RepairAgentID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.RepairAgent = nil
-		}
-
-		o.R.MechRepairCaseLogs = nil
-	}
-	return o.AddMechRepairCaseLogs(exec, insert, related...)
-}
-
-// RemoveMechRepairCaseLogs relationships from objects passed in.
-// Removes related items from R.MechRepairCaseLogs (uses pointer comparison, removal does not keep order)
-// Sets related.R.RepairAgent.
-func (o *RepairAgent) RemoveMechRepairCaseLogs(exec boil.Executor, related ...*MechRepairCaseLog) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.RepairAgentID, nil)
-		if rel.R != nil {
-			rel.R.RepairAgent = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("repair_agent_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.MechRepairCaseLogs {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.MechRepairCaseLogs)
-			if ln > 1 && i < ln-1 {
-				o.R.MechRepairCaseLogs[i] = o.R.MechRepairCaseLogs[ln-1]
-			}
-			o.R.MechRepairCaseLogs = o.R.MechRepairCaseLogs[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 
