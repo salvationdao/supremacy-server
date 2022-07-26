@@ -343,7 +343,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	crateType := req.Type
 	user, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.PlayerID)).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
+		gamelog.L.Error().Err(err).Msg("Failed to get player by player id")
 
 		return http.StatusInternalServerError, err
 	}
