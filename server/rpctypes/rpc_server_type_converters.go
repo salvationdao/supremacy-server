@@ -39,13 +39,6 @@ func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 			OwnerID:          skin.CollectionItem.OwnerID,
 			MarketLocked:     skin.CollectionItem.MarketLocked,
 			XsynLocked:       skin.CollectionItem.XsynLocked,
-			ImageURL:         skin.CollectionItem.ImageURL,
-			CardAnimationURL: skin.CollectionItem.CardAnimationURL,
-			AvatarURL:        skin.CollectionItem.AvatarURL,
-			LargeImageURL:    skin.CollectionItem.LargeImageURL,
-			BackgroundColor:  skin.CollectionItem.BackgroundColor,
-			AnimationURL:     skin.CollectionItem.AnimationURL,
-			YoutubeURL:       skin.CollectionItem.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
@@ -55,11 +48,6 @@ func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 		MechModel:        skin.MechModelID,
 		EquippedOn:       skin.EquippedOn,
 		Tier:             skin.Tier,
-		ImageURL:         skin.ImageURL,
-		AnimationURL:     skin.AnimationURL,
-		CardAnimationURL: skin.CardAnimationURL,
-		AvatarURL:        skin.AvatarURL,
-		LargeImageURL:    skin.LargeImageURL,
 		CreatedAt:        skin.CreatedAt,
 	}
 }
@@ -84,13 +72,6 @@ func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation 
 			OwnerID:          animation.CollectionItem.OwnerID,
 			MarketLocked:     animation.CollectionItem.MarketLocked,
 			XsynLocked:       animation.CollectionItem.XsynLocked,
-			ImageURL:         animation.CollectionItem.ImageURL,
-			CardAnimationURL: animation.CollectionItem.CardAnimationURL,
-			AvatarURL:        animation.CollectionItem.AvatarURL,
-			LargeImageURL:    animation.CollectionItem.LargeImageURL,
-			BackgroundColor:  animation.CollectionItem.BackgroundColor,
-			AnimationURL:     animation.CollectionItem.AnimationURL,
-			YoutubeURL:       animation.CollectionItem.YoutubeURL,
 		},
 		ID:             animation.ID,
 		BlueprintID:    animation.BlueprintID,
@@ -125,13 +106,6 @@ func ServerPowerCoreToApiV1(ec *server.PowerCore) *PowerCore {
 			OwnerID:          ec.CollectionItem.OwnerID,
 			MarketLocked:     ec.CollectionItem.MarketLocked,
 			XsynLocked:       ec.CollectionItem.XsynLocked,
-			ImageURL:         ec.CollectionItem.ImageURL,
-			CardAnimationURL: ec.CollectionItem.CardAnimationURL,
-			AvatarURL:        ec.CollectionItem.AvatarURL,
-			LargeImageURL:    ec.CollectionItem.LargeImageURL,
-			BackgroundColor:  ec.CollectionItem.BackgroundColor,
-			AnimationURL:     ec.CollectionItem.AnimationURL,
-			YoutubeURL:       ec.CollectionItem.YoutubeURL,
 		},
 		ID:           ec.ID,
 		OwnerID:      ec.OwnerID,
@@ -168,13 +142,6 @@ func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
 			OwnerID:          weapon.CollectionItem.OwnerID,
 			MarketLocked:     weapon.CollectionItem.MarketLocked,
 			XsynLocked:       weapon.CollectionItem.XsynLocked,
-			ImageURL:         weapon.CollectionItem.ImageURL,
-			CardAnimationURL: weapon.CollectionItem.CardAnimationURL,
-			AvatarURL:        weapon.CollectionItem.AvatarURL,
-			LargeImageURL:    weapon.CollectionItem.LargeImageURL,
-			BackgroundColor:  weapon.CollectionItem.BackgroundColor,
-			AnimationURL:     weapon.CollectionItem.AnimationURL,
-			YoutubeURL:       weapon.CollectionItem.YoutubeURL,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,
@@ -221,13 +188,6 @@ func ServerUtilityToApiV1(ec *server.Utility) *Utility {
 			OwnerID:          ec.CollectionItem.OwnerID,
 			MarketLocked:     ec.CollectionItem.MarketLocked,
 			XsynLocked:       ec.CollectionItem.XsynLocked,
-			ImageURL:         ec.CollectionItem.ImageURL,
-			CardAnimationURL: ec.CollectionItem.CardAnimationURL,
-			AvatarURL:        ec.CollectionItem.AvatarURL,
-			LargeImageURL:    ec.CollectionItem.LargeImageURL,
-			BackgroundColor:  ec.CollectionItem.BackgroundColor,
-			AnimationURL:     ec.CollectionItem.AnimationURL,
-			YoutubeURL:       ec.CollectionItem.YoutubeURL,
 		},
 		ID:             ec.ID,
 		BrandID:        ec.BrandID,
@@ -325,13 +285,6 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 			OwnerID:          mech.CollectionItem.OwnerID,
 			MarketLocked:     mech.CollectionItem.MarketLocked,
 			XsynLocked:       mech.CollectionItem.XsynLocked,
-			ImageURL:         mech.CollectionItem.ImageURL,
-			CardAnimationURL: mech.CollectionItem.CardAnimationURL,
-			AvatarURL:        mech.CollectionItem.AvatarURL,
-			LargeImageURL:    mech.CollectionItem.LargeImageURL,
-			BackgroundColor:  mech.CollectionItem.BackgroundColor,
-			AnimationURL:     mech.CollectionItem.AnimationURL,
-			YoutubeURL:       mech.CollectionItem.YoutubeURL,
 		},
 		ID:                   mech.ID,
 		BrandID:              mech.BrandID,
@@ -404,12 +357,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			OwnerID:          i.OwnerID,
 			Data:             asJson,
 			AssetType:        null.StringFrom(i.ItemType),
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
 		}
 
 		if isGenesisOrLimited && i.ChassisSkin != nil {
@@ -488,13 +435,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				}
 			}
 
-			asset.ImageURL = i.ChassisSkin.ImageURL
-			asset.BackgroundColor = i.ChassisSkin.BackgroundColor
-			asset.AnimationURL = i.ChassisSkin.AnimationURL
-			asset.YoutubeURL = i.ChassisSkin.YoutubeURL
-			asset.AvatarURL = i.ChassisSkin.AvatarURL
-			asset.CardAnimationURL = i.ChassisSkin.CardAnimationURL
-
 			asset.Attributes = append(asset.Attributes,
 				&Attribute{
 					TraitType: "Submodel",
@@ -555,12 +495,6 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 
 			Name:             i.Label,
 			Attributes:       attributes,
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
 		})
 	}
 
@@ -630,13 +564,6 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			ImageURL:         i.ImageURL,
-			AnimationURL:     i.AnimationURL,
-			LargeImageURL:    i.LargeImageURL,
-			CardAnimationURL: i.CardAnimationURL,
-			AvatarURL:        i.AvatarURL,
-			BackgroundColor:  i.BackgroundColor,
-			YoutubeURL:       i.YoutubeURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -717,12 +644,6 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
 			XsynLocked:       i.XsynLocked,
 		})
 
@@ -860,12 +781,6 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -932,13 +847,6 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			Name:             i.Label,
 			Attributes:       attributes,
 			AssetType:        null.StringFrom(i.ItemType),
-			ImageURL:         i.ImageURL,
-			AnimationURL:     i.AnimationURL,
-			LargeImageURL:    i.LargeImageURL,
-			CardAnimationURL: i.CardAnimationURL,
-			AvatarURL:        i.AvatarURL,
-			BackgroundColor:  i.BackgroundColor,
-			YoutubeURL:       i.YoutubeURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -1004,12 +912,6 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
-			ImageURL:         i.ImageURL,
-			BackgroundColor:  i.BackgroundColor,
-			AnimationURL:     i.AnimationURL,
-			YoutubeURL:       i.YoutubeURL,
-			AvatarURL:        i.AvatarURL,
-			CardAnimationURL: i.CardAnimationURL,
 			XsynLocked:       i.XsynLocked,
 		})
 	}
@@ -1053,12 +955,6 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 		OwnerID:          mysteryCrate.OwnerID,
 		AssetType:        null.StringFrom(mysteryCrate.ItemType),
 		Name:             mysteryCrate.Label,
-		ImageURL:         mysteryCrate.ImageURL,
-		BackgroundColor:  mysteryCrate.BackgroundColor,
-		AnimationURL:     mysteryCrate.AnimationURL,
-		YoutubeURL:       mysteryCrate.YoutubeURL,
-		AvatarURL:        mysteryCrate.AvatarURL,
-		CardAnimationURL: mysteryCrate.CardAnimationURL,
 	}
 
 	return asset

@@ -38,13 +38,6 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 		newUtility.ID,
 		utility.Tier,
 		ownerID.String(),
-		utility.ImageURL,
-		utility.CardAnimationURL,
-		utility.AvatarURL,
-		utility.LargeImageURL,
-		utility.BackgroundColor,
-		utility.AnimationURL,
-		utility.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

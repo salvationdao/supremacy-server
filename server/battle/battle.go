@@ -1943,8 +1943,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Health:      uint32(mech.MaxHitpoints),
 			Speed:       mech.Speed,
 			Tier:        mech.Tier,
-			Image:       mech.ChassisSkin.ImageURL.String,
-			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
+			// TODO: vinnie fix me
+			//Image:       mech.ChassisSkin.ImageURL.String,
+			//ImageAvatar: mech.ChassisSkin.AvatarURL.String,
 
 			Faction: &Faction{
 				ID:    mech.Faction.ID,

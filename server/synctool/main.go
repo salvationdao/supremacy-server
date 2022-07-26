@@ -63,6 +63,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%smech_model_skin_compatibilities.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncMechModelSkinCompatibilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	//err = SyncMysteryCrates(f, dt.DB)
 	//if err != nil {
 	//	return err
@@ -187,7 +197,6 @@ func RemoveFKContraints(dt StaticSyncTool) error {
 			ALTER TABLE weapon_models ADD CONSTRAINT weapon_models_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES brands(id) ON UPDATE CASCADE ;
 
 			ALTER TABLE blueprint_mech_skin DROP CONSTRAINT blueprint_chassis_skin_mech_model_fkey;
-			ALTER TABLE blueprint_mech_skin ADD CONSTRAINT blueprint_chassis_skin_mech_model_fkey FOREIGN KEY (mech_model) REFERENCES mech_models(id) ON UPDATE CASCADE;
 
 			ALTER TABLE mech_skin DROP CONSTRAINT chassis_skin_blueprint_id_fkey;
 			ALTER TABLE mech_skin ADD CONSTRAINT chassis_skin_blueprint_id_fkey FOREIGN KEY (blueprint_id) REFERENCES blueprint_mech_skin(id) ON UPDATE CASCADE;
@@ -283,6 +292,88 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 	return nil
 }
 
+func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
+
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	var mechModelSkinCompatibities []*types.MechModelSkinCompatibility
+	for _, record := range records {
+		mechModelSkinCompatibity := &types.MechModelSkinCompatibility{
+			MechSkinID:       record[0],
+			MechModelID:      record[1],
+			ImageUrl:         record[2],
+			AnimationUrl:     record[3],
+			CardAnimationUrl: record[4],
+			LargeImageUrl:    record[5],
+			AvatarUrl:        record[6],
+			BackgroundColor:  record[8],
+			YoutubeUrl:       record[9],
+		}
+
+		mechModelSkinCompatibities = append(mechModelSkinCompatibities, mechModelSkinCompatibity)
+	}
+
+	count := 0
+
+	for _, mechModelSkinCompat := range mechModelSkinCompatibities {
+		_, err = db.Exec(`
+			INSERT INTO mech_model_skin_compatibilities (
+												blueprint_mech_skin_id,
+												mech_model_id,
+												image_url,
+												card_animation_url,
+												avatar_url,
+												large_image_url,
+												background_color,
+												animation_url,
+												youtube_url
+			)
+			VALUES ($1,$2,$3,$4,$5, $6, $7, $8, $9)
+			ON CONFLICT (blueprint_mech_skin_id, mech_model_id)
+			DO
+				UPDATE SET 	blueprint_mech_skin_id = $1,
+							mech_model_id = $2,
+							image_url = $3,
+							card_animation_url = $4,
+							avatar_url = $5,
+							large_image_url = $6,
+							background_color = $7,
+							animation_url = $8,
+							youtube_url = $9;
+		`,
+			mechModelSkinCompat.MechSkinID,
+			mechModelSkinCompat.MechModelID,
+			null.NewString(mechModelSkinCompat.ImageUrl, mechModelSkinCompat.ImageUrl != ""),
+			null.NewString(mechModelSkinCompat.AnimationUrl, mechModelSkinCompat.AnimationUrl != ""),
+			null.NewString(mechModelSkinCompat.CardAnimationUrl, mechModelSkinCompat.CardAnimationUrl != ""),
+			null.NewString(mechModelSkinCompat.LargeImageUrl, mechModelSkinCompat.LargeImageUrl != ""),
+			null.NewString(mechModelSkinCompat.AvatarUrl, mechModelSkinCompat.AvatarUrl != ""),
+			null.NewString(mechModelSkinCompat.BackgroundColor, mechModelSkinCompat.BackgroundColor != ""),
+			null.NewString(mechModelSkinCompat.YoutubeUrl, mechModelSkinCompat.YoutubeUrl != ""),
+		)
+		if err != nil {
+			fmt.Println("ERROR: " + err.Error())
+			continue
+		}
+		count++
+		fmt.Printf("UPDATED: %s:%s \n",mechModelSkinCompat.MechSkinID, mechModelSkinCompat.MechModelID)
+	}
+
+	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
+
+	return nil
+}
+
+
 func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
@@ -298,79 +389,48 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	var MechSkins []types.MechSkin
 	for _, record := range records {
 		mechModel := &types.MechSkin{
-			ID:               record[0],
-			Collection:       record[1],
-			MechModel:        record[2],
-			Label:            record[3],
-			Tier:             record[4],
-			ImageUrl:         null.StringFrom(record[5]),
-			AnimationUrl:     null.StringFrom(record[6]),
-			CardAnimationUrl: null.StringFrom(record[7]),
-			LargeImageUrl:    null.StringFrom(record[8]),
-			AvatarUrl:        null.StringFrom(record[9]),
-			BackgroundColor:  record[11],
-			YoutubeURL:       record[12],
-			MechType:         record[13],
-			StatModifier:     record[14],
+			ID:           record[0],
+			Collection:   record[1],
+			Label:        record[2],
+			Tier:         record[3],
+			StatModifier: record[5],
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
 	}
 
 	for _, mechSkin := range MechSkins {
-		imageURl := &mechSkin.ImageUrl.String
-		if !mechSkin.ImageUrl.Valid || mechSkin.ImageUrl.String == "" {
-			imageURl = nil
-		}
-
-		animationURL := &mechSkin.AnimationUrl.String
-		if !mechSkin.AnimationUrl.Valid || mechSkin.AnimationUrl.String == "" {
-			animationURL = nil
-		}
-
-		cardAnimationURL := &mechSkin.CardAnimationUrl.String
-		if !mechSkin.CardAnimationUrl.Valid || mechSkin.CardAnimationUrl.String == "" {
-			cardAnimationURL = nil
-		}
-
-		largeImageURL := &mechSkin.LargeImageUrl.String
-		if !mechSkin.LargeImageUrl.Valid || mechSkin.LargeImageUrl.String == "" {
-			largeImageURL = nil
-		}
-
-		avatarURL := &mechSkin.AvatarUrl.String
-		if !mechSkin.AvatarUrl.Valid || mechSkin.AvatarUrl.String == "" {
-			avatarURL = nil
-		}
-
-		statModifier := &mechSkin.StatModifier
-		if mechSkin.StatModifier == "" {
-			statModifier = nil
-		}
-
-		backgroundColor := &mechSkin.BackgroundColor
-		if mechSkin.BackgroundColor == "" {
-			backgroundColor = nil
-		}
-
-		youtubeURL := &mechSkin.YoutubeURL
-		if mechSkin.YoutubeURL == "" {
-			youtubeURL = nil
-		}
+		statModifier := null.NewString(mechSkin.StatModifier, mechSkin.StatModifier != "")
 
 		_, err = db.Exec(`
-			INSERT INTO blueprint_mech_skin(id,collection, mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url, avatar_url,background_color, youtube_url, mech_type, stat_modifier)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			INSERT INTO blueprint_mech_skin(
+			                                id,
+			                                collection,
+			                                label,
+			                                tier,
+			                                stat_modifier
+			                                )
+			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (id)
 			DO
-			    UPDATE SET id=$1,collection=$2, mech_model=$3, label=$4, tier=$5, image_url=$6, animation_url=$7, card_animation_url=$8, large_image_url=$9, avatar_url=$10,background_color=$11, youtube_url=$12, mech_type=$13, stat_modifier=$14;
-		`, mechSkin.ID, mechSkin.Collection, mechSkin.MechModel, mechSkin.Label, mechSkin.Tier, imageURl, animationURL, cardAnimationURL, largeImageURL, avatarURL, backgroundColor, youtubeURL, mechSkin.MechType, statModifier)
+			    UPDATE SET id=$1,
+			               collection=$2,
+			               label=$3,
+			               tier=$4,
+			               stat_modifier=$5;
+		`,
+			mechSkin.ID,
+			mechSkin.Collection,
+			mechSkin.Label,
+			mechSkin.Tier,
+			statModifier,
+			)
 		if err != nil {
-			fmt.Println(err.Error()+mechSkin.ID, mechSkin.MechModel)
+			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.MechModel)
+		fmt.Println("UPDATED: "+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.Label)
 	}
 
 	fmt.Println("Finish syncing mech skins")

@@ -30,11 +30,6 @@ type MechSkin struct {
 	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	MechModel             string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
 	EquippedOn            null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	ImageURL              null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	AnimationURL          null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	CardAnimationURL      null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL             null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL         null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LockedToMech          bool        `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 
@@ -50,11 +45,6 @@ var MechSkinColumns = struct {
 	Label                 string
 	MechModel             string
 	EquippedOn            string
-	ImageURL              string
-	AnimationURL          string
-	CardAnimationURL      string
-	AvatarURL             string
-	LargeImageURL         string
 	CreatedAt             string
 	LockedToMech          string
 }{
@@ -65,11 +55,6 @@ var MechSkinColumns = struct {
 	Label:                 "label",
 	MechModel:             "mech_model",
 	EquippedOn:            "equipped_on",
-	ImageURL:              "image_url",
-	AnimationURL:          "animation_url",
-	CardAnimationURL:      "card_animation_url",
-	AvatarURL:             "avatar_url",
-	LargeImageURL:         "large_image_url",
 	CreatedAt:             "created_at",
 	LockedToMech:          "locked_to_mech",
 }
@@ -82,11 +67,6 @@ var MechSkinTableColumns = struct {
 	Label                 string
 	MechModel             string
 	EquippedOn            string
-	ImageURL              string
-	AnimationURL          string
-	CardAnimationURL      string
-	AvatarURL             string
-	LargeImageURL         string
 	CreatedAt             string
 	LockedToMech          string
 }{
@@ -97,11 +77,6 @@ var MechSkinTableColumns = struct {
 	Label:                 "mech_skin.label",
 	MechModel:             "mech_skin.mech_model",
 	EquippedOn:            "mech_skin.equipped_on",
-	ImageURL:              "mech_skin.image_url",
-	AnimationURL:          "mech_skin.animation_url",
-	CardAnimationURL:      "mech_skin.card_animation_url",
-	AvatarURL:             "mech_skin.avatar_url",
-	LargeImageURL:         "mech_skin.large_image_url",
 	CreatedAt:             "mech_skin.created_at",
 	LockedToMech:          "mech_skin.locked_to_mech",
 }
@@ -140,11 +115,6 @@ var MechSkinWhere = struct {
 	Label                 whereHelperstring
 	MechModel             whereHelperstring
 	EquippedOn            whereHelpernull_String
-	ImageURL              whereHelpernull_String
-	AnimationURL          whereHelpernull_String
-	CardAnimationURL      whereHelpernull_String
-	AvatarURL             whereHelpernull_String
-	LargeImageURL         whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
 	LockedToMech          whereHelperbool
 }{
@@ -155,11 +125,6 @@ var MechSkinWhere = struct {
 	Label:                 whereHelperstring{field: "\"mech_skin\".\"label\""},
 	MechModel:             whereHelperstring{field: "\"mech_skin\".\"mech_model\""},
 	EquippedOn:            whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
-	ImageURL:              whereHelpernull_String{field: "\"mech_skin\".\"image_url\""},
-	AnimationURL:          whereHelpernull_String{field: "\"mech_skin\".\"animation_url\""},
-	CardAnimationURL:      whereHelpernull_String{field: "\"mech_skin\".\"card_animation_url\""},
-	AvatarURL:             whereHelpernull_String{field: "\"mech_skin\".\"avatar_url\""},
-	LargeImageURL:         whereHelpernull_String{field: "\"mech_skin\".\"large_image_url\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
 	LockedToMech:          whereHelperbool{field: "\"mech_skin\".\"locked_to_mech\""},
 }
@@ -194,9 +159,9 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "mech_model", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at", "locked_to_mech"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "mech_model", "equipped_on", "created_at", "locked_to_mech"}
 	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label", "mech_model"}
-	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at", "locked_to_mech"}
+	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}
 )

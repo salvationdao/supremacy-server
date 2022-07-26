@@ -68,6 +68,7 @@ var TableNames = struct {
 	MarketplaceEvents                                  string
 	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
+	MechModelSkinCompatibilities                       string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
 	MechRepairCases                                    string
@@ -205,6 +206,7 @@ var TableNames = struct {
 	MarketplaceEvents:            "marketplace_events",
 	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
+	MechModelSkinCompatibilities: "mech_model_skin_compatibilities",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
 	MechRepairCases:              "mech_repair_cases",

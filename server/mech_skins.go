@@ -19,11 +19,6 @@ type MechSkin struct {
 	MechModelID           string      `json:"mech_model_id"`
 	MechModelName         string      `json:"mech_model_name"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
-	ImageURL              null.String `json:"image_url,omitempty"`
-	AnimationURL          null.String `json:"animation_url,omitempty"`
-	CardAnimationURL      null.String `json:"card_animation_url,omitempty"`
-	AvatarURL             null.String `json:"avatar_url,omitempty"`
-	LargeImageURL         null.String `json:"large_image_url,omitempty"`
 	CreatedAt             time.Time   `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails
@@ -40,17 +35,17 @@ func (b *MechSkin) Scan(value interface{}) error {
 type BlueprintMechSkin struct {
 	ID               string      `json:"id"`
 	Collection       string      `json:"collection"`
-	MechModel        string      `json:"mech_model"`
 	Label            string      `json:"label"`
 	Tier             string      `json:"tier,omitempty"`
-	ImageURL         null.String `json:"image_url,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	// TODO: vinnie add
+	//ImageURL         null.String `json:"image_url,omitempty"`
+	//AnimationURL     null.String `json:"animation_url,omitempty"`
+	//CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	//LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	//AvatarURL        null.String `json:"avatar_url,omitempty"`
+	//BackgroundColor  null.String `json:"background_color,omitempty"`
+	//YoutubeURL       null.String `json:"youtube_url,omitempty"`
 	CreatedAt        time.Time   `json:"created_at"`
-	BackgroundColor  null.String `json:"background_color,omitempty"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -69,14 +64,8 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 	return &BlueprintMechSkin{
 		ID:               mechSkin.ID,
 		Collection:       mechSkin.Collection,
-		MechModel:        mechSkin.MechModel,
 		Label:            mechSkin.Label,
 		Tier:             mechSkin.Tier,
-		ImageURL:         mechSkin.ImageURL,
-		AnimationURL:     mechSkin.AnimationURL,
-		CardAnimationURL: mechSkin.CardAnimationURL,
-		LargeImageURL:    mechSkin.LargeImageURL,
-		AvatarURL:        mechSkin.AvatarURL,
 		CreatedAt:        mechSkin.CreatedAt,
 	}
 }
@@ -94,13 +83,6 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
 			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
@@ -108,11 +90,6 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		Label:            skin.Label,
 		MechModelID:      skin.MechModel,
 		EquippedOn:       skin.EquippedOn,
-		ImageURL:         skin.ImageURL,
-		AnimationURL:     skin.AnimationURL,
-		CardAnimationURL: skin.CardAnimationURL,
-		AvatarURL:        skin.AvatarURL,
-		LargeImageURL:    skin.LargeImageURL,
 		CreatedAt:        skin.CreatedAt,
 	}
 

@@ -41,13 +41,6 @@ func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.Blueprin
 		newPowerCore.ID,
 		ec.Tier,
 		ownerID.String(),
-		ec.ImageURL,
-		ec.CardAnimationURL,
-		ec.AvatarURL,
-		ec.LargeImageURL,
-		ec.BackgroundColor,
-		ec.AnimationURL,
-		ec.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

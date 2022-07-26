@@ -75,18 +75,18 @@ func (u MarketplaceUser) MarshalJSON() ([]byte, error) {
 type MarketplaceSaleCollectionItem struct {
 	Hash             string      `json:"hash" boil:"collection_items.hash"`
 	Tier             null.String `json:"tier,omitempty" boil:"collection_items.tier"`
-	ImageURL         null.String `json:"image_url,omitempty" boil:"collection_items.image_url"`
-	CardAnimationURL null.String `json:"card_animation,omitempty" boil:"collection_items.card_animation_url"`
-	AvatarURL        null.String `json:"avatar_url,omitempty" boil:"collection_items.avatar_url"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty" boil:"collection_items.large_image_url"`
-	BackgroundColor  null.String `json:"background_color,omitempty" boil:"collection_items.background_color"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty" boil:"collection_items.youtube_url"`
+	//ImageURL         null.String `json:"image_url,omitempty" boil:"collection_items.image_url"`
+	//CardAnimationURL null.String `json:"card_animation,omitempty" boil:"collection_items.card_animation_url"`
+	//AvatarURL        null.String `json:"avatar_url,omitempty" boil:"collection_items.avatar_url"`
+	//LargeImageURL    null.String `json:"large_image_url,omitempty" boil:"collection_items.large_image_url"`
+	//BackgroundColor  null.String `json:"background_color,omitempty" boil:"collection_items.background_color"`
+	//YoutubeURL       null.String `json:"youtube_url,omitempty" boil:"collection_items.youtube_url"`
 	XsynLocked       bool        `json:"-" boil:"collection_items.xsyn_locked"`
 	MarketLocked     bool        `json:"-" boil:"collection_items.market_locked"`
 }
 
 func (b MarketplaceSaleCollectionItem) MarshalJSON() ([]byte, error) {
-	if !b.Tier.Valid && !b.ImageURL.Valid && !b.CardAnimationURL.Valid && !b.AvatarURL.Valid && !b.LargeImageURL.Valid && !b.BackgroundColor.Valid && !b.YoutubeURL.Valid {
+	if !b.Tier.Valid {
 		return null.NullBytes, nil
 	}
 	type localMarketplaceSaleCollectionItem MarketplaceSaleCollectionItem

@@ -42,12 +42,10 @@ $$
                                      CASE
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
-                                                                            WHERE label = 'Daison Sleek'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                            WHERE label = 'Daison Sleek')
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
-                                                                             WHERE label = 'Daison Sleek'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END);
+                                                                             WHERE label = 'Daison Sleek') END);
                     -- ZAI
                     WHEN factionid = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -67,12 +65,10 @@ $$
                                      CASE
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
-                                                                            WHERE label = 'X3 Kuro'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                            WHERE label = 'X3 Kuro')
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
-                                                                             WHERE label = 'X3 Kuro'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END);
+                                                                             WHERE label = 'X3 Kuro') END);
                     -- RM
                     WHEN factionid = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
                         THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -92,12 +88,10 @@ $$
                                      CASE
                                          WHEN powercoresize = 'SMALL' THEN (SELECT id
                                                                             FROM blueprint_mech_skin
-                                                                            WHERE label = 'Martian Soil'
-                                                                              AND mech_type = 'HUMANOID'::MECH_TYPE)
+                                                                            WHERE label = 'Martian Soil')
                                          WHEN powercoresize = 'MEDIUM' THEN (SELECT id
                                                                              FROM blueprint_mech_skin
-                                                                             WHERE label = 'Martian Soil'
-                                                                               AND mech_type = 'PLATFORM'::MECH_TYPE) END); END CASE;
+                                                                             WHERE label = 'Martian Soil') END); END CASE;
             END LOOP;
     END;
 $$;

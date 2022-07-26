@@ -36,7 +36,6 @@ func (b *WeaponSkin) Scan(value interface{}) error {
 type BlueprintWeaponSkin struct {
 	ID               string              `json:"id"`
 	Label            string              `json:"label"`
-	WeaponType       string              `json:"weapon_type"`
 	Tier             string              `json:"tier"`
 	CreatedAt        time.Time           `json:"created_at"`
 	ImageURL         null.String         `json:"image_url,omitempty"`
@@ -76,7 +75,6 @@ func BlueprintWeaponSkinFromBoiler(weaponSkin *boiler.BlueprintWeaponSkin) *Blue
 	return &BlueprintWeaponSkin{
 		ID:               weaponSkin.ID,
 		Label:            weaponSkin.Label,
-		WeaponType:       weaponSkin.WeaponType,
 		Tier:             weaponSkin.Tier,
 		CreatedAt:        weaponSkin.CreatedAt,
 		ImageURL:         weaponSkin.ImageURL,
@@ -105,21 +103,12 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
 			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:            weaponSkin.ID,
 		BlueprintID:   weaponSkin.BlueprintID,
 		OwnerID:       weaponSkin.OwnerID,
 		Label:         weaponSkin.Label,
-		WeaponType:    weaponSkin.WeaponType,
 		EquippedOn:    weaponSkin.EquippedOn,
-		Tier:          weaponSkin.Tier,
 		CreatedAt:     weaponSkin.CreatedAt,
 	}
 }

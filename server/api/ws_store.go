@@ -275,13 +275,6 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 		assignedCrate.ID,
 		"",
 		userID,
-		storeCrate.ImageURL,
-		storeCrate.CardAnimationURL,
-		storeCrate.AvatarURL,
-		storeCrate.LargeImageURL,
-		storeCrate.BackgroundColor,
-		storeCrate.AnimationURL,
-		storeCrate.YoutubeURL,
 	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")

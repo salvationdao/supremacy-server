@@ -25,14 +25,6 @@ type CollectionItem struct {
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
 	AssetHidden         null.String `json:"asset_hidden"`
-
-	ImageURL         null.String `json:"image_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	BackgroundColor  null.String `json:"background_color,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
 type Stats struct {
@@ -196,74 +188,74 @@ func (b *MechModel) Scan(value interface{}) error {
 	return json.Unmarshal(v, b)
 }
 
-// MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
-func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
-	skin := &CollectionItem{}
-
-	if mech.R.Model.R.DefaultChassisSkin != nil {
-		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
-		skin.CardAnimationURL = mech.R.Model.R.DefaultChassisSkin.CardAnimationURL
-		skin.AvatarURL = mech.R.Model.R.DefaultChassisSkin.AvatarURL
-		skin.LargeImageURL = mech.R.Model.R.DefaultChassisSkin.LargeImageURL
-		skin.BackgroundColor = mech.R.Model.R.DefaultChassisSkin.BackgroundColor
-		skin.AnimationURL = mech.R.Model.R.DefaultChassisSkin.AnimationURL
-		skin.YoutubeURL = mech.R.Model.R.DefaultChassisSkin.YoutubeURL
-	}
-
-	if skinCollection != nil {
-		skin.ImageURL = skinCollection.ImageURL
-		skin.CardAnimationURL = skinCollection.CardAnimationURL
-		skin.AvatarURL = skinCollection.AvatarURL
-		skin.LargeImageURL = skinCollection.LargeImageURL
-		skin.BackgroundColor = skinCollection.BackgroundColor
-		skin.AnimationURL = skinCollection.AnimationURL
-		skin.YoutubeURL = skinCollection.YoutubeURL
-	}
-
-	return &Mech{
-		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
-			ImageURL:         skin.ImageURL,
-			CardAnimationURL: skin.CardAnimationURL,
-			AvatarURL:        skin.AvatarURL,
-			LargeImageURL:    skin.LargeImageURL,
-			BackgroundColor:  skin.BackgroundColor,
-			AnimationURL:     skin.AnimationURL,
-			YoutubeURL:       skin.YoutubeURL,
-		},
-
-		ID:                    mech.ID,
-		Label:                 mech.Label,
-		WeaponHardpoints:      mech.WeaponHardpoints,
-		UtilitySlots:          mech.UtilitySlots,
-		Speed:                 mech.Speed,
-		MaxHitpoints:          mech.MaxHitpoints,
-		IsDefault:             mech.IsDefault,
-		IsInsured:             mech.IsInsured,
-		Name:                  mech.Label,
-		GenesisTokenID:        mech.GenesisTokenID,
-		LimitedReleaseTokenID: mech.LimitedReleaseTokenID,
-		PowerCoreSize:         mech.PowerCoreSize,
-		BlueprintID:           mech.BlueprintID,
-		BrandID:               mech.BrandID,
-		ModelID:               mech.ModelID,
-		ChassisSkinID:         mech.ChassisSkinID,
-		IntroAnimationID:      mech.IntroAnimationID,
-		OutroAnimationID:      mech.OutroAnimationID,
-		PowerCoreID:           mech.PowerCoreID,
-		UpdatedAt:             mech.UpdatedAt,
-		CreatedAt:             mech.CreatedAt,
-	}
-}
+//// MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
+//func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
+//	skin := &CollectionItem{}
+//
+//	if mech.R.Model.R.DefaultChassisSkin != nil {
+//		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
+//		skin.CardAnimationURL = mech.R.Model.R.DefaultChassisSkin.CardAnimationURL
+//		skin.AvatarURL = mech.R.Model.R.DefaultChassisSkin.AvatarURL
+//		skin.LargeImageURL = mech.R.Model.R.DefaultChassisSkin.LargeImageURL
+//		skin.BackgroundColor = mech.R.Model.R.DefaultChassisSkin.BackgroundColor
+//		skin.AnimationURL = mech.R.Model.R.DefaultChassisSkin.AnimationURL
+//		skin.YoutubeURL = mech.R.Model.R.DefaultChassisSkin.YoutubeURL
+//	}
+//
+//	if skinCollection != nil {
+//		skin.ImageURL = skinCollection.ImageURL
+//		skin.CardAnimationURL = skinCollection.CardAnimationURL
+//		skin.AvatarURL = skinCollection.AvatarURL
+//		skin.LargeImageURL = skinCollection.LargeImageURL
+//		skin.BackgroundColor = skinCollection.BackgroundColor
+//		skin.AnimationURL = skinCollection.AnimationURL
+//		skin.YoutubeURL = skinCollection.YoutubeURL
+//	}
+//
+//	return &Mech{
+//		CollectionItem: &CollectionItem{
+//			CollectionSlug:   collection.CollectionSlug,
+//			Hash:             collection.Hash,
+//			TokenID:          collection.TokenID,
+//			ItemType:         collection.ItemType,
+//			ItemID:           collection.ItemID,
+//			Tier:             collection.Tier,
+//			OwnerID:          collection.OwnerID,
+//			MarketLocked:     collection.MarketLocked,
+//			XsynLocked:       collection.XsynLocked,
+//			AssetHidden:      collection.AssetHidden,
+//			ImageURL:         skin.ImageURL,
+//			CardAnimationURL: skin.CardAnimationURL,
+//			AvatarURL:        skin.AvatarURL,
+//			LargeImageURL:    skin.LargeImageURL,
+//			BackgroundColor:  skin.BackgroundColor,
+//			AnimationURL:     skin.AnimationURL,
+//			YoutubeURL:       skin.YoutubeURL,
+//		},
+//
+//		ID:                    mech.ID,
+//		Label:                 mech.Label,
+//		WeaponHardpoints:      mech.WeaponHardpoints,
+//		UtilitySlots:          mech.UtilitySlots,
+//		Speed:                 mech.Speed,
+//		MaxHitpoints:          mech.MaxHitpoints,
+//		IsDefault:             mech.IsDefault,
+//		IsInsured:             mech.IsInsured,
+//		Name:                  mech.Label,
+//		GenesisTokenID:        mech.GenesisTokenID,
+//		LimitedReleaseTokenID: mech.LimitedReleaseTokenID,
+//		PowerCoreSize:         mech.PowerCoreSize,
+//		BlueprintID:           mech.BlueprintID,
+//		BrandID:               mech.BrandID,
+//		ModelID:               mech.ModelID,
+//		ChassisSkinID:         mech.ChassisSkinID,
+//		IntroAnimationID:      mech.IntroAnimationID,
+//		OutroAnimationID:      mech.OutroAnimationID,
+//		PowerCoreID:           mech.PowerCoreID,
+//		UpdatedAt:             mech.UpdatedAt,
+//		CreatedAt:             mech.CreatedAt,
+//	}
+//}
 
 // IsBattleReady checks if a mech has the minimum it needs for battle
 func (m *Mech) IsBattleReady() bool {

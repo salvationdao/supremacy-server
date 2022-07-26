@@ -171,31 +171,7 @@ BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (mechcrate_id, 'MECH_SKIN', (SELECT id
                                         FROM blueprint_mech_skin
-                                        WHERE mech_type = mechtype::MECH_TYPE
-                                          AND blueprint_mech_skin.mech_model =
-                                              CASE
-                                                  WHEN faction.label = 'Boston Cybernetics'
-                                                      THEN (SELECT id
-                                                            FROM mech_models mm
-                                                            WHERE mm.mech_type = mechtype::MECH_TYPE
-                                                              AND mm.brand_id =
-                                                                  (SELECT id FROM brands WHERE brands.label = 'Daison Avionics'))
-                                                  WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                      THEN (SELECT id
-                                                            FROM mech_models mm
-                                                            WHERE mm.mech_type = mechtype::MECH_TYPE
-                                                              AND mm.brand_id =
-                                                                  (SELECT id FROM brands WHERE brands.label = 'X3 Wartech'))
-                                                  WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                      THEN (SELECT id
-                                                            FROM mech_models mm
-                                                            WHERE mm.mech_type = mechtype::MECH_TYPE
-                                                              AND mm.brand_id =
-                                                                  (SELECT id
-                                                                   FROM brands
-                                                                   WHERE brands.label = 'Unified Martian Corporation'))
-                                                  END
-                                          AND label = skinlabel));
+                                        WHERE label = skinlabel));
 END;
 $$;
 

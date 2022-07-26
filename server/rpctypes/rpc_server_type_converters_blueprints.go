@@ -76,14 +76,8 @@ func ServerBlueprintMechSkinToApiV1(skin *server.BlueprintMechSkin) *BlueprintMe
 	return &BlueprintMechSkin{
 		ID:               skin.ID,
 		Collection:       skin.Collection,
-		MechModel:        skin.MechModel,
 		Label:            skin.Label,
 		Tier:             skin.Tier,
-		ImageURL:         skin.ImageURL,
-		AnimationURL:     skin.AnimationURL,
-		CardAnimationURL: skin.CardAnimationURL,
-		LargeImageURL:    skin.LargeImageURL,
-		AvatarURL:        skin.AvatarURL,
 		CreatedAt:        skin.CreatedAt,
 	}
 }

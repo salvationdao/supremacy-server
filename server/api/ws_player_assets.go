@@ -86,13 +86,6 @@ type PlayerAssetMech struct {
 	ItemType            string      `json:"item_type"`
 	Tier                string      `json:"tier"`
 	OwnerID             string      `json:"owner_id"`
-	ImageURL            null.String `json:"image_url,omitempty"`
-	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
-	AvatarURL           null.String `json:"avatar_url,omitempty"`
-	LargeImageURL       null.String `json:"large_image_url,omitempty"`
-	BackgroundColor     null.String `json:"background_color,omitempty"`
-	AnimationURL        null.String `json:"animation_url,omitempty"`
-	YoutubeURL          null.String `json:"youtube_url,omitempty"`
 	MarketLocked        bool        `json:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
@@ -205,13 +198,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			MarketLocked:          m.CollectionItem.MarketLocked,
 			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
 			QueuePosition:         m.QueuePosition,
-			ImageURL:              m.CollectionItem.ImageURL,
-			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
-			AvatarURL:             m.CollectionItem.AvatarURL,
-			LargeImageURL:         m.CollectionItem.LargeImageURL,
-			BackgroundColor:       m.CollectionItem.BackgroundColor,
-			AnimationURL:          m.CollectionItem.AnimationURL,
-			YoutubeURL:            m.CollectionItem.YoutubeURL,
 		})
 	}
 
@@ -307,13 +293,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 			MarketLocked:          m.CollectionItem.MarketLocked,
 			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
 			QueuePosition:         m.QueuePosition,
-			ImageURL:              m.CollectionItem.ImageURL,
-			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
-			AvatarURL:             m.CollectionItem.AvatarURL,
-			LargeImageURL:         m.CollectionItem.LargeImageURL,
-			BackgroundColor:       m.CollectionItem.BackgroundColor,
-			AnimationURL:          m.CollectionItem.AnimationURL,
-			YoutubeURL:            m.CollectionItem.YoutubeURL,
 		})
 	}
 
@@ -1104,13 +1083,6 @@ type PlayerAssetWeapon struct {
 	TokenID             int64       `json:"token_id"`
 	Tier                string      `json:"tier"`
 	OwnerID             string      `json:"owner_id"`
-	ImageURL            null.String `json:"image_url,omitempty"`
-	CardAnimationURL    null.String `json:"card_animation_url,omitempty"`
-	AvatarURL           null.String `json:"avatar_url,omitempty"`
-	LargeImageURL       null.String `json:"large_image_url,omitempty"`
-	BackgroundColor     null.String `json:"background_color,omitempty"`
-	AnimationURL        null.String `json:"animation_url,omitempty"`
-	YoutubeURL          null.String `json:"youtube_url,omitempty"`
 	MarketLocked        bool        `json:"market_locked"`
 	XsynLocked          bool        `json:"xsyn_locked"`
 	LockedToMarketplace bool        `json:"locked_to_marketplace"`
@@ -1181,9 +1153,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 			XsynLocked:          m.CollectionItem.XsynLocked,
 			MarketLocked:        m.CollectionItem.MarketLocked,
 			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
-			ImageURL:            m.CollectionItem.ImageURL,
-			AvatarURL:           m.CollectionItem.AvatarURL,
-			BackgroundColor:     m.CollectionItem.BackgroundColor,
 		})
 	}
 

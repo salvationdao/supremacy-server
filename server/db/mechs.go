@@ -39,13 +39,6 @@ SELECT
 	collection_items.locked_to_marketplace,
 	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
-	collection_items.image_url,
-	collection_items.card_animation_url,
-	collection_items.avatar_url,
-	collection_items.large_image_url,
-	collection_items.background_color,
-	collection_items.animation_url,
-	collection_items.youtube_url,
 	COALESCE(p.username, ''),
 	COALESCE(mech_stats.total_wins, 0),
 	COALESCE(mech_stats.total_deaths, 0),
@@ -222,13 +215,6 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
-			&mc.CollectionItem.ImageURL,
-			&mc.CollectionItem.CardAnimationURL,
-			&mc.CollectionItem.AvatarURL,
-			&mc.CollectionItem.LargeImageURL,
-			&mc.CollectionItem.BackgroundColor,
-			&mc.CollectionItem.AnimationURL,
-			&mc.CollectionItem.YoutubeURL,
 			&mc.Owner.Username,
 			&mc.Stats.TotalWins,
 			&mc.Stats.TotalDeaths,
@@ -332,13 +318,6 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
-			&mc.CollectionItem.ImageURL,
-			&mc.CollectionItem.CardAnimationURL,
-			&mc.CollectionItem.AvatarURL,
-			&mc.CollectionItem.LargeImageURL,
-			&mc.CollectionItem.BackgroundColor,
-			&mc.CollectionItem.AnimationURL,
-			&mc.CollectionItem.YoutubeURL,
 			&mc.Owner.Username,
 			&mc.Stats.TotalWins,
 			&mc.Stats.TotalDeaths,
@@ -486,7 +465,7 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to mech"), "Could not find mech default skin relationship, try again or contact support")
 	}
 
-	bpms := mechModel.R.DefaultChassisSkin
+	//bpms := mechModel.R.DefaultChassisSkin
 
 	// first insert the mech
 	newMech := boiler.Mech{
@@ -517,13 +496,6 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		newMech.ID,
 		mechBlueprint.Tier,
 		ownerID.String(),
-		bpms.ImageURL,
-		bpms.CardAnimationURL,
-		bpms.AvatarURL,
-		bpms.LargeImageURL,
-		bpms.BackgroundColor,
-		bpms.AnimationURL,
-		bpms.YoutubeURL,
 	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to insert col item")

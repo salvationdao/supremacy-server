@@ -36,20 +36,23 @@ type Faction struct {
 }
 
 type MechSkin struct {
-	ID               string      `json:"id"`
-	Collection       string      `json:"collection"`
-	MechModel        string      `json:"mech_model"`
-	Label            string      `json:"label"`
-	Tier             string      `json:"tier"`
-	ImageUrl         null.String `json:"image_url"`
-	AnimationUrl     null.String `json:"animation_url"`
-	CardAnimationUrl null.String `json:"card_animation_url"`
-	LargeImageUrl    null.String `json:"large_image_url"`
-	AvatarUrl        null.String `json:"avatar_url"`
-	BackgroundColor  string      `json:"background_color"`
-	YoutubeURL       string      `json:"youtube_url"`
-	StatModifier     string      `json:"stat_modifier"`
-	MechType         string      `json:"mech_type"`
+	ID           string `json:"id"`
+	Collection   string `json:"collection"`
+	Label        string `json:"label"`
+	Tier         string `json:"tier"`
+	StatModifier string `json:"stat_modifier"`
+}
+
+type MechModelSkinCompatibility struct {
+	MechSkinID       string `json:"mech_skin_id"`
+	MechModelID      string `json:"mech_model_id"`
+	ImageUrl         string `json:"image_url"`
+	AnimationUrl     string `json:"animation_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	BackgroundColor  string `json:"background_color"`
+	YoutubeUrl       string `json:"youtube_url"`
 }
 
 type MysteryCrate struct {

@@ -24,12 +24,6 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 		GenesisTokenID:        skin.GenesisTokenID,
 		LimitedReleaseTokenID: skin.LimitedReleaseTokenID,
 		Label:                 skin.Label,
-		MechModel:             skin.MechModel,
-		ImageURL:              skin.ImageURL,
-		AnimationURL:          skin.AnimationURL,
-		CardAnimationURL:      skin.CardAnimationURL,
-		AvatarURL:             skin.AvatarURL,
-		LargeImageURL:         skin.LargeImageURL,
 	}
 
 	err := newSkin.Insert(tx, boil.Infer())
@@ -43,13 +37,6 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 		newSkin.ID,
 		skin.Tier,
 		ownerID.String(),
-		skin.ImageURL,
-		skin.CardAnimationURL,
-		skin.AvatarURL,
-		skin.LargeImageURL,
-		skin.BackgroundColor,
-		skin.AnimationURL,
-		skin.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

@@ -70,12 +70,6 @@ var ItemSaleQueryMods = []qm.QueryMod{
 				ELSE collection_items.tier
 			END
 		) AS "collection_items.tier",
-		collection_items.image_url AS "collection_items.image_url",
-		collection_items.card_animation_url AS "collection_items.card_animation_url",
-		collection_items.avatar_url AS "collection_items.avatar_url",
-		collection_items.large_image_url AS "collection_items.large_image_url",
-		collection_items.background_color AS "collection_items.background_color",
-		collection_items.youtube_url AS "collection_items.youtube_url",
 		collection_items.xsyn_locked AS "collection_items.xsyn_locked",
 		collection_items.market_locked AS "collection_items.market_locked",
 		collection_items.hash AS "collection_items.hash",
@@ -392,12 +386,12 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Weapon.WeaponType,
 		&output.Weapon.AvatarURL,
 		&output.CollectionItem.Tier,
-		&output.CollectionItem.ImageURL,
-		&output.CollectionItem.CardAnimationURL,
-		&output.CollectionItem.AvatarURL,
-		&output.CollectionItem.LargeImageURL,
-		&output.CollectionItem.BackgroundColor,
-		&output.CollectionItem.YoutubeURL,
+		//&output.CollectionItem.ImageURL,
+		//&output.CollectionItem.CardAnimationURL,
+		//&output.CollectionItem.AvatarURL,
+		//&output.CollectionItem.LargeImageURL,
+		//&output.CollectionItem.BackgroundColor,
+		//&output.CollectionItem.YoutubeURL,
 		&output.CollectionItem.XsynLocked,
 		&output.CollectionItem.MarketLocked,
 		&output.CollectionItem.Hash,
@@ -554,9 +548,10 @@ func MarketplaceItemSaleList(
 			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.NEQ(userID))
 		}
 	}
-	if len(weaponTypes) > 0 {
-		queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
-	}
+	// TODO: vinnie fix this (weapon type doesn't exist on the skin)
+	//if len(weaponTypes) > 0 {
+	//	queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
+	//}
 	if weaponStats != nil {
 		if weaponStats.FilterStatAmmo != nil {
 			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
@@ -645,7 +640,6 @@ func MarketplaceItemSaleList(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
-						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
@@ -653,7 +647,6 @@ func MarketplaceItemSaleList(
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
-					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
 					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
@@ -1123,12 +1116,12 @@ func MarketplaceEventList(
 					CollectionItem: server.MarketplaceSaleCollectionItem{
 						Hash:             r.R.RelatedSaleItem.R.CollectionItem.Hash,
 						Tier:             null.StringFrom(r.R.RelatedSaleItem.R.CollectionItem.Tier),
-						ImageURL:         r.R.RelatedSaleItem.R.CollectionItem.ImageURL,
-						CardAnimationURL: r.R.RelatedSaleItem.R.CollectionItem.CardAnimationURL,
-						AvatarURL:        r.R.RelatedSaleItem.R.CollectionItem.AvatarURL,
-						LargeImageURL:    r.R.RelatedSaleItem.R.CollectionItem.LargeImageURL,
-						BackgroundColor:  r.R.RelatedSaleItem.R.CollectionItem.BackgroundColor,
-						YoutubeURL:       r.R.RelatedSaleItem.R.CollectionItem.YoutubeURL,
+						//ImageURL:         r.R.RelatedSaleItem.R.CollectionItem.ImageURL,
+						//CardAnimationURL: r.R.RelatedSaleItem.R.CollectionItem.CardAnimationURL,
+						//AvatarURL:        r.R.RelatedSaleItem.R.CollectionItem.AvatarURL,
+						//LargeImageURL:    r.R.RelatedSaleItem.R.CollectionItem.LargeImageURL,
+						//BackgroundColor:  r.R.RelatedSaleItem.R.CollectionItem.BackgroundColor,
+						//YoutubeURL:       r.R.RelatedSaleItem.R.CollectionItem.YoutubeURL,
 						XsynLocked:       r.R.RelatedSaleItem.R.CollectionItem.XsynLocked,
 						MarketLocked:     r.R.RelatedSaleItem.R.CollectionItem.MarketLocked,
 					},
@@ -1211,7 +1204,6 @@ func MarketplaceEventList(
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
-				qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.AvatarURL),
 			),
 			qm.InnerJoin(
 				fmt.Sprintf(
@@ -1271,7 +1263,8 @@ func MarketplaceEventList(
 			qm.Select(
 				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
-				qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
+				// TODO: vinnie fix, weapon type is not on weapon skin
+				//qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
 				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
 			),
 			qm.LeftOuterJoin(

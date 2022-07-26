@@ -261,7 +261,7 @@ sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vinnie/mech_skin_refactor
 	cd ../../../
 	make sync
 
@@ -270,14 +270,14 @@ dev-sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vinnie/mech_skin_refactor
 	cd ../../../
 	make dev-sync
 
 .PHONY: mac-sync-data
 mac-sync-data:
 	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
-	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b vinnie/mech_skin_refactor
 	cd ../../../
 	make dev-sync
 

@@ -69,7 +69,7 @@ func InsertNewWeapon(tx boil.Executor, ownerID uuid.UUID, weapon *server.Bluepri
 	}
 
 	//should only have one in the arr
-	bpws := weaponModel.R.DefaultSkin
+	//bpws := weaponModel.R.DefaultSkin
 
 	newWeapon := boiler.Weapon{
 		BrandID:               weapon.BrandID,
@@ -105,13 +105,6 @@ func InsertNewWeapon(tx boil.Executor, ownerID uuid.UUID, weapon *server.Bluepri
 		newWeapon.ID,
 		weapon.Tier,
 		ownerID.String(),
-		bpws.ImageURL,
-		bpws.CardAnimationURL,
-		bpws.AvatarURL,
-		bpws.LargeImageURL,
-		bpws.BackgroundColor,
-		bpws.AnimationURL,
-		bpws.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

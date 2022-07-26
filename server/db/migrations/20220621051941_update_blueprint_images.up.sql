@@ -1,17 +1,3 @@
-UPDATE collection_items AS ci
-SET image_url          = bms.image_url,
-    card_animation_url = bms.card_animation_url,
-    avatar_url         = bms.avatar_url,
-    large_image_url    = bms.large_image_url,
-    background_color   = bms.background_color,
-    animation_url      = bms.animation_url,
-    youtube_url        = bms.youtube_url
-FROM mechs m
-         INNER JOIN mech_models mm ON mm.id = m.model_id
-         INNER JOIN blueprint_mech_skin bms ON bms.id = mm.default_chassis_skin_id
-WHERE ci.item_id = m.id
-  AND ci.item_type = 'mech';
-
 --copied and pasted from add_weapon_images.up.sql to re-update admin given mechs
 WITH su AS
          (SELECT ci."item_id", w."label", ci.avatar_url
