@@ -41,10 +41,15 @@ type SystemMessageListRequest struct {
 	} `json:"payload"`
 }
 
+type SystemMessageDetailed struct {
+	*boiler.SystemMessage
+	Sender boiler.Player `json:"sender"`
+}
+
 type SystemMessageListResponse struct {
-	Total          int                       `json:"total"`
-	TotalUnread    int                       `json:"total_unread"`
-	SystemMessages boiler.SystemMessageSlice `json:"system_messages"`
+	Total          int                      `json:"total"`
+	TotalUnread    int                      `json:"total_unread"`
+	SystemMessages []*SystemMessageDetailed `json:"system_messages"`
 }
 
 func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -92,16 +97,25 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 		qm.OrderBy(fmt.Sprintf("%s desc", boiler.SystemMessageColumns.SentAt)),
 		qm.Limit(pageSize),
 		qm.Offset(offset),
+		qm.Load(boiler.SystemMessageRels.Sender),
 	)
 	sms, err := boiler.SystemMessages(queryMods...).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
 	}
 
+	detailedSms := []*SystemMessageDetailed{}
+	for _, s := range sms {
+		detailedSms = append(detailedSms, &SystemMessageDetailed{
+			SystemMessage: s,
+			Sender:        *s.R.Sender,
+		})
+	}
+
 	reply(&SystemMessageListResponse{
 		Total:          int(total),
 		TotalUnread:    int(totalUnread),
-		SystemMessages: sms,
+		SystemMessages: detailedSms,
 	})
 
 	return nil

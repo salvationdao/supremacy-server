@@ -32,8 +32,9 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType *System
 	}
 
 	template := &boiler.SystemMessage{
-		Title:   title,
-		Message: message,
+		SenderID: server.SupremacySystemAdminUserID,
+		Title:    title,
+		Message:  message,
 	}
 
 	if dataType != nil {
@@ -52,6 +53,7 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType *System
 	for _, p := range players {
 		msg := &boiler.SystemMessage{}
 		msg.PlayerID = p.ID
+		msg.SenderID = template.SenderID
 		msg.Title = template.Title
 		msg.Message = template.Message
 		msg.Data = template.Data
@@ -72,9 +74,19 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 		return err
 	}
 
+	sender, err := boiler.Players(
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
+		boiler.PlayerWhere.ID.IN([]string{server.RedMountainPlayerID, server.BostonCyberneticsPlayerID, server.ZaibatsuPlayerID}),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("factionID", factionID).Msg("failed to get faction user from faction ID")
+		return err
+	}
+
 	template := &boiler.SystemMessage{
-		Title:   title,
-		Message: message,
+		SenderID: sender.ID,
+		Title:    title,
+		Message:  message,
 	}
 
 	if dataType != nil {
@@ -97,6 +109,7 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 
 		msg := &boiler.SystemMessage{}
 		msg.PlayerID = p.ID
+		msg.SenderID = template.SenderID
 		msg.Title = template.Title
 		msg.Message = template.Message
 		msg.Data = template.Data
@@ -127,6 +140,7 @@ func BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
 
 		msg := &boiler.SystemMessage{
 			PlayerID: q.OwnerID,
+			SenderID: server.SupremacyBattleUserID,
 			DataType: null.StringFrom(string(SystemMessageDataTypeMechQueue)),
 			Title:    "Queue Update",
 			Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
@@ -211,6 +225,7 @@ func BroadcastMechBattleCompleteMessage(queue []*boiler.BattleQueue, battleID st
 
 		msg := &boiler.SystemMessage{
 			PlayerID: q.OwnerID,
+			SenderID: server.SupremacyBattleUserID,
 			DataType: null.StringFrom(string(SystemMessageDataTypeMechBattleComplete)),
 			Title:    "Battle Update",
 			Message:  fmt.Sprintf("Your mech, %s, has just completed a battle in the arena.", label),

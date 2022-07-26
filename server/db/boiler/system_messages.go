@@ -28,6 +28,7 @@ type SystemMessage struct {
 	Message  string      `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
 	Data     null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
 	SentAt   time.Time   `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
+	SenderID string      `boiler:"sender_id" boil:"sender_id" json:"sender_id" toml:"sender_id" yaml:"sender_id"`
 	Title    string      `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
 	DataType null.String `boiler:"data_type" boil:"data_type" json:"data_type,omitempty" toml:"data_type" yaml:"data_type,omitempty"`
 	ReadAt   null.Time   `boiler:"read_at" boil:"read_at" json:"read_at,omitempty" toml:"read_at" yaml:"read_at,omitempty"`
@@ -42,6 +43,7 @@ var SystemMessageColumns = struct {
 	Message  string
 	Data     string
 	SentAt   string
+	SenderID string
 	Title    string
 	DataType string
 	ReadAt   string
@@ -51,6 +53,7 @@ var SystemMessageColumns = struct {
 	Message:  "message",
 	Data:     "data",
 	SentAt:   "sent_at",
+	SenderID: "sender_id",
 	Title:    "title",
 	DataType: "data_type",
 	ReadAt:   "read_at",
@@ -62,6 +65,7 @@ var SystemMessageTableColumns = struct {
 	Message  string
 	Data     string
 	SentAt   string
+	SenderID string
 	Title    string
 	DataType string
 	ReadAt   string
@@ -71,6 +75,7 @@ var SystemMessageTableColumns = struct {
 	Message:  "system_messages.message",
 	Data:     "system_messages.data",
 	SentAt:   "system_messages.sent_at",
+	SenderID: "system_messages.sender_id",
 	Title:    "system_messages.title",
 	DataType: "system_messages.data_type",
 	ReadAt:   "system_messages.read_at",
@@ -84,6 +89,7 @@ var SystemMessageWhere = struct {
 	Message  whereHelperstring
 	Data     whereHelpernull_JSON
 	SentAt   whereHelpertime_Time
+	SenderID whereHelperstring
 	Title    whereHelperstring
 	DataType whereHelpernull_String
 	ReadAt   whereHelpernull_Time
@@ -93,6 +99,7 @@ var SystemMessageWhere = struct {
 	Message:  whereHelperstring{field: "\"system_messages\".\"message\""},
 	Data:     whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
 	SentAt:   whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
+	SenderID: whereHelperstring{field: "\"system_messages\".\"sender_id\""},
 	Title:    whereHelperstring{field: "\"system_messages\".\"title\""},
 	DataType: whereHelpernull_String{field: "\"system_messages\".\"data_type\""},
 	ReadAt:   whereHelpernull_Time{field: "\"system_messages\".\"read_at\""},
@@ -101,13 +108,16 @@ var SystemMessageWhere = struct {
 // SystemMessageRels is where relationship names are stored.
 var SystemMessageRels = struct {
 	Player string
+	Sender string
 }{
 	Player: "Player",
+	Sender: "Sender",
 }
 
 // systemMessageR is where relationships are stored.
 type systemMessageR struct {
 	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Sender *Player `boiler:"Sender" boil:"Sender" json:"Sender" toml:"Sender" yaml:"Sender"`
 }
 
 // NewStruct creates a new relationship struct
@@ -119,8 +129,8 @@ func (*systemMessageR) NewStruct() *systemMessageR {
 type systemMessageL struct{}
 
 var (
-	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "sent_at", "title", "data_type", "read_at"}
-	systemMessageColumnsWithoutDefault = []string{"player_id", "message", "title"}
+	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "sent_at", "sender_id", "title", "data_type", "read_at"}
+	systemMessageColumnsWithoutDefault = []string{"player_id", "message", "sender_id", "title"}
 	systemMessageColumnsWithDefault    = []string{"id", "data", "sent_at", "data_type", "read_at"}
 	systemMessagePrimaryKeyColumns     = []string{"id"}
 	systemMessageGeneratedColumns      = []string{}
@@ -383,6 +393,21 @@ func (o *SystemMessage) Player(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// Sender pointed to by the foreign key.
+func (o *SystemMessage) Sender(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.SenderID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMessage interface{}, mods queries.Applicator) error {
@@ -488,6 +513,111 @@ func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMess
 	return nil
 }
 
+// LoadSender allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (systemMessageL) LoadSender(e boil.Executor, singular bool, maybeSystemMessage interface{}, mods queries.Applicator) error {
+	var slice []*SystemMessage
+	var object *SystemMessage
+
+	if singular {
+		object = maybeSystemMessage.(*SystemMessage)
+	} else {
+		slice = *maybeSystemMessage.(*[]*SystemMessage)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &systemMessageR{}
+		}
+		args = append(args, object.SenderID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &systemMessageR{}
+			}
+
+			for _, a := range args {
+				if a == obj.SenderID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.SenderID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(systemMessageAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Sender = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.SenderSystemMessages = append(foreign.R.SenderSystemMessages, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.SenderID == foreign.ID {
+				local.R.Sender = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.SenderSystemMessages = append(foreign.R.SenderSystemMessages, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetPlayer of the systemMessage to the related item.
 // Sets o.R.Player to related.
 // Adds o to related.R.SystemMessages.
@@ -529,6 +659,52 @@ func (o *SystemMessage) SetPlayer(exec boil.Executor, insert bool, related *Play
 		}
 	} else {
 		related.R.SystemMessages = append(related.R.SystemMessages, o)
+	}
+
+	return nil
+}
+
+// SetSender of the systemMessage to the related item.
+// Sets o.R.Sender to related.
+// Adds o to related.R.SenderSystemMessages.
+func (o *SystemMessage) SetSender(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"system_messages\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"sender_id"}),
+		strmangle.WhereClause("\"", "\"", 2, systemMessagePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.SenderID = related.ID
+	if o.R == nil {
+		o.R = &systemMessageR{
+			Sender: related,
+		}
+	} else {
+		o.R.Sender = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			SenderSystemMessages: SystemMessageSlice{o},
+		}
+	} else {
+		related.R.SenderSystemMessages = append(related.R.SenderSystemMessages, o)
 	}
 
 	return nil
