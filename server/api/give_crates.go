@@ -329,22 +329,19 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 }
 
 type GiveCrateRequest struct {
-	Payload struct {
-		PlayerID string `json:"player_id"`
-		Type     string `json:"type"` // weapon || mech
-	} `json:"payload"`
+	PlayerID string `json:"player_id"`
+	Type     string `json:"type"` // weapon || mech
 }
 
-func (api *API) ProdGiveCrates(w http.ResponseWriter, r *http.Request) (int, error) {
-
+func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &GiveCrateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
-	crateType := req.Payload.Type
-	user, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.Payload.PlayerID)).One(gamedb.StdConn)
+	crateType := req.Type
+	user, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.PlayerID)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player by pub address")
 
@@ -377,13 +374,11 @@ func (api *API) ProdGiveCrates(w http.ResponseWriter, r *http.Request) (int, err
 	}
 
 	switch crateType {
-
 	case "mech":
 		assignedMechCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeMechCrate, tx, api)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Issue claiming mech crate, please try again or contact support.")
 		}
-
 		err = api.Passport.AssetRegister(xa)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
@@ -402,7 +397,6 @@ func (api *API) ProdGiveCrates(w http.ResponseWriter, r *http.Request) (int, err
 			gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
 			return http.StatusInternalServerError, terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
 		}
-
 		serverWeaponCrate := server.StoreFrontMysteryCrateFromBoiler(storeWeaponCrate)
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", user.FactionID.String, assignedWeaponCrate.ID), HubKeyMysteryCrateSubscribe, serverWeaponCrate)
 	}

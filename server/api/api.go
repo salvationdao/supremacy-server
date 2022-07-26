@@ -236,7 +236,7 @@ func NewAPI(
 			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
 			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
 			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
-			r.Post("/prod/give-crates", WithToken(config.ServerStreamKey, WithError(api.ProdGiveCrates)))
+			r.Post("/prod/give-crate", WithToken(config.ServerStreamKey, WithError(api.ProdGiveCrate)))
 
 		})
 
