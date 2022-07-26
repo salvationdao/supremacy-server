@@ -12,6 +12,7 @@ import (
 
 type SecureCommandFunc func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error
 type SecureFactionCommandFunc func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error
+type SecureSecretFactionCommandFunc func(ctx context.Context, secretKey string, secret string, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error
 
 func MustSecure(fn SecureCommandFunc) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {

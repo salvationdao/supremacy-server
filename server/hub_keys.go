@@ -12,6 +12,19 @@ const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
+const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
+
+const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
+const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
+const HubKeySyndicateCommitteesSubscribe = "SYNDICATE:COMMITTEES:SUBSCRIBE"
+const HubKeySyndicateRulesSubscribe = "SYNDICATE:RULES:SUBSCRIBE"
+const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIBE"
+const HubKeySyndicateOngoingElectionSubscribe = "SYNDICATE:ONGOING:ELECTION:SUBSCRIBE"
+
+const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
+const HubKeyUserSubscribe = "USER:SUBSCRIBE"
+const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
+
 const HubKeySystemMessageList = "SYSTEM:MESSAGE:LIST"
 const HubKeySystemMessageDismiss = "SYSTEM:MESSAGE:DISMISS"
 const HubKeySystemMessageListUpdatedSubscribe = "SYSTEM:MESSAGE:LIST:UPDATED"
