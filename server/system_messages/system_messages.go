@@ -25,6 +25,93 @@ const (
 	SystemMessageDataTypeMechBattleComplete SystemMessageDataType = "MECH_BATTLE_COMPLETE"
 )
 
+func BroadcastGlobalSystemMessage(title string, message string, dataType *SystemMessageDataType, data *interface{}) error {
+	players, err := boiler.Players().All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	template := &boiler.SystemMessage{
+		Title:   title,
+		Message: message,
+	}
+
+	if dataType != nil {
+		template.DataType = null.StringFromPtr((*string)(dataType))
+	}
+
+	if data != nil {
+		marshalled, err := json.Marshal(data)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal global system message data")
+			return err
+		}
+		template.Data = null.JSONFrom(marshalled)
+	}
+
+	for _, p := range players {
+		msg := &boiler.SystemMessage{}
+		msg.PlayerID = p.ID
+		msg.Title = template.Title
+		msg.Message = template.Message
+		msg.Data = template.Data
+		err := msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
+			return err
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+	}
+	return nil
+}
+
+func BroadcastFactionSystemMessage(factionID string, title string, message string, dataType *SystemMessageDataType, data *interface{}) error {
+	players, err := boiler.Players(boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID))).All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	template := &boiler.SystemMessage{
+		Title:   title,
+		Message: message,
+	}
+
+	if dataType != nil {
+		template.DataType = null.StringFromPtr((*string)(dataType))
+	}
+
+	if data != nil {
+		marshalled, err := json.Marshal(data)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal faction system message data")
+			return err
+		}
+		template.Data = null.JSONFrom(marshalled)
+	}
+
+	for _, p := range players {
+		if p.FactionID.String != factionID {
+			continue
+		}
+
+		msg := &boiler.SystemMessage{}
+		msg.PlayerID = p.ID
+		msg.Title = template.Title
+		msg.Message = template.Message
+		msg.Data = template.Data
+		err := msg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
+			return err
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+	}
+
+	return nil
+}
+
 func BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
 	for _, q := range queue {
 		mech, err := q.Mech().One(gamedb.StdConn)
