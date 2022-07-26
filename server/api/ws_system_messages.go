@@ -65,7 +65,7 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 
 	queryMods := []qm.QueryMod{}
 	queryMods = append(queryMods,
-		boiler.SystemMessageWhere.PlayerID.EQ(null.StringFrom(user.ID)),
+		boiler.SystemMessageWhere.PlayerID.EQ(user.ID),
 	)
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
 	if err != nil {

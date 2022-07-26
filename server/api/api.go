@@ -16,7 +16,6 @@ import (
 	"server/profanities"
 	"server/synctool"
 	"server/syndicate"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -82,7 +81,6 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
-	SystemMessagingManager   *system_messages.SystemMessagingManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -120,7 +118,6 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-	smm *system_messages.SystemMessagingManager,
 	syncConfig *synctool.StaticSyncTool,
 ) (*API, error) {
 	// spin up syndicate system
@@ -143,7 +140,6 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
-		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),

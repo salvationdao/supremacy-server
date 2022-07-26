@@ -11,6 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -206,7 +207,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	}
 
 	// broadcast system message to mech owners
-	arena.SystemMessagingManager.BroadcastMechQueueMessage(q)
+	system_messages.BroadcastMechQueueMessage(q)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

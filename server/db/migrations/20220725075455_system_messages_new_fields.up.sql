@@ -10,9 +10,5 @@ ADD
 ADD
     COLUMN IF NOT EXISTS data_type text,
 ADD
-    COLUMN IF NOT EXISTS faction_id uuid REFERENCES factions(id),
-ADD
     COLUMN IF NOT EXISTS read_at timestamptz,
-    DROP COLUMN IF EXISTS is_dismissed,
-ALTER COLUMN
-    player_id DROP NOT NULL;
+    DROP COLUMN IF EXISTS is_dismissed;

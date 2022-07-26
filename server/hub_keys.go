@@ -26,7 +26,5 @@ const HubKeyUserSubscribe = "USER:SUBSCRIBE"
 const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
 
 const HubKeySystemMessageList = "SYSTEM:MESSAGE:LIST"
-const HubKeySystemMessageGlobalListSubscribe = "SYSTEM:MESSAGE:GLOBAL:LIST:SUBSCRIBE"
-const HubKeySystemMessageFactionListSubscribe = "SYSTEM:MESSAGE:FACTION:LIST:SUBSCRIBE"
 const HubKeySystemMessageDismiss = "SYSTEM:MESSAGE:DISMISS"
 const HubKeySystemMessageListUpdatedSubscribe = "SYSTEM:MESSAGE:LIST:UPDATED"

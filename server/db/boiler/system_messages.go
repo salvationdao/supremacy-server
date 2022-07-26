@@ -23,101 +23,91 @@ import (
 
 // SystemMessage is an object representing the database table.
 type SystemMessage struct {
-	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID  null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
-	Message   string      `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
-	Data      null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
-	SentAt    time.Time   `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
-	Title     string      `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
-	DataType  null.String `boiler:"data_type" boil:"data_type" json:"data_type,omitempty" toml:"data_type" yaml:"data_type,omitempty"`
-	FactionID null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
-	ReadAt    null.Time   `boiler:"read_at" boil:"read_at" json:"read_at,omitempty" toml:"read_at" yaml:"read_at,omitempty"`
+	ID       string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	Message  string      `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
+	Data     null.JSON   `boiler:"data" boil:"data" json:"data,omitempty" toml:"data" yaml:"data,omitempty"`
+	SentAt   time.Time   `boiler:"sent_at" boil:"sent_at" json:"sent_at" toml:"sent_at" yaml:"sent_at"`
+	Title    string      `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
+	DataType null.String `boiler:"data_type" boil:"data_type" json:"data_type,omitempty" toml:"data_type" yaml:"data_type,omitempty"`
+	ReadAt   null.Time   `boiler:"read_at" boil:"read_at" json:"read_at,omitempty" toml:"read_at" yaml:"read_at,omitempty"`
 
 	R *systemMessageR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L systemMessageL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SystemMessageColumns = struct {
-	ID        string
-	PlayerID  string
-	Message   string
-	Data      string
-	SentAt    string
-	Title     string
-	DataType  string
-	FactionID string
-	ReadAt    string
+	ID       string
+	PlayerID string
+	Message  string
+	Data     string
+	SentAt   string
+	Title    string
+	DataType string
+	ReadAt   string
 }{
-	ID:        "id",
-	PlayerID:  "player_id",
-	Message:   "message",
-	Data:      "data",
-	SentAt:    "sent_at",
-	Title:     "title",
-	DataType:  "data_type",
-	FactionID: "faction_id",
-	ReadAt:    "read_at",
+	ID:       "id",
+	PlayerID: "player_id",
+	Message:  "message",
+	Data:     "data",
+	SentAt:   "sent_at",
+	Title:    "title",
+	DataType: "data_type",
+	ReadAt:   "read_at",
 }
 
 var SystemMessageTableColumns = struct {
-	ID        string
-	PlayerID  string
-	Message   string
-	Data      string
-	SentAt    string
-	Title     string
-	DataType  string
-	FactionID string
-	ReadAt    string
+	ID       string
+	PlayerID string
+	Message  string
+	Data     string
+	SentAt   string
+	Title    string
+	DataType string
+	ReadAt   string
 }{
-	ID:        "system_messages.id",
-	PlayerID:  "system_messages.player_id",
-	Message:   "system_messages.message",
-	Data:      "system_messages.data",
-	SentAt:    "system_messages.sent_at",
-	Title:     "system_messages.title",
-	DataType:  "system_messages.data_type",
-	FactionID: "system_messages.faction_id",
-	ReadAt:    "system_messages.read_at",
+	ID:       "system_messages.id",
+	PlayerID: "system_messages.player_id",
+	Message:  "system_messages.message",
+	Data:     "system_messages.data",
+	SentAt:   "system_messages.sent_at",
+	Title:    "system_messages.title",
+	DataType: "system_messages.data_type",
+	ReadAt:   "system_messages.read_at",
 }
 
 // Generated where
 
 var SystemMessageWhere = struct {
-	ID        whereHelperstring
-	PlayerID  whereHelpernull_String
-	Message   whereHelperstring
-	Data      whereHelpernull_JSON
-	SentAt    whereHelpertime_Time
-	Title     whereHelperstring
-	DataType  whereHelpernull_String
-	FactionID whereHelpernull_String
-	ReadAt    whereHelpernull_Time
+	ID       whereHelperstring
+	PlayerID whereHelperstring
+	Message  whereHelperstring
+	Data     whereHelpernull_JSON
+	SentAt   whereHelpertime_Time
+	Title    whereHelperstring
+	DataType whereHelpernull_String
+	ReadAt   whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: "\"system_messages\".\"id\""},
-	PlayerID:  whereHelpernull_String{field: "\"system_messages\".\"player_id\""},
-	Message:   whereHelperstring{field: "\"system_messages\".\"message\""},
-	Data:      whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
-	SentAt:    whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
-	Title:     whereHelperstring{field: "\"system_messages\".\"title\""},
-	DataType:  whereHelpernull_String{field: "\"system_messages\".\"data_type\""},
-	FactionID: whereHelpernull_String{field: "\"system_messages\".\"faction_id\""},
-	ReadAt:    whereHelpernull_Time{field: "\"system_messages\".\"read_at\""},
+	ID:       whereHelperstring{field: "\"system_messages\".\"id\""},
+	PlayerID: whereHelperstring{field: "\"system_messages\".\"player_id\""},
+	Message:  whereHelperstring{field: "\"system_messages\".\"message\""},
+	Data:     whereHelpernull_JSON{field: "\"system_messages\".\"data\""},
+	SentAt:   whereHelpertime_Time{field: "\"system_messages\".\"sent_at\""},
+	Title:    whereHelperstring{field: "\"system_messages\".\"title\""},
+	DataType: whereHelpernull_String{field: "\"system_messages\".\"data_type\""},
+	ReadAt:   whereHelpernull_Time{field: "\"system_messages\".\"read_at\""},
 }
 
 // SystemMessageRels is where relationship names are stored.
 var SystemMessageRels = struct {
-	Faction string
-	Player  string
+	Player string
 }{
-	Faction: "Faction",
-	Player:  "Player",
+	Player: "Player",
 }
 
 // systemMessageR is where relationships are stored.
 type systemMessageR struct {
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -129,9 +119,9 @@ func (*systemMessageR) NewStruct() *systemMessageR {
 type systemMessageL struct{}
 
 var (
-	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "sent_at", "title", "data_type", "faction_id", "read_at"}
-	systemMessageColumnsWithoutDefault = []string{"message", "title"}
-	systemMessageColumnsWithDefault    = []string{"id", "player_id", "data", "sent_at", "data_type", "faction_id", "read_at"}
+	systemMessageAllColumns            = []string{"id", "player_id", "message", "data", "sent_at", "title", "data_type", "read_at"}
+	systemMessageColumnsWithoutDefault = []string{"player_id", "message", "title"}
+	systemMessageColumnsWithDefault    = []string{"id", "data", "sent_at", "data_type", "read_at"}
 	systemMessagePrimaryKeyColumns     = []string{"id"}
 	systemMessageGeneratedColumns      = []string{}
 )
@@ -378,21 +368,6 @@ func (q systemMessageQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// Faction pointed to by the foreign key.
-func (o *SystemMessage) Faction(mods ...qm.QueryMod) factionQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.FactionID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Factions(queryMods...)
-	queries.SetFrom(query.Query, "\"factions\"")
-
-	return query
-}
-
 // Player pointed to by the foreign key.
 func (o *SystemMessage) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -406,115 +381,6 @@ func (o *SystemMessage) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
-}
-
-// LoadFaction allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (systemMessageL) LoadFaction(e boil.Executor, singular bool, maybeSystemMessage interface{}, mods queries.Applicator) error {
-	var slice []*SystemMessage
-	var object *SystemMessage
-
-	if singular {
-		object = maybeSystemMessage.(*SystemMessage)
-	} else {
-		slice = *maybeSystemMessage.(*[]*SystemMessage)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &systemMessageR{}
-		}
-		if !queries.IsNil(object.FactionID) {
-			args = append(args, object.FactionID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &systemMessageR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.FactionID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.FactionID) {
-				args = append(args, obj.FactionID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`factions`),
-		qm.WhereIn(`factions.id in ?`, args...),
-		qmhelper.WhereIsNull(`factions.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Faction")
-	}
-
-	var resultSlice []*Faction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for factions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
-	}
-
-	if len(systemMessageAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Faction = foreign
-		if foreign.R == nil {
-			foreign.R = &factionR{}
-		}
-		foreign.R.SystemMessages = append(foreign.R.SystemMessages, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.FactionID, foreign.ID) {
-				local.R.Faction = foreign
-				if foreign.R == nil {
-					foreign.R = &factionR{}
-				}
-				foreign.R.SystemMessages = append(foreign.R.SystemMessages, local)
-				break
-			}
-		}
-	}
-
-	return nil
 }
 
 // LoadPlayer allows an eager lookup of values, cached into the
@@ -534,9 +400,7 @@ func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMess
 		if object.R == nil {
 			object.R = &systemMessageR{}
 		}
-		if !queries.IsNil(object.PlayerID) {
-			args = append(args, object.PlayerID)
-		}
+		args = append(args, object.PlayerID)
 
 	} else {
 	Outer:
@@ -546,14 +410,12 @@ func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMess
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.PlayerID) {
+				if a == obj.PlayerID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.PlayerID) {
-				args = append(args, obj.PlayerID)
-			}
+			args = append(args, obj.PlayerID)
 
 		}
 	}
@@ -612,7 +474,7 @@ func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMess
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.PlayerID, foreign.ID) {
+			if local.PlayerID == foreign.ID {
 				local.R.Player = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
@@ -623,85 +485,6 @@ func (systemMessageL) LoadPlayer(e boil.Executor, singular bool, maybeSystemMess
 		}
 	}
 
-	return nil
-}
-
-// SetFaction of the systemMessage to the related item.
-// Sets o.R.Faction to related.
-// Adds o to related.R.SystemMessages.
-func (o *SystemMessage) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"system_messages\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, systemMessagePrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.FactionID, related.ID)
-	if o.R == nil {
-		o.R = &systemMessageR{
-			Faction: related,
-		}
-	} else {
-		o.R.Faction = related
-	}
-
-	if related.R == nil {
-		related.R = &factionR{
-			SystemMessages: SystemMessageSlice{o},
-		}
-	} else {
-		related.R.SystemMessages = append(related.R.SystemMessages, o)
-	}
-
-	return nil
-}
-
-// RemoveFaction relationship.
-// Sets o.R.Faction to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *SystemMessage) RemoveFaction(exec boil.Executor, related *Faction) error {
-	var err error
-
-	queries.SetScanner(&o.FactionID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("faction_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Faction = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.SystemMessages {
-		if queries.Equal(o.FactionID, ri.FactionID) {
-			continue
-		}
-
-		ln := len(related.R.SystemMessages)
-		if ln > 1 && i < ln-1 {
-			related.R.SystemMessages[i] = related.R.SystemMessages[ln-1]
-		}
-		related.R.SystemMessages = related.R.SystemMessages[:ln-1]
-		break
-	}
 	return nil
 }
 
@@ -731,7 +514,7 @@ func (o *SystemMessage) SetPlayer(exec boil.Executor, insert bool, related *Play
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.PlayerID, related.ID)
+	o.PlayerID = related.ID
 	if o.R == nil {
 		o.R = &systemMessageR{
 			Player: related,
@@ -748,39 +531,6 @@ func (o *SystemMessage) SetPlayer(exec boil.Executor, insert bool, related *Play
 		related.R.SystemMessages = append(related.R.SystemMessages, o)
 	}
 
-	return nil
-}
-
-// RemovePlayer relationship.
-// Sets o.R.Player to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *SystemMessage) RemovePlayer(exec boil.Executor, related *Player) error {
-	var err error
-
-	queries.SetScanner(&o.PlayerID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("player_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Player = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.SystemMessages {
-		if queries.Equal(o.PlayerID, ri.PlayerID) {
-			continue
-		}
-
-		ln := len(related.R.SystemMessages)
-		if ln > 1 && i < ln-1 {
-			related.R.SystemMessages[i] = related.R.SystemMessages[ln-1]
-		}
-		related.R.SystemMessages = related.R.SystemMessages[:ln-1]
-		break
-	}
 	return nil
 }
 
