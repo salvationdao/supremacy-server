@@ -28,7 +28,6 @@ type MechSkin struct {
 	GenesisTokenID        null.Int64  `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	MechModel             string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
 	EquippedOn            null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LockedToMech          bool        `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
@@ -43,7 +42,6 @@ var MechSkinColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	Label                 string
-	MechModel             string
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
@@ -53,7 +51,6 @@ var MechSkinColumns = struct {
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
 	Label:                 "label",
-	MechModel:             "mech_model",
 	EquippedOn:            "equipped_on",
 	CreatedAt:             "created_at",
 	LockedToMech:          "locked_to_mech",
@@ -65,7 +62,6 @@ var MechSkinTableColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	Label                 string
-	MechModel             string
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
@@ -75,7 +71,6 @@ var MechSkinTableColumns = struct {
 	GenesisTokenID:        "mech_skin.genesis_token_id",
 	LimitedReleaseTokenID: "mech_skin.limited_release_token_id",
 	Label:                 "mech_skin.label",
-	MechModel:             "mech_skin.mech_model",
 	EquippedOn:            "mech_skin.equipped_on",
 	CreatedAt:             "mech_skin.created_at",
 	LockedToMech:          "mech_skin.locked_to_mech",
@@ -113,7 +108,6 @@ var MechSkinWhere = struct {
 	GenesisTokenID        whereHelpernull_Int64
 	LimitedReleaseTokenID whereHelpernull_Int64
 	Label                 whereHelperstring
-	MechModel             whereHelperstring
 	EquippedOn            whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
 	LockedToMech          whereHelperbool
@@ -123,7 +117,6 @@ var MechSkinWhere = struct {
 	GenesisTokenID:        whereHelpernull_Int64{field: "\"mech_skin\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"mech_skin\".\"limited_release_token_id\""},
 	Label:                 whereHelperstring{field: "\"mech_skin\".\"label\""},
-	MechModel:             whereHelperstring{field: "\"mech_skin\".\"mech_model\""},
 	EquippedOn:            whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
 	LockedToMech:          whereHelperbool{field: "\"mech_skin\".\"locked_to_mech\""},
@@ -131,23 +124,20 @@ var MechSkinWhere = struct {
 
 // MechSkinRels is where relationship names are stored.
 var MechSkinRels = struct {
-	Blueprint         string
-	EquippedOnMech    string
-	MechSkinMechModel string
-	ChassisSkinMechs  string
+	Blueprint        string
+	EquippedOnMech   string
+	ChassisSkinMechs string
 }{
-	Blueprint:         "Blueprint",
-	EquippedOnMech:    "EquippedOnMech",
-	MechSkinMechModel: "MechSkinMechModel",
-	ChassisSkinMechs:  "ChassisSkinMechs",
+	Blueprint:        "Blueprint",
+	EquippedOnMech:   "EquippedOnMech",
+	ChassisSkinMechs: "ChassisSkinMechs",
 }
 
 // mechSkinR is where relationships are stored.
 type mechSkinR struct {
-	Blueprint         *BlueprintMechSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	EquippedOnMech    *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	MechSkinMechModel *MechModel         `boiler:"MechSkinMechModel" boil:"MechSkinMechModel" json:"MechSkinMechModel" toml:"MechSkinMechModel" yaml:"MechSkinMechModel"`
-	ChassisSkinMechs  MechSlice          `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
+	Blueprint        *BlueprintMechSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	EquippedOnMech   *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	ChassisSkinMechs MechSlice          `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -159,8 +149,8 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "mech_model", "equipped_on", "created_at", "locked_to_mech"}
-	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label", "mech_model"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "equipped_on", "created_at", "locked_to_mech"}
+	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label"}
 	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}
@@ -437,20 +427,6 @@ func (o *MechSkin) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
-// MechSkinMechModel pointed to by the foreign key.
-func (o *MechSkin) MechSkinMechModel(mods ...qm.QueryMod) mechModelQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.MechModel),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_models\"")
-
-	return query
-}
-
 // ChassisSkinMechs retrieves all the mech's Mechs with an executor via chassis_skin_id column.
 func (o *MechSkin) ChassisSkinMechs(mods ...qm.QueryMod) mechQuery {
 	var queryMods []qm.QueryMod
@@ -686,110 +662,6 @@ func (mechSkinL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeMechSki
 	return nil
 }
 
-// LoadMechSkinMechModel allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechSkinL) LoadMechSkinMechModel(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
-	var slice []*MechSkin
-	var object *MechSkin
-
-	if singular {
-		object = maybeMechSkin.(*MechSkin)
-	} else {
-		slice = *maybeMechSkin.(*[]*MechSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechSkinR{}
-		}
-		args = append(args, object.MechModel)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.MechModel {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.MechModel)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mech_models`),
-		qm.WhereIn(`mech_models.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
-	}
-
-	var resultSlice []*MechModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_models")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
-	}
-
-	if len(mechSkinAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.MechSkinMechModel = foreign
-		if foreign.R == nil {
-			foreign.R = &mechModelR{}
-		}
-		foreign.R.MechSkins = append(foreign.R.MechSkins, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.MechModel == foreign.ID {
-				local.R.MechSkinMechModel = foreign
-				if foreign.R == nil {
-					foreign.R = &mechModelR{}
-				}
-				foreign.R.MechSkins = append(foreign.R.MechSkins, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadChassisSkinMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (mechSkinL) LoadChassisSkinMechs(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
@@ -1011,52 +883,6 @@ func (o *MechSkin) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error
 		related.R.EquippedOnMechSkins = related.R.EquippedOnMechSkins[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetMechSkinMechModel of the mechSkin to the related item.
-// Sets o.R.MechSkinMechModel to related.
-// Adds o to related.R.MechSkins.
-func (o *MechSkin) SetMechSkinMechModel(exec boil.Executor, insert bool, related *MechModel) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_skin\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
-		strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.MechModel = related.ID
-	if o.R == nil {
-		o.R = &mechSkinR{
-			MechSkinMechModel: related,
-		}
-	} else {
-		o.R.MechSkinMechModel = related
-	}
-
-	if related.R == nil {
-		related.R = &mechModelR{
-			MechSkins: MechSkinSlice{o},
-		}
-	} else {
-		related.R.MechSkins = append(related.R.MechSkins, o)
-	}
-
 	return nil
 }
 

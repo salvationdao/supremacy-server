@@ -106,7 +106,7 @@ ALTER TABLE weapons
 DO
 $$
     BEGIN
-        FOR count IN 1..5000 --change to 5000, -- dev changed to not take years
+        FOR count IN 1..300 --change from 5000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
@@ -124,7 +124,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR count IN 1..13000 -- change to 13000, -- dev changed to not take years
+        FOR count IN 1..1000 -- changed from 13000, -- dev changed to not take years
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',

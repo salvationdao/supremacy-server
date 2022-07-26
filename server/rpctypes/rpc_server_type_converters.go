@@ -45,7 +45,6 @@ func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 		GenesisTokenID:   skin.GenesisTokenID,
 		Label:            skin.Label,
 		OwnerID:          skin.OwnerID,
-		MechModel:        skin.MechModelID,
 		EquippedOn:       skin.EquippedOn,
 		Tier:             skin.Tier,
 		CreatedAt:        skin.CreatedAt,
@@ -516,10 +515,11 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				TraitType: "Label",
 				Value:     i.Label,
 			},
-			{
-				TraitType: "Mech Model",
-				Value:     i.MechModelName,
-			},
+			// TODO: vinnie fix me
+			//{
+			//	TraitType: "Mech Model",
+			//	Value:     i.MechModelName,
+			//},
 			{
 				TraitType: "Tier",
 				Value:     i.Tier,

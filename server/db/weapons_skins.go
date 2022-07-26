@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -20,19 +19,6 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		tx = gamedb.StdConn
 	}
 
-	//getting blueprintWeaponSkin model to get default skin id to get image url on blueprint blueprintWeaponSkin skins
-	weaponModel, err := boiler.WeaponModels(
-		boiler.WeaponModelWhere.ID.EQ(blueprintWeaponSkin.WeaponModelID),
-		qm.Load(boiler.WeaponModelRels.DefaultSkin),
-	).One(tx)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	if weaponModel.R == nil || weaponModel.R.DefaultSkin == nil {
-		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to blueprintWeaponSkin"), "Could not find blueprintWeaponSkin default skin relationship, try again or contact support")
-	}
-
 	newWeaponSkin := boiler.WeaponSkin{
 		BlueprintID:   blueprintWeaponSkin.ID,
 		OwnerID:       ownerID.String(),
@@ -41,12 +27,11 @@ func InsertNewWeaponSkin(trx boil.Executor, ownerID uuid.UUID, blueprintWeaponSk
 		CreatedAt:     blueprintWeaponSkin.CreatedAt,
 	}
 
-	err = newWeaponSkin.Insert(tx, boil.Infer())
+	err := newWeaponSkin.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	//change img, avatar etc. here but have to get it from blueprint blueprintWeaponSkin skins
 	_, err = InsertNewCollectionItem(tx,
 		blueprintWeaponSkin.Collection,
 		boiler.ItemTypeWeaponSkin,

@@ -37,17 +37,9 @@ type BlueprintWeaponSkin struct {
 	ID               string              `json:"id"`
 	Label            string              `json:"label"`
 	Tier             string              `json:"tier"`
-	CreatedAt        time.Time           `json:"created_at"`
-	ImageURL         null.String         `json:"image_url,omitempty"`
-	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `json:"large_image_url,omitempty"`
-	BackgroundColor  null.String         `json:"background_color,omitempty"`
-	AnimationURL     null.String         `json:"animation_url,omitempty"`
-	YoutubeURL       null.String         `json:"youtube_url,omitempty"`
 	Collection       string              `json:"collection"`
-	WeaponModelID    string              `json:"weapon_model_id"`
 	StatModifier     decimal.NullDecimal `json:"stat_modifier,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
 }
 
 func (b *BlueprintWeaponSkin) Scan(value interface{}) error {
@@ -77,15 +69,7 @@ func BlueprintWeaponSkinFromBoiler(weaponSkin *boiler.BlueprintWeaponSkin) *Blue
 		Label:            weaponSkin.Label,
 		Tier:             weaponSkin.Tier,
 		CreatedAt:        weaponSkin.CreatedAt,
-		ImageURL:         weaponSkin.ImageURL,
-		CardAnimationURL: weaponSkin.CardAnimationURL,
-		AvatarURL:        weaponSkin.AvatarURL,
-		LargeImageURL:    weaponSkin.LargeImageURL,
-		BackgroundColor:  weaponSkin.BackgroundColor,
-		AnimationURL:     weaponSkin.AnimationURL,
-		YoutubeURL:       weaponSkin.YoutubeURL,
 		Collection:       weaponSkin.Collection,
-		WeaponModelID:    weaponSkin.WeaponModelID,
 		StatModifier:     weaponSkin.StatModifier,
 	}
 }

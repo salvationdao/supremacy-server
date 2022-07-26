@@ -99,7 +99,7 @@ INNER JOIN players p ON p.id = collection_items.owner_id
 LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN (
-	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM power_cores _pc
 	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
 	) ec ON ec.id = mechs.power_core_id
@@ -112,12 +112,12 @@ LEFT OUTER JOIN (
 ) ms ON mechs.chassis_skin_id = ms.id
 LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
 LEFT OUTER JOIN (
-	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_animation _ma
 	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
 ) ma1 on ma1.id = mechs.outro_animation_id
 LEFT OUTER JOIN (
-	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_animation _ma
 	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
 ) ma2 on ma2.id = mechs.intro_animation_id
@@ -126,11 +126,11 @@ LEFT OUTER JOIN (
 	FROM mech_weapons mw
 	INNER JOIN
 		(
-			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url, to_json(_ws) as weapon_skin
+			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin
 			FROM weapons _w
 			INNER JOIN collection_items _ci on _ci.item_id = _w.id
 			LEFT OUTER JOIN (
-					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
+					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 					FROM weapon_skin __ws
 					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
 			) _ws ON _ws.equipped_on = _w.id
@@ -142,7 +142,7 @@ LEFT OUTER JOIN (
 	FROM mech_utility mw
 	INNER JOIN (
 		SELECT
-			_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url,
+			_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
 			to_json(_us) as shield,
 			to_json(_ua) as accelerator,
 			to_json(_uam) as attack_drone,

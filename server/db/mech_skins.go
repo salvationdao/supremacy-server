@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -28,6 +27,7 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 
 	err := newSkin.Insert(tx, boil.Infer())
 	if err != nil {
+		gamelog.L.Error().Err(err).Interface("newSkin", newSkin).Msg("failed to insert")
 		return nil, terror.Error(err)
 	}
 
@@ -48,7 +48,7 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
 	boilerMech, err := boiler.MechSkins(
 		boiler.MechSkinWhere.ID.EQ(id),
-		qm.Load(boiler.MechSkinRels.MechSkinMechModel),
+		//qm.Load(boiler.MechSkinRels.MechSkinMechModel),
 	).One(trx)
 	if err != nil {
 		return nil, err
@@ -131,11 +131,12 @@ func AttachMechSkinToMech(trx *sql.Tx, ownerID, mechID, chassisSkinID string, lo
 	}
 
 	// wrong model
-	if mech.ModelID != mechSkin.MechModel {
-		err := fmt.Errorf("mechSkin model mismatch")
-		gamelog.L.Error().Err(err).Str("mech.ModelID", mech.ModelID).Str("mechSkin.MechModelID", mechSkin.MechModel).Msg("mech skin doesn't fit this mech")
-		return terror.Error(err, "This war machine skin doesn't fit this war machine.")
-	}
+	// TODO: vinnie fix
+	//if mech.ModelID != mechSkin.MechModel {
+	//	err := fmt.Errorf("mechSkin model mismatch")
+	//	gamelog.L.Error().Err(err).Str("mech.ModelID", mech.ModelID).Str("mechSkin.MechModelID", mechSkin.MechModel).Msg("mech skin doesn't fit this mech")
+	//	return terror.Error(err, "This war machine skin doesn't fit this war machine.")
+	//}
 
 	// error out, already has a mech skin
 	if mech.ChassisSkinID.Valid && mech.ChassisSkinID.String != "" {

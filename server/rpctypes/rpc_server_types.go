@@ -95,7 +95,6 @@ type MechSkin struct {
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
 	OwnerID               string      `json:"owner_id"`
-	MechModel             string      `json:"mech_model"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	Tier                  string      `json:"tier,omitempty"`
 	ImageURL              null.String `json:"image_url,omitempty"`

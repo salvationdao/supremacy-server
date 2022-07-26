@@ -1265,7 +1265,7 @@ func MarketplaceEventList(
 				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 				// TODO: vinnie fix, weapon type is not on weapon skin
 				//qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
-				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
+				//qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
 			),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(
