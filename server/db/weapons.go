@@ -343,6 +343,8 @@ type WeaponListOpts struct {
 	Search                        string
 	Filter                        *ListFilterRequest
 	Sort                          *ListSortRequest
+	SortBy                        string
+	SortDir                       SortByDir
 	PageSize                      int
 	Page                          int
 	OwnerID                       string
@@ -394,6 +396,12 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
+		qm.LeftOuterJoin(fmt.Sprintf("%s cws ON cws.%s = %s AND cws.%s = ?",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemID,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+			boiler.CollectionItemColumns.ItemType,
+		), boiler.ItemTypeWeaponSkin),
 	}
 
 	// create the where owner id = clause
@@ -466,7 +474,11 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	if len(opts.FilterRarities) > 0 {
-		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+		vals := []interface{}{}
+		for _, r := range opts.FilterRarities {
+			vals = append(vals, r)
+		}
+		queryMods = append(queryMods, qm.AndIn("cws.tier IN ?", vals...))
 	}
 
 	if len(opts.FilterEquippedStatuses) > 0 {
@@ -510,6 +522,10 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 				),
 			)
 		}
+	}
+
+	if len(opts.FilterWeaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
 	}
 
 	// Filter - Weapon Stats
@@ -614,8 +630,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		qm.From(boiler.TableNames.CollectionItems),
 	)
 
-	if len(opts.FilterWeaponTypes) > 0 {
-		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort("cws.tier", opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label))))
 	}
 
 	rows, err := boiler.NewQuery(
