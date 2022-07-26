@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -347,19 +345,21 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request: column_name must be 'id', 'public_address' or 'username'"))
 	}
 
+	L := gamelog.L.With().Interface("req", req).Str("func", "ProdGiveCrate").Logger()
 	crateType := req.Type
 
 	// get player
 	user, err := boiler.Players(qm.Where(fmt.Sprintf("%s = ?", req.ColumnName), req.Value)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get player by: %s: %s err: %w", req.ColumnName, req.Value, err))
 	}
+
 	tx, err := gamedb.StdConn.Begin()
-	defer tx.Rollback()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		L.Error().Err(err).Msg("unable to begin tx")
 		return http.StatusInternalServerError, terror.Error(err, "Issue claiming mystery crate, please try again or contact support.")
 	}
+	defer tx.Rollback()
 
 	// get mech crates
 	storeMechCrate, err := boiler.StorefrontMysteryCrates(
@@ -408,7 +408,7 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 	}
 	err = tx.Commit()
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
+		L.Error().Err(err).Msg("failed to commit mystery crate transaction")
 		return http.StatusInternalServerError, terror.Error(err, "Issue claiming mystery crate, please try again or contact support.")
 	}
 
