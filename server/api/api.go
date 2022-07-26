@@ -235,6 +235,7 @@ func NewAPI(
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
+			r.Mount("/system_messages", SystemMessagesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
 			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
