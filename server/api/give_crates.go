@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -329,8 +331,9 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 }
 
 type GiveCrateRequest struct {
-	PlayerID string `json:"player_id"`
-	Type     string `json:"type"` // weapon || mech
+	ColumnName string `json:"column_name"`
+	Value      string `json:"value"`
+	Type       string `json:"type"` // weapon || mech
 }
 
 func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -340,14 +343,17 @@ func (api *API) ProdGiveCrate(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusInternalServerError, err
 	}
 
-	crateType := req.Type
-	user, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.PlayerID)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player by player id")
-
-		return http.StatusInternalServerError, err
+	if req.ColumnName != "id" && req.ColumnName != "public_address" && req.ColumnName != "username" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request: column_name must be 'id', 'public_address' or 'username'"))
 	}
 
+	crateType := req.Type
+
+	// get player
+	user, err := boiler.Players(qm.Where(fmt.Sprintf("%s = ?", req.ColumnName), req.Value)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get player by: %s: %s err: %w", req.ColumnName, req.Value, err))
+	}
 	tx, err := gamedb.StdConn.Begin()
 	defer tx.Rollback()
 	if err != nil {
