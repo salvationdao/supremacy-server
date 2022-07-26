@@ -508,6 +508,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				ID:                  auctionItem.CollectionItemID.String(),
 				LockedToMarketplace: false,
 			}
+
 			_, err = collectionItem.Update(tx, boil.Whitelist(
 				boiler.CollectionItemColumns.ID,
 				boiler.CollectionItemColumns.LockedToMarketplace,
@@ -598,11 +599,10 @@ func HandleMarketplaceAssetTransfer(conn boil.Executor, rpcClient *xsyn_rpcclien
 	default:
 		return fmt.Errorf("unhandled item type")
 	}
-
 	for _, hash := range attachedHashes {
 		err := rpcClient.TransferAsset(
-			itemSale.SoldTo.String,
 			colItem.OwnerID,
+			itemSale.SoldTo.String,
 			hash,
 			itemSale.SoldTXID,
 			func(rpcClient *xsyn_rpcclient.XsynXrpcClient, eventID int64) {

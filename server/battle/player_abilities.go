@@ -839,3 +839,50 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 	return nil
 }
+
+const HubKeyBattleAbilityOptIn = "BATTLE:ABILITY:OPT:IN"
+
+var optInBucket = leakybucket.NewCollector(1, 1, true)
+
+func (arena *Arena) BattleAbilityOptIn(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	if optInBucket.Add(user.ID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
+	btl := arena.CurrentBattle()
+	if btl == nil {
+		return terror.Error(fmt.Errorf("battle is endded"), "Battle has not started yet.")
+	}
+
+	as := btl.AbilitySystem()
+	if as == nil {
+		return terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
+	}
+
+	if !AbilitySystemIsAvailable(as) {
+		return terror.Error(fmt.Errorf("ability system si not available"), "Ability is not ready.")
+	}
+
+	if as.BattleAbilityPool.Stage.Phase.Load() != BribeStageOptIn {
+		return terror.Error(fmt.Errorf("invlid phase"), "It is not in the stage for player to opt in.")
+	}
+
+	ba := *as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
+	offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
+
+	bao := boiler.BattleAbilityOptInLog{
+		BattleID:                btl.BattleID,
+		PlayerID:                user.ID,
+		BattleAbilityOfferingID: offeringID,
+		FactionID:               factionID,
+		BattleAbilityID:         ba.ID,
+	}
+	err := bao.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to opt in battle ability")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s/battle_ability/check_opt_in", user.ID), HubKeyBattleAbilityOptInCheck, true)
+
+	return nil
+}

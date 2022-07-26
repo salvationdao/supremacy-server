@@ -50,10 +50,11 @@ type CodeRedemptionRequest struct {
 }
 
 type Reward struct {
-	Label       string              `json:"label"`
-	ImageURL    null.String         `json:"image_url"`
-	LockedUntil null.Time           `json:"locked_until"`
-	Amount      decimal.NullDecimal `json:"amount"`
+	Crate       *server.MysteryCrate `json:"mystery_crate,omitempty"`
+	Label       string               `json:"label"`
+	ImageURL    null.String          `json:"image_url"`
+	LockedUntil null.Time            `json:"locked_until"`
+	Amount      decimal.NullDecimal  `json:"amount"`
 }
 
 type CodeRedemptionResponse struct {
@@ -185,10 +186,17 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			ci.TransactionID = null.StringFrom(txID)
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeMECH_CRATE:
-			assignedMechCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeMechCrate, tx, cc.API)
+			assignedMechCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeMechCrate, tx, cc.API)
 			if err != nil {
 				rollbackRedeem()
 				return terror.Error(err, "Issue claiming mech crate, please try again or contact support.")
+			}
+
+			err = cc.API.Passport.AssetRegister(xa)
+			if err != nil {
+				rollbackRedeem()
+				gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
+				return terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
 			}
 			ci.ItemID = null.StringFrom(assignedMechCrate.ID)
 			reward := &Reward{
@@ -204,11 +212,18 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 
 			rewards = append(rewards, reward)
 		case boiler.CouponItemTypeWEAPON_CRATE:
-			assignedWeaponCrate, err := assignAndRegisterPurchasedCrate(user.ID, storeWeaponCrate, tx, cc.API)
+			assignedWeaponCrate, xa, err := assignAndRegisterPurchasedCrate(user.ID, storeWeaponCrate, tx, cc.API)
 			if err != nil {
 				rollbackRedeem()
 				return terror.Error(err, "Issue claiming weapon crate, please try again or contact support.")
 			}
+			err = cc.API.Passport.AssetRegister(xa)
+			if err != nil {
+				rollbackRedeem()
+				gamelog.L.Error().Err(err).Interface("mystery crate", "").Msg("failed to register to XSYN")
+				return terror.Error(err, "Failed to get mystery crate, please try again or contact support.")
+			}
+
 			ci.ItemID = null.StringFrom(assignedWeaponCrate.ID)
 			reward := &Reward{
 				Label:       storeWeaponCrate.MysteryCrateType,

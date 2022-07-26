@@ -40,13 +40,13 @@ SELECT
 	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
 	collection_items.image_url,
-	collection_items.avatar_url,
 	collection_items.card_animation_url,
+	collection_items.avatar_url,
 	collection_items.large_image_url,
 	collection_items.background_color,
 	collection_items.animation_url,
 	collection_items.youtube_url,
-	p.username,
+	COALESCE(p.username, ''),
 	COALESCE(mech_stats.total_wins, 0),
 	COALESCE(mech_stats.total_deaths, 0),
 	COALESCE(mech_stats.total_kills, 0),
@@ -140,7 +140,7 @@ LEFT OUTER JOIN (
 					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
 					FROM weapon_skin __ws
 					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
-			) _ws ON _ws.id = _w.equipped_weapon_skin_id
+			) _ws ON _ws.equipped_on = _w.id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id
@@ -204,6 +204,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	result, err := conn.Query(query, mechID)
 	if err != nil {
+		fmt.Println("here 11")
 		return nil, err
 	}
 	defer result.Close()
@@ -270,11 +271,14 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.BattleReady,
 		)
 		if err != nil {
+			fmt.Println("here 22")
+			gamelog.L.Error().Err(err).Msg("failed to get mech")
 			return nil, err
 		}
 	}
 
 	if mc.ID == "" {
+		fmt.Println("here 33")
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
 
@@ -469,12 +473,7 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	mechModel, err := boiler.MechModels(
 		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
 		qm.Load(boiler.MechModelRels.DefaultChassisSkin),
@@ -527,11 +526,13 @@ func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.B
 		bpms.YoutubeURL,
 	)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to insert col item")
 		return nil, terror.Error(err)
 	}
 
 	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get mech")
 		return nil, terror.Error(err)
 	}
 	return mech, nil
@@ -646,9 +647,20 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}
 	}
 	if len(opts.FilterRarities) > 0 {
-		queryMods = append(queryMods, qm.Expr(
-			boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities),
-		))
+		vals := []interface{}{}
+		for _, r := range opts.FilterRarities {
+			vals = append(vals, r)
+		}
+		queryMods = append(queryMods,
+			qm.LeftOuterJoin(fmt.Sprintf(
+				"%s msc ON msc.%s = %s AND msc.%s = ?",
+				boiler.TableNames.CollectionItems,
+				boiler.CollectionItemColumns.ItemID,
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+				boiler.CollectionItemColumns.ItemType,
+			), boiler.ItemTypeMechSkin),
+			qm.AndIn("msc.tier IN ?", vals...),
+		)
 	}
 	if len(opts.FilterStatuses) > 0 {
 		hasIdleToggled := false

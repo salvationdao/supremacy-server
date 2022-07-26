@@ -39,21 +39,23 @@ type SiloSkin struct {
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 	q := `
-	SELECT 	ci.item_type    as type,
-			ci.id           as ownership_id,
-       		m.model_id  	as static_id,
-       		ms.blueprint_id as skin_id
+	SELECT
+    distinct on ( ms.blueprint_id) ms.blueprint_id as skin_id,
+                                   ci.item_type    as type,
+                                   ci.id           as ownership_id,
+                                   m.model_id  	as static_id
 	FROM collection_items ci
-         	INNER JOIN mechs m on
-    			m.id = ci.item_id
-         	INNER JOIN mech_skin ms on
-        		ms.id = coalesce(
-            			m.chassis_skin_id,
-            			(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
-        				)
+         INNER JOIN mechs m on
+        	m.id = ci.item_id
+         INNER JOIN mech_skin ms on
+        	ms.id = coalesce(
+            	m.chassis_skin_id,
+            	(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
+        	)
 	WHERE ci.owner_id = $1
   	AND ci.item_type = 'mech'
-	AND ci.xsyn_locked=false;
+  	AND ci.xsyn_locked=false
+	ORDER BY ms.blueprint_id, m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -65,15 +67,16 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 	mechSiloType := make([]*SiloType, 0)
 	defer rows.Close()
-	for rows.Next() {
-		mst := &SiloType{}
 
-		err := rows.Scan(&mst.Type, &mst.OwnershipID, &mst.StaticID, &mst.SkinIDStr)
+	for rows.Next() {
+		mst := SiloType{}
+
+		err := rows.Scan(&mst.SkinIDStr, &mst.Type, &mst.OwnershipID, &mst.StaticID)
 		if err != nil {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
 
-		mechSiloType = append(mechSiloType, mst)
+		mechSiloType = append(mechSiloType, &mst)
 	}
 
 	for _, mechSilo := range mechSiloType {
@@ -117,36 +120,56 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 		if len(mech.Weapons) > 0 {
 			for _, weapon := range mech.Weapons {
-				weaponStringID := weapon.EquippedWeaponSkinID.String
-				if !weapon.EquippedWeaponSkinID.Valid {
-					defaultSkin, err := boiler.BlueprintWeaponSkins(
-						boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-						boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
+				weaponSkinBlueprintID := ""
+				var weaponSkinCollectionID *string
+
+				weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
+					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
+					boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
+				).One(gamedb.StdConn)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+					return nil, err
+				}
+				if err == nil {
+					weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
+				} else if !weapon.EquippedWeaponSkinID.Valid {
+					weaponModel, err := boiler.WeaponModels(
+						boiler.WeaponModelWhere.ID.EQ(mech.ModelID),
 					).One(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
 						continue
 					}
-					weaponStringID = defaultSkin.ID
+					weaponSkinBlueprintID = weaponModel.DefaultSkinID
+				} else {
+					skinBP, err := boiler.FindWeaponSkin(gamedb.StdConn, weapon.EquippedWeaponSkinID.String)
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+						continue
+					}
+					weaponSkinBlueprintID = skinBP.BlueprintID
+
+					weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID.String), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
+					if err != nil {
+						continue
+					}
+					weaponSkinCollectionID = &weaponSkinCollection.ID
 				}
 
 				weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
 				if err != nil {
 					continue
 				}
-				var weaponSkin *string
-				if weapon.EquippedWeaponSkinID.Valid {
-					weaponSkin = &weapon.EquippedWeaponSkinID.String
-				}
 
 				newAttribute := MechSiloAccessories{
 					Type:        "weapon",
 					OwnershipID: weaponCollection.ID,
-					StaticID:    weapon.BlueprintID,
+					StaticID:    weapon.WeaponModelID.String,
 					Skin: &SiloSkin{
 						Type:        "skin",
-						OwnershipID: weaponSkin,
-						StaticID:    &weaponStringID,
+						OwnershipID: weaponSkinCollectionID,
+						StaticID:    &weaponSkinBlueprintID,
 					},
 				}
 
@@ -184,18 +207,19 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 	q := `
 	SELECT 	ci.item_type		 	as type,
-			ci.id    				as ownership_id,
-			smc.id 					as mystery_crate_id,
-			mc.locked_until        	as can_open_on
-	FROM 	collection_items ci
-         	INNER JOIN mystery_crate mc on
-    			mc.id = ci.item_id AND mc.opened = false
-         	INNER JOIN storefront_mystery_crates smc on
-            	smc.mystery_crate_type = mc."type"
-        	AND smc.faction_id = mc.faction_id
+          ci.id    					as ownership_id,
+          smc.id 					as mystery_crate_id,
+          mc.locked_until        	as can_open_on
+	FROM collection_items ci
+            INNER JOIN mystery_crate mc on
+            mc.id = ci.item_id AND mc.opened = false
+    	INNER JOIN storefront_mystery_crates smc on
+    	smc.mystery_crate_type = mc."type"
+    	AND smc.faction_id = mc.faction_id
 	WHERE ci.owner_id = $1
-  			AND ci.item_type = 'mystery_crate'
-			AND ci.xsyn_locked=false;
+  		AND ci.item_type = 'mystery_crate'
+  		AND ci.xsyn_locked=false
+	ORDER BY mc.type;
 	`
 	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
 	if err != nil {
@@ -215,7 +239,7 @@ func GetUserMysteryCrateHangarItems(userID string) ([]*SiloType, error) {
 			return nil, terror.Error(err, "failed to scan rows")
 		}
 
-		canOpenOnStr := canOpenOn.Format("2006-01-02T15:04:05.000Z")
+		canOpenOnStr := canOpenOn.UTC().Format("2006-01-02T15:04:05.000Z")
 
 		mst.CanOpenOn = &canOpenOnStr
 
@@ -313,7 +337,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 	mechSkin := &SiloSkin{
 		Type:        "skin",
 		OwnershipID: nil,
-		StaticID:    mechSiloType.SkinIDStr,
+		StaticID:    &mech.ChassisSkin.BlueprintID,
 	}
 
 	if mech.ChassisSkinID.Valid {
@@ -329,36 +353,56 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 
 	if len(mech.Weapons) > 0 {
 		for _, weapon := range mech.Weapons {
-			weaponStringID := weapon.EquippedWeaponSkinID.String
-			if !weapon.EquippedWeaponSkinID.Valid {
-				defaultSkin, err := boiler.BlueprintWeaponSkins(
-					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-					boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
+			weaponSkinBlueprintID := ""
+			var weaponSkinCollectionID *string
+
+			weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
+				boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
+				boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
+			).One(trx)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+				return nil, err
+			}
+			if err == nil {
+				weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
+			} else if !weapon.EquippedWeaponSkinID.Valid {
+				weaponModel, err := boiler.WeaponModels(
+					boiler.WeaponModelWhere.ID.EQ(mech.ModelID),
 				).One(trx)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
 					continue
 				}
-				weaponStringID = defaultSkin.ID
+				weaponSkinBlueprintID = weaponModel.DefaultSkinID
+			} else {
+				skinBP, err := boiler.FindWeaponSkin(trx, weapon.EquippedWeaponSkinID.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+					continue
+				}
+				weaponSkinBlueprintID = skinBP.BlueprintID
+
+				weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID.String), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
+				if err != nil {
+					continue
+				}
+				weaponSkinCollectionID = &weaponSkinCollection.ID
 			}
 
 			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
 			if err != nil {
 				continue
 			}
-			var weaponSkin *string
-			if weapon.EquippedWeaponSkinID.Valid {
-				weaponSkin = &weapon.EquippedWeaponSkinID.String
-			}
 
 			newAttribute := MechSiloAccessories{
 				Type:        "weapon",
 				OwnershipID: weaponCollection.ID,
-				StaticID:    weapon.BlueprintID,
+				StaticID:    weapon.WeaponModelID.String,
 				Skin: &SiloSkin{
 					Type:        "skin",
-					OwnershipID: weaponSkin,
-					StaticID:    &weaponStringID,
+					OwnershipID: weaponSkinCollectionID,
+					StaticID:    &weaponSkinBlueprintID,
 				},
 			}
 

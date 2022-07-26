@@ -194,7 +194,7 @@ jobs:
 
       - name: "DB: sync static data"
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver sync --static_path "./static/"'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver-export.env && ./gameserver sync --static_path "./static/"'
 
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment

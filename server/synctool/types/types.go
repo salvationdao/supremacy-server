@@ -83,6 +83,7 @@ type WeaponSkin struct {
 	WeaponType       string `json:"weapon_typep"`
 	Tier             string `json:"tier"`
 	ImageUrl         string `json:"image_url"`
+	CreatedAt        string `json:"created_at"`
 	CardAnimationUrl string `json:"card_animation_url"`
 	AvatarUrl        string `json:"avatar_url"`
 	LargeImageUrl    string `json:"large_image_url"`
@@ -99,6 +100,21 @@ type BattleAbility struct {
 	Label            string `json:"label"`
 	CoolDownDuration string `json:"cool_down_duration"`
 	Description      string `json:"description"`
+}
+
+type GameAbility struct {
+	ID                  string  `json:"id"`
+	GameClientAbilityID int     `json:"game_client_ability_id"`
+	FactionID           string  `json:"faction_id"`
+	BattleAbilityID     *string `json:"battle_ability_id"`
+	Label               string  `json:"label"`
+	Colour              string  `json:"colour"`
+	ImageUrl            string  `json:"image_url"`
+	SupsCost            string  `json:"sups_cost"`
+	Description         string  `json:"description"`
+	TextColour          string  `json:"text_colour"`
+	CurrentSups         string  `json:"current_sups"`
+	Level               string  `json:"level"`
 }
 
 type PowerCores struct {

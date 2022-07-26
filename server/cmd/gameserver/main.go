@@ -1,12 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"log"
 	"net/url"
 	"runtime"
@@ -22,10 +20,14 @@ import (
 	"server/profanities"
 	"server/sms"
 	"server/synctool"
+	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/volatiletech/null/v8"
+
+	"github.com/ninja-software/terror/v2"
+
 	"github.com/gofrs/uuid"
 	"github.com/pemistahl/lingua-go"
 	"github.com/urfave/cli/v2"
@@ -38,8 +40,6 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
@@ -158,6 +158,8 @@ func main() {
 
 					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
+
+					&cli.StringFlag{Name: "github_token", Value: "", EnvVars: []string{envPrefix + "_GITHUB_ACCESS_TOKEN", "GITHUB_PAT"}, Usage: "Github token for access to private repo"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -179,6 +181,7 @@ func main() {
 					twilioApiKey := c.String("twilio_api_key")
 					twilioApiSecrete := c.String("twilio_api_secret")
 					smsFromNumber := c.String("sms_from_number")
+					githubToken := c.String("github_token")
 
 					telegramBotToken := c.String("telegram_bot_token")
 
@@ -266,7 +269,7 @@ func main() {
 						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
 					}
 
-					sqlconn, err := sqlConnect(
+					sqlconn, err := gamedb.SqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
@@ -348,6 +351,7 @@ func main() {
 
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 					gamelog.L.Info().Msgf("NewLanguageDetectorBuilder took %s", time.Since(start))
+
 					start = time.Now()
 					// initialise profanity manager
 					gamelog.L.Info().Msg("Setting up profanity manager")
@@ -356,8 +360,15 @@ func main() {
 						return terror.Error(err, "Profanity manager init failed")
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
+					// initialise system messaging manager
+					gamelog.L.Info().Msg("Setting up system messaging manager")
+					smm := system_messages.NewSystemMessagingManager()
+					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
+
+					start = time.Now()
+					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
@@ -365,13 +376,16 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						SystemMessagingManager:   smm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
 					start = time.Now()
 
+					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
+
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, smm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -394,7 +408,7 @@ func main() {
 					start = time.Now()
 
 					if syncKeycard { // TODO: Remove after syncing keycards
-						UpdateKeycard(rpcClient, keycardCSVPath)
+						UpdateKeycard(api, rpcClient, keycardCSVPath)
 						gamelog.L.Info().Msgf("UpdateKeycard took %s", time.Since(start))
 						start = time.Now()
 					}
@@ -430,7 +444,7 @@ func main() {
 				},
 				Usage: "sync static data",
 				Action: func(c *cli.Context) error {
-					fmt.Println("RUNNING SYNC")
+					fmt.Println("Running Sync")
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
 					databaseHost := c.String("database_host")
@@ -442,10 +456,7 @@ func main() {
 
 					filePath := c.String("static_path")
 
-					params := url.Values{}
-					params.Add("sslmode", "disable")
-
-					sqlconn, err := sqlConnect(
+					sqlconn, err := gamedb.SqlConnect(
 						databaseUser,
 						databasePass,
 						databaseHost,
@@ -458,6 +469,11 @@ func main() {
 					)
 					if err != nil {
 						return terror.Panic(err)
+					}
+
+					err = sqlconn.Ping()
+					if err != nil {
+						return terror.Panic(err, "Failed to ping to DB")
 					}
 
 					dt := &synctool.StaticSyncTool{
@@ -514,7 +530,7 @@ type KeyCardUpdate struct {
 	BlueprintID   string
 }
 
-func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
+func UpdateKeycard(api *api.API, pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 	gamelog.L.Info().Msg("Syncing Keycards with Passport")
 	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
 	if !updated {
@@ -639,7 +655,7 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
 			}
 
-			_, err = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+			err = api.UpsertPlayer(resp.UserID, null.StringFrom(resp.Username), resp.PublicAddress, null.StringFrom(factionID.String()), nil)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("public_address", keycardAssets.PublicAddress).Str("factionID", factionID.String()).Str("resp.Username", resp.Username).Str("resp.UserID", resp.UserID).Msg("failed to register player")
 			}
@@ -706,7 +722,19 @@ func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *xsyn_rpcclient.XsynXrpcClient, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector, pm *profanities.ProfanityManager) (*api.API, error) {
+func SetupAPI(
+	ctxCLI *cli.Context,
+	ctx context.Context,
+	log *zerolog.Logger,
+	battleArenaClient *battle.Arena,
+	passport *xsyn_rpcclient.XsynXrpcClient,
+	sms server.SMS,
+	telegram server.Telegram,
+	languageDetector lingua.LanguageDetector,
+	pm *profanities.ProfanityManager,
+	smm *system_messages.SystemMessagingManager,
+	staticSyncURL string,
+) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -752,50 +780,18 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		AuthHangarCallbackURL: ctxCLI.String("auth_hangar_callback_url"),
 	}
 
+	syncConfig := &synctool.StaticSyncTool{
+		FilePath: staticSyncURL,
+	}
+
 	// HTML Sanitizer
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, smm, syncConfig)
+	if err != nil {
+		return nil, err
+	}
 	return serverAPI, nil
-}
-
-func sqlConnect(
-	databaseTxUser string,
-	databaseTxPass string,
-	databaseHost string,
-	databasePort string,
-	databaseName string,
-	DatabaseApplicationName string,
-	APIVersion string,
-	maxIdle int,
-	maxOpen int,
-) (*sql.DB, error) {
-	params := url.Values{}
-	params.Add("sslmode", "disable")
-	if DatabaseApplicationName != "" {
-		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
-	}
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
-		databaseTxUser,
-		databaseTxPass,
-		databaseHost,
-		databasePort,
-		databaseName,
-		params.Encode(),
-	)
-	cfg, err := pgx.ParseConfig(connString)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := stdlib.OpenDB(*cfg)
-	if err != nil {
-		return nil, err
-	}
-	conn.SetMaxIdleConns(maxIdle)
-	conn.SetMaxOpenConns(maxOpen)
-	return conn, nil
-
 }

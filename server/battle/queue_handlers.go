@@ -91,16 +91,13 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// check mech is still in repair
-	ar, err := boiler.MechRepairs(
-		boiler.MechRepairWhere.MechID.EQ(mech.ID),
-		boiler.MechRepairWhere.RepairCompleteAt.GT(time.Now()),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to check asset repair table")
+	inRepair, err := arena.RepairSystem.IsStillRepairing(mech.ID)
+	if err != nil {
+		return err
 	}
 
-	if ar != nil {
-		return terror.Error(fmt.Errorf("mech is still in repair center"), "Your mech is still in the repair center")
+	if inRepair {
+		return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is not fully recovered.")
 	}
 
 	// Insert mech into queue

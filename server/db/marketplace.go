@@ -66,6 +66,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		(
 			CASE
 				WHEN collection_items.item_type = 'weapon' THEN COALESCE(wsc.tier, collection_items.tier)
+				WHEN collection_items.item_type = 'mech' THEN COALESCE(msc.tier, collection_items.tier)
 				ELSE collection_items.tier
 			END
 		) AS "collection_items.tier",
@@ -110,6 +111,16 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s msc ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeMechSkin,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -1688,7 +1699,7 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 }
 
 // MarketplaceItemIsGenesisOrLimitedMech checks whether sale item is a genesis mech for sale.
-func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, error) {
+func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool,  error) {
 	mechRow, err := boiler.Mechs(
 		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 		qm.InnerJoin(fmt.Sprintf(
@@ -1703,15 +1714,15 @@ func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string
 	).One(conn)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			return false,  nil
 		}
-		return false, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
 	mech, err := Mech(conn, mechRow.ID)
 	if err != nil {
-		return false, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
-	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(), nil
+	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(),  nil
 }

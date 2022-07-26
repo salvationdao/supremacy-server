@@ -39,6 +39,7 @@ type BlueprintMechSkin struct {
 	YoutubeURL       null.String         `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 	MechType         null.String         `boiler:"mech_type" boil:"mech_type" json:"mech_type,omitempty" toml:"mech_type" yaml:"mech_type,omitempty"`
 	StatModifier     decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
+	ProfileAvatarID  null.String         `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -60,6 +61,7 @@ var BlueprintMechSkinColumns = struct {
 	YoutubeURL       string
 	MechType         string
 	StatModifier     string
+	ProfileAvatarID  string
 }{
 	ID:               "id",
 	Collection:       "collection",
@@ -76,6 +78,7 @@ var BlueprintMechSkinColumns = struct {
 	YoutubeURL:       "youtube_url",
 	MechType:         "mech_type",
 	StatModifier:     "stat_modifier",
+	ProfileAvatarID:  "profile_avatar_id",
 }
 
 var BlueprintMechSkinTableColumns = struct {
@@ -94,6 +97,7 @@ var BlueprintMechSkinTableColumns = struct {
 	YoutubeURL       string
 	MechType         string
 	StatModifier     string
+	ProfileAvatarID  string
 }{
 	ID:               "blueprint_mech_skin.id",
 	Collection:       "blueprint_mech_skin.collection",
@@ -110,6 +114,7 @@ var BlueprintMechSkinTableColumns = struct {
 	YoutubeURL:       "blueprint_mech_skin.youtube_url",
 	MechType:         "blueprint_mech_skin.mech_type",
 	StatModifier:     "blueprint_mech_skin.stat_modifier",
+	ProfileAvatarID:  "blueprint_mech_skin.profile_avatar_id",
 }
 
 // Generated where
@@ -130,6 +135,7 @@ var BlueprintMechSkinWhere = struct {
 	YoutubeURL       whereHelpernull_String
 	MechType         whereHelpernull_String
 	StatModifier     whereHelperdecimal_NullDecimal
+	ProfileAvatarID  whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
@@ -146,14 +152,17 @@ var BlueprintMechSkinWhere = struct {
 	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"youtube_url\""},
 	MechType:         whereHelpernull_String{field: "\"blueprint_mech_skin\".\"mech_type\""},
 	StatModifier:     whereHelperdecimal_NullDecimal{field: "\"blueprint_mech_skin\".\"stat_modifier\""},
+	ProfileAvatarID:  whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
 var BlueprintMechSkinRels = struct {
+	ProfileAvatar                string
 	BlueprintMechSkinMechModel   string
 	DefaultChassisSkinMechModels string
 	BlueprintMechSkins           string
 }{
+	ProfileAvatar:                "ProfileAvatar",
 	BlueprintMechSkinMechModel:   "BlueprintMechSkinMechModel",
 	DefaultChassisSkinMechModels: "DefaultChassisSkinMechModels",
 	BlueprintMechSkins:           "BlueprintMechSkins",
@@ -161,6 +170,7 @@ var BlueprintMechSkinRels = struct {
 
 // blueprintMechSkinR is where relationships are stored.
 type blueprintMechSkinR struct {
+	ProfileAvatar                *ProfileAvatar `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
 	BlueprintMechSkinMechModel   *MechModel     `boiler:"BlueprintMechSkinMechModel" boil:"BlueprintMechSkinMechModel" json:"BlueprintMechSkinMechModel" toml:"BlueprintMechSkinMechModel" yaml:"BlueprintMechSkinMechModel"`
 	DefaultChassisSkinMechModels MechModelSlice `boiler:"DefaultChassisSkinMechModels" boil:"DefaultChassisSkinMechModels" json:"DefaultChassisSkinMechModels" toml:"DefaultChassisSkinMechModels" yaml:"DefaultChassisSkinMechModels"`
 	BlueprintMechSkins           MechSkinSlice  `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
@@ -175,9 +185,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier", "profile_avatar_id"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"mech_model", "label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url", "mech_type", "stat_modifier", "profile_avatar_id"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )
@@ -424,6 +434,21 @@ func (q blueprintMechSkinQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// ProfileAvatar pointed to by the foreign key.
+func (o *BlueprintMechSkin) ProfileAvatar(mods ...qm.QueryMod) profileAvatarQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ProfileAvatarID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := ProfileAvatars(queryMods...)
+	queries.SetFrom(query.Query, "\"profile_avatars\"")
+
+	return query
+}
+
 // BlueprintMechSkinMechModel pointed to by the foreign key.
 func (o *BlueprintMechSkin) BlueprintMechSkinMechModel(mods ...qm.QueryMod) mechModelQuery {
 	queryMods := []qm.QueryMod{
@@ -478,6 +503,115 @@ func (o *BlueprintMechSkin) BlueprintMechSkins(mods ...qm.QueryMod) mechSkinQuer
 	}
 
 	return query
+}
+
+// LoadProfileAvatar allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintMechSkinL) LoadProfileAvatar(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMechSkin
+	var object *BlueprintMechSkin
+
+	if singular {
+		object = maybeBlueprintMechSkin.(*BlueprintMechSkin)
+	} else {
+		slice = *maybeBlueprintMechSkin.(*[]*BlueprintMechSkin)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechSkinR{}
+		}
+		if !queries.IsNil(object.ProfileAvatarID) {
+			args = append(args, object.ProfileAvatarID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechSkinR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ProfileAvatarID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ProfileAvatarID) {
+				args = append(args, obj.ProfileAvatarID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`profile_avatars`),
+		qm.WhereIn(`profile_avatars.id in ?`, args...),
+		qmhelper.WhereIsNull(`profile_avatars.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load ProfileAvatar")
+	}
+
+	var resultSlice []*ProfileAvatar
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice ProfileAvatar")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for profile_avatars")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for profile_avatars")
+	}
+
+	if len(blueprintMechSkinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ProfileAvatar = foreign
+		if foreign.R == nil {
+			foreign.R = &profileAvatarR{}
+		}
+		foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ProfileAvatarID, foreign.ID) {
+				local.R.ProfileAvatar = foreign
+				if foreign.R == nil {
+					foreign.R = &profileAvatarR{}
+				}
+				foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBlueprintMechSkinMechModel allows an eager lookup of values, cached into the
@@ -777,6 +911,85 @@ func (blueprintMechSkinL) LoadBlueprintMechSkins(e boil.Executor, singular bool,
 		}
 	}
 
+	return nil
+}
+
+// SetProfileAvatar of the blueprintMechSkin to the related item.
+// Sets o.R.ProfileAvatar to related.
+// Adds o to related.R.BlueprintMechSkins.
+func (o *BlueprintMechSkin) SetProfileAvatar(exec boil.Executor, insert bool, related *ProfileAvatar) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_mech_skin\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"profile_avatar_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintMechSkinPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ProfileAvatarID, related.ID)
+	if o.R == nil {
+		o.R = &blueprintMechSkinR{
+			ProfileAvatar: related,
+		}
+	} else {
+		o.R.ProfileAvatar = related
+	}
+
+	if related.R == nil {
+		related.R = &profileAvatarR{
+			BlueprintMechSkins: BlueprintMechSkinSlice{o},
+		}
+	} else {
+		related.R.BlueprintMechSkins = append(related.R.BlueprintMechSkins, o)
+	}
+
+	return nil
+}
+
+// RemoveProfileAvatar relationship.
+// Sets o.R.ProfileAvatar to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintMechSkin) RemoveProfileAvatar(exec boil.Executor, related *ProfileAvatar) error {
+	var err error
+
+	queries.SetScanner(&o.ProfileAvatarID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("profile_avatar_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.ProfileAvatar = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintMechSkins {
+		if queries.Equal(o.ProfileAvatarID, ri.ProfileAvatarID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintMechSkins)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintMechSkins[i] = related.R.BlueprintMechSkins[ln-1]
+		}
+		related.R.BlueprintMechSkins = related.R.BlueprintMechSkins[:ln-1]
+		break
+	}
 	return nil
 }
 

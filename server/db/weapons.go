@@ -10,6 +10,7 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -53,12 +54,7 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 	return eid, nil
 }
 
-func InsertNewWeapon(trx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewWeapon(tx boil.Executor, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	//getting weapon model to get default skin id to get image url on blueprint weapon skins
 	weaponModel, err := boiler.WeaponModels(
 		boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
@@ -704,6 +700,238 @@ func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, rea
 	).UpdateAll(conn, boiler.M{
 		"asset_hidden": reason,
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WeaponMaxStats struct {
+	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	Damage              int                 `json:"damage"`
+	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
+	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
+	Radius              null.Int            `json:"radius,omitempty"`
+	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
+	Spread              decimal.NullDecimal `json:"spread,omitempty"`
+	RateOfFire          decimal.NullDecimal `json:"rate_of_fire,omitempty"`
+	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
+	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
+}
+
+func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, error) {
+	output := &WeaponMaxStats{}
+
+	if userID != "" {
+		err := boiler.CollectionItems(
+			qm.Select(
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.MaxAmmo)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Damage)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloffRate)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Radius)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RadiusDamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Spread)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RateOfFire)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ProjectileSpeed)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EnergyCost)),
+			),
+			qm.InnerJoin(fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Weapons,
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			)),
+			boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		).QueryRow(conn).Scan(
+			&output.MaxAmmo,
+			&output.Damage,
+			&output.DamageFalloff,
+			&output.DamageFalloffRate,
+			&output.Radius,
+			&output.RadiusDamageFalloff,
+			&output.Spread,
+			&output.RateOfFire,
+			&output.ProjectileSpeed,
+			&output.EnergyCost,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return output, nil
+	}
+
+	err := boiler.Weapons(
+		qm.Select(
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Damage),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloffRate),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Radius),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RadiusDamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Spread),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RateOfFire),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.ProjectileSpeed),
+			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.EnergyCost),
+		),
+	).QueryRow(conn).Scan(
+		&output.MaxAmmo,
+		&output.Damage,
+		&output.DamageFalloff,
+		&output.DamageFalloffRate,
+		&output.Radius,
+		&output.RadiusDamageFalloff,
+		&output.Spread,
+		&output.RateOfFire,
+		&output.ProjectileSpeed,
+		&output.EnergyCost,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+type AvatarListOpts struct {
+	Search   string
+	Filter   *ListFilterRequest
+	Sort     *ListSortRequest
+	PageSize int
+	Page     int
+	OwnerID  string
+}
+
+func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
+	var avatars []*boiler.ProfileAvatar
+
+	queryMods := []qm.QueryMod{
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.PlayersProfileAvatars,
+			qm.Rels(boiler.TableNames.PlayersProfileAvatars, boiler.PlayersProfileAvatarColumns.ProfileAvatarID),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.ID),
+		)),
+		qm.Where("players_profile_avatars.player_id = ?", opts.OwnerID),
+	}
+
+	total, err := boiler.ProfileAvatars(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.ID),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.Tier),
+		),
+		qm.From(boiler.TableNames.ProfileAvatars),
+	)
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		av := &boiler.ProfileAvatar{}
+
+		scanArgs := []interface{}{
+			&av.ID,
+			&av.AvatarURL,
+			&av.Tier,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, avatars, err
+		}
+		avatars = append(avatars, av)
+	}
+
+	return total, avatars, nil
+}
+
+// GiveDefaultAvatars
+func GiveDefaultAvatars(playerID string, factionID string) error {
+	fac, err := boiler.Factions(boiler.FactionWhere.ID.EQ(factionID)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// get faction logo urls from profile avatars table
+	ava, err := boiler.ProfileAvatars(boiler.ProfileAvatarWhere.AvatarURL.EQ(fac.LogoURL)).One(gamedb.StdConn)
+	if err != nil && err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// insert into player profile avatars
+	ppa := &boiler.PlayersProfileAvatar{
+		PlayerID:        playerID,
+		ProfileAvatarID: ava.ID,
+	}
+
+	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GiveMechAvatar gives player mech skin avatar from mech
+func GiveMechAvatar(playerID string, mechID string) error {
+	// get mech skin
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// get blueprint mech skin
+	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	if !bms.ProfileAvatarID.Valid {
+		return nil
+	}
+
+	// check if player already has this avatar
+	exists, err := boiler.PlayersProfileAvatars(
+		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
+		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if exists != nil {
+		return nil
+	}
+
+	// insert into player profile avatars
+	ppa := &boiler.PlayersProfileAvatar{
+		PlayerID:        playerID,
+		ProfileAvatarID: bms.ProfileAvatarID.String,
+	}
+
+	err = ppa.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return err
 	}

@@ -37,6 +37,7 @@ type Weapon struct {
 	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
+	WeaponModelID         null.String         `json:"weapon_model_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails

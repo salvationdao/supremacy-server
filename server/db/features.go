@@ -25,7 +25,7 @@ func GetAllFeatures() ([]*server.Feature, error) {
 }
 
 //GetPlayerFeaturesByID finds all Features for a player
-func GetPlayerFeaturesByID(playerID string) (boiler.FeatureSlice, error) {
+func GetPlayerFeaturesByID(playerID string) ([]*boiler.Feature, error) {
 	features, err := boiler.Features(
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.PlayersFeatures,
