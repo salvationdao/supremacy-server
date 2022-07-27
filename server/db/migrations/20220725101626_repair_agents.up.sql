@@ -33,6 +33,9 @@ CREATE TABLE repair_cases(
     constraint repair_case_blocks_repaired_lte_required_blocks check (blocks_repaired <= blocks_required_repair)
 );
 
+CREATE INDEX idx_repair_cases_mech_id on repair_cases(mech_id);
+CREATE INDEX idx_repair_cases_search on repair_cases(mech_id, completed_at);
+
 DROP TYPE IF EXISTS REPAIR_FINISH_REASON;
 CREATE TYPE REPAIR_FINISH_REASON AS ENUM ('EXPIRED', 'STOPPED', 'SUCCEEDED');
 
@@ -50,6 +53,11 @@ CREATE TABLE repair_offers(
     deleted_at timestamptz,
     constraint repair_offer_total_blocks_gt_zero check (blocks_total > 0)
 );
+
+CREATE INDEX idx_repair_offers_repair_case_id on repair_offers(repair_case_id);
+CREATE INDEX idx_repair_offers_offered_by_id on repair_offers(offered_by_id);
+CREATE INDEX idx_repair_offers_expired_search on repair_offers(expires_at desc, closed_at);
+CREATE INDEX idx_repair_offers_search on repair_offers(repair_case_id,offered_by_id, closed_at);
 
 DROP TYPE IF EXISTS REPAIR_AGENT_FINISH_REASON;
 CREATE TYPE REPAIR_AGENT_FINISH_REASON AS ENUM ('ABANDONED', 'EXPIRED', 'SUCCEEDED');
@@ -69,6 +77,9 @@ CREATE TABLE repair_agents(
     deleted_at timestamptz
 );
 
+CREATE INDEX idx_repair_agent_search on repair_agents(player_id, finished_at);
+CREATE INDEX idx_repair_agent_offered_by_id on repair_agents(repair_offer_id);
+
 CREATE TABLE repair_blocks(
     id uuid primary key default gen_random_uuid(),
     repair_case_id UUID not null references repair_cases(id),
@@ -77,6 +88,10 @@ CREATE TABLE repair_blocks(
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+CREATE INDEX idx_repair_blocks_repair_case_id on repair_blocks(repair_case_id);
+CREATE INDEX idx_repair_blocks_repair_offer_id on repair_blocks(repair_offer_id);
+CREATE INDEX idx_repair_blocks_repair_agent_id on repair_blocks(repair_agent_id);
 
 -- repair block trigger
 CREATE OR REPLACE FUNCTION check_repair_block() RETURNS TRIGGER AS
