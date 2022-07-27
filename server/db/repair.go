@@ -1,9 +1,6 @@
 package db
 
 import (
-	"database/sql"
-	"fmt"
-	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/gamedb"
@@ -65,34 +62,6 @@ func IsRepairCaseOwner(caseID string, playerID string) (bool, error) {
 	}
 
 	return isOwner, nil
-}
-
-func MechRepairStatus(mechID string) (*server.MechRepairStatus, error) {
-	q := `
-		SELECT 
-			rc.id,
-			mm.repair_blocks as blocks_default,
-			rc.blocks_required_repair,
-			rc.blocks_repaired,
-			rc.mech_id
-		FROM mechs m
-		INNER JOIN mech_models mm on mm.id = m.model_id
-		INNER JOIN repair_cases rc on rc.mech_id = m.id AND rc.completed_at ISNULL AND rc.blocks_required_repair > rc.blocks_repaired
-		WHERE m.id = $1
-	`
-
-	fmt.Println(mechID)
-
-	mrs := &server.MechRepairStatus{}
-	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&mrs.ID, &mrs.BlocksDefault, &mrs.BlocksRequiredRepair, &mrs.BlocksRepaired, &mrs.MechID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, terror.Error(err, "Failed to load mech repair status")
-	}
-
-	return mrs, nil
 }
 
 // CloseExpiredRepairOffers close expired repair offer and return the id list

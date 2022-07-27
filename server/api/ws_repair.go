@@ -403,14 +403,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	// broadcast result
 	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-
-	// mech repair status
-	mrs, err := db.MechRepairStatus(rc.MechID)
-	if err != nil {
-		return terror.Error(err, "Failed to get repair detail")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, mrs)
+	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 	// skip, if it is a self offer
 	if ro.IsSelf {
@@ -464,13 +457,15 @@ func (api *API) MechRepairCaseSubscribe(ctx context.Context, key string, payload
 		return fmt.Errorf("offer id is required")
 	}
 
-	// get model
-	mrs, err := db.MechRepairStatus(mechID)
-	if err != nil {
-		return err
+	rc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(mechID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to load mech repair case.")
 	}
 
-	reply(mrs)
+	reply(rc)
 
 	return nil
 }
