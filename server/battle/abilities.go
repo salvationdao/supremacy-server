@@ -616,7 +616,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// start ability trigger process
 				ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
-				ga, err := ba.GameAbilities().One(gamedb.StdConn)
+				ga, err := ba.GameAbilities(
+					boiler.GameAbilityWhere.FactionID.EQ(ls.factionID),
+				).One(gamedb.StdConn)
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("battle ability id", ba.ID).Msg("Failed to get game ability")
 					return
@@ -656,7 +658,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				bat := boiler.BattleAbilityTrigger{
 					PlayerID:          null.StringFrom(ls.userID),
 					BattleID:          btl.ID,
-					FactionID:         ls.factionID,
+					FactionID:         ga.FactionID,
 					IsAllSyndicates:   true,
 					AbilityLabel:      ga.Label,
 					GameAbilityID:     ga.ID,
