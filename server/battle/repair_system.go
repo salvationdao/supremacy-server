@@ -119,12 +119,10 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 		return terror.Error(err, "Failed to commit db transaction.")
 	}
 
-	mrs, err := db.MechRepairStatus(rc.MechID)
-	if err != nil {
-		return terror.Error(err, "Failed to get repair detail")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, mrs)
+	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, &server.MechRepairStatus{
+		RepairCase:    rc,
+		BlocksDefault: model.RepairBlocks,
+	})
 
 	return nil
 }
