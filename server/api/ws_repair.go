@@ -367,6 +367,15 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 	}
 
 	if req.Payload.RepairCaseID != "" {
+		// check person is the mech owner
+		isOwner, err := db.IsRepairCaseOwner(req.Payload.RepairCaseID, user.ID)
+		if err != nil {
+			return err
+		}
+
+		if !isOwner {
+			return terror.Error(fmt.Errorf("only owner can repair their mech themselves"), "Only mech owner can repair their mech themselves.")
+		}
 
 		queries = append(queries,
 			boiler.RepairOfferWhere.RepairCaseID.EQ(req.Payload.RepairCaseID),
@@ -401,8 +410,6 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		gamelog.L.Error().Err(err).Str("player id", user.ID).Msg("Failed to close repair agents.")
 		return terror.Error(err, "Failed to abandon repair job")
 	}
-
-	// TODO: close unfinished repair agent windows?
 
 	// insert repair agent
 	ra := &boiler.RepairAgent{
