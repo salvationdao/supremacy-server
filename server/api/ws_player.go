@@ -62,7 +62,7 @@ func NewPlayerController(api *API) *PlayerController {
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
-	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGid)
+	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGidHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -445,25 +445,36 @@ type GetPlayerByGidRequest struct {
 
 const HubKeyGetPlayerByGid = "GET:PLAYER:GID"
 
-func (pc *PlayerController) GetPlayerByGid(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) GetPlayerByGidHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GetPlayerByGidHandler").Str("user_id", user.ID).Logger()
+
 	req := &GetPlayerByGidRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
 		return terror.Error(err, "Invalid request received")
 	}
 
-	ps, err := boiler.Players(
+	l = l.With().Interface("GID", req.Payload.Gid).Logger()
+	p, err := boiler.Players(
 		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
 	).One(gamedb.StdConn)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Println("NO ROWS")
+			l.Error().Err(err).Msg("player with gid does not exist.")
 			return nil
 		}
-		return terror.Error(err, "Failed to search players from db")
+		l.Error().Err(err).Msg("unable to retrieve player by GID.")
+		return terror.Error(err, "Unable to find player, try again or contact support.")
 	}
 
-	reply(ps)
+	player, err := db.GetPlayer(p.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get server player")
+		return terror.Error(err, "Unable to find player, try again or contact support.")
+	}
+
+	reply(player)
 	return nil
 }
 
@@ -911,9 +922,11 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
 
 func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GlobalActivePlayersSubscribeHandler").Str("user_id", user.ID).Logger()
 	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
 	if !ok {
-		return terror.Error(terror.ErrForbidden, "Faction does not exist in the list")
+		l.Error().Err(fmt.Errorf("faction does not exist in list")).Msg("json unmarshal error")
+		return terror.Error(terror.ErrForbidden, "Could not subscribe to active players in global chat, try again or contact support.")
 	}
 
 	reply(fap.CurrentFactionActivePlayer())

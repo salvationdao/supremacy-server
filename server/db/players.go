@@ -374,20 +374,25 @@ func PlayerIPUpsert(playerID string, ip string) error {
 }
 
 func GetPlayer(playerID string) (*server.Player, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
 	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get player")
-		return nil, terror.Error(err, "Failed to get player")
-	}
-	features, err := GetPlayerFeaturesByID(player.ID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to find features")
+		l.Error().Err(err).Msg("unable to find player")
 		return nil, err
 	}
 
+	l = l.With().Interface("GetPlayerFeaturesByID", playerID).Logger()
+	features, err := GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player's features")
+		return nil, err
+	}
+
+	l = l.With().Interface("PlayerFromBoiler", playerID).Logger()
 	serverPlayer := server.PlayerFromBoiler(player, features)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		l.Error().Err(err).Msg("unable to create server player struct")
 		return nil, err
 	}
 	return serverPlayer, nil

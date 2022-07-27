@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -27,7 +29,7 @@ type ActivePlayers struct {
 
 type ActiveStat struct {
 	// player stat
-	Player *boiler.Player
+	Player *server.Player
 
 	// active stat
 	ActivedAt time.Time
@@ -71,20 +73,25 @@ func (api *API) FactionActivePlayerSetup() {
 }
 
 // CurrentFactionActivePlayer return a copy of current faction active player list
-func (ap *ActivePlayers) CurrentFactionActivePlayer() []boiler.Player {
+func (ap *ActivePlayers) CurrentFactionActivePlayer() []server.Player {
 	ap.RLock()
 	defer ap.RUnlock()
 
-	players := []boiler.Player{}
+	var players []server.Player
 	for _, as := range ap.Map {
-		players = append(players, *as.Player)
+		player, err := db.GetPlayer(as.Player.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("could not find player")
+			return nil
+		}
+		players = append(players, *player)
 	}
 
 	return players
 }
 
 type ActivePlayerBroadcast struct {
-	Players []boiler.Player
+	Players []server.Player
 }
 
 func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
@@ -121,12 +128,13 @@ func (ap *ActivePlayers) CheckExpiry() {
 	now := time.Now()
 
 	// collect active player list for broadcast
-	players := []boiler.Player{}
+	var players []server.Player
 
 	for playerID, activeStat := range ap.Map {
 
 		// skip, if active stat is not expired
 		if activeStat.ExpiredAt.After(now) {
+
 			players = append(players, *activeStat.Player)
 			continue
 		}
@@ -206,8 +214,14 @@ func (ap *ActivePlayers) add(playerID string) error {
 		return terror.Error(err, "Failed to get player from db")
 	}
 
+	serverPlayer, err := db.GetPlayer(player.ID)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get server player")
+		return terror.Error(err, "unable to get player, try again or contact support")
+	}
+
 	ap.Map[playerID] = &ActiveStat{
-		Player:    player,
+		Player:    serverPlayer,
 		ActivedAt: now,
 		ExpiredAt: now.Add(2 * time.Minute),
 	}

@@ -8,8 +8,6 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
@@ -602,9 +600,7 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
-
-	serverPlayer, err := db.GetPlayer(player.ID)
+	serverPlayer, err := db.GetPlayer(userResp.ID)
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")

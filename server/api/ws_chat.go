@@ -533,8 +533,8 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 		chatMessage := &ChatMessage{
 			ID:     cm.ID,
-			Type:   ChatMessageTypeText,
-			SentAt: time.Now(),
+			Type:   boiler.ChatMSGTypeEnumTEXT,
+			SentAt: cm.CreatedAt,
 			Data: &MessageText{
 				ID:              cm.ID,
 				Message:         msg,
@@ -582,8 +582,8 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 	chatMessage := &ChatMessage{
 		ID:     cm.ID,
-		Type:   ChatMessageTypeText,
-		SentAt: time.Now(),
+		Type:   boiler.ChatMSGTypeEnumTEXT,
+		SentAt: cm.CreatedAt,
 		Data: &MessageText{
 			ID:              cm.ID,
 			Message:         msg,
@@ -614,40 +614,52 @@ type ReadTaggedMessageRequest struct {
 const HubKeyReadTaggedMessage = "READ:TAGGED:MESSAGE"
 
 func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ReadTaggedMessageHandler").Str("user_id", user.ID).Logger()
+	genericErrorMessage := "Unable to mark message as read, try again or contact support."
+
 	req := &ReadTaggedMessageRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
 		return terror.Error(err, "Invalid request received.")
 	}
+
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
 	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
 	if err != nil {
-		return terror.Error(err, "Could not get chat history")
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	metadata := &TextMessageMetadata{}
 
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
 	err = chatHistory.Metadata.Unmarshal(metadata)
 	if err != nil {
-		return terror.Error(err, "Could not unmarshal into metadata")
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	metadata.TaggedUsersRead[user.Gid] = true
 
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
 	var jsonTextMsgMeta null.JSON
 	err = jsonTextMsgMeta.Marshal(metadata)
 	if err != nil {
-		return terror.Error(err, "Could not marshal json")
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
 	}
 
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
 	chatHistory.Metadata = jsonTextMsgMeta
-	fmt.Println(string(jsonTextMsgMeta.JSON))
-
 	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
 	if err != nil {
-		return terror.Error(err, "Could not update chat history")
+		l.Error().Err(err).Msg("unable to update chat history to mark as read.")
+		return terror.Error(err, genericErrorMessage)
 	}
 
-	// change metadata of s specific message
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
 	fn := func(chatMessage *ChatMessage) bool {
 		if chatMessage.ID != chatHistory.ID {
 			return true
