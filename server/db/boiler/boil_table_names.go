@@ -51,6 +51,7 @@ var TableNames = struct {
 	ConsumedAbilities                                  string
 	CouponItems                                        string
 	Coupons                                            string
+	Faces                                              string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -60,6 +61,7 @@ var TableNames = struct {
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
+	Hair                                               string
 	ItemKeycardSales                                   string
 	ItemSales                                          string
 	ItemSalesBidHistory                                string
@@ -101,6 +103,7 @@ var TableNames = struct {
 	PowerCores                                         string
 	Profanities                                        string
 	ProfileAvatars                                     string
+	ProfileCustomAvatars                               string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
@@ -188,6 +191,7 @@ var TableNames = struct {
 	ConsumedAbilities:            "consumed_abilities",
 	CouponItems:                  "coupon_items",
 	Coupons:                      "coupons",
+	Faces:                        "faces",
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
@@ -197,6 +201,7 @@ var TableNames = struct {
 	GameAbilities:                "game_abilities",
 	GameMaps:                     "game_maps",
 	GlobalAnnouncements:          "global_announcements",
+	Hair:                         "hair",
 	ItemKeycardSales:             "item_keycard_sales",
 	ItemSales:                    "item_sales",
 	ItemSalesBidHistory:          "item_sales_bid_history",
@@ -238,6 +243,7 @@ var TableNames = struct {
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
 	ProfileAvatars:               "profile_avatars",
+	ProfileCustomAvatars:         "profile_custom_avatars",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",

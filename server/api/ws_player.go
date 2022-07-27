@@ -77,6 +77,9 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 
+	// custom avatar
+	api.SecureUserCommand(HubKeyPlayerProfileHairList, pc.PlayerProfileAvatarHairListHandler)
+
 	return pc
 }
 
