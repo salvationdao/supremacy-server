@@ -13,7 +13,6 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		SELECT
 		    ro.id,
 		    ro.repair_case_id,
-		    ro.is_self,
 		    ro.offered_by_id,
 		    ro.expires_at,
 		    ro.closed_at,
@@ -34,7 +33,6 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 	err := gamedb.StdConn.QueryRow(q, offerID).Scan(
 		&dro.ID,
 		&dro.RepairCaseID,
-		&dro.IsSelf,
 		&dro.OfferedByID,
 		&dro.ExpiresAt,
 		&dro.ClosedAt,

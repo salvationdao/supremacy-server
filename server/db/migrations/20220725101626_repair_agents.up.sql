@@ -39,7 +39,6 @@ CREATE TYPE REPAIR_FINISH_REASON AS ENUM ('EXPIRED', 'STOPPED', 'SUCCEEDED');
 CREATE TABLE repair_offers(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     repair_case_id uuid not null references repair_cases(id),
-    is_self BOOLEAN NOT NULL default false,
     offered_by_id uuid references players(id),
     blocks_total integer not null,
     offered_sups_amount numeric(28) not null, -- how much player offer for the entire repair offer

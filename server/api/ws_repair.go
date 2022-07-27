@@ -62,7 +62,7 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		Total:  0,
 	}
 	queries := []qm.QueryMod{
-		boiler.RepairOfferWhere.IsSelf.EQ(false), // system generated offer
+		boiler.RepairOfferWhere.OfferedByID.IsNotNull(), // only get non-system generated offers
 	}
 
 	if req.Payload.MinReward.Valid {
@@ -206,7 +206,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	}
 
 	unclosedOffer, err := mrc.RepairOffers(
-		boiler.RepairOfferWhere.IsSelf.EQ(false),
+		boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
 		boiler.RepairOfferWhere.ClosedAt.IsNull(), // check any unclosed offer
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -341,6 +341,10 @@ func (api *API) RepairOfferClose(ctx context.Context, user *boiler.Player, key s
 
 type RepairAgentRegisterRequest struct {
 	Payload struct {
+		// this is for player who want to repair their mech themselves
+		RepairCaseID string `json:"repair_case_id"`
+
+		// this is for player who grab offer from the job list
 		RepairOfferID string `json:"repair_offer_id"`
 	} `json:"payload"`
 }
@@ -358,11 +362,22 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// get repair offer
-	ro, err := boiler.RepairOffers(
-		boiler.RepairOfferWhere.ID.EQ(req.Payload.RepairOfferID),
+	queries := []qm.QueryMod{
 		boiler.RepairOfferWhere.ClosedAt.IsNull(),
-	).One(gamedb.StdConn)
+	}
+
+	if req.Payload.RepairCaseID != "" {
+
+		queries = append(queries,
+			boiler.RepairOfferWhere.RepairCaseID.EQ(req.Payload.RepairCaseID),
+			boiler.RepairOfferWhere.OfferedByID.IsNull(), // system generated offer
+		)
+	} else {
+		queries = append(queries, boiler.RepairOfferWhere.ID.EQ(req.Payload.RepairOfferID))
+	}
+
+	// get repair offer
+	ro, err := boiler.RepairOffers(queries...).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Str("repair offer id", req.Payload.RepairOfferID).Msg("Failed to get repair offer from id")
 		return terror.Error(err, "Failed to get repair offer")
@@ -402,7 +417,7 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to register repair agent")
 	}
 
-	reply(true)
+	reply(ra)
 
 	return nil
 }
@@ -465,7 +480,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	}
 
 	// if it is a not self offer
-	if !ro.IsSelf && ro.OfferedSupsAmount.GreaterThan(decimal.Zero) {
+	if ro.OfferedByID.Valid && ro.OfferedSupsAmount.GreaterThan(decimal.Zero) {
 		amount := ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksRequiredRepair))).StringFixed(0)
 
 		// claim reward
@@ -488,7 +503,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-		if !ro.IsSelf {
+		if ro.OfferedByID.Valid {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
@@ -581,8 +596,7 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 		qm.Load(
 			boiler.RepairCaseRels.RepairOffers,
 			boiler.RepairOfferWhere.ClosedAt.IsNull(),
-			boiler.RepairOfferWhere.IsSelf.EQ(false),
-			qm.Limit(1),
+			boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
 		),
 		qm.Load(
 			boiler.RepairCaseRels.RepairAgents,

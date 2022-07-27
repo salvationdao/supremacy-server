@@ -40,7 +40,6 @@ func (arena *Arena) RepairOfferCleaner() {
 			ros, err := boiler.RepairOffers(
 				boiler.RepairOfferWhere.ExpiresAt.LTE(now),
 				boiler.RepairOfferWhere.ClosedAt.IsNull(),
-				boiler.RepairOfferWhere.IsSelf.EQ(false),
 				qm.Load(boiler.RepairOfferRels.RepairCase),
 				qm.Load(boiler.RepairOfferRels.RepairBlocks),
 				qm.Load(
@@ -125,7 +124,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-		if !ro.IsSelf {
+		if ro.OfferedByID.Valid {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 		}
 
@@ -237,7 +236,6 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	// insert self repair offer
 	ro := boiler.RepairOffer{
 		RepairCaseID:      rc.ID,
-		IsSelf:            true,
 		BlocksTotal:       int(blocksTotal),
 		OfferedSupsAmount: decimal.Zero,
 		ExpiresAt:         time.Now().AddDate(10, 0, 0),

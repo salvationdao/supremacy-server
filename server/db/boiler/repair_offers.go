@@ -26,7 +26,6 @@ import (
 type RepairOffer struct {
 	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	RepairCaseID      string          `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
-	IsSelf            bool            `boiler:"is_self" boil:"is_self" json:"is_self" toml:"is_self" yaml:"is_self"`
 	OfferedByID       null.String     `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id,omitempty" toml:"offered_by_id" yaml:"offered_by_id,omitempty"`
 	BlocksTotal       int             `boiler:"blocks_total" boil:"blocks_total" json:"blocks_total" toml:"blocks_total" yaml:"blocks_total"`
 	OfferedSupsAmount decimal.Decimal `boiler:"offered_sups_amount" boil:"offered_sups_amount" json:"offered_sups_amount" toml:"offered_sups_amount" yaml:"offered_sups_amount"`
@@ -44,7 +43,6 @@ type RepairOffer struct {
 var RepairOfferColumns = struct {
 	ID                string
 	RepairCaseID      string
-	IsSelf            string
 	OfferedByID       string
 	BlocksTotal       string
 	OfferedSupsAmount string
@@ -57,7 +55,6 @@ var RepairOfferColumns = struct {
 }{
 	ID:                "id",
 	RepairCaseID:      "repair_case_id",
-	IsSelf:            "is_self",
 	OfferedByID:       "offered_by_id",
 	BlocksTotal:       "blocks_total",
 	OfferedSupsAmount: "offered_sups_amount",
@@ -72,7 +69,6 @@ var RepairOfferColumns = struct {
 var RepairOfferTableColumns = struct {
 	ID                string
 	RepairCaseID      string
-	IsSelf            string
 	OfferedByID       string
 	BlocksTotal       string
 	OfferedSupsAmount string
@@ -85,7 +81,6 @@ var RepairOfferTableColumns = struct {
 }{
 	ID:                "repair_offers.id",
 	RepairCaseID:      "repair_offers.repair_case_id",
-	IsSelf:            "repair_offers.is_self",
 	OfferedByID:       "repair_offers.offered_by_id",
 	BlocksTotal:       "repair_offers.blocks_total",
 	OfferedSupsAmount: "repair_offers.offered_sups_amount",
@@ -102,7 +97,6 @@ var RepairOfferTableColumns = struct {
 var RepairOfferWhere = struct {
 	ID                whereHelperstring
 	RepairCaseID      whereHelperstring
-	IsSelf            whereHelperbool
 	OfferedByID       whereHelpernull_String
 	BlocksTotal       whereHelperint
 	OfferedSupsAmount whereHelperdecimal_Decimal
@@ -115,7 +109,6 @@ var RepairOfferWhere = struct {
 }{
 	ID:                whereHelperstring{field: "\"repair_offers\".\"id\""},
 	RepairCaseID:      whereHelperstring{field: "\"repair_offers\".\"repair_case_id\""},
-	IsSelf:            whereHelperbool{field: "\"repair_offers\".\"is_self\""},
 	OfferedByID:       whereHelpernull_String{field: "\"repair_offers\".\"offered_by_id\""},
 	BlocksTotal:       whereHelperint{field: "\"repair_offers\".\"blocks_total\""},
 	OfferedSupsAmount: whereHelperdecimal_Decimal{field: "\"repair_offers\".\"offered_sups_amount\""},
@@ -157,9 +150,9 @@ func (*repairOfferR) NewStruct() *repairOfferR {
 type repairOfferL struct{}
 
 var (
-	repairOfferAllColumns            = []string{"id", "repair_case_id", "is_self", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
+	repairOfferAllColumns            = []string{"id", "repair_case_id", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
 	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "blocks_total", "offered_sups_amount", "expires_at"}
-	repairOfferColumnsWithDefault    = []string{"id", "is_self", "offered_by_id", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
+	repairOfferColumnsWithDefault    = []string{"id", "offered_by_id", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
 	repairOfferPrimaryKeyColumns     = []string{"id"}
 	repairOfferGeneratedColumns      = []string{}
 )
