@@ -330,7 +330,6 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 }
 
 func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-
 	return nil
 }
 
@@ -457,6 +456,32 @@ func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []
 	}
 
 	reply(ro)
+
+	return nil
+}
+
+type AssetRepairCaseResponse struct {
+	BlocksTotal       int             `json:"blocks_total"`
+	BlocksRepair      int             `json:"blocks_repair"`
+	SupsWorthPerBlock decimal.Decimal `json:"sups_worth_per_block"`
+}
+
+func (api *API) AssetRepairCaseSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	assetID := chi.RouteContext(ctx).URLParam("asset_id")
+	if assetID == "" {
+		return fmt.Errorf("offer id is required")
+	}
+
+	rc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(assetID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to query asset repair case.")
+		return terror.Error(err, "Failed to load asset repair case data.")
+	}
+
+	reply(rc)
 
 	return nil
 }
