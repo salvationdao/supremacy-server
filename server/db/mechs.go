@@ -204,7 +204,6 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	result, err := conn.Query(query, mechID)
 	if err != nil {
-		fmt.Println("here 11")
 		return nil, err
 	}
 	defer result.Close()
@@ -271,14 +270,12 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.BattleReady,
 		)
 		if err != nil {
-			fmt.Println("here 22")
 			gamelog.L.Error().Err(err).Msg("failed to get mech")
 			return nil, err
 		}
 	}
 
 	if mc.ID == "" {
-		fmt.Println("here 33")
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
 
