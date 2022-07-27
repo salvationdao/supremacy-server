@@ -58,3 +58,8 @@ type RepairOffer struct {
 	SupsWorthPerBlock decimal.Decimal `db:"sups_worth_per_block" json:"sups_worth_per_block"`
 	WorkingAgentCount int             `db:"working_agent_count" json:"working_agent_count"`
 }
+
+type MechRepairStatus struct {
+	*boiler.RepairCase
+	BlocksDefault int `json:"blocks_default"`
+}

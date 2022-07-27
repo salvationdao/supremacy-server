@@ -91,8 +91,8 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	blocksTotal := decimal.NewFromInt(int64(model.RepairBlocks)).Mul(damagedPortion).Ceil().IntPart()
 
 	rc := &boiler.RepairCase{
-		MechID:      mechID,
-		BlocksTotal: int(blocksTotal),
+		MechID:               mechID,
+		BlocksRequiredRepair: int(blocksTotal),
 	}
 
 	err = rc.Insert(tx, boil.Infer())
@@ -118,6 +118,13 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction.")
 	}
+
+	mrs, err := db.MechRepairStatus(rc.MechID)
+	if err != nil {
+		return terror.Error(err, "Failed to get repair detail")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, mrs)
 
 	return nil
 }

@@ -23,79 +23,79 @@ import (
 
 // RepairCase is an object representing the database table.
 type RepairCase struct {
-	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID         string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	BlocksTotal    int       `boiler:"blocks_total" boil:"blocks_total" json:"blocks_total" toml:"blocks_total" yaml:"blocks_total"`
-	BlocksRepaired int       `boiler:"blocks_repaired" boil:"blocks_repaired" json:"blocks_repaired" toml:"blocks_repaired" yaml:"blocks_repaired"`
-	CompletedAt    null.Time `boiler:"completed_at" boil:"completed_at" json:"completed_at,omitempty" toml:"completed_at" yaml:"completed_at,omitempty"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                   string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID               string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	BlocksRequiredRepair int       `boiler:"blocks_required_repair" boil:"blocks_required_repair" json:"blocks_required_repair" toml:"blocks_required_repair" yaml:"blocks_required_repair"`
+	BlocksRepaired       int       `boiler:"blocks_repaired" boil:"blocks_repaired" json:"blocks_repaired" toml:"blocks_repaired" yaml:"blocks_repaired"`
+	CompletedAt          null.Time `boiler:"completed_at" boil:"completed_at" json:"completed_at,omitempty" toml:"completed_at" yaml:"completed_at,omitempty"`
+	CreatedAt            time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt            time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt            null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *repairCaseR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L repairCaseL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var RepairCaseColumns = struct {
-	ID             string
-	MechID         string
-	BlocksTotal    string
-	BlocksRepaired string
-	CompletedAt    string
-	CreatedAt      string
-	UpdatedAt      string
-	DeletedAt      string
+	ID                   string
+	MechID               string
+	BlocksRequiredRepair string
+	BlocksRepaired       string
+	CompletedAt          string
+	CreatedAt            string
+	UpdatedAt            string
+	DeletedAt            string
 }{
-	ID:             "id",
-	MechID:         "mech_id",
-	BlocksTotal:    "blocks_total",
-	BlocksRepaired: "blocks_repaired",
-	CompletedAt:    "completed_at",
-	CreatedAt:      "created_at",
-	UpdatedAt:      "updated_at",
-	DeletedAt:      "deleted_at",
+	ID:                   "id",
+	MechID:               "mech_id",
+	BlocksRequiredRepair: "blocks_required_repair",
+	BlocksRepaired:       "blocks_repaired",
+	CompletedAt:          "completed_at",
+	CreatedAt:            "created_at",
+	UpdatedAt:            "updated_at",
+	DeletedAt:            "deleted_at",
 }
 
 var RepairCaseTableColumns = struct {
-	ID             string
-	MechID         string
-	BlocksTotal    string
-	BlocksRepaired string
-	CompletedAt    string
-	CreatedAt      string
-	UpdatedAt      string
-	DeletedAt      string
+	ID                   string
+	MechID               string
+	BlocksRequiredRepair string
+	BlocksRepaired       string
+	CompletedAt          string
+	CreatedAt            string
+	UpdatedAt            string
+	DeletedAt            string
 }{
-	ID:             "repair_cases.id",
-	MechID:         "repair_cases.mech_id",
-	BlocksTotal:    "repair_cases.blocks_total",
-	BlocksRepaired: "repair_cases.blocks_repaired",
-	CompletedAt:    "repair_cases.completed_at",
-	CreatedAt:      "repair_cases.created_at",
-	UpdatedAt:      "repair_cases.updated_at",
-	DeletedAt:      "repair_cases.deleted_at",
+	ID:                   "repair_cases.id",
+	MechID:               "repair_cases.mech_id",
+	BlocksRequiredRepair: "repair_cases.blocks_required_repair",
+	BlocksRepaired:       "repair_cases.blocks_repaired",
+	CompletedAt:          "repair_cases.completed_at",
+	CreatedAt:            "repair_cases.created_at",
+	UpdatedAt:            "repair_cases.updated_at",
+	DeletedAt:            "repair_cases.deleted_at",
 }
 
 // Generated where
 
 var RepairCaseWhere = struct {
-	ID             whereHelperstring
-	MechID         whereHelperstring
-	BlocksTotal    whereHelperint
-	BlocksRepaired whereHelperint
-	CompletedAt    whereHelpernull_Time
-	CreatedAt      whereHelpertime_Time
-	UpdatedAt      whereHelpertime_Time
-	DeletedAt      whereHelpernull_Time
+	ID                   whereHelperstring
+	MechID               whereHelperstring
+	BlocksRequiredRepair whereHelperint
+	BlocksRepaired       whereHelperint
+	CompletedAt          whereHelpernull_Time
+	CreatedAt            whereHelpertime_Time
+	UpdatedAt            whereHelpertime_Time
+	DeletedAt            whereHelpernull_Time
 }{
-	ID:             whereHelperstring{field: "\"repair_cases\".\"id\""},
-	MechID:         whereHelperstring{field: "\"repair_cases\".\"mech_id\""},
-	BlocksTotal:    whereHelperint{field: "\"repair_cases\".\"blocks_total\""},
-	BlocksRepaired: whereHelperint{field: "\"repair_cases\".\"blocks_repaired\""},
-	CompletedAt:    whereHelpernull_Time{field: "\"repair_cases\".\"completed_at\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"repair_cases\".\"created_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"repair_cases\".\"updated_at\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"repair_cases\".\"deleted_at\""},
+	ID:                   whereHelperstring{field: "\"repair_cases\".\"id\""},
+	MechID:               whereHelperstring{field: "\"repair_cases\".\"mech_id\""},
+	BlocksRequiredRepair: whereHelperint{field: "\"repair_cases\".\"blocks_required_repair\""},
+	BlocksRepaired:       whereHelperint{field: "\"repair_cases\".\"blocks_repaired\""},
+	CompletedAt:          whereHelpernull_Time{field: "\"repair_cases\".\"completed_at\""},
+	CreatedAt:            whereHelpertime_Time{field: "\"repair_cases\".\"created_at\""},
+	UpdatedAt:            whereHelpertime_Time{field: "\"repair_cases\".\"updated_at\""},
+	DeletedAt:            whereHelpernull_Time{field: "\"repair_cases\".\"deleted_at\""},
 }
 
 // RepairCaseRels is where relationship names are stored.
@@ -128,8 +128,8 @@ func (*repairCaseR) NewStruct() *repairCaseR {
 type repairCaseL struct{}
 
 var (
-	repairCaseAllColumns            = []string{"id", "mech_id", "blocks_total", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at"}
-	repairCaseColumnsWithoutDefault = []string{"mech_id", "blocks_total"}
+	repairCaseAllColumns            = []string{"id", "mech_id", "blocks_required_repair", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at"}
+	repairCaseColumnsWithoutDefault = []string{"mech_id", "blocks_required_repair"}
 	repairCaseColumnsWithDefault    = []string{"id", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at"}
 	repairCasePrimaryKeyColumns     = []string{"id"}
 	repairCaseGeneratedColumns      = []string{}

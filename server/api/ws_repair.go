@@ -164,7 +164,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(fmt.Errorf("mech does not have repair case"), "The mech does not need to be repaired.")
 	}
 
-	if mrc.BlocksTotal == mrc.BlocksRepaired {
+	if mrc.BlocksRequiredRepair == mrc.BlocksRepaired {
 		return terror.Error(fmt.Errorf("mech already repaired"), "The mech has already repaired.")
 	}
 
@@ -201,7 +201,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	ro := &boiler.RepairOffer{
 		OfferedByID:       null.StringFrom(user.ID),
 		RepairCaseID:      mrc.ID,
-		BlocksTotal:       mrc.BlocksTotal - mrc.BlocksRepaired,
+		BlocksTotal:       mrc.BlocksRequiredRepair - mrc.BlocksRepaired,
 		OfferedSupsAmount: req.Payload.OfferedSups,
 		ExpiresAt:         now.Add(time.Duration(req.Payload.LastForMinutes) * time.Minute),
 	}
@@ -239,7 +239,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	//  broadcast to repair offer market
 	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, server.RepairOffer{
 		RepairOffer:       ro,
-		BlocksTotal:       mrc.BlocksTotal,
+		BlocksTotal:       mrc.BlocksRequiredRepair,
 		BlocksRequired:    mrc.BlocksRepaired,
 		SupsWorthPerBlock: req.Payload.OfferedSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 		WorkingAgentCount: 0,
@@ -381,7 +381,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	}
 
 	// update repair case if repair complete
-	if rc.BlocksRepaired == rc.BlocksTotal {
+	if rc.BlocksRepaired == rc.BlocksRequiredRepair {
 		// TODO: broadcast complete
 
 		// TODO: close repair case
@@ -407,6 +407,14 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	// broadcast result
 	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+
+	// mech repair status
+	mrs, err := db.MechRepairStatus(rc.MechID)
+	if err != nil {
+		return terror.Error(err, "Failed to get repair detail")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, mrs)
 
 	// skip, if it is a self offer
 	if ro.IsSelf {
@@ -438,12 +446,6 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 // subscription
 
-type RepairOfferResponse struct {
-	BlocksTotal       int             `json:"blocks_total"`
-	BlocksRepair      int             `json:"blocks_repair"`
-	SupsWorthPerBlock decimal.Decimal `json:"sups_worth_per_block"`
-}
-
 func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	offerID := chi.RouteContext(ctx).URLParam("offer_id")
 	if offerID == "" {
@@ -460,28 +462,19 @@ func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []
 	return nil
 }
 
-type AssetRepairCaseResponse struct {
-	BlocksTotal       int             `json:"blocks_total"`
-	BlocksRepair      int             `json:"blocks_repair"`
-	SupsWorthPerBlock decimal.Decimal `json:"sups_worth_per_block"`
-}
-
-func (api *API) AssetRepairCaseSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	assetID := chi.RouteContext(ctx).URLParam("asset_id")
-	if assetID == "" {
+func (api *API) MechRepairCaseSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	mechID := chi.RouteContext(ctx).URLParam("mechID")
+	if mechID == "" {
 		return fmt.Errorf("offer id is required")
 	}
 
-	rc, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.MechID.EQ(assetID),
-		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to query asset repair case.")
-		return terror.Error(err, "Failed to load asset repair case data.")
+	// get model
+	mrs, err := db.MechRepairStatus(mechID)
+	if err != nil {
+		return err
 	}
 
-	reply(rc)
+	reply(mrs)
 
 	return nil
 }

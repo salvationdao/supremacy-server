@@ -21,16 +21,16 @@ CREATE TABLE repair_cases(
     id uuid primary key default gen_random_uuid(),
     mech_id uuid not null references mechs(id),
     -- set after player click repair, used for recording
-    blocks_total integer not null,
+    blocks_required_repair integer not null,
     blocks_repaired integer not null default 0,
     completed_at timestamptz,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     deleted_at timestamptz,
-    constraint repair_case_blocks_total_gt_zero check (blocks_total > 0),
+    constraint repair_case_blocks_total_gt_zero check (blocks_required_repair > 0),
     constraint repair_case_blocks_repaired_gte_zero check (blocks_repaired >= 0),
-    constraint repair_case_blocks_repaired_lte_required_blocks check (blocks_repaired <= blocks_total)
+    constraint repair_case_blocks_repaired_lte_required_blocks check (blocks_repaired <= blocks_required_repair)
 );
 
 DROP TYPE IF EXISTS REPAIR_FINISH_REASON;
@@ -90,9 +90,9 @@ SELECT (
            SELECT ro.expires_at > NOW() AND ro.closed_at IS NULL AND
                   ro.deleted_at IS NULL AND
                   rc.completed_at IS NULL AND
-                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_total
+                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_required_repair
            FROM repair_offers ro
-                    INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
+           INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
            WHERE ro.id = NEW.repair_offer_id
        )
 INTO can_write_block;
@@ -121,13 +121,13 @@ CREATE OR REPLACE FUNCTION check_repair_agent() RETURNS TRIGGER AS
 $check_repair_agent$
 DECLARE
     can_register BOOLEAN DEFAULT FALSE;
-BEGIN    -- checks if the debtor is the on chain / off world account since that is the only account allow to go negative.
+BEGIN
 
 SELECT (
            SELECT ro.expires_at > NOW() AND ro.closed_at IS NULL AND
                   ro.deleted_at IS NULL AND
                   rc.completed_at IS NULL AND
-                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_total
+                  (SELECT COUNT(*) FROM repair_blocks rb WHERE rb.repair_case_id = rc.id) < rc.blocks_required_repair
            FROM repair_offers ro
                     INNER JOIN repair_cases rc ON ro.repair_case_id = rc.id
            WHERE ro.id = NEW.repair_offer_id
