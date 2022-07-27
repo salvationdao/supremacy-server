@@ -572,6 +572,8 @@ type MechListOpts struct {
 	Search              string
 	Filter              *ListFilterRequest
 	Sort                *ListSortRequest
+	SortBy              string
+	SortDir             SortByDir
 	PageSize            int
 	Page                int
 	OwnerID             string
@@ -611,6 +613,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
+		qm.LeftOuterJoin(fmt.Sprintf("%s cms ON cms.%s = %s AND cms.%s = ?",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemID,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			boiler.CollectionItemColumns.ItemType,
+		), boiler.ItemTypeMechSkin),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -651,16 +659,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		for _, r := range opts.FilterRarities {
 			vals = append(vals, r)
 		}
-		queryMods = append(queryMods,
-			qm.LeftOuterJoin(fmt.Sprintf(
-				"%s msc ON msc.%s = %s AND msc.%s = ?",
-				boiler.TableNames.CollectionItems,
-				boiler.CollectionItemColumns.ItemID,
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
-				boiler.CollectionItemColumns.ItemType,
-			), boiler.ItemTypeMechSkin),
-			qm.AndIn("msc.tier IN ?", vals...),
-		)
+		queryMods = append(queryMods, qm.AndIn("cms.tier IN ?", vals...))
 	}
 	if len(opts.FilterStatuses) > 0 {
 		hasIdleToggled := false
@@ -872,12 +871,16 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			)),
 		)
-	} else {
-		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
-		} else {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+	} else if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label, opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort("cms.tier", opts.SortDir))
 		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label)))
 	}
 	rows, err := boiler.NewQuery(
 		queryMods...,

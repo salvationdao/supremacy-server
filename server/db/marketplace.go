@@ -517,7 +517,7 @@ func MarketplaceItemSaleList(
 			vals = append(vals, v)
 		}
 		queryMods = append(queryMods, qm.Expr(
-			boiler.CollectionItemWhere.Tier.IN(rarities),
+			qm.Or2(qm.WhereIn(qm.Rels("msc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
 			qm.Or2(qm.WhereIn(qm.Rels("wsc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
 		))
 	}
@@ -654,7 +654,7 @@ func MarketplaceItemSaleList(
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
-					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels("msc", boiler.CollectionItemColumns.Tier),
 					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
@@ -684,6 +684,8 @@ func MarketplaceItemSaleList(
 		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name, weapons.label) %s", sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt), sortDir))
+	} else if sortBy == "rarity" {
+		orderBy = GenerateTierSort("COALESCE(msc.tier, wsc.tier)", sortDir)
 	} else if sortBy == "price" && sold {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.SoldFor), sortDir))
 	} else if sortBy == "price" && !sold {
