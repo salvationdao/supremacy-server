@@ -229,10 +229,6 @@ func NewAPI(
 				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
-			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
-			r.Get("/video_server", WithError(api.GetStreamsHandler))
-			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
-			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
@@ -241,17 +237,12 @@ func NewAPI(
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
-			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
-			r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
-
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
-
-			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
-			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
-			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
 		})
+
+		r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
 
 		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
