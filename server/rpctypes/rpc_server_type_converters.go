@@ -447,8 +447,8 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:       i.MaxHitpoints,
 			},
 			{
-				TraitType:   "Power Core Size",
-				Value:       i.PowerCoreSize,
+				TraitType: "Power Core Size",
+				Value:     i.PowerCoreSize,
 			},
 		}
 
@@ -499,8 +499,13 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				&Attribute{
 					TraitType: "Submodel",
 					Value:     i.ChassisSkin.Label,
-					AssetHash: i.Hash,
-				})
+					AssetHash: i.ChassisSkin.Hash,
+				},
+				&Attribute{
+					TraitType: "Rarity",
+					Value:     i.ChassisSkin.Tier,
+				},
+			)
 		}
 
 		err = asset.Attributes.AreValid()
@@ -538,7 +543,7 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 				Value:     i.IntroAnimation.Bool,
 			},
 			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
@@ -587,7 +592,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				Value:     i.MechModelName,
 			},
 			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
@@ -845,12 +850,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		err = attributes.AreValid()
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
-		}
-
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -867,7 +867,42 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			AvatarURL:        i.AvatarURL,
 			CardAnimationURL: i.CardAnimationURL,
 			XsynLocked:       i.XsynLocked,
-		})
+		}
+
+		if i.EquippedWeaponSkinID.Valid {
+			if i.WeaponSkin == nil {
+				i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID.String).Msg("failed to get weapon skin item")
+					continue
+				}
+			}
+
+			asset.ImageURL = i.WeaponSkin.ImageURL
+			asset.BackgroundColor = i.WeaponSkin.BackgroundColor
+			asset.AnimationURL = i.WeaponSkin.AnimationURL
+			asset.YoutubeURL = i.WeaponSkin.YoutubeURL
+			asset.AvatarURL = i.WeaponSkin.AvatarURL
+			asset.CardAnimationURL = i.WeaponSkin.CardAnimationURL
+
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: "Submodel",
+					Value:     i.WeaponSkin.Label,
+					AssetHash: i.WeaponSkin.Hash,
+				},
+				&Attribute{
+					TraitType: "Rarity",
+					Value:     i.WeaponSkin.Tier,
+				})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -889,7 +924,7 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 				Value:     i.Label,
 			},
 			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
