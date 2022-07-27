@@ -27,3 +27,10 @@ INSERT INTO
     features (name)
 VALUES
     ('SYSTEM_MESSAGES');
+
+UPDATE
+    players
+SET
+    username = 'Overseer'
+WHERE
+    username = 'System Admin';
