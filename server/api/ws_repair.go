@@ -88,9 +88,12 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 	}
 
 	if req.Payload.IsExpired {
-		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.LTE(time.Now()))
+		queries = append(queries, boiler.RepairOfferWhere.ClosedAt.IsNotNull())
 	} else {
-		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()))
+		queries = append(queries,
+			boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()),
+			boiler.RepairOfferWhere.ClosedAt.IsNull(),
+		)
 	}
 
 	resp.Total, err = boiler.RepairOffers(queries...).Count(gamedb.StdConn)
