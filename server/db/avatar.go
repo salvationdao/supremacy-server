@@ -18,6 +18,7 @@ type AvatarFeaturesListOpts struct {
 }
 
 type AvatarHair struct {
+	ID       string      `json:"id"`
 	ImageURL null.String `json:"image_url,omitempty"`
 
 	UpdatedAt time.Time `json:"updated_at"`
@@ -47,6 +48,7 @@ func HairList(opts *AvatarFeaturesListOpts) (int64, []*AvatarHair, error) {
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
+			qm.Rels(boiler.TableNames.Hair, boiler.HairColumns.ID),
 			qm.Rels(boiler.TableNames.Hair, boiler.HairColumns.ImageURL),
 		),
 		qm.From(boiler.TableNames.Hair),
@@ -64,6 +66,7 @@ func HairList(opts *AvatarFeaturesListOpts) (int64, []*AvatarHair, error) {
 		mc := &AvatarHair{}
 
 		scanArgs := []interface{}{
+			&mc.ID,
 			&mc.ImageURL,
 		}
 
