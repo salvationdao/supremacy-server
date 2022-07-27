@@ -1004,6 +1004,10 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 		}
 
+		if lastBattle != nil {
+			battle.BattleNumber = lastBattle.BattleNumber + 1
+		}
+
 	} else {
 		// if there is an unfinished battle
 		battle = lastBattle
