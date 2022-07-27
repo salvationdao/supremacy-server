@@ -12,6 +12,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
@@ -52,6 +53,10 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	resp := &RepairOfferListResponse{
+		Offers: []*boiler.RepairOffer{},
+		Total:  0,
+	}
 	var queries []qm.QueryMod
 
 	if req.Payload.IsExpired {
@@ -60,7 +65,7 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.LTE(time.Now()))
 	}
 
-	total, err := boiler.RepairOffers(queries...).Count(gamedb.StdConn)
+	resp.Total, err = boiler.RepairOffers(queries...).Count(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to query offer list.")
 		return terror.Error(err, "Failed to get the offer list.")
@@ -86,13 +91,13 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		qm.Offset(req.Payload.PageNumber*req.Payload.PageSize),
 	)
 
-	ros, err := boiler.RepairOffers(queries...).All(gamedb.StdConn)
+	resp.Offers, err = boiler.RepairOffers(queries...).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to query offer list from db.")
 		return terror.Error(err, "Failed to get offer list.")
 	}
 
-	reply(&RepairOfferListResponse{ros, total})
+	reply(resp)
 
 	return nil
 }
@@ -361,7 +366,12 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		// TODO: broadcast complete
 
 		// TODO: close repair case
-
+		rc.CompletedAt = null.TimeFrom(time.Now())
+		_, err := rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to update repair case.")
+			return terror.Error(err, "Failed to close repair case.")
+		}
 		// TODO: refund unclaimed sups
 
 		// TODO: close offer
@@ -376,10 +386,8 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return err
 	}
 
-	// check
-
 	// broadcast result
-	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ra.RepairOfferID), server.HubKeyRepairOfferSubscribe, ro)
+	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
 
 	// skip, if it is a self offer
 	if ro.IsSelf {

@@ -27,6 +27,7 @@ type RepairOffer struct {
 	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	RepairCaseID      string          `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
 	IsSelf            bool            `boiler:"is_self" boil:"is_self" json:"is_self" toml:"is_self" yaml:"is_self"`
+	OfferedByID       string          `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id" toml:"offered_by_id" yaml:"offered_by_id"`
 	BlocksTotal       int             `boiler:"blocks_total" boil:"blocks_total" json:"blocks_total" toml:"blocks_total" yaml:"blocks_total"`
 	OfferedSupsAmount decimal.Decimal `boiler:"offered_sups_amount" boil:"offered_sups_amount" json:"offered_sups_amount" toml:"offered_sups_amount" yaml:"offered_sups_amount"`
 	ExpiresAt         time.Time       `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
@@ -44,6 +45,7 @@ var RepairOfferColumns = struct {
 	ID                string
 	RepairCaseID      string
 	IsSelf            string
+	OfferedByID       string
 	BlocksTotal       string
 	OfferedSupsAmount string
 	ExpiresAt         string
@@ -56,6 +58,7 @@ var RepairOfferColumns = struct {
 	ID:                "id",
 	RepairCaseID:      "repair_case_id",
 	IsSelf:            "is_self",
+	OfferedByID:       "offered_by_id",
 	BlocksTotal:       "blocks_total",
 	OfferedSupsAmount: "offered_sups_amount",
 	ExpiresAt:         "expires_at",
@@ -70,6 +73,7 @@ var RepairOfferTableColumns = struct {
 	ID                string
 	RepairCaseID      string
 	IsSelf            string
+	OfferedByID       string
 	BlocksTotal       string
 	OfferedSupsAmount string
 	ExpiresAt         string
@@ -82,6 +86,7 @@ var RepairOfferTableColumns = struct {
 	ID:                "repair_offers.id",
 	RepairCaseID:      "repair_offers.repair_case_id",
 	IsSelf:            "repair_offers.is_self",
+	OfferedByID:       "repair_offers.offered_by_id",
 	BlocksTotal:       "repair_offers.blocks_total",
 	OfferedSupsAmount: "repair_offers.offered_sups_amount",
 	ExpiresAt:         "repair_offers.expires_at",
@@ -98,6 +103,7 @@ var RepairOfferWhere = struct {
 	ID                whereHelperstring
 	RepairCaseID      whereHelperstring
 	IsSelf            whereHelperbool
+	OfferedByID       whereHelperstring
 	BlocksTotal       whereHelperint
 	OfferedSupsAmount whereHelperdecimal_Decimal
 	ExpiresAt         whereHelpertime_Time
@@ -110,6 +116,7 @@ var RepairOfferWhere = struct {
 	ID:                whereHelperstring{field: "\"repair_offers\".\"id\""},
 	RepairCaseID:      whereHelperstring{field: "\"repair_offers\".\"repair_case_id\""},
 	IsSelf:            whereHelperbool{field: "\"repair_offers\".\"is_self\""},
+	OfferedByID:       whereHelperstring{field: "\"repair_offers\".\"offered_by_id\""},
 	BlocksTotal:       whereHelperint{field: "\"repair_offers\".\"blocks_total\""},
 	OfferedSupsAmount: whereHelperdecimal_Decimal{field: "\"repair_offers\".\"offered_sups_amount\""},
 	ExpiresAt:         whereHelpertime_Time{field: "\"repair_offers\".\"expires_at\""},
@@ -122,10 +129,12 @@ var RepairOfferWhere = struct {
 
 // RepairOfferRels is where relationship names are stored.
 var RepairOfferRels = struct {
+	OfferedBy    string
 	RepairCase   string
 	RepairAgents string
 	RepairBlocks string
 }{
+	OfferedBy:    "OfferedBy",
 	RepairCase:   "RepairCase",
 	RepairAgents: "RepairAgents",
 	RepairBlocks: "RepairBlocks",
@@ -133,6 +142,7 @@ var RepairOfferRels = struct {
 
 // repairOfferR is where relationships are stored.
 type repairOfferR struct {
+	OfferedBy    *Player          `boiler:"OfferedBy" boil:"OfferedBy" json:"OfferedBy" toml:"OfferedBy" yaml:"OfferedBy"`
 	RepairCase   *RepairCase      `boiler:"RepairCase" boil:"RepairCase" json:"RepairCase" toml:"RepairCase" yaml:"RepairCase"`
 	RepairAgents RepairAgentSlice `boiler:"RepairAgents" boil:"RepairAgents" json:"RepairAgents" toml:"RepairAgents" yaml:"RepairAgents"`
 	RepairBlocks RepairBlockSlice `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
@@ -147,8 +157,8 @@ func (*repairOfferR) NewStruct() *repairOfferR {
 type repairOfferL struct{}
 
 var (
-	repairOfferAllColumns            = []string{"id", "repair_case_id", "is_self", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
-	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "blocks_total", "offered_sups_amount", "expires_at"}
+	repairOfferAllColumns            = []string{"id", "repair_case_id", "is_self", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
+	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at"}
 	repairOfferColumnsWithDefault    = []string{"id", "is_self", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
 	repairOfferPrimaryKeyColumns     = []string{"id"}
 	repairOfferGeneratedColumns      = []string{}
@@ -396,6 +406,21 @@ func (q repairOfferQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// OfferedBy pointed to by the foreign key.
+func (o *RepairOffer) OfferedBy(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OfferedByID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // RepairCase pointed to by the foreign key.
 func (o *RepairOffer) RepairCase(mods ...qm.QueryMod) repairCaseQuery {
 	queryMods := []qm.QueryMod{
@@ -452,6 +477,111 @@ func (o *RepairOffer) RepairBlocks(mods ...qm.QueryMod) repairBlockQuery {
 	}
 
 	return query
+}
+
+// LoadOfferedBy allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (repairOfferL) LoadOfferedBy(e boil.Executor, singular bool, maybeRepairOffer interface{}, mods queries.Applicator) error {
+	var slice []*RepairOffer
+	var object *RepairOffer
+
+	if singular {
+		object = maybeRepairOffer.(*RepairOffer)
+	} else {
+		slice = *maybeRepairOffer.(*[]*RepairOffer)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &repairOfferR{}
+		}
+		args = append(args, object.OfferedByID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &repairOfferR{}
+			}
+
+			for _, a := range args {
+				if a == obj.OfferedByID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.OfferedByID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(repairOfferAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.OfferedBy = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.OfferedByRepairOffers = append(foreign.R.OfferedByRepairOffers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.OfferedByID == foreign.ID {
+				local.R.OfferedBy = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.OfferedByRepairOffers = append(foreign.R.OfferedByRepairOffers, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadRepairCase allows an eager lookup of values, cached into the
@@ -751,6 +881,52 @@ func (repairOfferL) LoadRepairBlocks(e boil.Executor, singular bool, maybeRepair
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetOfferedBy of the repairOffer to the related item.
+// Sets o.R.OfferedBy to related.
+// Adds o to related.R.OfferedByRepairOffers.
+func (o *RepairOffer) SetOfferedBy(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"repair_offers\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"offered_by_id"}),
+		strmangle.WhereClause("\"", "\"", 2, repairOfferPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.OfferedByID = related.ID
+	if o.R == nil {
+		o.R = &repairOfferR{
+			OfferedBy: related,
+		}
+	} else {
+		o.R.OfferedBy = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			OfferedByRepairOffers: RepairOfferSlice{o},
+		}
+	} else {
+		related.R.OfferedByRepairOffers = append(related.R.OfferedByRepairOffers, o)
 	}
 
 	return nil

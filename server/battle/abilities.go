@@ -426,7 +426,8 @@ var BribeStages = [4]string{
 	"HOLD",
 	"OPT_IN",
 	"LOCATION_SELECT",
-	"COOLDOWN"}
+	"COOLDOWN",
+}
 
 type GabsBribeStage struct {
 	Phase   *atomic.Int32 `json:"phase"`
