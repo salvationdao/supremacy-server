@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server/db"
 	"server/db/boiler"
@@ -30,7 +31,7 @@ func AuthRouter(api *API) chi.Router {
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
 
 	r.Post("/companion_app_token_login", WithError(api.AuthAppTokenLoginHandler))
-	r.Get("/qr_code_login", WithError(api.AuthQRCodeLoginHandler))
+	r.Post("/qr_code_login", WithError(api.AuthQRCodeLoginHandler))
 
 	return r
 }
@@ -163,7 +164,7 @@ func (api *API) AuthAppTokenLoginHandler(w http.ResponseWriter, r *http.Request)
 		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
 	}
 
-	// check user from token
+	// Check user from token
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("Session is expired")) {
@@ -179,13 +180,25 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 	// Get one time token
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Failed to authenticate device.")
+	}
+
+	// Get device ID
+	deviceID := r.Header.Get("id")
+	if deviceID == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no device ID provided"), "Failed to authenticate device.")
+	}
+
+	// Get device name
+	deviceName := r.Header.Get("name")
+	if deviceName == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no device name provided"), "Failed to authenticate device.")
 	}
 
 	// Get user token from passport
 	tokenResp, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to get user from token.")
+		return http.StatusBadRequest, terror.Error(err, "Unable to retrieve player, try again or contact support.")
 	}
 
 	// Get user with token
@@ -194,18 +207,33 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 		if errors.Is(err, errors.New("Session is expired")) {
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
-		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate player")
+		return http.StatusBadRequest, terror.Error(err, "Unable to authenticate player, try again or contact support")
 	}
 
-	// Add mobile device to table
-	d := boiler.Device{
-		PlayerID: user.ID,
-		Name:     r.UserAgent(),
-	}
-	err = d.Insert(gamedb.StdConn, boil.Infer())
+	// Check if device exists (and is not deleted)
+	count, err := boiler.Devices(
+		qm.Select(boiler.DeviceColumns.DeviceID),
+		boiler.DeviceWhere.DeviceID.EQ(deviceID),
+		boiler.DeviceWhere.PlayerID.EQ(user.ID),
+		boiler.DeviceWhere.DeletedAt.IsNull(),
+	).Count(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("user id", user.ID).Msg("Failed to insert user device.")
-		return http.StatusInternalServerError, terror.Error(err, "Failed to add user device.")
+		gamelog.L.Error().Str("user id", user.ID).Err(err).Msg("unable to get player devices")
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate device.")
+	}
+
+	// If not exists add device to table
+	if count == 0 {
+		d := boiler.Device{
+			DeviceID: deviceID,
+			PlayerID: user.ID,
+			Name:     deviceName,
+		}
+		err = d.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("user id", user.ID).Msg("Failed to insert user device.")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to connect device, try again or contact support.")
+		}
 	}
 
 	// Write token to header
