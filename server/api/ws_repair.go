@@ -241,14 +241,18 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Failed to offer repair contract.")
 	}
 
-	//  broadcast to repair offer market
-	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, server.RepairOffer{
+	sro := server.RepairOffer{
 		RepairOffer:          ro,
 		BlocksRequiredRepair: mrc.BlocksRequiredRepair,
 		BlocksRequired:       mrc.BlocksRepaired,
 		SupsWorthPerBlock:    offeredSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 		WorkingAgentCount:    0,
-	})
+	}
+
+	//  broadcast to repair offer market
+	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
+	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 
 	reply(true)
 
