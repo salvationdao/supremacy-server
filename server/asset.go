@@ -60,6 +60,6 @@ type RepairOffer struct {
 }
 
 type MechRepairStatus struct {
-	*boiler.RepairCase
+	boiler.RepairCase
 	BlocksDefault int `json:"blocks_default"`
 }

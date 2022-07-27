@@ -120,7 +120,7 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, &server.MechRepairStatus{
-		RepairCase:    rc,
+		RepairCase:    *rc,
 		BlocksDefault: model.RepairBlocks,
 	})
 

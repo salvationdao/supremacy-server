@@ -12,10 +12,10 @@ DROP TYPE IF EXISTS mech_repair_status;
 DROP TYPE IF EXISTS MECH_REPAIR_LOG_TYPE;
 
 ALTER TABLE mech_models
-    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 3;
+    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 20;
 
 ALTER TABLE weapon_models
-    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 3;
+    ADD COLUMN repair_blocks INT NOT NULL DEFAULT 20;
 
 CREATE TABLE repair_cases(
     id uuid primary key default gen_random_uuid(),

@@ -459,7 +459,7 @@ func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []
 }
 
 func (api *API) MechRepairCaseSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	mechID := chi.RouteContext(ctx).URLParam("mechID")
+	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 	if mechID == "" {
 		return fmt.Errorf("offer id is required")
 	}

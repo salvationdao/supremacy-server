@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"server"
@@ -16,7 +17,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 			ro.offered_by_id,
 			ro.closed_at,
 			ro.finished_reason,
-			rc.blocks_total,
+			rc.blocks_required_repair,
 			rc.blocks_repaired,
 			ro.offered_sups_amount/ro.blocks_total as sups_worth_per_block,
 			COUNT(ra.id) as working_agent_count
@@ -24,7 +25,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		INNER JOIN repair_cases rc on rc.id = ro.repair_case_id
 		INNER JOIN repair_agents ra on ra.repair_offer_id = ro.id AND ra.finished_at ISNULL
 		WHERE ro.id = $1
-		GROUP BY ro.id, rc.blocks_total, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason
+		GROUP BY ro.id, rc.blocks_required_repair, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason
 	`
 
 	dro := &server.RepairOffer{}
@@ -76,12 +77,14 @@ func MechRepairStatus(mechID string) (*server.MechRepairStatus, error) {
 			rc.mech_id
 		FROM mechs m
 		INNER JOIN mech_models mm on mm.id = m.model_id
-		INNER JOIN repair_cases rc on rc.mech_id = m.id AND rc.completed_at AND rc.blocks_total > rc.blocks_repaired ISNULL
+		INNER JOIN repair_cases rc on rc.mech_id = m.id AND rc.completed_at ISNULL AND rc.blocks_required_repair > rc.blocks_repaired
 		WHERE m.id = $1
 	`
 
+	fmt.Println(mechID)
+
 	mrs := &server.MechRepairStatus{}
-	err := gamedb.StdConn.QueryRow(q).Scan(&mrs.ID, &mrs.BlocksDefault, &mrs.BlocksRequiredRepair, &mrs.BlocksRepaired, &mrs.MechID)
+	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&mrs.ID, &mrs.BlocksDefault, &mrs.BlocksRequiredRepair, &mrs.BlocksRepaired, &mrs.MechID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
