@@ -64,9 +64,11 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		boiler.RepairOfferWhere.IsSelf.EQ(false), // system generated offer
 	}
 
-	if req.Payload.MinReward.Valid {
-
-	}
+	//if req.Payload.MinReward.Valid {
+	//	queries = append(queries, qm.Where(
+	//		fmt.Sprintf(""),
+	//	))
+	//}
 
 	if req.Payload.IsExpired {
 		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.LTE(time.Now()))

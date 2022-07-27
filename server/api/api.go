@@ -377,6 +377,7 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
+	go api.BattleArena.RepairOfferCleaner()
 
 	return api, nil
 }

@@ -3,31 +3,40 @@ package db
 import (
 	"github.com/ninja-software/terror/v2"
 	"server"
+	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 )
 
 func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 	q := `
-		SELECT 
-			ro.id,
-			ro.offered_by_id,
-			ro.closed_at,
-			ro.finished_reason,
-			rc.blocks_required_repair,
-			rc.blocks_repaired,
-			ro.offered_sups_amount/ro.blocks_total as sups_worth_per_block,
-			COUNT(ra.id) as working_agent_count
+		SELECT
+		    ro.id,
+		    ro.repair_case_id,
+		    ro.is_self,
+		    ro.offered_by_id,
+		    ro.expires_at,
+		    ro.closed_at,
+		    ro.finished_reason,
+		    rc.blocks_required_repair,
+		    rc.blocks_repaired,
+		    ro.offered_sups_amount/ro.blocks_total as sups_worth_per_block,
+		    COUNT(ra.id) as working_agent_count
 		FROM repair_offers ro
 		INNER JOIN repair_cases rc on rc.id = ro.repair_case_id
-		INNER JOIN repair_agents ra on ra.repair_offer_id = ro.id AND ra.finished_at ISNULL
+		LEFT JOIN repair_agents ra on ra.repair_offer_id = ro.id AND ra.finished_at ISNULL
 		WHERE ro.id = $1
 		GROUP BY ro.id, rc.blocks_required_repair, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason
 	`
-
-	dro := &server.RepairOffer{}
+	dro := &server.RepairOffer{
+		RepairOffer: &boiler.RepairOffer{},
+	}
 	err := gamedb.StdConn.QueryRow(q, offerID).Scan(
 		&dro.ID,
+		&dro.RepairCaseID,
+		&dro.IsSelf,
+		&dro.OfferedByID,
+		&dro.ExpiresAt,
 		&dro.ClosedAt,
 		&dro.FinishedReason,
 		&dro.BlocksRequiredRepair,

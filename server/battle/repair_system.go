@@ -104,7 +104,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 
 	// expire all the offer
 	_, err = ros.UpdateAll(tx, boiler.M{
-		boiler.RepairOfferColumns.ExpiresAt:      null.TimeFrom(now),
+		boiler.RepairOfferColumns.ClosedAt:       null.TimeFrom(now),
 		boiler.RepairOfferColumns.FinishedReason: null.StringFrom(offerCloseReason),
 	})
 	if err != nil {
