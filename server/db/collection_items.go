@@ -6,7 +6,6 @@ import (
 	"server/db/boiler"
 	"server/gamelog"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
