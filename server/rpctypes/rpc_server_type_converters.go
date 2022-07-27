@@ -419,6 +419,10 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		// convert stats to attributes to
 		asset.Attributes = []*Attribute{
 			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE"),
+			},
+			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
@@ -531,6 +535,10 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 		// convert stats to attributes to
 		attributes := []*Attribute{
 			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE ANIMATION"),
+			},
+			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
@@ -583,6 +591,10 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 
 		// convert stats to attributes to
 		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE SUBMODEL"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -660,6 +672,10 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 
 		// convert stats to attributes to
 		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("POWER CORE"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -746,6 +762,10 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WEAPON"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -920,6 +940,10 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		// convert stats to attributes to
 		attributes := Attributes{
 			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WEAPON SUBMODEL"),
+			},
+			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
@@ -993,6 +1017,10 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		// TODO create these dynamically depending on utility type
 		attributes := Attributes{
 			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE UTILITY"),
+			},
+			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
@@ -1062,7 +1090,7 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	attributes := Attributes{
 		{
 			TraitType: "Type",
-			Value:     mysteryCrate.Type,
+			Value:     fmt.Sprintf("NEXUS %s MYSTERY CRATE", mysteryCrate.Type),
 		},
 	}
 
