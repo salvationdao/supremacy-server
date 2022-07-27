@@ -324,6 +324,8 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to register repair agent")
 	}
 
+	reply(true)
+
 	return nil
 }
 
