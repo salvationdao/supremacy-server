@@ -269,20 +269,6 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// check user does not have any active repair job
-	ra, err := boiler.RepairAgents(
-		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
-		boiler.RepairAgentWhere.FinishedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to check repair agent record.")
-		return terror.Error(err, "Failed to register repair agent.")
-	}
-
-	if ra != nil {
-		return terror.Error(fmt.Errorf("incomplete repair agent detected"), "You have an incomplete repair job.")
-	}
-
 	// get repair offer
 	ro, err := boiler.RepairOffers(
 		boiler.RepairOfferWhere.ID.EQ(req.Payload.RepairOfferID),
@@ -311,8 +297,23 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(fmt.Errorf("owner only"), "Only owner can take this offer.")
 	}
 
+	// abandon unfinished repair task
+	_, err = boiler.RepairAgents(
+		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
+		boiler.RepairAgentWhere.FinishedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn,
+		boiler.M{
+			boiler.RepairAgentColumns.FinishedAt:     null.TimeFrom(time.Now()),
+			boiler.RepairAgentColumns.FinishedReason: null.StringFrom(boiler.RepairAgentFinishReasonABANDONED),
+		},
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("player id", user.ID).Msg("Failed to close repair agents.")
+		return terror.Error(err, "Failed to abandon repair job")
+	}
+
 	// insert repair agent
-	ra = &boiler.RepairAgent{
+	ra := &boiler.RepairAgent{
 		RepairCaseID:  ro.RepairCaseID,
 		RepairOfferID: ro.ID,
 		PlayerID:      user.ID,
@@ -326,10 +327,6 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 
 	reply(true)
 
-	return nil
-}
-
-func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	return nil
 }
 
