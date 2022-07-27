@@ -53,8 +53,8 @@ func (b AssetKeycardBlueprint) MarshalJSON() ([]byte, error) {
 
 type RepairOffer struct {
 	*boiler.RepairOffer
-	BlocksRequiredRepair int             `db:"block_required_repair" json:"block_required_repair"`
-	BlocksRequired       int             `db:"blocks_required" json:"blocks_required"`
+	BlocksRequiredRepair int             `db:"blocks_required_repair" json:"blocks_required_repair"`
+	BlocksRepaired       int             `db:"blocks_repaired" json:"blocks_repaired"`
 	SupsWorthPerBlock    decimal.Decimal `db:"sups_worth_per_block" json:"sups_worth_per_block"`
 	WorkingAgentCount    int             `db:"working_agent_count" json:"working_agent_count"`
 }

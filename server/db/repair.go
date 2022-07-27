@@ -31,7 +31,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		&dro.ClosedAt,
 		&dro.FinishedReason,
 		&dro.BlocksRequiredRepair,
-		&dro.BlocksRequired,
+		&dro.BlocksRepaired,
 		&dro.SupsWorthPerBlock,
 		&dro.WorkingAgentCount,
 	)

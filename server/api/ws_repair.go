@@ -69,9 +69,9 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 	}
 
 	if req.Payload.IsExpired {
-		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()))
-	} else {
 		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.LTE(time.Now()))
+	} else {
+		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()))
 	}
 
 	resp.Total, err = boiler.RepairOffers(queries...).Count(gamedb.StdConn)
@@ -244,7 +244,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	sro := server.RepairOffer{
 		RepairOffer:          ro,
 		BlocksRequiredRepair: mrc.BlocksRequiredRepair,
-		BlocksRequired:       mrc.BlocksRepaired,
+		BlocksRepaired:       mrc.BlocksRepaired,
 		SupsWorthPerBlock:    offeredSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 		WorkingAgentCount:    0,
 	}
@@ -522,7 +522,7 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 		reply(server.RepairOffer{
 			RepairOffer:          ro,
 			BlocksRequiredRepair: rc.BlocksRequiredRepair,
-			BlocksRequired:       rc.BlocksRepaired,
+			BlocksRepaired:       rc.BlocksRepaired,
 			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 			WorkingAgentCount:    workingAgentCount,
 		})

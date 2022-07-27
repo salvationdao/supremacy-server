@@ -118,7 +118,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 		sro := server.RepairOffer{
 			RepairOffer:          ro,
 			BlocksRequiredRepair: rc.BlocksRequiredRepair,
-			BlocksRequired:       rc.BlocksRepaired,
+			BlocksRepaired:       rc.BlocksRepaired,
 			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 			WorkingAgentCount:    0,
 		}
