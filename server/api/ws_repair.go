@@ -28,6 +28,7 @@ import (
 func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairOfferList, api.RepairOfferList)
 	api.SecureUserCommand(server.HubKeyRepairOfferIssue, api.RepairOfferIssue)
+	api.SecureUserCommand(server.HubKeyRepairOfferClose, api.RepairOfferClose)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 }
@@ -271,6 +272,52 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
 	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
 	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+
+	reply(true)
+
+	return nil
+}
+
+type RepairOfferCancelRequest struct {
+	Payload struct {
+		RepairOfferID string `json:"repair_offer_id"`
+	} `json:"payload"`
+}
+
+func (api *API) RepairOfferClose(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &RepairOfferCancelRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if mechRepairOfferBucket.Add(user.ID+req.Payload.RepairOfferID, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many request"), "Too many mech repair request.")
+	}
+
+	ro, err := boiler.FindRepairOffer(gamedb.StdConn, req.Payload.RepairOfferID)
+	if err != nil {
+		return terror.Error(err, "Failed to get repair offer id.")
+	}
+
+	if ro.OfferedByID.String != user.ID {
+		return terror.Error(fmt.Errorf("cannot cancel others offer"), "Can only cancel the offer which is issued by yourself.")
+	}
+
+	if ro.ExpiresAt.Before(time.Now()) {
+		return terror.Error(fmt.Errorf("offer is expired"), "The offer is already expired.")
+	}
+
+	if ro.ClosedAt.Valid {
+		return terror.Error(fmt.Errorf("offer is closed"), "The offer is already closed.")
+	}
+
+	// close offer
+	api.BattleArena.RepairOfferCloseChan <- &battle.RepairOfferClose{
+		OfferIDs:          []string{ro.ID},
+		OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
+		AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
+	}
 
 	reply(true)
 
