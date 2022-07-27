@@ -432,6 +432,8 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to pay sups for offering repair job.")
 	}
 
+	reply(true)
+
 	return nil
 }
 
