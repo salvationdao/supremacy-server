@@ -245,6 +245,8 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		WorkingAgentCount: 0,
 	})
 
+	reply(true)
+
 	return nil
 }
 
