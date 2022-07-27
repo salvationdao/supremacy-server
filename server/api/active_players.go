@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"server"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -29,7 +28,7 @@ type ActivePlayers struct {
 
 type ActiveStat struct {
 	// player stat
-	Player *server.Player
+	Player *server.PublicPlayer
 
 	// active stat
 	ActivedAt time.Time
@@ -73,25 +72,20 @@ func (api *API) FactionActivePlayerSetup() {
 }
 
 // CurrentFactionActivePlayer return a copy of current faction active player list
-func (ap *ActivePlayers) CurrentFactionActivePlayer() []server.Player {
+func (ap *ActivePlayers) CurrentFactionActivePlayer() []server.PublicPlayer {
 	ap.RLock()
 	defer ap.RUnlock()
 
-	var players []server.Player
+	var players []server.PublicPlayer
 	for _, as := range ap.Map {
-		player, err := db.GetPlayer(as.Player.ID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("could not find player")
-			return nil
-		}
-		players = append(players, *player)
+		players = append(players, *as.Player)
 	}
 
 	return players
 }
 
 type ActivePlayerBroadcast struct {
-	Players []server.Player
+	Players []server.PublicPlayer
 }
 
 func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
@@ -128,7 +122,7 @@ func (ap *ActivePlayers) CheckExpiry() {
 	now := time.Now()
 
 	// collect active player list for broadcast
-	var players []server.Player
+	var players []server.PublicPlayer
 
 	for playerID, activeStat := range ap.Map {
 
@@ -214,14 +208,18 @@ func (ap *ActivePlayers) add(playerID string) error {
 		return terror.Error(err, "Failed to get player from db")
 	}
 
-	serverPlayer, err := db.GetPlayer(player.ID)
-	if err != nil {
-		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get server player")
-		return terror.Error(err, "unable to get player, try again or contact support")
+	pp := &server.PublicPlayer{
+		ID:        player.ID,
+		Username:  player.Username,
+		Gid:       player.Gid,
+		FactionID: player.FactionID,
+		AboutMe:   player.AboutMe,
+		Rank:      player.Rank,
+		CreatedAt: player.CreatedAt,
 	}
 
 	ap.Map[playerID] = &ActiveStat{
-		Player:    serverPlayer,
+		Player:    pp,
 		ActivedAt: now,
 		ExpiredAt: now.Add(2 * time.Minute),
 	}

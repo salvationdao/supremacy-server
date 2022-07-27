@@ -397,3 +397,25 @@ func GetPlayer(playerID string) (*server.Player, error) {
 	}
 	return serverPlayer, nil
 }
+
+func GetPublicPlayerByID(playerID string) (*server.PublicPlayer, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player")
+		return nil, err
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        player.ID,
+		Username:  player.Username,
+		Gid:       player.Gid,
+		FactionID: player.FactionID,
+		AboutMe:   player.AboutMe,
+		Rank:      player.Rank,
+		CreatedAt: player.CreatedAt,
+	}
+
+	return pp, nil
+}

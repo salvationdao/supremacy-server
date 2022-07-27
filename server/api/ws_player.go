@@ -468,13 +468,17 @@ func (pc *PlayerController) GetPlayerByGidHandler(ctx context.Context, user *boi
 		return terror.Error(err, "Unable to find player, try again or contact support.")
 	}
 
-	player, err := db.GetPlayer(p.ID)
-	if err != nil {
-		l.Error().Err(err).Msg("unable to get server player")
-		return terror.Error(err, "Unable to find player, try again or contact support.")
+	pp := &server.PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		FactionID: p.FactionID,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
 	}
 
-	reply(player)
+	reply(pp)
 	return nil
 }
 
@@ -1179,27 +1183,17 @@ type PlayerProfileRequest struct {
 	} `json:"payload"`
 }
 
-type PublicPlayer struct {
-	ID        string      `json:"id"`
-	Username  null.String `json:"username"`
-	Gid       int         `json:"gid"`
-	FactionID null.String `json:"faction_id"`
-	AboutMe   null.String `json:"about_me"`
-	Rank      string      `json:"rank"`
-	CreatedAt time.Time   `json:"created_at"`
-}
-
 type PlayerAvatar struct {
 	ID        string `json:"id"`
 	AvatarURL string `json:"avatar_url"`
 	Tier      string `json:"tier"`
 }
 type PlayerProfileResponse struct {
-	*PublicPlayer `json:"player"`
-	Stats         *boiler.PlayerStat      `json:"stats"`
-	Faction       *boiler.Faction         `json:"faction"`
-	ActiveLog     *boiler.PlayerActiveLog `json:"active_log"`
-	Avatar        *PlayerAvatar           `json:"avatar"`
+	*server.PublicPlayer `json:"player"`
+	Stats                *boiler.PlayerStat      `json:"stats"`
+	Faction              *boiler.Faction         `json:"faction"`
+	ActiveLog            *boiler.PlayerActiveLog `json:"active_log"`
+	Avatar               *PlayerAvatar           `json:"avatar"`
 }
 
 const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
@@ -1272,7 +1266,7 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 	}
 
 	reply(PlayerProfileResponse{
-		PublicPlayer: &PublicPlayer{
+		PublicPlayer: &server.PublicPlayer{
 			ID:        player.ID,
 			Username:  player.Username,
 			Gid:       player.Gid,
@@ -1371,7 +1365,7 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	resp := &PublicPlayer{
+	resp := &server.PublicPlayer{
 		ID:        user.ID,
 		Username:  user.Username,
 		Gid:       user.Gid,
