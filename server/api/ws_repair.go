@@ -46,7 +46,7 @@ type RepairListRequest struct {
 }
 
 type RepairOfferListResponse struct {
-	Offers []*boiler.RepairOffer `json:"offers"`
+	Offers []*server.RepairOffer `json:"offers"`
 	Total  int64                 `json:"total"`
 }
 
@@ -58,7 +58,7 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 	}
 
 	resp := &RepairOfferListResponse{
-		Offers: []*boiler.RepairOffer{},
+		Offers: []*server.RepairOffer{},
 		Total:  0,
 	}
 	queries := []qm.QueryMod{
@@ -120,6 +120,15 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		qm.OrderBy(fmt.Sprintf("%s %s", req.Payload.OrderBy, req.Payload.OrderDir)),
 		qm.Limit(req.Payload.PageSize),
 		qm.Offset(req.Payload.PageNumber*req.Payload.PageSize),
+		qm.Load(
+			boiler.RepairOfferRels.OfferedBy,
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.Gid,
+				boiler.PlayerColumns.FactionID,
+			),
+		),
 	)
 
 	ros, err := boiler.RepairOffers(queries...).All(gamedb.StdConn)
@@ -128,8 +137,11 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		return terror.Error(err, "Failed to get offer list.")
 	}
 
-	if ros != nil {
-		resp.Offers = ros
+	for _, ro := range ros {
+		resp.Offers = append(resp.Offers, &server.RepairOffer{
+			RepairOffer: ro,
+			JobOwner:    ro.R.OfferedBy,
+		})
 	}
 
 	reply(resp)

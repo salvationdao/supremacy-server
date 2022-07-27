@@ -57,4 +57,5 @@ type RepairOffer struct {
 	BlocksRepaired       int             `db:"blocks_repaired" json:"blocks_repaired"`
 	SupsWorthPerBlock    decimal.Decimal `db:"sups_worth_per_block" json:"sups_worth_per_block"`
 	WorkingAgentCount    int             `db:"working_agent_count" json:"working_agent_count"`
+	JobOwner             *boiler.Player  `json:"job_owner"`
 }
