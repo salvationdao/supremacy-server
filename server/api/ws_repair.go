@@ -28,7 +28,6 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairOfferList, api.RepairOfferList)
 	api.SecureUserCommand(server.HubKeyRepairOfferIssue, api.RepairOfferIssue)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
-	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 }
 
