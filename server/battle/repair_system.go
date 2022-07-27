@@ -102,17 +102,18 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 
 	defer tx.Rollback()
 
-	// expire all the offer
-	_, err = ros.UpdateAll(tx, boiler.M{
-		boiler.RepairOfferColumns.ClosedAt:       null.TimeFrom(now),
-		boiler.RepairOfferColumns.FinishedReason: null.StringFrom(offerCloseReason),
-	})
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to close expired repair offer.")
-		return terror.Error(err, "Failed to close expired repair offer.")
-	}
-
 	for _, ro := range ros {
+		ro.ClosedAt = null.TimeFrom(now)
+		ro.FinishedReason = null.StringFrom(offerCloseReason)
+		_, err := ro.Update(tx, boil.Whitelist(
+			boiler.RepairOfferColumns.ClosedAt,
+			boiler.RepairOfferColumns.FinishedReason,
+		))
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to close expired repair offer.")
+			return terror.Error(err, "Failed to close expired repair offer.")
+		}
+
 		// broadcast close offer
 		rc := ro.R.RepairCase
 		sro := server.RepairOffer{
