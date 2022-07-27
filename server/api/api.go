@@ -286,6 +286,7 @@ func NewAPI(
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
 				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil)
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
+				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 			}))
 
 			// secured user route ws

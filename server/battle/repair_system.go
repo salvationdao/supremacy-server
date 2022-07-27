@@ -2,6 +2,7 @@ package battle
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -9,54 +10,185 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
 	"time"
 )
 
-func RepairOfferCleaner() {
-	for {
-		time.Sleep(10 * time.Second)
+type RepairOfferClose struct {
+	OfferIDs          []string
+	OfferClosedReason string
+	AgentClosedReason string
+}
 
-		// expire repair offer
-		expiredOfferIDs, err := db.CloseExpiredRepairOffers()
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
-			continue
+func (arena *Arena) RepairOfferCleaner() {
+	expiryCheckChan := make(chan bool)
+	go func(expiryCheckChan chan bool) {
+		for {
+			time.Sleep(5 * time.Second)
+			expiryCheckChan <- true
 		}
+	}(expiryCheckChan)
 
-		for _, offerID := range expiredOfferIDs {
-			// broadcast close message
-			ro, err := db.RepairOfferDetail(offerID)
+	for {
+		select {
+		case <-expiryCheckChan:
+			now := time.Now()
+			// expire repair offer
+			ros, err := boiler.RepairOffers(
+				boiler.RepairOfferWhere.ExpiresAt.LTE(now),
+				boiler.RepairOfferWhere.ClosedAt.IsNull(),
+				boiler.RepairOfferWhere.IsSelf.EQ(false),
+				qm.Load(boiler.RepairOfferRels.RepairCase),
+				qm.Load(boiler.RepairOfferRels.RepairBlocks),
+				qm.Load(
+					boiler.RepairOfferRels.RepairAgents,
+					boiler.RepairAgentWhere.FinishedAt.IsNull(),
+				),
+			).All(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("repair offer id", offerID).Msg("Failed to load repair offers.")
+				gamelog.L.Error().Err(err).Msg("Failed to get repair offer")
 				continue
 			}
 
-			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			if len(ros) == 0 {
+				continue
+			}
+
+			err = arena.closeRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
+				continue
+			}
+
+		case roc := <-arena.RepairOfferCloseChan:
+			ros, err := boiler.RepairOffers(
+				boiler.RepairOfferWhere.ID.IN(roc.OfferIDs),
+				boiler.RepairOfferWhere.ClosedAt.IsNull(), // double check it is not closed yet
+				qm.Load(boiler.RepairOfferRels.RepairCase),
+				qm.Load(boiler.RepairOfferRels.RepairBlocks),
+				qm.Load(
+					boiler.RepairOfferRels.RepairAgents,
+					boiler.RepairAgentWhere.FinishedAt.IsNull(),
+				),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to get repair offers")
+				continue
+			}
+
+			if len(ros) == 0 {
+				continue
+			}
+
+			err = arena.closeRepairOffers(ros, roc.OfferClosedReason, roc.AgentClosedReason)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to close repair offers.")
+				continue
+			}
+		}
+	}
+}
+
+func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
+	now := time.Now()
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
+		return terror.Error(err, "Failed to begin db transaction.")
+	}
+
+	defer tx.Rollback()
+
+	// expire all the offer
+	_, err = ros.UpdateAll(tx, boiler.M{
+		boiler.RepairOfferColumns.ExpiresAt:      null.TimeFrom(now),
+		boiler.RepairOfferColumns.FinishedReason: null.StringFrom(offerCloseReason),
+	})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to close expired repair offer.")
+		return terror.Error(err, "Failed to close expired repair offer.")
+	}
+
+	for _, ro := range ros {
+		// broadcast close offer
+		rc := ro.R.RepairCase
+		sro := server.RepairOffer{
+			RepairOffer:          ro,
+			BlocksRequiredRepair: rc.BlocksRequiredRepair,
+			BlocksRequired:       rc.BlocksRepaired,
+			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
+			WorkingAgentCount:    0,
 		}
 
-		// expire repair agent
-		_, err = boiler.RepairAgents(
-			boiler.RepairAgentWhere.FinishedAt.IsNull(),
-			qm.Where(
-				fmt.Sprintf(
-					"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s NOTNULL)",
-					boiler.TableNames.RepairOffers,
-					qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.ID),
-					qm.Rels(boiler.TableNames.RepairAgents, boiler.RepairAgentColumns.RepairOfferID),
-					qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.ClosedAt),
-				),
-			),
-		).UpdateAll(gamedb.StdConn,
-			boiler.M{
-				boiler.RepairAgentColumns.FinishedAt:     null.TimeFrom(time.Now()),
-				boiler.RepairAgentColumns.FinishedReason: null.StringFrom(boiler.RepairAgentFinishReasonEXPIRED),
-			},
-		)
+		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+		if !ro.IsSelf {
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+		}
+
+		if ro.R == nil {
+			continue
+		}
+
+		if ro.R.RepairAgents != nil && len(ro.R.RepairAgents) > 0 {
+			_, err = ro.R.RepairAgents.UpdateAll(tx, boiler.M{
+				boiler.RepairAgentColumns.FinishedAt:     null.TimeFrom(now),
+				boiler.RepairAgentColumns.FinishedReason: null.StringFrom(agentCloseReason),
+			})
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to close expired repair agent.")
+				return terror.Error(err, "Failed to close expired repair agent.")
+			}
+		}
+
+		// refund process
+		if !ro.OfferedByID.Valid || ro.OfferedSupsAmount.Equal(decimal.Zero) {
+			continue
+		}
+
+		totalRefundBlocks := ro.BlocksTotal
+		if ro.R.RepairBlocks != nil {
+			totalRefundBlocks = totalRefundBlocks - len(ro.R.RepairBlocks)
+		}
+
+		if totalRefundBlocks > 0 {
+			amount := ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))).Mul(decimal.NewFromInt(int64(totalRefundBlocks)))
+
+			if amount.Equal(decimal.Zero) {
+				continue
+			}
+
+			// refund reward
+			_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyGameUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(ro.OfferedByID.String)),
+				Amount:               amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_unclaimed_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupRepair),
+				Description:          "refund unclaimed repair offer reward.",
+				NotSafe:              true,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("player_id", ro.OfferedByID.String).
+					Str("repair offer id", ro.ID).
+					Str("amount", amount.StringFixed(0)).
+					Err(err).Msg("Failed to refund unclaimed repair offer reward.")
+				return terror.Error(err, "Failed to refund unclaimed repair offer reward.")
+			}
+		}
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return terror.Error(err, "Failed to commit db transaction.")
+	}
+
+	return nil
 }
 
 // RegisterMechRepairCase insert mech repair case and track repair stack
@@ -118,8 +250,6 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction.")
 	}
-
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 	return nil
 }

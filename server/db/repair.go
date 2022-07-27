@@ -30,7 +30,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		&dro.ID,
 		&dro.ClosedAt,
 		&dro.FinishedReason,
-		&dro.BlocksTotal,
+		&dro.BlocksRequiredRepair,
 		&dro.BlocksRequired,
 		&dro.SupsWorthPerBlock,
 		&dro.WorkingAgentCount,
@@ -62,39 +62,4 @@ func IsRepairCaseOwner(caseID string, playerID string) (bool, error) {
 	}
 
 	return isOwner, nil
-}
-
-// CloseExpiredRepairOffers close expired repair offer and return the id list
-func CloseExpiredRepairOffers() ([]string, error) {
-	q := `
-		UPDATE
-			repair_offers ro
-		SET
-		    closed_at = now(),
-		    finished_reason = 'EXPIRED'
-		WHERE
-		    ro.expires_at <= now() AND ro.closed_at ISNULL
-		RETURNING 
-			ro.id
-	`
-
-	ids := []string{}
-	rows, err := gamedb.StdConn.Query(q)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to query repair offer ids.")
-		return nil, terror.Error(err, "Failed to close expired repair offer.")
-	}
-
-	for rows.Next() {
-		id := ""
-		err = rows.Scan(&id)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to scan expired repair offer id")
-			return nil, terror.Error(err, "Failed to scan expired repair offer id")
-		}
-
-		ids = append(ids, id)
-	}
-
-	return ids, nil
 }
