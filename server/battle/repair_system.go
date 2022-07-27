@@ -105,8 +105,9 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	ro := boiler.RepairOffer{
 		RepairCaseID:      rc.ID,
 		IsSelf:            true,
-		BlocksTotal:       0,
+		BlocksTotal:       int(blocksTotal),
 		OfferedSupsAmount: decimal.Zero,
+		ExpiresAt:         time.Now().AddDate(10, 0, 0),
 	}
 	err = ro.Insert(tx, boil.Infer())
 	if err != nil {

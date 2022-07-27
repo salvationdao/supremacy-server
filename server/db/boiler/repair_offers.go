@@ -27,7 +27,7 @@ type RepairOffer struct {
 	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	RepairCaseID      string          `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
 	IsSelf            bool            `boiler:"is_self" boil:"is_self" json:"is_self" toml:"is_self" yaml:"is_self"`
-	OfferedByID       string          `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id" toml:"offered_by_id" yaml:"offered_by_id"`
+	OfferedByID       null.String     `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id,omitempty" toml:"offered_by_id" yaml:"offered_by_id,omitempty"`
 	BlocksTotal       int             `boiler:"blocks_total" boil:"blocks_total" json:"blocks_total" toml:"blocks_total" yaml:"blocks_total"`
 	OfferedSupsAmount decimal.Decimal `boiler:"offered_sups_amount" boil:"offered_sups_amount" json:"offered_sups_amount" toml:"offered_sups_amount" yaml:"offered_sups_amount"`
 	ExpiresAt         time.Time       `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
@@ -103,7 +103,7 @@ var RepairOfferWhere = struct {
 	ID                whereHelperstring
 	RepairCaseID      whereHelperstring
 	IsSelf            whereHelperbool
-	OfferedByID       whereHelperstring
+	OfferedByID       whereHelpernull_String
 	BlocksTotal       whereHelperint
 	OfferedSupsAmount whereHelperdecimal_Decimal
 	ExpiresAt         whereHelpertime_Time
@@ -116,7 +116,7 @@ var RepairOfferWhere = struct {
 	ID:                whereHelperstring{field: "\"repair_offers\".\"id\""},
 	RepairCaseID:      whereHelperstring{field: "\"repair_offers\".\"repair_case_id\""},
 	IsSelf:            whereHelperbool{field: "\"repair_offers\".\"is_self\""},
-	OfferedByID:       whereHelperstring{field: "\"repair_offers\".\"offered_by_id\""},
+	OfferedByID:       whereHelpernull_String{field: "\"repair_offers\".\"offered_by_id\""},
 	BlocksTotal:       whereHelperint{field: "\"repair_offers\".\"blocks_total\""},
 	OfferedSupsAmount: whereHelperdecimal_Decimal{field: "\"repair_offers\".\"offered_sups_amount\""},
 	ExpiresAt:         whereHelpertime_Time{field: "\"repair_offers\".\"expires_at\""},
@@ -158,8 +158,8 @@ type repairOfferL struct{}
 
 var (
 	repairOfferAllColumns            = []string{"id", "repair_case_id", "is_self", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
-	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at"}
-	repairOfferColumnsWithDefault    = []string{"id", "is_self", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
+	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "blocks_total", "offered_sups_amount", "expires_at"}
+	repairOfferColumnsWithDefault    = []string{"id", "is_self", "offered_by_id", "finished_reason", "closed_at", "created_at", "updated_at", "deleted_at"}
 	repairOfferPrimaryKeyColumns     = []string{"id"}
 	repairOfferGeneratedColumns      = []string{}
 )
@@ -496,7 +496,9 @@ func (repairOfferL) LoadOfferedBy(e boil.Executor, singular bool, maybeRepairOff
 		if object.R == nil {
 			object.R = &repairOfferR{}
 		}
-		args = append(args, object.OfferedByID)
+		if !queries.IsNil(object.OfferedByID) {
+			args = append(args, object.OfferedByID)
+		}
 
 	} else {
 	Outer:
@@ -506,12 +508,14 @@ func (repairOfferL) LoadOfferedBy(e boil.Executor, singular bool, maybeRepairOff
 			}
 
 			for _, a := range args {
-				if a == obj.OfferedByID {
+				if queries.Equal(a, obj.OfferedByID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.OfferedByID)
+			if !queries.IsNil(obj.OfferedByID) {
+				args = append(args, obj.OfferedByID)
+			}
 
 		}
 	}
@@ -570,7 +574,7 @@ func (repairOfferL) LoadOfferedBy(e boil.Executor, singular bool, maybeRepairOff
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.OfferedByID == foreign.ID {
+			if queries.Equal(local.OfferedByID, foreign.ID) {
 				local.R.OfferedBy = foreign
 				if foreign.R == nil {
 					foreign.R = &playerR{}
@@ -912,7 +916,7 @@ func (o *RepairOffer) SetOfferedBy(exec boil.Executor, insert bool, related *Pla
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.OfferedByID = related.ID
+	queries.Assign(&o.OfferedByID, related.ID)
 	if o.R == nil {
 		o.R = &repairOfferR{
 			OfferedBy: related,
@@ -929,6 +933,39 @@ func (o *RepairOffer) SetOfferedBy(exec boil.Executor, insert bool, related *Pla
 		related.R.OfferedByRepairOffers = append(related.R.OfferedByRepairOffers, o)
 	}
 
+	return nil
+}
+
+// RemoveOfferedBy relationship.
+// Sets o.R.OfferedBy to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *RepairOffer) RemoveOfferedBy(exec boil.Executor, related *Player) error {
+	var err error
+
+	queries.SetScanner(&o.OfferedByID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("offered_by_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.OfferedBy = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.OfferedByRepairOffers {
+		if queries.Equal(o.OfferedByID, ri.OfferedByID) {
+			continue
+		}
+
+		ln := len(related.R.OfferedByRepairOffers)
+		if ln > 1 && i < ln-1 {
+			related.R.OfferedByRepairOffers[i] = related.R.OfferedByRepairOffers[ln-1]
+		}
+		related.R.OfferedByRepairOffers = related.R.OfferedByRepairOffers[:ln-1]
+		break
+	}
 	return nil
 }
 

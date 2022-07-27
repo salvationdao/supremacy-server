@@ -11,6 +11,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 	q := `
 		SELECT 
 			ro.id,
+			ro.offered_by_id,
 			ro.closed_at,
 			ro.finished_reason,
 			rc.blocks_total,

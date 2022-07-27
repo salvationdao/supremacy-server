@@ -898,8 +898,6 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 					continue
 				}
 
-				fmt.Println("player still active", ba.PlayerID)
-
 				if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) >= locationSelectorAmount {
 					continue
 				}

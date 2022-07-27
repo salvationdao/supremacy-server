@@ -27,7 +27,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	}
 
 	if mrc != nil && !mrc.CompletedAt.Valid {
-		resp.Status = server.MechArenaStatusRepairing
+		resp.Status = server.MechArenaStatusDamaged
 		return resp, nil
 	}
 

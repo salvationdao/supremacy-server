@@ -6516,7 +6516,7 @@ func (playerL) LoadOfferedByRepairOffers(e boil.Executor, singular bool, maybePl
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -6575,7 +6575,7 @@ func (playerL) LoadOfferedByRepairOffers(e boil.Executor, singular bool, maybePl
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.OfferedByID {
+			if queries.Equal(local.ID, foreign.OfferedByID) {
 				local.R.OfferedByRepairOffers = append(local.R.OfferedByRepairOffers, foreign)
 				if foreign.R == nil {
 					foreign.R = &repairOfferR{}
@@ -10974,7 +10974,7 @@ func (o *Player) AddOfferedByRepairOffers(exec boil.Executor, insert bool, relat
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.OfferedByID = o.ID
+			queries.Assign(&rel.OfferedByID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -10994,7 +10994,7 @@ func (o *Player) AddOfferedByRepairOffers(exec boil.Executor, insert bool, relat
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.OfferedByID = o.ID
+			queries.Assign(&rel.OfferedByID, o.ID)
 		}
 	}
 
@@ -11015,6 +11015,79 @@ func (o *Player) AddOfferedByRepairOffers(exec boil.Executor, insert bool, relat
 			rel.R.OfferedBy = o
 		}
 	}
+	return nil
+}
+
+// SetOfferedByRepairOffers removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.OfferedBy's OfferedByRepairOffers accordingly.
+// Replaces o.R.OfferedByRepairOffers with related.
+// Sets related.R.OfferedBy's OfferedByRepairOffers accordingly.
+func (o *Player) SetOfferedByRepairOffers(exec boil.Executor, insert bool, related ...*RepairOffer) error {
+	query := "update \"repair_offers\" set \"offered_by_id\" = null where \"offered_by_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.OfferedByRepairOffers {
+			queries.SetScanner(&rel.OfferedByID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.OfferedBy = nil
+		}
+
+		o.R.OfferedByRepairOffers = nil
+	}
+	return o.AddOfferedByRepairOffers(exec, insert, related...)
+}
+
+// RemoveOfferedByRepairOffers relationships from objects passed in.
+// Removes related items from R.OfferedByRepairOffers (uses pointer comparison, removal does not keep order)
+// Sets related.R.OfferedBy.
+func (o *Player) RemoveOfferedByRepairOffers(exec boil.Executor, related ...*RepairOffer) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.OfferedByID, nil)
+		if rel.R != nil {
+			rel.R.OfferedBy = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("offered_by_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.OfferedByRepairOffers {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.OfferedByRepairOffers)
+			if ln > 1 && i < ln-1 {
+				o.R.OfferedByRepairOffers[i] = o.R.OfferedByRepairOffers[ln-1]
+			}
+			o.R.OfferedByRepairOffers = o.R.OfferedByRepairOffers[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

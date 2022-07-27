@@ -28,16 +28,19 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairOfferList, api.RepairOfferList)
 	api.SecureUserCommand(server.HubKeyRepairOfferIssue, api.RepairOfferIssue)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
+	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 }
 
 type RepairListRequest struct {
 	Payload struct {
-		OrderBy    string `json:"order_by"`
-		OrderDir   string `json:"order_dir"`
-		IsExpired  bool   `json:"is_expired"`
-		PageSize   int    `json:"page_size"`
-		PageNumber int    `json:"page_number"`
+		OrderBy    string   `json:"order_by"`
+		OrderDir   string   `json:"order_dir"`
+		IsExpired  bool     `json:"is_expired"`
+		PageSize   int      `json:"page_size"`
+		PageNumber int      `json:"page_number"`
+		MaxReward  null.Int `json:"max_reward"`
+		MinReward  null.Int `json:"min_reward"`
 	} `json:"payload"`
 }
 
@@ -57,7 +60,14 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		Offers: []*boiler.RepairOffer{},
 		Total:  0,
 	}
-	var queries []qm.QueryMod
+	queries := []qm.QueryMod{
+		boiler.RepairOfferWhere.OfferedByID.NEQ(null.StringFrom(user.ID)),
+		boiler.RepairOfferWhere.IsSelf.EQ(false),
+	}
+
+	if req.Payload.MinReward.Valid {
+
+	}
 
 	if req.Payload.IsExpired {
 		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()))
@@ -189,6 +199,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	// remain hours
 	// register a new repair offer
 	ro := &boiler.RepairOffer{
+		OfferedByID:       null.StringFrom(user.ID),
 		RepairCaseID:      mrc.ID,
 		BlocksTotal:       mrc.BlocksTotal - mrc.BlocksRepaired,
 		OfferedSupsAmount: req.Payload.OfferedSups,
@@ -310,6 +321,11 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		gamelog.L.Error().Err(err).Interface("repair agent", ra).Msg("Failed to register repair agent")
 		return terror.Error(err, "Failed to register repair agent")
 	}
+
+	return nil
+}
+
+func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	return nil
 }
