@@ -14,3 +14,16 @@ ADD
 ADD
     COLUMN IF NOT EXISTS read_at timestamptz,
     DROP COLUMN IF EXISTS is_dismissed;
+
+BEGIN;
+
+ALTER TYPE FEATURE_NAME
+ADD
+    VALUE 'SYSTEM_MESSAGES';
+
+COMMIT;
+
+INSERT INTO
+    features (name)
+VALUES
+    ('SYSTEM_MESSAGES');

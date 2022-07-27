@@ -23,6 +23,8 @@ type SystemMessageDataType string
 const (
 	SystemMessageDataTypeMechQueue          SystemMessageDataType = "MECH_QUEUE"
 	SystemMessageDataTypeMechBattleComplete SystemMessageDataType = "MECH_BATTLE_COMPLETE"
+	SystemMessageDataTypeGlobal             SystemMessageDataType = "GLOBAL"
+	SystemMessageDataTypeFaction            SystemMessageDataType = "FACTION"
 )
 
 func BroadcastGlobalSystemMessage(title string, message string, dataType *SystemMessageDataType, data *interface{}) error {

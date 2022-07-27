@@ -166,9 +166,10 @@ const (
 
 // Enum values for FeatureName
 const (
-	FeatureNameMECH_MOVE      = "MECH_MOVE"
-	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
-	FeatureNamePUBLIC_PROFILE = "PUBLIC_PROFILE"
+	FeatureNameMECH_MOVE       = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY  = "PLAYER_ABILITY"
+	FeatureNamePUBLIC_PROFILE  = "PUBLIC_PROFILE"
+	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
 )
 
 // Enum values for AbilityLevel
