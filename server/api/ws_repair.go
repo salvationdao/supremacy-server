@@ -64,11 +64,27 @@ func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key st
 		boiler.RepairOfferWhere.IsSelf.EQ(false), // system generated offer
 	}
 
-	//if req.Payload.MinReward.Valid {
-	//	queries = append(queries, qm.Where(
-	//		fmt.Sprintf(""),
-	//	))
-	//}
+	if req.Payload.MinReward.Valid {
+		queries = append(queries, qm.Where(
+			fmt.Sprintf(
+				"%s/%s >= ?",
+				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.OfferedSupsAmount),
+				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.BlocksTotal),
+			),
+			decimal.New(int64(req.Payload.MinReward.Int), 18).StringFixed(0),
+		))
+	}
+
+	if req.Payload.MaxReward.Valid {
+		queries = append(queries, qm.Where(
+			fmt.Sprintf(
+				"%s/%s <= ?",
+				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.OfferedSupsAmount),
+				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.BlocksTotal),
+			),
+			decimal.New(int64(req.Payload.MaxReward.Int), 18).StringFixed(0),
+		))
+	}
 
 	if req.Payload.IsExpired {
 		queries = append(queries, boiler.RepairOfferWhere.ExpiresAt.LTE(time.Now()))
