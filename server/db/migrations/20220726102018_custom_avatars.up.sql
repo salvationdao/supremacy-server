@@ -1,18 +1,10 @@
-CREATE TABLE hair
+
+
+CREATE TABLE layers
 (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hue         TEXT        NOT NULL,
-    image_url   TEXT        NOT NULL,
-
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at  TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE faces
-(
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    hue         TEXT        NOT NULL,
+    type        TEXT CHECK (type IN ('HAIR', 'FACE', 'BODY', 'ACCESSORY', 'EYEWEAR', 'HELMET')),
     image_url   TEXT        NOT NULL,
 
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -24,21 +16,40 @@ CREATE TABLE profile_custom_avatars
 (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     player_id   UUID        NOT NULL REFERENCES players(id),
-    face_id     UUID        NOT NULL REFERENCES players(id),
-    hair_id     UUID        NOT NULL REFERENCES players(id),
+
+    -- layers
+    face_id          UUID        NOT NULL REFERENCES layers(id),
+    hair_id          UUID        REFERENCES layers(id),
+    body_id          UUID        REFERENCES layers(id),
+    accessory_id     UUID        REFERENCES layers(id),
+    eye_wear_id      UUID        REFERENCES layers(id),
+    helmet_id        UUID        REFERENCES layers(id),
 
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- temp
--- seed hair
-insert into hair (hue, image_url) VALUES 
-('#000', 'https://user-images.githubusercontent.com/46738862/181250312-2b5ba859-80d7-4150-b6e5-38f378c94540.png'),
-('#000', 'https://user-images.githubusercontent.com/46738862/181250334-b8b1d80a-4999-41cf-b52a-b51efb97e051.png'),
-('#000', 'https://user-images.githubusercontent.com/46738862/181250348-c8661dce-f003-4fd6-b6c8-5936f9f38b82.png');
+-- seed hair layers
+INSERT INTO layers (type, hue, image_url) VALUES
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair1.png'),
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair2.png'),
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair3.png');
 
+-- seed faces 
+INSERT INTO layers (type, hue, image_url) VALUES
+('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face1.png'),
+('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face2.png'),
+('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face3.png');
 
+-- seed bodies
+INSERT INTO layers (type, hue, image_url) VALUES
+('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body1.png'),
+('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body2.png'),
+('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body3.png');
 
+-- seed accessories 
+INSERT INTO layers (type, hue, image_url) VALUES
+('ACCESSORY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/accessories1.png'),
+('ACCESSORY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/earrings1.png');
 

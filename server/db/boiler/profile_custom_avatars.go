@@ -23,90 +23,130 @@ import (
 
 // ProfileCustomAvatar is an object representing the database table.
 type ProfileCustomAvatar struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	FaceID    string    `boiler:"face_id" boil:"face_id" json:"face_id" toml:"face_id" yaml:"face_id"`
-	HairID    string    `boiler:"hair_id" boil:"hair_id" json:"hair_id" toml:"hair_id" yaml:"hair_id"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID    string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FaceID      string      `boiler:"face_id" boil:"face_id" json:"face_id" toml:"face_id" yaml:"face_id"`
+	HairID      null.String `boiler:"hair_id" boil:"hair_id" json:"hair_id,omitempty" toml:"hair_id" yaml:"hair_id,omitempty"`
+	BodyID      null.String `boiler:"body_id" boil:"body_id" json:"body_id,omitempty" toml:"body_id" yaml:"body_id,omitempty"`
+	AccessoryID null.String `boiler:"accessory_id" boil:"accessory_id" json:"accessory_id,omitempty" toml:"accessory_id" yaml:"accessory_id,omitempty"`
+	EyeWearID   null.String `boiler:"eye_wear_id" boil:"eye_wear_id" json:"eye_wear_id,omitempty" toml:"eye_wear_id" yaml:"eye_wear_id,omitempty"`
+	HelmetID    null.String `boiler:"helmet_id" boil:"helmet_id" json:"helmet_id,omitempty" toml:"helmet_id" yaml:"helmet_id,omitempty"`
+	UpdatedAt   time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt   null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *profileCustomAvatarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L profileCustomAvatarL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var ProfileCustomAvatarColumns = struct {
-	ID        string
-	PlayerID  string
-	FaceID    string
-	HairID    string
-	UpdatedAt string
-	DeletedAt string
-	CreatedAt string
+	ID          string
+	PlayerID    string
+	FaceID      string
+	HairID      string
+	BodyID      string
+	AccessoryID string
+	EyeWearID   string
+	HelmetID    string
+	UpdatedAt   string
+	DeletedAt   string
+	CreatedAt   string
 }{
-	ID:        "id",
-	PlayerID:  "player_id",
-	FaceID:    "face_id",
-	HairID:    "hair_id",
-	UpdatedAt: "updated_at",
-	DeletedAt: "deleted_at",
-	CreatedAt: "created_at",
+	ID:          "id",
+	PlayerID:    "player_id",
+	FaceID:      "face_id",
+	HairID:      "hair_id",
+	BodyID:      "body_id",
+	AccessoryID: "accessory_id",
+	EyeWearID:   "eye_wear_id",
+	HelmetID:    "helmet_id",
+	UpdatedAt:   "updated_at",
+	DeletedAt:   "deleted_at",
+	CreatedAt:   "created_at",
 }
 
 var ProfileCustomAvatarTableColumns = struct {
-	ID        string
-	PlayerID  string
-	FaceID    string
-	HairID    string
-	UpdatedAt string
-	DeletedAt string
-	CreatedAt string
+	ID          string
+	PlayerID    string
+	FaceID      string
+	HairID      string
+	BodyID      string
+	AccessoryID string
+	EyeWearID   string
+	HelmetID    string
+	UpdatedAt   string
+	DeletedAt   string
+	CreatedAt   string
 }{
-	ID:        "profile_custom_avatars.id",
-	PlayerID:  "profile_custom_avatars.player_id",
-	FaceID:    "profile_custom_avatars.face_id",
-	HairID:    "profile_custom_avatars.hair_id",
-	UpdatedAt: "profile_custom_avatars.updated_at",
-	DeletedAt: "profile_custom_avatars.deleted_at",
-	CreatedAt: "profile_custom_avatars.created_at",
+	ID:          "profile_custom_avatars.id",
+	PlayerID:    "profile_custom_avatars.player_id",
+	FaceID:      "profile_custom_avatars.face_id",
+	HairID:      "profile_custom_avatars.hair_id",
+	BodyID:      "profile_custom_avatars.body_id",
+	AccessoryID: "profile_custom_avatars.accessory_id",
+	EyeWearID:   "profile_custom_avatars.eye_wear_id",
+	HelmetID:    "profile_custom_avatars.helmet_id",
+	UpdatedAt:   "profile_custom_avatars.updated_at",
+	DeletedAt:   "profile_custom_avatars.deleted_at",
+	CreatedAt:   "profile_custom_avatars.created_at",
 }
 
 // Generated where
 
 var ProfileCustomAvatarWhere = struct {
-	ID        whereHelperstring
-	PlayerID  whereHelperstring
-	FaceID    whereHelperstring
-	HairID    whereHelperstring
-	UpdatedAt whereHelpertime_Time
-	DeletedAt whereHelpernull_Time
-	CreatedAt whereHelpertime_Time
+	ID          whereHelperstring
+	PlayerID    whereHelperstring
+	FaceID      whereHelperstring
+	HairID      whereHelpernull_String
+	BodyID      whereHelpernull_String
+	AccessoryID whereHelpernull_String
+	EyeWearID   whereHelpernull_String
+	HelmetID    whereHelpernull_String
+	UpdatedAt   whereHelpertime_Time
+	DeletedAt   whereHelpernull_Time
+	CreatedAt   whereHelpertime_Time
 }{
-	ID:        whereHelperstring{field: "\"profile_custom_avatars\".\"id\""},
-	PlayerID:  whereHelperstring{field: "\"profile_custom_avatars\".\"player_id\""},
-	FaceID:    whereHelperstring{field: "\"profile_custom_avatars\".\"face_id\""},
-	HairID:    whereHelperstring{field: "\"profile_custom_avatars\".\"hair_id\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"profile_custom_avatars\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"profile_custom_avatars\".\"deleted_at\""},
-	CreatedAt: whereHelpertime_Time{field: "\"profile_custom_avatars\".\"created_at\""},
+	ID:          whereHelperstring{field: "\"profile_custom_avatars\".\"id\""},
+	PlayerID:    whereHelperstring{field: "\"profile_custom_avatars\".\"player_id\""},
+	FaceID:      whereHelperstring{field: "\"profile_custom_avatars\".\"face_id\""},
+	HairID:      whereHelpernull_String{field: "\"profile_custom_avatars\".\"hair_id\""},
+	BodyID:      whereHelpernull_String{field: "\"profile_custom_avatars\".\"body_id\""},
+	AccessoryID: whereHelpernull_String{field: "\"profile_custom_avatars\".\"accessory_id\""},
+	EyeWearID:   whereHelpernull_String{field: "\"profile_custom_avatars\".\"eye_wear_id\""},
+	HelmetID:    whereHelpernull_String{field: "\"profile_custom_avatars\".\"helmet_id\""},
+	UpdatedAt:   whereHelpertime_Time{field: "\"profile_custom_avatars\".\"updated_at\""},
+	DeletedAt:   whereHelpernull_Time{field: "\"profile_custom_avatars\".\"deleted_at\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"profile_custom_avatars\".\"created_at\""},
 }
 
 // ProfileCustomAvatarRels is where relationship names are stored.
 var ProfileCustomAvatarRels = struct {
-	Face   string
-	Hair   string
-	Player string
+	Accessory string
+	Body      string
+	EyeWear   string
+	Face      string
+	Hair      string
+	Helmet    string
+	Player    string
 }{
-	Face:   "Face",
-	Hair:   "Hair",
-	Player: "Player",
+	Accessory: "Accessory",
+	Body:      "Body",
+	EyeWear:   "EyeWear",
+	Face:      "Face",
+	Hair:      "Hair",
+	Helmet:    "Helmet",
+	Player:    "Player",
 }
 
 // profileCustomAvatarR is where relationships are stored.
 type profileCustomAvatarR struct {
-	Face   *Player `boiler:"Face" boil:"Face" json:"Face" toml:"Face" yaml:"Face"`
-	Hair   *Player `boiler:"Hair" boil:"Hair" json:"Hair" toml:"Hair" yaml:"Hair"`
-	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Accessory *Layer  `boiler:"Accessory" boil:"Accessory" json:"Accessory" toml:"Accessory" yaml:"Accessory"`
+	Body      *Layer  `boiler:"Body" boil:"Body" json:"Body" toml:"Body" yaml:"Body"`
+	EyeWear   *Layer  `boiler:"EyeWear" boil:"EyeWear" json:"EyeWear" toml:"EyeWear" yaml:"EyeWear"`
+	Face      *Layer  `boiler:"Face" boil:"Face" json:"Face" toml:"Face" yaml:"Face"`
+	Hair      *Layer  `boiler:"Hair" boil:"Hair" json:"Hair" toml:"Hair" yaml:"Hair"`
+	Helmet    *Layer  `boiler:"Helmet" boil:"Helmet" json:"Helmet" toml:"Helmet" yaml:"Helmet"`
+	Player    *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -118,9 +158,9 @@ func (*profileCustomAvatarR) NewStruct() *profileCustomAvatarR {
 type profileCustomAvatarL struct{}
 
 var (
-	profileCustomAvatarAllColumns            = []string{"id", "player_id", "face_id", "hair_id", "updated_at", "deleted_at", "created_at"}
-	profileCustomAvatarColumnsWithoutDefault = []string{"player_id", "face_id", "hair_id"}
-	profileCustomAvatarColumnsWithDefault    = []string{"id", "updated_at", "deleted_at", "created_at"}
+	profileCustomAvatarAllColumns            = []string{"id", "player_id", "face_id", "hair_id", "body_id", "accessory_id", "eye_wear_id", "helmet_id", "updated_at", "deleted_at", "created_at"}
+	profileCustomAvatarColumnsWithoutDefault = []string{"player_id", "face_id"}
+	profileCustomAvatarColumnsWithDefault    = []string{"id", "hair_id", "body_id", "accessory_id", "eye_wear_id", "helmet_id", "updated_at", "deleted_at", "created_at"}
 	profileCustomAvatarPrimaryKeyColumns     = []string{"id"}
 	profileCustomAvatarGeneratedColumns      = []string{}
 )
@@ -367,8 +407,53 @@ func (q profileCustomAvatarQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Accessory pointed to by the foreign key.
+func (o *ProfileCustomAvatar) Accessory(mods ...qm.QueryMod) layerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AccessoryID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
+
+	return query
+}
+
+// Body pointed to by the foreign key.
+func (o *ProfileCustomAvatar) Body(mods ...qm.QueryMod) layerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BodyID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
+
+	return query
+}
+
+// EyeWear pointed to by the foreign key.
+func (o *ProfileCustomAvatar) EyeWear(mods ...qm.QueryMod) layerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.EyeWearID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
+
+	return query
+}
+
 // Face pointed to by the foreign key.
-func (o *ProfileCustomAvatar) Face(mods ...qm.QueryMod) playerQuery {
+func (o *ProfileCustomAvatar) Face(mods ...qm.QueryMod) layerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.FaceID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -376,14 +461,14 @@ func (o *ProfileCustomAvatar) Face(mods ...qm.QueryMod) playerQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
 
 	return query
 }
 
 // Hair pointed to by the foreign key.
-func (o *ProfileCustomAvatar) Hair(mods ...qm.QueryMod) playerQuery {
+func (o *ProfileCustomAvatar) Hair(mods ...qm.QueryMod) layerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.HairID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -391,8 +476,23 @@ func (o *ProfileCustomAvatar) Hair(mods ...qm.QueryMod) playerQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
+
+	return query
+}
+
+// Helmet pointed to by the foreign key.
+func (o *ProfileCustomAvatar) Helmet(mods ...qm.QueryMod) layerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.HelmetID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Layers(queryMods...)
+	queries.SetFrom(query.Query, "\"layers\"")
 
 	return query
 }
@@ -410,6 +510,333 @@ func (o *ProfileCustomAvatar) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadAccessory allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (profileCustomAvatarL) LoadAccessory(e boil.Executor, singular bool, maybeProfileCustomAvatar interface{}, mods queries.Applicator) error {
+	var slice []*ProfileCustomAvatar
+	var object *ProfileCustomAvatar
+
+	if singular {
+		object = maybeProfileCustomAvatar.(*ProfileCustomAvatar)
+	} else {
+		slice = *maybeProfileCustomAvatar.(*[]*ProfileCustomAvatar)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &profileCustomAvatarR{}
+		}
+		if !queries.IsNil(object.AccessoryID) {
+			args = append(args, object.AccessoryID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &profileCustomAvatarR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.AccessoryID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.AccessoryID) {
+				args = append(args, obj.AccessoryID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Layer")
+	}
+
+	var resultSlice []*Layer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for layers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
+	}
+
+	if len(profileCustomAvatarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Accessory = foreign
+		if foreign.R == nil {
+			foreign.R = &layerR{}
+		}
+		foreign.R.AccessoryProfileCustomAvatars = append(foreign.R.AccessoryProfileCustomAvatars, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.AccessoryID, foreign.ID) {
+				local.R.Accessory = foreign
+				if foreign.R == nil {
+					foreign.R = &layerR{}
+				}
+				foreign.R.AccessoryProfileCustomAvatars = append(foreign.R.AccessoryProfileCustomAvatars, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBody allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (profileCustomAvatarL) LoadBody(e boil.Executor, singular bool, maybeProfileCustomAvatar interface{}, mods queries.Applicator) error {
+	var slice []*ProfileCustomAvatar
+	var object *ProfileCustomAvatar
+
+	if singular {
+		object = maybeProfileCustomAvatar.(*ProfileCustomAvatar)
+	} else {
+		slice = *maybeProfileCustomAvatar.(*[]*ProfileCustomAvatar)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &profileCustomAvatarR{}
+		}
+		if !queries.IsNil(object.BodyID) {
+			args = append(args, object.BodyID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &profileCustomAvatarR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BodyID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BodyID) {
+				args = append(args, obj.BodyID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Layer")
+	}
+
+	var resultSlice []*Layer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for layers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
+	}
+
+	if len(profileCustomAvatarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Body = foreign
+		if foreign.R == nil {
+			foreign.R = &layerR{}
+		}
+		foreign.R.BodyProfileCustomAvatars = append(foreign.R.BodyProfileCustomAvatars, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BodyID, foreign.ID) {
+				local.R.Body = foreign
+				if foreign.R == nil {
+					foreign.R = &layerR{}
+				}
+				foreign.R.BodyProfileCustomAvatars = append(foreign.R.BodyProfileCustomAvatars, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadEyeWear allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (profileCustomAvatarL) LoadEyeWear(e boil.Executor, singular bool, maybeProfileCustomAvatar interface{}, mods queries.Applicator) error {
+	var slice []*ProfileCustomAvatar
+	var object *ProfileCustomAvatar
+
+	if singular {
+		object = maybeProfileCustomAvatar.(*ProfileCustomAvatar)
+	} else {
+		slice = *maybeProfileCustomAvatar.(*[]*ProfileCustomAvatar)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &profileCustomAvatarR{}
+		}
+		if !queries.IsNil(object.EyeWearID) {
+			args = append(args, object.EyeWearID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &profileCustomAvatarR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.EyeWearID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.EyeWearID) {
+				args = append(args, obj.EyeWearID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Layer")
+	}
+
+	var resultSlice []*Layer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for layers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
+	}
+
+	if len(profileCustomAvatarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.EyeWear = foreign
+		if foreign.R == nil {
+			foreign.R = &layerR{}
+		}
+		foreign.R.EyeWearProfileCustomAvatars = append(foreign.R.EyeWearProfileCustomAvatars, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.EyeWearID, foreign.ID) {
+				local.R.EyeWear = foreign
+				if foreign.R == nil {
+					foreign.R = &layerR{}
+				}
+				foreign.R.EyeWearProfileCustomAvatars = append(foreign.R.EyeWearProfileCustomAvatars, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadFace allows an eager lookup of values, cached into the
@@ -454,9 +881,9 @@ func (profileCustomAvatarL) LoadFace(e boil.Executor, singular bool, maybeProfil
 	}
 
 	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -464,19 +891,19 @@ func (profileCustomAvatarL) LoadFace(e boil.Executor, singular bool, maybeProfil
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
+		return errors.Wrap(err, "failed to eager load Layer")
 	}
 
-	var resultSlice []*Player
+	var resultSlice []*Layer
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
+		return errors.Wrap(err, "failed to close results of eager load for layers")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
 	}
 
 	if len(profileCustomAvatarAfterSelectHooks) != 0 {
@@ -495,7 +922,7 @@ func (profileCustomAvatarL) LoadFace(e boil.Executor, singular bool, maybeProfil
 		foreign := resultSlice[0]
 		object.R.Face = foreign
 		if foreign.R == nil {
-			foreign.R = &playerR{}
+			foreign.R = &layerR{}
 		}
 		foreign.R.FaceProfileCustomAvatars = append(foreign.R.FaceProfileCustomAvatars, object)
 		return nil
@@ -506,7 +933,7 @@ func (profileCustomAvatarL) LoadFace(e boil.Executor, singular bool, maybeProfil
 			if local.FaceID == foreign.ID {
 				local.R.Face = foreign
 				if foreign.R == nil {
-					foreign.R = &playerR{}
+					foreign.R = &layerR{}
 				}
 				foreign.R.FaceProfileCustomAvatars = append(foreign.R.FaceProfileCustomAvatars, local)
 				break
@@ -534,7 +961,9 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 		if object.R == nil {
 			object.R = &profileCustomAvatarR{}
 		}
-		args = append(args, object.HairID)
+		if !queries.IsNil(object.HairID) {
+			args = append(args, object.HairID)
+		}
 
 	} else {
 	Outer:
@@ -544,12 +973,14 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 			}
 
 			for _, a := range args {
-				if a == obj.HairID {
+				if queries.Equal(a, obj.HairID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.HairID)
+			if !queries.IsNil(obj.HairID) {
+				args = append(args, obj.HairID)
+			}
 
 		}
 	}
@@ -559,9 +990,9 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 	}
 
 	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -569,19 +1000,19 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
+		return errors.Wrap(err, "failed to eager load Layer")
 	}
 
-	var resultSlice []*Player
+	var resultSlice []*Layer
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
+		return errors.Wrap(err, "failed to close results of eager load for layers")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
 	}
 
 	if len(profileCustomAvatarAfterSelectHooks) != 0 {
@@ -600,7 +1031,7 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 		foreign := resultSlice[0]
 		object.R.Hair = foreign
 		if foreign.R == nil {
-			foreign.R = &playerR{}
+			foreign.R = &layerR{}
 		}
 		foreign.R.HairProfileCustomAvatars = append(foreign.R.HairProfileCustomAvatars, object)
 		return nil
@@ -608,12 +1039,121 @@ func (profileCustomAvatarL) LoadHair(e boil.Executor, singular bool, maybeProfil
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.HairID == foreign.ID {
+			if queries.Equal(local.HairID, foreign.ID) {
 				local.R.Hair = foreign
 				if foreign.R == nil {
-					foreign.R = &playerR{}
+					foreign.R = &layerR{}
 				}
 				foreign.R.HairProfileCustomAvatars = append(foreign.R.HairProfileCustomAvatars, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadHelmet allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (profileCustomAvatarL) LoadHelmet(e boil.Executor, singular bool, maybeProfileCustomAvatar interface{}, mods queries.Applicator) error {
+	var slice []*ProfileCustomAvatar
+	var object *ProfileCustomAvatar
+
+	if singular {
+		object = maybeProfileCustomAvatar.(*ProfileCustomAvatar)
+	} else {
+		slice = *maybeProfileCustomAvatar.(*[]*ProfileCustomAvatar)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &profileCustomAvatarR{}
+		}
+		if !queries.IsNil(object.HelmetID) {
+			args = append(args, object.HelmetID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &profileCustomAvatarR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.HelmetID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.HelmetID) {
+				args = append(args, obj.HelmetID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`layers`),
+		qm.WhereIn(`layers.id in ?`, args...),
+		qmhelper.WhereIsNull(`layers.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Layer")
+	}
+
+	var resultSlice []*Layer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Layer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for layers")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for layers")
+	}
+
+	if len(profileCustomAvatarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Helmet = foreign
+		if foreign.R == nil {
+			foreign.R = &layerR{}
+		}
+		foreign.R.HelmetProfileCustomAvatars = append(foreign.R.HelmetProfileCustomAvatars, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.HelmetID, foreign.ID) {
+				local.R.Helmet = foreign
+				if foreign.R == nil {
+					foreign.R = &layerR{}
+				}
+				foreign.R.HelmetProfileCustomAvatars = append(foreign.R.HelmetProfileCustomAvatars, local)
 				break
 			}
 		}
@@ -727,10 +1267,247 @@ func (profileCustomAvatarL) LoadPlayer(e boil.Executor, singular bool, maybeProf
 	return nil
 }
 
+// SetAccessory of the profileCustomAvatar to the related item.
+// Sets o.R.Accessory to related.
+// Adds o to related.R.AccessoryProfileCustomAvatars.
+func (o *ProfileCustomAvatar) SetAccessory(exec boil.Executor, insert bool, related *Layer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"profile_custom_avatars\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"accessory_id"}),
+		strmangle.WhereClause("\"", "\"", 2, profileCustomAvatarPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.AccessoryID, related.ID)
+	if o.R == nil {
+		o.R = &profileCustomAvatarR{
+			Accessory: related,
+		}
+	} else {
+		o.R.Accessory = related
+	}
+
+	if related.R == nil {
+		related.R = &layerR{
+			AccessoryProfileCustomAvatars: ProfileCustomAvatarSlice{o},
+		}
+	} else {
+		related.R.AccessoryProfileCustomAvatars = append(related.R.AccessoryProfileCustomAvatars, o)
+	}
+
+	return nil
+}
+
+// RemoveAccessory relationship.
+// Sets o.R.Accessory to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ProfileCustomAvatar) RemoveAccessory(exec boil.Executor, related *Layer) error {
+	var err error
+
+	queries.SetScanner(&o.AccessoryID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("accessory_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Accessory = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.AccessoryProfileCustomAvatars {
+		if queries.Equal(o.AccessoryID, ri.AccessoryID) {
+			continue
+		}
+
+		ln := len(related.R.AccessoryProfileCustomAvatars)
+		if ln > 1 && i < ln-1 {
+			related.R.AccessoryProfileCustomAvatars[i] = related.R.AccessoryProfileCustomAvatars[ln-1]
+		}
+		related.R.AccessoryProfileCustomAvatars = related.R.AccessoryProfileCustomAvatars[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetBody of the profileCustomAvatar to the related item.
+// Sets o.R.Body to related.
+// Adds o to related.R.BodyProfileCustomAvatars.
+func (o *ProfileCustomAvatar) SetBody(exec boil.Executor, insert bool, related *Layer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"profile_custom_avatars\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"body_id"}),
+		strmangle.WhereClause("\"", "\"", 2, profileCustomAvatarPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BodyID, related.ID)
+	if o.R == nil {
+		o.R = &profileCustomAvatarR{
+			Body: related,
+		}
+	} else {
+		o.R.Body = related
+	}
+
+	if related.R == nil {
+		related.R = &layerR{
+			BodyProfileCustomAvatars: ProfileCustomAvatarSlice{o},
+		}
+	} else {
+		related.R.BodyProfileCustomAvatars = append(related.R.BodyProfileCustomAvatars, o)
+	}
+
+	return nil
+}
+
+// RemoveBody relationship.
+// Sets o.R.Body to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ProfileCustomAvatar) RemoveBody(exec boil.Executor, related *Layer) error {
+	var err error
+
+	queries.SetScanner(&o.BodyID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("body_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Body = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BodyProfileCustomAvatars {
+		if queries.Equal(o.BodyID, ri.BodyID) {
+			continue
+		}
+
+		ln := len(related.R.BodyProfileCustomAvatars)
+		if ln > 1 && i < ln-1 {
+			related.R.BodyProfileCustomAvatars[i] = related.R.BodyProfileCustomAvatars[ln-1]
+		}
+		related.R.BodyProfileCustomAvatars = related.R.BodyProfileCustomAvatars[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetEyeWear of the profileCustomAvatar to the related item.
+// Sets o.R.EyeWear to related.
+// Adds o to related.R.EyeWearProfileCustomAvatars.
+func (o *ProfileCustomAvatar) SetEyeWear(exec boil.Executor, insert bool, related *Layer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"profile_custom_avatars\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"eye_wear_id"}),
+		strmangle.WhereClause("\"", "\"", 2, profileCustomAvatarPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.EyeWearID, related.ID)
+	if o.R == nil {
+		o.R = &profileCustomAvatarR{
+			EyeWear: related,
+		}
+	} else {
+		o.R.EyeWear = related
+	}
+
+	if related.R == nil {
+		related.R = &layerR{
+			EyeWearProfileCustomAvatars: ProfileCustomAvatarSlice{o},
+		}
+	} else {
+		related.R.EyeWearProfileCustomAvatars = append(related.R.EyeWearProfileCustomAvatars, o)
+	}
+
+	return nil
+}
+
+// RemoveEyeWear relationship.
+// Sets o.R.EyeWear to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ProfileCustomAvatar) RemoveEyeWear(exec boil.Executor, related *Layer) error {
+	var err error
+
+	queries.SetScanner(&o.EyeWearID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("eye_wear_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.EyeWear = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.EyeWearProfileCustomAvatars {
+		if queries.Equal(o.EyeWearID, ri.EyeWearID) {
+			continue
+		}
+
+		ln := len(related.R.EyeWearProfileCustomAvatars)
+		if ln > 1 && i < ln-1 {
+			related.R.EyeWearProfileCustomAvatars[i] = related.R.EyeWearProfileCustomAvatars[ln-1]
+		}
+		related.R.EyeWearProfileCustomAvatars = related.R.EyeWearProfileCustomAvatars[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetFace of the profileCustomAvatar to the related item.
 // Sets o.R.Face to related.
 // Adds o to related.R.FaceProfileCustomAvatars.
-func (o *ProfileCustomAvatar) SetFace(exec boil.Executor, insert bool, related *Player) error {
+func (o *ProfileCustomAvatar) SetFace(exec boil.Executor, insert bool, related *Layer) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -763,7 +1540,7 @@ func (o *ProfileCustomAvatar) SetFace(exec boil.Executor, insert bool, related *
 	}
 
 	if related.R == nil {
-		related.R = &playerR{
+		related.R = &layerR{
 			FaceProfileCustomAvatars: ProfileCustomAvatarSlice{o},
 		}
 	} else {
@@ -776,7 +1553,7 @@ func (o *ProfileCustomAvatar) SetFace(exec boil.Executor, insert bool, related *
 // SetHair of the profileCustomAvatar to the related item.
 // Sets o.R.Hair to related.
 // Adds o to related.R.HairProfileCustomAvatars.
-func (o *ProfileCustomAvatar) SetHair(exec boil.Executor, insert bool, related *Player) error {
+func (o *ProfileCustomAvatar) SetHair(exec boil.Executor, insert bool, related *Layer) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -799,7 +1576,7 @@ func (o *ProfileCustomAvatar) SetHair(exec boil.Executor, insert bool, related *
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.HairID = related.ID
+	queries.Assign(&o.HairID, related.ID)
 	if o.R == nil {
 		o.R = &profileCustomAvatarR{
 			Hair: related,
@@ -809,13 +1586,125 @@ func (o *ProfileCustomAvatar) SetHair(exec boil.Executor, insert bool, related *
 	}
 
 	if related.R == nil {
-		related.R = &playerR{
+		related.R = &layerR{
 			HairProfileCustomAvatars: ProfileCustomAvatarSlice{o},
 		}
 	} else {
 		related.R.HairProfileCustomAvatars = append(related.R.HairProfileCustomAvatars, o)
 	}
 
+	return nil
+}
+
+// RemoveHair relationship.
+// Sets o.R.Hair to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ProfileCustomAvatar) RemoveHair(exec boil.Executor, related *Layer) error {
+	var err error
+
+	queries.SetScanner(&o.HairID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("hair_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Hair = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.HairProfileCustomAvatars {
+		if queries.Equal(o.HairID, ri.HairID) {
+			continue
+		}
+
+		ln := len(related.R.HairProfileCustomAvatars)
+		if ln > 1 && i < ln-1 {
+			related.R.HairProfileCustomAvatars[i] = related.R.HairProfileCustomAvatars[ln-1]
+		}
+		related.R.HairProfileCustomAvatars = related.R.HairProfileCustomAvatars[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetHelmet of the profileCustomAvatar to the related item.
+// Sets o.R.Helmet to related.
+// Adds o to related.R.HelmetProfileCustomAvatars.
+func (o *ProfileCustomAvatar) SetHelmet(exec boil.Executor, insert bool, related *Layer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"profile_custom_avatars\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"helmet_id"}),
+		strmangle.WhereClause("\"", "\"", 2, profileCustomAvatarPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.HelmetID, related.ID)
+	if o.R == nil {
+		o.R = &profileCustomAvatarR{
+			Helmet: related,
+		}
+	} else {
+		o.R.Helmet = related
+	}
+
+	if related.R == nil {
+		related.R = &layerR{
+			HelmetProfileCustomAvatars: ProfileCustomAvatarSlice{o},
+		}
+	} else {
+		related.R.HelmetProfileCustomAvatars = append(related.R.HelmetProfileCustomAvatars, o)
+	}
+
+	return nil
+}
+
+// RemoveHelmet relationship.
+// Sets o.R.Helmet to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ProfileCustomAvatar) RemoveHelmet(exec boil.Executor, related *Layer) error {
+	var err error
+
+	queries.SetScanner(&o.HelmetID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("helmet_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Helmet = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.HelmetProfileCustomAvatars {
+		if queries.Equal(o.HelmetID, ri.HelmetID) {
+			continue
+		}
+
+		ln := len(related.R.HelmetProfileCustomAvatars)
+		if ln > 1 && i < ln-1 {
+			related.R.HelmetProfileCustomAvatars[i] = related.R.HelmetProfileCustomAvatars[ln-1]
+		}
+		related.R.HelmetProfileCustomAvatars = related.R.HelmetProfileCustomAvatars[:ln-1]
+		break
+	}
 	return nil
 }
 

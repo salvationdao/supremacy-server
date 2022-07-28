@@ -9,28 +9,30 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type AvatarFeaturesListOpts struct {
-	Search   string
-	Filter   *ListFilterRequest
-	Sort     *ListSortRequest
-	PageSize int
-	Page     int
+type AvatarLayersListOpts struct {
+	Search    string
+	Filter    *ListFilterRequest
+	LayerType null.String
+	Sort      *ListSortRequest
+	PageSize  int
+	Page      int
 }
 
-type AvatarHair struct {
+type Layer struct {
 	ID       string      `json:"id"`
 	ImageURL null.String `json:"image_url,omitempty"`
+	Type     string      `json:"type"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func HairList(opts *AvatarFeaturesListOpts) (int64, []*AvatarHair, error) {
-	var hairs []*AvatarHair
+func LayersList(opts *AvatarLayersListOpts) (int64, []*Layer, error) {
+	var layers []*Layer
 
 	var queryMods []qm.QueryMod
 
-	total, err := boiler.Hairs(
+	total, err := boiler.Layers(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
@@ -45,13 +47,20 @@ func HairList(opts *AvatarFeaturesListOpts) (int64, []*AvatarHair, error) {
 		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
+	// filter type
+	if opts.LayerType.Valid {
+		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
+
+	}
+
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(
-			qm.Rels(boiler.TableNames.Hair, boiler.HairColumns.ID),
-			qm.Rels(boiler.TableNames.Hair, boiler.HairColumns.ImageURL),
+			qm.Rels(boiler.TableNames.Layers, boiler.LayerColumns.ID),
+			qm.Rels(boiler.TableNames.Layers, boiler.LayerColumns.ImageURL),
+			qm.Rels(boiler.TableNames.Layers, boiler.LayerColumns.Type),
 		),
-		qm.From(boiler.TableNames.Hair),
+		qm.From(boiler.TableNames.Layers),
 	)
 
 	rows, err := boiler.NewQuery(
@@ -63,19 +72,20 @@ func HairList(opts *AvatarFeaturesListOpts) (int64, []*AvatarHair, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		mc := &AvatarHair{}
+		mc := &Layer{}
 
 		scanArgs := []interface{}{
 			&mc.ID,
 			&mc.ImageURL,
+			&mc.Type,
 		}
 
 		err = rows.Scan(scanArgs...)
 		if err != nil {
-			return total, hairs, err
+			return total, layers, err
 		}
-		hairs = append(hairs, mc)
+		layers = append(layers, mc)
 	}
 
-	return total, hairs, nil
+	return total, layers, nil
 }

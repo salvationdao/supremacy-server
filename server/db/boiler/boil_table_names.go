@@ -51,7 +51,6 @@ var TableNames = struct {
 	ConsumedAbilities                                  string
 	CouponItems                                        string
 	Coupons                                            string
-	Faces                                              string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -61,12 +60,12 @@ var TableNames = struct {
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
-	Hair                                               string
 	ItemKeycardSales                                   string
 	ItemSales                                          string
 	ItemSalesBidHistory                                string
 	KV                                                 string
 	Languages                                          string
+	Layers                                             string
 	MarketplaceEvents                                  string
 	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
@@ -191,7 +190,6 @@ var TableNames = struct {
 	ConsumedAbilities:            "consumed_abilities",
 	CouponItems:                  "coupon_items",
 	Coupons:                      "coupons",
-	Faces:                        "faces",
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
@@ -201,12 +199,12 @@ var TableNames = struct {
 	GameAbilities:                "game_abilities",
 	GameMaps:                     "game_maps",
 	GlobalAnnouncements:          "global_announcements",
-	Hair:                         "hair",
 	ItemKeycardSales:             "item_keycard_sales",
 	ItemSales:                    "item_sales",
 	ItemSalesBidHistory:          "item_sales_bid_history",
 	KV:                           "kv",
 	Languages:                    "languages",
+	Layers:                       "layers",
 	MarketplaceEvents:            "marketplace_events",
 	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
