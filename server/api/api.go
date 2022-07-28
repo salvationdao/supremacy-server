@@ -8,8 +8,6 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
@@ -281,6 +279,7 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WS("/*", HubKeyGlobalActivePlayersSubscribe, server.MustSecure(pc.GlobalActivePlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
@@ -593,17 +592,7 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
-
-	features, err := db.GetPlayerFeaturesByID(player.ID)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to find features")
-		}
-		return nil, err
-	}
-
-	serverPlayer := server.PlayerFromBoiler(player, features)
+	serverPlayer, err := db.GetPlayer(userResp.ID)
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
