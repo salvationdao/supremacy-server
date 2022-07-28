@@ -726,9 +726,9 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 		return terror.Error(err, genericErrorMessage)
 	}
 
-	metadata.Likes.Likes = metadata.Likes.Likes + req.Payload.Likes
-	metadata.Likes.Dislikes = metadata.Likes.Dislikes + req.Payload.Dislikes
-	metadata.Likes.Net = metadata.Likes.Likes - metadata.Likes.Dislikes
+	metadata.Likes.Likes = req.Payload.Likes
+	metadata.Likes.Dislikes = req.Payload.Dislikes
+	metadata.Likes.Net = req.Payload.Likes - req.Payload.Dislikes
 
 	l = l.With().Interface("MarshalMetadata", metadata).Logger()
 	var jsonTextMsgMeta null.JSON
