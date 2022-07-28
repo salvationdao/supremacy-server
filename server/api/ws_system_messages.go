@@ -7,6 +7,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"server/system_messages"
 	"time"
 
@@ -55,11 +56,14 @@ type SystemMessageListResponse struct {
 }
 
 func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "SystemMessageListHandler").Logger()
+
 	req := &SystemMessageListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+	l = l.With().Interface("payload", req.Payload).Logger()
 
 	offset := 0
 	pageSize := 10
@@ -84,14 +88,17 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 
 	total, err := boiler.SystemMessages(queryMods...).Count(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Interface("queryMods", queryMods).Msg("failed to get system message total count")
 		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
 	}
 
 	unreadQueryMods := []qm.QueryMod{}
 	unreadQueryMods = append(unreadQueryMods, queryMods...)
 	unreadQueryMods = append(unreadQueryMods, boiler.SystemMessageWhere.ReadAt.IsNull())
+	l = l.With().Interface("unreadQueryMods", unreadQueryMods).Logger()
 	totalUnread, err := boiler.SystemMessages(unreadQueryMods...).Count(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get system message unread count")
 		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
 	}
 
@@ -101,8 +108,10 @@ func (smc *SystemMessagesController) SystemMessageListHandler(ctx context.Contex
 		qm.Offset(offset),
 		qm.Load(boiler.SystemMessageRels.Sender),
 	)
+	l = l.With().Interface("queryMods", queryMods).Logger()
 	sms, err := boiler.SystemMessages(queryMods...).All(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get system messages")
 		return terror.Error(err, "Failed to fetch system messages. Please try again later.")
 	}
 
@@ -131,11 +140,14 @@ type SystemMessageDismissRequest struct {
 }
 
 func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "SystemMessageDismissHandler").Logger()
+
 	req := &SystemMessageDismissRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+	l = l.With().Interface("payload", req.Payload).Logger()
 
 	if req.Payload.ID == "" {
 		return terror.Error(terror.ErrInvalidInput)
@@ -143,6 +155,7 @@ func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Con
 
 	sm, err := boiler.FindSystemMessage(gamedb.StdConn, req.Payload.ID)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to find system message")
 		return terror.Error(err, "Failed to dismiss system message. Please try again later.")
 	}
 
@@ -151,8 +164,11 @@ func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Con
 	}
 
 	sm.ReadAt = null.TimeFrom(time.Now())
+	l = l.With().Interface("systemMessage", sm).Logger()
+
 	_, err = sm.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
+		l.Error().Err(err).Msg("failed to update system message read_at")
 		return terror.Error(err, "Failed to dismiss system message. Please try again later.")
 	}
 
@@ -171,17 +187,21 @@ type SystemMessageSendRequest struct {
 }
 
 func (smc *SystemMessagesController) SystemMessageSendHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "SystemMessageSendHandler").Logger()
+
 	req := &SystemMessageSendRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+	l = l.With().Interface("payload", req.Payload).Logger()
 
 	hasPermission, err := boiler.PlayersFeatures(
 		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
 		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameSYSTEM_MESSAGES),
 	).Exists(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to check if user has permission to send system message")
 		return terror.Error(err)
 	}
 

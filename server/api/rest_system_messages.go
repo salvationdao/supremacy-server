@@ -36,7 +36,7 @@ func (smac *SystemMessagesAdminController) Broadcast(w http.ResponseWriter, r *h
 	req := &SystemMessagesAdminBroadcastRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
+		return http.StatusInternalServerError, terror.Error(err, "Could not decode request body.")
 	}
 
 	if req.Data != nil && req.DataType == "" {

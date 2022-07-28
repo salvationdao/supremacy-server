@@ -32,10 +32,14 @@ const (
 var bm = bluemonday.StrictPolicy()
 
 func BroadcastGlobalSystemMessage(title string, message string, dataType SystemMessageDataType, data *interface{}) error {
+	l := gamelog.L.With().Str("func", "BroadcastGlobalSystemMessage").Logger()
+
 	players, err := boiler.Players().All(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get players from db")
 		return err
 	}
+	l = l.With().Interface("players", players).Logger()
 
 	sanitisedTitle := html.UnescapeString(bm.Sanitize(title))
 	sanitisedMsg := html.UnescapeString(bm.Sanitize(message))
@@ -52,23 +56,25 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType SystemM
 	if data != nil {
 		marshalled, err := json.Marshal(data)
 		if err != nil {
-			gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal global system message data")
+			l.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal global system message data")
 			return err
 		}
 		template.Data = null.JSONFrom(marshalled)
 	}
+	l = l.With().Interface("templateMsg", template).Logger()
 
 	for _, p := range players {
-		msg := &boiler.SystemMessage{}
-		msg.PlayerID = p.ID
-		msg.SenderID = template.SenderID
-		msg.Title = template.Title
-		msg.Message = template.Message
-		msg.Data = template.Data
-		msg.DataType = template.DataType
+		msg := &boiler.SystemMessage{
+			PlayerID: p.ID,
+			SenderID: template.SenderID,
+			Title:    template.Title,
+			Message:  template.Message,
+			Data:     template.Data,
+			DataType: template.DataType,
+		}
 		err := msg.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
+			l.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
 			return err
 		}
 
@@ -78,17 +84,21 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType SystemM
 }
 
 func BroadcastFactionSystemMessage(factionID string, title string, message string, dataType SystemMessageDataType, data *interface{}) error {
+	l := gamelog.L.With().Str("func", "BroadcastGlobalSystemMessage").Logger()
+
 	players, err := boiler.Players(boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID))).All(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get players from db")
 		return err
 	}
+	l = l.With().Interface("players", players).Logger()
 
 	sender, err := boiler.Players(
 		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID)),
 		boiler.PlayerWhere.ID.IN([]string{server.RedMountainPlayerID, server.BostonCyberneticsPlayerID, server.ZaibatsuPlayerID}),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("factionID", factionID).Msg("failed to get faction user from faction ID")
+		l.Error().Err(err).Str("factionID", factionID).Msg("failed to get faction user from faction ID")
 		return err
 	}
 
@@ -107,27 +117,29 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 	if data != nil {
 		marshalled, err := json.Marshal(data)
 		if err != nil {
-			gamelog.L.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal faction system message data")
+			l.Error().Err(err).Interface("objectToMarshal", data).Msg("failed to marshal faction system message data")
 			return err
 		}
 		template.Data = null.JSONFrom(marshalled)
 	}
+	l = l.With().Interface("templateMsg", template).Logger()
 
 	for _, p := range players {
 		if p.FactionID.String != factionID {
 			continue
 		}
 
-		msg := &boiler.SystemMessage{}
-		msg.PlayerID = p.ID
-		msg.SenderID = template.SenderID
-		msg.Title = template.Title
-		msg.Message = template.Message
-		msg.Data = template.Data
-		msg.DataType = template.DataType
+		msg := &boiler.SystemMessage{
+			PlayerID: p.ID,
+			SenderID: template.SenderID,
+			Title:    template.Title,
+			Message:  template.Message,
+			Data:     template.Data,
+			DataType: template.DataType,
+		}
 		err := msg.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
+			l.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
 			return err
 		}
 
