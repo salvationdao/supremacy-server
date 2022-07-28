@@ -704,6 +704,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	// construct punish vote message
 	message := MessagePunishVote{
+		ID: punishVote.ID,
 		IssuedByUser: boiler.Player{
 			ID:        punishVote.IssuedByID,
 			Username:  null.StringFrom(punishVote.IssuedByUsername),
@@ -732,6 +733,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	}
 
 	chatMessage := &ChatMessage{
+		ID:     message.ID,
 		Type:   ChatMessageTypePunishVote,
 		SentAt: time.Now(),
 		Data:   message,

@@ -372,3 +372,50 @@ func PlayerIPUpsert(playerID string, ip string) error {
 
 	return nil
 }
+
+func GetPlayer(playerID string) (*server.Player, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player")
+		return nil, err
+	}
+
+	l = l.With().Interface("GetPlayerFeaturesByID", playerID).Logger()
+	features, err := GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player's features")
+		return nil, err
+	}
+
+	l = l.With().Interface("PlayerFromBoiler", playerID).Logger()
+	serverPlayer := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to create server player struct")
+		return nil, err
+	}
+	return serverPlayer, nil
+}
+
+func GetPublicPlayerByID(playerID string) (*server.PublicPlayer, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player")
+		return nil, err
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        player.ID,
+		Username:  player.Username,
+		Gid:       player.Gid,
+		FactionID: player.FactionID,
+		AboutMe:   player.AboutMe,
+		Rank:      player.Rank,
+		CreatedAt: player.CreatedAt,
+	}
+
+	return pp, nil
+}
