@@ -464,6 +464,25 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	// check if opened
+	if collectionItem.ItemType == boiler.ItemTypeMysteryCrate {
+		crate, err := boiler.MysteryCrates(
+			boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
+			).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to check whether crate is opened")
+			return err
+		}
+		if crate.Opened {
+			return fmt.Errorf("unable to list opened crates")
+		}
+	}
+
 	// check if weapon is equipped
 	if collectionItem.ItemType == boiler.ItemTypeWeapon {
 		equipped, err := db.CheckWeaponAttached(collectionItem.ItemID)
