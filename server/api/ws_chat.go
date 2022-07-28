@@ -105,9 +105,9 @@ type MessageNewBattle struct {
 }
 
 type Likes struct {
-	Likes    int `json:"likes"`
-	Dislikes int `json:"dislikes"`
-	Net      int `json:"net"`
+	Likes    []string `json:"likes"`
+	Dislikes []string `json:"dislikes"`
+	Net      int      `json:"net"`
 }
 
 type TextMessageMetadata struct {
@@ -492,7 +492,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	textMsgMetadata := &TextMessageMetadata{
-		Likes:           &Likes{0, 0, 0},
+		Likes:           &Likes{[]string{}, []string{}, 0},
 		TaggedUsersRead: taggedUsersGid,
 	}
 
@@ -691,9 +691,9 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 type ReactToMessageRequest struct {
 	Payload struct {
-		ChatHistoryID string `json:"chat_history_id"`
-		Likes         int    `json:"likes"`
-		Dislikes      int    `json:"dislikes"`
+		ChatHistoryID string   `json:"chat_history_id"`
+		Likes         []string `json:"likes"`
+		Dislikes      []string `json:"dislikes"`
 	} `json:"payload"`
 }
 
@@ -726,9 +726,10 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 		return terror.Error(err, genericErrorMessage)
 	}
 
+	//need to mutex lock here?
 	metadata.Likes.Likes = req.Payload.Likes
 	metadata.Likes.Dislikes = req.Payload.Dislikes
-	metadata.Likes.Net = req.Payload.Likes - req.Payload.Dislikes
+	metadata.Likes.Net = len(req.Payload.Likes) - len(req.Payload.Dislikes)
 
 	l = l.With().Interface("MarshalMetadata", metadata).Logger()
 	var jsonTextMsgMeta null.JSON
