@@ -256,6 +256,7 @@ func NewAPI(
 				s.WS("/online", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
+				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
@@ -283,7 +284,6 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/*", HubKeyGlobalActivePlayersSubscribe, server.MustSecure(pc.GlobalActivePlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
