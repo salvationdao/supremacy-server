@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -27,20 +29,24 @@ const (
 	SystemMessageDataTypeFaction            SystemMessageDataType = "FACTION"
 )
 
-func BroadcastGlobalSystemMessage(title string, message string, dataType *SystemMessageDataType, data *interface{}) error {
+var bm = bluemonday.StrictPolicy()
+
+func BroadcastGlobalSystemMessage(title string, message string, dataType SystemMessageDataType, data *interface{}) error {
 	players, err := boiler.Players().All(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
 
+	sanitisedTitle := html.UnescapeString(bm.Sanitize(title))
+	sanitisedMsg := html.UnescapeString(bm.Sanitize(message))
 	template := &boiler.SystemMessage{
 		SenderID: server.SupremacySystemAdminUserID,
-		Title:    title,
-		Message:  message,
+		Title:    sanitisedTitle,
+		Message:  sanitisedMsg,
 	}
 
-	if dataType != nil {
-		template.DataType = null.StringFromPtr((*string)(dataType))
+	if dataType != "" {
+		template.DataType = null.StringFrom(string(dataType))
 	}
 
 	if data != nil {
@@ -59,6 +65,7 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType *System
 		msg.Title = template.Title
 		msg.Message = template.Message
 		msg.Data = template.Data
+		msg.DataType = template.DataType
 		err := msg.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")
@@ -70,7 +77,7 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType *System
 	return nil
 }
 
-func BroadcastFactionSystemMessage(factionID string, title string, message string, dataType *SystemMessageDataType, data *interface{}) error {
+func BroadcastFactionSystemMessage(factionID string, title string, message string, dataType SystemMessageDataType, data *interface{}) error {
 	players, err := boiler.Players(boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID))).All(gamedb.StdConn)
 	if err != nil {
 		return err
@@ -85,14 +92,16 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 		return err
 	}
 
+	sanitisedTitle := html.UnescapeString(bm.Sanitize(title))
+	sanitisedMsg := html.UnescapeString(bm.Sanitize(message))
 	template := &boiler.SystemMessage{
 		SenderID: sender.ID,
-		Title:    title,
-		Message:  message,
+		Title:    sanitisedTitle,
+		Message:  sanitisedMsg,
 	}
 
-	if dataType != nil {
-		template.DataType = null.StringFromPtr((*string)(dataType))
+	if dataType != "" {
+		template.DataType = null.StringFrom(string(dataType))
 	}
 
 	if data != nil {
@@ -115,6 +124,7 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 		msg.Title = template.Title
 		msg.Message = template.Message
 		msg.Data = template.Data
+		msg.DataType = template.DataType
 		err := msg.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new global system message into db")

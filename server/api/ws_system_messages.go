@@ -7,7 +7,6 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
-	"server/gamelog"
 	"server/system_messages"
 	"time"
 
@@ -202,57 +201,13 @@ func (smc *SystemMessagesController) SystemMessageSendHandler(ctx context.Contex
 		return terror.Error(terror.ErrInvalidInput, "Message cannot be empty.")
 	}
 
-	recipients := []*boiler.Player{}
-	template := &boiler.SystemMessage{
-		Title:    req.Payload.Subject,
-		Message:  req.Payload.Message,
-		DataType: null.StringFrom(string(req.Payload.Type)),
-	}
-
 	if req.Payload.Type == system_messages.SystemMessageDataTypeGlobal {
-		template.SenderID = server.SupremacySystemAdminUserID
-
-		players, err := boiler.Players().All(gamedb.StdConn)
-		if err != nil {
-			return err
-		}
-		recipients = players
+		system_messages.BroadcastGlobalSystemMessage(req.Payload.Subject, req.Payload.Message, req.Payload.Type, nil)
 	} else if req.Payload.Type == system_messages.SystemMessageDataTypeFaction {
-		sender, err := boiler.Players(
-			boiler.PlayerWhere.FactionID.EQ(null.StringFrom(user.FactionID.String)),
-			boiler.PlayerWhere.ID.IN([]string{server.RedMountainPlayerID, server.BostonCyberneticsPlayerID, server.ZaibatsuPlayerID}),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("player", user).Msg("failed to get faction user from faction ID")
-			return err
+		if !user.FactionID.Valid || user.FactionID.String == "" {
+			return terror.Error(terror.ErrForbidden, "User is not associated with a faction and cannot send faction-wide mail.")
 		}
-		template.SenderID = sender.ID
-
-		players, err := boiler.Players(boiler.PlayerWhere.FactionID.EQ(null.StringFrom(user.FactionID.String))).All(gamedb.StdConn)
-		if err != nil {
-			return err
-		}
-		recipients = players
-	}
-
-	for _, p := range recipients {
-		if req.Payload.Type == system_messages.SystemMessageDataTypeFaction && p.FactionID.String != user.FactionID.String {
-			continue
-		}
-
-		msg := &boiler.SystemMessage{}
-		msg.PlayerID = p.ID
-		msg.SenderID = template.SenderID
-		msg.Title = template.Title
-		msg.Message = template.Message
-		msg.DataType = template.DataType
-		err := msg.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
-			return err
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		system_messages.BroadcastFactionSystemMessage(user.FactionID.String, req.Payload.Subject, req.Payload.Message, req.Payload.Type, nil)
 	}
 
 	reply(true)

@@ -25,11 +25,11 @@ func SystemMessagesRouter(api *API) chi.Router {
 }
 
 type SystemMessagesAdminBroadcastRequest struct {
-	FactionID string                                 `json:"faction_id"`
-	Title     string                                 `json:"title"`
-	Message   string                                 `json:"message"`
-	DataType  *system_messages.SystemMessageDataType `json:"data_type,omitempty"`
-	Data      *interface{}                           `json:"data,omitempty"`
+	FactionID string                                `json:"faction_id"`
+	Title     string                                `json:"title"`
+	Message   string                                `json:"message"`
+	DataType  system_messages.SystemMessageDataType `json:"data_type"`
+	Data      *interface{}                          `json:"data,omitempty"`
 }
 
 func (smac *SystemMessagesAdminController) Broadcast(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -39,7 +39,7 @@ func (smac *SystemMessagesAdminController) Broadcast(w http.ResponseWriter, r *h
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
 
-	if req.Data != nil && (req.DataType == nil || *req.DataType == "") {
+	if req.Data != nil && req.DataType == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("data_type must be provided when data is not null."))
 	}
 
