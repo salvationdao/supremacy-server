@@ -578,6 +578,7 @@ type MechListOpts struct {
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+	ExcludeDamagedMech  bool
 	FilterRarities      []string `json:"rarities"`
 	FilterStatuses      []string `json:"statuses"`
 }
@@ -638,6 +639,17 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
+	}
+	if opts.ExcludeDamagedMech {
+		queryMods = append(queryMods, qm.Where(
+			fmt.Sprintf(
+				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+				boiler.TableNames.RepairCases,
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.CompletedAt),
+			),
+		))
 	}
 
 	// Filters
