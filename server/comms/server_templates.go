@@ -28,14 +28,6 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		return err
 	}
 
-	// give players mech avatars
-	for _, m := range loadedMechs {
-		err = db.GiveMechAvatar(m.OwnerID, m.ID)
-		if err != nil {
-			return err
-		}
-	}
-
 	for _, m := range loadedMechs {
 		m.CheckAndSetAsGenesisOrLimited()
 	}

@@ -1475,11 +1475,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Status: server.MechArenaStatusSold,
 			})
 		}
-
-		err = db.GiveMechAvatar(user.ID, ci.ItemID)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to give player mech avatar")
-		}
 	}
 
 	// success

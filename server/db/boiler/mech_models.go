@@ -92,7 +92,6 @@ var MechModelRels = struct {
 	ModelBlueprintMechs          string
 	MechAnimations               string
 	MechModelSkinCompatibilities string
-	ModelMechs                   string
 }{
 	DefaultChassisSkin:           "DefaultChassisSkin",
 	ModelBlueprintChasses:        "ModelBlueprintChasses",
@@ -100,7 +99,6 @@ var MechModelRels = struct {
 	ModelBlueprintMechs:          "ModelBlueprintMechs",
 	MechAnimations:               "MechAnimations",
 	MechModelSkinCompatibilities: "MechModelSkinCompatibilities",
-	ModelMechs:                   "ModelMechs",
 }
 
 // mechModelR is where relationships are stored.
@@ -111,7 +109,6 @@ type mechModelR struct {
 	ModelBlueprintMechs          BlueprintMechSlice              `boiler:"ModelBlueprintMechs" boil:"ModelBlueprintMechs" json:"ModelBlueprintMechs" toml:"ModelBlueprintMechs" yaml:"ModelBlueprintMechs"`
 	MechAnimations               MechAnimationSlice              `boiler:"MechAnimations" boil:"MechAnimations" json:"MechAnimations" toml:"MechAnimations" yaml:"MechAnimations"`
 	MechModelSkinCompatibilities MechModelSkinCompatibilitySlice `boiler:"MechModelSkinCompatibilities" boil:"MechModelSkinCompatibilities" json:"MechModelSkinCompatibilities" toml:"MechModelSkinCompatibilities" yaml:"MechModelSkinCompatibilities"`
-	ModelMechs                   MechSlice                       `boiler:"ModelMechs" boil:"ModelMechs" json:"ModelMechs" toml:"ModelMechs" yaml:"ModelMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -489,28 +486,6 @@ func (o *MechModel) MechModelSkinCompatibilities(mods ...qm.QueryMod) mechModelS
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"mech_model_skin_compatibilities\".*"})
-	}
-
-	return query
-}
-
-// ModelMechs retrieves all the mech's Mechs with an executor via model_id column.
-func (o *MechModel) ModelMechs(mods ...qm.QueryMod) mechQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"mechs\".\"model_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mechs\".\"deleted_at\""),
-	)
-
-	query := Mechs(queryMods...)
-	queries.SetFrom(query.Query, "\"mechs\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mechs\".*"})
 	}
 
 	return query
@@ -1113,105 +1088,6 @@ func (mechModelL) LoadMechModelSkinCompatibilities(e boil.Executor, singular boo
 	return nil
 }
 
-// LoadModelMechs allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechModelL) LoadModelMechs(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
-	var slice []*MechModel
-	var object *MechModel
-
-	if singular {
-		object = maybeMechModel.(*MechModel)
-	} else {
-		slice = *maybeMechModel.(*[]*MechModel)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechModelR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechModelR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mechs`),
-		qm.WhereIn(`mechs.model_id in ?`, args...),
-		qmhelper.WhereIsNull(`mechs.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load mechs")
-	}
-
-	var resultSlice []*Mech
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mechs")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mechs")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
-	}
-
-	if len(mechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ModelMechs = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &mechR{}
-			}
-			foreign.R.Model = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.ModelID {
-				local.R.ModelMechs = append(local.R.ModelMechs, foreign)
-				if foreign.R == nil {
-					foreign.R = &mechR{}
-				}
-				foreign.R.Model = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetDefaultChassisSkin of the mechModel to the related item.
 // Sets o.R.DefaultChassisSkin to related.
 // Adds o to related.R.DefaultChassisSkinMechModels.
@@ -1513,58 +1389,6 @@ func (o *MechModel) AddMechModelSkinCompatibilities(exec boil.Executor, insert b
 			}
 		} else {
 			rel.R.MechModel = o
-		}
-	}
-	return nil
-}
-
-// AddModelMechs adds the given related objects to the existing relationships
-// of the mech_model, optionally inserting them as new records.
-// Appends related to o.R.ModelMechs.
-// Sets related.R.Model appropriately.
-func (o *MechModel) AddModelMechs(exec boil.Executor, insert bool, related ...*Mech) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.ModelID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"mechs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"model_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.ModelID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &mechModelR{
-			ModelMechs: related,
-		}
-	} else {
-		o.R.ModelMechs = append(o.R.ModelMechs, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &mechR{
-				Model: o,
-			}
-		} else {
-			rel.R.Model = o
 		}
 	}
 	return nil

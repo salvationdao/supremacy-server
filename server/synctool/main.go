@@ -676,12 +676,12 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 		}
 
 		_, err = db.Exec(`
-			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at, updated_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7)
+			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at)
+			VALUES ($1,$2,$3,$4,$5,$6)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, brand_id=$2, label=$3, weapon_type=$4, default_skin_id=$5, deleted_at=$6, updated_at=$7;
-		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt, weaponModel.UpdatedAt)
+			    UPDATE SET id=$1, brand_id=$2, label=$3, weapon_type=$4, default_skin_id=$5, deleted_at=$6;
+		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
 			continue
@@ -1064,20 +1064,19 @@ func SyncStaticMech(f io.Reader, db *sql.DB) error {
 	for _, record := range records {
 		blueprintMechs := &types.BlueprintMechs{
 			ID:               record[0],
-			BrandID:          record[1],
-			Label:            record[2],
-			Slug:             record[3],
-			WeaponHardpoints: record[4],
-			UtilitySlots:     record[5],
-			Speed:            record[6],
-			MaxHitpoints:     record[7],
-			DeletedAt:        record[8],
-			UpdatedAt:        record[9],
-			CreatedAt:        record[10],
-			ModelID:          record[11],
-			Collection:       record[12],
-			PowerCoreSize:    record[13],
-			Tier:             record[14],
+			Label:            record[1],
+			Slug:             record[2],
+			WeaponHardpoints: record[3],
+			UtilitySlots:     record[4],
+			Speed:            record[5],
+			MaxHitpoints:     record[6],
+			DeletedAt:        record[7],
+			UpdatedAt:        record[8],
+			CreatedAt:        record[9],
+			ModelID:          record[10],
+			Collection:       record[11],
+			PowerCoreSize:    record[12],
+			Tier:             record[13],
 		}
 
 		BlueprintMechs = append(BlueprintMechs, *blueprintMechs)
@@ -1090,18 +1089,60 @@ func SyncStaticMech(f io.Reader, db *sql.DB) error {
 		}
 
 		_, err = db.Exec(`
-			INSERT INTO blueprint_mechs(id, brand_id, label, slug, weapon_hardpoints, utility_slots, speed, max_hitpoints, deleted_at, updated_at, created_at, model_id, collection, power_core_size, tier)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+			INSERT INTO blueprint_mechs(
+			                            id, 
+			                            label, 
+			                            slug, 
+			                            weapon_hardpoints, 
+			                            utility_slots, 
+			                            speed, 
+			                            max_hitpoints, 
+			                            deleted_at, 
+			                            updated_at, 
+			                            created_at, 
+			                            model_id, 
+			                            collection, 
+			                            power_core_size, 
+			                            tier
+			                            )
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, brand_id=$2, label=$3, slug=$4, weapon_hardpoints=$5, utility_slots=$6, speed=$7, max_hitpoints=$8, deleted_at=$9, updated_at=$10, created_at=$11, model_id=$12, collection=$13, power_core_size=$14, tier=$15;
-		`, blueprintMech.ID, blueprintMech.BrandID, blueprintMech.Label, blueprintMech.Slug, blueprintMech.WeaponHardpoints, blueprintMech.UtilitySlots, blueprintMech.Speed, blueprintMech.MaxHitpoints, deletedAt, blueprintMech.UpdatedAt, blueprintMech.CreatedAt, blueprintMech.ModelID, blueprintMech.Collection, blueprintMech.PowerCoreSize, blueprintMech.Tier)
+			    UPDATE SET id=$1, 
+			               label=$2, 
+			               slug=$3, 
+			               weapon_hardpoints=$4, 
+			               utility_slots=$5, 
+			               speed=$6, 
+			               max_hitpoints=$7, 
+			               deleted_at=$8, 
+			               updated_at=$9, 
+			               created_at=$10, 
+			               model_id=$11, 
+			               collection=$12, 
+			               power_core_size=$13, 
+			               tier=$14;
+		`,
+			blueprintMech.ID,
+			blueprintMech.Label,
+			blueprintMech.Slug,
+			blueprintMech.WeaponHardpoints,
+			blueprintMech.UtilitySlots,
+			blueprintMech.Speed,
+			blueprintMech.MaxHitpoints,
+			deletedAt,
+			blueprintMech.UpdatedAt,
+			blueprintMech.CreatedAt,
+			blueprintMech.ModelID,
+			blueprintMech.Collection,
+			blueprintMech.PowerCoreSize,
+			blueprintMech.Tier)
 		if err != nil {
-			fmt.Println(err.Error()+blueprintMech.ID, blueprintMech.BrandID, blueprintMech.Label)
+			fmt.Println(err.Error()+blueprintMech.ID, blueprintMech.Label)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+blueprintMech.ID, blueprintMech.BrandID, blueprintMech.Label)
+		fmt.Println("UPDATED: "+blueprintMech.ID, blueprintMech.Label)
 	}
 
 	fmt.Println("Finish syncing static mech")
@@ -1125,29 +1166,28 @@ func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
 	for _, record := range records {
 		blueprintWeapon := &types.BlueprintWeapons{
 			ID:                  record[0],
-			BrandID:             record[1],
-			Label:               record[2],
-			Slug:                record[3],
-			Damage:              record[4],
-			DeletedAt:           record[5],
-			UpdatedAt:           record[6],
-			CreatedAt:           record[7],
-			GameClientWeaponID:  record[8],
-			WeaponType:          record[9],
-			Collection:          record[10],
-			DefaultDamageType:   record[11],
-			DamageFalloff:       record[12],
-			DamageFalloffRate:   record[13],
-			Radius:              record[14],
-			RadiusDamageFalloff: record[15],
-			Spread:              record[16],
-			RateOfFire:          record[17],
-			ProjectileSpeed:     record[18],
-			MaxAmmo:             record[19],
-			IsMelee:             record[20],
-			Tier:                record[21],
-			EnergyCost:          record[22],
-			WeaponModelID:       record[23],
+			Label:               record[1],
+			Slug:                record[2],
+			Damage:              record[3],
+			DeletedAt:           record[4],
+			UpdatedAt:           record[5],
+			CreatedAt:           record[6],
+			GameClientWeaponID:  record[7],
+			WeaponType:          record[8],
+			Collection:          record[9],
+			DefaultDamageType:   record[10],
+			DamageFalloff:       record[11],
+			DamageFalloffRate:   record[12],
+			Radius:              record[13],
+			RadiusDamageFalloff: record[14],
+			Spread:              record[15],
+			RateOfFire:          record[16],
+			ProjectileSpeed:     record[17],
+			MaxAmmo:             record[18],
+			IsMelee:             record[19],
+			Tier:                record[20],
+			EnergyCost:          record[21],
+			WeaponModelID:       record[22],
 		}
 
 		BlueprintWeapons = append(BlueprintWeapons, *blueprintWeapon)
@@ -1164,24 +1204,64 @@ func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
 			gameClientID = nil
 		}
 
-		brandID := &blueprintWeapon.BrandID
-		if blueprintWeapon.BrandID == "" {
-			brandID = nil
-		}
-
 		_, err = db.Exec(`
-			INSERT INTO blueprint_weapons(id, brand_id, label, slug, damage, deleted_at, updated_at, created_at, game_client_weapon_id, weapon_type, collection, default_damage_type, damage_falloff, damage_falloff_rate, radius, radius_damage_falloff, spread, rate_of_fire, projectile_speed, max_ammo, is_melee, tier, energy_cost, weapon_model_id)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+			INSERT INTO blueprint_weapons(
+			                              id, 
+			                              label, 
+			                              slug, 
+			                              damage, 
+			                              deleted_at, 
+			                              updated_at, 
+			                              created_at, 
+			                              game_client_weapon_id, 
+			                              weapon_type, 
+			                              collection, 
+			                              default_damage_type, 
+			                              damage_falloff, 
+			                              damage_falloff_rate, 
+			                              radius, 
+			                              radius_damage_falloff, 
+			                              spread, 
+			                              rate_of_fire, 
+			                              projectile_speed, 
+			                              max_ammo, 
+			                              is_melee, 
+			                              tier, 
+			                              energy_cost, 
+			                              weapon_model_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, brand_id=$2, label=$3, slug=$4, damage=$5, deleted_at=$6, updated_at=$7, created_at=$8, game_client_weapon_id=$9, weapon_type=$10, collection=$11, default_damage_type=$12, damage_falloff=$13, damage_falloff_rate=$14, radius=$15, radius_damage_falloff=$16, spread=$17, rate_of_fire=$18, projectile_speed=$19, max_ammo=$20, is_melee=$21, tier=$22, energy_cost=$23, weapon_model_id=$24;
-		`, blueprintWeapon.ID, brandID, blueprintWeapon.Label, blueprintWeapon.Slug, blueprintWeapon.Damage, deletedAt, blueprintWeapon.UpdatedAt, blueprintWeapon.CreatedAt, gameClientID, blueprintWeapon.WeaponType, blueprintWeapon.Collection, blueprintWeapon.DefaultDamageType, blueprintWeapon.DamageFalloff, blueprintWeapon.DamageFalloffRate, blueprintWeapon.Radius, blueprintWeapon.RadiusDamageFalloff, blueprintWeapon.Spread, blueprintWeapon.RateOfFire, blueprintWeapon.ProjectileSpeed, blueprintWeapon.MaxAmmo, blueprintWeapon.IsMelee, blueprintWeapon.Tier, blueprintWeapon.EnergyCost, blueprintWeapon.WeaponModelID)
+			    UPDATE SET id=$1,
+			               label=$2,
+			               slug=$3,
+			               damage=$4,
+			               deleted_at=$5,
+			               updated_at=$6,
+			               created_at=$7,
+			               game_client_weapon_id=$8,
+			               weapon_type=$9,
+			               collection=$10,
+			               default_damage_type=$11,
+			               damage_falloff=$12,
+			               damage_falloff_rate=$13,
+			               radius=$14,
+			               radius_damage_falloff=$15,
+			               spread=$16,
+			               rate_of_fire=$17,
+			               projectile_speed=$18,
+			               max_ammo=$19,
+			               is_melee=$20,
+			               tier=$21,
+			               energy_cost=$22,
+			               weapon_model_id=$23;
+		`, blueprintWeapon.ID, blueprintWeapon.Label, blueprintWeapon.Slug, blueprintWeapon.Damage, deletedAt, blueprintWeapon.UpdatedAt, blueprintWeapon.CreatedAt, gameClientID, blueprintWeapon.WeaponType, blueprintWeapon.Collection, blueprintWeapon.DefaultDamageType, blueprintWeapon.DamageFalloff, blueprintWeapon.DamageFalloffRate, blueprintWeapon.Radius, blueprintWeapon.RadiusDamageFalloff, blueprintWeapon.Spread, blueprintWeapon.RateOfFire, blueprintWeapon.ProjectileSpeed, blueprintWeapon.MaxAmmo, blueprintWeapon.IsMelee, blueprintWeapon.Tier, blueprintWeapon.EnergyCost, blueprintWeapon.WeaponModelID)
 		if err != nil {
-			fmt.Println(err.Error()+blueprintWeapon.ID, blueprintWeapon.BrandID, blueprintWeapon.Label)
+			fmt.Println(err.Error()+blueprintWeapon.ID, blueprintWeapon.Label)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+blueprintWeapon.ID, blueprintWeapon.BrandID, blueprintWeapon.Label)
+		fmt.Println("UPDATED: "+blueprintWeapon.ID, blueprintWeapon.Label)
 	}
 
 	fmt.Println("Finish syncing weapon")

@@ -16,7 +16,6 @@ import (
 )
 
 func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
-	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
 		BlueprintID:           null.StringFrom(ec.ID),
 		Label:                 ec.Label,

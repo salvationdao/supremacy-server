@@ -53,3 +53,10 @@ CREATE TABLE weapon_model_skin_compatibilities
     created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (blueprint_weapon_skin_id, weapon_model_id)
 );
+
+
+ALTER TABLE blueprint_weapons
+    DROP COLUMN brand_id;
+
+ALTER TABLE blueprint_mechs
+    DROP COLUMN brand_id;

@@ -145,7 +145,6 @@ type PowerCores struct {
 
 type BlueprintWeapons struct {
 	ID                  string `json:"id"`
-	BrandID             string `json:"brand_id"`
 	Label               string `json:"label"`
 	Slug                string `json:"slug"`
 	Damage              string `json:"damage"`
@@ -172,7 +171,6 @@ type BlueprintWeapons struct {
 
 type BlueprintMechs struct {
 	ID               string `json:"id"`
-	BrandID          string `json:"brand_id"`
 	Label            string `json:"label"`
 	Slug             string `json:"slug"`
 	WeaponHardpoints string `json:"weapon_hardpoints"`

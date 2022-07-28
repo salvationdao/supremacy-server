@@ -17,7 +17,6 @@ import (
 )
 
 func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
-	// first insert the energy core
 	newUtility := boiler.Utility{
 		BrandID:               utility.BrandID,
 		Label:                 utility.Label,

@@ -97,7 +97,6 @@ type Mech struct {
 
 type BlueprintMech struct {
 	ID                   string    `json:"id"`
-	BrandID              string    `json:"brand_id"`
 	Label                string    `json:"label"`
 	Slug                 string    `json:"slug"`
 	Skin                 string    `json:"skin"`
@@ -107,7 +106,6 @@ type BlueprintMech struct {
 	MaxHitpoints         int       `json:"max_hitpoints"`
 	UpdatedAt            time.Time `json:"updated_at"`
 	CreatedAt            time.Time `json:"created_at"`
-	ModelID              string    `json:"model_id"`
 	PowerCoreSize        string    `json:"power_core_size,omitempty"`
 	Tier                 string    `json:"tier,omitempty"`
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
@@ -129,7 +127,6 @@ func (b *BlueprintMech) Scan(value interface{}) error {
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
 		ID:               mech.ID,
-		BrandID:          mech.BrandID,
 		Label:            mech.Label,
 		Slug:             mech.Slug,
 		WeaponHardpoints: mech.WeaponHardpoints,
@@ -138,7 +135,6 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 		MaxHitpoints:     mech.MaxHitpoints,
 		UpdatedAt:        mech.UpdatedAt,
 		CreatedAt:        mech.CreatedAt,
-		ModelID:          mech.ModelID,
 		PowerCoreSize:    mech.PowerCoreSize,
 		Tier:             mech.Tier,
 		Collection:       mech.Collection,

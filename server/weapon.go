@@ -56,7 +56,6 @@ func (b *Weapon) Scan(value interface{}) error {
 
 type BlueprintWeapon struct {
 	ID                  string              `json:"id"`
-	BrandID             null.String         `json:"brand_id,omitempty"`
 	Label               string              `json:"label"`
 	Slug                string              `json:"slug"`
 	Damage              int                 `json:"damage"`
@@ -107,7 +106,6 @@ func (b *WeaponSlice) Scan(value interface{}) error {
 func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon {
 	return &BlueprintWeapon{
 		ID:                  weapon.ID,
-		BrandID:             weapon.BrandID,
 		Label:               weapon.Label,
 		Slug:                weapon.Slug,
 		UpdatedAt:           weapon.UpdatedAt,

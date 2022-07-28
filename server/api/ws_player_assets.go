@@ -966,12 +966,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				return terror.Error(err, "Failed to get user mech hangar from items")
 			}
 		}
-
-		err = db.GiveMechAvatar(mech.OwnerID, mech.ID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
-			return terror.Error(err, "Could not open crate, try again or contact support.")
-		}
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {

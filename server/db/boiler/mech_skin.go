@@ -27,7 +27,6 @@ type MechSkin struct {
 	BlueprintID           string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	GenesisTokenID        null.Int64  `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	EquippedOn            null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LockedToMech          bool        `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
@@ -41,7 +40,6 @@ var MechSkinColumns = struct {
 	BlueprintID           string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	Label                 string
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
@@ -50,7 +48,6 @@ var MechSkinColumns = struct {
 	BlueprintID:           "blueprint_id",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
-	Label:                 "label",
 	EquippedOn:            "equipped_on",
 	CreatedAt:             "created_at",
 	LockedToMech:          "locked_to_mech",
@@ -61,7 +58,6 @@ var MechSkinTableColumns = struct {
 	BlueprintID           string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	Label                 string
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
@@ -70,7 +66,6 @@ var MechSkinTableColumns = struct {
 	BlueprintID:           "mech_skin.blueprint_id",
 	GenesisTokenID:        "mech_skin.genesis_token_id",
 	LimitedReleaseTokenID: "mech_skin.limited_release_token_id",
-	Label:                 "mech_skin.label",
 	EquippedOn:            "mech_skin.equipped_on",
 	CreatedAt:             "mech_skin.created_at",
 	LockedToMech:          "mech_skin.locked_to_mech",
@@ -107,7 +102,6 @@ var MechSkinWhere = struct {
 	BlueprintID           whereHelperstring
 	GenesisTokenID        whereHelpernull_Int64
 	LimitedReleaseTokenID whereHelpernull_Int64
-	Label                 whereHelperstring
 	EquippedOn            whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
 	LockedToMech          whereHelperbool
@@ -116,7 +110,6 @@ var MechSkinWhere = struct {
 	BlueprintID:           whereHelperstring{field: "\"mech_skin\".\"blueprint_id\""},
 	GenesisTokenID:        whereHelpernull_Int64{field: "\"mech_skin\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"mech_skin\".\"limited_release_token_id\""},
-	Label:                 whereHelperstring{field: "\"mech_skin\".\"label\""},
 	EquippedOn:            whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
 	LockedToMech:          whereHelperbool{field: "\"mech_skin\".\"locked_to_mech\""},
@@ -149,8 +142,8 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "equipped_on", "created_at", "locked_to_mech"}
-	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
+	mechSkinColumnsWithoutDefault = []string{"blueprint_id"}
 	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}

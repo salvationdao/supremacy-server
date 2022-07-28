@@ -303,7 +303,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		mechSkins = append(mechSkins, insertedMechSkin)
 	}
 
-	// inserts energy core blueprints
+	// inserts power core blueprints
 	for _, powerCore := range tmpl.BlueprintPowerCore {
 		powerCore.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		powerCore.GenesisTokenID = tokenIDs.GenesisTokenID
@@ -312,7 +312,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			gamelog.L.Error().Err(err).
 				Interface("powerCore", powerCore).
 				Str("ownerID", ownerID.String()).
-				Msg("failed to insert new energy core for user")
+				Msg("failed to insert new power core for user")
 			continue
 		}
 		powerCores = append(powerCores, insertedPowerCore)

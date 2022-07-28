@@ -26,7 +26,6 @@ type WeaponSkin struct {
 	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintID string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	OwnerID     string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Label       string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	EquippedOn  null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
@@ -38,14 +37,12 @@ var WeaponSkinColumns = struct {
 	ID          string
 	BlueprintID string
 	OwnerID     string
-	Label       string
 	EquippedOn  string
 	CreatedAt   string
 }{
 	ID:          "id",
 	BlueprintID: "blueprint_id",
 	OwnerID:     "owner_id",
-	Label:       "label",
 	EquippedOn:  "equipped_on",
 	CreatedAt:   "created_at",
 }
@@ -54,14 +51,12 @@ var WeaponSkinTableColumns = struct {
 	ID          string
 	BlueprintID string
 	OwnerID     string
-	Label       string
 	EquippedOn  string
 	CreatedAt   string
 }{
 	ID:          "weapon_skin.id",
 	BlueprintID: "weapon_skin.blueprint_id",
 	OwnerID:     "weapon_skin.owner_id",
-	Label:       "weapon_skin.label",
 	EquippedOn:  "weapon_skin.equipped_on",
 	CreatedAt:   "weapon_skin.created_at",
 }
@@ -72,14 +67,12 @@ var WeaponSkinWhere = struct {
 	ID          whereHelperstring
 	BlueprintID whereHelperstring
 	OwnerID     whereHelperstring
-	Label       whereHelperstring
 	EquippedOn  whereHelpernull_String
 	CreatedAt   whereHelpertime_Time
 }{
 	ID:          whereHelperstring{field: "\"weapon_skin\".\"id\""},
 	BlueprintID: whereHelperstring{field: "\"weapon_skin\".\"blueprint_id\""},
 	OwnerID:     whereHelperstring{field: "\"weapon_skin\".\"owner_id\""},
-	Label:       whereHelperstring{field: "\"weapon_skin\".\"label\""},
 	EquippedOn:  whereHelpernull_String{field: "\"weapon_skin\".\"equipped_on\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"weapon_skin\".\"created_at\""},
 }
@@ -114,8 +107,8 @@ func (*weaponSkinR) NewStruct() *weaponSkinR {
 type weaponSkinL struct{}
 
 var (
-	weaponSkinAllColumns            = []string{"id", "blueprint_id", "owner_id", "label", "equipped_on", "created_at"}
-	weaponSkinColumnsWithoutDefault = []string{"blueprint_id", "owner_id", "label"}
+	weaponSkinAllColumns            = []string{"id", "blueprint_id", "owner_id", "equipped_on", "created_at"}
+	weaponSkinColumnsWithoutDefault = []string{"blueprint_id", "owner_id"}
 	weaponSkinColumnsWithDefault    = []string{"id", "equipped_on", "created_at"}
 	weaponSkinPrimaryKeyColumns     = []string{"id"}
 	weaponSkinGeneratedColumns      = []string{}

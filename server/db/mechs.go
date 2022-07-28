@@ -453,24 +453,9 @@ type BattleQueuePosition struct {
 // TODO: I want InsertNewMech tested.
 
 func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
-	mechModel, err := boiler.MechModels(
-		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
-		qm.Load(boiler.MechModelRels.DefaultChassisSkin),
-	).One(tx)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	if mechModel.R == nil || mechModel.R.DefaultChassisSkin == nil {
-		return nil, terror.Error(fmt.Errorf("could not find default skin relationship to mech"), "Could not find mech default skin relationship, try again or contact support")
-	}
-
-	//bpms := mechModel.R.DefaultChassisSkin
-
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
-		BrandID:               mechBlueprint.BrandID,
 		Label:                 mechBlueprint.Label,
 		WeaponHardpoints:      mechBlueprint.WeaponHardpoints,
 		UtilitySlots:          mechBlueprint.UtilitySlots,
@@ -479,13 +464,12 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		IsDefault:             false,
 		IsInsured:             false,
 		Name:                  "",
-		ModelID:               mechBlueprint.ModelID,
 		PowerCoreSize:         mechBlueprint.PowerCoreSize,
 		GenesisTokenID:        mechBlueprint.GenesisTokenID,
 		LimitedReleaseTokenID: mechBlueprint.LimitedReleaseTokenID,
 	}
 
-	err = newMech.Insert(tx, boil.Infer())
+	err := newMech.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -513,7 +497,6 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 func IsMechColumn(col string) bool {
 	switch col {
 	case boiler.MechColumns.ID,
-		boiler.MechColumns.BrandID,
 		boiler.MechColumns.Label,
 		boiler.MechColumns.WeaponHardpoints,
 		boiler.MechColumns.UtilitySlots,
@@ -526,7 +509,6 @@ func IsMechColumn(col string) bool {
 		boiler.MechColumns.IsDefault,
 		boiler.MechColumns.IsInsured,
 		boiler.MechColumns.Name,
-		boiler.MechColumns.ModelID,
 		boiler.MechColumns.GenesisTokenID,
 		boiler.MechColumns.LimitedReleaseTokenID,
 		boiler.MechColumns.PowerCoreSize,
@@ -813,8 +795,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BrandID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ModelID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
@@ -893,8 +873,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.PowerCoreSize,
 			&mc.PowerCoreID,
 			&mc.BlueprintID,
-			&mc.BrandID,
-			&mc.ModelID,
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
