@@ -21,6 +21,7 @@ const HubKeySyndicateRulesSubscribe = "SYNDICATE:RULES:SUBSCRIBE"
 const HubKeySyndicateOngoingMotionSubscribe = "SYNDICATE:ONGOING:MOTION:SUBSCRIBE"
 const HubKeySyndicateOngoingElectionSubscribe = "SYNDICATE:ONGOING:ELECTION:SUBSCRIBE"
 
+const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
 const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 const HubKeyUserSubscribe = "USER:SUBSCRIBE"
 const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
@@ -38,3 +39,5 @@ const HubKeyRepairAgentRegister = "REPAIR:AGENT:REGISTER"
 const HubKeyRepairAgentComplete = "REPAIR:AGENT:COMPLETE"
 const HubKeyMechRepairCase = "MECH:REPAIR:CASE"
 const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
+
+const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"

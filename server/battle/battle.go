@@ -1100,7 +1100,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}(user)
 
@@ -1126,12 +1126,9 @@ type ViewerLiveCount struct {
 }
 
 func (btl *Battle) UserOnline(user *BattleUser) *ViewerLiveCount {
-	exists := false
 	_, ok := btl.users.User(user.ID)
 	if !ok {
 		btl.users.Add(user)
-	} else {
-		exists = true
 	}
 
 	if btl.inserted {
@@ -1171,10 +1168,7 @@ func (btl *Battle) UserOnline(user *BattleUser) *ViewerLiveCount {
 		return true
 	})
 
-	if !exists {
-		// send result to broadcast debounce function
-		btl.viewerCountInputChan <- resp
-	}
+	btl.viewerCountInputChan <- resp
 
 	return resp
 }
@@ -1606,7 +1600,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}
 

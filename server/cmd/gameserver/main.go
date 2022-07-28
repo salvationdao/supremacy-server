@@ -316,7 +316,7 @@ func main() {
 					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
+						ws.PublishMessage(fmt.Sprintf("/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")

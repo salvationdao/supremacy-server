@@ -44,8 +44,6 @@ func NewTelegram(token string, environment string, registerCallback func(shortCo
 	return t, nil
 }
 
-const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
-
 // registers new players
 func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 	if t.Bot == nil {

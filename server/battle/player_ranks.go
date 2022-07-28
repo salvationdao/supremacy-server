@@ -29,7 +29,6 @@ const (
 	PlayerRankCorporal   PlayerRank = "CORPORAL"
 	PlayerRankGeneral    PlayerRank = "GENERAL"
 )
-const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
 
 func (arena *Arena) PlayerRankUpdater() {
 	// create a tickle to constantly update player ability kill and ranks
@@ -76,7 +75,7 @@ func (arena *Arena) PlayerRankUpdater() {
 						// broadcast player rank to every player
 						go func(bu *BattleUser, player *boiler.Player) {
 							// broadcast stat
-							ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyPlayerRankGet, player.Rank)
+							ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyPlayerRankGet, player.Rank)
 
 							// broadcast user stat (player_last_seven_days_kills)
 							us, err := db.UserStatsGet(player.ID)
@@ -85,7 +84,7 @@ func (arena *Arena) PlayerRankUpdater() {
 							}
 
 							if us != nil {
-								ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
+								ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
 							}
 						}(bu, player)
 
