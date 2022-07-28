@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"regexp"
 	"server"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/kevinms/leakybucket-go"
 	"github.com/shopspring/decimal"
@@ -67,7 +68,8 @@ type PlayerAssetMechListRequest struct {
 	Payload struct {
 		Search              string                `json:"search"`
 		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
+		SortBy              string                `json:"sort_by"`
+		SortDir             db.SortByDir          `json:"sort_dir"`
 		PageSize            int                   `json:"page_size"`
 		Page                int                   `json:"page"`
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
@@ -145,7 +147,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	listOpts := &db.MechListOpts{
 		Search:              req.Payload.Search,
 		Filter:              req.Payload.Filter,
-		Sort:                req.Payload.Sort,
 		PageSize:            req.Payload.PageSize,
 		Page:                req.Payload.Page,
 		OwnerID:             user.ID,
@@ -160,6 +161,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			FactionID: user.FactionID.String,
 			SortDir:   req.Payload.QueueSort,
 		}
+	} else if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
 	}
 
 	total, mechs, err := db.MechList(listOpts)
@@ -833,6 +837,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 			}
+
 			items.Mech = mech
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
@@ -983,6 +988,11 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
+		err = db.GiveMechAvatar(mech.OwnerID, mech.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
@@ -1066,6 +1076,8 @@ type PlayerAssetWeaponListRequest struct {
 		Search                        string                    `json:"search"`
 		Filter                        *db.ListFilterRequest     `json:"filter"`
 		Sort                          *db.ListSortRequest       `json:"sort"`
+		SortBy                        string                    `json:"sort_by"`
+		SortDir                       db.SortByDir              `json:"sort_dir"`
 		PageSize                      int                       `json:"page_size"`
 		Page                          int                       `json:"page"`
 		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
@@ -1152,6 +1164,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
 		FilterStatSpread:              req.Payload.FilterStatSpread,
 	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
 
 	total, weapons, err := db.WeaponList(listOpts)
 	if err != nil {
@@ -1189,7 +1205,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 }
 
 func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
-	userID := r.URL.Query().Get("user_id")   // the stat identifier e.g. speed
+	userID := r.URL.Query().Get("user_id") // the stat identifier e.g. speed
 
 	output, err := db.GetWeaponMaxStats(gamedb.StdConn, userID)
 	if err != nil {

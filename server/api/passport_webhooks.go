@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/helpers"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
@@ -127,6 +128,12 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
 		boiler.PlayerColumns.FactionID,
 	))
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	// give user default profile avatar images
+	err = db.GiveDefaultAvatars(player.ID, player.FactionID.String)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
