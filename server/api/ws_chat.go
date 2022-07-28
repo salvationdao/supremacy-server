@@ -274,6 +274,7 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
+	api.SecureUserCommand(HubKeyReactToMessage, chatHub.ReactToMessageHandler)
 
 	go api.MessageBroadcaster()
 
@@ -655,6 +656,93 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
 	if err != nil {
 		l.Error().Err(err).Msg("unable to update chat history to mark as read.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.Range(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.Range(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.Range(fn)
+	default:
+		fc.API.GlobalChat.Range(fn)
+	}
+
+	reply(true)
+	return nil
+}
+
+type ReactToMessageRequest struct {
+	Payload struct {
+		ChatHistoryID string `json:"chat_history_id"`
+		Likes         int    `json:"likes"`
+		Dislikes      int    `json:"dislikes"`
+	} `json:"payload"`
+}
+
+const HubKeyReactToMessage = "REACT:MESSAGE"
+
+func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ReactToMessageHandler").Str("user_id", user.ID).Logger()
+	genericErrorMessage := "Unable to react to message, try again or contact support."
+
+	req := &ReactToMessageRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata.Likes.Likes = metadata.Likes.Likes + req.Payload.Likes
+	metadata.Likes.Dislikes = metadata.Likes.Dislikes + req.Payload.Dislikes
+	metadata.Likes.Net = metadata.Likes.Likes - metadata.Likes.Dislikes
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update message's reactions.")
 		return terror.Error(err, genericErrorMessage)
 	}
 
