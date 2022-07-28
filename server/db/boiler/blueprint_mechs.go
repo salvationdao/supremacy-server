@@ -24,7 +24,6 @@ import (
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
 	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
 	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	WeaponHardpoints int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
@@ -46,7 +45,6 @@ type BlueprintMech struct {
 
 var BlueprintMechColumns = struct {
 	ID               string
-	BrandID          string
 	Label            string
 	Slug             string
 	WeaponHardpoints string
@@ -63,7 +61,6 @@ var BlueprintMechColumns = struct {
 	AvailabilityID   string
 }{
 	ID:               "id",
-	BrandID:          "brand_id",
 	Label:            "label",
 	Slug:             "slug",
 	WeaponHardpoints: "weapon_hardpoints",
@@ -82,7 +79,6 @@ var BlueprintMechColumns = struct {
 
 var BlueprintMechTableColumns = struct {
 	ID               string
-	BrandID          string
 	Label            string
 	Slug             string
 	WeaponHardpoints string
@@ -99,7 +95,6 @@ var BlueprintMechTableColumns = struct {
 	AvailabilityID   string
 }{
 	ID:               "blueprint_mechs.id",
-	BrandID:          "blueprint_mechs.brand_id",
 	Label:            "blueprint_mechs.label",
 	Slug:             "blueprint_mechs.slug",
 	WeaponHardpoints: "blueprint_mechs.weapon_hardpoints",
@@ -120,7 +115,6 @@ var BlueprintMechTableColumns = struct {
 
 var BlueprintMechWhere = struct {
 	ID               whereHelperstring
-	BrandID          whereHelperstring
 	Label            whereHelperstring
 	Slug             whereHelperstring
 	WeaponHardpoints whereHelperint
@@ -137,7 +131,6 @@ var BlueprintMechWhere = struct {
 	AvailabilityID   whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
-	BrandID:          whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
 	Label:            whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
 	Slug:             whereHelperstring{field: "\"blueprint_mechs\".\"slug\""},
 	WeaponHardpoints: whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
@@ -181,8 +174,8 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier", "availability_id"}
-	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
+	blueprintMechAllColumns            = []string{"id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier", "availability_id"}
+	blueprintMechColumnsWithoutDefault = []string{"label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
 	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier", "availability_id"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}

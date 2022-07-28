@@ -147,10 +147,11 @@ CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechcrate_id UUID, factio
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-    VALUES (mechcrate_id, 'MECH', (SELECT id
-                                   FROM blueprint_mechs
-                                   WHERE blueprint_mechs.power_core_size = core_size
-                                     AND blueprint_mechs.brand_id =
+    VALUES (mechcrate_id, 'MECH', (SELECT bpm.id
+                                   FROM blueprint_mechs bpm
+                                   INNER JOIN mech_models mm on mm.id = bpm.model_id
+                                   WHERE bpm.power_core_size = core_size
+                                     AND mm.brand_id =
                                          CASE
                                              WHEN faction.label = 'Boston Cybernetics'
                                                  THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')

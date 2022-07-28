@@ -22,7 +22,6 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 		BlueprintID:           skin.ID,
 		GenesisTokenID:        skin.GenesisTokenID,
 		LimitedReleaseTokenID: skin.LimitedReleaseTokenID,
-		Label:                 skin.Label,
 	}
 
 	err := newSkin.Insert(tx, boil.Infer())

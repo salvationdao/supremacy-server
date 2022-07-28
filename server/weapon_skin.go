@@ -91,7 +91,8 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 		ID:            weaponSkin.ID,
 		BlueprintID:   weaponSkin.BlueprintID,
 		OwnerID:       weaponSkin.OwnerID,
-		Label:         weaponSkin.Label,
+		// TODO: vinnie fix me please
+		//Label:         weaponSkin.Label,
 		EquippedOn:    weaponSkin.EquippedOn,
 		CreatedAt:     weaponSkin.CreatedAt,
 	}
