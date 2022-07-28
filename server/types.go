@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // HubClientID aliases uuid.UUID.
@@ -667,6 +668,13 @@ type GameAbilityEvent struct {
 	GameAbility         *GameAbility  `json:"gameAbility,omitempty"`
 	GameLocation        *GameLocation `json:"gameLocation"`
 	GameLocationEnd     *GameLocation `json:"gameLocationEnd"`
+}
+
+type BattleZone struct {
+	Location   GameLocation    `json:"location"`
+	Radius     int             `json:"radius"`
+	Time       decimal.Decimal `json:"time"`
+	ShrinkTime decimal.Decimal `json:"shrinkTime"`
 }
 
 var env string

@@ -763,8 +763,9 @@ type BattleStartPayload struct {
 }
 
 type MapDetailsPayload struct {
-	Details  server.GameMap `json:"details"`
-	BattleID string         `json:"battleID"`
+	Details     server.GameMap      `json:"details"`
+	BattleZones []server.BattleZone `json:"battleZones"`
+	BattleID    string              `json:"battleID"`
 }
 
 type BattleEndPayload struct {
@@ -779,6 +780,12 @@ type BattleEndPayload struct {
 type AbilityMoveCommandCompletePayload struct {
 	BattleID       string `json:"battleID"`
 	WarMachineHash string `json:"warMachineHash"`
+}
+
+type ZoneChangePayload struct {
+	BattleID  string `json:"battleID"`
+	ZoneIndex int    `json:"zoneIndex"`
+	WarnTime  int    `json:"warnTime"`
 }
 
 type BattleWMDestroyedPayload struct {
@@ -871,7 +878,7 @@ func (arena *Arena) start() {
 				}
 
 				// update map detail
-				btl.storeGameMap(dataPayload.Details)
+				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
 
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
@@ -941,6 +948,18 @@ func (arena *Arena) start() {
 					continue
 				}
 				err = btl.UpdateWarMachineMoveCommand(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+				}
+
+			case "BATTLE:ZONE_CHANGE":
+				var dataPayload *ZoneChangePayload
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle zone change payload")
+					continue
+				}
+
+				err = btl.ZoneChange(dataPayload)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
@@ -1147,6 +1166,17 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
+
+	return nil
+}
+
+func (btl *Battle) ZoneChange(payload *ZoneChangePayload) error {
+	// check battle id
+	if payload.BattleID != btl.BattleID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	}
+
+	btl.arena.BroadcastGameNotificationBattleZoneChange(payload)
 
 	return nil
 }

@@ -51,6 +51,7 @@ type Battle struct {
 	warMachineIDs  []uuid.UUID   `json:"ids"`
 	lastTick       *[]byte
 	gameMap        *server.GameMap
+	battleZones    *[]server.BattleZone
 	_abilities     *AbilitiesSystem
 	users          usersMap
 	factions       map[uuid.UUID]*boiler.Faction
@@ -90,7 +91,7 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 }
 
 // storeGameMap set the game map detail from game client
-func (btl *Battle) storeGameMap(gm server.GameMap) {
+func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZone) {
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -102,6 +103,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.LeftPixels = gm.LeftPixels
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
+	btl.battleZones = &battleZones
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
