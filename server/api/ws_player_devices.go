@@ -40,7 +40,9 @@ type PlayerDeviceListResp struct {
 	Devices []*PlayerDevice `json:"devices"`
 }
 
+// PlayerDevicesListHandler returns a list of the players connected devices
 func (pdc *PlayerDevicesControllerWS) PlayerDevicesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerDevicesList").Str("userID", user.ID).Logger()
 
 	// Get players devices
 	playerDevices, err := boiler.Devices(
@@ -48,7 +50,7 @@ func (pdc *PlayerDevicesControllerWS) PlayerDevicesListHandler(ctx context.Conte
 		boiler.DeviceWhere.PlayerID.EQ(user.ID),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("db func", "PlayerDevicesList").Str("userID", user.ID).Err(err).Msg("unable to get player devices")
+		l.Error().Err(err).Msg("unable to get player devices")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
