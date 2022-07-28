@@ -43,10 +43,32 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		&dro.WorkingAgentCount,
 	)
 	if err != nil {
-		return nil, terror.Error(err, "Failed to load repair offer detail.")
+		return nil, err
 	}
 
 	return dro, nil
+}
+
+// AbandonRepairAgent abandon repair agent and return the repair offer id
+func AbandonRepairAgent(repairAgentID string) (string, error) {
+	offerID := ""
+
+	q := `
+		UPDATE
+			repair_agents
+		SET
+		    finished_at = now(),
+		    finished_reason = $2
+		WHERE
+		    finished_at ISNULL AND id = $1
+	`
+
+	err := gamedb.StdConn.QueryRow(q, repairAgentID, boiler.RepairAgentFinishReasonABANDONED).Scan(&offerID)
+	if err != nil {
+		return "", err
+	}
+
+	return offerID, nil
 }
 
 // IsRepairCaseOwner check the player is the owner of the repair case

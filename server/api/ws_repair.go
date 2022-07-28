@@ -425,17 +425,28 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 	}
 
 	go func() {
-		if req.Payload.RepairCaseID != "" {
-			sro, err := db.RepairOfferDetail(ro.ID)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to load updated repair offer")
-				return
-			}
-			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+		err = api.broadcastRepairOffer(ro.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to broadcast updated repair offer.")
+			return
 		}
 	}()
 
 	reply(ra)
+
+	return nil
+}
+
+func (api *API) broadcastRepairOffer(repairOfferID string) error {
+	sro, err := db.RepairOfferDetail(repairOfferID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to load updated repair offer")
+		return terror.Error(err, "Failed to load repair offer")
+	}
+
+	if sro != nil {
+		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
+	}
 
 	return nil
 }
@@ -494,7 +505,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// claim sups
 	ro, err := db.RepairOfferDetail(ra.RepairOfferID)
 	if err != nil {
-		return err
+		return terror.Error(err, "Failed to load repair offer")
 	}
 
 	// if it is a not self offer
@@ -575,7 +586,7 @@ func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []
 
 	ro, err := db.RepairOfferDetail(offerID)
 	if err != nil {
-		return err
+		return terror.Error(err, "Failed to load repair offer.")
 	}
 
 	reply(ro)
