@@ -28,6 +28,7 @@ type BattleAbility struct {
 	CooldownDurationSecond int       `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldown_duration_second" toml:"cooldown_duration_second" yaml:"cooldown_duration_second"`
 	Description            string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	DeletedAt              null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	MaximumCommanderCount  int       `boiler:"maximum_commander_count" boil:"maximum_commander_count" json:"maximum_commander_count" toml:"maximum_commander_count" yaml:"maximum_commander_count"`
 
 	R *battleAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,12 +40,14 @@ var BattleAbilityColumns = struct {
 	CooldownDurationSecond string
 	Description            string
 	DeletedAt              string
+	MaximumCommanderCount  string
 }{
 	ID:                     "id",
 	Label:                  "label",
 	CooldownDurationSecond: "cooldown_duration_second",
 	Description:            "description",
 	DeletedAt:              "deleted_at",
+	MaximumCommanderCount:  "maximum_commander_count",
 }
 
 var BattleAbilityTableColumns = struct {
@@ -53,12 +56,14 @@ var BattleAbilityTableColumns = struct {
 	CooldownDurationSecond string
 	Description            string
 	DeletedAt              string
+	MaximumCommanderCount  string
 }{
 	ID:                     "battle_abilities.id",
 	Label:                  "battle_abilities.label",
 	CooldownDurationSecond: "battle_abilities.cooldown_duration_second",
 	Description:            "battle_abilities.description",
 	DeletedAt:              "battle_abilities.deleted_at",
+	MaximumCommanderCount:  "battle_abilities.maximum_commander_count",
 }
 
 // Generated where
@@ -69,12 +74,14 @@ var BattleAbilityWhere = struct {
 	CooldownDurationSecond whereHelperint
 	Description            whereHelperstring
 	DeletedAt              whereHelpernull_Time
+	MaximumCommanderCount  whereHelperint
 }{
 	ID:                     whereHelperstring{field: "\"battle_abilities\".\"id\""},
 	Label:                  whereHelperstring{field: "\"battle_abilities\".\"label\""},
 	CooldownDurationSecond: whereHelperint{field: "\"battle_abilities\".\"cooldown_duration_second\""},
 	Description:            whereHelperstring{field: "\"battle_abilities\".\"description\""},
 	DeletedAt:              whereHelpernull_Time{field: "\"battle_abilities\".\"deleted_at\""},
+	MaximumCommanderCount:  whereHelperint{field: "\"battle_abilities\".\"maximum_commander_count\""},
 }
 
 // BattleAbilityRels is where relationship names are stored.
@@ -101,9 +108,9 @@ func (*battleAbilityR) NewStruct() *battleAbilityR {
 type battleAbilityL struct{}
 
 var (
-	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description", "deleted_at"}
+	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description", "deleted_at", "maximum_commander_count"}
 	battleAbilityColumnsWithoutDefault = []string{"label", "cooldown_duration_second", "description"}
-	battleAbilityColumnsWithDefault    = []string{"id", "deleted_at"}
+	battleAbilityColumnsWithDefault    = []string{"id", "deleted_at", "maximum_commander_count"}
 	battleAbilityPrimaryKeyColumns     = []string{"id"}
 	battleAbilityGeneratedColumns      = []string{}
 )
