@@ -242,7 +242,7 @@ dev-give-weapon-crate:
 
 .PHONE: dev-give-weapon-crates
 dev-give-weapon-crates:
-	make dev-give-weapon-crate public_address=0x8080833a93bD3F69A1972452B03dfb338Bef425e
+	make dev-give-weapon-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
 .PHONE: dev-give-mech-crate
 dev-give-mech-crate:
@@ -254,7 +254,7 @@ seed-avatars:
 
 .PHONE: dev-give-mech-crates
 dev-give-mech-crates:
-	make dev-give-mech-crate public_address=0x8080833a93bD3F69A1972452B03dfb338Bef425e
+	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
 .PHONY: sync-data
 sync-data:
