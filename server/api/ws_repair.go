@@ -509,14 +509,12 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	}
 
 	// if it is a not self offer
-	if ro.OfferedByID.Valid && ro.OfferedSupsAmount.GreaterThan(decimal.Zero) {
-		amount := ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksRequiredRepair))).StringFixed(0)
-
+	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
 		// claim reward
 		_, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyGameUserID)),
 			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-			Amount:               amount,
+			Amount:               ro.SupsWorthPerBlock.StringFixed(0),
 			TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupRepair),
@@ -524,7 +522,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 			NotSafe:              true,
 		})
 		if err != nil {
-			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", amount).Err(err).Msg("Failed to pay sups for offering repair job")
+			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
 			return terror.Error(err, "Failed to pay sups for offering repair job.")
 		}
 	}
