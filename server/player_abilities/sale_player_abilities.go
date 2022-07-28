@@ -79,6 +79,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {
 		FloorPrice:                   db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
 		DisplayLimit:                 db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3 abilities displayed per sale period
 		Claim:                        make(chan *Claim),
+		Purchase:                     make(chan *Purchase),
 		closed:                       atomic.NewBool(false),
 	}
 
@@ -327,6 +328,7 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 			}
 		case purchase := <-pas.Purchase:
+			fmt.Println(purchase.SaleID)
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.SaleID]; ok {
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(pas.InflationPercentage).Div(oneHundred))
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
