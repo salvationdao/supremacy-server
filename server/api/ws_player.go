@@ -925,11 +925,9 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 
 const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
 
-func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "GlobalActivePlayersSubscribeHandler").Str("user_id", user.ID).Logger()
+func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
 	if !ok {
-		l.Error().Err(fmt.Errorf("faction does not exist in list")).Msg("json unmarshal error")
 		return terror.Error(terror.ErrForbidden, "Could not subscribe to active players in global chat, try again or contact support.")
 	}
 
