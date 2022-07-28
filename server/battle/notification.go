@@ -198,7 +198,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 }
 
 // BroadcastGameNotificationBattleZoneChange broadcast game notification to client
-func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangePayload) {
+func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEvent) {
 	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeBattleZoneChange,
 		Data: data,

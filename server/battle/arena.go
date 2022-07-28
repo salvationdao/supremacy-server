@@ -787,6 +787,12 @@ type ZoneChangePayload struct {
 	ZoneIndex int    `json:"zoneIndex"`
 	WarnTime  int    `json:"warnTime"`
 }
+type ZoneChangeEvent struct {
+	Location   server.GameLocation `json:"location"`
+	Radius     int                 `json:"radius"`
+	ShrinkTime int                 `json:"shrinkTime"`
+	WarnTime   int                 `json:"warnTime"`
+}
 
 type BattleWMDestroyedPayload struct {
 	DestroyedWarMachineEvent struct {
@@ -1176,7 +1182,22 @@ func (btl *Battle) ZoneChange(payload *ZoneChangePayload) error {
 		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
 	}
 
-	btl.arena.BroadcastGameNotificationBattleZoneChange(payload)
+	if btl.battleZones == nil {
+		return terror.Error(fmt.Errorf("recieved battle zone change when battleZones is empty"))
+	}
+
+	if payload.ZoneIndex <= -1 || payload.ZoneIndex >= len(btl.battleZones) {
+		return terror.Error(fmt.Errorf("invalid zone index"))
+	}
+
+	currentZone := btl.battleZones[payload.ZoneIndex]
+	event := ZoneChangeEvent{
+		Location:   currentZone.Location,
+		Radius:     currentZone.Radius,
+		ShrinkTime: currentZone.ShrinkTime,
+		WarnTime:   payload.WarnTime,
+	}
+	btl.arena.BroadcastGameNotificationBattleZoneChange(&event)
 
 	return nil
 }

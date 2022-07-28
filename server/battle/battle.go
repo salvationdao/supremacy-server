@@ -51,7 +51,7 @@ type Battle struct {
 	warMachineIDs  []uuid.UUID   `json:"ids"`
 	lastTick       *[]byte
 	gameMap        *server.GameMap
-	battleZones    *[]server.BattleZone
+	battleZones    []server.BattleZone
 	_abilities     *AbilitiesSystem
 	users          usersMap
 	factions       map[uuid.UUID]*boiler.Faction
@@ -103,7 +103,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.LeftPixels = gm.LeftPixels
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
-	btl.battleZones = &battleZones
+	btl.battleZones = battleZones
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
