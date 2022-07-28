@@ -424,6 +424,17 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to register repair agent")
 	}
 
+	go func() {
+		if req.Payload.RepairCaseID != "" {
+			sro, err := db.RepairOfferDetail(ro.ID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load updated repair offer")
+				return
+			}
+			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+		}
+	}()
+
 	reply(ra)
 
 	return nil
