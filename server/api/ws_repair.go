@@ -158,7 +158,7 @@ type RepairOfferIssueRequest struct {
 }
 
 // prevent owner issue multi repair offer on the same mech
-var mechRepairOfferBucket = leakybucket.NewCollector(0.5, 1, true)
+var mechRepairOfferBucket = leakybucket.NewCollector(2, 1, true)
 
 func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	now := time.Now()
@@ -349,7 +349,7 @@ type RepairAgentRegisterRequest struct {
 	} `json:"payload"`
 }
 
-var mechRepairAgentBucket = leakybucket.NewCollector(0.5, 1, true)
+var mechRepairAgentBucket = leakybucket.NewCollector(2, 1, true)
 
 func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
