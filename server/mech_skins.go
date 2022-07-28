@@ -85,7 +85,8 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
 		GenesisTokenID:   skin.GenesisTokenID,
-		Label:            skin.Label,
+		// TODO: vinnie fix me please
+		//Label:            skin.Label,
 		EquippedOn:       skin.EquippedOn,
 		CreatedAt:        skin.CreatedAt,
 	}

@@ -32,7 +32,7 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 		qm.Select(
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.Hash,
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf(
@@ -40,6 +40,12 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 			boiler.TableNames.Weapons,
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 		)),
 		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
 	).QueryRow(tx).Scan(
@@ -56,7 +62,6 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 
 func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
 	newWeapon := boiler.Weapon{
-		Label:                 weapon.Label,
 		Slug:                  weapon.Slug,
 		Damage:                weapon.Damage,
 		BlueprintID:           weapon.ID,
@@ -64,7 +69,6 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		GenesisTokenID:        weapon.GenesisTokenID,
 		WeaponModelID:         null.StringFrom(weapon.WeaponModelID),
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
-		WeaponType:            weapon.WeaponType,
 		DamageFalloff:         weapon.DamageFalloff,
 		DamageFalloffRate:     weapon.DamageFalloffRate,
 		Spread:                weapon.Spread,
@@ -95,12 +99,7 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 	return Weapon(tx, newWeapon.ID)
 }
 
-func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 	boilerWeapon, err := boiler.FindWeapon(tx, id)
 	if err != nil {
 		return nil, err
@@ -110,12 +109,10 @@ func Weapon(trx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
-	var weaponSkin *server.WeaponSkin
-	if boilerWeapon.EquippedWeaponSkinID.Valid {
-		weaponSkin, err = WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID.String)
-		if err != nil {
-			return nil, err
-		}
+
+	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID)
+	if err != nil {
+		return nil, err
 	}
 
 	itemSale, err := boiler.ItemSales(
@@ -152,13 +149,12 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		collectionItemToWeapon[bw.ID] = boilerWeaponCollectionDetails.ID
 		collectionItemIDs = append(collectionItemIDs, boilerWeaponCollectionDetails.ID)
 
-		var weaponSkin *server.WeaponSkin
-		if bw.EquippedWeaponSkinID.Valid {
-			weaponSkin, err = WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID.String)
-			if err != nil {
-				return nil, err
-			}
+
+		weaponSkin, err := WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID)
+		if err != nil {
+			return nil, err
 		}
+
 		weapons = append(weapons, server.WeaponFromBoiler(bw, boilerWeaponCollectionDetails, weaponSkin, null.String{}))
 	}
 
@@ -495,7 +491,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	if len(opts.FilterWeaponTypes) > 0 {
-		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
+		//queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes)) // TODO: vinnie fix please (weapon type is now on blueprint)
 	}
 
 	// Filter - Weapon Stats
@@ -531,23 +527,24 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	// Search
-	if opts.Search != "" {
-		xSearch := ParseQueryText(opts.Search, true)
-		if len(xSearch) > 0 {
-			queryMods = append(queryMods,
-
-				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?) OR (to_tsvector('english', %[3]s.%[4]s::text) @@ to_tsquery(?)) ))",
-					boiler.TableNames.Weapons,
-					boiler.WeaponColumns.Label,
-					boiler.TableNames.Weapons,
-					boiler.WeaponColumns.WeaponType,
-				),
-					xSearch,
-					xSearch,
-				))
-		}
-	}
+	// TODO: vinnie fix me (label and weapon type now on blueprint)
+	//if opts.Search != "" {
+	//	xSearch := ParseQueryText(opts.Search, true)
+	//	if len(xSearch) > 0 {
+	//		queryMods = append(queryMods,
+	//
+	//			qm.And(fmt.Sprintf(
+	//				"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?) OR (to_tsvector('english', %[3]s.%[4]s::text) @@ to_tsquery(?)) ))",
+	//				boiler.TableNames.Weapons,
+	//				boiler.WeaponColumns.Label,
+	//				boiler.TableNames.Weapons,
+	//				boiler.WeaponColumns.WeaponType,
+	//			),
+	//				xSearch,
+	//				xSearch,
+	//			))
+	//	}
+	//}
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -577,7 +574,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+			//qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 
 			fmt.Sprintf(
 				`(
@@ -600,15 +597,16 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		qm.From(boiler.TableNames.CollectionItems),
 	)
 
-	if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), opts.SortDir)))
-		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort("cws.tier", opts.SortDir))
-		}
-	} else {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label))))
-	}
+	// TODO: vinnie fix me (label now on blueprint)
+	//if opts.SortBy != "" && opts.SortDir.IsValid() {
+	//	if opts.SortBy == "alphabetical" {
+	//		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), opts.SortDir)))
+	//	} else if opts.SortBy == "rarity" {
+	//		queryMods = append(queryMods, GenerateTierSort("cws.tier", opts.SortDir))
+	//	}
+	//} else {
+	//	queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label))))
+	//}
 
 	rows, err := boiler.NewQuery(
 		queryMods...,

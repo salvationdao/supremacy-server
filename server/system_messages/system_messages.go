@@ -24,13 +24,18 @@ func NewSystemMessagingManager() *SystemMessagingManager {
 
 func (smm *SystemMessagingManager) BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
 	for _, q := range queue {
-		mech, err := q.Mech().One(gamedb.StdConn)
+		mech, err := q.Mech(
+			qm.Load(boiler.MechRels.Blueprint),
+			).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 			continue
 		}
 
-		label := mech.Label
+		label := ""
+		if mech.R != nil && mech.R.Blueprint != nil {
+			label = mech.R.Blueprint.Label
+		}
 		if mech.Name != "" {
 			label = mech.Name
 		}
@@ -96,13 +101,18 @@ func (smm *SystemMessagingManager) BroadcastMechBattleCompleteMessage(queue []*b
 	}
 
 	for _, q := range queue {
-		mech, err := q.Mech().One(gamedb.StdConn)
+		mech, err := q.Mech(
+			qm.Load(boiler.MechRels.Blueprint),
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 			continue
 		}
 
-		label := mech.Label
+		label := ""
+		if mech.R != nil && mech.R.Blueprint != nil {
+			label = mech.R.Blueprint.Label
+		}
 		if mech.Name != "" {
 			label = mech.Name
 		}

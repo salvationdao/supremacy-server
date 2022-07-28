@@ -641,12 +641,10 @@ func MarketplaceItemSaleList(
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
-						OR (to_tsvector('english', %s) @@ to_tsquery(?))
-						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+					//qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 					qm.Rels("msc", boiler.CollectionItemColumns.Tier),
 					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
@@ -983,9 +981,8 @@ func MarketplaceEventList(
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
-						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+					//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
@@ -1022,13 +1019,13 @@ func MarketplaceEventList(
 	} else if sortBy == "alphabetical" {
 		sortBy = fmt.Sprintf(
 			`CASE
-				WHEN %[1]s = '%[2]s' THEN COALESCE(%[3]s, %[4]s)
+				WHEN %[1]s = '%[2]s' THEN %[4]s
 				WHEN %[1]s = '%[5]s' THEN %[6]s
 				ELSE %[7]s
 			END`,
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			boiler.ItemTypeMech,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			boiler.ItemTypeMysteryCrate,
 			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
@@ -1205,7 +1202,7 @@ func MarketplaceEventList(
 			qm.Select(
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+				//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 			),
 			qm.InnerJoin(
 				fmt.Sprintf(
@@ -1264,7 +1261,7 @@ func MarketplaceEventList(
 		err = boiler.Weapons(
 			qm.Select(
 				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+				//qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 				// TODO: vinnie fix, weapon type is not on weapon skin
 				//qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
 				//qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,

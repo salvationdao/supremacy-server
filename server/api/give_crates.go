@@ -229,12 +229,13 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 		}
 
 		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
-		if err != nil {
-			crateRollback()
-			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
-			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
-		}
+		// TODO: vinnie fix (weapon skins cant be null, so skin needs to be attached on weapon insert)
+		//err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
+		//if err != nil {
+		//	crateRollback()
+		//	gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
+		//	return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
+		//}
 		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
 		rarerSkin.EquippedOnDetails = eod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
@@ -286,12 +287,13 @@ func (api *API) DevGiveCrates(w http.ResponseWriter, r *http.Request) (int, erro
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		err = db.AttachWeaponSkinToWeapon(tx2, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
-		if err != nil {
-			crateRollback()
-			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
-			return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
-		}
+		// TODO: vinnie fix (weapon skins cant be null, so skin needs to be attached on weapon insert)
+		//err = db.AttachWeaponSkinToWeapon(tx2, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
+		//if err != nil {
+		//	crateRollback()
+		//	gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
+		//	return http.StatusInternalServerError, terror.Error(err, "Could not open crate, try again or contact support.")
+		//}
 		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
 		items.WeaponSkins[0].EquippedOnDetails = wod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)

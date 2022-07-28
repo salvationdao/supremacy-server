@@ -34,7 +34,7 @@ type Weapon struct {
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
-	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
+	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
 	WeaponModelID         null.String         `json:"weapon_model_id,omitempty"`
@@ -132,27 +132,29 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin, itemSaleID null.String) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
-		CollectionItemID:     collection.ID,
-		ID:                   weapon.ID,
-		BrandID:              weapon.BrandID,
-		Label:                weapon.Label,
-		Slug:                 weapon.Slug,
-		Damage:               weapon.Damage,
-		BlueprintID:          weapon.BlueprintID,
-		DefaultDamageType:    weapon.DefaultDamageType,
-		GenesisTokenID:       weapon.GenesisTokenID,
-		WeaponType:           weapon.WeaponType,
+		CollectionItemID: collection.ID,
+		ID:               weapon.ID,
+		BrandID:          weapon.BrandID,
+		// TODO: vinnie fix me please
+		//Label:                weapon.Label,
+		Slug:              weapon.Slug,
+		Damage:            weapon.Damage,
+		BlueprintID:       weapon.BlueprintID,
+		DefaultDamageType: weapon.DefaultDamageType,
+		GenesisTokenID:    weapon.GenesisTokenID,
+		// TODO: vinnie fix me please
+		//WeaponType:           weapon.WeaponType,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,

@@ -681,7 +681,7 @@ func (mechSkinL) LoadChassisSkinMechs(e boil.Executor, singular bool, maybeMechS
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
@@ -740,7 +740,7 @@ func (mechSkinL) LoadChassisSkinMechs(e boil.Executor, singular bool, maybeMechS
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.ChassisSkinID) {
+			if local.ID == foreign.ChassisSkinID {
 				local.R.ChassisSkinMechs = append(local.R.ChassisSkinMechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechR{}
@@ -887,7 +887,7 @@ func (o *MechSkin) AddChassisSkinMechs(exec boil.Executor, insert bool, related 
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.ChassisSkinID, o.ID)
+			rel.ChassisSkinID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -907,7 +907,7 @@ func (o *MechSkin) AddChassisSkinMechs(exec boil.Executor, insert bool, related 
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.ChassisSkinID, o.ID)
+			rel.ChassisSkinID = o.ID
 		}
 	}
 
@@ -928,79 +928,6 @@ func (o *MechSkin) AddChassisSkinMechs(exec boil.Executor, insert bool, related 
 			rel.R.ChassisSkin = o
 		}
 	}
-	return nil
-}
-
-// SetChassisSkinMechs removes all previously related items of the
-// mech_skin replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.ChassisSkin's ChassisSkinMechs accordingly.
-// Replaces o.R.ChassisSkinMechs with related.
-// Sets related.R.ChassisSkin's ChassisSkinMechs accordingly.
-func (o *MechSkin) SetChassisSkinMechs(exec boil.Executor, insert bool, related ...*Mech) error {
-	query := "update \"mechs\" set \"chassis_skin_id\" = null where \"chassis_skin_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.ChassisSkinMechs {
-			queries.SetScanner(&rel.ChassisSkinID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.ChassisSkin = nil
-		}
-
-		o.R.ChassisSkinMechs = nil
-	}
-	return o.AddChassisSkinMechs(exec, insert, related...)
-}
-
-// RemoveChassisSkinMechs relationships from objects passed in.
-// Removes related items from R.ChassisSkinMechs (uses pointer comparison, removal does not keep order)
-// Sets related.R.ChassisSkin.
-func (o *MechSkin) RemoveChassisSkinMechs(exec boil.Executor, related ...*Mech) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.ChassisSkinID, nil)
-		if rel.R != nil {
-			rel.R.ChassisSkin = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("chassis_skin_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.ChassisSkinMechs {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.ChassisSkinMechs)
-			if ln > 1 && i < ln-1 {
-				o.R.ChassisSkinMechs[i] = o.R.ChassisSkinMechs[ln-1]
-			}
-			o.R.ChassisSkinMechs = o.R.ChassisSkinMechs[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

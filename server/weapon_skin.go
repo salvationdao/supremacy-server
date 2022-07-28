@@ -15,7 +15,6 @@ type WeaponSkin struct {
 	*CollectionItem
 	ID            string      `json:"id"`
 	BlueprintID   string      `json:"blueprint_id"`
-	OwnerID       string      `json:"owner_id"`
 	Label         string      `json:"label"`
 	WeaponType    string      `json:"weapon_type"`
 	EquippedOn    null.String `json:"equipped_on,omitempty"`
@@ -90,7 +89,6 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 		},
 		ID:            weaponSkin.ID,
 		BlueprintID:   weaponSkin.BlueprintID,
-		OwnerID:       weaponSkin.OwnerID,
 		// TODO: vinnie fix me please
 		//Label:         weaponSkin.Label,
 		EquippedOn:    weaponSkin.EquippedOn,

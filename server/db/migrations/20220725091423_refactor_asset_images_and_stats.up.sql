@@ -1,6 +1,12 @@
 ALTER TABLE mechs
+    DROP COLUMN IF EXISTS label,
     DROP COLUMN IF EXISTS brand_id,
     DROP COLUMN IF EXISTS model_id;
+
+ALTER TABLE weapons
+    DROP COLUMN IF EXISTS owner_id,
+    DROP COLUMN IF EXISTS weapon_type,
+    DROP COLUMN IF EXISTS label;
 
 ALTER TABLE mech_skin
     DROP COLUMN IF EXISTS label,
@@ -13,6 +19,7 @@ ALTER TABLE mech_skin
 
 ALTER TABLE weapon_skin
     DROP COLUMN IF EXISTS label,
+    DROP COLUMN IF EXISTS owner_id,
     DROP COLUMN IF EXISTS weapon_type,
     DROP COLUMN IF EXISTS weapon_model_id,
     DROP COLUMN IF EXISTS tier;
@@ -1300,3 +1307,43 @@ WHERE blueprint_id IN (
                        'b32ffd15-6376-44a3-8b31-472b70e7df3f'
     );
 --endregion
+
+-- create the new weapon skin objects
+WITH wps AS (
+--     this returns a weapon id and the default skin blueprint id for each weapon without an equipped skin (genesis weapons)
+    SELECT _w.id, _wm.default_skin_id
+    FROM weapons _w
+    INNER JOIN collection_items _ci ON _ci.item_id = _w.id
+    INNER JOIN blueprint_weapons _bpw ON _bpw.id = _w.blueprint_id
+    INNER JOIN weapon_models _wm ON _wm.id = _bpw.weapon_model_id
+    WHERE _w.equipped_weapon_skin_id is null
+)
+INSERT INTO weapon_skin(blueprint_id, equipped_on)
+SELECT wps.default_skin_id, wps.id
+FROM wps;
+
+-- update weapons equipped_weapon_skin_id
+UPDATE weapons w SET equipped_weapon_skin_id = (SELECT id FROM weapon_skin WHERE equipped_on = w.id) WHERE equipped_weapon_skin_id IS NULL;
+
+-- insert the collection_items or these weapons
+WITH wps_skin AS (
+    SELECT 'weapon_skin' AS item_type, ws.id, bpws.tier, ci.owner_id
+    FROM weapon_skin ws
+    INNER JOIN blueprint_weapon_skin bpws ON bpws.id = ws.blueprint_id
+    INNER JOIN weapons w ON w.id = ws.equipped_on
+    INNER JOIN collection_items ci ON ci.item_id = w.id
+    )
+INSERT
+INTO collection_items (token_id, item_type, item_id, tier, owner_id)
+SELECT NEXTVAL('collection_general'),
+       wps_skin.item_type::ITEM_TYPE,
+       wps_skin.id,
+       wps_skin.tier,
+       wps_skin.owner_id
+FROM wps_skin;
+
+ALTER TABLE mechs
+    ALTER COLUMN chassis_skin_id SET NOT NULL;
+
+ALTER TABLE weapons
+    ALTER COLUMN equipped_weapon_skin_id SET NOT NULL;

@@ -456,7 +456,6 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
-		Label:                 mechBlueprint.Label,
 		WeaponHardpoints:      mechBlueprint.WeaponHardpoints,
 		UtilitySlots:          mechBlueprint.UtilitySlots,
 		Speed:                 mechBlueprint.Speed,
@@ -497,7 +496,6 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 func IsMechColumn(col string) bool {
 	switch col {
 	case boiler.MechColumns.ID,
-		boiler.MechColumns.Label,
 		boiler.MechColumns.WeaponHardpoints,
 		boiler.MechColumns.UtilitySlots,
 		boiler.MechColumns.Speed,
@@ -740,18 +738,19 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	}
 
 	// Search
-	if opts.Search != "" {
-		xSearch := ParseQueryText(opts.Search, true)
-		if len(xSearch) > 0 {
-			queryMods = append(queryMods,
-				qm.And(fmt.Sprintf(
-					"(to_tsvector('english', %s) @@ to_tsquery(?))",
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
-				),
-					xSearch,
-				))
-		}
-	}
+	// TODO: vinnie fix me (label now on blueprint)
+	//if opts.Search != "" {
+	//	xSearch := ParseQueryText(opts.Search, true)
+	//	if len(xSearch) > 0 {
+	//		queryMods = append(queryMods,
+	//			qm.And(fmt.Sprintf(
+	//				"(to_tsvector('english', %s) @@ to_tsquery(?))",
+	//				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+	//			),
+	//				xSearch,
+	//			))
+	//	}
+	//}
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -783,7 +782,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
@@ -825,15 +824,17 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)
 	} else if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
-	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
-		if opts.SortBy == "alphabetical" {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label, opts.SortDir)))
-		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort("cms.tier", opts.SortDir))
-		}
-	} else {
-		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label)))
 	}
+	// TODO: vinnie fix me (label now on blueprint)
+	//else if opts.SortBy != "" && opts.SortDir.IsValid() {
+	//	if opts.SortBy == "alphabetical" {
+	//		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label, opts.SortDir)))
+	//	} else if opts.SortBy == "rarity" {
+	//		queryMods = append(queryMods, GenerateTierSort("cms.tier", opts.SortDir))
+	//	}
+	//} else {
+	//	queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label)))
+	//}
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -933,7 +934,7 @@ func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Equi
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.Hash,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf(
@@ -947,7 +948,7 @@ func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Equi
 		&eid.ID,
 		&eid.Hash,
 		&eid.Name,
-		&eid.Label,
+		//&eid.Label, // TODO: vinnie fix me (label now on blueprint)
 	)
 	if err != nil {
 		return nil, err

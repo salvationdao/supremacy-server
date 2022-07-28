@@ -238,13 +238,18 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
+		warMachine, err := bq.Mech(
+			qm.Load(boiler.MechRels.BattleQueueNotifications),
+			qm.Load(boiler.MechRels.Blueprint),
+			).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
 		}
-
-		wmName := fmt.Sprintf("(%s)", warMachine.Label)
+		wmName := ""
+		if warMachine.R != nil && warMachine.R.Blueprint != nil {
+			wmName = fmt.Sprintf("(%s)", warMachine.R.Blueprint.Label)
+		}
 		if warMachine.Name != "" {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}

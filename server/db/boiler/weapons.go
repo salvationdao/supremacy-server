@@ -26,7 +26,6 @@ import (
 type Weapon struct {
 	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BrandID               null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug                  string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Damage                int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
 	DeletedAt             null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -37,7 +36,6 @@ type Weapon struct {
 	DefaultDamageType     string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
 	GenesisTokenID        null.Int64          `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64          `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	WeaponType            string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	DamageFalloff         null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
 	Radius                null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
@@ -50,7 +48,7 @@ type Weapon struct {
 	MaxAmmo               null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
 	LockedToMech          bool                `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 	WeaponModelID         null.String         `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id,omitempty" toml:"weapon_model_id" yaml:"weapon_model_id,omitempty"`
-	EquippedWeaponSkinID  null.String         `boiler:"equipped_weapon_skin_id" boil:"equipped_weapon_skin_id" json:"equipped_weapon_skin_id,omitempty" toml:"equipped_weapon_skin_id" yaml:"equipped_weapon_skin_id,omitempty"`
+	EquippedWeaponSkinID  string              `boiler:"equipped_weapon_skin_id" boil:"equipped_weapon_skin_id" json:"equipped_weapon_skin_id" toml:"equipped_weapon_skin_id" yaml:"equipped_weapon_skin_id"`
 
 	R *weaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -59,7 +57,6 @@ type Weapon struct {
 var WeaponColumns = struct {
 	ID                    string
 	BrandID               string
-	Label                 string
 	Slug                  string
 	Damage                string
 	DeletedAt             string
@@ -70,7 +67,6 @@ var WeaponColumns = struct {
 	DefaultDamageType     string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	WeaponType            string
 	DamageFalloff         string
 	DamageFalloffRate     string
 	Radius                string
@@ -87,7 +83,6 @@ var WeaponColumns = struct {
 }{
 	ID:                    "id",
 	BrandID:               "brand_id",
-	Label:                 "label",
 	Slug:                  "slug",
 	Damage:                "damage",
 	DeletedAt:             "deleted_at",
@@ -98,7 +93,6 @@ var WeaponColumns = struct {
 	DefaultDamageType:     "default_damage_type",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
-	WeaponType:            "weapon_type",
 	DamageFalloff:         "damage_falloff",
 	DamageFalloffRate:     "damage_falloff_rate",
 	Radius:                "radius",
@@ -117,7 +111,6 @@ var WeaponColumns = struct {
 var WeaponTableColumns = struct {
 	ID                    string
 	BrandID               string
-	Label                 string
 	Slug                  string
 	Damage                string
 	DeletedAt             string
@@ -128,7 +121,6 @@ var WeaponTableColumns = struct {
 	DefaultDamageType     string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	WeaponType            string
 	DamageFalloff         string
 	DamageFalloffRate     string
 	Radius                string
@@ -145,7 +137,6 @@ var WeaponTableColumns = struct {
 }{
 	ID:                    "weapons.id",
 	BrandID:               "weapons.brand_id",
-	Label:                 "weapons.label",
 	Slug:                  "weapons.slug",
 	Damage:                "weapons.damage",
 	DeletedAt:             "weapons.deleted_at",
@@ -156,7 +147,6 @@ var WeaponTableColumns = struct {
 	DefaultDamageType:     "weapons.default_damage_type",
 	GenesisTokenID:        "weapons.genesis_token_id",
 	LimitedReleaseTokenID: "weapons.limited_release_token_id",
-	WeaponType:            "weapons.weapon_type",
 	DamageFalloff:         "weapons.damage_falloff",
 	DamageFalloffRate:     "weapons.damage_falloff_rate",
 	Radius:                "weapons.radius",
@@ -177,7 +167,6 @@ var WeaponTableColumns = struct {
 var WeaponWhere = struct {
 	ID                    whereHelperstring
 	BrandID               whereHelpernull_String
-	Label                 whereHelperstring
 	Slug                  whereHelperstring
 	Damage                whereHelperint
 	DeletedAt             whereHelpernull_Time
@@ -188,7 +177,6 @@ var WeaponWhere = struct {
 	DefaultDamageType     whereHelperstring
 	GenesisTokenID        whereHelpernull_Int64
 	LimitedReleaseTokenID whereHelpernull_Int64
-	WeaponType            whereHelperstring
 	DamageFalloff         whereHelpernull_Int
 	DamageFalloffRate     whereHelpernull_Int
 	Radius                whereHelpernull_Int
@@ -201,11 +189,10 @@ var WeaponWhere = struct {
 	MaxAmmo               whereHelpernull_Int
 	LockedToMech          whereHelperbool
 	WeaponModelID         whereHelpernull_String
-	EquippedWeaponSkinID  whereHelpernull_String
+	EquippedWeaponSkinID  whereHelperstring
 }{
 	ID:                    whereHelperstring{field: "\"weapons\".\"id\""},
 	BrandID:               whereHelpernull_String{field: "\"weapons\".\"brand_id\""},
-	Label:                 whereHelperstring{field: "\"weapons\".\"label\""},
 	Slug:                  whereHelperstring{field: "\"weapons\".\"slug\""},
 	Damage:                whereHelperint{field: "\"weapons\".\"damage\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"weapons\".\"deleted_at\""},
@@ -216,7 +203,6 @@ var WeaponWhere = struct {
 	DefaultDamageType:     whereHelperstring{field: "\"weapons\".\"default_damage_type\""},
 	GenesisTokenID:        whereHelpernull_Int64{field: "\"weapons\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"weapons\".\"limited_release_token_id\""},
-	WeaponType:            whereHelperstring{field: "\"weapons\".\"weapon_type\""},
 	DamageFalloff:         whereHelpernull_Int{field: "\"weapons\".\"damage_falloff\""},
 	DamageFalloffRate:     whereHelpernull_Int{field: "\"weapons\".\"damage_falloff_rate\""},
 	Radius:                whereHelpernull_Int{field: "\"weapons\".\"radius\""},
@@ -229,7 +215,7 @@ var WeaponWhere = struct {
 	MaxAmmo:               whereHelpernull_Int{field: "\"weapons\".\"max_ammo\""},
 	LockedToMech:          whereHelperbool{field: "\"weapons\".\"locked_to_mech\""},
 	WeaponModelID:         whereHelpernull_String{field: "\"weapons\".\"weapon_model_id\""},
-	EquippedWeaponSkinID:  whereHelpernull_String{field: "\"weapons\".\"equipped_weapon_skin_id\""},
+	EquippedWeaponSkinID:  whereHelperstring{field: "\"weapons\".\"equipped_weapon_skin_id\""},
 }
 
 // WeaponRels is where relationship names are stored.
@@ -274,9 +260,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "weapon_model_id", "equipped_weapon_skin_id"}
-	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "weapon_model_id", "equipped_weapon_skin_id"}
+	weaponAllColumns            = []string{"id", "brand_id", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "weapon_model_id", "equipped_weapon_skin_id"}
+	weaponColumnsWithoutDefault = []string{"slug", "damage", "blueprint_id", "equipped_weapon_skin_id"}
+	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "weapon_model_id"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )
@@ -994,9 +980,7 @@ func (weaponL) LoadEquippedWeaponSkin(e boil.Executor, singular bool, maybeWeapo
 		if object.R == nil {
 			object.R = &weaponR{}
 		}
-		if !queries.IsNil(object.EquippedWeaponSkinID) {
-			args = append(args, object.EquippedWeaponSkinID)
-		}
+		args = append(args, object.EquippedWeaponSkinID)
 
 	} else {
 	Outer:
@@ -1006,14 +990,12 @@ func (weaponL) LoadEquippedWeaponSkin(e boil.Executor, singular bool, maybeWeapo
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.EquippedWeaponSkinID) {
+				if a == obj.EquippedWeaponSkinID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.EquippedWeaponSkinID) {
-				args = append(args, obj.EquippedWeaponSkinID)
-			}
+			args = append(args, obj.EquippedWeaponSkinID)
 
 		}
 	}
@@ -1071,7 +1053,7 @@ func (weaponL) LoadEquippedWeaponSkin(e boil.Executor, singular bool, maybeWeapo
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.EquippedWeaponSkinID, foreign.ID) {
+			if local.EquippedWeaponSkinID == foreign.ID {
 				local.R.EquippedWeaponSkin = foreign
 				if foreign.R == nil {
 					foreign.R = &weaponSkinR{}
@@ -1722,7 +1704,7 @@ func (o *Weapon) SetEquippedWeaponSkin(exec boil.Executor, insert bool, related 
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.EquippedWeaponSkinID, related.ID)
+	o.EquippedWeaponSkinID = related.ID
 	if o.R == nil {
 		o.R = &weaponR{
 			EquippedWeaponSkin: related,
@@ -1739,39 +1721,6 @@ func (o *Weapon) SetEquippedWeaponSkin(exec boil.Executor, insert bool, related 
 		related.R.EquippedWeaponSkinWeapons = append(related.R.EquippedWeaponSkinWeapons, o)
 	}
 
-	return nil
-}
-
-// RemoveEquippedWeaponSkin relationship.
-// Sets o.R.EquippedWeaponSkin to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Weapon) RemoveEquippedWeaponSkin(exec boil.Executor, related *WeaponSkin) error {
-	var err error
-
-	queries.SetScanner(&o.EquippedWeaponSkinID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("equipped_weapon_skin_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.EquippedWeaponSkin = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.EquippedWeaponSkinWeapons {
-		if queries.Equal(o.EquippedWeaponSkinID, ri.EquippedWeaponSkinID) {
-			continue
-		}
-
-		ln := len(related.R.EquippedWeaponSkinWeapons)
-		if ln > 1 && i < ln-1 {
-			related.R.EquippedWeaponSkinWeapons[i] = related.R.EquippedWeaponSkinWeapons[ln-1]
-		}
-		related.R.EquippedWeaponSkinWeapons = related.R.EquippedWeaponSkinWeapons[:ln-1]
-		break
-	}
 	return nil
 }
 

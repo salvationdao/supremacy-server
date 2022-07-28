@@ -365,14 +365,15 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 
 		// join skin
-		err = AttachMechSkinToMech(tx, ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
-		if err != nil {
-			gamelog.L.Error().Err(err).
-				Str("ownerID.String()", ownerID.String()).
-				Str("mechs[0].ID", mechs[0].ID).
-				Str("mechSkins[0].ID", mechSkins[0].ID).
-				Msg("failed to join skin to mech")
-		}
+		// TODO: vinnie fix me (skins are not not null on mechs, so skin needs to be inserted at the same time as mech)
+		//err = AttachMechSkinToMech(tx, ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
+		//if err != nil {
+		//	gamelog.L.Error().Err(err).
+		//		Str("ownerID.String()", ownerID.String()).
+		//		Str("mechs[0].ID", mechs[0].ID).
+		//		Str("mechSkins[0].ID", mechSkins[0].ID).
+		//		Msg("failed to join skin to mech")
+		//}
 		// join animations
 		// TODO: no animations yet
 		// join weapons

@@ -24,14 +24,14 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 
 		asset := &XsynAsset{
-			ID:               i.ID,
-			Name:             i.Label,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			Data:             asJson,
-			AssetType:        null.StringFrom(i.ItemType),
+			ID:             i.ID,
+			Name:           i.Label,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+			AssetType:      null.StringFrom(i.ItemType),
 		}
 
 		if isGenesisOrLimited && i.ChassisSkin != nil {
@@ -181,8 +181,8 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			Data:           asJson,
 			AssetType:      null.StringFrom(i.ItemType),
 
-			Name:             i.Label,
-			Attributes:       attributes,
+			Name:       i.Label,
+			Attributes: attributes,
 		})
 	}
 
@@ -247,17 +247,17 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:               i.ID,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Tier:             i.Tier,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			Data:             asJson,
-			Name:             i.Label,
-			Attributes:       attributes,
-			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+			Name:           i.Label,
+			Attributes:     attributes,
+			AssetType:      null.StringFrom(i.ItemType),
+			XsynLocked:     i.XsynLocked,
 		})
 	}
 
@@ -332,16 +332,16 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:               i.ID,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			AssetType:        null.StringFrom(i.ItemType),
-			Data:             asJson,
-			Name:             i.Label,
-			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			AssetType:      null.StringFrom(i.ItemType),
+			Data:           asJson,
+			Name:           i.Label,
+			Attributes:     attributes,
+			XsynLocked:     i.XsynLocked,
 		})
 
 	}
@@ -468,45 +468,43 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		asset := &XsynAsset{
-			ID:               i.ID,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			AssetType:        null.StringFrom(i.ItemType),
-			Data:             asJson,
-			Name:             i.Label,
-			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			AssetType:      null.StringFrom(i.ItemType),
+			Data:           asJson,
+			Name:           i.Label,
+			Attributes:     attributes,
+			XsynLocked:     i.XsynLocked,
 		}
 
-		if i.EquippedWeaponSkinID.Valid {
-			if i.WeaponSkin == nil {
-				i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID.String)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID.String).Msg("failed to get weapon skin item")
-					continue
-				}
+		if i.WeaponSkin == nil {
+			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
+				continue
 			}
-
-			//asset.ImageURL = i.WeaponSkin.ImageURL
-			//asset.BackgroundColor = i.WeaponSkin.BackgroundColor
-			//asset.AnimationURL = i.WeaponSkin.AnimationURL
-			//asset.YoutubeURL = i.WeaponSkin.YoutubeURL
-			//asset.AvatarURL = i.WeaponSkin.AvatarURL
-			//asset.CardAnimationURL = i.WeaponSkin.CardAnimationURL
-
-			asset.Attributes = append(asset.Attributes,
-				&Attribute{
-					TraitType: "Submodel",
-					Value:     i.WeaponSkin.Label,
-					AssetHash: i.WeaponSkin.Hash,
-				},
-				&Attribute{
-					TraitType: "Rarity",
-					Value:     i.WeaponSkin.Tier,
-				})
 		}
+
+		//asset.ImageURL = i.WeaponSkin.ImageURL
+		//asset.BackgroundColor = i.WeaponSkin.BackgroundColor
+		//asset.AnimationURL = i.WeaponSkin.AnimationURL
+		//asset.YoutubeURL = i.WeaponSkin.YoutubeURL
+		//asset.AvatarURL = i.WeaponSkin.AvatarURL
+		//asset.CardAnimationURL = i.WeaponSkin.CardAnimationURL
+
+		asset.Attributes = append(asset.Attributes,
+			&Attribute{
+				TraitType: "Submodel",
+				Value:     i.WeaponSkin.Label,
+				AssetHash: i.WeaponSkin.Hash,
+			},
+			&Attribute{
+				TraitType: "Rarity",
+				Value:     i.WeaponSkin.Tier,
+			})
 
 		err = attributes.AreValid()
 		if err != nil {
@@ -572,17 +570,17 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:               i.ID,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Tier:             i.Tier,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			Data:             asJson,
-			Name:             i.Label,
-			Attributes:       attributes,
-			AssetType:        null.StringFrom(i.ItemType),
-			XsynLocked:       i.XsynLocked,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+			Name:           i.Label,
+			Attributes:     attributes,
+			AssetType:      null.StringFrom(i.ItemType),
+			XsynLocked:     i.XsynLocked,
 		})
 	}
 
@@ -642,16 +640,16 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:               i.ID,
-			CollectionSlug:   i.CollectionSlug,
-			TokenID:          i.TokenID,
-			Hash:             i.Hash,
-			OwnerID:          i.OwnerID,
-			AssetType:        null.StringFrom(i.ItemType),
-			Data:             asJson,
-			Name:             i.Label,
-			Attributes:       attributes,
-			XsynLocked:       i.XsynLocked,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			AssetType:      null.StringFrom(i.ItemType),
+			Data:           asJson,
+			Name:           i.Label,
+			Attributes:     attributes,
+			XsynLocked:     i.XsynLocked,
 		})
 	}
 
@@ -685,15 +683,15 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	}
 
 	asset := &XsynAsset{
-		ID:               mysteryCrate.ID,
-		CollectionSlug:   mysteryCrate.CollectionSlug,
-		TokenID:          mysteryCrate.TokenID,
-		Data:             asJson,
-		Attributes:       attributes,
-		Hash:             mysteryCrate.Hash,
-		OwnerID:          mysteryCrate.OwnerID,
-		AssetType:        null.StringFrom(mysteryCrate.ItemType),
-		Name:             mysteryCrate.Label,
+		ID:             mysteryCrate.ID,
+		CollectionSlug: mysteryCrate.CollectionSlug,
+		TokenID:        mysteryCrate.TokenID,
+		Data:           asJson,
+		Attributes:     attributes,
+		Hash:           mysteryCrate.Hash,
+		OwnerID:        mysteryCrate.OwnerID,
+		AssetType:      null.StringFrom(mysteryCrate.ItemType),
+		Name:           mysteryCrate.Label,
 	}
 
 	return asset

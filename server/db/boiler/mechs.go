@@ -24,7 +24,6 @@ import (
 // Mech is an object representing the database table.
 type Mech struct {
 	ID                    string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	WeaponHardpoints      int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
 	UtilitySlots          int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
 	Speed                 int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
@@ -39,7 +38,7 @@ type Mech struct {
 	GenesisTokenID        null.Int64  `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	PowerCoreSize         string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	ChassisSkinID         null.String `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
+	ChassisSkinID         string      `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id" toml:"chassis_skin_id" yaml:"chassis_skin_id"`
 	PowerCoreID           null.String `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
 	IntroAnimationID      null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
 	OutroAnimationID      null.String `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
@@ -50,7 +49,6 @@ type Mech struct {
 
 var MechColumns = struct {
 	ID                    string
-	Label                 string
 	WeaponHardpoints      string
 	UtilitySlots          string
 	Speed                 string
@@ -71,7 +69,6 @@ var MechColumns = struct {
 	OutroAnimationID      string
 }{
 	ID:                    "id",
-	Label:                 "label",
 	WeaponHardpoints:      "weapon_hardpoints",
 	UtilitySlots:          "utility_slots",
 	Speed:                 "speed",
@@ -94,7 +91,6 @@ var MechColumns = struct {
 
 var MechTableColumns = struct {
 	ID                    string
-	Label                 string
 	WeaponHardpoints      string
 	UtilitySlots          string
 	Speed                 string
@@ -115,7 +111,6 @@ var MechTableColumns = struct {
 	OutroAnimationID      string
 }{
 	ID:                    "mechs.id",
-	Label:                 "mechs.label",
 	WeaponHardpoints:      "mechs.weapon_hardpoints",
 	UtilitySlots:          "mechs.utility_slots",
 	Speed:                 "mechs.speed",
@@ -140,7 +135,6 @@ var MechTableColumns = struct {
 
 var MechWhere = struct {
 	ID                    whereHelperstring
-	Label                 whereHelperstring
 	WeaponHardpoints      whereHelperint
 	UtilitySlots          whereHelperint
 	Speed                 whereHelperint
@@ -155,13 +149,12 @@ var MechWhere = struct {
 	GenesisTokenID        whereHelpernull_Int64
 	LimitedReleaseTokenID whereHelpernull_Int64
 	PowerCoreSize         whereHelperstring
-	ChassisSkinID         whereHelpernull_String
+	ChassisSkinID         whereHelperstring
 	PowerCoreID           whereHelpernull_String
 	IntroAnimationID      whereHelpernull_String
 	OutroAnimationID      whereHelpernull_String
 }{
 	ID:                    whereHelperstring{field: "\"mechs\".\"id\""},
-	Label:                 whereHelperstring{field: "\"mechs\".\"label\""},
 	WeaponHardpoints:      whereHelperint{field: "\"mechs\".\"weapon_hardpoints\""},
 	UtilitySlots:          whereHelperint{field: "\"mechs\".\"utility_slots\""},
 	Speed:                 whereHelperint{field: "\"mechs\".\"speed\""},
@@ -176,7 +169,7 @@ var MechWhere = struct {
 	GenesisTokenID:        whereHelpernull_Int64{field: "\"mechs\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"mechs\".\"limited_release_token_id\""},
 	PowerCoreSize:         whereHelperstring{field: "\"mechs\".\"power_core_size\""},
-	ChassisSkinID:         whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
+	ChassisSkinID:         whereHelperstring{field: "\"mechs\".\"chassis_skin_id\""},
 	PowerCoreID:           whereHelpernull_String{field: "\"mechs\".\"power_core_id\""},
 	IntroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
 	OutroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"outro_animation_id\""},
@@ -284,9 +277,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
-	mechColumnsWithoutDefault = []string{"label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechAllColumns            = []string{"id", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechColumnsWithoutDefault = []string{"weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "chassis_skin_id"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "power_core_id", "intro_animation_id", "outro_animation_id"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
@@ -1195,9 +1188,7 @@ func (mechL) LoadChassisSkin(e boil.Executor, singular bool, maybeMech interface
 		if object.R == nil {
 			object.R = &mechR{}
 		}
-		if !queries.IsNil(object.ChassisSkinID) {
-			args = append(args, object.ChassisSkinID)
-		}
+		args = append(args, object.ChassisSkinID)
 
 	} else {
 	Outer:
@@ -1207,14 +1198,12 @@ func (mechL) LoadChassisSkin(e boil.Executor, singular bool, maybeMech interface
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ChassisSkinID) {
+				if a == obj.ChassisSkinID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.ChassisSkinID) {
-				args = append(args, obj.ChassisSkinID)
-			}
+			args = append(args, obj.ChassisSkinID)
 
 		}
 	}
@@ -1272,7 +1261,7 @@ func (mechL) LoadChassisSkin(e boil.Executor, singular bool, maybeMech interface
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.ChassisSkinID, foreign.ID) {
+			if local.ChassisSkinID == foreign.ID {
 				local.R.ChassisSkin = foreign
 				if foreign.R == nil {
 					foreign.R = &mechSkinR{}
@@ -3952,7 +3941,7 @@ func (o *Mech) SetChassisSkin(exec boil.Executor, insert bool, related *MechSkin
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.ChassisSkinID, related.ID)
+	o.ChassisSkinID = related.ID
 	if o.R == nil {
 		o.R = &mechR{
 			ChassisSkin: related,
@@ -3969,39 +3958,6 @@ func (o *Mech) SetChassisSkin(exec boil.Executor, insert bool, related *MechSkin
 		related.R.ChassisSkinMechs = append(related.R.ChassisSkinMechs, o)
 	}
 
-	return nil
-}
-
-// RemoveChassisSkin relationship.
-// Sets o.R.ChassisSkin to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Mech) RemoveChassisSkin(exec boil.Executor, related *MechSkin) error {
-	var err error
-
-	queries.SetScanner(&o.ChassisSkinID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("chassis_skin_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.ChassisSkin = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.ChassisSkinMechs {
-		if queries.Equal(o.ChassisSkinID, ri.ChassisSkinID) {
-			continue
-		}
-
-		ln := len(related.R.ChassisSkinMechs)
-		if ln > 1 && i < ln-1 {
-			related.R.ChassisSkinMechs[i] = related.R.ChassisSkinMechs[ln-1]
-		}
-		related.R.ChassisSkinMechs = related.R.ChassisSkinMechs[:ln-1]
-		break
-	}
 	return nil
 }
 
