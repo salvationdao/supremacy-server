@@ -160,12 +160,15 @@ type GenOneTimeTokenResp struct {
 	ExpiredAt time.Time `json:"expired_at"`
 }
 
+// GenOneTimeToken generates a token to create a QR code to log a player into the companion app
 func (pp *XsynXrpcClient) GenOneTimeToken(userID string) (*GenOneTimeTokenResp, error) {
+	l := gamelog.L.With().Str("func", "GenOneTimeToken").Str("userID", userID).Logger()
+
 	resp := &GenOneTimeTokenResp{}
 	err := pp.XrpcClient.Call("S.GenOneTimeToken", GenOneTimeTokenReq{pp.ApiKey, userID}, resp)
 
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "GenOneTimeToken").Msg("rpc error")
+		l.Error().Err(err).Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil

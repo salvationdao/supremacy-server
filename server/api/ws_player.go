@@ -1398,6 +1398,7 @@ func TrimUsername(username string) string {
 
 const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
 
+// GenOneTimeToken Generates a token used to create a QR code to log a player into the supremacy companion app
 func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
 	if err != nil {
