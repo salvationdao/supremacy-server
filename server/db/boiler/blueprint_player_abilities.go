@@ -32,6 +32,7 @@ type BlueprintPlayerAbility struct {
 	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	RarityWeight        int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
+	InventoryLimit      int       `boiler:"inventory_limit" boil:"inventory_limit" json:"inventory_limit" toml:"inventory_limit" yaml:"inventory_limit"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,6 +49,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	LocationSelectType  string
 	CreatedAt           string
 	RarityWeight        string
+	InventoryLimit      string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -59,6 +61,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	LocationSelectType:  "location_select_type",
 	CreatedAt:           "created_at",
 	RarityWeight:        "rarity_weight",
+	InventoryLimit:      "inventory_limit",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -72,6 +75,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	LocationSelectType  string
 	CreatedAt           string
 	RarityWeight        string
+	InventoryLimit      string
 }{
 	ID:                  "blueprint_player_abilities.id",
 	GameClientAbilityID: "blueprint_player_abilities.game_client_ability_id",
@@ -83,6 +87,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	LocationSelectType:  "blueprint_player_abilities.location_select_type",
 	CreatedAt:           "blueprint_player_abilities.created_at",
 	RarityWeight:        "blueprint_player_abilities.rarity_weight",
+	InventoryLimit:      "blueprint_player_abilities.inventory_limit",
 }
 
 // Generated where
@@ -98,6 +103,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	LocationSelectType  whereHelperstring
 	CreatedAt           whereHelpertime_Time
 	RarityWeight        whereHelperint
+	InventoryLimit      whereHelperint
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -109,6 +115,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	LocationSelectType:  whereHelperstring{field: "\"blueprint_player_abilities\".\"location_select_type\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
 	RarityWeight:        whereHelperint{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
+	InventoryLimit:      whereHelperint{field: "\"blueprint_player_abilities\".\"inventory_limit\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -138,9 +145,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )
