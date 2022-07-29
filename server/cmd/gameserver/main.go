@@ -20,7 +20,6 @@ import (
 	"server/profanities"
 	"server/sms"
 	"server/synctool"
-	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
@@ -362,12 +361,6 @@ func main() {
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
 					start = time.Now()
-					// initialise system messaging manager
-					gamelog.L.Info().Msg("Setting up system messaging manager")
-					smm := system_messages.NewSystemMessagingManager()
-					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
-
-					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 					ba := battle.NewArena(&battle.Opts{
@@ -376,7 +369,6 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
-						SystemMessagingManager:   smm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -385,7 +377,7 @@ func main() {
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, smm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -732,7 +724,6 @@ func SetupAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-	smm *system_messages.SystemMessagingManager,
 	staticSyncURL string,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
@@ -789,7 +780,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, smm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
 	if err != nil {
 		return nil, err
 	}
