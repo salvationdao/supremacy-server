@@ -112,7 +112,6 @@ type Likes struct {
 }
 
 type TextMessageMetadata struct {
-	//gid:true(read/unread)
 	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
 	Likes           *Likes       `json:"likes"`
 }
