@@ -349,6 +349,11 @@ type RepairAgentRegisterRequest struct {
 	} `json:"payload"`
 }
 
+type RepairAgentResponse struct {
+	*boiler.RepairAgent
+	RequiredStacks int `json:"required_stacks"`
+}
+
 var mechRepairAgentBucket = leakybucket.NewCollector(2, 1, true)
 
 func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -411,6 +416,8 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to abandon repair job")
 	}
 
+	requiredStacks := db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50)
+
 	// insert repair agent
 	ra := &boiler.RepairAgent{
 		RepairCaseID:  ro.RepairCaseID,
@@ -432,7 +439,7 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		}
 	}()
 
-	reply(ra)
+	reply(&RepairAgentResponse{ra, requiredStacks})
 
 	return nil
 }

@@ -66,6 +66,7 @@ const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ba
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
+const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
