@@ -468,7 +468,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if collectionItem.ItemType == boiler.ItemTypeMysteryCrate {
 		crate, err := boiler.MysteryCrates(
 			boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
-			).One(gamedb.StdConn)
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
@@ -1476,7 +1476,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			})
 		}
 
-		err = db.GiveMechAvatar(user.ID, ci.ItemID)
+		err = db.GiveMechAvatar(gamedb.StdConn, user.ID, ci.ItemID)
 		if err != nil {
 			l.Error().Err(err).Msg("Failed to give player mech avatar")
 		}

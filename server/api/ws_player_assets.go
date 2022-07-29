@@ -990,7 +990,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
-		err = db.GiveMechAvatar(mech.OwnerID, mech.ID)
+		err = db.GiveMechAvatar(tx, mech.OwnerID, mech.ID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
