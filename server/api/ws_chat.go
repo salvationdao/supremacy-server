@@ -18,6 +18,7 @@ import (
 
 	"github.com/gofrs/uuid"
 
+	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
@@ -274,6 +275,7 @@ func NewChatController(api *API) *ChatController {
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
+	api.SecureUserCommand(HubKeyChatBanPlayer, chatHub.ChatBanPlayerHandler)
 
 	go api.MessageBroadcaster()
 
@@ -806,4 +808,97 @@ func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 	case server.ZaibatsuFactionID:
 		api.ZaibatsuChat.AddMessage(msg)
 	}
+}
+
+type ChatBanPlayerRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		PlayerID string `json:"player_id"`
+		Reason   string `json:"reason"`
+	} `json:"payload"`
+}
+
+const HubKeyChatBanPlayer = "CHAT:BAN:PLAYER"
+
+func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ChatBanUserHandler").Str("user_id", user.ID).Logger()
+
+	req := &ChatBanPlayerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+	l = l.With().Interface("payload", req).Logger()
+
+	hasPermission, err := boiler.PlayersFeatures(
+		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
+		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameCHAT_BAN),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to check if user has permission to execute chat ban")
+		return terror.Error(err)
+	}
+
+	if !hasPermission {
+		return terror.Error(terror.ErrUnauthorised)
+	}
+
+	if req.Payload.PlayerID == "" {
+		l.Warn().Msg("player id was not given when attempting to chat ban")
+		return terror.Error(terror.ErrInvalidInput, "Player must be specified.")
+	}
+
+	if req.Payload.Reason == "" {
+		return terror.Error(terror.ErrInvalidInput, "A reason must be provided.")
+	}
+
+	if req.Payload.PlayerID == user.ID {
+		return terror.Error(terror.ErrForbidden, "You cannot ban yourself.")
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		l.Error().Err(err).Msg("could not find player associated with player ID")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
+	}
+
+	isAlreadyBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(req.Payload.PlayerID),
+		boiler.PlayerBanWhere.BanSendChat.EQ(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err == nil {
+		l.Warn().Interface("existingPlayerBan", isAlreadyBanned).Msg("player is already chat banned, skipping")
+		hours := int(time.Until(isAlreadyBanned.EndAt).Hours())
+		expiresIn := fmt.Sprintf("%d hour(s)", hours)
+		if hours < 1 {
+			expiresIn = fmt.Sprintf("%d minute(s)", int(time.Until(isAlreadyBanned.EndAt).Minutes()))
+		}
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("Player %s is already chat banned. Reason: '%s'. Expires in: %s.", player.Username.String, isAlreadyBanned.Reason, expiresIn))
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("failed to check if player is already chat banned")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
+	}
+
+	oneDay := time.Duration(time.Hour * 24) // one day
+	pb := &boiler.PlayerBan{
+		BanFrom:        boiler.BanFromTypeADMIN,
+		BannedPlayerID: req.Payload.PlayerID,
+		BannedByID:     user.ID,
+		Reason:         req.Payload.Reason,
+		BannedAt:       time.Now(),
+		EndAt:          time.Now().Add(oneDay),
+		BanSendChat:    true,
+	}
+	l = l.With().Interface("playerBan", pb).Logger()
+	err = pb.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("failed to create new player_ban entry in db")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again or contact")
+	}
+
+	reply(true)
+
+	return nil
 }
