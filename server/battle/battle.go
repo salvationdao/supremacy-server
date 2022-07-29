@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
@@ -71,7 +72,7 @@ type Battle struct {
 	sync.RWMutex
 }
 
-func (btl *Battle) abilities() *AbilitiesSystem {
+func (btl *Battle) AbilitySystem() *AbilitiesSystem {
 	btl.RLock()
 	defer btl.RUnlock()
 	return btl._abilities
@@ -330,10 +331,10 @@ func (btl *Battle) start() {
 		//TODO: something more dramatic
 	}
 
-	// set up the abilities for current battle
+	// set up the AbilitySystem() for current battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
@@ -490,19 +491,19 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 func (btl *Battle) endAbilities() {
 	defer func() {
 		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle abilities end!", r)
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the battle AbilitySystem() end!", r)
 		}
 	}()
 
-	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
+	gamelog.L.Info().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
 
-	if btl.abilities == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have abilities!")
+	if btl.AbilitySystem() == nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
 		return
 	}
 
-	btl.abilities().End()
-	btl.abilities().storeBattle(nil)
+	btl.AbilitySystem().End()
+	btl.AbilitySystem().storeBattle(nil)
 	btl.storeAbilities(nil)
 }
 func (btl *Battle) endSpoils() {
@@ -659,120 +660,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			MechID:    mechId,
 			FactionID: factionId,
 		}
-
-		contract, err := boiler.BattleContracts(boiler.BattleContractWhere.BattleID.EQ(
-			null.StringFrom(btl.BattleID)),
-			boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
-			boiler.BattleContractWhere.Cancelled.EQ(null.BoolFrom(false)),
-		).One(gamedb.StdConn)
-
-		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			if mws[i].OwnerID.String() != server.RedMountainPlayerID &&
-				mws[i].OwnerID.String() != server.BostonCyberneticsPlayerID &&
-				mws[i].OwnerID.String() != server.ZaibatsuPlayerID {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("no contract in database")
-			}
-			continue
-		} else if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", wm.ID).
-				Err(err).
-				Msg("failed to retrieve contract")
-			continue
-		}
-
-		contract.DidWin = null.BoolFrom(true)
-		factionAccountID, ok := server.FactionUsers[factionId.String()]
-		if !ok {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("Battle ID", btl.ID).
-				Str("faction ID", wm.FactionID).
-				Msg("unable to get hard coded syndicate player ID from faction ID")
-		} else {
-			//do contract payout for winning mech
-			gamelog.L.Info().
-				Str("Battle ID", btl.ID).
-				Str("Faction ID", wm.FactionID).
-				Str("Faction Account ID", factionAccountID).
-				Str("Player ID", wm.OwnedByID).
-				Str("Contract ID", contract.ID).
-				Str("Amount", contract.ContractReward.StringFixed(0)).
-				Msg("paying out mech winnings from contract reward")
-
-			factID := uuid.Must(uuid.FromString(factionAccountID))
-			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
-
-			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-					ToUserID:             factID,
-					Amount:               contract.ContractReward.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupBattle),
-					SubGroup:             wmwin.Hash,
-					Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
-					NotSafe:              false,
-				})
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").
-						Str("Faction ID", factionAccountID).
-						Str("Amount", contract.ContractReward.StringFixed(0)).
-						Err(err).
-						Msg("Could not transfer money from treasury into syndicate account!!")
-					continue
-				}
-				gamelog.L.Warn().
-					Str("Faction ID", factionAccountID).
-					Str("Amount", contract.ContractReward.StringFixed(0)).
-					Str("TXID", txid).
-					Err(err).
-					Msg("Had to transfer funds to the syndicate account")
-			}
-
-			if factID.String() == contract.PlayerID {
-				continue
-			}
-
-			// pay sups
-			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           factID,
-				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
-				Amount:               contract.ContractReward.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupBattle),
-				SubGroup:             wmwin.Hash,
-				Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
-				NotSafe:              false,
-			})
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("faction ID", wm.FactionID).
-					Str("Player ID", wm.OwnedByID).
-					Err(err).
-					Msg("unable to transfer funds to winning mech owner")
-				continue
-			}
-
-			contract.PaidOut = true
-			contract.TransactionID = null.StringFrom(txid)
-			_, err = contract.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("Battle ID", btl.ID).
-					Str("faction ID", wm.FactionID).
-					Str("Player ID", wm.OwnedByID).
-					Str("TX ID", txid).
-					Err(err).
-					Msg("unable to save transaction ID on contract")
-				continue
-			}
-		}
 	}
 	err := db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
@@ -780,6 +667,41 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
+	}
+}
+
+func (btl *Battle) processWarMachineRepair() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at register mech repair cases", r)
+		}
+	}()
+	for _, wm := range btl.WarMachines {
+		wm.Lock()
+		mechID := wm.ID
+		maxHealth := wm.MaxHealth
+		health := wm.Health
+		ownerID := wm.OwnedByID
+		wm.Unlock()
+
+		go func() {
+			// skip, if player is AI
+			p, err := boiler.FindPlayer(gamedb.StdConn, ownerID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load mech owner detail")
+				return
+			}
+
+			if p.IsAi {
+				return
+			}
+
+			// register mech repair case
+			err = btl.arena.RepairSystem.RegisterMechRepairCase(mechID, maxHealth, health)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
+			}
+		}()
 	}
 }
 
@@ -1031,8 +953,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 
-	// TODO: process mech repair
-	//btl.processWarMachineRepair(payload)
+	btl.processWarMachineRepair()
 
 	btl.endMultis(endInfo)
 
@@ -1046,7 +967,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to update battle queue notifications")
 	}
 
-	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
+	// broadcast system message to mech owners
+	q, err := boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).All(gamedb.StdConn)
+	go system_messages.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
+
+	_, err = q.DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
@@ -1175,7 +1100,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}(user)
 
@@ -1185,11 +1110,12 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"game_map"`
-	WarMachines        []*WarMachine   `json:"war_machines"`
-	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
-	WarMachineLocation []byte          `json:"war_machine_location"`
-	BattleIdentifier   int             `json:"battle_identifier"`
+	GameMap            *server.GameMap  `json:"game_map"`
+	WarMachines        []*WarMachine    `json:"war_machines"`
+	SpawnedAI          []*WarMachine    `json:"spawned_ai"`
+	WarMachineLocation []byte           `json:"war_machine_location"`
+	BattleIdentifier   int              `json:"battle_identifier"`
+	AbilityDetails     []*AbilityDetail `json:"ability_details"`
 }
 
 type ViewerLiveCount struct {
@@ -1283,7 +1209,7 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 	}
 }
 
-func UpdatePayload(btl *Battle) *GameSettingsResponse {
+func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	var lt []byte
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
@@ -1292,12 +1218,28 @@ func UpdatePayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
+	// Indexes correspond to the game_client_ability_id in the db
+	abilityDetails := make([]*AbilityDetail, 20)
+	// Nuke
+	abilityDetails[1] = &AbilityDetail{
+		Radius: 5200,
+	}
+	// EMP
+	abilityDetails[12] = &AbilityDetail{
+		Radius: 10000,
+	}
+	// BLACKOUT
+	abilityDetails[16] = &AbilityDetail{
+		Radius: 20000,
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
 		WarMachineLocation: lt,
+		AbilityDetails:     abilityDetails,
 	}
 }
 
@@ -1305,7 +1247,7 @@ const HubKeyBattleAISpawned = "BATTLE:AI:SPAWNED:SUBSCRIBE"
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage("/battle", HubKeyGameSettingsUpdated, UpdatePayload(btl))
+	ws.PublishMessage("/public/game_settings", HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1459,7 +1401,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
-		ws.PublishBatchMessages("/public/mech", HubKeyWarMachineStatUpdated, wsMessages)
+		ws.PublishBatchMessages("/public/mech", wsMessages)
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1481,41 +1423,6 @@ func (btl *Battle) Tick(payload []byte) {
 func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
-
-// repair is moved to mech level
-//func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
-//	if btl.ID != dp.BattleID {
-//		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
-//		btl.arena.reset()
-//		return
-//	}
-//
-//	// get item id from hash
-//	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
-//		return
-//	}
-//
-//	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
-//	if err != nil {
-//		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
-//		return
-//	}
-//
-//	btlHistory := boiler.BattleHistory{
-//		BattleID:        btl.BattleID,
-//		WarMachineOneID: wm.ID,
-//		RelatedID:       null.NewString(dp.EventID, true),
-//		EventType:       "pickup",
-//	}
-//
-//	err = btlHistory.Insert(gamedb.StdConn, boil.Infer())
-//	if err != nil {
-//		gamelog.L.Warn().Interface("battle history", btlHistory).Msg("can't insert pickup battle history")
-//		return
-//	}
-//}
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
@@ -1663,6 +1570,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
 				}
 
+				// sent instance to system ban manager
+				go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
+
 			} else {
 				// update user kill
 				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
@@ -1694,7 +1604,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 			}
 			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), HubKeyUserStatSubscribe, us)
+				ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
 			}
 		}
 
@@ -1883,10 +1793,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: time.Now()})
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
 	}
@@ -2055,15 +1962,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
 			Weapons:   WeaponsFromServer(mech.Weapons),
 			Utility:   UtilitiesFromServer(mech.Utility),
-
-			//Abilities:  nil,
-		}
-		// update the name to be valid if not
-		if len(newWarMachine.Name) < 3 {
-			newWarMachine.Name = mech.Owner.Username
-			if newWarMachine.Name == "" {
-				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-			}
+			Stats: &Stats{
+				TotalWins:       mech.Stats.TotalWins,
+				TotalDeaths:     mech.Stats.TotalDeaths,
+				TotalKills:      mech.Stats.TotalKills,
+				BattlesSurvived: mech.Stats.BattlesSurvived,
+				TotalLosses:     mech.Stats.TotalLosses,
+			},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
@@ -2076,7 +1981,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 		// add owner username
 		if mech.Owner != nil {
-			newWarMachine.OwnerUsername = mech.Owner.Username
+			newWarMachine.OwnerUsername = fmt.Sprintf("%s#%d", mech.Owner.Username, mech.Owner.Gid)
 		}
 
 		// check model

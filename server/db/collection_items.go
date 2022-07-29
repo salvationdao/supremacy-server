@@ -2,12 +2,13 @@ package db
 
 import (
 	"fmt"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -124,12 +125,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 	return item, nil
 }
 
-func CollectionItemFromItemID(trx boil.Executor, id string) (*server.CollectionItem, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func CollectionItemFromItemID(tx boil.Executor, id string) (*server.CollectionItem, error) {
 	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -167,4 +163,22 @@ func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem 
 		AnimationURL:     ci.AnimationURL,
 		YoutubeURL:       ci.YoutubeURL,
 	}
+}
+
+func GenerateTierSort(col string, sortDir SortByDir) qm.QueryMod {
+	return qm.OrderBy(fmt.Sprintf(`(
+		CASE %s
+			WHEN 'MEGA' THEN 1
+			WHEN 'COLOSSAL' THEN 2
+			WHEN 'RARE' THEN 3
+			WHEN 'LEGENDARY' THEN 4
+			WHEN 'ELITE_LEGENDARY' THEN 5
+			WHEN 'ULTRA_RARE' THEN 6
+			WHEN 'EXOTIC' THEN 7
+			WHEN 'GUARDIAN' THEN 8
+			WHEN 'MYTHIC' THEN 9
+			WHEN 'DEUS_EX' THEN 10
+			WHEN 'TITAN' THEN 11
+		END
+	) %s NULLS LAST`, col, sortDir))
 }

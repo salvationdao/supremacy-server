@@ -7,7 +7,6 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
-	"server/gamelog"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -67,6 +66,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		(
 			CASE
 				WHEN collection_items.item_type = 'weapon' THEN COALESCE(wsc.tier, collection_items.tier)
+				WHEN collection_items.item_type = 'mech' THEN COALESCE(msc.tier, collection_items.tier)
 				ELSE collection_items.tier
 			END
 		) AS "collection_items.tier",
@@ -111,6 +111,16 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		),
+	),
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s msc ON %s = %s AND %s = ?",
+			boiler.TableNames.CollectionItems,
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels("msc", boiler.CollectionItemColumns.ItemType),
+		),
+		boiler.ItemTypeMechSkin,
 	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -453,6 +463,19 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceSaleItem1155, 
 	return output, nil
 }
 
+type MarketplaceWeaponStatFilter struct {
+	FilterStatAmmo                *WeaponStatFilterRange `json:"ammo"`
+	FilterStatDamage              *WeaponStatFilterRange `json:"damage"`
+	FilterStatDamageFalloff       *WeaponStatFilterRange `json:"damage_falloff"`
+	FilterStatDamageFalloffRate   *WeaponStatFilterRange `json:"damage_falloff_rate"`
+	FilterStatRadius              *WeaponStatFilterRange `json:"radius"`
+	FilterStatRadiusDamageFalloff *WeaponStatFilterRange `json:"radius_damage_falloff"`
+	FilterStatRateOfFire          *WeaponStatFilterRange `json:"rate_of_fire"`
+	FilterStatEnergyCosts         *WeaponStatFilterRange `json:"energy_cost"`
+	FilterStatProjectileSpeed     *WeaponStatFilterRange `json:"projectile_speed"`
+	FilterStatSpread              *WeaponStatFilterRange `json:"spread"`
+}
+
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(
 	itemType string,
@@ -462,6 +485,7 @@ func MarketplaceItemSaleList(
 	rarities []string,
 	saleTypes []string,
 	weaponTypes []string,
+	weaponStats *MarketplaceWeaponStatFilter,
 	ownedBy []string,
 	sold bool,
 	minPrice decimal.NullDecimal,
@@ -493,7 +517,7 @@ func MarketplaceItemSaleList(
 			vals = append(vals, v)
 		}
 		queryMods = append(queryMods, qm.Expr(
-			boiler.CollectionItemWhere.Tier.IN(rarities),
+			qm.Or2(qm.WhereIn(qm.Rels("msc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
 			qm.Or2(qm.WhereIn(qm.Rels("wsc", boiler.CollectionItemColumns.Tier)+" IN ?", vals...)),
 		))
 	}
@@ -532,6 +556,38 @@ func MarketplaceItemSaleList(
 	}
 	if len(weaponTypes) > 0 {
 		queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
+	}
+	if weaponStats != nil {
+		if weaponStats.FilterStatAmmo != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
+		}
+		if weaponStats.FilterStatDamage != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, weaponStats.FilterStatDamage)...)
+		}
+		if weaponStats.FilterStatDamageFalloff != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, weaponStats.FilterStatDamageFalloff)...)
+		}
+		if weaponStats.FilterStatDamageFalloffRate != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, weaponStats.FilterStatDamageFalloffRate)...)
+		}
+		if weaponStats.FilterStatRadius != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, weaponStats.FilterStatRadius)...)
+		}
+		if weaponStats.FilterStatRadiusDamageFalloff != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, weaponStats.FilterStatRadiusDamageFalloff)...)
+		}
+		if weaponStats.FilterStatRateOfFire != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, weaponStats.FilterStatRateOfFire)...)
+		}
+		if weaponStats.FilterStatEnergyCosts != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, weaponStats.FilterStatEnergyCosts)...)
+		}
+		if weaponStats.FilterStatProjectileSpeed != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, weaponStats.FilterStatProjectileSpeed)...)
+		}
+		if weaponStats.FilterStatSpread != nil {
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, weaponStats.FilterStatSpread)...)
+		}
 	}
 
 	if minPrice.Valid {
@@ -598,7 +654,7 @@ func MarketplaceItemSaleList(
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
 					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType),
-					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+					qm.Rels("msc", boiler.CollectionItemColumns.Tier),
 					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
 				),
@@ -628,6 +684,8 @@ func MarketplaceItemSaleList(
 		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name, weapons.label) %s", sortDir))
 	} else if sortBy == "time" {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.EndAt), sortDir))
+	} else if sortBy == "rarity" {
+		orderBy = GenerateTierSort("COALESCE(msc.tier, wsc.tier)", sortDir)
 	} else if sortBy == "price" && sold {
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.SoldFor), sortDir))
 	} else if sortBy == "price" && !sold {
@@ -1026,8 +1084,10 @@ func MarketplaceEventList(
 	// Populate reasons
 	collectionToMechID := map[string]string{}
 	collectionToMysteryCrateID := map[string]string{}
+	collectionToWeaponID := map[string]string{}
 	mechIDs := []string{}
 	mysteryCrateIDs := []string{}
+	weaponIDs := []string{}
 
 	output := []*server.MarketplaceEvent{}
 	for _, r := range records {
@@ -1091,6 +1151,9 @@ func MarketplaceEventList(
 				case boiler.ItemTypeMysteryCrate:
 					mysteryCrateIDs = append(mysteryCrateIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
 					collectionToMysteryCrateID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
+				case boiler.ItemTypeWeapon:
+					weaponIDs = append(weaponIDs, r.R.RelatedSaleItem.R.CollectionItem.ItemID)
+					collectionToWeaponID[row.Item.CollectionItemID] = r.R.RelatedSaleItem.R.CollectionItem.ItemID
 				}
 			} else if r.R.RelatedSaleItemKeycard != nil {
 				row.Item = &server.MarketplaceEventItem{
@@ -1199,6 +1262,68 @@ func MarketplaceEventList(
 			for _, m := range mysteryCrates {
 				if m.ID.String == itemID {
 					output[i].Item.MysteryCrate = *m
+					break
+				}
+			}
+		}
+	}
+	if len(weaponIDs) > 0 {
+		weapons := []*server.MarketplaceSaleItemWeapon{}
+		err = boiler.Weapons(
+			qm.Select(
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label),
+				qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
+				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.WeaponModels,
+					qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+				),
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.WeaponSkin,
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+				),
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s wsc ON %s = %s AND %s = ?",
+					boiler.TableNames.CollectionItems,
+					qm.Rels("wsc", boiler.CollectionItemColumns.ItemID),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+					qm.Rels("wsc", boiler.CollectionItemColumns.ItemType),
+				),
+				boiler.ItemTypeWeaponSkin,
+			),
+			qm.LeftOuterJoin(
+				fmt.Sprintf(
+					"%s ON %s = COALESCE(%s, %s)",
+					boiler.TableNames.BlueprintWeaponSkin,
+					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+					qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+					qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.DefaultSkinID),
+				),
+			),
+			boiler.WeaponWhere.ID.IN(weaponIDs),
+		).Bind(nil, gamedb.StdConn, &weapons)
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i := range output {
+			itemID, ok := collectionToWeaponID[output[i].Item.CollectionItemID]
+			if output[i].Item.CollectionItemType != boiler.ItemTypeWeapon || !ok {
+				continue
+			}
+			for _, w := range weapons {
+				if w.ID.String == itemID {
+					output[i].Item.Weapon = *w
 					break
 				}
 			}
@@ -1347,19 +1472,23 @@ func MarketplaceSaleCreate(
 
 // CancelBidResponse contains the txid and amount on cancelled bids.
 type CancelBidResponse struct {
-	BidderID string
-	TXID     string
-	Amount   decimal.Decimal
+	BidderID  string
+	FactionID null.String
+	TXID      string
+	Amount    decimal.Decimal
 }
 
 // MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
 func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string) ([]CancelBidResponse, error) {
 	q := `
-		UPDATE item_sales_bid_history
+		UPDATE item_sales_bid_history b
 		SET cancelled_at = NOW(),
 			cancelled_reason = $2
-		WHERE item_sale_id = $1 AND cancelled_at IS NULL
-		RETURNING bidder_id, bid_tx_id, bid_price`
+		FROM players p
+		WHERE b.item_sale_id = $1
+			AND b.cancelled_at IS NULL
+			AND p.id = b.bidder_id
+		RETURNING bidder_id, faction_id, bid_tx_id, bid_price`
 	rows, err := conn.Query(q, itemID, msg)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -1369,7 +1498,7 @@ func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID, msg string)
 	cancelBidList := []CancelBidResponse{}
 	for rows.Next() {
 		var outputItem CancelBidResponse
-		err := rows.Scan(&outputItem.BidderID, &outputItem.TXID, &outputItem.Amount)
+		err := rows.Scan(&outputItem.BidderID, &outputItem.FactionID, &outputItem.TXID, &outputItem.Amount)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -1415,18 +1544,6 @@ func MarketplaceSaleBidHistoryCreate(conn boil.Executor, id uuid.UUID, bidderUse
 	return obj, nil
 }
 
-// MarketplaceLastSaleBid gets the last sale bid.
-func MarketplaceLastSaleBid(itemSaleID uuid.UUID) (*boiler.ItemSalesBidHistory, error) {
-	obj, err := boiler.ItemSalesBidHistories(
-		boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(itemSaleID.String()),
-		boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err)
-	}
-	return obj, nil
-}
-
 // MarketplaceSaleAuctionSync updates the current auction price based on the bid history.
 func MarketplaceSaleAuctionSync(conn boil.Executor, id uuid.UUID) error {
 	q := fmt.Sprintf(
@@ -1454,15 +1571,6 @@ func MarketplaceSaleAuctionSync(conn boil.Executor, id uuid.UUID) error {
 	return nil
 }
 
-// MarketplaceSaleItemExists checks whether given sales item exists.
-func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
-	output, err := boiler.ItemSaleExists(gamedb.StdConn, id.String())
-	if err != nil {
-		return false, terror.Error(err)
-	}
-	return output, nil
-}
-
 // MarketplaceCheckCollectionItem checks whether collection item is already in marketplace.
 func MarketplaceCheckCollectionItem(collectionItemID uuid.UUID) (bool, error) {
 	output, err := boiler.ItemSales(
@@ -1474,181 +1582,6 @@ func MarketplaceCheckCollectionItem(collectionItemID uuid.UUID) (bool, error) {
 		return false, terror.Error(err)
 	}
 	return output, nil
-}
-
-// MarketplaceCountKeycards counts number of player's keycard for sale.
-// This is used to check whether player can sell more.
-func MarketplaceCountKeycards(playerKeycardID uuid.UUID) (int64, error) {
-	output, err := boiler.ItemKeycardSales(
-		boiler.ItemKeycardSaleWhere.ItemID.EQ(playerKeycardID.String()),
-		boiler.ItemKeycardSaleWhere.SoldAt.IsNull(),
-		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		return 0, terror.Error(err)
-	}
-	return output, nil
-}
-
-// ChangeMechOwner transfers a collection item to a new owner.
-func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
-	itemSale, err := boiler.FindItemSale(conn, itemSaleID.String())
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-	colItem, err := boiler.FindCollectionItem(conn, itemSale.CollectionItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-
-	mech, err := Mech(nil, colItem.ItemID)
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-
-	_, err = boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(colItem.ItemID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).UpdateAll(conn, boiler.M{
-		"owner_id": itemSale.SoldTo,
-	})
-	if err != nil {
-		gamelog.L.Error().
-			Err(err).
-			Str("itemSaleID", itemSaleID.String()).
-			Msg("ChangeMechOwner")
-		return err
-	}
-
-	if mech.ChassisSkin != nil {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkin.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	if mech.PowerCoreID.Valid {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(mech.PowerCoreID.String),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	for _, w := range mech.Weapons {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(w.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-
-	for _, u := range mech.Utility {
-		_, err = boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(u.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
-		).UpdateAll(conn, boiler.M{
-			"owner_id": itemSale.SoldTo,
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Err(err).
-				Str("itemSaleID", itemSaleID.String()).
-				Msg("ChangeMechOwner")
-			return err
-		}
-	}
-	return nil
-}
-
-// ChangeMysteryCrateOwner transfers a collection item to a new owner.
-func ChangeMysteryCrateOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
-	_, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
-	).UpdateAll(conn,
-		boiler.M{
-			"owner_id": newOwnerID,
-		})
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-// ChangeWeaponOwner transfers a weapon to a new owner.
-func ChangeWeaponOwner(conn boil.Executor, collectionItemID string, newOwnerID string) error {
-	// Transfer Weapon
-	colItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ID.EQ(collectionItemID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-	).One(conn)
-	if err != nil {
-		return err
-	}
-	colItem.OwnerID = newOwnerID
-	_, err = colItem.Update(conn, boil.Whitelist(boiler.CollectionItemColumns.OwnerID))
-	if err != nil {
-		return err
-	}
-
-	// Transfer Weapon Skin
-	weaponSkin, err := boiler.WeaponSkins(
-		boiler.WeaponSkinWhere.EquippedOn.EQ(null.StringFrom(colItem.ItemID)),
-	).One(conn)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	if weaponSkin != nil {
-		_, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(weaponSkin.ID),
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeaponSkin),
-		).UpdateAll(conn,
-			boiler.M{
-				boiler.CollectionItemColumns.OwnerID: newOwnerID,
-			})
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-
-	return nil
 }
 
 // MarketplaceKeycardSaleCreate inserts a new sale item.
@@ -1768,7 +1701,7 @@ func MarketplaceGetOtherAssets(conn boil.Executor, itemSaleID string) ([]string,
 }
 
 // MarketplaceItemIsGenesisOrLimitedMech checks whether sale item is a genesis mech for sale.
-func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool, error) {
+func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string) (bool,  error) {
 	mechRow, err := boiler.Mechs(
 		qm.Select(qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 		qm.InnerJoin(fmt.Sprintf(
@@ -1783,15 +1716,15 @@ func MarketplaceItemIsGenesisOrLimitedMech(conn boil.Executor, itemSaleID string
 	).One(conn)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			return false,  nil
 		}
-		return false, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
 	mech, err := Mech(conn, mechRow.ID)
 	if err != nil {
-		return false, terror.Error(err)
+		return false,  terror.Error(err)
 	}
 
-	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(), nil
+	return mech.IsCompleteGenesis() || mech.IsCompleteLimited(),  nil
 }

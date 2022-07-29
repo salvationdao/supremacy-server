@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
+	"server/gamedb"
 	"server/gamelog"
 
 	"github.com/volatiletech/null/v8"
@@ -386,6 +387,8 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 	var assets []*XsynAsset
 
 	for _, i := range mechs {
+		isGenesisOrLimited := i.IsCompleteGenesis() || i.IsCompleteLimited()
+
 		asJson, err := json.Marshal(i)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
@@ -409,8 +412,16 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			CardAnimationURL: i.CardAnimationURL,
 		}
 
+		if isGenesisOrLimited && i.ChassisSkin != nil {
+			asset.Tier = i.ChassisSkin.Tier
+		}
+
 		// convert stats to attributes to
 		asset.Attributes = []*Attribute{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -440,9 +451,8 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:       i.MaxHitpoints,
 			},
 			{
-				DisplayType: BoostNumber,
-				TraitType:   "Power Core Size",
-				Value:       i.PowerCoreSize,
+				TraitType: "Power Core Size",
+				Value:     i.PowerCoreSize,
 			},
 		}
 
@@ -475,7 +485,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 
 		if i.ChassisSkinID.Valid {
 			if i.ChassisSkin == nil {
-				i.ChassisSkin, err = db.MechSkin(nil, i.ChassisSkinID.String)
+				i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
 					continue
@@ -493,8 +503,18 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				&Attribute{
 					TraitType: "Submodel",
 					Value:     i.ChassisSkin.Label,
-					AssetHash: i.Hash,
-				})
+					AssetHash: i.ChassisSkin.Hash,
+				},
+				&Attribute{
+					TraitType: "Rarity",
+					Value:     i.ChassisSkin.Tier,
+				},
+			)
+		}
+
+		err = asset.Attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, asset)
@@ -515,6 +535,10 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 		// convert stats to attributes to
 		attributes := []*Attribute{
 			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE ANIMATION"),
+			},
+			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
@@ -527,7 +551,7 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 				Value:     i.IntroAnimation.Bool,
 			},
 			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
@@ -566,7 +590,11 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE SUBMODEL"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -576,7 +604,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				Value:     i.MechModelName,
 			},
 			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
@@ -601,6 +629,11 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				Value:     i.EquippedOnDetails.Label,
 				AssetHash: i.EquippedOnDetails.Hash,
 			})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -638,7 +671,11 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("POWER CORE"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -686,6 +723,11 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			})
 		}
 
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -719,7 +761,11 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			continue
 		}
 
-		attributes := []*Attribute{
+		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WEAPON"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -739,7 +785,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			},
 		}
 
-		if i.DamageFalloff.Valid {
+		if i.DamageFalloff.Valid && i.DamageFalloff.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff",
@@ -747,7 +793,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.DamageFalloffRate.Valid {
+		if i.DamageFalloffRate.Valid && i.DamageFalloffRate.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Damage Falloff rate",
@@ -755,7 +801,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.Radius.Valid {
+		if i.Radius.Valid && i.Radius.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Area of effect",
@@ -763,7 +809,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.Spread.Valid {
+		if i.Spread.Valid && !i.Spread.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Spread",
@@ -771,7 +817,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.RateOfFire.Valid {
+		if i.RateOfFire.Valid && !i.RateOfFire.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Rate of fire",
@@ -779,7 +825,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.ProjectileSpeed.Valid {
+		if i.ProjectileSpeed.Valid && !i.ProjectileSpeed.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Projectile Speed",
@@ -787,7 +833,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.EnergyCost.Valid {
+		if i.EnergyCost.Valid && !i.EnergyCost.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
@@ -795,7 +841,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.MaxAmmo.Valid {
+		if i.MaxAmmo.Valid && i.MaxAmmo.Int > 0 {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Max Ammo",
@@ -824,7 +870,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -841,7 +887,42 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			AvatarURL:        i.AvatarURL,
 			CardAnimationURL: i.CardAnimationURL,
 			XsynLocked:       i.XsynLocked,
-		})
+		}
+
+		if i.EquippedWeaponSkinID.Valid {
+			if i.WeaponSkin == nil {
+				i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID.String)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID.String).Msg("failed to get weapon skin item")
+					continue
+				}
+			}
+
+			asset.ImageURL = i.WeaponSkin.ImageURL
+			asset.BackgroundColor = i.WeaponSkin.BackgroundColor
+			asset.AnimationURL = i.WeaponSkin.AnimationURL
+			asset.YoutubeURL = i.WeaponSkin.YoutubeURL
+			asset.AvatarURL = i.WeaponSkin.AvatarURL
+			asset.CardAnimationURL = i.WeaponSkin.CardAnimationURL
+
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: "Submodel",
+					Value:     i.WeaponSkin.Label,
+					AssetHash: i.WeaponSkin.Hash,
+				},
+				&Attribute{
+					TraitType: "Rarity",
+					Value:     i.WeaponSkin.Tier,
+				})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -857,17 +938,17 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		}
 
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WEAPON SUBMODEL"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
 			},
 			{
-				TraitType: "Weapon Model",
-				Value:     i.WeaponModelID, // TODO: bring in weapons matrix and have a list of weapons it can fit on
-			},
-			{
-				TraitType: "Tier",
+				TraitType: "Rarity",
 				Value:     i.Tier,
 			},
 		}
@@ -892,6 +973,11 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 				Value:     i.EquippedOnDetails.Label,
 				AssetHash: i.EquippedOnDetails.Hash,
 			})
+		}
+
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
 		assets = append(assets, &XsynAsset{
@@ -929,7 +1015,11 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		}
 
 		// TODO create these dynamically depending on utility type
-		attributes := []*Attribute{
+		attributes := Attributes{
+			{
+				TraitType: "Type",
+				Value:     fmt.Sprintf("WAR MACHINE UTILITY"),
+			},
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -962,6 +1052,11 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			})
 		}
 
+		err = attributes.AreValid()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
@@ -992,10 +1087,10 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	}
 
 	// convert stats to attributes to
-	attributes := []*Attribute{
+	attributes := Attributes{
 		{
 			TraitType: "Type",
-			Value:     mysteryCrate.Type,
+			Value:     fmt.Sprintf("NEXUS %s MYSTERY CRATE", mysteryCrate.Type),
 		},
 	}
 
@@ -1004,6 +1099,11 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 			TraitType: "Faction",
 			Value:     factionName,
 		})
+	}
+
+	err = attributes.AreValid()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 	}
 
 	asset := &XsynAsset{

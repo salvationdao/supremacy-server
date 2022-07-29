@@ -17,12 +17,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func InsertNewMechSkin(trx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
 	// first insert the skin
 	newSkin := boiler.MechSkin{
 		BlueprintID:           skin.ID,
@@ -64,19 +59,14 @@ func InsertNewMechSkin(trx boil.Executor, ownerID uuid.UUID, skin *server.Bluepr
 }
 
 func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
 	boilerMech, err := boiler.MechSkins(
 		boiler.MechSkinWhere.ID.EQ(id),
 		qm.Load(boiler.MechSkinRels.MechSkinMechModel),
-	).One(tx)
+	).One(trx)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(trx)
 	if err != nil {
 		return nil, err
 	}

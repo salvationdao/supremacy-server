@@ -52,10 +52,19 @@ type WarMachine struct {
 	Shield             uint32 `json:"shield"`
 	ShieldRechargeRate uint32 `json:"shieldRechargeRate"`
 
+	Stats *Stats `json:"stats"`
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
 
 	sync.RWMutex // lock for any mech detail changes
+}
+
+type Stats struct {
+	TotalWins       int `json:"total_wins"`
+	TotalDeaths     int `json:"total_deaths"`
+	TotalKills      int `json:"total_kills"`
+	BattlesSurvived int `json:"battles_survived"`
+	TotalLosses     int `json:"total_losses"`
 }
 
 type PowerCore struct {

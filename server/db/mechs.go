@@ -40,12 +40,18 @@ SELECT
 	collection_items.asset_hidden,
 	collection_items.id AS collection_item_id,
 	collection_items.image_url,
-	collection_items.avatar_url,
 	collection_items.card_animation_url,
+	collection_items.avatar_url,
 	collection_items.large_image_url,
 	collection_items.background_color,
 	collection_items.animation_url,
 	collection_items.youtube_url,
+	COALESCE(p.username, ''),
+	COALESCE(mech_stats.total_wins, 0),
+	COALESCE(mech_stats.total_deaths, 0),
+	COALESCE(mech_stats.total_kills, 0),
+	COALESCE(mech_stats.battles_survived, 0), 
+	COALESCE(mech_stats.total_losses, 0),
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -86,10 +92,18 @@ SELECT
 			AND _i.deleted_at IS NULL
 			AND _i.end_at > NOW()
 		LIMIT 1
-	) AS item_sale_id
+	) AS item_sale_id,
+	(
+		SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
+		FROM blueprint_mechs _bm 
+			LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
+		WHERE _bm.id = mechs.blueprint_id
+		LIMIT 1
+	) AS battle_ready
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
+LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN (
 	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
@@ -126,7 +140,7 @@ LEFT OUTER JOIN (
 					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _ci.image_url, _ci.avatar_url, _ci.card_animation_url, _ci.animation_url
 					FROM weapon_skin __ws
 					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
-			) _ws ON _ws.id = _w.equipped_weapon_skin_id
+			) _ws ON _ws.equipped_on = _w.id
 		) w2 ON mw.weapon_id = w2.id
 	GROUP BY mw.chassis_id
 ) w on w.chassis_id = mechs.id
@@ -179,19 +193,16 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 // Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
-func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
+		Stats:          &server.Stats{},
+		Owner:          &server.User{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
-	result, err := tx.Query(query, mechID)
+	result, err := conn.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +228,12 @@ func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.BackgroundColor,
 			&mc.CollectionItem.AnimationURL,
 			&mc.CollectionItem.YoutubeURL,
+			&mc.Owner.Username,
+			&mc.Stats.TotalWins,
+			&mc.Stats.TotalDeaths,
+			&mc.Stats.TotalKills,
+			&mc.Stats.BattlesSurvived,
+			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -250,8 +267,10 @@ func Mech(trx boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleReady,
 		)
 		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to get mech")
 			return nil, err
 		}
 	}
@@ -295,6 +314,8 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	for result.Next() {
 		mc := &server.Mech{
 			CollectionItem: &server.CollectionItem{},
+			Stats:          &server.Stats{},
+			Owner:          &server.User{},
 		}
 		err = result.Scan(
 			&mc.CollectionItem.CollectionSlug,
@@ -315,6 +336,12 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.BackgroundColor,
 			&mc.CollectionItem.AnimationURL,
 			&mc.CollectionItem.YoutubeURL,
+			&mc.Owner.Username,
+			&mc.Stats.TotalWins,
+			&mc.Stats.TotalDeaths,
+			&mc.Stats.TotalKills,
+			&mc.Stats.BattlesSurvived,
+			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -348,6 +375,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Weapons,
 			&mc.Utility,
 			&mc.ItemSaleID,
+			&mc.BattleReady,
 		)
 		if err != nil {
 			return nil, err
@@ -442,12 +470,7 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	mechModel, err := boiler.MechModels(
 		boiler.MechModelWhere.ID.EQ(mechBlueprint.ModelID),
 		qm.Load(boiler.MechModelRels.DefaultChassisSkin),
@@ -500,11 +523,13 @@ func InsertNewMech(trx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.B
 		bpms.YoutubeURL,
 	)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to insert col item")
 		return nil, terror.Error(err)
 	}
 
 	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get mech")
 		return nil, terror.Error(err)
 	}
 	return mech, nil
@@ -544,6 +569,8 @@ type MechListOpts struct {
 	Search              string
 	Filter              *ListFilterRequest
 	Sort                *ListSortRequest
+	SortBy              string
+	SortDir             SortByDir
 	PageSize            int
 	Page                int
 	OwnerID             string
@@ -552,6 +579,7 @@ type MechListOpts struct {
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
 	FilterRarities      []string `json:"rarities"`
+	FilterStatuses      []string `json:"statuses"`
 }
 
 type MechListQueueSortOpts struct {
@@ -577,6 +605,17 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.LeftOuterJoin(fmt.Sprintf("%s cms ON cms.%s = %s AND cms.%s = ?",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemID,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			boiler.CollectionItemColumns.ItemType,
+		), boiler.ItemTypeMechSkin),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -612,31 +651,156 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 		}
 	}
+	if len(opts.FilterRarities) > 0 {
+		vals := []interface{}{}
+		for _, r := range opts.FilterRarities {
+			vals = append(vals, r)
+		}
+		queryMods = append(queryMods, qm.AndIn("cms.tier IN ?", vals...))
+	}
+	if len(opts.FilterStatuses) > 0 {
+		hasIdleToggled := false
+		hasInBattleToggled := false
+		hasMarketplaceToggled := false
+		hasInQueueToggled := false
+		hasBattleReadyToggled := false
+
+		statusFilters := []qm.QueryMod{}
+
+		for _, s := range opts.FilterStatuses {
+			if s == "IDLE" {
+				if hasIdleToggled {
+					continue
+				}
+				hasIdleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`NOT EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+				)))
+			} else if s == "BATTLE" {
+				if hasInBattleToggled {
+					continue
+				}
+				hasInBattleToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NOT NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			} else if s == "MARKET" {
+				if hasMarketplaceToggled {
+					continue
+				}
+				hasMarketplaceToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _i.%s
+						FROM %s _i
+						WHERE _i.%s = %s
+							AND _i.%s IS NULL
+							AND _i.%s IS NULL
+							AND _i.%s > NOW()
+						LIMIT 1
+					)`,
+					boiler.ItemSaleColumns.ID,
+					boiler.TableNames.ItemSales,
+					boiler.ItemSaleColumns.CollectionItemID,
+					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+					boiler.ItemSaleColumns.SoldAt,
+					boiler.ItemSaleColumns.DeletedAt,
+					boiler.ItemSaleColumns.EndAt,
+				)))
+			} else if s == "QUEUE" {
+				if hasInQueueToggled {
+					continue
+				}
+				hasInQueueToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT _bq.%s
+						FROM %s _bq
+						WHERE _bq.%s = %s
+							AND _bq.%s IS NULL
+						LIMIT 1
+					)`,
+					boiler.BattleQueueColumns.ID,
+					boiler.TableNames.BattleQueue,
+					boiler.BattleQueueColumns.MechID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.BattleQueueColumns.BattleID,
+				)))
+			} else if s == "BATTLE_READY" {
+				if hasBattleReadyToggled {
+					continue
+				}
+				hasBattleReadyToggled = true
+				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
+					`EXISTS (
+						SELECT 1 
+						FROM %s _bm
+							LEFT JOIN %s _a ON _a.%s = _bm.%s
+						WHERE _bm.%s = %s 
+							AND (
+								_a.%s IS NULL
+								OR _a.%s <= NOW()
+							)
+					)`,
+					boiler.TableNames.BlueprintMechs,
+					boiler.TableNames.Availabilities,
+					boiler.AvailabilityColumns.ID,
+					boiler.BlueprintMechColumns.AvailabilityID,
+					boiler.BlueprintMechColumns.ID,
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+					boiler.AvailabilityColumns.ID,
+					boiler.AvailabilityColumns.AvailableAt,
+				)))
+			}
+			if hasIdleToggled && hasInBattleToggled && hasMarketplaceToggled && hasInQueueToggled && hasBattleReadyToggled {
+				break
+			}
+		}
+
+		if len(statusFilters) > 0 {
+			queryMods = append(queryMods, qm.Expr(statusFilters...))
+		}
+	}
+
 	// Search
 	if opts.Search != "" {
 		xSearch := ParseQueryText(opts.Search, true)
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Label,
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 					xSearch,
 				))
 		}
 	}
-	boil.DebugMode = true
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
-
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
@@ -681,11 +845,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
 	)
 
 	// Sort
@@ -709,12 +868,16 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			)),
 		)
-	} else {
-		if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
-		} else {
-			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+	} else if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label, opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort("cms.tier", opts.SortDir))
 		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label)))
 	}
 	rows, err := boiler.NewQuery(
 		queryMods...,

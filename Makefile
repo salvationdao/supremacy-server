@@ -14,6 +14,7 @@ LOCAL_DEV_DB_HOST?=localhost
 LOCAL_DEV_DB_PORT?=5437
 LOCAL_DEV_DB_DATABASE?=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
+DB_STATIC_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable&x-migrations-table=static_migrations"
 
 GITVERSION=`git describe --tags --abbrev=0`
 GITHASH=`git rev-parse HEAD`
@@ -91,9 +92,17 @@ db-version:
 db-drop:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations drop -f
 
+.PHONY: db-drop-sync
+db-drop-sync:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static drop -f
+
 .PHONY: db-migrate
 db-migrate:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up
+
+.PHONY: db-migrate-sync
+db-migrate-sync:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static up
 
 .PHONY: db-migrate-down
 db-migrate-down:
@@ -127,10 +136,10 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate dev-sync-data
+db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
+db-reset-windows: db-drop db-drop-sync db-migrate-sync dev-sync-data-windows db-migrate-up-to-seed db-seed-windows db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -185,6 +194,17 @@ serve-test:
 .PHONY: sync
 sync:
 	cd server && go run cmd/gameserver/main.go sync
+	rm -rf ./synctool/temp-sync
+
+.PHONY: dev-sync
+dev-sync:
+	cd server && go run devsync/main.go sync
+	rm -rf ./synctool/temp-sync
+
+.PHONY: dev-sync-windows
+dev-sync-windows:
+	cd ./server && go run ./devsync/main.go sync
+	Powershell rm -r -Force .\server\synctool\temp-sync\
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -228,22 +248,40 @@ dev-give-weapon-crates:
 dev-give-mech-crate:
 	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/mech/${public_address}
 
+.PHONE: seed-avatars
+seed-avatars:
+	cd ./server && go run cmd/gameserver/main.go seed-avatars
+
 .PHONE: dev-give-mech-crates
 dev-give-mech-crates:
 	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
 
-.PHONY: dev-sync-data
-dev-sync-data:
-	cd ./server/devtool
+.PHONY: sync-data
+sync-data:
+	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	cd ../../../server
-	go run ./devtool/main.go -sync_mech
-	rm -rf ./devtool/temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make sync
+
+.PHONY: dev-sync-data
+dev-sync-data:
+	cd ./server/synctool
+	mkdir temp-sync
+	cd temp-sync
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make dev-sync
+
+.PHONY: mac-sync-data
+mac-sync-data:
+	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
+	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make dev-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
-	cd ./server/devtool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	cd ./server && go run ./devtool/main.go -sync_mech
-	Powershell rm -r -Force .\server\devtool\temp-sync\
+	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	make dev-sync-windows

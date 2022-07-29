@@ -11,6 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -42,7 +43,6 @@ const (
 	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
 	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
 	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
-	GameNotificationTypeWarMachineCommand   GameNotificationType = "WAR_MACHINE_COMMAND"
 )
 
 type GameNotificationKill struct {
@@ -197,13 +197,6 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 	})
 }
 
-func (arena *Arena) BroadcastMechCommandNotification(data *MechCommandNotification) {
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command_notification", data.FactionID), HubKeyGameNotification, &GameNotification{
-		Type: GameNotificationTypeWarMachineCommand,
-		Data: data,
-	})
-}
-
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
@@ -212,6 +205,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
+
+	// broadcast system message to mech owners
+	system_messages.BroadcastMechQueueMessage(q)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

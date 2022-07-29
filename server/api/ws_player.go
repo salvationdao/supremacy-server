@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"server"
 	"server/battle"
@@ -16,8 +15,13 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/xsyn_rpcclient"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
+
+	goaway "github.com/TwiN/go-away"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -42,15 +46,23 @@ func NewPlayerController(api *API) *PlayerController {
 		API: api,
 	}
 
+	//  secure user profile commands
+	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
+	api.SecureUserCommand(HubKeyPlayerUpdateAboutMe, pc.PlayerUpdateAboutMeHandler)
+	api.SecureUserCommand(HubKeyPlayerAvatarList, pc.ProfileAvatarListHandler)
+	api.SecureUserCommand(HubKeyPlayerAvatarUpdate, pc.ProfileAvatarUpdateHandler)
+
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 
 	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
 	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
 
 	// punish vote related
-	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
+	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGidHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -64,6 +76,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
+	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
+
 	return pc
 }
 
@@ -72,8 +86,6 @@ type UserUpdatedRequest struct {
 		ID string `json:"id"`
 	} `json:"payload"`
 }
-
-const HubKeyUserSubscribe = "USER:SUBSCRIBE"
 
 // FactionEnlistRequest enlist a faction
 type FactionEnlistRequest struct {
@@ -112,6 +124,12 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to update faction in db")
 	}
 
+	// give user default profile avatar images
+	err = db.GiveDefaultAvatars(user.ID, user.FactionID.String)
+	if err != nil {
+		return err
+	}
+
 	// update user faction in passport
 	err = pc.API.Passport.UserFactionEnlist(user.ID, user.FactionID.String)
 	if err != nil {
@@ -123,7 +141,7 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	reply(true)
 
@@ -250,25 +268,28 @@ func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *h
 }
 
 type PlayerPunishment struct {
-	*boiler.PunishedPlayer
-	RelatedPunishVote *boiler.PunishVote   `json:"related_punish_vote"`
-	PunishOption      *boiler.PunishOption `json:"punish_option"`
+	*boiler.PlayerBan
+	RelatedPunishVote *boiler.PunishVote `json:"related_punish_vote"`
+	Restrictions      []string           `json:"restrictions"`
+	BanByUser         *boiler.Player     `json:"ban_by_user"`
+	IsPermanent       bool               `json:"is_permanent"`
 }
 
 const HubKeyPlayerPunishmentList = "PLAYER:PUNISHMENT:LIST"
 
 func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	punishments, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.Load(boiler.PunishedPlayerRels.PunishOption),
-		qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+	// get current player's punishment
+	punishments, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
 		return terror.Error(err, "Failed to get player's punishment from db")
 	}
-
 	if punishments == nil || len(punishments) == 0 {
 		reply([]*PlayerPunishment{})
 		return nil
@@ -277,15 +298,34 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 	playerPunishments := []*PlayerPunishment{}
 	for _, punishment := range punishments {
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
-			PunishedPlayer:    punishment,
+			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
-			PunishOption:      punishment.R.PunishOption,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
 
 	reply(playerPunishments)
 
 	return nil
+}
+
+func PlayerBanRestrictions(pb *boiler.PlayerBan) []string {
+	restrictions := []string{}
+	if pb.BanLocationSelect {
+		restrictions = append(restrictions, RestrictionLocationSelect, RestrictionAbilityTrigger)
+	}
+	if pb.BanSendChat {
+		restrictions = append(restrictions, RestrictionChatSend)
+	}
+	if pb.BanViewChat {
+		restrictions = append(restrictions, RestrictionChatView)
+	}
+	if pb.BanSupsContribute {
+		restrictions = append(restrictions, RestrictionSupsContribute)
+	}
+	return restrictions
 }
 
 type PlayerActiveCheckRequest struct {
@@ -330,6 +370,21 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 		fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
 			Players: fap.CurrentFactionActivePlayer(),
 		}
+	}
+
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return nil
+	}
+
+	err = fap.Set(user.ID, isActive)
+	if err != nil {
+		return terror.Error(err, "Failed to update player active stat")
+	}
+
+	// debounce broadcast active player
+	fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: fap.CurrentFactionActivePlayer(),
 	}
 
 	return nil
@@ -379,6 +434,51 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 	}
 
 	reply(ps)
+	return nil
+}
+
+type GetPlayerByGidRequest struct {
+	Payload struct {
+		Gid int `json:"gid"`
+	} `json:"payload"`
+}
+
+const HubKeyGetPlayerByGid = "GET:PLAYER:GID"
+
+func (pc *PlayerController) GetPlayerByGidHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GetPlayerByGidHandler").Str("user_id", user.ID).Logger()
+
+	req := &GetPlayerByGidRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received")
+	}
+
+	l = l.With().Interface("GID", req.Payload.Gid).Logger()
+	p, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
+	).One(gamedb.StdConn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			l.Error().Err(err).Msg("player with gid does not exist.")
+			return nil
+		}
+		l.Error().Err(err).Msg("unable to retrieve player by GID.")
+		return terror.Error(err, "Unable to find player, try again or contact support.")
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		FactionID: p.FactionID,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
+
+	reply(pp)
 	return nil
 }
 
@@ -582,11 +682,30 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	defer pc.API.FactionPunishVote[factionID].Unlock()
 
 	// check player is currently punished with the same option
-	punishedPlayer, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		boiler.PunishedPlayerWhere.PunishOptionID.EQ(punishOption.ID),
-	).One(gamedb.StdConn)
+	queries := []qm.QueryMod{
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
+	}
+
+	switch punishOption.Key {
+	case "restrict_sups_contribution":
+		queries = append(queries, boiler.PlayerBanWhere.BanSupsContribute.EQ(true))
+	case "restrict_location_select":
+		queries = append(queries, boiler.PlayerBanWhere.BanLocationSelect.EQ(true))
+
+		// skip, if the player is in the team kill courtroom
+		if pc.API.BattleArena.SystemBanManager.HasOngoingTeamKillCases(intendToBenPlayer.ID) {
+			return terror.Error(fmt.Errorf("player is listed on system ban"), "The player is already listed on system ban list")
+		}
+	case "restrict_chat":
+		queries = append(queries, boiler.PlayerBanWhere.BanSendChat.EQ(true))
+	}
+
+	queries = append(queries,
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	)
+
+	punishedPlayer, err := boiler.PlayerBans(queries...).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get the punished player from db")
 	}
@@ -804,6 +923,19 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 	return nil
 }
 
+const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
+
+func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return terror.Error(terror.ErrForbidden, "Could not subscribe to active players in global chat, try again or contact support.")
+	}
+
+	reply(fap.CurrentFactionActivePlayer())
+
+	return nil
+}
+
 func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	// broadcast player
 	features, err := db.GetPlayerFeaturesByID(user.ID)
@@ -811,12 +943,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
 	}
 
-	player, err := server.PlayerFromBoiler(user, features)
-	if err != nil {
-		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player feature")
-	}
-
-	reply(player)
+	reply(server.PlayerFromBoiler(user, features))
 
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
@@ -827,20 +954,21 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), battle.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list
 	// get current player's punishment
-	punishments, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.PlayerID.EQ(user.ID),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.Load(boiler.PunishedPlayerRels.PunishOption),
-		qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+	punishments, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),
+		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+		qm.Load(boiler.PlayerBanRels.RelatedPunishVote),
+		qm.Load(boiler.PlayerBanRels.BannedBy, qm.Select(boiler.PlayerColumns.ID, boiler.PlayerColumns.Username, boiler.PlayerColumns.Gid)),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's punishment from db")
-		return nil
+		return terror.Error(err, "Failed to get player's punishment from db")
 	}
 
 	if punishments == nil || len(punishments) == 0 {
@@ -850,14 +978,16 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	playerPunishments := []*PlayerPunishment{}
 	for _, punishment := range punishments {
 		playerPunishments = append(playerPunishments, &PlayerPunishment{
-			PunishedPlayer:    punishment,
+			PlayerBan:         punishment,
 			RelatedPunishVote: punishment.R.RelatedPunishVote,
-			PunishOption:      punishment.R.PunishOption,
+			Restrictions:      PlayerBanRestrictions(punishment),
+			BanByUser:         punishment.R.BannedBy,
+			IsPermanent:       punishment.EndAt.After(time.Now().AddDate(0, 1, 0)),
 		})
 	}
 
 	// send to the player
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
+	ws.PublishMessage(fmt.Sprintf("/user/%s/punishment_list", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
 
 	return nil
 }
@@ -939,7 +1069,6 @@ func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, use
 
 	reply(prefs)
 	return nil
-
 }
 
 const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
@@ -1043,5 +1172,387 @@ func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, 
 	}
 
 	reply(prefs)
+	return nil
+}
+
+type PlayerProfileRequest struct {
+	Payload struct {
+		PlayerGID string `json:"player_gid"`
+	} `json:"payload"`
+}
+
+type PlayerAvatar struct {
+	ID        string `json:"id"`
+	AvatarURL string `json:"avatar_url"`
+	Tier      string `json:"tier"`
+}
+type PlayerProfileResponse struct {
+	*server.PublicPlayer `json:"player"`
+	Stats                *boiler.PlayerStat      `json:"stats"`
+	Faction              *boiler.Faction         `json:"faction"`
+	ActiveLog            *boiler.PlayerActiveLog `json:"active_log"`
+	Avatar               *PlayerAvatar           `json:"avatar"`
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
+
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	gid, err := strconv.Atoi(req.Payload.PlayerGID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Err(err).Msg("unable to convert player gid to int")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get player
+	player, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(gid),
+
+		// load faction
+		qm.Load(boiler.PlayerRels.Faction),
+
+		// load avatar
+		qm.Load(boiler.PlayerRels.ProfileAvatar),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Msg("unable to get player")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get stats
+	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get active log
+	activeLog, err := boiler.PlayerActiveLogs(
+		boiler.PlayerActiveLogWhere.PlayerID.EQ(player.ID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerActiveLogColumns.ActiveAt)),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get player's active log")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// set faction
+	var faction *boiler.Faction
+	if player.R != nil && player.R.Faction != nil {
+		faction = player.R.Faction
+	}
+
+	// get / set avatar
+	var avatar *PlayerAvatar
+	if player.ProfileAvatarID.Valid && player.R != nil && player.R.ProfileAvatar != nil {
+		avatar = &PlayerAvatar{
+			ID:        player.R.ProfileAvatar.ID,
+			AvatarURL: player.R.ProfileAvatar.AvatarURL,
+			Tier:      player.R.ProfileAvatar.Tier,
+		}
+
+	}
+
+	reply(PlayerProfileResponse{
+		PublicPlayer: &server.PublicPlayer{
+			ID:        player.ID,
+			Username:  player.Username,
+			Gid:       player.Gid,
+			FactionID: player.FactionID,
+			AboutMe:   player.AboutMe,
+			Rank:      player.Rank,
+			CreatedAt: player.CreatedAt,
+		},
+		Avatar:    avatar,
+		Stats:     stats,
+		Faction:   faction,
+		ActiveLog: activeLog,
+	})
+	return nil
+}
+
+type PlayerUpdateUsernameRequest struct {
+	Payload struct {
+		PlayerID    string `json:"player_id"`
+		NewUsername string `json:"new_username"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateUsername = "PLAYER:UPDATE:USERNAME"
+
+func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating username, try again or contact support."
+	req := &PlayerUpdateUsernameRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
+
+	// check profanity/ check if valid username
+	err = IsValidUsername(req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, "Invalid username, must be between 3 - 15 characters long, cannot contain profanities.")
+	}
+	user.Username = null.StringFrom(req.Payload.NewUsername)
+	user.UpdatedAt = time.Now()
+
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// update in xsyn
+	err = pc.API.Passport.UserUpdateUsername(user.ID, req.Payload.NewUsername)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	reply(user.Username.String)
+	return nil
+}
+
+type PlayerUpdateAboutMeRequest struct {
+	Payload struct {
+		PlayerID string `json:"player_id"`
+		AboutMe  string `json:"about_me"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerUpdateAboutMe = "PLAYER:UPDATE:ABOUT_ME"
+
+func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating about me, try again or contact support."
+	req := &PlayerUpdateAboutMeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	// check if user
+	if req.Payload.PlayerID != user.ID {
+		return terror.Error(err, "You do not have permission to update this section")
+	}
+	// check profanity/ check if valid about me
+	err = IsValidAboutMe(req.Payload.AboutMe)
+	if err != nil {
+		return terror.Error(err, "Invalid about me, must be between 3 - 400 characters long, cannot contain profanities.")
+
+	}
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	user.AboutMe = null.StringFrom(req.Payload.AboutMe)
+	user.UpdatedAt = time.Now()
+	_, err = user.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.AboutMe,
+		boiler.PlayerColumns.UpdatedAt,
+	))
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+	resp := &server.PublicPlayer{
+		ID:        user.ID,
+		Username:  user.Username,
+		Gid:       user.Gid,
+		FactionID: user.FactionID,
+		AboutMe:   user.AboutMe,
+		Rank:      user.Rank,
+		CreatedAt: user.CreatedAt,
+	}
+	reply(resp)
+	return nil
+}
+
+func IsValidUsername(username string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 15 characters
+	// Cannot contain profanity
+	// Can only contain the following symbols: _
+	hasDisallowedSymbol := false
+	if UsernameRegExp.Match([]byte(username)) {
+		hasDisallowedSymbol = true
+	}
+
+	if TrimUsername(username) == "" {
+		return terror.Error(fmt.Errorf("username cannot be empty"), "Invalid username. Your username cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(username)) < 3 {
+		return terror.Error(fmt.Errorf("username must be at least characters long"), "Invalid username. Your username must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(username)) > 30 {
+		return terror.Error(fmt.Errorf("username cannot be more than 30 characters long"), "Invalid username. Your username cannot be more than 30 characters long.")
+	}
+	if hasDisallowedSymbol {
+		return terror.Error(fmt.Errorf("username cannot contain disallowed symbols"), "Invalid username. Your username contains a disallowed symbol.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(username) {
+		return terror.Error(fmt.Errorf("username contains profanity"), "Invalid username. Your username contains profanity.")
+	}
+
+	return nil
+}
+
+func IsValidAboutMe(aboutMe string) error {
+	// Must contain at least 3 characters
+	// Cannot contain more than 400 characters
+	// Cannot contain profanity
+
+	if TrimUsername(aboutMe) == "" {
+		return terror.Error(fmt.Errorf("about me cannot be empty"), "Invalid about me. Your about me cannot be empty.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) < 3 {
+		return terror.Error(fmt.Errorf("about me must be at least 3 characters long"), "Invalid about me. Your about me must be at least 3 characters long.")
+	}
+	if PrintableLen(TrimUsername(aboutMe)) > 400 {
+		return terror.Error(fmt.Errorf("about me cannot be more than 400 characters long"), "Invalid about me. Your about me cannot be more than 30 characters long.")
+	}
+
+	profanityDetector := goaway.NewProfanityDetector()
+	profanityDetector = profanityDetector.WithSanitizeLeetSpeak(false)
+
+	if profanityDetector.IsProfane(aboutMe) {
+		return terror.Error(fmt.Errorf("about me contains profanity"), "Invalid about me. Your about me contains profanity.")
+	}
+
+	return nil
+}
+
+// TrimUsername removes misuse of invisible characters.
+func TrimUsername(username string) string {
+	// Check if entire string is nothing not non-printable characters
+	isEmpty := true
+	runes := []rune(username)
+	for _, r := range runes {
+		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			isEmpty = false
+			break
+		}
+	}
+	if isEmpty {
+		return ""
+	}
+
+	// Remove Spaces like characters Around String (keep mark ones)
+	output := strings.Trim(username, " \u00A0\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u3000\uFEFF\u2423\u2422\u2420")
+
+	// Enforce one Space like characters between words
+	output = strings.Join(strings.Fields(output), " ")
+
+	return output
+}
+
+type PlayerAvatarListRequest struct {
+	Payload struct {
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+type PlayerAvatarListResp struct {
+	Total   int64                   `json:"total"`
+	Avatars []*boiler.ProfileAvatar `json:"avatars"`
+}
+
+const HubKeyPlayerAvatarList = "PLAYER:AVATAR:LIST"
+
+func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.AvatarListOpts{
+		Search:   req.Payload.Search,
+		Filter:   req.Payload.Filter,
+		Sort:     req.Payload.Sort,
+		PageSize: req.Payload.PageSize,
+		Page:     req.Payload.Page,
+		OwnerID:  user.ID,
+	}
+
+	total, avatars, err := db.AvatarList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your avatars, please try again or contact support.")
+	}
+
+	reply(&PlayerAvatarListResp{
+		Total:   total,
+		Avatars: avatars,
+	})
+	return nil
+}
+
+type PlayerAvatarUpdateRequest struct {
+	Payload struct {
+		PlayerID        string `json:"player_id"`
+		ProfileAvatarID string `json:"profile_avatar_id"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerAvatarUpdate = "PLAYER:AVATAR:UPDATE"
+
+func (pc *PlayerController) ProfileAvatarUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAvatarUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// removing avatar
+	if req.Payload.ProfileAvatarID == "" {
+		user.ProfileAvatarID = null.StringFrom("")
+		reply(&PlayerAvatar{
+			Tier: "MEGA",
+		})
+		return nil
+	}
+
+	// get player avatar
+	ava, err := boiler.FindProfileAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+	}
+
+	// update player
+	user.ProfileAvatarID = null.StringFrom(ava.ID)
+	user.UpdatedAt = time.Now()
+	_, err = user.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.UpdatedAt, boiler.PlayerColumns.ProfileAvatarID))
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+	}
+
+	reply(&PlayerAvatar{
+		ID:        ava.ID,
+		AvatarURL: ava.AvatarURL,
+		Tier:      ava.Tier,
+	})
 	return nil
 }

@@ -16,12 +16,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
+func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
 	// first insert the energy core
 	newUtility := boiler.Utility{
 		BrandID:               utility.BrandID,
@@ -32,7 +27,7 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		Type:                  utility.Type,
 	}
 
-	err = newUtility.Insert(tx, boil.Infer())
+	err := newUtility.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -132,52 +127,47 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 	default:
 		return nil, fmt.Errorf("invalid utility type")
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return Utility(newUtility.ID)
+	
+	return Utility(tx, newUtility.ID)
 }
 
-func Utility(id string) (*server.Utility, error) {
-	boilerUtility, err := boiler.FindUtility(gamedb.StdConn, id)
+func Utility(tx boil.Executor, id string) (*server.Utility, error) {
+	boilerUtility, err := boiler.FindUtility(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	switch boilerUtility.Type {
 	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.UtilityShields(boiler.UtilityShieldWhere.UtilityID.EQ(boilerUtility.ID)).One(gamedb.StdConn)
+		boilerShield, err := boiler.UtilityShields(boiler.UtilityShieldWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
 		return server.UtilityShieldFromBoiler(boilerUtility, boilerShield, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeATTACKDRONE:
-		boilerAttackDrone, err := boiler.UtilityAttackDrones(boiler.UtilityAttackDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(gamedb.StdConn)
+		boilerAttackDrone, err := boiler.UtilityAttackDrones(boiler.UtilityAttackDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
 		return server.UtilityAttackDroneFromBoiler(boilerUtility, boilerAttackDrone, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeREPAIRDRONE:
-		boilerRepairDrone, err := boiler.UtilityRepairDrones(boiler.UtilityRepairDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(gamedb.StdConn)
+		boilerRepairDrone, err := boiler.UtilityRepairDrones(boiler.UtilityRepairDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
 		return server.UtilityRepairDroneFromBoiler(boilerUtility, boilerRepairDrone, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeANTIMISSILE:
-		boilerAntiMissile, err := boiler.UtilityAntiMissiles(boiler.UtilityAntiMissileWhere.UtilityID.EQ(boilerUtility.ID)).One(gamedb.StdConn)
+		boilerAntiMissile, err := boiler.UtilityAntiMissiles(boiler.UtilityAntiMissileWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
 		return server.UtilityAntiMissileFromBoiler(boilerUtility, boilerAntiMissile, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeACCELERATOR:
-		boilerAccelerator, err := boiler.UtilityAccelerators(boiler.UtilityAcceleratorWhere.UtilityID.EQ(boilerUtility.ID)).One(gamedb.StdConn)
+		boilerAccelerator, err := boiler.UtilityAccelerators(boiler.UtilityAcceleratorWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -238,22 +228,14 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 
 // AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
 // If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
-func AttachUtilityToMech(ownerID, mechID, utilityID string, lockedToMech bool) error {
+func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachUtilityToMech")
-		return terror.Error(err)
-	}
-	defer tx.Rollback()
-
-	mechCI, err := CollectionItemFromItemID(nil, mechID)
+	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
 		return terror.Error(err)
 	}
-	utilityCI, err := CollectionItemFromItemID(nil, utilityID)
+	utilityCI, err := CollectionItemFromItemID(tx, utilityID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to get utility collection item")
 		return terror.Error(err)
@@ -325,12 +307,6 @@ func AttachUtilityToMech(ownerID, mechID, utilityID string, lockedToMech bool) e
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("utilityMechJoin", utilityMechJoin).Msg(" failed to equip utility to war machine")
 		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachUtilityToMech")
-		return terror.Error(err)
 	}
 
 	return nil

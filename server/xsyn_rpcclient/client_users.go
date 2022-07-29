@@ -55,7 +55,7 @@ func (pp *XsynXrpcClient) OneTimeTokenLogin(tokenBase64, device, action string) 
 	err := pp.XrpcClient.Call("S.OneTimeTokenLogin", OneTimeTokenReq{pp.ApiKey, tokenBase64, device, action}, resp)
 
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "OneTimeTokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
@@ -78,7 +78,7 @@ func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
 
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		gamelog.L.Err(err).Str("method", "TokenLogin").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
 	return resp, nil
@@ -103,6 +103,31 @@ func (pp *XsynXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	}
 
 	return resp.Balance
+}
+
+type UsernameUpdateReq struct {
+	UserID      string `json:"user_id"`
+	NewUsername string `json:"new_username"`
+	ApiKey      string
+}
+
+type UsernameUpdateResp struct {
+	Username string
+}
+
+// UserUpdateUsername updates username
+func (pp *XsynXrpcClient) UserUpdateUsername(userID string, newUsername string) error {
+	resp := &UsernameUpdateResp{}
+	err := pp.XrpcClient.Call("S.UserUpdateUsername", UsernameUpdateReq{
+		ApiKey:      pp.ApiKey,
+		UserID:      userID,
+		NewUsername: newUsername},
+		resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserUpdateUsername").Msg("rpc error")
+		return err
+	}
+	return nil
 }
 
 type UserFactionEnlistReq struct {

@@ -14,18 +14,21 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
-const KeySaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
-const KeySaleAbilityLimit KVKey = "sale_ability_limit"
-const KeySaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
+const KeySaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
+
+const KeySaleAbilityTimeBetweenRefreshSeconds KVKey = "sale_ability_time_between_refresh_seconds"
 const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
-const QueueLengthAdd KVKey = "queue_length_add"
+const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
+const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
+const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
 const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
+
+const QueueLengthAdd KVKey = "queue_length_add"
 
 type KVKey string
 
@@ -51,12 +54,31 @@ const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentag
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
 const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
+const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_show_up_until_seconds"
+const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
 const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
 
 const KeyInstantPassRequiredAmount KVKey = "instant_pass_required_amount"
+const KeyJudgingCountdownSeconds KVKey = "system_ban_judging_countdown_seconds"
+const KeySystemBanTeamKillDefaultReason KVKey = "system_ban_team_kill_default_reason"
+const KeySystemBanTeamKillBanBaseDurationHours KVKey = "system_ban_team_kill_ban_base_duration_hours"
+const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ban_duration_multiplier"
+const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
+
+const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
+
+// repair
+
+const KeyMechRepairDefaultDurationMinutes KVKey = "mech_repair_default_duration_minutes"
+const KeyMechFastRepairDurationMinutes KVKey = "mech_fast_repair_duration_minutes"
+const KeyMechStandardRepairFee KVKey = "mech_standard_repair_fee"
+const KeyMechFastRepairFee KVKey = "mech_fast_repair_fee"
+
+const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
+const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

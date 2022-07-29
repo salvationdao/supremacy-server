@@ -160,11 +160,14 @@ type MarketplaceSaleItem1155 struct {
 type MechArenaStatus string
 
 const (
-	MechArenaStatusQueue  MechArenaStatus = "QUEUE"
-	MechArenaStatusBattle MechArenaStatus = "BATTLE"
-	MechArenaStatusMarket MechArenaStatus = "MARKET"
-	MechArenaStatusIdle   MechArenaStatus = "IDLE"
-	MechArenaStatusSold   MechArenaStatus = "SOLD"
+	MechArenaStatusQueue          MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle         MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket         MechArenaStatus = "MARKET"
+	MechArenaStatusIdle           MechArenaStatus = "IDLE"
+	MechArenaStatusSold           MechArenaStatus = "SOLD"
+	MechArenaStatusDamaged        MechArenaStatus = "DAMAGED"
+	MechArenaStatusStandardRepair MechArenaStatus = "REPAIRING (STANDARD)"
+	MechArenaStatusFastRepair     MechArenaStatus = "REPAIRING (FAST)"
 )
 
 type MechArenaInfo struct {
@@ -207,6 +210,7 @@ type MarketplaceEventItem struct {
 	Owner                MarketplaceUser                 `json:"owner,omitempty" boil:"players,bind"`
 	Mech                 MarketplaceSaleItemMech         `json:"mech,omitempty" boil:",bind"`
 	MysteryCrate         MarketplaceSaleItemMysteryCrate `json:"mystery_crate,omitempty" boil:",bind"`
+	Weapon               MarketplaceSaleItemWeapon       `json:"weapon,omitempty" boil:",bind"`
 	Keycard              AssetKeycardBlueprint           `json:"keycard,omitempty" boil:",bind"`
 	CollectionItem       MarketplaceSaleCollectionItem   `json:"collection_item,omitempty" boil:",bind"`
 	LastBid              MarketplaceBidder               `json:"last_bid,omitempty" boil:",bind"`

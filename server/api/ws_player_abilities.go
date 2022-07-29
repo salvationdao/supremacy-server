@@ -17,10 +17,9 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-syndicate/ws"
+	"github.com/shopspring/decimal"
 
 	"github.com/gofrs/uuid"
-
-	"github.com/shopspring/decimal"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -36,9 +35,11 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	if api.Config.Environment == "development" || api.Config.Environment == "staging" {
-		api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
-	}
+	api.SecureUserCommand(server.HubKeySaleAbilityClaim, pac.SaleAbilityClaimHandler)
+	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
+
+	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.BattleArena.MechAbilityTriggerHandler)
+	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.BattleArena.BattleAbilityOptIn)
 
 	return pac
 }
@@ -67,74 +68,199 @@ type SaleAbilitiesListResponse struct {
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	dspas, err := db.CurrentSaleAbilitiesList()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "CurrentSaleAbilitiesList").Err(err).Msg("unable to get current list of sale abilities")
-		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
-	}
+	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
+	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
 	reply(&SaleAbilitiesListResponse{
-		RefreshPeriodDurationSeconds: db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),
-		SaleAbilities:                dspas,
+		NextRefreshTime:              &nextRefresh,
+		RefreshPeriodDurationSeconds: pac.API.SalePlayerAbilityManager.TimeBetweenRefreshSeconds,
+		SaleAbilities:                dpas,
 	})
 	return nil
 }
 
-type SaleAbilitiesPurchaseRequest struct {
+type SaleAbilityClaimRequest struct {
 	Payload struct {
 		AbilityID string `json:"ability_id"` // sale ability id
-		Amount    string `json:"amount"`
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &SaleAbilitiesPurchaseRequest{}
+func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "SaleAbilityClaimHandler").Str("userID", user.ID).Logger()
+
+	req := &SaleAbilityClaimRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
+	l = l.With().Interface("payload", req.Payload).Logger()
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("user id", user.ID).Err(err).Msg("failed to convert hub id to user id")
+		l.Error().Err(err).Msg("failed to convert hub id to user id")
 		return err
 	} else if userID.IsNil() {
-		gamelog.L.Error().Str("user id", user.ID).Err(err).Msg("failed to convert hub id to user id, user id is nil")
+		l.Error().Err(err).Msg("failed to convert hub id to user id, user id is nil")
 		return terror.Error(fmt.Errorf("user id is nil"), "Issue retrieving user, please try again or contact support.")
 	}
 
 	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().
-			Str("req.Payload.AbilityID", req.Payload.AbilityID).
-			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get sale ability")
+		l.Error().Err(err).Msg("unable to get sale ability")
+		return terror.Error(err, "Unable to process sale ability claim,  check your balance and try again.")
+	}
+
+	l = l.With().Interface("salePlayerAbility", spa).Logger()
+	if !pac.API.SalePlayerAbilityManager.IsAbilityAvailable(spa.ID) {
+		// If sale of player ability has already expired
+		l.Debug().Msg("forbid player from claiming expired ability")
+		return terror.Error(fmt.Errorf("sale of player ability has already expired"), "Claim failed. This ability is no longer available for claiming.")
+	}
+
+	// Check if user has hit their claim limit
+	canPurchase := pac.API.SalePlayerAbilityManager.CanUserClaim(userID.String())
+	if !canPurchase {
+		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+		minutes := int(time.Until(nextRefresh).Minutes())
+		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
+		if minutes < 1 {
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(nextRefresh).Seconds()))
+		}
+		return terror.Error(fmt.Errorf("You have hit your claim limit of %d during this sale period. %s", pac.API.SalePlayerAbilityManager.UserClaimLimit, msg))
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		l.Error().Err(err).Msg("unable to begin tx")
+		return terror.Error(err, "Issue claiming player ability, please try again or contact support.")
+	}
+	defer tx.Rollback()
+
+	// Update player ability count
+	pa, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(spa.BlueprintID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(userID.String()),
+	).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		pa = &boiler.PlayerAbility{
+			OwnerID:         userID.String(),
+			BlueprintID:     spa.BlueprintID,
+			LastPurchasedAt: time.Now(),
+		}
+
+		err = pa.Insert(tx, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Interface("playerAbility", pa).Msg("failed to insert PlayerAbility")
+			return terror.Error(err, "Issue claiming player ability, please try again or contact support.")
+		}
+	} else if err != nil {
+		l.Error().Err(err).Msg("failed to fetch PlayerAbility")
+		return terror.Error(err, "Issue claiming player ability, please try again or contact support.")
+	}
+	l = l.With().Interface("playerAbility", pa).Logger()
+
+	pa.Count = pa.Count + 1
+
+	inventoryLimit := spa.R.Blueprint.InventoryLimit
+	if pa.Count > inventoryLimit {
+		l.Debug().Msg("user has reached their player ability inventory count")
+		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+	}
+
+	_, err = pa.Update(tx, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("failed to update player ability count")
+		return err
+	}
+
+	// Attempt to add to user's purchase count
+	err = pac.API.SalePlayerAbilityManager.AddToUserClaimCount(userID.String())
+	if err != nil {
+		l.Warn().Err(err).Msg("failed to add to user's claim count")
+		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh()).Minutes())))
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		l.Error().Err(err).Msg("failed to commit transaction")
+		return terror.Error(err, "Issue claiming player ability, please try again or contact support.")
+	}
+	reply(true)
+
+	// Tell client to update their player abilities list
+	pas, err := db.PlayerAbilitiesList(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get player abilities")
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+
+	// Update price of sale ability
+	pac.API.SalePlayerAbilityManager.Claim <- &player_abilities.Claim{
+		SaleID: spa.ID,
+	}
+	return nil
+}
+
+type SaleAbilityPurchaseRequest struct {
+	Payload struct {
+		AbilityID string `json:"ability_id"` // sale ability id
+		Price     string `json:"price"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "SaleAbilityPurchaseHandler").Str("userID", user.ID).Logger()
+	req := &SaleAbilityPurchaseRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	l = l.With().Interface("payload", req.Payload).Logger()
+	userID, err := uuid.FromString(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to convert hub id to user id")
+		return err
+	} else if userID.IsNil() {
+		l.Error().Err(err).Msg("failed to convert hub id to user id, user id is nil")
+		return terror.Error(fmt.Errorf("user id is nil"), "Issue retrieving user, please try again or contact support.")
+	}
+
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get sale ability")
 		return terror.Error(err, "Unable to process sale ability purchase,  check your balance and try again.")
 	}
 
-	if spa.AvailableUntil.Time.Before(time.Now()) {
+	l = l.With().Interface("salePlayerAbility", spa).Logger()
+	if !pac.API.SalePlayerAbilityManager.IsAbilityAvailable(spa.ID) {
 		// If sale of player ability has already expired
-		gamelog.L.Debug().
-			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing expired ability")
-		return terror.Error(fmt.Errorf("sale of player ability has already expired"), "Purchase failed. This ability is no longer available for purchase.")
+		l.Debug().Msg("forbid player from purchasing expired ability")
+		return terror.Error(fmt.Errorf("sale of player ability has already expired"), "Purchase failed. This ability is no longer available for purchasing.")
 	}
 
-	if spa.AmountSold == spa.SaleLimit {
-		// If sale of player ability limit has been reached
-		gamelog.L.Debug().
-			Str("handler", "PlayerAbilitiesPurchaseHandler").Interface("salePlayerAbility", spa).Msg("forbid player from purchasing ability that has had its sale limit reached")
-		return terror.Error(fmt.Errorf("sale of player ability limit has already been reached"), "Purchase failed. This ability has been sold out and is no longer available for purchase.")
+	// Check if user has hit their purchase limit
+	canPurchase := pac.API.SalePlayerAbilityManager.CanUserPurchase(userID.String())
+	if !canPurchase {
+		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+		minutes := int(time.Until(nextRefresh).Minutes())
+		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
+		if minutes < 1 {
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(nextRefresh).Seconds()))
+		}
+		return terror.Error(fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pac.API.SalePlayerAbilityManager.UserClaimLimit, msg))
 	}
 
-	givenAmount, err := decimal.NewFromString(req.Payload.Amount)
+	givenAmount, err := decimal.NewFromString(req.Payload.Price)
 	if err != nil {
-		gamelog.L.Error().
-			Str("req.Payload.Amount", req.Payload.Amount).Err(err).Msg("failed to convert amount to decimal")
+		l.Error().Err(err).Msg("failed to convert given price to decimal")
 		return terror.Error(err, "Unable to process player ability purchase, please try again or contract support.")
 	}
 
-	// if price has gone up, tell them
+	// If price has gone up, tell them
 	if spa.CurrentPrice.Round(0).GreaterThan(givenAmount) {
-		gamelog.L.Debug().Str("spa.CurrentPrice", spa.CurrentPrice.String()).Str("givenAmount", givenAmount.String()).Msg("purchase attempt when price increased since user clicked purchase")
+		l.Debug().Msg("purchase attempt when price increased since user clicked purchase")
 		return terror.Warn(fmt.Errorf("price gone up since purchase attempted"), "Purchase failed. This item is no longer available at this price.")
 	}
 
@@ -149,27 +275,28 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		Description:          fmt.Sprintf("Purchased player ability %s", spa.R.Blueprint.Label),
 		NotSafe:              true,
 	})
+	l = l.With().Interface("txID", supTransactionID).Logger()
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
 		if err == nil {
 			err = fmt.Errorf("transaction failed")
 		}
 		// Abort transaction if charge fails
-		gamelog.L.Error().Str("txID", supTransactionID).Str("playerAbilityID", req.Payload.AbilityID).Err(err).Msg("unable to charge user for player ability purchase")
-		return terror.Error(err, "Unable to process player ability purchase,  check your balance and try again.")
+		l.Error().Err(err).Msg("unable to charge user for player ability purchase")
+		return terror.Error(err, "Unable to process player ability purchase, check your balance and try again.")
 	}
 
 	refundFunc := func() {
 		// Refund player ability cost
 		refundSupTransactionID, err := pac.API.Passport.RefundSupsMessage(supTransactionID)
 		if err != nil {
-			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to refund user for player ability purchase cost")
+			l.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to refund user for player ability purchase cost")
 		}
 	}
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		l.Error().Err(err).Msg("unable to begin tx")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 	defer tx.Rollback()
@@ -189,50 +316,59 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		err = pa.Insert(tx, boil.Infer())
 		if err != nil {
 			refundFunc()
-			gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to insert PlayerAbility")
+			l.Error().Err(err).Interface("playerAbility", pa).Msg("failed to insert PlayerAbility")
 			return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 		}
 	} else if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
+		l.Error().Err(err).Msg("failed to fetch PlayerAbility")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
+	l = l.With().Interface("playerAbility", pa).Logger()
 
 	pa.Count = pa.Count + 1
+
+	inventoryLimit := spa.R.Blueprint.InventoryLimit
+	if pa.Count > inventoryLimit {
+		refundFunc()
+		l.Debug().Msg("user has reached their player ability inventory count")
+		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+	}
+
 	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
+		refundFunc()
+		l.Error().Err(err).Msg("failed to update player ability count")
 		return err
 	}
 
-	err = pac.API.SalePlayerAbilitiesSystem.AddToUserPurchaseCount(userID, spa.ID)
+	// Attempt to add to user's purchase count
+	err = pac.API.SalePlayerAbilityManager.AddToUserPurchaseCount(userID.String())
 	if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Interface("playerAbility", pa).Msg("failed to fetch PlayerAbility")
-
-		return terror.Error(err, fmt.Sprintf("You have reached your purchasing limits during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilitiesSystem.NextRefresh()).Minutes())))
+		l.Warn().Err(err).Msg("failed to add to user's purchase count")
+		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh()).Minutes())))
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Msg("failed to commit transaction")
-		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
+		l.Error().Err(err).Msg("failed to commit transaction")
+		return terror.Error(err, "Issue claiming player ability, please try again or contact support.")
 	}
 	reply(true)
 
 	// Tell client to update their player abilities list
 	pas, err := db.PlayerAbilitiesList(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
+		l.Error().Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
-		PlayerID:  userID,
-		AbilityID: uuid.FromStringOrNil(spa.ID),
+	pac.API.SalePlayerAbilityManager.Purchase <- &player_abilities.Purchase{
+		SaleID: spa.ID,
 	}
 	return nil
 }

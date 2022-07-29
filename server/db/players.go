@@ -30,12 +30,19 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		return nil, err
 	}
 	var player *boiler.Player
+
+	hexPublicAddress := ""
+	if PublicAddress != common.HexToAddress("") {
+		hexPublicAddress = PublicAddress.Hex()
+	}
+
 	if exists {
 		player, err = boiler.FindPlayer(tx, ID.String())
 		if err != nil {
 			return nil, err
 		}
-		player.PublicAddress = null.NewString(PublicAddress.Hex(), true)
+
+		player.PublicAddress = null.NewString(hexPublicAddress, hexPublicAddress != "")
 		player.Username = null.NewString(Username, true)
 		player.FactionID = null.NewString(FactionID.String(), !FactionID.IsNil())
 
@@ -46,7 +53,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	} else {
 		player = &boiler.Player{
 			ID:            ID.String(),
-			PublicAddress: null.NewString(PublicAddress.Hex(), true),
+			PublicAddress: null.NewString(hexPublicAddress, hexPublicAddress != ""),
 			Username:      null.NewString(Username, true),
 			FactionID:     null.NewString(FactionID.String(), !FactionID.IsNil()),
 		}
@@ -335,4 +342,80 @@ func UpdatePunishVoteCost() error {
 	}
 
 	return nil
+}
+
+func PlayerIPUpsert(playerID string, ip string) error {
+	if playerID == "" {
+		return terror.Error(fmt.Errorf("missing player id"), "Missing player id")
+	}
+
+	if ip == "" {
+		return terror.Error(fmt.Errorf("missing ip"), "Missing ip")
+	}
+
+	q := `
+		INSERT INTO 
+			player_ips (player_id, ip, first_seen_at, last_seen_at)
+		VALUES 
+			($1, $2, NOW(), NOW())
+		ON CONFLICT 
+			(player_id, ip) 
+		DO UPDATE SET
+			last_seen_at = NOW()
+	`
+
+	_, err := gamedb.StdConn.Exec(q, playerID, ip)
+	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Str("ip", ip).Err(err).Msg("Failed to upsert player ip")
+		return terror.Error(err, "Failed to store player ip")
+	}
+
+	return nil
+}
+
+func GetPlayer(playerID string) (*server.Player, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player")
+		return nil, err
+	}
+
+	l = l.With().Interface("GetPlayerFeaturesByID", playerID).Logger()
+	features, err := GetPlayerFeaturesByID(player.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player's features")
+		return nil, err
+	}
+
+	l = l.With().Interface("PlayerFromBoiler", playerID).Logger()
+	serverPlayer := server.PlayerFromBoiler(player, features)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to create server player struct")
+		return nil, err
+	}
+	return serverPlayer, nil
+}
+
+func GetPublicPlayerByID(playerID string) (*server.PublicPlayer, error) {
+	l := gamelog.L.With().Str("dbFunc", "GetPlayer").Str("playerID", playerID).Logger()
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to find player")
+		return nil, err
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        player.ID,
+		Username:  player.Username,
+		Gid:       player.Gid,
+		FactionID: player.FactionID,
+		AboutMe:   player.AboutMe,
+		Rank:      player.Rank,
+		CreatedAt: player.CreatedAt,
+	}
+
+	return pp, nil
 }

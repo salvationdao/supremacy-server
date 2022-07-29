@@ -3,11 +3,7 @@ package db
 import (
 	"context"
 	"regexp"
-	"server/db/boiler"
-	"server/gamedb"
 	"strings"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -69,25 +65,4 @@ func ParseQueryText(queryText string, matchAll bool) string {
 func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
 	_, err := conn.Exec(ctx, q)
 	return err
-}
-
-func UpsertPlayer(p *boiler.Player) error {
-	err := p.Upsert(
-		gamedb.StdConn,
-		true,
-		[]string{
-			boiler.PlayerColumns.PublicAddress,
-		},
-		boil.Whitelist(
-			boiler.PlayerColumns.ID,
-			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.FactionID,
-			boiler.PlayerColumns.PublicAddress,
-		),
-		boil.Infer(),
-	)
-	if err != nil {
-		return err
-	}
-	return nil
 }

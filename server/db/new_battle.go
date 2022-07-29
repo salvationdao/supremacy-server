@@ -235,7 +235,7 @@ func WinBattle(battleID string, winCondition string, mechs ...*MechWithOwner) er
 
 //DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
-	players, err := boiler.Players(qm.Where("is_ai = true")).All(gamedb.StdConn)
+	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -426,21 +426,21 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 			gamelog.L.Error().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to set battle id for mechs from queue")
 			continue
 		}
-		if b.BattleContractID.String == "" {
-			gamelog.L.Warn().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Msg("queue entry did not have a contract")
-			continue
-		}
-		bc, err := boiler.FindBattleContract(gamedb.StdConn, b.BattleContractID.String)
-		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to set battle id for mechs for contract queue")
-			continue
-		}
-		bc.BattleID = null.StringFrom(battleID)
-		_, err = bc.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Interface("battle_contract", bc).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to set battle id for battle contract")
-			continue
-		}
+		//if b.BattleContractID.String == "" {
+		//	gamelog.L.Warn().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Msg("queue entry did not have a contract")
+		//	continue
+		//}
+		//bc, err := boiler.FindBattleContract(gamedb.StdConn, b.BattleContractID.String)
+		//if err != nil {
+		//	gamelog.L.Error().Str("battle_id", battleID).Interface("battle_queue", b).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to set battle id for mechs for contract queue")
+		//	continue
+		//}
+		//bc.BattleID = null.StringFrom(battleID)
+		//_, err = bc.Update(gamedb.StdConn, boil.Infer())
+		//if err != nil {
+		//	gamelog.L.Error().Str("battle_id", battleID).Interface("battle_contract", bc).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to set battle id for battle contract")
+		//	continue
+		//}
 	}
 
 	return nil

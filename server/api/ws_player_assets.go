@@ -5,18 +5,23 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/rpctypes"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/kevinms/leakybucket-go"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	goaway "github.com/TwiN/go-away"
@@ -42,33 +47,37 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
+
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
-	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
-	api.SecureUserFactionCommand(HubKeyPlayerAssetWeaponDetail, pac.PlayerAssetWeaponDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 
+	// public profile
+	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
+
 	return pac
 }
 
 const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
-const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
 		Search              string                `json:"search"`
 		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
+		SortBy              string                `json:"sort_by"`
+		SortDir             db.SortByDir          `json:"sort_dir"`
 		PageSize            int                   `json:"page_size"`
 		Page                int                   `json:"page"`
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
+		FilterRarities      []string              `json:"rarities"`
+		FilterStatuses      []string              `json:"statuses"`
 	} `json:"payload"`
 }
 
@@ -138,19 +147,23 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	listOpts := &db.MechListOpts{
 		Search:              req.Payload.Search,
 		Filter:              req.Payload.Filter,
-		Sort:                req.Payload.Sort,
 		PageSize:            req.Payload.PageSize,
 		Page:                req.Payload.Page,
 		OwnerID:             user.ID,
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		FilterRarities:      req.Payload.FilterRarities,
+		FilterStatuses:      req.Payload.FilterStatuses,
 	}
 	if req.Payload.QueueSort.IsValid() && user.FactionID.Valid {
 		listOpts.QueueSort = &db.MechListQueueSortOpts{
 			FactionID: user.FactionID.String,
 			SortDir:   req.Payload.QueueSort,
 		}
+	} else if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
 	}
 
 	total, mechs, err := db.MechList(listOpts)
@@ -213,24 +226,120 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	return nil
 }
 
-type PlayerAssetMechDetailRequest struct {
+const HubKeyPlayerAssetMechListPublic = "PLAYER:ASSET:MECH:LIST:PUBLIC"
+
+type PlayerAssetMechListPublicRequest struct {
 	Payload struct {
-		MechID string `json:"mech_id"`
+		PlayerID            string                `json:"player_id"`
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed bool                  `json:"include_market_listed"`
+		QueueSort           db.SortByDir          `json:"queue_sort"`
 	} `json:"payload"`
 }
 
-const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
-
-func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetMechDetailRequest{}
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMechListPublicRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// get player
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		return terror.Error(fmt.Errorf("cant find player"), "Failed to fetch player.")
+	}
+
+	listOpts := &db.MechListOpts{
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             player.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed: req.Payload.IncludeMarketListed,
+	}
+
+	total, mechs, err := db.MechList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssetMechs := []*PlayerAssetMech{}
+
+	for _, m := range mechs {
+		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
+			ID:                    m.ID,
+			Label:                 m.Label,
+			WeaponHardpoints:      m.WeaponHardpoints,
+			UtilitySlots:          m.UtilitySlots,
+			Speed:                 m.Speed,
+			MaxHitpoints:          m.MaxHitpoints,
+			IsDefault:             m.IsDefault,
+			IsInsured:             m.IsInsured,
+			Name:                  m.Name,
+			GenesisTokenID:        m.GenesisTokenID,
+			LimitedReleaseTokenID: m.LimitedReleaseTokenID,
+			PowerCoreSize:         m.PowerCoreSize,
+			BlueprintID:           m.BlueprintID,
+			BrandID:               m.BrandID,
+			FactionID:             m.FactionID.String,
+			ModelID:               m.ModelID,
+			DefaultChassisSkinID:  m.DefaultChassisSkinID,
+			ChassisSkinID:         m.ChassisSkinID,
+			IntroAnimationID:      m.IntroAnimationID,
+			OutroAnimationID:      m.OutroAnimationID,
+			PowerCoreID:           m.PowerCoreID,
+			UpdatedAt:             m.UpdatedAt,
+			CreatedAt:             m.CreatedAt,
+			CollectionSlug:        m.CollectionItem.CollectionSlug,
+			Hash:                  m.CollectionItem.Hash,
+			TokenID:               m.CollectionItem.TokenID,
+			ItemType:              m.CollectionItem.ItemType,
+			Tier:                  m.CollectionItem.Tier,
+			OwnerID:               m.CollectionItem.OwnerID,
+			XsynLocked:            m.CollectionItem.XsynLocked,
+			MarketLocked:          m.CollectionItem.MarketLocked,
+			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+			QueuePosition:         m.QueuePosition,
+			ImageURL:              m.CollectionItem.ImageURL,
+			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
+			AvatarURL:             m.CollectionItem.AvatarURL,
+			LargeImageURL:         m.CollectionItem.LargeImageURL,
+			BackgroundColor:       m.CollectionItem.BackgroundColor,
+			AnimationURL:          m.CollectionItem.AnimationURL,
+			YoutubeURL:            m.CollectionItem.YoutubeURL,
+		})
+	}
+
+	reply(&PlayerAssetMechListResp{
+		Total: total,
+		Mechs: playerAssetMechs,
+	})
+	return nil
+}
+
+const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
+	}
+
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
@@ -246,7 +355,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	// get mech
-	mech, err := db.Mech(nil, collectionItem.ItemID)
+	mech, err := db.Mech(gamedb.StdConn, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
@@ -255,24 +364,52 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	return nil
 }
 
-type PlayerAssetWeaponDetailRequest struct {
-	Payload struct {
-		WeaponID string `json:"weapon_id"`
-	} `json:"payload"`
+const HubKeyPlayerAssetMechDetailPublic = "PLAYER:ASSET:MECH:DETAIL:PUBLIC"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
+	}
+
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	// get mech
+	mech, err := db.Mech(gamedb.StdConn, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
+	}
+	reply(mech)
+	return nil
 }
 
 const HubKeyPlayerAssetWeaponDetail = "PLAYER:ASSET:WEAPON:DETAIL"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetWeaponDetailRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
+	cctx := chi.RouteContext(ctx)
+	weaponID := cctx.URLParam("weapon_id")
+	if weaponID == "" {
+		return terror.Error(fmt.Errorf("missing weapon id"), "Missing weapon id.")
 	}
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.WeaponID),
+		boiler.CollectionItemWhere.ItemID.EQ(weaponID),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s on %s = %s",
@@ -575,24 +712,26 @@ func TrimName(username string) string {
 
 type OpenCrateRequest struct {
 	Payload struct {
-		Id string `json:"id"`
+		Id       string `json:"id"`
+		IsHangar bool   `json:"is_hangar"`
 	} `json:"payload"`
 }
 
 type OpenCrateResponse struct {
-	Mech       *server.Mech       `json:"mech,omitempty"`
-	MechSkin   *server.MechSkin   `json:"mech_skin,omitempty"`
-	Weapons    []*server.Weapon   `json:"weapon,omitempty"`
-	WeaponSkin *server.WeaponSkin `json:"weapon_skin,omitempty"`
-	PowerCore  *server.PowerCore  `json:"power_core,omitempty"`
+	ID          string               `json:"id"`
+	Mech        *server.Mech         `json:"mech,omitempty"`
+	MechSkins   []*server.MechSkin   `json:"mech_skins,omitempty"`
+	Weapons     []*server.Weapon     `json:"weapon,omitempty"`
+	WeaponSkins []*server.WeaponSkin `json:"weapon_skins,omitempty"`
+	PowerCore   *server.PowerCore    `json:"power_core,omitempty"`
 }
 
 const HubKeyOpenCrate = "CRATE:OPEN"
 
-var openCrateBucket = leakybucket.NewLeakyBucket(0.5, 1)
+var openCrateBucket = leakybucket.NewCollector(1, 1, true)
 
 func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	v := openCrateBucket.Add(1)
+	v := openCrateBucket.Add(user.ID, 1)
 	if v == 0 {
 		return terror.Error(fmt.Errorf("too many requests"), "Currently handling request, please try again.")
 	}
@@ -603,10 +742,18 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
-	).One(gamedb.StdConn)
+	var collectionItem *boiler.CollectionItem
+	if req.Payload.IsHangar {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	} else {
+		collectionItem, err = boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(req.Payload.Id),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMysteryCrate),
+		).One(gamedb.StdConn)
+	}
 	if err != nil {
 		return terror.Error(err, "Could not find collection item, try again or contact support.")
 	}
@@ -657,6 +804,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	}
 
 	items := OpenCrateResponse{}
+	items.ID = req.Payload.Id
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -689,6 +837,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 			}
+
 			items.Mech = mech
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
@@ -719,7 +868,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get mech skin during crate opening, try again or contact support.")
 			}
-			items.MechSkin = mechSkin
+			items.MechSkins = append(items.MechSkins, mechSkin)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			bp, err := db.BlueprintWeaponSkin(blueprintItem.BlueprintID)
 			if err != nil {
@@ -733,7 +882,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
 			}
-			items.WeaponSkin = weaponSkin
+			items.WeaponSkins = append(items.WeaponSkins, weaponSkin)
 		case boiler.TemplateItemTypePOWER_CORE:
 			bp, err := db.BlueprintPowerCore(blueprintItem.BlueprintID)
 			if err != nil {
@@ -751,7 +900,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			items.PowerCore = powerCore
 		}
 	}
-
+	var hangarResp *db.SiloType
 	if crate.Type == boiler.CrateTypeMECH {
 		eod, err := db.MechEquippedOnDetails(tx, items.Mech.ID)
 		if err != nil {
@@ -760,16 +909,23 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 
+		rarerSkin := items.MechSkins[0]
+		for _, skin := range items.MechSkins {
+			if skin.Tier != "COLOSSAL" {
+				rarerSkin = skin
+			}
+		}
+
 		//attach mech_skin to mech - mech
-		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, items.MechSkin.ID, false)
+		err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.MechSkin.EquippedOn = null.StringFrom(items.Mech.ID)
-		items.MechSkin.EquippedOnDetails = eod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset([]*server.MechSkin{items.MechSkin})...)
+		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
+		rarerSkin.EquippedOnDetails = eod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
 
 		err = db.AttachPowerCoreToMech(tx, user.ID, items.Mech.ID, items.PowerCore.ID)
 		if err != nil {
@@ -782,7 +938,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerPowerCoresToXsynAsset([]*server.PowerCore{items.PowerCore})...)
 
 		//attach weapons to mech -mech
-		for _, weapon := range items.Weapons {
+		for i, weapon := range items.Weapons {
 			err = db.AttachWeaponToMech(tx, user.ID, items.Mech.ID, weapon.ID)
 			if err != nil {
 				crateRollback()
@@ -791,6 +947,26 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 			weapon.EquippedOn = null.StringFrom(items.Mech.ID)
 			weapon.EquippedOnDetails = eod
+
+			wod, err := db.WeaponEquippedOnDetails(tx, items.Weapons[0].ID)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
+				return terror.Error(err, "Could not open crate, try again or contact support.")
+			}
+
+			//attach weapon_skin to weapon -weapon
+			err = db.AttachWeaponSkinToWeapon(tx, user.ID, weapon.ID, items.WeaponSkins[i].ID)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
+				return terror.Error(err, "Could not open crate, try again or contact support.")
+			}
+
+			weapon.WeaponSkin = items.WeaponSkins[i]
+			weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
+			weapon.WeaponSkin.EquippedOnDetails = wod
+			xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[i]})...)
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset(items.Weapons)...)
 
@@ -800,8 +976,23 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		mech.ChassisSkin = items.MechSkin
+		mech.ChassisSkin = rarerSkin
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})...)
+
+		if req.Payload.IsHangar {
+			hangarResp, err = db.GetUserMechHangarItemsWithMechID(mech, user.ID, tx)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get mech hangar items while opening crate")
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
+
+		err = db.GiveMechAvatar(tx, mech.OwnerID, mech.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {
@@ -818,15 +1009,15 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkin.ID)
+		err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
-		items.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[0].ID)
-		items.WeaponSkin.EquippedOnDetails = wod
-		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkin})...)
+		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
+		items.WeaponSkins[0].EquippedOnDetails = wod
+		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)
 
 		weapon, err := db.Weapon(tx, items.Weapons[0].ID)
 		if err != nil {
@@ -835,6 +1026,15 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not open crate, try again or contact support.")
 		}
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{weapon})...)
+
+		if req.Payload.IsHangar {
+			hangarResp, err = db.GetUserWeaponHangarItemsWithID(weapon, user.ID, tx)
+			if err != nil {
+				crateRollback()
+				gamelog.L.Error().Err(err).Msg("Failed to get weapon hangar items while opening crate")
+				return terror.Error(err, "Failed to get user mech hangar from items")
+			}
+		}
 	}
 
 	err = pac.API.Passport.AssetsRegister(xsynAsserts) // register new assets
@@ -859,24 +1059,43 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		return terror.Error(err, "Could not open mystery crate, please try again or contact support.")
 	}
 
+	if req.Payload.IsHangar {
+		reply(hangarResp)
+		return nil
+	}
+
 	reply(items)
 
 	return nil
 }
 
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
+
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
-		Search              string                `json:"search"`
-		Filter              *db.ListFilterRequest `json:"filter"`
-		Sort                *db.ListSortRequest   `json:"sort"`
-		PageSize            int                   `json:"page_size"`
-		Page                int                   `json:"page"`
-		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
-		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
-		IncludeMarketListed bool                  `json:"include_market_listed"`
-		ExcludeEquipped     bool                  `json:"exclude_equipped"`
-		FilterRarities      []string              `json:"rarities"`
-		FilterWeaponTypes   []string              `json:"weapon_types"`
+		Search                        string                    `json:"search"`
+		Filter                        *db.ListFilterRequest     `json:"filter"`
+		Sort                          *db.ListSortRequest       `json:"sort"`
+		SortBy                        string                    `json:"sort_by"`
+		SortDir                       db.SortByDir              `json:"sort_dir"`
+		PageSize                      int                       `json:"page_size"`
+		Page                          int                       `json:"page"`
+		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
+		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
+		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		FilterRarities                []string                  `json:"rarities"`
+		FilterWeaponTypes             []string                  `json:"weapon_types"`
+		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
+		FilterStatAmmo                *db.WeaponStatFilterRange `json:"stat_ammo"`
+		FilterStatDamage              *db.WeaponStatFilterRange `json:"stat_damage"`
+		FilterStatDamageFalloff       *db.WeaponStatFilterRange `json:"stat_damage_falloff"`
+		FilterStatDamageFalloffRate   *db.WeaponStatFilterRange `json:"stat_damage_falloff_rate"`
+		FilterStatRadius              *db.WeaponStatFilterRange `json:"stat_radius"`
+		FilterStatRadiusDamageFalloff *db.WeaponStatFilterRange `json:"stat_radius_damage_falloff"`
+		FilterStatRateOfFire          *db.WeaponStatFilterRange `json:"stat_rate_of_fire"`
+		FilterStatEnergyCosts         *db.WeaponStatFilterRange `json:"stat_energy_cost"`
+		FilterStatProjectileSpeed     *db.WeaponStatFilterRange `json:"stat_projectile_speed"`
+		FilterStatSpread              *db.WeaponStatFilterRange `json:"stat_spread"`
 	} `json:"payload"`
 }
 
@@ -922,18 +1141,32 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 	}
 
 	listOpts := &db.WeaponListOpts{
-		Search:              req.Payload.Search,
-		Filter:              req.Payload.Filter,
-		Sort:                req.Payload.Sort,
-		PageSize:            req.Payload.PageSize,
-		Page:                req.Payload.Page,
-		OwnerID:             user.ID,
-		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
-		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
-		IncludeMarketListed: req.Payload.IncludeMarketListed,
-		ExcludeEquipped:     req.Payload.ExcludeEquipped,
-		FilterRarities:      req.Payload.FilterRarities,
-		FilterWeaponTypes:   req.Payload.FilterWeaponTypes,
+		Search:                        req.Payload.Search,
+		Filter:                        req.Payload.Filter,
+		Sort:                          req.Payload.Sort,
+		PageSize:                      req.Payload.PageSize,
+		Page:                          req.Payload.Page,
+		OwnerID:                       user.ID,
+		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
+		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		FilterRarities:                req.Payload.FilterRarities,
+		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
+		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
+		FilterStatAmmo:                req.Payload.FilterStatAmmo,
+		FilterStatDamage:              req.Payload.FilterStatDamage,
+		FilterStatDamageFalloff:       req.Payload.FilterStatDamageFalloff,
+		FilterStatDamageFalloffRate:   req.Payload.FilterStatDamageFalloffRate,
+		FilterStatRadius:              req.Payload.FilterStatRadius,
+		FilterStatRadiusDamageFalloff: req.Payload.FilterStatRadiusDamageFalloff,
+		FilterStatRateOfFire:          req.Payload.FilterStatRateOfFire,
+		FilterStatEnergyCosts:         req.Payload.FilterStatEnergyCosts,
+		FilterStatProjectileSpeed:     req.Payload.FilterStatProjectileSpeed,
+		FilterStatSpread:              req.Payload.FilterStatSpread,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
 	}
 
 	total, weapons, err := db.WeaponList(listOpts)
@@ -969,4 +1202,20 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Weapons: playerAssWeapons,
 	})
 	return nil
+}
+
+func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	userID := r.URL.Query().Get("user_id") // the stat identifier e.g. speed
+
+	output, err := db.GetWeaponMaxStats(gamedb.StdConn, userID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Something went wrong with fetching max weapon stats.")
+	}
+
+	// Don't put quote values in for decimal stat values
+	decimal.MarshalJSONWithoutQuotes = true
+	status, resp := helpers.EncodeJSON(w, output)
+	decimal.MarshalJSONWithoutQuotes = false
+
+	return status, resp
 }
