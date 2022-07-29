@@ -813,8 +813,9 @@ func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 type ChatBanPlayerRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		PlayerID string `json:"player_id"`
-		Reason   string `json:"reason"`
+		PlayerID        string `json:"player_id"`
+		Reason          string `json:"reason"`
+		DurationMinutes int    `json:"duration_minutes"`
 	} `json:"payload"`
 }
 
@@ -853,6 +854,10 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 		return terror.Error(terror.ErrInvalidInput, "A reason must be provided.")
 	}
 
+	if req.Payload.DurationMinutes == 0 {
+		return terror.Error(terror.ErrInvalidInput, "A duration must be provided.")
+	}
+
 	if req.Payload.PlayerID == user.ID {
 		return terror.Error(terror.ErrForbidden, "You cannot ban yourself.")
 	}
@@ -881,14 +886,14 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
 	}
 
-	oneDay := time.Duration(time.Hour * 24) // one day
+	duration := time.Duration(time.Minute * time.Duration(req.Payload.DurationMinutes))
 	pb := &boiler.PlayerBan{
 		BanFrom:        boiler.BanFromTypeADMIN,
 		BannedPlayerID: req.Payload.PlayerID,
 		BannedByID:     user.ID,
 		Reason:         req.Payload.Reason,
 		BannedAt:       time.Now(),
-		EndAt:          time.Now().Add(oneDay),
+		EndAt:          time.Now().Add(duration),
 		BanSendChat:    true,
 	}
 	l = l.With().Interface("playerBan", pb).Logger()
