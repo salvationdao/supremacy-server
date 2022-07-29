@@ -398,15 +398,19 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		boiler.PlayerBanWhere.BanSendChat.EQ(true),
 		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
-	).Exists(gamedb.StdConn)
-	if err != nil {
+	).One(gamedb.StdConn)
+	if err == nil {
+		// if chat banned just return
+		hours := int(time.Until(isBanned.EndAt).Hours())
+		expiresIn := fmt.Sprintf("%d hour(s)", hours)
+		if hours < 1 {
+			expiresIn = fmt.Sprintf("%d minute(s)", int(time.Until(isBanned.EndAt).Minutes()))
+		}
+		return terror.Error(fmt.Errorf("player is banned to chat"), fmt.Sprintf("You are banned from chatting. Your ban ends in %s.", expiresIn))
+
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
 		return err
-	}
-
-	// if chat banned just return
-	if isBanned {
-		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
 
 	// user's fingerprint banned (shadow ban)
