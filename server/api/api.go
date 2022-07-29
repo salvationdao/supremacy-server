@@ -14,7 +14,6 @@ import (
 	"server/profanities"
 	"server/synctool"
 	"server/syndicate"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -80,7 +79,6 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
-	SystemMessagingManager   *system_messages.SystemMessagingManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -118,7 +116,6 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-	smm *system_messages.SystemMessagingManager,
 	syncConfig *synctool.StaticSyncTool,
 ) (*API, error) {
 	// spin up syndicate system
@@ -141,7 +138,6 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
-		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -190,6 +186,7 @@ func NewAPI(
 	_ = NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
+	NewWSWarMachineController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -233,6 +230,7 @@ func NewAPI(
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
+			r.Mount("/system_messages", SystemMessagesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))

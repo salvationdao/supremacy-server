@@ -41,3 +41,4 @@ const HubKeyMechRepairCase = "MECH:REPAIR:CASE"
 const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
 
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
+const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
