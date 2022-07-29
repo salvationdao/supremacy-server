@@ -1190,6 +1190,10 @@ func (btl *Battle) ZoneChange(payload *ZoneChangePayload) error {
 		return terror.Error(fmt.Errorf("invalid zone index"))
 	}
 
+	// Update current battle zone
+	btl.currentBattleZoneIndex = payload.ZoneIndex
+
+	// Send notification to frontend
 	currentZone := btl.battleZones[payload.ZoneIndex]
 	event := ZoneChangeEvent{
 		Location:   currentZone.Location,
