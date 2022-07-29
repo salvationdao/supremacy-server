@@ -99,7 +99,7 @@ func TransferMechToNewOwner(
 	}
 
 	// give mech skin avatar
-	err = db.GiveMechAvatar(toID, mechID)
+	err = db.GiveMechAvatar(conn, toID, mechID)
 	if err != nil {
 		return nil, err
 	}
