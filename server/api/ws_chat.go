@@ -134,12 +134,22 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 
 func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
+	defer c.RUnlock()
 	for _, message := range c.messages {
 		if !fn(message) {
 			break
 		}
 	}
-	c.RUnlock()
+}
+
+func (c *Chatroom) WriteRange(fn func(chatMessage *ChatMessage) bool) {
+	c.Lock()
+	defer c.Unlock()
+	for _, message := range c.messages {
+		if !fn(message) {
+			break
+		}
+	}
 }
 
 func isFingerPrintBanned(playerID string) bool {
@@ -676,13 +686,13 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	switch chatHistory.ChatStream {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(fn)
+		fc.API.RedMountainChat.WriteRange(fn)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(fn)
+		fc.API.BostonChat.WriteRange(fn)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(fn)
+		fc.API.ZaibatsuChat.WriteRange(fn)
 	default:
-		fc.API.GlobalChat.Range(fn)
+		fc.API.GlobalChat.WriteRange(fn)
 	}
 
 	reply(true)
@@ -796,13 +806,13 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 
 	switch chatHistory.ChatStream {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(fn)
+		fc.API.RedMountainChat.WriteRange(fn)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(fn)
+		fc.API.BostonChat.WriteRange(fn)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(fn)
+		fc.API.ZaibatsuChat.WriteRange(fn)
 	default:
-		fc.API.GlobalChat.Range(fn)
+		fc.API.GlobalChat.WriteRange(fn)
 	}
 
 	reply(metadata.Likes)
