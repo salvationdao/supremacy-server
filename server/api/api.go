@@ -186,7 +186,6 @@ func NewAPI(
 	_ = NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
-	NewWSWarMachineController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
