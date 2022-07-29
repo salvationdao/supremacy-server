@@ -7,7 +7,8 @@ INSERT INTO
         description,
         text_colour,
         location_select_type,
-        rarity_weight
+        rarity_weight,
+        inventory_limit
     )
 VALUES
     (
@@ -18,11 +19,12 @@ VALUES
         'Spawn a tiny mech to fight alongside your allies.',
         '#FFFFFF',
         'LOCATION_SELECT',
+        10,
         10
     );
 
 INSERT INTO
-    sale_player_abilities (blueprint_id, current_price, available_until)
+    sale_player_abilities (blueprint_id, current_price, rarity_weight)
 VALUES
     (
         (
@@ -34,5 +36,5 @@ VALUES
                 game_client_ability_id = 18
         ),
         100000000000000000000,
-        now()
+        2
     );
