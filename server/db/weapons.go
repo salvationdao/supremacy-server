@@ -917,15 +917,15 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 }
 
 // GiveMechAvatar gives player mech skin avatar from mech
-func GiveMechAvatar(playerID string, mechID string) error {
+func GiveMechAvatar(conn boil.Executor, playerID string, mechID string) error {
 	// get mech skin
-	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(gamedb.StdConn)
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(conn)
 	if err != nil {
 		return err
 	}
 
 	// get blueprint mech skin
-	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
+	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(conn)
 	if err != nil {
 		return err
 	}
@@ -938,7 +938,7 @@ func GiveMechAvatar(playerID string, mechID string) error {
 	exists, err := boiler.PlayersProfileAvatars(
 		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
 		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
-	).One(gamedb.StdConn)
+	).One(conn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
@@ -953,7 +953,7 @@ func GiveMechAvatar(playerID string, mechID string) error {
 		ProfileAvatarID: bms.ProfileAvatarID.String,
 	}
 
-	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	err = ppa.Insert(conn, boil.Infer())
 	if err != nil {
 		return err
 	}
