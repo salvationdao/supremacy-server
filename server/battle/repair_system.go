@@ -162,7 +162,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 
 			// refund reward
 			_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(server.SupremacyGameUserID)),
+				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 				ToUserID:             uuid.Must(uuid.FromString(ro.OfferedByID.String)),
 				Amount:               amount.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_unclaimed_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),

@@ -12,6 +12,8 @@ import (
 
 var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
 
+const RepairCenterUserID = "a988b1e3-5556-4cad-83bd-d61c2b149cb7"
+
 // User is a single user on the platform
 type User struct {
 	ID                  UserID      `json:"id" db:"id"`
