@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"html"
 	"server"
 	"server/db"
@@ -691,9 +692,8 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 type ReactToMessageRequest struct {
 	Payload struct {
-		ChatHistoryID string   `json:"chat_history_id"`
-		Likes         []string `json:"likes"`
-		Dislikes      []string `json:"dislikes"`
+		ChatHistoryID string `json:"chat_history_id"`
+		Reaction      string `json:"reaction"`
 	} `json:"payload"`
 }
 
@@ -726,10 +726,43 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 		return terror.Error(err, genericErrorMessage)
 	}
 
-	//need to mutex lock here?
-	metadata.Likes.Likes = req.Payload.Likes
-	metadata.Likes.Dislikes = req.Payload.Dislikes
-	metadata.Likes.Net = len(req.Payload.Likes) - len(req.Payload.Dislikes)
+	switch req.Payload.Reaction {
+	//handle likes
+	case "like":
+
+		//check if user id is in likes then "unlike"- take user name out of likes array
+		i := slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+			break
+		}
+		//check if user id is in dislikes then take username out of dislikes and put into likes array
+		i = slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+		}
+		//else put into likes array
+		metadata.Likes.Likes = append(metadata.Likes.Likes, user.ID)
+		break
+		//handle dislikes
+	case "dislike":
+		//check if user id is in dislikes the "undislike" - take username out of dislikes array
+		i := slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+			break
+		}
+		//check if user id is in likes then take username out of likes and put into dislikes array
+		i = slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+		}
+		//else put into dislikes array
+		metadata.Likes.Dislikes = append(metadata.Likes.Dislikes, user.ID)
+		break
+	}
+
+	metadata.Likes.Net = len(metadata.Likes.Likes) - len(metadata.Likes.Dislikes)
 
 	l = l.With().Interface("MarshalMetadata", metadata).Logger()
 	var jsonTextMsgMeta null.JSON
@@ -773,7 +806,7 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 		fc.API.GlobalChat.Range(fn)
 	}
 
-	reply(true)
+	reply(metadata.Likes)
 	return nil
 }
 
