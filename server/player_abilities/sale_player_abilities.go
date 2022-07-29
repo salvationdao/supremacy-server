@@ -328,7 +328,6 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 			}
 		case purchase := <-pas.Purchase:
-			fmt.Println(purchase.SaleID)
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.SaleID]; ok {
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(pas.InflationPercentage).Div(oneHundred))
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
