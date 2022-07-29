@@ -32,9 +32,11 @@ CREATE TABLE profile_custom_avatars
 
 -- seed hair layers
 INSERT INTO layers (type, hue, image_url) VALUES
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair1.png'),
 ('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair2.png'),
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair3.png');
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair3.png'),
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_green.png'),
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_red.png'),
+('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_yellow.png');
 
 -- seed faces 
 INSERT INTO layers (type, hue, image_url) VALUES

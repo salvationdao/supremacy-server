@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamelog"
@@ -25,6 +26,15 @@ type PlayerProfileAvatarLayersRequest struct {
 		Page      int                   `json:"page"`
 		LayerType null.String           `json:"layer_type"`
 	} `json:"payload"`
+}
+
+type Layer struct {
+	ID       string      `json:"id,omitempty"`
+	ImageURL null.String `json:"image_url,omitempty"`
+	Type     string      `json:"type"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type LayersResponse struct {
@@ -73,11 +83,88 @@ func (pac *PlayerController) PlayerProfileAvatarLayersListHandler(ctx context.Co
 	return nil
 }
 
-type Layer struct {
-	ID       string      `json:"id,omitempty"`
-	ImageURL null.String `json:"image_url,omitempty"`
-	Type     string      `json:"type"`
+type PlayerProfileCustomAvatarRequest struct {
+	Payload struct {
+		PlayerID    null.String `json:"player_id,omitempty"`
+		FaceID      string      `json:"face_id,omitempty"`
+		BodyID      string      `json:"body_id,omitempty"`
+		HairID      null.String `json:"hair_id,omitempty"`
+		AccessoryID null.String `json:"accessory_id,omitempty"`
+		EyewearID   null.String `json:"eyewear_id,omitempty"`
+	} `json:"payload,omitempty"`
+}
 
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+const HubKeyPlayerProfileCustomAvatarCreate = "PLAYER:PROFILE:CUSTOM_AVATAR:CREATE"
+
+func (pac *PlayerController) PlayerProfileCustomAvatarCreate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("hree")
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	req := &PlayerProfileCustomAvatarRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("hree1")
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	// build custom avatar
+	ava := db.AvatarCreateRequest{
+		FaceID:      req.Payload.FaceID,
+		BodyID:      req.Payload.BodyID,
+		HairID:      req.Payload.HairID,
+		AccessoryID: req.Payload.AccessoryID,
+		EyeWearID:   req.Payload.EyewearID,
+	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("hree2")
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	err = db.CustomAvatarCreate(user.ID, ava)
+	if err != nil {
+		return terror.Error(err, "Failed to create custom avatar, please try again or contact support.")
+	}
+
+	reply(nil)
+
+	return nil
+}
+
+const HubKeyPlayerProfileCustomAvatarUpdate = "PLAYER:PROFILE:CUSTOM_AVATAR:UPDATE"
+
+func (pac *PlayerController) PlayerProfileCustomAvatarUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileCustomAvatarRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// build custom avatar
+	ava := db.AvatarCreateRequest{
+		FaceID:      req.Payload.FaceID,
+		BodyID:      req.Payload.BodyID,
+		HairID:      req.Payload.HairID,
+		AccessoryID: req.Payload.AccessoryID,
+		EyeWearID:   req.Payload.EyewearID,
+	}
+
+	err = db.CustomAvatarUpdate(user.ID, ava)
+	if err != nil {
+		return terror.Error(err, "Failed to update custom avatar, please try again or contact support.")
+	}
+
+	return nil
 }
