@@ -79,6 +79,7 @@ func NewPlayerController(api *API) *PlayerController {
 
 	// custom avatar
 	api.SecureUserCommand(HubKeyPlayerProfileLayersList, pc.PlayerProfileAvatarLayersListHandler)
+	api.SecureUserCommand(HubKeyPlayerCustomAvatarList, pc.ProfileCustomAvatarListHandler)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarCreate, pc.PlayerProfileCustomAvatarCreate)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarUpdate, pc.PlayerProfileCustomAvatarUpdate)
 
@@ -1397,103 +1398,4 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
-}
-
-type PlayerAvatarListRequest struct {
-	Payload struct {
-		Search   string                `json:"search"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		Sort     *db.ListSortRequest   `json:"sort"`
-		PageSize int                   `json:"page_size"`
-		Page     int                   `json:"page"`
-	} `json:"payload"`
-}
-
-type PlayerAvatarListResp struct {
-	Total   int64                   `json:"total"`
-	Avatars []*boiler.ProfileAvatar `json:"avatars"`
-}
-
-const HubKeyPlayerAvatarList = "PLAYER:AVATAR:LIST"
-
-func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAssetWeaponListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
-	}
-
-	listOpts := &db.AvatarListOpts{
-		Search:   req.Payload.Search,
-		Filter:   req.Payload.Filter,
-		Sort:     req.Payload.Sort,
-		PageSize: req.Payload.PageSize,
-		Page:     req.Payload.Page,
-		OwnerID:  user.ID,
-	}
-
-	total, avatars, err := db.AvatarList(listOpts)
-	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
-		return terror.Error(err, "Failed to find your avatars, please try again or contact support.")
-	}
-
-	reply(&PlayerAvatarListResp{
-		Total:   total,
-		Avatars: avatars,
-	})
-	return nil
-}
-
-type PlayerAvatarUpdateRequest struct {
-	Payload struct {
-		PlayerID        string `json:"player_id"`
-		ProfileAvatarID string `json:"profile_avatar_id"`
-	} `json:"payload"`
-}
-
-const HubKeyPlayerAvatarUpdate = "PLAYER:AVATAR:UPDATE"
-
-func (pc *PlayerController) ProfileAvatarUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAvatarUpdateRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	// removing avatar
-	if req.Payload.ProfileAvatarID == "" {
-		user.ProfileAvatarID = null.StringFrom("")
-		reply(&PlayerAvatar{
-			Tier: "MEGA",
-		})
-		return nil
-	}
-
-	// get player avatar
-	ava, err := boiler.FindProfileAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
-	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
-		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
-	}
-
-	// update player
-	user.ProfileAvatarID = null.StringFrom(ava.ID)
-	user.UpdatedAt = time.Now()
-	_, err = user.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.UpdatedAt, boiler.PlayerColumns.ProfileAvatarID))
-	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
-		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
-	}
-
-	reply(&PlayerAvatar{
-		ID:        ava.ID,
-		AvatarURL: ava.AvatarURL,
-		Tier:      ava.Tier,
-	})
-	return nil
 }

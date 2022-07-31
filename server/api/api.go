@@ -294,6 +294,8 @@ func NewAPI(
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
+				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, server.MustSecure(pc.ProfileCustomAvatarDetailsHandler))
+
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 			}))
 
