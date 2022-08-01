@@ -1077,7 +1077,7 @@ func (arena *Arena) beginBattle() {
 	arena.storeCurrentBattle(btl)
 	arena.Message(BATTLEINIT, btl)
 
-	go arena.NotifyUpcomingWarMachines()
+	//go arena.NotifyUpcomingWarMachines()
 }
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
