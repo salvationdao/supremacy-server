@@ -379,7 +379,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.FactionID.IsNil() {
+	if !user.FactionID.Valid {
 		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction to chat.")
 	}
 
