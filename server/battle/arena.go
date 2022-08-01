@@ -1162,7 +1162,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 
 	// Broadcast spawn event
-	ws.PublishMessage("/battle", HubKeyBattleAISpawned, btl.SpawnedAI)
+	ws.PublishMessage("/public/minimap", HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }
