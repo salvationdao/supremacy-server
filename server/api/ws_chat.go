@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"html"
 	"server"
 	"server/db"
@@ -105,13 +106,12 @@ type MessageNewBattle struct {
 }
 
 type Likes struct {
-	Likes    int `json:"likes"`
-	Dislikes int `json:"dislikes"`
-	Net      int `json:"net"`
+	Likes    []string `json:"likes"`
+	Dislikes []string `json:"dislikes"`
+	Net      int      `json:"net"`
 }
 
 type TextMessageMetadata struct {
-	//gid:true(read/unread)
 	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
 	Likes           *Likes       `json:"likes"`
 }
@@ -132,14 +132,24 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 	c.Unlock()
 }
 
-func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
+func (c *Chatroom) ReadRange(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
+	defer c.RUnlock()
 	for _, message := range c.messages {
 		if !fn(message) {
 			break
 		}
 	}
-	c.RUnlock()
+}
+
+func (c *Chatroom) WriteRange(fn func(chatMessage *ChatMessage) bool) {
+	c.Lock()
+	defer c.Unlock()
+	for _, message := range c.messages {
+		if !fn(message) {
+			break
+		}
+	}
 }
 
 func isFingerPrintBanned(playerID string) bool {
@@ -273,6 +283,7 @@ func NewChatController(api *API) *ChatController {
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
 	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
 	api.SecureUserCommand(HubKeyChatBanPlayer, chatHub.ChatBanPlayerHandler)
+	api.SecureUserCommand(HubKeyReactToMessage, chatHub.ReactToMessageHandler)
 
 	go api.MessageBroadcaster()
 
@@ -483,7 +494,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	textMsgMetadata := &TextMessageMetadata{
-		Likes:           &Likes{0, 0, 0},
+		Likes:           &Likes{[]string{}, []string{}, 0},
 		TaggedUsersRead: taggedUsersGid,
 	}
 
@@ -663,16 +674,136 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	switch chatHistory.ChatStream {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(fn)
+		fc.API.RedMountainChat.WriteRange(fn)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(fn)
+		fc.API.BostonChat.WriteRange(fn)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(fn)
+		fc.API.ZaibatsuChat.WriteRange(fn)
 	default:
-		fc.API.GlobalChat.Range(fn)
+		fc.API.GlobalChat.WriteRange(fn)
 	}
 
 	reply(true)
+	return nil
+}
+
+type ReactToMessageRequest struct {
+	Payload struct {
+		ChatHistoryID string `json:"chat_history_id"`
+		Reaction      string `json:"reaction"`
+	} `json:"payload"`
+}
+
+const HubKeyReactToMessage = "REACT:MESSAGE"
+
+func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ReactToMessageHandler").Str("user_id", user.ID).Logger()
+	genericErrorMessage := "Unable to react to message, try again or contact support."
+
+	req := &ReactToMessageRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	switch req.Payload.Reaction {
+	//handle likes
+	case "like":
+
+		//check if user id is in likes then "unlike"- take user name out of likes array
+		i := slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+			break
+		}
+		//check if user id is in dislikes then take username out of dislikes and put into likes array
+		i = slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+		}
+		//else put into likes array
+		metadata.Likes.Likes = append(metadata.Likes.Likes, user.ID)
+		break
+		//handle dislikes
+	case "dislike":
+		//check if user id is in dislikes the "undislike" - take username out of dislikes array
+		i := slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+			break
+		}
+		//check if user id is in likes then take username out of likes and put into dislikes array
+		i = slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+		}
+		//else put into dislikes array
+		metadata.Likes.Dislikes = append(metadata.Likes.Dislikes, user.ID)
+		break
+	}
+
+	metadata.Likes.Net = len(metadata.Likes.Likes) - len(metadata.Likes.Dislikes)
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update message's reactions.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.WriteRange(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.WriteRange(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.WriteRange(fn)
+	default:
+		fc.API.GlobalChat.WriteRange(fn)
+	}
+
+	reply(metadata.Likes)
 	return nil
 }
 
@@ -686,11 +817,11 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	}
 	switch factionID {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(chatRangeHandler)
+		fc.API.RedMountainChat.ReadRange(chatRangeHandler)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(chatRangeHandler)
+		fc.API.BostonChat.ReadRange(chatRangeHandler)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(chatRangeHandler)
+		fc.API.ZaibatsuChat.ReadRange(chatRangeHandler)
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
@@ -704,7 +835,7 @@ const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 
 func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
-	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
+	fc.API.GlobalChat.ReadRange(func(message *ChatMessage) bool {
 		resp = append(resp, message)
 		return true
 	})
