@@ -94,6 +94,7 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 
 // storeGameMap set the game map detail from game client
 func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZone) {
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("start")
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -106,6 +107,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -178,6 +180,8 @@ const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	gamelog.L.Trace().Str("func", "preIntro").Msg("start")
+
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -308,7 +312,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	}
 
 	btl.BroadcastUpdate()
-
+	gamelog.L.Trace().Str("func", "preIntro").Msg("end")
 	return nil
 }
 
@@ -1437,10 +1441,12 @@ func (arena *Arena) reset() {
 }
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
+	gamelog.L.Trace().Str("func", "Destroyed").Msg("start")
 	// check destroyed war machine exist
 	if btl.ID != dp.BattleID {
 		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
 		btl.arena.reset()
+		gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 		return
 	}
 
@@ -1461,6 +1467,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	}
 	if destroyedWarMachine == nil {
 		gamelog.L.Warn().Str("hash", dHash).Msg("can't match destroyed mech with battle state")
+		gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 		return
 	}
 
@@ -1517,6 +1524,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 		if destroyedWarMachine == nil {
 			gamelog.L.Warn().Str("killed_by_hash", dp.DestroyedWarMachineEvent.KillByWarMachineHash).Msg("can't match killer mech with battle state")
+			gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 			return
 		}
 	} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
@@ -1525,6 +1533,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		var err error
 		retAbl := func() (*boiler.BattleAbilityTrigger, error) {
 			abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
+			gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 			return abl, err
 		}
 
@@ -1686,7 +1695,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
-
+		gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 		return
 	}
 
@@ -1819,10 +1828,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 }
 
 func (btl *Battle) Load() error {
+	gamelog.L.Trace().Str("func", "Load").Msg("start")
 	q, err := db.LoadBattleQueue(context.Background(), 3)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 
@@ -1832,9 +1843,11 @@ func (btl *Battle) Load() error {
 		err = btl.QueueDefaultMechs()
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
@@ -1874,11 +1887,13 @@ func (btl *Battle) Load() error {
 		if err != nil {
 			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
 		}
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
@@ -1887,12 +1902,13 @@ func (btl *Battle) Load() error {
 		uuids[i], err = uuid.FromString(bq.MechID)
 		if err != nil {
 			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 	}
 
 	btl.warMachineIDs = uuids
-
+	gamelog.L.Trace().Str("func", "Load").Msg("end")
 	return nil
 }
 

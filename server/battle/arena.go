@@ -428,7 +428,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type LocationSelectRequest struct {
-	Payload struct {
+	Payload struct {pot
 		StartCoords server.CellLocation  `json:"start_coords"`
 		EndCoords   *server.CellLocation `json:"end_coords,omitempty"`
 	} `json:"payload"`
@@ -885,7 +885,7 @@ func (arena *Arena) start() {
 
 				// update map detail
 				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
-
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -909,11 +909,12 @@ func (arena *Arena) start() {
 				}
 				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
 				arena.NewBattleChan <- battleInfo
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			case "BATTLE:OUTRO_FINISHED":
 				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
 				arena.beginBattle()
-
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
 
@@ -924,6 +925,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.Destroyed(&dataPayload)
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			case "BATTLE:WAR_MACHINE_PICKUP":
 				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
@@ -935,6 +937,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.end(dataPayload)
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			case "BATTLE:AI_SPAWNED":
 				var dataPayload *AISpawnedRequest
@@ -946,6 +949,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
 				var dataPayload *AbilityMoveCommandCompletePayload
@@ -957,6 +961,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			case "BATTLE:ZONE_CHANGE":
 				var dataPayload *ZoneChangePayload
@@ -969,6 +974,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
+				gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message handled")
 
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
@@ -982,6 +988,8 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) beginBattle() {
+	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
+
 	// delete all the unfinished mech command
 	_, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
@@ -1077,7 +1085,8 @@ func (arena *Arena) beginBattle() {
 	arena.storeCurrentBattle(btl)
 	arena.Message(BATTLEINIT, btl)
 
-	//go arena.NotifyUpcomingWarMachines()
+	go arena.NotifyUpcomingWarMachines()
+	gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 }
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -1134,6 +1143,8 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 }
 
 func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
+
 	if payload.BattleID != btl.BattleID {
 		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
 	}
@@ -1176,7 +1187,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
+	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 	return nil
 }
 
