@@ -991,6 +991,7 @@ func (arena *Arena) start() {
 
 func (arena *Arena) beginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
+	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
 	// delete all the unfinished mech command
 	_, err := boiler.MechMoveCommandLogs(
@@ -1088,7 +1089,6 @@ func (arena *Arena) beginBattle() {
 	arena.Message(BATTLEINIT, btl)
 
 	go arena.NotifyUpcomingWarMachines()
-	gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 }
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -1146,6 +1146,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 
 func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
 	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
+	defer gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 
 	if payload.BattleID != btl.BattleID {
 		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
@@ -1189,7 +1190,6 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 	return nil
 }
 
