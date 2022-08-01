@@ -27,6 +27,7 @@ type RepairAgent struct {
 	RepairCaseID   string      `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
 	RepairOfferID  string      `boiler:"repair_offer_id" boil:"repair_offer_id" json:"repair_offer_id" toml:"repair_offer_id" yaml:"repair_offer_id"`
 	PlayerID       string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	RequiredStacks int         `boiler:"required_stacks" boil:"required_stacks" json:"required_stacks" toml:"required_stacks" yaml:"required_stacks"`
 	StartedAt      time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
 	FinishedAt     null.Time   `boiler:"finished_at" boil:"finished_at" json:"finished_at,omitempty" toml:"finished_at" yaml:"finished_at,omitempty"`
 	FinishedReason null.String `boiler:"finished_reason" boil:"finished_reason" json:"finished_reason,omitempty" toml:"finished_reason" yaml:"finished_reason,omitempty"`
@@ -43,6 +44,7 @@ var RepairAgentColumns = struct {
 	RepairCaseID   string
 	RepairOfferID  string
 	PlayerID       string
+	RequiredStacks string
 	StartedAt      string
 	FinishedAt     string
 	FinishedReason string
@@ -54,6 +56,7 @@ var RepairAgentColumns = struct {
 	RepairCaseID:   "repair_case_id",
 	RepairOfferID:  "repair_offer_id",
 	PlayerID:       "player_id",
+	RequiredStacks: "required_stacks",
 	StartedAt:      "started_at",
 	FinishedAt:     "finished_at",
 	FinishedReason: "finished_reason",
@@ -67,6 +70,7 @@ var RepairAgentTableColumns = struct {
 	RepairCaseID   string
 	RepairOfferID  string
 	PlayerID       string
+	RequiredStacks string
 	StartedAt      string
 	FinishedAt     string
 	FinishedReason string
@@ -78,6 +82,7 @@ var RepairAgentTableColumns = struct {
 	RepairCaseID:   "repair_agents.repair_case_id",
 	RepairOfferID:  "repair_agents.repair_offer_id",
 	PlayerID:       "repair_agents.player_id",
+	RequiredStacks: "repair_agents.required_stacks",
 	StartedAt:      "repair_agents.started_at",
 	FinishedAt:     "repair_agents.finished_at",
 	FinishedReason: "repair_agents.finished_reason",
@@ -93,6 +98,7 @@ var RepairAgentWhere = struct {
 	RepairCaseID   whereHelperstring
 	RepairOfferID  whereHelperstring
 	PlayerID       whereHelperstring
+	RequiredStacks whereHelperint
 	StartedAt      whereHelpertime_Time
 	FinishedAt     whereHelpernull_Time
 	FinishedReason whereHelpernull_String
@@ -104,6 +110,7 @@ var RepairAgentWhere = struct {
 	RepairCaseID:   whereHelperstring{field: "\"repair_agents\".\"repair_case_id\""},
 	RepairOfferID:  whereHelperstring{field: "\"repair_agents\".\"repair_offer_id\""},
 	PlayerID:       whereHelperstring{field: "\"repair_agents\".\"player_id\""},
+	RequiredStacks: whereHelperint{field: "\"repair_agents\".\"required_stacks\""},
 	StartedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"started_at\""},
 	FinishedAt:     whereHelpernull_Time{field: "\"repair_agents\".\"finished_at\""},
 	FinishedReason: whereHelpernull_String{field: "\"repair_agents\".\"finished_reason\""},
@@ -145,8 +152,8 @@ func (*repairAgentR) NewStruct() *repairAgentR {
 type repairAgentL struct{}
 
 var (
-	repairAgentAllColumns            = []string{"id", "repair_case_id", "repair_offer_id", "player_id", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
-	repairAgentColumnsWithoutDefault = []string{"repair_case_id", "repair_offer_id", "player_id"}
+	repairAgentAllColumns            = []string{"id", "repair_case_id", "repair_offer_id", "player_id", "required_stacks", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
+	repairAgentColumnsWithoutDefault = []string{"repair_case_id", "repair_offer_id", "player_id", "required_stacks"}
 	repairAgentColumnsWithDefault    = []string{"id", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
 	repairAgentPrimaryKeyColumns     = []string{"id"}
 	repairAgentGeneratedColumns      = []string{}

@@ -369,11 +369,6 @@ type RepairAgentRegisterRequest struct {
 	} `json:"payload"`
 }
 
-type RepairAgentResponse struct {
-	*boiler.RepairAgent
-	RequiredStacks int `json:"required_stacks"`
-}
-
 var mechRepairAgentBucket = leakybucket.NewCollector(2, 1, true)
 
 func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -453,13 +448,12 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to abandon repair job")
 	}
 
-	requiredStacks := db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50)
-
 	// insert repair agent
 	ra := &boiler.RepairAgent{
-		RepairCaseID:  ro.RepairCaseID,
-		RepairOfferID: ro.ID,
-		PlayerID:      user.ID,
+		RepairCaseID:   ro.RepairCaseID,
+		RepairOfferID:  ro.ID,
+		PlayerID:       user.ID,
+		RequiredStacks: db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50),
 	}
 
 	err = ra.Insert(gamedb.StdConn, boil.Infer())
@@ -476,7 +470,7 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		}
 	}()
 
-	reply(&RepairAgentResponse{ra, requiredStacks})
+	reply(ra)
 
 	return nil
 }
@@ -566,6 +560,20 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	if ra.FinishedAt.Valid {
 		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
+	}
+
+	// log path
+	ral, err := boiler.RepairAgentLogs(
+		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("repair agent id", ra.ID).Msg("Failed to log mini-game records.")
+		return terror.Error(err, "Failed to load repair records.")
+	}
+
+	err = BlockStackingGameVerification(ra, ral)
+	if err != nil {
+		return err
 	}
 
 	rb := boiler.RepairBlock{
@@ -700,8 +708,9 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		}
 	}
 
-	if totalStack != db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50) {
-		return terror.Error(fmt.Errorf("stack not complete"), "Invalid game pattern detected.")
+	// check the stack amount match
+	if totalStack != ra.RequiredStacks {
+		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
 	}
 
 	return nil

@@ -67,6 +67,7 @@ CREATE TABLE repair_agents(
     repair_case_id uuid not null references repair_cases(id),
     repair_offer_id uuid not null references repair_offers(id),
     player_id uuid not null references players(id),
+    required_stacks int not null,
 
     started_at timestamptz not null default now(),
     finished_at timestamptz null,
