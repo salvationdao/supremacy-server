@@ -366,6 +366,60 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	return nil
 }
 
+// PlayerAssetMechBriefInfo load brief mech info for quick deploy
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
+	}
+
+	// get collection and check ownership
+	_, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+		qm.Load(boiler.MechRels.ChassisSkin),
+		qm.Load(boiler.MechRels.Model),
+		qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load mech info")
+	}
+
+	m := server.Mech{
+		ID:    mech.ID,
+		Label: mech.Label,
+	}
+
+	if mech.R.ChassisSkin != nil {
+		ms := mech.R.ChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.Label,
+			AvatarURL: ms.AvatarURL,
+			ImageURL:  ms.ImageURL,
+		}
+	} else if mech.R.Model != nil && mech.R.Model.R.DefaultChassisSkin != nil {
+		ms := mech.R.Model.R.DefaultChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.Label,
+			AvatarURL: ms.AvatarURL,
+			ImageURL:  ms.ImageURL,
+		}
+	}
+
+	reply(m)
+	return nil
+}
+
 const HubKeyPlayerAssetMechDetailPublic = "PLAYER:ASSET:MECH:DETAIL:PUBLIC"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {

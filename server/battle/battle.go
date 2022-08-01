@@ -174,9 +174,6 @@ func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) (
 	return bmd, factions, nil
 }
 
-const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
-
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	btl.Lock()
 	defer btl.Unlock()
@@ -532,49 +529,11 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the creation of ending info: endCreateStats!", r)
 		}
 	}()
-	gamelog.L.Info().Msgf("battle end: looping TopSupsContributeFactions: %s", btl.ID)
-	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top faction contributors")
-	}
-	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
-	topPlayerContributorsBoilers, err := db.TopSupsContributors(uuid.Must(uuid.FromString(payload.BattleID)))
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player contributors")
-	}
+
 	gamelog.L.Info().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
 	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
-	}
-
-	topFactionContributors := []*Faction{}
-	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
-	for _, f := range topFactionContributorBoilers {
-		topFactionContributors = append(topFactionContributors, &Faction{
-			ID:    f.ID,
-			Label: f.Label,
-			Theme: &Theme{
-				PrimaryColor:    f.PrimaryColor,
-				SecondaryColor:  f.SecondaryColor,
-				BackgroundColor: f.BackgroundColor,
-			},
-		})
-	}
-	topPlayerContributors := []*BattleUser{}
-
-	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
-	for _, p := range topPlayerContributorsBoilers {
-		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
-		if p.FactionID.Valid {
-			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
-		}
-
-		topPlayerContributors = append(topPlayerContributors, &BattleUser{
-			ID:        uuid.Must(uuid.FromString(p.ID)),
-			Username:  p.Username.String,
-			FactionID: factionID.String(),
-		})
 	}
 
 	gamelog.L.Info().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
@@ -591,10 +550,14 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		})
 	}
 
+	// winning factions
+	winningFaction := winningWarMachines[0].Faction
+
+	// get winning faction order
+	winningFactionIDOrder := []string{winningFaction.ID}
+
 	gamelog.L.Debug().
-		Int("top_faction_contributors", len(topFactionContributors)).
 		Int("top_player_executors", len(topPlayerExecutors)).
-		Int("top_player_contributors", len(topPlayerContributors)).
 		Msg("get top players and factions")
 
 	return &BattleEndDetail{
@@ -603,10 +566,9 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		StartedAt:                    btl.Battle.StartedAt,
 		EndedAt:                      btl.Battle.EndedAt.Time,
 		WinningCondition:             payload.WinCondition,
-		WinningFaction:               winningWarMachines[0].Faction,
+		WinningFaction:               winningFaction,
+		WinningFactionIDOrder:        winningFactionIDOrder,
 		WinningWarMachines:           winningWarMachines,
-		TopSupsContributeFactions:    topFactionContributors,
-		TopSupsContributors:          topPlayerContributors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 }

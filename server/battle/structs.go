@@ -102,9 +102,8 @@ type BattleEndDetail struct {
 	EndedAt                      time.Time     `json:"ended_at"`
 	WinningCondition             string        `json:"winning_condition"`
 	WinningFaction               *Faction      `json:"winning_faction"`
+	WinningFactionIDOrder        []string      `json:"winning_faction_id_order"`
 	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
-	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
-	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
 	*MultiplierUpdate            `json:"battle_multipliers"`
 }
