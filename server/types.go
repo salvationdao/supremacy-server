@@ -669,6 +669,13 @@ type GameAbilityEvent struct {
 	GameLocationEnd     *GameLocation `json:"gameLocationEnd"`
 }
 
+type BattleZone struct {
+	Location   GameLocation `json:"location"`
+	Radius     int          `json:"radius"`
+	Time       int          `json:"time"`
+	ShrinkTime int          `json:"shrinkTime"`
+}
+
 var env string
 var lock = sync.RWMutex{}
 

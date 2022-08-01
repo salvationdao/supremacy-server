@@ -236,6 +236,7 @@ func NewAPI(
 			}
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
+			r.Mount("/battle_history", BattleHistoryRouter())
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
