@@ -114,6 +114,7 @@ type Likes struct {
 type TextMessageMetadata struct {
 	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
 	Likes           *Likes       `json:"likes"`
+	Reports         []string     `json:"reports"`
 }
 
 // Chatroom holds a specific chat room
@@ -497,6 +498,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	textMsgMetadata := &TextMessageMetadata{
 		Likes:           &Likes{[]string{}, []string{}, 0},
 		TaggedUsersRead: taggedUsersGid,
+		Reports:         []string{},
 	}
 
 	var jsonTextMsgMeta null.JSON
@@ -1035,7 +1037,7 @@ type ChatReportRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		ReportedUserID   string `json:"reported_user_id"`
-		Message          string `json:"message"`
+		ChatHistoryID    string `json:"chat_history_id"`
 		Reason           string `json:"reason"`
 		OtherDescription string `json:"other_description,omitempty"`
 		Description      string `json:"description"`
@@ -1047,6 +1049,7 @@ const HubKeyChatReport = "CHAT:REPORT:MESSAGE"
 func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "ChatReportHandler").Str("user_id", user.ID).Logger()
 
+	genericErrorMessage := "Could not report message, try again or contact support."
 	req := &ChatReportRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1055,10 +1058,76 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 	l = l.With().Interface("payload", req).Logger()
 
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
 	//check if user has already reported, if so return error
+	i := slices.Index(metadata.Reports, user.ID)
+	if i != -1 {
+		l.Error().Err(err).Msg("user reported message more than once")
+		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
+	}
 	//get 5 mins before and 5 mins after specific to chat stream
 	//send through to zen desk
+	//must be in json format
 	//add user id to report metadata (cant report again)
+
+	metadata.Reports = append(metadata.Reports, user.ID)
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update chat history to update reported.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.WriteRange(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.WriteRange(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.WriteRange(fn)
+	default:
+		fc.API.GlobalChat.WriteRange(fn)
+	}
+
 	reply(true)
 
 	return nil
