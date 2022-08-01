@@ -428,7 +428,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type LocationSelectRequest struct {
-	Payload struct {pot
+	Payload struct {
 		StartCoords server.CellLocation  `json:"start_coords"`
 		EndCoords   *server.CellLocation `json:"end_coords,omitempty"`
 	} `json:"payload"`
