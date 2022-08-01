@@ -162,20 +162,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
-	// get faction user account
-	factionAccountID, ok := server.FactionUsers[factionID]
-	if !ok {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("mech ID", mci.ItemID).
-			Str("faction ID", factionID).
-			Err(err).
-			Msg("unable to get hard coded syndicate player ID from faction ID")
-	}
-
 	// pay battle queue fee
 	_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		Amount:               bqf.Amount.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
@@ -345,18 +335,9 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	if bq.R != nil && bq.R.Fee != nil {
 		bqf := bq.R.Fee
 
-		factionAccountID, ok := server.FactionUsers[factionID]
-		if !ok {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("mech ID", mci.ItemID).
-				Str("faction ID", factionID).
-				Err(err).
-				Msg("unable to get hard coded syndicate player ID from faction ID")
-		}
-
 		// pay battle queue fee
 		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
 			Amount:               bqf.Amount.StringFixed(0),
 			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
