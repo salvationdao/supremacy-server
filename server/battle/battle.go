@@ -18,18 +18,16 @@ import (
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
-	"go.uber.org/atomic"
-
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 )
@@ -47,7 +45,7 @@ type Battle struct {
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
-	spawnedAIMux           sync.RWMutex
+	spawnedAIMux           deadlock.RWMutex
 	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
 	warMachineIDs          []uuid.UUID   `json:"ids"`
 	lastTick               *[]byte
@@ -71,7 +69,7 @@ type Battle struct {
 	inserted bool
 
 	viewerCountInputChan chan *ViewerLiveCount
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
@@ -1271,28 +1269,35 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the Tick!", r)
+		}
+	}()
 	gamelog.L.Trace().Str("func", "Tick").Msg("start")
-
+	gamelog.L.Trace().Str("func", "Tick").Msg("tick1")
 	if len(payload) < 1 {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
-
+	gamelog.L.Trace().Str("func", "Tick").Msg("tick2")
 	btl.lastTick = &payload
-
+	gamelog.L.Trace().Str("func", "Tick").Msg("tick3")
 	// return if the war machines list is not ready
 	if len(btl.WarMachines) == 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick4")
 		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
-
+	gamelog.L.Trace().Str("func", "Tick").Msg("tick5")
 	// return, if any war machines have 0 as their participant id
 	if btl.WarMachines[0].ParticipantID == 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick6")
 		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
-
+	gamelog.L.Trace().Str("func", "Tick").Msg("tick7")
 	// collect ws message
 	wsMessages := []ws.Message{}
 
@@ -1301,6 +1306,7 @@ func (btl *Battle) Tick(payload []byte) {
 	var c byte
 	offset := 2
 	for c = 0; c < count; c++ {
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick8")
 		participantID := payload[offset]
 		offset++
 
@@ -1308,6 +1314,7 @@ func (btl *Battle) Tick(payload []byte) {
 		warMachineIndex := -1
 		var warmachine *WarMachine
 		if participantID > 100 {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick9")
 			// find Spawned AI
 			btl.spawnedAIMux.RLock()
 			for i, wmn := range btl.SpawnedAI {
@@ -1316,36 +1323,47 @@ func (btl *Battle) Tick(payload []byte) {
 					break
 				}
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick10")
 			btl.spawnedAIMux.RUnlock()
 
 			if warMachineIndex == -1 {
+				gamelog.L.Trace().Str("func", "Tick").Msg("tick11")
 				gamelog.L.Warn().Err(fmt.Errorf("aiSpawnedIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
 				continue
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick12")
 			warmachine = btl.SpawnedAI[warMachineIndex]
 		} else {
 			// Mech
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick13")
 			for i, wmn := range btl.WarMachines {
+				gamelog.L.Trace().Str("func", "Tick").Msg("tick14")
 				if checkWarMachineByParticipantID(wmn, int(participantID)) {
 					warMachineIndex = i
 					break
 				}
+				gamelog.L.Trace().Str("func", "Tick").Msg("tick15")
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick16")
 			if warMachineIndex == -1 {
+				gamelog.L.Trace().Str("func", "Tick").Msg("tick17")
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine - returning")
 				gamelog.L.Trace().Str("func", "Tick").Msg("end")
 				return
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick18")
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
-
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick19")
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick20")
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick21")
 		offset++
-
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick22")
 		warmachine.Lock()
 		wms := WarMachineStat{
 			ParticipantID: int(warmachine.ParticipantID),
@@ -1357,6 +1375,7 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 		// Position + Yaw
 		if booleans[0] {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick23")
 			x := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
 			y := int(helpers.BytesToInt(payload[offset : offset+4]))
@@ -1364,7 +1383,9 @@ func (btl *Battle) Tick(payload []byte) {
 			rotation := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
 
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick24")
 			if warmachine.Position == nil {
+				gamelog.L.Trace().Str("func", "Tick").Msg("tick25")
 				warmachine.Position = &server.Vector3{}
 			}
 			warmachine.Position.X = x
@@ -1372,66 +1393,80 @@ func (btl *Battle) Tick(payload []byte) {
 			wms.Position = warmachine.Position
 			warmachine.Rotation = rotation
 			wms.Rotation = rotation
-
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick26")
 		}
 		// Health
 		if booleans[1] {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick27")
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Health = health
 			wms.Health = health
-
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick28")
 		}
 		// Shield
 		if booleans[2] {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick29")
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			warmachine.Shield = shield
 			wms.Shield = shield
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick30")
 		}
 		warmachine.Unlock()
-
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick31")
 		// Energy
 		if booleans[3] {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick32")
 			offset += 4
 		}
 
 		// Hidden/Incognito
 		if btl.playerAbilityManager().IsWarMachineHidden(warmachine.Hash) {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick33")
 			wms.IsHidden = true
 			wms.Position = &server.Vector3{
 				X: -1,
 				Y: -1,
 				Z: -1,
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick34")
 		} else if btl.playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
 			X: wms.Position.X,
 			Y: wms.Position.Y,
 		}) {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick35")
 			wms.IsHidden = true
 			wms.Position = &server.Vector3{
 				X: -1,
 				Y: -1,
 				Z: -1,
 			}
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick36")
 		}
 
 		if participantID < 100 {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick37")
 			wsMessages = append(wsMessages, ws.Message{
 				URI:     fmt.Sprintf("/public/mech/%d", participantID),
 				Key:     HubKeyWarMachineStatUpdated,
 				Payload: wms,
 			})
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick38")
 		}
 	}
 
 	if len(wsMessages) > 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick39")
 		ws.PublishBatchMessages("/public/mech", wsMessages)
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick40")
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick41")
 		minimapUpdates := []MinimapEvent{}
 		for id, b := range btl.playerAbilityManager().Blackouts() {
+			gamelog.L.Trace().Str("func", "Tick").Msg("tick42")
 			minimapUpdates = append(minimapUpdates, MinimapEvent{
 				ID:            id,
 				GameAbilityID: BlackoutGameAbilityID,
@@ -1440,8 +1475,11 @@ func (btl *Battle) Tick(payload []byte) {
 				Coords:        b.CellCoords,
 			})
 		}
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick43")
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick44")
 		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+		gamelog.L.Trace().Str("func", "Tick").Msg("tick45")
 	}
 	gamelog.L.Trace().Str("func", "Tick").Msg("end")
 }

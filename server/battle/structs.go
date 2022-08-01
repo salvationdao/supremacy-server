@@ -1,8 +1,8 @@
 package battle
 
 import (
+	"github.com/sasha-s/go-deadlock"
 	"server/multipliers"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -10,7 +10,7 @@ import (
 )
 
 type usersMap struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	m map[uuid.UUID]*BattleUser
 }
 
@@ -76,7 +76,7 @@ type BattleUser struct {
 	ID        uuid.UUID `json:"id"`
 	Username  string    `json:"username"`
 	FactionID string    `json:"faction_id"`
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 var FactionNames = map[string]string{
@@ -202,7 +202,7 @@ type GameAbility struct {
 
 	CooldownDurationSecond int `json:"cooldown_duration_second"`
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type GameAbilityPrice struct {

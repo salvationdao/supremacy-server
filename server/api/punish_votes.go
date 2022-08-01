@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"net/http"
 	"server"
 	"server/db"
@@ -11,7 +12,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -50,7 +50,7 @@ type PunishVoteTracker struct {
 
 	// mutex lock for issue vote
 	CurrentPunishVote *PunishVoteInstance
-	sync.RWMutex
+	deadlock.RWMutex
 
 	api *API
 }

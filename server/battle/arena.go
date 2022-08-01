@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server"
@@ -39,6 +40,7 @@ import (
 type NewBattleChan struct {
 	BattleNumber int
 }
+
 type Arena struct {
 	server                   *http.Server
 	opts                     *Opts
@@ -57,7 +59,7 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	RepairSystem             *RepairSystem
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (arena *Arena) IsClientConnected() error {
@@ -885,7 +887,7 @@ func (arena *Arena) start() {
 
 				// update map detail
 				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -909,15 +911,15 @@ func (arena *Arena) start() {
 				}
 				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
 				arena.NewBattleChan <- battleInfo
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			case "BATTLE:OUTRO_FINISHED":
 				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
 				arena.beginBattle()
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -925,7 +927,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.Destroyed(&dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			case "BATTLE:WAR_MACHINE_PICKUP":
 				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
@@ -937,7 +939,7 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.end(dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			case "BATTLE:AI_SPAWNED":
 				var dataPayload *AISpawnedRequest
@@ -949,7 +951,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
 				var dataPayload *AbilityMoveCommandCompletePayload
@@ -961,7 +963,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			case "BATTLE:ZONE_CHANGE":
 				var dataPayload *ZoneChangePayload
@@ -974,7 +976,7 @@ func (arena *Arena) start() {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
 				}
-				gamelog.L.Info().Str("msg.BattleCommand",msg.BattleCommand).Msg("game client message handled")
+				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")

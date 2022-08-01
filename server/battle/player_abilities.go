@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"math"
 	"server"
 	"server/db"
@@ -12,7 +13,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"sync"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -44,7 +44,7 @@ type PlayerAbilityManager struct {
 	blackouts           map[string]BlackoutEntry //  timestamp-player_ability_id-owner_id, ability info
 	hasBlackoutsUpdated bool
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewPlayerAbilityManager() *PlayerAbilityManager {
