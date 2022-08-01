@@ -818,19 +818,6 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 	}
 	l = l.With().Interface("payload", req).Logger()
 
-	hasPermission, err := boiler.PlayersFeatures(
-		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
-		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameCHAT_BAN),
-	).Exists(gamedb.StdConn)
-	if err != nil {
-		l.Error().Err(err).Msg("failed to check if user has permission to execute chat ban")
-		return terror.Error(err)
-	}
-
-	if !hasPermission {
-		return terror.Error(terror.ErrUnauthorised)
-	}
-
 	if req.Payload.PlayerID == "" {
 		l.Warn().Msg("player id was not given when attempting to chat ban")
 		return terror.Error(terror.ErrInvalidInput, "Player must be specified.")
@@ -848,10 +835,28 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 		return terror.Error(terror.ErrForbidden, "You cannot ban yourself.")
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.PlayerID)
+	hasPermission, err := boiler.PlayersFeatures(
+		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
+		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameCHAT_BAN),
+	).Exists(gamedb.StdConn)
 	if err != nil {
-		l.Error().Err(err).Msg("could not find player associated with player ID")
+		l.Error().Err(err).Msg("failed to check if user has permission to execute chat ban")
+		return terror.Error(err)
+	}
+
+	if !hasPermission {
+		return terror.Error(terror.ErrUnauthorised)
+	}
+
+	exists, err := boiler.PlayerExists(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		l.Error().Err(err).Msg("could not check if player associated with player ID exists")
 		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
+	}
+
+	if !exists {
+		l.Warn().Msg("tried to ban player that doesn't exist")
+		return terror.Error(fmt.Errorf("attempted to chat ban a player that doesnt exist"))
 	}
 
 	isAlreadyBanned, err := boiler.PlayerBans(
@@ -866,7 +871,7 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 		if hours < 1 {
 			expiresIn = fmt.Sprintf("%d minute(s)", int(time.Until(isAlreadyBanned.EndAt).Minutes()))
 		}
-		return terror.Error(terror.ErrForbidden, fmt.Sprintf("Player %s is already chat banned. Reason: '%s'. Expires in: %s.", player.Username.String, isAlreadyBanned.Reason, expiresIn))
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("Player is already chat banned. Reason: '%s'. Expires in: %s.", isAlreadyBanned.Reason, expiresIn))
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		l.Error().Err(err).Msg("failed to check if player is already chat banned")
 		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
