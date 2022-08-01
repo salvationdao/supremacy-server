@@ -164,3 +164,17 @@ CREATE TRIGGER trigger_check_repair_agent
     ON repair_agents
     FOR EACH ROW
 EXECUTE PROCEDURE check_repair_agent();
+
+CREATE TABLE repair_agent_logs(
+    id UUID PRIMARY KEY default gen_random_uuid(),
+    repair_agent_id uuid not null references repair_agents (id),
+    triggered_with text NOT NULL,
+    score int not null,
+    block_width decimal not null,
+    block_height decimal not null,
+    is_failed bool not null default false,
+    created_at timestamptz not null default now()
+);
+
+CREATE INDEX idx_repair_agent_logs_passed_records ON repair_agent_logs(repair_agent_id, is_failed);
+CREATE INDEX idx_repair_agent_logs_created_at ON repair_agent_logs(created_at);

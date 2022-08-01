@@ -115,7 +115,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 
 		// broadcast close offer
 		rc := ro.R.RepairCase
-		sro := server.RepairOffer{
+		sro := &server.RepairOffer{
 			RepairOffer:          ro,
 			BlocksRequiredRepair: rc.BlocksRequiredRepair,
 			BlocksRepaired:       rc.BlocksRepaired,
@@ -124,6 +124,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 		if ro.OfferedByID.Valid {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 		}

@@ -19,6 +19,7 @@ import (
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
+	"strings"
 	"sync"
 	"time"
 
@@ -260,7 +261,7 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false, "/sale_abilities"))
+				s.Use(api.AuthWS(false, false, "sale_abilities", "repair"))
 
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
@@ -283,10 +284,11 @@ func NewAPI(
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
 
-				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
-				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil)
-				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
-				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
+				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe, MustLogin)
+				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, nil, MustLogin)
+				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil, MustLogin)
+				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe, MustLogin)
+				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe, MustLogin)
 			}))
 
 			// secured user route ws
@@ -526,7 +528,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 
 				exists := false
 				for _, p := range onlyAuthPaths {
-					if p == path {
+					if strings.Contains(path, p) {
 						exists = true
 						break
 					}
@@ -645,14 +647,18 @@ func (c *captcha) verify(token string) error {
 	}
 
 	type captchaResp struct {
-		Success bool `json:"success"`
+		Success   bool   `json:"success"`
+		ErrorCode string `json:"error-codes"`
 	}
 
 	cr := &captchaResp{}
-
 	err = json.Unmarshal(body, cr)
 	if err != nil {
 		return terror.Error(err, "Failed to read captcha response")
+	}
+
+	if cr.ErrorCode != "" {
+		gamelog.L.Debug().Msg(cr.ErrorCode)
 	}
 
 	if !cr.Success {

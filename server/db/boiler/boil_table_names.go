@@ -104,6 +104,7 @@ var TableNames = struct {
 	PunishVotes                                        string
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
+	RepairAgentLogs                                    string
 	RepairAgents                                       string
 	RepairBlocks                                       string
 	RepairCases                                        string
@@ -243,6 +244,7 @@ var TableNames = struct {
 	PunishVotes:                  "punish_votes",
 	QuestionnaireAnswer:          "questionnaire_answer",
 	QuestionnaireOptions:         "questionnaire_options",
+	RepairAgentLogs:              "repair_agent_logs",
 	RepairAgents:                 "repair_agents",
 	RepairBlocks:                 "repair_blocks",
 	RepairCases:                  "repair_cases",

@@ -848,26 +848,22 @@ func (arena *Arena) start() {
 	arena.beginBattle()
 
 	for {
-		fmt.Println("Waiting for message.")
 		_, payload, err := arena.socket.Read(ctx)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("empty game client disconnected")
 			break
 		}
-		fmt.Println("message received")
 		btl := arena.CurrentBattle()
 		if len(payload) == 0 {
 			gamelog.L.Warn().Bytes("payload", payload).Err(err).Msg("empty game client payload")
 			continue
 		}
 
-		fmt.Println("start convert first message type", len(payload))
 		mt := MessageType(payload[0])
 		if err != nil {
 			gamelog.L.Warn().Int("message_type", int(mt)).Bytes("payload", payload).Err(err).Msg("websocket to game client failed")
 			return
 		}
-		fmt.Println("finish converting", mt)
 
 		data := payload[1:]
 		switch mt {

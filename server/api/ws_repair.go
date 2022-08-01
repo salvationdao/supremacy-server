@@ -30,6 +30,7 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairOfferIssue, api.RepairOfferIssue)
 	api.SecureUserCommand(server.HubKeyRepairOfferClose, api.RepairOfferClose)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
+	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 }
 
@@ -291,7 +292,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Failed to offer repair contract.")
 	}
 
-	sro := server.RepairOffer{
+	sro := &server.RepairOffer{
 		RepairOffer:          ro,
 		BlocksRequiredRepair: mrc.BlocksRequiredRepair,
 		BlocksRepaired:       mrc.BlocksRepaired,
@@ -302,6 +303,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	//  broadcast to repair offer market
 	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
 	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+	ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 
 	reply(true)
@@ -488,7 +490,50 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 
 	if sro != nil {
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
+		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 	}
+
+	return nil
+}
+
+type RepairAgentRecordRequest struct {
+	Payload struct {
+		RepairAgentID string                 `json:"repair_agent_id"`
+		TriggerWith   string                 `json:"trigger_with"`
+		Score         int                    `json:"score"`
+		IsFailed      bool                   `json:"is_failed"`
+		Dimension     MiniGameStackDimension `json:"dimension"`
+	} `json:"payload"`
+}
+
+type MiniGameStackDimension struct {
+	Width  decimal.Decimal `json:"width"`
+	Height decimal.Decimal `json:"height"`
+}
+
+func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &RepairAgentRecordRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// log record
+	ral := boiler.RepairAgentLog{
+		RepairAgentID: req.Payload.RepairAgentID,
+		TriggeredWith: req.Payload.TriggerWith,
+		Score:         req.Payload.Score,
+		BlockWidth:    req.Payload.Dimension.Width,
+		BlockHeight:   req.Payload.Dimension.Height,
+		IsFailed:      req.Payload.IsFailed,
+	}
+
+	err = ral.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert repair agent request")
+	}
+
+	reply(true)
 
 	return nil
 }
@@ -501,7 +546,7 @@ type RepairAgentCompleteRequest struct {
 
 func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
-		return terror.Error(fmt.Errorf("too many request"), "Too many request.")
+		return nil
 	}
 
 	req := &RepairAgentCompleteRequest{}
@@ -550,7 +595,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to load repair offer")
 	}
 
-	// if it is a not self offer
+	// if it is not a self offer, pay the agent
 	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
 		// claim reward
 		_, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
@@ -572,6 +617,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
 		if ro.OfferedByID.Valid {
 			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
@@ -612,6 +658,51 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	}
 
 	reply(true)
+
+	return nil
+}
+
+func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairAgentLog) error {
+	startTime := ra.StartedAt
+	endTime := time.Now()
+
+	// check each pattern is within the time frame
+	score := 0
+	failedLastTime := false
+	lastStackAt := time.Now()
+	totalStack := 0
+	for i, gp := range gps {
+		if i > 0 {
+			// 1. last score need to be greater than current score
+			// 2. if last challenge failed, current score need to be zero
+			if gp.Score <= score || (failedLastTime && score != 0) {
+				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
+			}
+
+			if !lastStackAt.Before(gp.CreatedAt) {
+				return terror.Error(fmt.Errorf("invalid stack time"), "Invalid game pattern detected.")
+			}
+
+		}
+
+		// set initial score and failed stat
+		score = gp.Score
+		failedLastTime = gp.IsFailed
+		lastStackAt = gp.CreatedAt
+
+		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
+			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
+		}
+
+		// count total stacks
+		if !gp.IsFailed {
+			totalStack += 1
+		}
+	}
+
+	if totalStack != db.GetIntWithDefault(db.KeyRequiredRepairStacks, 50) {
+		return terror.Error(fmt.Errorf("stack not complete"), "Invalid game pattern detected.")
+	}
 
 	return nil
 }
