@@ -2,6 +2,7 @@ package comms
 
 import (
 	"server/db"
+	"server/gamedb"
 	"server/gamelog"
 	"server/rpctypes"
 )
@@ -30,7 +31,7 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 
 	// give players mech avatars
 	for _, m := range loadedMechs {
-		err = db.GiveMechAvatar(m.OwnerID, m.ID)
+		err = db.GiveMechAvatar(gamedb.StdConn, m.OwnerID, m.ID)
 		if err != nil {
 			return err
 		}

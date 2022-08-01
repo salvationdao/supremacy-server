@@ -11,6 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -42,6 +43,7 @@ const (
 	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
 	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
 	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
+	GameNotificationTypeBattleZoneChange    GameNotificationType = "BATTLE_ZONE_CHANGE"
 )
 
 type GameNotificationKill struct {
@@ -196,6 +198,14 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 	})
 }
 
+// BroadcastGameNotificationBattleZoneChange broadcast game notification to client
+func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEvent) {
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+		Type: GameNotificationTypeBattleZoneChange,
+		Data: data,
+	})
+}
+
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
@@ -206,7 +216,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	}
 
 	// broadcast system message to mech owners
-	arena.SystemMessagingManager.BroadcastMechQueueMessage(q)
+	system_messages.BroadcastMechQueueMessage(q)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

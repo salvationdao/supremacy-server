@@ -217,16 +217,22 @@ func (sac *SaleAbilitiesController) Delete(w http.ResponseWriter, r *http.Reques
 	return http.StatusOK, nil
 }
 
-type AvailabilityResponse struct {
-	CanPurchase bool `json:"can_purchase"`
-}
+type SaleAbilityAvailabilityType int
+
+const (
+	SaleAbilityAvailabilityUnavailable SaleAbilityAvailabilityType = iota
+	SaleAbilityAvailabilityCanClaim
+	SaleAbilityAvailabilityCanPurchase
+)
 
 func (sac *SaleAbilitiesController) Availability(w http.ResponseWriter, r *http.Request) (int, error) {
 	playerID := chi.URLParam(r, "player_id")
 
-	canPurchase := sac.API.SalePlayerAbilityManager.CanUserClaim(playerID)
+	if sac.API.SalePlayerAbilityManager.CanUserClaim(playerID) {
+		return helpers.EncodeJSON(w, SaleAbilityAvailabilityCanClaim)
+	} else if sac.API.SalePlayerAbilityManager.CanUserPurchase(playerID) {
+		return helpers.EncodeJSON(w, SaleAbilityAvailabilityCanPurchase)
+	}
 
-	return helpers.EncodeJSON(w, &AvailabilityResponse{
-		CanPurchase: canPurchase,
-	})
+	return helpers.EncodeJSON(w, SaleAbilityAvailabilityUnavailable)
 }

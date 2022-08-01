@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
@@ -41,24 +42,26 @@ const (
 )
 
 type Battle struct {
-	arena          *Arena
-	stage          *atomic.Int32
-	BattleID       string        `json:"battleID"`
-	MapName        string        `json:"mapName"`
-	WarMachines    []*WarMachine `json:"warMachines"`
-	spawnedAIMux   sync.RWMutex
-	SpawnedAI      []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs  []uuid.UUID   `json:"ids"`
-	lastTick       *[]byte
-	gameMap        *server.GameMap
-	_abilities     *AbilitiesSystem
-	users          usersMap
-	factions       map[uuid.UUID]*boiler.Faction
-	multipliers    *MultiplierSystem
-	spoils         *SpoilsOfWar
-	rpcClient      *xsyn_rpcclient.XrpcClient
-	battleMechData []*db.BattleMechData
-	startedAt      time.Time
+	arena                  *Arena
+	stage                  *atomic.Int32
+	BattleID               string        `json:"battleID"`
+	MapName                string        `json:"mapName"`
+	WarMachines            []*WarMachine `json:"warMachines"`
+	spawnedAIMux           sync.RWMutex
+	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
+	warMachineIDs          []uuid.UUID   `json:"ids"`
+	lastTick               *[]byte
+	gameMap                *server.GameMap
+	battleZones            []server.BattleZone
+	currentBattleZoneIndex int
+	_abilities             *AbilitiesSystem
+	users                  usersMap
+	factions               map[uuid.UUID]*boiler.Faction
+	multipliers            *MultiplierSystem
+	spoils                 *SpoilsOfWar
+	rpcClient              *xsyn_rpcclient.XrpcClient
+	battleMechData         []*db.BattleMechData
+	startedAt              time.Time
 
 	_playerAbilityManager *PlayerAbilityManager
 
@@ -90,7 +93,7 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 }
 
 // storeGameMap set the game map detail from game client
-func (btl *Battle) storeGameMap(gm server.GameMap) {
+func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZone) {
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -102,6 +105,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 	btl.gameMap.LeftPixels = gm.LeftPixels
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
+	btl.battleZones = battleZones
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -968,7 +972,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	// broadcast system message to mech owners
 	q, err := boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).All(gamedb.StdConn)
-	go btl.arena.SystemMessagingManager.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
+	go system_messages.BroadcastMechBattleCompleteMessage(q, btl.BattleID)
 
 	_, err = q.DeleteAll(gamedb.StdConn)
 	if err != nil {
@@ -1109,12 +1113,13 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap  `json:"game_map"`
-	WarMachines        []*WarMachine    `json:"war_machines"`
-	SpawnedAI          []*WarMachine    `json:"spawned_ai"`
-	WarMachineLocation []byte           `json:"war_machine_location"`
-	BattleIdentifier   int              `json:"battle_identifier"`
-	AbilityDetails     []*AbilityDetail `json:"ability_details"`
+	GameMap            *server.GameMap    `json:"game_map"`
+	BattleZone         *server.BattleZone `json:"battle_zone"`
+	WarMachines        []*WarMachine      `json:"war_machines"`
+	SpawnedAI          []*WarMachine      `json:"spawned_ai"`
+	WarMachineLocation []byte             `json:"war_machine_location"`
+	BattleIdentifier   int                `json:"battle_identifier"`
+	AbilityDetails     []*AbilityDetail   `json:"ability_details"`
 }
 
 type ViewerLiveCount struct {
@@ -1232,9 +1237,19 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		Radius: 20000,
 	}
 
+	// Current Battle Zone
+	var battleZone *server.BattleZone
+	if len(btl.battleZones) > 0 {
+		if btl.currentBattleZoneIndex >= len(btl.battleZones) {
+			btl.currentBattleZoneIndex = 0
+		}
+		battleZone = &btl.battleZones[btl.currentBattleZoneIndex]
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
+		BattleZone:         battleZone,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
 		WarMachineLocation: lt,
