@@ -284,6 +284,7 @@ func NewChatController(api *API) *ChatController {
 	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
 	api.SecureUserCommand(HubKeyChatBanPlayer, chatHub.ChatBanPlayerHandler)
 	api.SecureUserCommand(HubKeyReactToMessage, chatHub.ReactToMessageHandler)
+	api.SecureUserCommand(HubKeyChatReport, chatHub.ChatReportHandler)
 
 	go api.MessageBroadcaster()
 
@@ -1025,6 +1026,39 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again or contact")
 	}
 
+	reply(true)
+
+	return nil
+}
+
+type ChatReportRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ReportedUserID   string `json:"reported_user_id"`
+		Message          string `json:"message"`
+		Reason           string `json:"reason"`
+		OtherDescription string `json:"other_description,omitempty"`
+		Description      string `json:"description"`
+	} `json:"payload"`
+}
+
+const HubKeyChatReport = "CHAT:REPORT:MESSAGE"
+
+func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ChatReportHandler").Str("user_id", user.ID).Logger()
+
+	req := &ChatReportRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+	l = l.With().Interface("payload", req).Logger()
+
+	//check if user has already reported, if so return error
+	//get 5 mins before and 5 mins after specific to chat stream
+	//send through to zen desk
+	//add user id to report metadata (cant report again)
 	reply(true)
 
 	return nil
