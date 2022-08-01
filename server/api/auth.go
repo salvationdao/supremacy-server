@@ -200,6 +200,7 @@ func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (
 	// Get user token from passport
 	tokenResp, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
 	if err != nil {
+		l.Error().Err(err).Msg("Failed to get token from passport.")
 		return http.StatusBadRequest, terror.Error(err, "Unable to retrieve player, try again or contact support.")
 	}
 

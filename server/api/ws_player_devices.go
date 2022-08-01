@@ -35,11 +35,6 @@ type PlayerDevice struct {
 	Name string `json:"name"`
 }
 
-type PlayerDeviceListResp struct {
-	Total   int64           `json:"total"`
-	Devices []*PlayerDevice `json:"devices"`
-}
-
 // PlayerDevicesListHandler returns a list of the players connected devices
 func (pdc *PlayerDevicesControllerWS) PlayerDevicesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "PlayerDevicesList").Str("userID", user.ID).Logger()

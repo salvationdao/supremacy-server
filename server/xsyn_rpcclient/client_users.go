@@ -166,7 +166,6 @@ func (pp *XsynXrpcClient) GenOneTimeToken(userID string) (*GenOneTimeTokenResp, 
 
 	resp := &GenOneTimeTokenResp{}
 	err := pp.XrpcClient.Call("S.GenOneTimeToken", GenOneTimeTokenReq{pp.ApiKey, userID}, resp)
-
 	if err != nil {
 		l.Error().Err(err).Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
