@@ -191,7 +191,6 @@ func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []s
 	// filter type
 	if opts.LayerType.Valid {
 		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
-
 	}
 
 	// Build query
@@ -200,6 +199,7 @@ func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []s
 			qm.Rels(boiler.TableNames.ProfileCustomAvatars, boiler.ProfileCustomAvatarColumns.ID),
 		),
 		qm.From(boiler.TableNames.ProfileCustomAvatars),
+		qm.OrderBy("created_at desc"),
 	)
 
 	rows, err := boiler.NewQuery(
