@@ -2,20 +2,150 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strconv"
 	"time"
 
+	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+type PlayerProfileRequest struct {
+	Payload struct {
+		PlayerGID string `json:"player_gid"`
+	} `json:"payload"`
+}
+
+type PublicPlayer struct {
+	ID        string      `json:"id"`
+	Username  null.String `json:"username"`
+	Gid       int         `json:"gid"`
+	FactionID null.String `json:"faction_id"`
+	AboutMe   null.String `json:"about_me"`
+	Rank      string      `json:"rank"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+type PlayerAvatar struct {
+	ID        string `json:"id"`
+	IsCustom  bool   `json:"is_custom"`
+	AvatarURL string `json:"avatar_url"`
+	Tier      string `json:"tier"`
+}
+type PlayerProfileResponse struct {
+	*PublicPlayer `json:"player"`
+	Stats         *boiler.PlayerStat      `json:"stats"`
+	Faction       *boiler.Faction         `json:"faction"`
+	ActiveLog     *boiler.PlayerActiveLog `json:"active_log"`
+	Avatar        *PlayerAvatar           `json:"avatar"`
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
+
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerProfileRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	gid, err := strconv.Atoi(req.Payload.PlayerGID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Err(err).Msg("unable to convert player gid to int")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get player
+	player, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(gid),
+
+		// load faction
+		qm.Load(boiler.PlayerRels.Faction),
+
+		// load avatar
+		qm.Load(boiler.PlayerRels.ProfileAvatar),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Player.GID", req.Payload.PlayerGID).Msg("unable to get player")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get stats
+	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// get active log
+	activeLog, err := boiler.PlayerActiveLogs(
+		boiler.PlayerActiveLogWhere.PlayerID.EQ(player.ID),
+		qm.OrderBy(fmt.Sprintf("%s DESC", boiler.PlayerActiveLogColumns.ActiveAt)),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("Player.ID", player.ID).Err(err).Msg("unable to get player's active log")
+		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
+	}
+
+	// set faction
+	var faction *boiler.Faction
+	if player.R != nil && player.R.Faction != nil {
+		faction = player.R.Faction
+	}
+
+	// get / set avatar
+	var avatar *PlayerAvatar
+	if player.ProfileAvatarID.Valid && player.R != nil && player.R.ProfileAvatar != nil {
+		avatar = &PlayerAvatar{
+			ID:        player.R.ProfileAvatar.ID,
+			AvatarURL: player.R.ProfileAvatar.AvatarURL,
+			Tier:      player.R.ProfileAvatar.Tier,
+		}
+	}
+
+	// if using custom avatar
+	if player.CustomAvatarID.Valid {
+		avatar = &PlayerAvatar{
+			ID:        player.CustomAvatarID.String,
+			AvatarURL: "",
+			Tier:      "MEGA",
+			IsCustom:  true,
+		}
+	}
+
+	reply(PlayerProfileResponse{
+		PublicPlayer: &PublicPlayer{
+			ID:        player.ID,
+			Username:  player.Username,
+			Gid:       player.Gid,
+			FactionID: player.FactionID,
+			AboutMe:   player.AboutMe,
+			Rank:      player.Rank,
+			CreatedAt: player.CreatedAt,
+		},
+		Avatar:    avatar,
+		Stats:     stats,
+		Faction:   faction,
+		ActiveLog: activeLog,
+	})
+	return nil
+}
 
 const HubKeyPlayerProfileLayersList = "PLAYER:PROFILE:LAYERS:LIST"
 
@@ -204,6 +334,7 @@ func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *
 type PlayerAvatarUpdateRequest struct {
 	Payload struct {
 		PlayerID        string `json:"player_id"`
+		IsCustom        bool   `json:"is_custom"` // custom or default
 		ProfileAvatarID string `json:"profile_avatar_id"`
 	} `json:"payload"`
 }
@@ -226,26 +357,55 @@ func (pc *PlayerController) ProfileAvatarUpdateHandler(ctx context.Context, user
 		return nil
 	}
 
-	// get player avatar
-	ava, err := boiler.FindProfileAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
-	if err != nil {
-		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
-		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+	avatarID := ""
+	avtarURL := ""
+	avatarTier := ""
+
+	// using default avatar
+	if !req.Payload.IsCustom {
+		// get player avatar
+		ava, err := boiler.FindProfileAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
+		if err != nil {
+			gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+			return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+		}
+
+		// update player
+		avatarID = ava.ID
+		avtarURL = ava.AvatarURL
+		avatarTier = ava.Tier
+
+		user.ProfileAvatarID = null.StringFrom(ava.ID)
+		user.CustomAvatarID = null.String{}
 	}
 
-	// update player
-	user.ProfileAvatarID = null.StringFrom(ava.ID)
+	// using custom avatar
+	if req.Payload.IsCustom {
+		// get player avatar
+		ava, err := boiler.FindProfileCustomAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
+		if err != nil {
+			gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+			return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+		}
+
+		// update player
+		avatarID = ava.ID
+		user.CustomAvatarID = null.StringFrom(ava.ID)
+		user.ProfileAvatarID = null.String{}
+	}
+
 	user.UpdatedAt = time.Now()
-	_, err = user.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.UpdatedAt, boiler.PlayerColumns.ProfileAvatarID))
+	_, err = user.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
 		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
 	}
 
 	reply(&PlayerAvatar{
-		ID:        ava.ID,
-		AvatarURL: ava.AvatarURL,
-		Tier:      ava.Tier,
+		ID:        avatarID,
+		AvatarURL: avtarURL,
+		Tier:      avatarTier,
+		IsCustom:  req.Payload.IsCustom,
 	})
 	return nil
 }
@@ -301,22 +461,11 @@ func (pc *PlayerController) ProfileCustomAvatarListHandler(ctx context.Context, 
 
 const HubKeyPlayerCustomAvatarDetails = "PLAYER:CUSTOM_AVATAR:DETAILS"
 
-func (pc *PlayerController) ProfileCustomAvatarDetailsHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("the fuck")
-
+func (pc *PlayerController) ProfileCustomAvatarDetailsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	avatarID := cctx.URLParam("avatar_id")
 	if avatarID == "" {
 		return terror.Error(fmt.Errorf("missing weapon id"), "Missing weapon id.")
-	}
-	if !user.FactionID.Valid {
-		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
 	}
 
 	// get avatar
@@ -331,6 +480,12 @@ func (pc *PlayerController) ProfileCustomAvatarDetailsHandler(ctx context.Contex
 		gamelog.L.Error().Interface("avatarID", avatarID).Err(err).Msg("issue getting custom avatar details")
 		return terror.Error(err, "Failed to find your avatar, please try again or contact support.")
 	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("ffffff")
 
 	reply(resp)
 	return nil

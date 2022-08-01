@@ -24,7 +24,6 @@ import (
 // Layer is an object representing the database table.
 type Layer struct {
 	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Hue       string      `boiler:"hue" boil:"hue" json:"hue" toml:"hue" yaml:"hue"`
 	Type      null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
 	ImageURL  string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	UpdatedAt time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -37,7 +36,6 @@ type Layer struct {
 
 var LayerColumns = struct {
 	ID        string
-	Hue       string
 	Type      string
 	ImageURL  string
 	UpdatedAt string
@@ -45,7 +43,6 @@ var LayerColumns = struct {
 	CreatedAt string
 }{
 	ID:        "id",
-	Hue:       "hue",
 	Type:      "type",
 	ImageURL:  "image_url",
 	UpdatedAt: "updated_at",
@@ -55,7 +52,6 @@ var LayerColumns = struct {
 
 var LayerTableColumns = struct {
 	ID        string
-	Hue       string
 	Type      string
 	ImageURL  string
 	UpdatedAt string
@@ -63,7 +59,6 @@ var LayerTableColumns = struct {
 	CreatedAt string
 }{
 	ID:        "layers.id",
-	Hue:       "layers.hue",
 	Type:      "layers.type",
 	ImageURL:  "layers.image_url",
 	UpdatedAt: "layers.updated_at",
@@ -75,7 +70,6 @@ var LayerTableColumns = struct {
 
 var LayerWhere = struct {
 	ID        whereHelperstring
-	Hue       whereHelperstring
 	Type      whereHelpernull_String
 	ImageURL  whereHelperstring
 	UpdatedAt whereHelpertime_Time
@@ -83,7 +77,6 @@ var LayerWhere = struct {
 	CreatedAt whereHelpertime_Time
 }{
 	ID:        whereHelperstring{field: "\"layers\".\"id\""},
-	Hue:       whereHelperstring{field: "\"layers\".\"hue\""},
 	Type:      whereHelpernull_String{field: "\"layers\".\"type\""},
 	ImageURL:  whereHelperstring{field: "\"layers\".\"image_url\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"layers\".\"updated_at\""},
@@ -127,8 +120,8 @@ func (*layerR) NewStruct() *layerR {
 type layerL struct{}
 
 var (
-	layerAllColumns            = []string{"id", "hue", "type", "image_url", "updated_at", "deleted_at", "created_at"}
-	layerColumnsWithoutDefault = []string{"hue", "image_url"}
+	layerAllColumns            = []string{"id", "type", "image_url", "updated_at", "deleted_at", "created_at"}
+	layerColumnsWithoutDefault = []string{"image_url"}
 	layerColumnsWithDefault    = []string{"id", "type", "updated_at", "deleted_at", "created_at"}
 	layerPrimaryKeyColumns     = []string{"id"}
 	layerGeneratedColumns      = []string{}

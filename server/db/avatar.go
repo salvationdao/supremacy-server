@@ -91,7 +91,6 @@ func LayersList(opts *AvatarLayersListOpts) (int64, []*Layer, error) {
 	return total, layers, nil
 }
 
-// create
 type AvatarCreateRequest struct {
 	FaceID      string
 	BodyID      string
@@ -100,8 +99,8 @@ type AvatarCreateRequest struct {
 	EyeWearID   null.String
 }
 
+// CustomAvatarCreate creates a custom avatar
 func CustomAvatarCreate(playerID string, req AvatarCreateRequest) error {
-
 	ava := boiler.ProfileCustomAvatar{
 		PlayerID:    playerID,
 		FaceID:      req.FaceID,
@@ -120,7 +119,7 @@ func CustomAvatarCreate(playerID string, req AvatarCreateRequest) error {
 	return nil
 }
 
-// update
+// CustomAvatarUpdate updates a custom avatar
 func CustomAvatarUpdate(id string, req AvatarCreateRequest) error {
 
 	// get custom avatar
@@ -144,7 +143,6 @@ func CustomAvatarUpdate(id string, req AvatarCreateRequest) error {
 	return nil
 }
 
-// list
 type CustomAvatarsListOpts struct {
 	Search    string
 	Filter    *ListFilterRequest
@@ -168,6 +166,7 @@ type CustomAvatar struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
+// CustomAvatarsList paginated list of custom avatars
 func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []string, error) {
 	var ids []string
 
@@ -229,6 +228,7 @@ func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []s
 	return total, ids, nil
 }
 
+// GetCustomAvatar get full custom avatar object with layers
 func GetCustomAvatar(conn boil.Executor, avatarID string) (*CustomAvatar, error) {
 	// get avatar
 	ava, err := boiler.ProfileCustomAvatars(

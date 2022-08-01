@@ -3,7 +3,6 @@
 CREATE TABLE layers
 (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    hue         TEXT        NOT NULL,
     type        TEXT CHECK (type IN ('HAIR', 'FACE', 'BODY', 'ACCESSORY', 'EYEWEAR', 'HELMET')),
     image_url   TEXT        NOT NULL,
 
@@ -31,27 +30,37 @@ CREATE TABLE profile_custom_avatars
 );
 
 -- seed hair layers
-INSERT INTO layers (type, hue, image_url) VALUES
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair2.png'),
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair3.png'),
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_green.png'),
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_red.png'),
-('HAIR', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_yellow.png');
+INSERT INTO layers (type, image_url) VALUES
+('HAIR', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2.png'),
+('HAIR', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_green.png'),
+('HAIR', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_red.png'),
+('HAIR', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_2_yellow.png'),
+('HAIR', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/hair/hair_3.png');
+
 
 -- seed faces 
-INSERT INTO layers (type, hue, image_url) VALUES
-('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face1.png'),
-('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face2.png'),
-('FACE', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face3.png');
+INSERT INTO layers (type, image_url) VALUES
+('FACE', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face_1.png'),
+('FACE', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face_2.png'),
+('FACE', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face_3.png'),
+('FACE', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/faces/face_4.png');
+
 
 -- seed bodies
-INSERT INTO layers (type, hue, image_url) VALUES
-('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body1.png'),
-('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body2.png'),
-('BODY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body3.png');
+INSERT INTO layers (type, image_url) VALUES
+('BODY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body_1.png'),
+('BODY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body_2.png'),
+('BODY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body_3.png'),
+('BODY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/bodies/body_4.png');
 
 -- seed accessories 
-INSERT INTO layers (type, hue, image_url) VALUES
-('ACCESSORY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/accessories1.png'),
-('ACCESSORY', '#000', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/earrings1.png');
+INSERT INTO layers (type, image_url) VALUES
+('ACCESSORY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/accessories_1.png'),
+('ACCESSORY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/accessories_2.png'),
+('ACCESSORY', 'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/custom_avatars/accesories/earrings_1.png');
+
+
+-- add custom avatar id to players
+ALTER TABLE players 
+    ADD column custom_avatar_id UUID REFERENCES profile_custom_avatars(id);
 
