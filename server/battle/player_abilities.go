@@ -569,33 +569,51 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
-	wm := arena.CurrentBattleWarMachineByHash(hash)
+	wm := arena.CurrentBattleWarMachineOrAIByHash(hash)
 	if wm == nil {
 		return terror.Error(terror.ErrInvalidInput, "Current mech is not on the battlefield")
-	}
-
-	// query unfinished mech move command
-	mmc, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
-		return terror.Error(err, "Failed to get mech move command.")
 	}
 
 	resp := &MechMoveCommandResponse{
 		RemainCooldownSeconds: 0,
 	}
+	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+	if !isMiniMech {
+		// query unfinished mech move command
+		mmc, err := boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+			boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+			boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+			boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
+			return terror.Error(err, "Failed to get mech move command.")
+		}
 
-	if mmc != nil {
-		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
-		if resp.RemainCooldownSeconds < 0 {
-			resp.RemainCooldownSeconds = 0
+		if mmc != nil {
+			resp.MechMoveCommandLog = mmc
+			resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+			if resp.RemainCooldownSeconds < 0 {
+				resp.RemainCooldownSeconds = 0
+			}
+		}
+	} else {
+		mmmc, _ := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
+		if mmmc != nil {
+			resp.MechMoveCommandLog = &boiler.MechMoveCommandLog{
+				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
+				BattleID:      mmmc.BattleID,
+				MechID:        mmmc.MechHash,
+				TriggeredByID: mmmc.TriggeredByID,
+				CellX:         mmmc.CellX,
+				CellY:         mmmc.CellY,
+				CancelledAt:   null.TimeFromPtr(mmmc.CancelledAt),
+				ReachedAt:     null.TimeFromPtr(mmmc.ReachedAt),
+			}
+			resp.RemainCooldownSeconds = int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds())
+			resp.IsMiniMech = true
 		}
 	}
 
