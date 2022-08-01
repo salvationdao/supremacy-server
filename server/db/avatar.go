@@ -51,7 +51,6 @@ func LayersList(opts *AvatarLayersListOpts) (int64, []*Layer, error) {
 	// filter type
 	if opts.LayerType.Valid {
 		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
-
 	}
 
 	// Build query
