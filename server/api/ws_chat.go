@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/multipliers"
 	"sort"
 	"sync"
 	"time"
@@ -58,17 +57,17 @@ const (
 )
 
 type MessageText struct {
-	ID              string           `json:"id"`
-	Message         string           `json:"message"`
-	MessageColor    string           `json:"message_color"`
-	FromUser        boiler.Player    `json:"from_user"`
-	UserRank        string           `json:"user_rank"`
-	FromUserStat    *server.UserStat `json:"from_user_stat"`
-	Lang            string           `json:"lang"`
-	TotalMultiplier string           `json:"total_multiplier"`
-	IsCitizen       bool             `json:"is_citizen"`
-	BattleNumber    int              `json:"battle_number"`
-	Metadata        null.JSON        `json:"metadata"`
+	ID           string           `json:"id"`
+	Message      string           `json:"message"`
+	MessageColor string           `json:"message_color"`
+	FromUser     boiler.Player    `json:"from_user"`
+	UserRank     string           `json:"user_rank"`
+	FromUserStat *server.UserStat `json:"from_user_stat"`
+	Lang         string           `json:"lang"`
+	// TotalMultiplier string           `json:"total_multiplier"`
+	// IsCitizen       bool             `json:"is_citizen"`
+	BattleNumber int       `json:"battle_number"`
+	Metadata     null.JSON `json:"metadata"`
 }
 
 type MessagePunishVote struct {
@@ -233,15 +232,13 @@ func NewChatroom(factionID string) *Chatroom {
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
 			Data: &MessageText{
-				ID:              msg.ID,
-				Message:         msg.Text,
-				MessageColor:    msg.MessageColor,
-				FromUser:        *player,
-				UserRank:        player.Rank,
-				FromUserStat:    stat,
-				TotalMultiplier: msg.TotalMultiplier,
-				IsCitizen:       msg.IsCitizen,
-				Metadata:        msg.Metadata,
+				ID:           msg.ID,
+				Message:      msg.Text,
+				MessageColor: msg.MessageColor,
+				FromUser:     *player,
+				UserRank:     player.Rank,
+				FromUserStat: stat,
+				Metadata:     msg.Metadata,
 			},
 		}
 		cmstoSend = append(cmstoSend, cms[i])
@@ -382,6 +379,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	if req.Payload.FactionID.IsNil() {
+		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction to chat.")
+	}
+
 	// omit unused player detail
 	player := boiler.Player{
 		ID:               user.ID,
@@ -476,21 +477,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	lastBattleNum := 0
-	lastBattle, err := boiler.Battles(
-		qm.Select(boiler.BattleColumns.BattleNumber),
-		qm.OrderBy(fmt.Sprintf("%s %s", boiler.BattleColumns.BattleNumber, "DESC")),
-		boiler.BattleWhere.EndedAt.IsNotNull()).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Unable to get last battle for chat")
-	}
-
-	if lastBattle != nil {
-		lastBattleNum = lastBattle.BattleNumber
-	}
-
-	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, lastBattleNum)
-
 	taggedUsersGid := make(map[int]bool)
 	for _, gid := range req.Payload.TaggedUsersGids {
 		taggedUsersGid[gid] = false
@@ -523,11 +509,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			BattleID:        null.String{},
 			MSGType:         boiler.ChatMSGTypeEnumTEXT,
 			UserRank:        player.Rank,
-			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+			TotalMultiplier: "",
 			KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 			Text:            msg,
 			ChatStream:      player.FactionID.String,
-			IsCitizen:       isCitizen,
+			IsCitizen:       false,
 			Lang:            language,
 			Metadata:        jsonTextMsgMeta,
 		}
@@ -542,16 +528,14 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			Type:   boiler.ChatMSGTypeEnumTEXT,
 			SentAt: cm.CreatedAt,
 			Data: &MessageText{
-				ID:              cm.ID,
-				Message:         msg,
-				MessageColor:    req.Payload.MessageColor,
-				FromUser:        player,
-				UserRank:        player.Rank,
-				FromUserStat:    playerStat,
-				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-				IsCitizen:       isCitizen,
-				Lang:            language,
-				Metadata:        jsonTextMsgMeta,
+				ID:           cm.ID,
+				Message:      msg,
+				MessageColor: req.Payload.MessageColor,
+				FromUser:     player,
+				UserRank:     player.Rank,
+				FromUserStat: playerStat,
+				Lang:         language,
+				Metadata:     jsonTextMsgMeta,
 			},
 		}
 
@@ -572,11 +556,11 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		BattleID:        null.String{},
 		MSGType:         boiler.ChatMSGTypeEnumTEXT,
 		UserRank:        player.Rank,
-		TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+		TotalMultiplier: "",
 		KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 		Text:            msg,
 		ChatStream:      "global",
-		IsCitizen:       isCitizen,
+		IsCitizen:       false,
 		Lang:            language,
 		Metadata:        jsonTextMsgMeta,
 	}
@@ -591,16 +575,14 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		Type:   boiler.ChatMSGTypeEnumTEXT,
 		SentAt: cm.CreatedAt,
 		Data: &MessageText{
-			ID:              cm.ID,
-			Message:         msg,
-			MessageColor:    req.Payload.MessageColor,
-			FromUser:        player,
-			UserRank:        player.Rank,
-			FromUserStat:    playerStat,
-			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-			IsCitizen:       isCitizen,
-			Lang:            language,
-			Metadata:        jsonTextMsgMeta,
+			ID:           cm.ID,
+			Message:      msg,
+			MessageColor: req.Payload.MessageColor,
+			FromUser:     player,
+			UserRank:     player.Rank,
+			FromUserStat: playerStat,
+			Lang:         language,
+			Metadata:     jsonTextMsgMeta,
 		},
 	}
 
