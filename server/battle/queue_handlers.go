@@ -6,11 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -95,7 +99,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is not fully recovered.")
 	}
 
-	// Insert mech into queue
+	// Check mech exist in the battle queue
 	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mci.ItemID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("check mech exists in queue")
@@ -131,11 +135,23 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 	defer tx.Rollback()
 
+	bqf := &boiler.BattleQueueFee{
+		MechID:   mci.ItemID,
+		PaidByID: user.ID,
+		Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+	}
+
+	err = bqf.Insert(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert battle queue fee.")
+	}
+
 	bq := &boiler.BattleQueue{
 		MechID:    mci.ItemID,
 		QueuedAt:  time.Now(),
 		FactionID: factionID,
 		OwnerID:   mci.OwnerID,
+		FeeID:     null.StringFrom(bqf.ID),
 	}
 
 	err = bq.Insert(tx, boil.Infer())
@@ -156,17 +172,24 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
 
-	if mci.OwnerID == factionAccountID {
-		err = tx.Commit()
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("mech ID", mci.ItemID).
-				Str("faction ID", factionID).
-				Err(err).
-				Msg("unable to save battle queue join for faction owned mech")
-			return err
-		}
-		return nil
+	// pay battle queue fee
+	_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		Amount:               bqf.Amount.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          "queue mech to join the battle arena.",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("mech id", mci.ItemID).
+			Str("amount", bqf.Amount.StringFixed(0)).
+			Err(err).Msg("Failed to pay sups on queuing mech.")
+		return terror.Error(err, "Failed to pay sups on queuing mech.")
 	}
 
 	// Commit transaction
@@ -298,7 +321,10 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	defer tx.Rollback()
 
 	// Remove from queue
-	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mci.ItemID)).One(tx)
+	bq, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.EQ(mci.ItemID),
+		qm.Load(boiler.BattleQueueRels.Fee),
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
 			Err(err).
@@ -313,6 +339,40 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 			Str("mech id", mci.ItemID).
 			Err(err).Msg("unable to remove mech from queue")
 		return terror.Error(err, "Unable to leave queue, try again or contact support.")
+	}
+
+	// refund
+	if bq.R != nil && bq.R.Fee != nil {
+		bqf := bq.R.Fee
+
+		factionAccountID, ok := server.FactionUsers[factionID]
+		if !ok {
+			gamelog.L.Error().Str("log_name", "battle arena").
+				Str("mech ID", mci.ItemID).
+				Str("faction ID", factionID).
+				Err(err).
+				Msg("unable to get hard coded syndicate player ID from faction ID")
+		}
+
+		// pay battle queue fee
+		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+			Amount:               bqf.Amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "refund battle queue fee.",
+			NotSafe:              true,
+		})
+		if err != nil {
+			gamelog.L.Error().
+				Str("player_id", user.ID).
+				Str("mech id", mci.ItemID).
+				Str("amount", bqf.Amount.StringFixed(0)).
+				Err(err).Msg("Failed to refund battle queue fee.")
+			return terror.Error(err, "Failed to refund battle queue fee.")
+		}
 	}
 
 	err = tx.Commit()

@@ -463,9 +463,8 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 }
 
 type BattleQueuePosition struct {
-	MechID           uuid.UUID   `db:"mech_id"`
-	QueuePosition    int64       `db:"queue_position"`
-	BattleContractID null.String `db:"battle_contract_id"`
+	MechID        uuid.UUID `db:"mech_id"`
+	QueuePosition int64     `db:"queue_position"`
 }
 
 // TODO: I want InsertNewMech tested.
@@ -865,7 +864,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Select("_bq.queue_position AS queue_position"),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(`(
-					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
+					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
 						from battle_queue _bq
 						where _bq.faction_id = ?
 							AND _bq.battle_id IS NULL

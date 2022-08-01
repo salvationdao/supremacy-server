@@ -215,6 +215,7 @@ var MechRels = struct {
 	KilledBattleKills            string
 	BattleMechs                  string
 	KilledByBattleMechs          string
+	BattleQueueFees              string
 	BattleQueueNotifications     string
 	BattleWins                   string
 	MechAbilityTriggerLogs       string
@@ -245,6 +246,7 @@ var MechRels = struct {
 	KilledBattleKills:            "KilledBattleKills",
 	BattleMechs:                  "BattleMechs",
 	KilledByBattleMechs:          "KilledByBattleMechs",
+	BattleQueueFees:              "BattleQueueFees",
 	BattleQueueNotifications:     "BattleQueueNotifications",
 	BattleWins:                   "BattleWins",
 	MechAbilityTriggerLogs:       "MechAbilityTriggerLogs",
@@ -278,6 +280,7 @@ type mechR struct {
 	KilledBattleKills            BattleKillSlice              `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
 	BattleMechs                  BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
 	KilledByBattleMechs          BattleMechSlice              `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
+	BattleQueueFees              BattleQueueFeeSlice          `boiler:"BattleQueueFees" boil:"BattleQueueFees" json:"BattleQueueFees" toml:"BattleQueueFees" yaml:"BattleQueueFees"`
 	BattleQueueNotifications     BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
 	BattleWins                   BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	MechAbilityTriggerLogs       MechAbilityTriggerLogSlice   `boiler:"MechAbilityTriggerLogs" boil:"MechAbilityTriggerLogs" json:"MechAbilityTriggerLogs" toml:"MechAbilityTriggerLogs" yaml:"MechAbilityTriggerLogs"`
@@ -835,6 +838,28 @@ func (o *Mech) KilledByBattleMechs(mods ...qm.QueryMod) battleMechQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_mechs\".*"})
+	}
+
+	return query
+}
+
+// BattleQueueFees retrieves all the battle_queue_fee's BattleQueueFees with an executor.
+func (o *Mech) BattleQueueFees(mods ...qm.QueryMod) battleQueueFeeQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_queue_fees\".\"mech_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_queue_fees\".\"deleted_at\""),
+	)
+
+	query := BattleQueueFees(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_fees\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_queue_fees\".*"})
 	}
 
 	return query
@@ -2827,6 +2852,105 @@ func (mechL) LoadKilledByBattleMechs(e boil.Executor, singular bool, maybeMech i
 					foreign.R = &battleMechR{}
 				}
 				foreign.R.KilledBy = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleQueueFees allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (mechL) LoadBattleQueueFees(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_queue_fees`),
+		qm.WhereIn(`battle_queue_fees.mech_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_queue_fees.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_queue_fees")
+	}
+
+	var resultSlice []*BattleQueueFee
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_fees")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue_fees")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_fees")
+	}
+
+	if len(battleQueueFeeAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleQueueFees = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleQueueFeeR{}
+			}
+			foreign.R.Mech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechID {
+				local.R.BattleQueueFees = append(local.R.BattleQueueFees, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleQueueFeeR{}
+				}
+				foreign.R.Mech = local
 				break
 			}
 		}
@@ -5129,6 +5253,58 @@ func (o *Mech) RemoveKilledByBattleMechs(exec boil.Executor, related ...*BattleM
 		}
 	}
 
+	return nil
+}
+
+// AddBattleQueueFees adds the given related objects to the existing relationships
+// of the mech, optionally inserting them as new records.
+// Appends related to o.R.BattleQueueFees.
+// Sets related.R.Mech appropriately.
+func (o *Mech) AddBattleQueueFees(exec boil.Executor, insert bool, related ...*BattleQueueFee) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_queue_fees\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleQueueFeePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			BattleQueueFees: related,
+		}
+	} else {
+		o.R.BattleQueueFees = append(o.R.BattleQueueFees, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleQueueFeeR{
+				Mech: o,
+			}
+		} else {
+			rel.R.Mech = o
+		}
+	}
 	return nil
 }
 

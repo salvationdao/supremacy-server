@@ -179,3 +179,17 @@ CREATE TABLE repair_agent_logs(
 
 CREATE INDEX idx_repair_agent_logs_passed_records ON repair_agent_logs(repair_agent_id, is_failed);
 CREATE INDEX idx_repair_agent_logs_created_at ON repair_agent_logs(created_at);
+
+CREATE TABLE battle_queue_fees(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mech_id uuid not null references mechs(id),
+    paid_by_id uuid not null references players(id),
+    amount numeric(28) not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    deleted_at timestamptz
+);
+
+ALTER TABLE battle_queue
+    ADD COLUMN IF NOT EXISTS fee_id uuid references battle_queue_fees(id),
+    DROP COLUMN IF EXISTS battle_contract_id;
