@@ -132,7 +132,7 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 	c.Unlock()
 }
 
-func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
+func (c *Chatroom) ReadRange(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
 	defer c.RUnlock()
 	for _, message := range c.messages {
@@ -829,11 +829,11 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	}
 	switch factionID {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(chatRangeHandler)
+		fc.API.RedMountainChat.ReadRange(chatRangeHandler)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(chatRangeHandler)
+		fc.API.BostonChat.ReadRange(chatRangeHandler)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(chatRangeHandler)
+		fc.API.ZaibatsuChat.ReadRange(chatRangeHandler)
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
@@ -847,7 +847,7 @@ const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 
 func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
-	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
+	fc.API.GlobalChat.ReadRange(func(message *ChatMessage) bool {
 		resp = append(resp, message)
 		return true
 	})
