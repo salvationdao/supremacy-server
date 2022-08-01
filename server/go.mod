@@ -65,6 +65,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/kataras/hcaptcha v0.0.0-20200711031247-2927d4faf32f // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect

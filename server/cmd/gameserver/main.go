@@ -159,6 +159,9 @@ func main() {
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
 
 					&cli.StringFlag{Name: "github_token", Value: "", EnvVars: []string{envPrefix + "_GITHUB_ACCESS_TOKEN", "GITHUB_PAT"}, Usage: "Github token for access to private repo"},
+
+					&cli.StringFlag{Name: "captcha_site_key", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SITE_KEY", "CAPTCHA_SITE_KEY"}, Usage: "Captcha site key"},
+					&cli.StringFlag{Name: "captcha_secret", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SECRET", "CAPTCHA_SECRET"}, Usage: "Captcha secret"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -769,6 +772,8 @@ func SetupAPI(
 		Address:               apiAddr,
 		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
 		AuthHangarCallbackURL: ctxCLI.String("auth_hangar_callback_url"),
+		CaptchaSiteKey:        ctxCLI.String("captcha_site_key"),
+		CaptchaSecret:         ctxCLI.String("captcha_secret"),
 	}
 
 	syncConfig := &synctool.StaticSyncTool{

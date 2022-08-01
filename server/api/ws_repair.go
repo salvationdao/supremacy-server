@@ -362,6 +362,8 @@ type RepairAgentRegisterRequest struct {
 
 		// this is for player who grab offer from the job list
 		RepairOfferID string `json:"repair_offer_id"`
+
+		CaptchaToken string `json:"captcha_token"`
 	} `json:"payload"`
 }
 
@@ -415,6 +417,23 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 
 	if ro == nil {
 		return terror.Error(err, "Repair offer does not exist.")
+	}
+
+	// get the last registered repair agent of the player
+	lastRegister, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
+		qm.OrderBy(boiler.RepairAgentColumns.CreatedAt+" DESC"),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to load repair agent.")
+	}
+
+	// verify token, if players have not done any repair, or they are doing different offer
+	if lastRegister == nil || lastRegister.RepairOfferID != ro.ID {
+		err = api.captcha.verify(req.Payload.CaptchaToken)
+		if err != nil {
+			return terror.Error(err, "Failed to complete captcha verification.")
+		}
 	}
 
 	// abandon any unfinished repair task

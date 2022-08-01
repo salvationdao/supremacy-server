@@ -27,8 +27,6 @@ func AuthRouter(api *API) chi.Router {
 	r.Get("/xsyn", api.XSYNAuth)
 	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
-	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
-
 	return r
 }
 
@@ -123,30 +121,6 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
-	}
-
-	return helpers.EncodeJSON(w, player)
-}
-
-func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token are provided"), "Player are not signed in.")
-	}
-
-	// check user from token
-	player, err := api.TokenLogin(token)
-	if err != nil {
-		if errors.Is(err, errors.New("session is expired")) {
-			api.DeleteCookie(w, r)
-			return http.StatusBadRequest, terror.Error(err, "Session is expired")
-		}
-		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-	}
-
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, nil)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
