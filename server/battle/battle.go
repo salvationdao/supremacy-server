@@ -1271,8 +1271,11 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	gamelog.L.Trace().Str("func", "Tick").Msg("start")
+
 	if len(payload) < 1 {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
+		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
 
@@ -1280,11 +1283,13 @@ func (btl *Battle) Tick(payload []byte) {
 
 	// return if the war machines list is not ready
 	if len(btl.WarMachines) == 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
 
 	// return, if any war machines have 0 as their participant id
 	if btl.WarMachines[0].ParticipantID == 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("end")
 		return
 	}
 
@@ -1330,6 +1335,7 @@ func (btl *Battle) Tick(payload []byte) {
 			if warMachineIndex == -1 {
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine - returning")
+				gamelog.L.Trace().Str("func", "Tick").Msg("end")
 				return
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
@@ -1437,6 +1443,7 @@ func (btl *Battle) Tick(payload []byte) {
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
 		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
+	gamelog.L.Trace().Str("func", "Tick").Msg("end")
 }
 
 func (arena *Arena) reset() {
