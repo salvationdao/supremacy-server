@@ -1965,13 +1965,7 @@ func (btl *Battle) Load() error {
 		defer tx.Rollback()
 		for _, id := range ids {
 			gamelog.L.Warn().Str("mechID", id).Msg("mech did not load - likely has no faction associated with its owner")
-			canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-			_, err = tx.Exec(canxq, id)
-			if err != nil {
-				gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
-			}
-			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id)).One(tx)
-			_, err = bq.Delete(tx)
+			_, err = boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id)).DeleteAll(tx)
 			if err != nil {
 				gamelog.L.Panic().Str("mechID", id).Err(err).Msg("unable to delete factionless mech from queue")
 			}
