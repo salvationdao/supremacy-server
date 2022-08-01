@@ -180,6 +180,7 @@ func NewAPI(
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
 	pasc := NewPlayerAssetsController(api)
+	_ = NewPlayerDevicesController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	NewSyndicateController(api)

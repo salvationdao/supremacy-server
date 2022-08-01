@@ -78,6 +78,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 
+	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
+
 	return pc
 }
 
@@ -1456,6 +1458,22 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
+
+// GenOneTimeToken Generates a token used to create a QR code to log a player into the supremacy companion app
+func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GenOneTimeToken").Str("user id", user.ID).Logger()
+
+	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to generate QR code token")
+		return terror.Error(err, "Failed to get login token")
+	}
+
+	reply(resp)
+	return nil
 }
 
 type PlayerAvatarListRequest struct {
