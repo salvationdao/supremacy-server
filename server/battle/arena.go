@@ -818,7 +818,8 @@ type BattleWMDestroyedPayload struct {
 			SourceHash     string `json:"sourceHash"`
 			SourceName     string `json:"sourceName"`
 		} `json:"damageHistory"`
-		KilledBy string `json:"killedBy"`
+		KilledBy      string `json:"killedBy"`
+		ParticipantID int    `json:"participantID"`
 	} `json:"destroyedWarMachineEvent"`
 	BattleID string `json:"battleID"`
 }
