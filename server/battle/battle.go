@@ -317,6 +317,8 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 }
 
 func (btl *Battle) start() {
+	gamelog.L.Trace().Str("func", "start").Msg("start")
+
 	var err error
 
 	// start battle seconds ticker
@@ -396,6 +398,7 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
 // getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
