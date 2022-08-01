@@ -1091,3 +1091,22 @@ func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason n
 
 	return nil
 }
+
+func MechBattleReady(mechID string) (bool, error) {
+	q := `
+		SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
+		FROM blueprint_mechs _bm 
+			LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
+		WHERE _bm.id = (SELECT m.blueprint_id FROM mechs m WHERE m.id = $1)
+		LIMIT 1
+	`
+
+	battleReady := false
+
+	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&battleReady)
+	if err != nil {
+		return false, terror.Error(err, "Failed to load battle ready status")
+	}
+
+	return battleReady, nil
+}
