@@ -175,7 +175,7 @@ CREATE TABLE repair_agent_logs(
     triggered_with REPAIR_TRIGGER_WITH_TYPE NOT NULL,
     score int not null,
     block_width decimal not null,
-    block_height decimal not null,
+    block_depth decimal not null,
     is_failed bool not null default false,
     created_at timestamptz not null default now()
 );

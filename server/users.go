@@ -128,6 +128,7 @@ type UserBrief struct {
 }
 
 const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
+const SupremacyChallengeFundUserID = "5bca9b58-a71c-4134-85d4-50106a8966dc"
 
 var (
 	SupremacyZaibatsuUserID          = uuid.Must(uuid.FromString("1a657a32-778e-4612-8cc1-14e360665f2b"))

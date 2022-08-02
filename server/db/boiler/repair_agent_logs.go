@@ -28,7 +28,7 @@ type RepairAgentLog struct {
 	TriggeredWith string          `boiler:"triggered_with" boil:"triggered_with" json:"triggered_with" toml:"triggered_with" yaml:"triggered_with"`
 	Score         int             `boiler:"score" boil:"score" json:"score" toml:"score" yaml:"score"`
 	BlockWidth    decimal.Decimal `boiler:"block_width" boil:"block_width" json:"block_width" toml:"block_width" yaml:"block_width"`
-	BlockHeight   decimal.Decimal `boiler:"block_height" boil:"block_height" json:"block_height" toml:"block_height" yaml:"block_height"`
+	BlockDepth    decimal.Decimal `boiler:"block_depth" boil:"block_depth" json:"block_depth" toml:"block_depth" yaml:"block_depth"`
 	IsFailed      bool            `boiler:"is_failed" boil:"is_failed" json:"is_failed" toml:"is_failed" yaml:"is_failed"`
 	CreatedAt     time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
@@ -42,7 +42,7 @@ var RepairAgentLogColumns = struct {
 	TriggeredWith string
 	Score         string
 	BlockWidth    string
-	BlockHeight   string
+	BlockDepth    string
 	IsFailed      string
 	CreatedAt     string
 }{
@@ -51,7 +51,7 @@ var RepairAgentLogColumns = struct {
 	TriggeredWith: "triggered_with",
 	Score:         "score",
 	BlockWidth:    "block_width",
-	BlockHeight:   "block_height",
+	BlockDepth:    "block_depth",
 	IsFailed:      "is_failed",
 	CreatedAt:     "created_at",
 }
@@ -62,7 +62,7 @@ var RepairAgentLogTableColumns = struct {
 	TriggeredWith string
 	Score         string
 	BlockWidth    string
-	BlockHeight   string
+	BlockDepth    string
 	IsFailed      string
 	CreatedAt     string
 }{
@@ -71,7 +71,7 @@ var RepairAgentLogTableColumns = struct {
 	TriggeredWith: "repair_agent_logs.triggered_with",
 	Score:         "repair_agent_logs.score",
 	BlockWidth:    "repair_agent_logs.block_width",
-	BlockHeight:   "repair_agent_logs.block_height",
+	BlockDepth:    "repair_agent_logs.block_depth",
 	IsFailed:      "repair_agent_logs.is_failed",
 	CreatedAt:     "repair_agent_logs.created_at",
 }
@@ -84,7 +84,7 @@ var RepairAgentLogWhere = struct {
 	TriggeredWith whereHelperstring
 	Score         whereHelperint
 	BlockWidth    whereHelperdecimal_Decimal
-	BlockHeight   whereHelperdecimal_Decimal
+	BlockDepth    whereHelperdecimal_Decimal
 	IsFailed      whereHelperbool
 	CreatedAt     whereHelpertime_Time
 }{
@@ -93,7 +93,7 @@ var RepairAgentLogWhere = struct {
 	TriggeredWith: whereHelperstring{field: "\"repair_agent_logs\".\"triggered_with\""},
 	Score:         whereHelperint{field: "\"repair_agent_logs\".\"score\""},
 	BlockWidth:    whereHelperdecimal_Decimal{field: "\"repair_agent_logs\".\"block_width\""},
-	BlockHeight:   whereHelperdecimal_Decimal{field: "\"repair_agent_logs\".\"block_height\""},
+	BlockDepth:    whereHelperdecimal_Decimal{field: "\"repair_agent_logs\".\"block_depth\""},
 	IsFailed:      whereHelperbool{field: "\"repair_agent_logs\".\"is_failed\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"repair_agent_logs\".\"created_at\""},
 }
@@ -119,8 +119,8 @@ func (*repairAgentLogR) NewStruct() *repairAgentLogR {
 type repairAgentLogL struct{}
 
 var (
-	repairAgentLogAllColumns            = []string{"id", "repair_agent_id", "triggered_with", "score", "block_width", "block_height", "is_failed", "created_at"}
-	repairAgentLogColumnsWithoutDefault = []string{"repair_agent_id", "triggered_with", "score", "block_width", "block_height"}
+	repairAgentLogAllColumns            = []string{"id", "repair_agent_id", "triggered_with", "score", "block_width", "block_depth", "is_failed", "created_at"}
+	repairAgentLogColumnsWithoutDefault = []string{"repair_agent_id", "triggered_with", "score", "block_width", "block_depth"}
 	repairAgentLogColumnsWithDefault    = []string{"id", "is_failed", "created_at"}
 	repairAgentLogPrimaryKeyColumns     = []string{"id"}
 	repairAgentLogGeneratedColumns      = []string{}

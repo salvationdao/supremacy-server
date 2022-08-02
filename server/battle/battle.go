@@ -759,18 +759,20 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
 	tax := supsReward.Mul(taxRatio)
 	rewardAfterTax := supsReward.Sub(tax)
+	challengeFund := decimal.New(1, 18)
+	finalReward := rewardAfterTax.Sub(challengeFund)
 
 	// record
 	pw := &PlayerReward{
 		PlayerID:     playerID,
-		RewardedSups: rewardAfterTax,
+		RewardedSups: finalReward,
 	}
 
 	// pay battle queue fee
 	_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		ToUserID:             uuid.Must(uuid.FromString(playerID)),
-		Amount:               rewardAfterTax.StringFixed(0),
+		Amount:               finalReward.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
@@ -780,7 +782,7 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		gamelog.L.Error().Err(err).
 			Str("from", server.SupremacyBattleUserID).
 			Str("player id", playerID).
-			Str("amount", rewardAfterTax.StringFixed(0)).
+			Str("amount", finalReward.StringFixed(0)).
 			Msg("Failed to pay player battel reward")
 	}
 
@@ -798,7 +800,25 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		gamelog.L.Error().Err(err).
 			Str("from", server.SupremacyBattleUserID).
 			Str("player id", playerID).
-			Str("amount", rewardAfterTax.StringFixed(0)).
+			Str("amount", tax.StringFixed(0)).
+			Msg("Failed to pay player battle reward")
+	}
+
+	// pay challenge fund
+	_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+		Amount:               challengeFund.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		gamelog.L.Error().Err(err).
+			Str("from", server.SupremacyBattleUserID).
+			Str("player id", playerID).
+			Str("amount", challengeFund.StringFixed(0)).
 			Msg("Failed to pay player battle reward")
 	}
 

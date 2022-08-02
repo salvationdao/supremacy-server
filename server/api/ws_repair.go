@@ -435,8 +435,8 @@ type RepairAgentRecordRequest struct {
 }
 
 type MiniGameStackDimension struct {
-	Width  decimal.Decimal `json:"width"`
-	Height decimal.Decimal `json:"height"`
+	Width decimal.Decimal `json:"width"`
+	Depth decimal.Decimal `json:"depth"`
 }
 
 func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -459,7 +459,7 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		TriggeredWith: req.Payload.TriggerWith,
 		Score:         req.Payload.Score,
 		BlockWidth:    req.Payload.Dimension.Width,
-		BlockHeight:   req.Payload.Dimension.Height,
+		BlockDepth:    req.Payload.Dimension.Depth,
 		IsFailed:      req.Payload.IsFailed,
 	}
 
@@ -616,7 +616,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	endTime := time.Now()
 
 	// check each pattern is within the time frame
-	score := 0
+	lastScore := 0
 	failedLastTime := false
 	lastStackAt := time.Now()
 	totalStack := 0
@@ -624,7 +624,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		if i > 0 {
 			// 1. last score need to be greater than current score
 			// 2. if last challenge failed, current score need to be zero
-			if gp.Score <= score || (failedLastTime && score != 0) {
+			if gp.Score <= lastScore && (gp.Score != lastScore || !gp.IsFailed) && (gp.Score != 0 || !failedLastTime) {
 				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
 			}
 
@@ -635,7 +635,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		}
 
 		// set initial score and failed stat
-		score = gp.Score
+		lastScore = gp.Score
 		failedLastTime = gp.IsFailed
 		lastStackAt = gp.CreatedAt
 
@@ -643,10 +643,13 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
 		}
 
-		// count total stacks
-		if !gp.IsFailed {
-			totalStack += 1
+		// reduce the invalid score
+		if gp.IsFailed || gp.Score == 0 {
+			continue
 		}
+
+		// increment score
+		totalStack += 1
 	}
 
 	// check the stack amount match
