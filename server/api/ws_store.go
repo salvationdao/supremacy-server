@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -129,7 +128,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               storeCrate.Price.Mul(decimal.NewFromInt(int64(req.Payload.Quantity))).String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
-		ToUserID:             battle.SupremacyUserID,
+		ToUserID:             uuid.FromStringOrNil(server.SupremacyGameUserID),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", storeCrate.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Mystery Crate",

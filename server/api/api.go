@@ -278,7 +278,6 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))

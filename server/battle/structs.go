@@ -2,7 +2,6 @@ package battle
 
 import (
 	"github.com/sasha-s/go-deadlock"
-	"server/multipliers"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -54,15 +53,15 @@ func (u *usersMap) Delete(id uuid.UUID) {
 	u.Unlock()
 }
 
-func (um *usersMap) UsersByFactionID(factionID string) []BattleUser {
-	um.RLock()
+func (u *usersMap) UsersByFactionID(factionID string) []BattleUser {
+	u.RLock()
 	users := []BattleUser{}
-	for _, bu := range um.m {
+	for _, bu := range u.m {
 		if bu.FactionID == factionID {
 			users = append(users, *bu)
 		}
 	}
-	um.RUnlock()
+	u.RUnlock()
 	return users
 }
 
@@ -106,17 +105,6 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	*MultiplierUpdate            `json:"battle_multipliers"`
-}
-
-type MultiplierUpdate struct {
-	Battles []*MultiplierUpdateBattles `json:"battles"`
-}
-
-type MultiplierUpdateBattles struct {
-	BattleNumber     int                             `json:"battle_number"`
-	TotalMultipliers string                          `json:"total_multipliers"`
-	UserMultipliers  []*multipliers.PlayerMultiplier `json:"multipliers"`
 }
 
 type Faction struct {

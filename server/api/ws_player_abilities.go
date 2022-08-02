@@ -268,7 +268,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	supTransactionID, err := pac.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
-		ToUserID:             battle.SupremacyUserID,
+		ToUserID:             uuid.FromStringOrNil(server.SupremacyGameUserID),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_ability_purchase|%s|%d", req.Payload.AbilityID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Player Abilities",
