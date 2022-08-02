@@ -8,7 +8,6 @@ import (
 )
 
 type Feature struct {
-	ID              string    `json:"id"`
 	Name            string    `json:"name"`
 	GloballyEnabled bool      `json:"globally_enabled"`
 	DeletedAt       null.Time `json:"deleted_at,omitempty"`

@@ -28,19 +28,26 @@ func GetAllFeatures() ([]*server.Feature, error) {
 //GetPlayerFeaturesByID finds all Features for a player
 func GetPlayerFeaturesByID(playerID string) ([]*boiler.Feature, error) {
 	features, err := boiler.Features(
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.SQL(fmt.Sprintf(`
+			select *
+			from %s f
+			where (
+				f.%s is true or f.%s in (
+					select %s
+					from %s pf
+					where pf.%s = $1 and pf.%s is null
+				) 
+			) and f.%s is null
+		`,
+			boiler.TableNames.Features,
+			boiler.FeatureColumns.GloballyEnabled,
+			boiler.FeatureColumns.Name,
+			boiler.PlayersFeatureColumns.FeatureName,
 			boiler.TableNames.PlayersFeatures,
-			qm.Rels(boiler.TableNames.Features, boiler.FeatureColumns.Name),
-			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.FeatureName),
-		)),
-		qm.Where(
-			fmt.Sprintf("(%s = ? AND %s IS NULL) OR %s = true",
-				qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.PlayerID),
-				qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.DeletedAt),
-				qm.Rels(boiler.TableNames.Features, boiler.FeatureColumns.GloballyEnabled),
-			),
-			playerID,
-		),
+			boiler.PlayersFeatureColumns.PlayerID,
+			boiler.PlayersFeatureColumns.DeletedAt,
+			boiler.FeatureColumns.DeletedAt,
+		), playerID),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
