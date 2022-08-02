@@ -2,6 +2,7 @@ package battle
 
 import (
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -26,7 +27,7 @@ type SystemBanManager struct {
 	SystemBanMassageChan chan *SystemBanMessageData
 
 	teamKillCourtroom map[string]*TeamKillDefendant
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewSystemBanManager() *SystemBanManager {

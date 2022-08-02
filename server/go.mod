@@ -36,6 +36,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/ninja-syndicate/hub v1.9.2
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shopspring/decimal v1.3.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
@@ -67,7 +68,6 @@ require (
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
-	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect

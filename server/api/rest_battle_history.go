@@ -48,32 +48,34 @@ func BattleHistoryRouter() chi.Router {
 //         "runner_up": null,
 //         "loser": null
 //     },
-//     "previous_battle":{
-//         "number": 12344,
-//         "started_at": 1659279802,
-//         "ended_at": 1659280302,
-//         "winner": "ZHI",
-//         "runner_up": "BC",
-//         "loser": "RM"
-//     }
+//     "previous_battles":[
+//			{
+//				"number": 12344,
+//				"started_at": 1659279802,
+//				"ended_at": 1659280302,
+//				"winner": "ZHI",
+//				"runner_up": "BC",
+//				"loser": "RM"
+//    		}
+// 			...
+//		]
 // }
 type BattleHistoryCurrent struct {
-	CurrentBattle  *BattleHistoryRecord `json:"current_battle"`
-	PreviousBattle *BattleHistoryRecord `json:"previous_battle"`
+	CurrentBattle   *BattleHistoryRecord   `json:"current_battle"`
+	PreviousBattles []*BattleHistoryRecord `json:"previous_battles"`
 }
 
-// BattleHistoryCurrent gets current battle and previous battle records
+// BattleHistoryCurrent gets current battle and previous battle records (100 records)
 func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r *http.Request) (int, error) {
-	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(2)).All(gamedb.StdConn)
+	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(100)).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrap(err, "get battles")
 	}
-	if len(battles) != 2 {
-		return http.StatusBadRequest, fmt.Errorf("expected 2 battles, got %d", len(battles))
+	if len(battles) != 100 {
+		return http.StatusBadRequest, fmt.Errorf("expected 100 battles, got %d", len(battles))
 	}
 
 	curr := battles[0]
-	prev := battles[1]
 
 	currentBattleRecord := &BattleHistoryRecord{
 		Number:    curr.BattleNumber,
@@ -84,13 +86,19 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 		Loser:     nil,
 	}
 
-	previousBattleRecord, err := BattleRecord(prev)
-	if err != nil {
-		return http.StatusBadRequest, errors.Wrap(err, "get battle record")
+	previousBattleRecords := []*BattleHistoryRecord{}
+
+	for _, battle := range battles[1:] {
+		previousBattleRecord, err := BattleRecord(battle)
+		if err != nil {
+			return http.StatusBadRequest, errors.Wrap(err, "get battle record")
+		}
+		previousBattleRecords = append(previousBattleRecords, previousBattleRecord)
 	}
+
 	result := BattleHistoryCurrent{
-		CurrentBattle:  currentBattleRecord,
-		PreviousBattle: previousBattleRecord,
+		CurrentBattle:   currentBattleRecord,
+		PreviousBattles: previousBattleRecords,
 	}
 	return helpers.EncodeJSON(w, result)
 }

@@ -171,7 +171,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          "queue mech to join the battle arena.",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().
@@ -344,7 +343,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupBattle),
 			Description:          "refund battle queue fee.",
-			NotSafe:              true,
 		})
 		if err != nil {
 			gamelog.L.Error().

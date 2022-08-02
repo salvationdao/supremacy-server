@@ -193,7 +193,6 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupRepair),
 		Description:          "create repair offer including 10% GST",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", offeredSups.Add(tax).String()).Err(err).Msg("Failed to pay sups for offering repair job")
@@ -209,7 +208,6 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupRepair),
 		Description:          "repair offer tax",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay sups for offering repair job")
@@ -557,7 +555,6 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupRepair),
 			Description:          "claim repair offer reward.",
-			NotSafe:              true,
 		})
 		if err != nil {
 			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")

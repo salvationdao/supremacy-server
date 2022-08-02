@@ -6,7 +6,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/null/v8"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
 	"server/db"
@@ -14,22 +15,18 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/multipliers"
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
-	"go.uber.org/atomic"
-
-	"github.com/shopspring/decimal"
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 )
@@ -47,9 +44,9 @@ type Battle struct {
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
-	spawnedAIMux           sync.RWMutex
+	spawnedAIMux           deadlock.RWMutex
 	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs          []uuid.UUID   `json:"ids"`
+	warMachineIDs          []uuid.UUID
 	lastTick               *[]byte
 	gameMap                *server.GameMap
 	battleZones            []server.BattleZone
@@ -57,8 +54,6 @@ type Battle struct {
 	_abilities             *AbilitiesSystem
 	users                  usersMap
 	factions               map[uuid.UUID]*boiler.Faction
-	multipliers            *MultiplierSystem
-	spoils                 *SpoilsOfWar
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
 	startedAt              time.Time
@@ -71,7 +66,7 @@ type Battle struct {
 	inserted bool
 
 	viewerCountInputChan chan *ViewerLiveCount
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
@@ -94,6 +89,7 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 
 // storeGameMap set the game map detail from game client
 func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZone) {
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("start")
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -106,6 +102,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -175,6 +172,8 @@ func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) (
 }
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	gamelog.L.Trace().Str("func", "preIntro").Msg("start")
+
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -192,54 +191,6 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
 			return err
-		}
-
-		// clean up battle contributions
-		contributions, err := boiler.BattleContributions(
-			boiler.BattleContributionWhere.BattleID.EQ(btl.ID),
-			boiler.BattleContributionWhere.RefundTransactionID.IsNull(),
-			qm.OrderBy(boiler.BattleContributionColumns.PlayerID),
-		).All(gamedb.StdConn)
-		for _, c := range contributions {
-			if !c.TransactionID.Valid {
-				gamelog.L.Warn().
-					Str("contribution_id", c.ID).
-					Err(err).
-					Msg("contribution does not have a transaction id")
-				continue
-			}
-			contributeRefundTransactionID, err := btl.arena.RPCClient.RefundSupsMessage(c.TransactionID.String)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("queue_transaction_id", c.TransactionID.String).
-					Err(err).
-					Msg("failed to refund users queue fee")
-			}
-			c.RefundTransactionID = null.StringFrom(contributeRefundTransactionID)
-			if _, err := c.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleContributionColumns.RefundTransactionID)); err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("battle_contributions_id", c.ID).
-					Err(err).
-					Msg("failed to save refund")
-			}
-		}
-
-		// empty spoils of war
-		sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.ID)).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("battle_id", btl.ID).
-				Err(err).
-				Msg("unable to retrieve spoil of war for unfinished battle")
-		} else {
-			sow.Amount = decimal.Zero
-			sow.AmountSent = decimal.Zero
-			if _, err := sow.Update(gamedb.StdConn, boil.Infer()); err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("spoils_of_war_id", sow.ID).
-					Err(err).
-					Msg("failed to clear spoils of war for unfinished battle")
-			}
 		}
 
 		bmds, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
@@ -305,21 +256,14 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	}
 
 	btl.BroadcastUpdate()
-
+	gamelog.L.Trace().Str("func", "preIntro").Msg("end")
 	return nil
 }
 
 func (btl *Battle) start() {
+	gamelog.L.Trace().Str("func", "start").Msg("start")
+
 	var err error
-
-	// start battle seconds ticker
-	//btl.battleSecondCloseChan = btl.BattleSecondStartTicking()
-
-	// insert current users to
-	btl.users.Range(func(user *BattleUser) bool {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyUserMultiplierSignalUpdate, true)
-		return true
-	})
 
 	if btl.battleMechData == nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
@@ -331,40 +275,10 @@ func (btl *Battle) start() {
 		//TODO: something more dramatic
 	}
 
-	// set up the AbilitySystem() for current battle
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
-	btl.multipliers = NewMultiplierSystem(btl)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	btl.BroadcastUpdate()
-	// broadcast spoil of war on the start of the battle
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
-
-	yesterday := time.Now().Add(time.Hour * -24)
-	warchests, err := boiler.SpoilsOfWars(
-		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
-		boiler.SpoilsOfWarWhere.BattleID.NEQ(btl.ID),
-		qm.And(`amount_sent < amount`),
-		qm.OrderBy(fmt.Sprintf("%s %s", boiler.SpoilsOfWarColumns.CreatedAt, "DESC")),
-	).All(gamedb.StdConn)
-
-	warchest, err := boiler.SpoilsOfWars(
-		boiler.SpoilsOfWarWhere.BattleID.EQ(btl.ID),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("battle id", btl.ID).Err(err).Msg("Failed to retrieve current spoil of war")
-	}
-
-	if warchest != nil {
-		amnt := decimal.Zero
-		for _, sow := range warchests {
-			amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent).Sub(sow.LeftoverAmount))
-		}
-		ws.PublishMessage("/public/live_data", HubKeySpoilOfWarUpdated, []string{warchest.Amount.String(), amnt.String()})
-	}
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -374,7 +288,6 @@ func (btl *Battle) start() {
 
 	// global announcement exists
 	if ga != nil {
-
 		// show if battle number is equal or in between the global announcement's to and from battle number
 		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, ga)
@@ -389,6 +302,7 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
 // getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
@@ -505,22 +419,6 @@ func (btl *Battle) endAbilities() {
 	btl.AbilitySystem().End()
 	btl.AbilitySystem().storeBattle(nil)
 	btl.storeAbilities(nil)
-}
-func (btl *Battle) endSpoils() {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the spoils end!", r)
-		}
-	}()
-	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
-
-	if btl.spoils == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have spoils!")
-		return
-	}
-
-	btl.spoils.End()
-	btl.spoils = nil
 }
 
 func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines []*WarMachine) *BattleEndDetail {
@@ -744,7 +642,6 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Err(err).
@@ -763,7 +660,6 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Err(err).
@@ -822,7 +718,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	}()
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
-	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
 	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {
@@ -1009,21 +905,6 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	return winningWarMachines
 }
 
-func (btl *Battle) endMultis(endInfo *BattleEndDetail) {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the ending of multis! btl.endMultis!", r)
-		}
-	}()
-	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
-
-	if btl.multipliers == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have multipliers!")
-		return
-	}
-
-	btl.multipliers.end(endInfo)
-}
 func (btl *Battle) endBroadcast(endInfo *BattleEndDetail) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1055,7 +936,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	btl.endAbilities()
-	btl.endSpoils()
 
 	winningWarMachines := btl.endWarMachines(payload)
 	endInfo := btl.endCreateStats(payload, winningWarMachines)
@@ -1063,10 +943,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.RewardBattleMechOwners(endInfo.WinningFactionIDOrder)
 
 	btl.processWarMachineRepair()
-
-	btl.endMultis(endInfo)
-
-	btl.insertUserSpoils(endInfo)
 
 	// TODO: we can remove this after a while
 	_, err = boiler.BattleQueueNotifications(
@@ -1089,130 +965,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.endBroadcast(endInfo)
 }
 
-// insertUserSpoils gets the spoils for given battle, gets players multis for given battle and calculates and inserts the user spoils for this battle
-func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
-	// get battle sow
-	spoils, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btlEndInfo.BattleID)).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("btlEndInfo.BattleID", btlEndInfo.BattleID).
-			Int("btlEndInfo.BattleIdentifier", btlEndInfo.BattleIdentifier).
-			Err(err).
-			Msg("issue getting SpoilsOfWars")
-		return
-	}
-
-	if spoils.Amount.IsZero() {
-		return
-	}
-
-	// get player multies
-	playerMultis, err := multipliers.GetPlayersMultiplierSummaryForBattle(btlEndInfo.BattleIdentifier)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("btlEndInfo.BattleID", btlEndInfo.BattleID).
-			Int("btlEndInfo.BattleIdentifier", btlEndInfo.BattleIdentifier).
-			Err(err).
-			Msg("issue getting PlayerMultipliers")
-		return
-	}
-
-	oneMultiWorth := multipliers.CalculateOneMultiWorth(playerMultis, spoils.Amount)
-
-	totalAssignedToPlayers := decimal.Zero
-
-	for _, player := range playerMultis {
-		playerTotalSow := multipliers.CalculateMultipliersWorth(oneMultiWorth, player.TotalMultiplier)
-		userSpoils := &boiler.PlayerSpoilsOfWar{
-			PlayerID:                 player.PlayerID,
-			BattleID:                 btlEndInfo.BattleID,
-			TotalMultiplierForBattle: int(player.TotalMultiplier.IntPart()),
-			TotalSow:                 playerTotalSow,
-			PaidSow:                  decimal.Zero,
-			TickAmount:               playerTotalSow.Div(decimal.NewFromInt(int64(spoils.MaxTicks))),
-			LostSow:                  decimal.Zero,
-		}
-
-		err := userSpoils.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Interface("userSpoils", userSpoils).
-				Err(err).
-				Msg("issue inserting userSpoils")
-		}
-		totalAssignedToPlayers = totalAssignedToPlayers.Add(playerTotalSow)
-	}
-
-	if totalAssignedToPlayers.Round(0).Equal(spoils.Amount) { // we gucci
-		return
-	} else if totalAssignedToPlayers.Round(0).GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
-		gamelog.L.Panic().
-			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
-			Str("spoils.Amount", spoils.Amount.String()).
-			Err(fmt.Errorf("assigned more sups than what is in the spoils")).
-			Msg("issue assigning spoils")
-	} else if totalAssignedToPlayers.Round(0).LessThan(spoils.Amount) { // we didn't give them all out
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
-			Str("spoils.Amount", spoils.Amount.String()).
-			Err(fmt.Errorf("assigned less sups than what is in the spoils")).
-			Msg("issue assigning spoils")
-	}
-}
-
 const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
-
-		m, total, _ := multipliers.GetPlayerMultipliersForBattle(user.ID.String(), btl.BattleNumber)
-
-		info.MultiplierUpdate = &MultiplierUpdate{
-			Battles: []*MultiplierUpdateBattles{
-				{
-					BattleNumber:     btl.BattleNumber,
-					TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
-					UserMultipliers:  m,
-				},
-			}}
-
 		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyBattleEndDetailUpdated, info)
-
-		// broadcast users multies and stats
-		go func(user *BattleUser) {
-			// get last 3 battles
-			spoils, err := boiler.SpoilsOfWars(
-				boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
-				boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
-				qm.And("amount > amount_sent"),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("SpoilsOfWarWhere.CreatedAt.GT", time.Now().AddDate(0, 0, -1).String()).Err(err).Msg("issue getting SpoilsOfWars")
-			} else {
-				resp := &MultiplierUpdate{
-					Battles: []*MultiplierUpdateBattles{},
-				}
-
-				for _, spoil := range spoils {
-					m, total, _ := multipliers.GetPlayerMultipliersForBattle(user.ID.String(), spoil.BattleNumber)
-					resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
-						BattleNumber:     spoil.BattleNumber,
-						TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
-						UserMultipliers:  m,
-					})
-				}
-				ws.PublishMessage(fmt.Sprintf("/user/%s/multipliers", user.ID), HubKeyMultiplierSubscribe, resp)
-			}
-
-			us, err := db.UserStatsGet(user.ID.String())
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
-			}
-			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
-			}
-		}(user)
-
 		return true
 	})
 
@@ -1364,6 +1121,9 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	gamelog.L.Trace().Str("func", "Tick").Msg("start")
+	defer gamelog.L.Trace().Str("func", "Tick").Msg("end")
+
 	if len(payload) < 1 {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		return
@@ -1379,7 +1139,6 @@ func (btl *Battle) Tick(payload []byte) {
 	if len(btl.WarMachines) == 0 {
 		return
 	}
-
 	// return, if any war machines have 0 as their participant id
 	if btl.WarMachines[0].ParticipantID == 0 {
 		return
@@ -1431,12 +1190,10 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
-
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
-
 		warmachine.Lock()
 		wms := WarMachineStat{
 			ParticipantID: int(warmachine.ParticipantID),
@@ -1463,7 +1220,6 @@ func (btl *Battle) Tick(payload []byte) {
 			wms.Position = warmachine.Position
 			warmachine.Rotation = rotation
 			wms.Rotation = rotation
-
 		}
 		// Health
 		if booleans[1] {
@@ -1471,7 +1227,6 @@ func (btl *Battle) Tick(payload []byte) {
 			offset += 4
 			warmachine.Health = health
 			wms.Health = health
-
 		}
 		// Shield
 		if booleans[2] {
@@ -1481,7 +1236,6 @@ func (btl *Battle) Tick(payload []byte) {
 			wms.Shield = shield
 		}
 		warmachine.Unlock()
-
 		// Energy
 		if booleans[3] {
 			offset += 4
@@ -1517,7 +1271,9 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("batch sending")
 		ws.PublishBatchMessages("/public/mech", wsMessages)
+		gamelog.L.Trace().Str("func", "Tick").Msg("batch sent")
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1531,6 +1287,7 @@ func (btl *Battle) Tick(payload []byte) {
 				Coords:        b.CellCoords,
 			})
 		}
+
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
 		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
@@ -1541,6 +1298,9 @@ func (arena *Arena) reset() {
 }
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
+	gamelog.L.Trace().Str("func", "Destroyed").Msg("start")
+	defer gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
+
 	// check destroyed war machine exist
 	if btl.ID != dp.BattleID {
 		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
@@ -1726,7 +1486,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 	}
 
-	gamelog.L.Info().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
+	gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
 
 	var warMachineID uuid.UUID
 	var killByWarMachineID uuid.UUID
@@ -1790,7 +1550,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
-
+		gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 		return
 	}
 
@@ -1923,10 +1683,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 }
 
 func (btl *Battle) Load() error {
+	gamelog.L.Trace().Str("func", "Load").Msg("start")
 	q, err := db.LoadBattleQueue(context.Background(), 3)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 
@@ -1936,9 +1698,11 @@ func (btl *Battle) Load() error {
 		err = btl.QueueDefaultMechs()
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
@@ -1972,11 +1736,13 @@ func (btl *Battle) Load() error {
 		if err != nil {
 			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
 		}
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
@@ -1985,12 +1751,13 @@ func (btl *Battle) Load() error {
 		uuids[i], err = uuid.FromString(bq.MechID)
 		if err != nil {
 			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 	}
 
 	btl.warMachineIDs = uuids
-
+	gamelog.L.Trace().Str("func", "Load").Msg("end")
 	return nil
 }
 

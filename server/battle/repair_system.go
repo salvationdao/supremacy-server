@@ -186,7 +186,6 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 				Group:                string(server.TransactionGroupSupremacy),
 				SubGroup:             string(server.TransactionGroupRepair),
 				Description:          "refund unclaimed repair offer reward.",
-				NotSafe:              true,
 			})
 			if err != nil {
 				gamelog.L.Error().

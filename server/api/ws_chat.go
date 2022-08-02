@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"golang.org/x/exp/slices"
 	"html"
 	"server"
@@ -13,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -118,7 +118,7 @@ type TextMessageMetadata struct {
 
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }
@@ -302,7 +302,6 @@ func (api *API) MessageBroadcaster() {
 	for {
 		select {
 		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
-
 			banMessage := &MessageSystemBan{
 				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
@@ -381,7 +380,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	b2 := minuteBucket.Add(user.ID, 1)
 
 	if b1 == 0 || b2 == 0 {
-		return terror.Error(fmt.Errorf("too many messages"), "Too many messages.")
+		return terror.Warn(fmt.Errorf("too many messages"), "Too many messages.")
 	}
 
 	req := &FactionChatRequest{}
