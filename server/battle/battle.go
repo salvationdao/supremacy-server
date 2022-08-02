@@ -334,29 +334,6 @@ func (btl *Battle) start() {
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
 
-	yesterday := time.Now().Add(time.Hour * -24)
-	warchests, err := boiler.SpoilsOfWars(
-		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
-		boiler.SpoilsOfWarWhere.BattleID.NEQ(btl.ID),
-		qm.And(`amount_sent < amount`),
-		qm.OrderBy(fmt.Sprintf("%s %s", boiler.SpoilsOfWarColumns.CreatedAt, "DESC")),
-	).All(gamedb.StdConn)
-
-	warchest, err := boiler.SpoilsOfWars(
-		boiler.SpoilsOfWarWhere.BattleID.EQ(btl.ID),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("battle id", btl.ID).Err(err).Msg("Failed to retrieve current spoil of war")
-	}
-
-	if warchest != nil {
-		amnt := decimal.Zero
-		for _, sow := range warchests {
-			amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent).Sub(sow.LeftoverAmount))
-		}
-		ws.PublishMessage("/public/live_data", HubKeySpoilOfWarUpdated, []string{warchest.Amount.String(), amnt.String()})
-	}
-
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -365,7 +342,6 @@ func (btl *Battle) start() {
 
 	// global announcement exists
 	if ga != nil {
-
 		// show if battle number is equal or in between the global announcement's to and from battle number
 		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, ga)

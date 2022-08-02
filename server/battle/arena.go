@@ -236,10 +236,6 @@ const (
 	Tick
 )
 
-// BATTLESPAWNCOUNT defines how many mechs to spawn
-// this should be refactored to a number in the data base
-// config table may be necessary, suggest key/value
-const BATTLESPAWNCOUNT int = 3
 
 func (mt MessageType) String() string {
 	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick", "unknown", "unknown wtf"}[mt]
@@ -705,10 +701,6 @@ func (arena *Arena) BribeStageSubscribe(ctx context.Context, key string, payload
 	return nil
 }
 
-const HubKeyBattleAbilityProgressBarUpdated = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
-
-const HubKeyAbilityPriceUpdated = "ABILITY:PRICE:UPDATED"
-
 type GameAbilityPriceResponse struct {
 	ID          string `json:"id"`
 	OfferingID  string `json:"offering_id"`
@@ -717,24 +709,6 @@ type GameAbilityPriceResponse struct {
 	ShouldReset bool   `json:"should_reset"`
 }
 
-const HubKeySpoilOfWarUpdated = "SPOIL:OF:WAR:UPDATED"
-
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	sows, err := db.LastTwoSpoilOfWarAmount()
-	if err != nil || len(sows) == 0 {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get last two spoil of war amount")
-		return nil
-	}
-
-	spoilOfWars := []string{}
-	for _, sow := range sows {
-		spoilOfWars = append(spoilOfWars, sow.String())
-	}
-
-	reply(spoilOfWars)
-
-	return nil
-}
 
 func (arena *Arena) SendSettings(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// response game setting, if current battle exists
