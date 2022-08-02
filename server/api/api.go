@@ -285,7 +285,7 @@ func NewAPI(
 				s.WS("/live_data", "", nil)
 
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe, MustLogin)
-				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, nil, MustLogin)
+				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList, MustLogin)
 				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil, MustLogin)
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe, MustLogin)
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe, MustLogin)

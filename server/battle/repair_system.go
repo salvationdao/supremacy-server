@@ -46,6 +46,12 @@ func (arena *Arena) RepairOfferCleaner() {
 					boiler.RepairOfferRels.RepairAgents,
 					boiler.RepairAgentWhere.FinishedAt.IsNull(),
 				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy,
+					qm.Select(boiler.PlayerColumns.ID),
+					qm.Select(boiler.PlayerColumns.Username),
+					qm.Select(boiler.PlayerColumns.Rank),
+					qm.Select(boiler.PlayerColumns.FactionID),
+				),
 			).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to get repair offer")
@@ -71,6 +77,12 @@ func (arena *Arena) RepairOfferCleaner() {
 				qm.Load(
 					boiler.RepairOfferRels.RepairAgents,
 					boiler.RepairAgentWhere.FinishedAt.IsNull(),
+				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy,
+					qm.Select(boiler.PlayerColumns.ID),
+					qm.Select(boiler.PlayerColumns.Username),
+					qm.Select(boiler.PlayerColumns.Rank),
+					qm.Select(boiler.PlayerColumns.FactionID),
 				),
 			).All(gamedb.StdConn)
 			if err != nil {
@@ -121,6 +133,10 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 			BlocksRepaired:       rc.BlocksRepaired,
 			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 			WorkingAgentCount:    0,
+		}
+
+		if ro.R.OfferedBy != nil {
+			sro.JobOwner = ro.R.OfferedBy
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)

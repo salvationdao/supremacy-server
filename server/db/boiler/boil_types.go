@@ -236,6 +236,14 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+// Enum values for RepairTriggerWithType
+const (
+	RepairTriggerWithTypeSPACE_BAR  = "SPACE_BAR"
+	RepairTriggerWithTypeLEFT_CLICK = "LEFT_CLICK"
+	RepairTriggerWithTypeTOUCH      = "TOUCH"
+	RepairTriggerWithTypeNONE       = "NONE"
+)
+
 // Enum values for RepairAgentFinishReason
 const (
 	RepairAgentFinishReasonABANDONED = "ABANDONED"

@@ -683,10 +683,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	for i, factionID := range winningFactionOrder {
 		taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 		switch i {
-		case 0:
+		case 0: // winning faction
 			for _, bq := range bqs {
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
-					btl.RewardPlayer(
+					btl.RewardPlayerSups(
 						bq.OwnerID,
 						totalSups.Mul(decimal.NewFromFloat(0.5)).Div(decimal.NewFromInt(3)),
 						taxRatio,
@@ -694,16 +694,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 				}
 			}
 
-		case 1:
+		case 1: // second faction
 			for _, bq := range bqs {
-				fmt.Println(factionID)
-				fmt.Println(bq.FactionID)
-				fmt.Println(bq.FactionID == factionID)
-				fmt.Println(bq.R != nil)
-				fmt.Println(bq.R.Owner != nil)
-				fmt.Println(!bq.R.Owner.IsAi)
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
-					btl.RewardPlayer(
+					btl.RewardPlayerSups(
 						bq.OwnerID,
 						totalSups.Mul(decimal.NewFromFloat(0.3)).Div(decimal.NewFromInt(3)),
 						taxRatio,
@@ -711,10 +705,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 				}
 			}
 
-		case 2:
+		case 2: // lose faction
 			for _, bq := range bqs {
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
-					btl.RewardPlayer(
+					btl.RewardPlayerSups(
 						bq.OwnerID,
 						totalSups.Mul(decimal.NewFromFloat(0.2)).Div(decimal.NewFromInt(3)),
 						taxRatio,
@@ -738,13 +732,13 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	// reward player abilities
 }
 
-func (btl *Battle) RewardPlayer(userID string, supsReward decimal.Decimal, taxRatio decimal.Decimal) {
+func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal, taxRatio decimal.Decimal) {
 	tax := supsReward.Mul(taxRatio)
 	rewardAfterTax := supsReward.Sub(tax)
 	// pay battle queue fee
 	_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-		ToUserID:             uuid.Must(uuid.FromString(userID)),
+		ToUserID:             uuid.Must(uuid.FromString(playerID)),
 		Amount:               rewardAfterTax.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
@@ -755,7 +749,7 @@ func (btl *Battle) RewardPlayer(userID string, supsReward decimal.Decimal, taxRa
 	if err != nil {
 		gamelog.L.Error().Err(err).
 			Str("from", server.SupremacyBattleUserID).
-			Str("player id", userID).
+			Str("player id", playerID).
 			Str("amount", rewardAfterTax.StringFixed(0)).
 			Msg("Failed to pay player battel reward")
 	}
@@ -774,10 +768,14 @@ func (btl *Battle) RewardPlayer(userID string, supsReward decimal.Decimal, taxRa
 	if err != nil {
 		gamelog.L.Error().Err(err).
 			Str("from", server.SupremacyBattleUserID).
-			Str("player id", userID).
+			Str("player id", playerID).
 			Str("amount", rewardAfterTax.StringFixed(0)).
 			Msg("Failed to pay player battel reward")
 	}
+}
+
+func (btl *Battle) RewardPlayerAbility(playerIDs []string) {
+
 }
 
 func (btl *Battle) processWarMachineRepair() {

@@ -16,20 +16,26 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		    ro.offered_by_id,
 		    ro.expires_at,
 		    ro.closed_at,
+		    ro.created_at,
 		    ro.offered_sups_amount,
 		    ro.finished_reason,
 		    rc.blocks_required_repair,
 		    rc.blocks_repaired,
 		    ro.offered_sups_amount/ro.blocks_total as sups_worth_per_block,
+		    p.username,
+		    p.gid,
+		    p.faction_id,
 		    COUNT(ra.id) as working_agent_count
 		FROM repair_offers ro
 		INNER JOIN repair_cases rc on rc.id = ro.repair_case_id
+		INNER JOIN players p on p.id = ro.offered_by_id
 		LEFT JOIN repair_agents ra on ra.repair_offer_id = ro.id AND ra.finished_at ISNULL
 		WHERE ro.id = $1
-		GROUP BY ro.id, rc.blocks_required_repair, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason
+		GROUP BY ro.id, rc.blocks_required_repair, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason,p.username,p.gid,p.faction_id
 	`
 	dro := &server.RepairOffer{
 		RepairOffer: &boiler.RepairOffer{},
+		JobOwner:    &boiler.Player{},
 	}
 	err := gamedb.StdConn.QueryRow(q, offerID).Scan(
 		&dro.ID,
@@ -37,11 +43,15 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 		&dro.OfferedByID,
 		&dro.ExpiresAt,
 		&dro.ClosedAt,
+		&dro.CreatedAt,
 		&dro.OfferedSupsAmount,
 		&dro.FinishedReason,
 		&dro.BlocksRequiredRepair,
 		&dro.BlocksRepaired,
 		&dro.SupsWorthPerBlock,
+		&dro.JobOwner.Username,
+		&dro.JobOwner.Gid,
+		&dro.JobOwner.FactionID,
 		&dro.WorkingAgentCount,
 	)
 	if err != nil {

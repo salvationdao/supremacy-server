@@ -166,10 +166,13 @@ CREATE TRIGGER trigger_check_repair_agent
     FOR EACH ROW
 EXECUTE PROCEDURE check_repair_agent();
 
+DROP TYPE IF EXISTS REPAIR_TRIGGER_WITH_TYPE;
+CREATE TYPE REPAIR_TRIGGER_WITH_TYPE AS ENUM ('SPACE_BAR', 'LEFT_CLICK', 'TOUCH','NONE');
+
 CREATE TABLE repair_agent_logs(
     id UUID PRIMARY KEY default gen_random_uuid(),
     repair_agent_id uuid not null references repair_agents (id),
-    triggered_with text NOT NULL,
+    triggered_with REPAIR_TRIGGER_WITH_TYPE NOT NULL,
     score int not null,
     block_width decimal not null,
     block_height decimal not null,

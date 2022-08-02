@@ -26,7 +26,6 @@ import (
 )
 
 func NewMechRepairController(api *API) {
-	api.SecureUserCommand(server.HubKeyRepairOfferList, api.RepairOfferList)
 	api.SecureUserCommand(server.HubKeyRepairOfferIssue, api.RepairOfferIssue)
 	api.SecureUserCommand(server.HubKeyRepairOfferClose, api.RepairOfferClose)
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
@@ -34,115 +33,46 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 }
 
-type RepairListRequest struct {
-	Payload struct {
-		OrderBy    string   `json:"order_by"`
-		OrderDir   string   `json:"order_dir"`
-		IsExpired  bool     `json:"is_expired"`
-		PageSize   int      `json:"page_size"`
-		PageNumber int      `json:"page_number"`
-		MaxReward  null.Int `json:"max_reward"`
-		MinReward  null.Int `json:"min_reward"`
-	} `json:"payload"`
-}
-
-type RepairOfferListResponse struct {
-	Offers []*server.RepairOffer `json:"offers"`
-	Total  int64                 `json:"total"`
-}
-
-func (api *API) RepairOfferList(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &RepairListRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	resp := &RepairOfferListResponse{
-		Offers: []*server.RepairOffer{},
-		Total:  0,
-	}
-	queries := []qm.QueryMod{
-		boiler.RepairOfferWhere.OfferedByID.IsNotNull(), // only get non-system generated offers
-	}
-
-	if req.Payload.MinReward.Valid {
-		queries = append(queries, qm.Where(
-			fmt.Sprintf(
-				"%s/%s >= ?",
-				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.OfferedSupsAmount),
-				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.BlocksTotal),
-			),
-			decimal.New(int64(req.Payload.MinReward.Int), 18).StringFixed(0),
-		))
-	}
-
-	if req.Payload.MaxReward.Valid {
-		queries = append(queries, qm.Where(
-			fmt.Sprintf(
-				"%s/%s <= ?",
-				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.OfferedSupsAmount),
-				qm.Rels(boiler.TableNames.RepairOffers, boiler.RepairOfferColumns.BlocksTotal),
-			),
-			decimal.New(int64(req.Payload.MaxReward.Int), 18).StringFixed(0),
-		))
-	}
-
-	if req.Payload.IsExpired {
-		queries = append(queries, boiler.RepairOfferWhere.ClosedAt.IsNotNull())
-	} else {
-		queries = append(queries,
-			boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()),
-			boiler.RepairOfferWhere.ClosedAt.IsNull(),
-		)
-	}
-
-	resp.Total, err = boiler.RepairOffers(queries...).Count(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to query offer list.")
-		return terror.Error(err, "Failed to get the offer list.")
-	}
-
-	// validate order direction
-	switch req.Payload.OrderDir {
-	case "DESC", "ASC":
-	default:
-		return terror.Error(fmt.Errorf("invalid order direction"), "Invalid order direction.")
-	}
-
-	// validate order by column
-	switch req.Payload.OrderBy {
-	case boiler.RepairOfferColumns.ExpiresAt, boiler.RepairOfferColumns.OfferedSupsAmount, boiler.RepairOfferColumns.CreatedAt:
-	default:
-		return terror.Error(fmt.Errorf("invalid order option"), "Invalid order option.")
-	}
-
-	queries = append(queries,
-		qm.OrderBy(fmt.Sprintf("%s %s", req.Payload.OrderBy, req.Payload.OrderDir)),
-		qm.Limit(req.Payload.PageSize),
-		qm.Offset(req.Payload.PageNumber*req.Payload.PageSize),
-		qm.Load(
-			boiler.RepairOfferRels.OfferedBy,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.Gid,
-				boiler.PlayerColumns.FactionID,
-			),
+func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	ros, err := boiler.RepairOffers(
+		boiler.RepairOfferWhere.ExpiresAt.GT(time.Now()),
+		boiler.RepairOfferWhere.ClosedAt.IsNull(),
+		boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
+		qm.Load(boiler.RepairOfferRels.RepairCase, boiler.RepairCaseWhere.CompletedAt.IsNull()),
+		qm.Load(boiler.RepairOfferRels.RepairAgents, boiler.RepairAgentWhere.FinishedAt.IsNull()),
+		qm.Load(boiler.RepairOfferRels.OfferedBy,
+			qm.Select(boiler.PlayerColumns.ID),
+			qm.Select(boiler.PlayerColumns.Username),
+			qm.Select(boiler.PlayerColumns.Rank),
+			qm.Select(boiler.PlayerColumns.FactionID),
 		),
-	)
-
-	ros, err := boiler.RepairOffers(queries...).All(gamedb.StdConn)
+	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to query offer list from db.")
-		return terror.Error(err, "Failed to get offer list.")
+		return terror.Error(err, "Failed to load repair offer detail")
 	}
 
+	resp := []*server.RepairOffer{}
 	for _, ro := range ros {
-		resp.Offers = append(resp.Offers, &server.RepairOffer{
-			RepairOffer: ro,
-			JobOwner:    ro.R.OfferedBy,
-		})
+		if ro.R == nil || ro.R.RepairCase == nil {
+			continue
+		}
+
+		rc := ro.R.RepairCase
+
+		sro := &server.RepairOffer{
+			RepairOffer:          ro,
+			BlocksRequiredRepair: rc.BlocksRequiredRepair,
+			BlocksRepaired:       rc.BlocksRepaired,
+			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
+			WorkingAgentCount:    0,
+			JobOwner:             ro.R.OfferedBy,
+		}
+
+		if ro.R.RepairAgents != nil {
+			sro.WorkingAgentCount = len(ro.R.RepairAgents)
+		}
+
+		resp = append(resp, sro)
 	}
 
 	reply(resp)
@@ -298,6 +228,12 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		BlocksRepaired:       mrc.BlocksRepaired,
 		SupsWorthPerBlock:    offeredSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 		WorkingAgentCount:    0,
+		JobOwner: &boiler.Player{
+			ID:        user.ID,
+			Username:  user.Username,
+			FactionID: user.FactionID,
+			Gid:       user.Gid,
+		},
 	}
 
 	//  broadcast to repair offer market
@@ -512,6 +448,13 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	switch req.Payload.TriggerWith {
+	case boiler.RepairTriggerWithTypeSPACE_BAR, boiler.RepairTriggerWithTypeLEFT_CLICK, boiler.RepairTriggerWithTypeTOUCH:
+	default:
+		gamelog.L.Debug().Str("repair agent id", req.Payload.RepairAgentID).Msg("Unknown trigger type is detected.")
+		return nil
+	}
+
 	// log record
 	ral := boiler.RepairAgentLog{
 		RepairAgentID: req.Payload.RepairAgentID,
@@ -718,6 +661,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 
 // subscription
 
+// RepairOfferSubscribe return the detail of the offer
 func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	offerID := chi.RouteContext(ctx).URLParam("offer_id")
 	if offerID == "" {
@@ -734,6 +678,7 @@ func (api *API) RepairOfferSubscribe(ctx context.Context, key string, payload []
 	return nil
 }
 
+// MechRepairCaseSubscribe return the ongoing repair case of the mech
 func (api *API) MechRepairCaseSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 	if mechID == "" {
@@ -753,6 +698,7 @@ func (api *API) MechRepairCaseSubscribe(ctx context.Context, key string, payload
 	return nil
 }
 
+// MechActiveRepairOfferSubscribe show the active repair offer of the given mech
 func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 	if mechID == "" {
@@ -768,6 +714,15 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 			boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
 		),
 		qm.Load(
+			qm.Rels(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferRels.OfferedBy),
+			qm.Select(
+				boiler.PlayerColumns.ID,
+				boiler.PlayerColumns.Gid,
+				boiler.PlayerColumns.Username,
+				boiler.PlayerColumns.FactionID,
+			),
+		),
+		qm.Load(
 			boiler.RepairCaseRels.RepairAgents,
 			boiler.RepairAgentWhere.FinishedAt.IsNull(),
 		),
@@ -778,17 +733,21 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 
 	if rc != nil && rc.R != nil && rc.R.RepairOffers != nil && len(rc.R.RepairOffers) > 0 {
 		ro := rc.R.RepairOffers[0]
-		workingAgentCount := 0
-		if rc.R.RepairAgents != nil {
-			workingAgentCount = len(rc.R.RepairAgents)
-		}
-		reply(server.RepairOffer{
+		sro := server.RepairOffer{
 			RepairOffer:          ro,
 			BlocksRequiredRepair: rc.BlocksRequiredRepair,
 			BlocksRepaired:       rc.BlocksRepaired,
 			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
-			WorkingAgentCount:    workingAgentCount,
-		})
+			WorkingAgentCount:    0,
+		}
+		if rc.R.RepairAgents != nil {
+			sro.WorkingAgentCount = len(rc.R.RepairAgents)
+		}
+		if ro.R != nil && ro.R.OfferedBy != nil {
+			sro.JobOwner = ro.R.OfferedBy
+		}
+
+		reply(sro)
 	}
 
 	return nil
