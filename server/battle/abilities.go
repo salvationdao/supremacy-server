@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
@@ -43,7 +44,7 @@ type AbilitiesSystem struct {
 
 	locationSelectChan chan *locationSelect
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type locationSelect struct {
@@ -118,7 +119,7 @@ type AbilityPool struct {
 	BattleAbility    *BattleAbility
 	LocationDeciders *LocationDeciders
 	config           *AbilityConfig
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type MidPoint struct {
@@ -150,7 +151,7 @@ func (mp *MidPoint) load() (time.Time, bool) {
 type BattleAbility struct {
 	*boiler.BattleAbility
 	OfferingID string
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (ba *BattleAbility) store(battleAbility *boiler.BattleAbility) {
@@ -178,7 +179,7 @@ func (ba *BattleAbility) LoadBattleAbility() *boiler.BattleAbility {
 type LocationDeciders struct {
 	m               map[string][]string
 	currentDeciders map[string]bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (ld *LocationDeciders) clear() {
@@ -420,7 +421,7 @@ var BribeStages = [4]string{
 type GabsBribeStage struct {
 	Phase   *atomic.Int32 `json:"phase"`
 	endTime time.Time     `json:"end_time"`
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (p *GabsBribeStage) EndTime() time.Time {

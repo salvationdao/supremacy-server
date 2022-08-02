@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
 	"server/xsyn_rpcclient"
-	"sync"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -34,7 +34,7 @@ type SpoilsOfWar struct {
 	tickSpeed    time.Duration
 	maxTicks     int
 	cleanUp      chan bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (sow *SpoilsOfWar) End() {

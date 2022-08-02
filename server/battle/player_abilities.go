@@ -12,8 +12,9 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -61,7 +62,7 @@ type PlayerAbilityManager struct {
 
 	MiniMechMoveCoooldownSeconds int
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewPlayerAbilityManager() *PlayerAbilityManager {

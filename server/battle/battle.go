@@ -18,18 +18,16 @@ import (
 	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
 
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
-	"go.uber.org/atomic"
-
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 )
@@ -47,7 +45,7 @@ type Battle struct {
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
-	spawnedAIMux           sync.RWMutex
+	spawnedAIMux           deadlock.RWMutex
 	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
 	warMachineIDs          []uuid.UUID   `json:"ids"`
 	lastTick               *[]byte
@@ -71,7 +69,7 @@ type Battle struct {
 	inserted bool
 
 	viewerCountInputChan chan *ViewerLiveCount
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
@@ -94,6 +92,7 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 
 // storeGameMap set the game map detail from game client
 func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZone) {
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("start")
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -106,6 +105,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.TopPixels = gm.TopPixels
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
+	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
@@ -178,6 +178,8 @@ const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	gamelog.L.Trace().Str("func", "preIntro").Msg("start")
+
 	btl.Lock()
 	defer btl.Unlock()
 
@@ -308,11 +310,13 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	}
 
 	btl.BroadcastUpdate()
-
+	gamelog.L.Trace().Str("func", "preIntro").Msg("end")
 	return nil
 }
 
 func (btl *Battle) start() {
+	gamelog.L.Trace().Str("func", "start").Msg("start")
+
 	var err error
 
 	// start battle seconds ticker
@@ -392,6 +396,7 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
 // getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
@@ -1265,18 +1270,19 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	gamelog.L.Trace().Str("func", "Tick").Msg("start")
+	defer gamelog.L.Trace().Str("func", "Tick").Msg("end")
+
 	if len(payload) < 1 {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		return
 	}
-
 	btl.lastTick = &payload
 
 	// return if the war machines list is not ready
 	if len(btl.WarMachines) == 0 {
 		return
 	}
-
 	// return, if any war machines have 0 as their participant id
 	if btl.WarMachines[0].ParticipantID == 0 {
 		return
@@ -1328,12 +1334,10 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
-
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
-
 		warmachine.Lock()
 		wms := WarMachineStat{
 			ParticipantID: int(warmachine.ParticipantID),
@@ -1360,7 +1364,6 @@ func (btl *Battle) Tick(payload []byte) {
 			wms.Position = warmachine.Position
 			warmachine.Rotation = rotation
 			wms.Rotation = rotation
-
 		}
 		// Health
 		if booleans[1] {
@@ -1368,7 +1371,6 @@ func (btl *Battle) Tick(payload []byte) {
 			offset += 4
 			warmachine.Health = health
 			wms.Health = health
-
 		}
 		// Shield
 		if booleans[2] {
@@ -1378,7 +1380,6 @@ func (btl *Battle) Tick(payload []byte) {
 			wms.Shield = shield
 		}
 		warmachine.Unlock()
-
 		// Energy
 		if booleans[3] {
 			offset += 4
@@ -1415,7 +1416,9 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if len(wsMessages) > 0 {
+		gamelog.L.Trace().Str("func", "Tick").Msg("batch sending")
 		ws.PublishBatchMessages("/public/mech", wsMessages)
+		gamelog.L.Trace().Str("func", "Tick").Msg("batch sent")
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
@@ -1429,6 +1432,7 @@ func (btl *Battle) Tick(payload []byte) {
 				Coords:        b.CellCoords,
 			})
 		}
+
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
 		ws.PublishMessage("/public/minimap", HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
@@ -1439,6 +1443,9 @@ func (arena *Arena) reset() {
 }
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
+	gamelog.L.Trace().Str("func", "Destroyed").Msg("start")
+	defer gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
+
 	// check destroyed war machine exist
 	if btl.ID != dp.BattleID {
 		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
@@ -1693,7 +1700,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				Interface("mech_id", warMachineID).
 				Bool("killed", true).
 				Msg("can't update battle mech")
-
+			gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
 			return
 		}
 
@@ -1830,10 +1837,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 }
 
 func (btl *Battle) Load() error {
+	gamelog.L.Trace().Str("func", "Load").Msg("start")
 	q, err := db.LoadBattleQueue(context.Background(), 3)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 
@@ -1843,9 +1852,11 @@ func (btl *Battle) Load() error {
 		err = btl.QueueDefaultMechs()
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
@@ -1885,11 +1896,13 @@ func (btl *Battle) Load() error {
 		if err != nil {
 			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
 		}
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
 
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
+		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
@@ -1898,12 +1911,13 @@ func (btl *Battle) Load() error {
 		uuids[i], err = uuid.FromString(bq.MechID)
 		if err != nil {
 			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
 		}
 	}
 
 	btl.warMachineIDs = uuids
-
+	gamelog.L.Trace().Str("func", "Load").Msg("end")
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"golang.org/x/exp/slices"
 	"html"
 	"server"
@@ -13,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -118,7 +118,7 @@ type TextMessageMetadata struct {
 
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }

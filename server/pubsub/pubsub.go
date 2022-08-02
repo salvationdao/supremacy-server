@@ -16,13 +16,13 @@ import (
 
 type Subscribers struct {
 	pools map[string]*pools
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 var (
 	subscribers *Subscribers
 	once        sync.Once
-	l           sync.RWMutex
+	l           deadlock.RWMutex
 )
 
 func Sub(URI string, c *Client) {
@@ -117,7 +117,7 @@ func (cpool *pool) run() {
 type pools struct {
 	p        []*pool
 	lastPool *pool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (pls *pools) register(c *Client) {

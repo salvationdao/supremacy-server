@@ -2,11 +2,11 @@ package api
 
 import (
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -20,7 +20,7 @@ import (
 type ActivePlayers struct {
 	FactionID string
 	Map       map[string]*ActiveStat
-	sync.RWMutex
+	deadlock.RWMutex
 
 	// channel for debounce broadcast
 	ActivePlayerListChan chan *ActivePlayerBroadcast
