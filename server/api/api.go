@@ -15,6 +15,7 @@ import (
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
+	"server/zendesk"
 	"sync"
 	"time"
 
@@ -75,6 +76,7 @@ type API struct {
 	SMS                      server.SMS
 	Passport                 *xsyn_rpcclient.XsynXrpcClient
 	Telegram                 server.Telegram
+	Zendesk                  *zendesk.Zendesk
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
@@ -114,6 +116,7 @@ func NewAPI(
 	config *server.Config,
 	sms server.SMS,
 	telegram server.Telegram,
+	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
@@ -135,6 +138,7 @@ func NewAPI(
 		Passport:                 pp,
 		SMS:                      sms,
 		Telegram:                 telegram,
+		Zendesk:                  zendesk,
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),

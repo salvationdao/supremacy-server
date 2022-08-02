@@ -1079,7 +1079,28 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		l.Error().Err(err).Msg("user reported message more than once")
 		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
 	}
+
 	//get 5 mins before and 5 mins after specific to chat stream
+	msgs, err := boiler.ChatHistories(
+		boiler.ChatHistoryWhere.ChatStream.EQ(chatHistory.ChatStream),
+		boiler.ChatHistoryWhere.CreatedAt.GT(chatHistory.CreatedAt.Add(time.Minute*(-5))),
+		boiler.ChatHistoryWhere.CreatedAt.LT(chatHistory.CreatedAt.Add(time.Minute*5)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+	reportContext := ""
+	for _, msg := range msgs {
+		p, err := boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to find player id.")
+			return terror.Error(err, genericErrorMessage)
+		}
+
+		reportContext = reportContext + fmt.Sprintf("[%s] %s (%s): %s \n", msg.CreatedAt, p.Username, p.ID, msg.Text)
+	}
+	
 	//send through to zen desk
 	//must be in json format
 	//add user id to report metadata (cant report again)

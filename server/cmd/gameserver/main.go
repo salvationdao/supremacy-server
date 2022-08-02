@@ -22,6 +22,7 @@ import (
 	"server/synctool"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"server/zendesk"
 
 	"github.com/volatiletech/null/v8"
 
@@ -159,6 +160,9 @@ func main() {
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
 
 					&cli.StringFlag{Name: "github_token", Value: "", EnvVars: []string{envPrefix + "_GITHUB_ACCESS_TOKEN", "GITHUB_PAT"}, Usage: "Github token for access to private repo"},
+
+					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -181,6 +185,9 @@ func main() {
 					twilioApiSecrete := c.String("twilio_api_secret")
 					smsFromNumber := c.String("sms_from_number")
 					githubToken := c.String("github_token")
+
+					zendeskToken := c.String("zendesk_token")
+					zendeskEmail := c.String("zendesk_email")
 
 					telegramBotToken := c.String("telegram_bot_token")
 
@@ -376,8 +383,10 @@ func main() {
 
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
+					zendesk := zendesk.NewZendesk(zendeskToken, zendeskEmail)
+
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -496,7 +505,7 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
+			SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
 			FROM templates_old tpo
 			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
 			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
@@ -722,6 +731,7 @@ func SetupAPI(
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
+	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
@@ -780,7 +790,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig)
 	if err != nil {
 		return nil, err
 	}
