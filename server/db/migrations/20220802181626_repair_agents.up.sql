@@ -196,3 +196,5 @@ CREATE TABLE battle_queue_fees(
 ALTER TABLE battle_queue
     ADD COLUMN IF NOT EXISTS fee_id uuid references battle_queue_fees(id),
     DROP COLUMN IF EXISTS battle_contract_id;
+
+CREATE INDEX idx_player_abilities_owner_id ON player_abilities(owner_id);

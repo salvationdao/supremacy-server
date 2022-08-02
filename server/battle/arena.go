@@ -322,7 +322,57 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
 }
 
-func (btl *Battle) QueueDefaultMechs() error {
+type QueueDefaultMechReq struct {
+	factionID string    // faction of the mech
+	queuedAt  time.Time // the time of queue
+	amount    int       // amount of mechs should queue
+}
+
+func (btl *Battle) GenerateDefaultQueueRequest(bqs []*boiler.BattleQueue) map[string]*QueueDefaultMechReq {
+	reqMap := make(map[string]*QueueDefaultMechReq)
+	reqMap[server.RedMountainFactionID] = &QueueDefaultMechReq{
+		factionID: server.RedMountainFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+	reqMap[server.BostonCyberneticsFactionID] = &QueueDefaultMechReq{
+		factionID: server.BostonCyberneticsFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+	reqMap[server.ZaibatsuFactionID] = &QueueDefaultMechReq{
+		factionID: server.ZaibatsuFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+
+	for _, bq := range bqs {
+		req, ok := reqMap[bq.FactionID]
+		if ok {
+			req.amount -= 1
+			if bq.QueuedAt.Before(req.queuedAt) {
+				req.queuedAt = bq.QueuedAt.Add(-1 * time.Second)
+			}
+		}
+	}
+
+	// get maximum queue number
+	maxNum := 0
+	for _, req := range reqMap {
+		if req.amount > maxNum {
+			maxNum = req.amount
+		}
+	}
+
+	// set max amount default mech to all the factions
+	for _, req := range reqMap {
+		req.amount = maxNum
+	}
+
+	return reqMap
+}
+
+func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq) error {
 	defMechs, err := db.DefaultMechs()
 	if err != nil {
 		return err
@@ -337,19 +387,17 @@ func (btl *Battle) QueueDefaultMechs() error {
 	defer tx.Rollback()
 
 	for _, mech := range defMechs {
+		qr, ok := queueReqMap[mech.FactionID.String]
+		if !ok || qr.amount == 0 {
+			continue
+		}
+
 		mech.Name = helpers.GenerateStupidName()
 		mechToUpdate := boiler.Mech{
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
 		_, _ = mechToUpdate.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
-
-		// insert default mech into battle
-		ownerID, err := uuid.FromString(mech.OwnerID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-			return err
-		}
 
 		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(tx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -363,9 +411,9 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		bq := &boiler.BattleQueue{
 			MechID:    mech.ID,
-			QueuedAt:  time.Now(),
-			FactionID: mech.FactionID.String,
-			OwnerID:   ownerID.String(),
+			QueuedAt:  qr.queuedAt,
+			FactionID: qr.factionID,
+			OwnerID:   mech.OwnerID,
 		}
 
 		err = bq.Insert(tx, boil.Infer())
@@ -375,6 +423,8 @@ func (btl *Battle) QueueDefaultMechs() error {
 				Err(err).Msg("unable to insert mech into queue")
 			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
+
+		qr.amount -= 1
 	}
 
 	err = tx.Commit()
@@ -1039,7 +1089,7 @@ func (arena *Arena) beginBattle() {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
-	// order the mechs by facton id
+	// order the mechs by faction id
 
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount, btl *Battle) {
