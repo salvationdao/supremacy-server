@@ -460,7 +460,6 @@ func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClie
 		Group:                "punish vote",
 		SubGroup:             "instant passing",
 		Description:          "general rank player passes a punish vote instantly",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Str("punish vote id", punishVote.ID).Str("amount", punishVote.InstantPassFee.String()).Err(err).Msg("Failed to pay sups for instantly passing a punish vote")

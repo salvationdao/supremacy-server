@@ -326,7 +326,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 						Group:                string(server.TransactionGroupSupremacy),
 						SubGroup:             string(server.TransactionGroupMarketplace),
 						Description:          fmt.Sprintf("Bid Refund for Player: %s (item sale: %s)", auctionItem.AuctionBidUserID, auctionItem.ID),
-						NotSafe:              false,
 					})
 					if err != nil {
 						l.Error().
@@ -421,7 +420,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 					Group:                string(server.TransactionGroupSupremacy),
 					SubGroup:             string(server.TransactionGroupMarketplace),
 					Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
-					NotSafe:              false,
 				})
 				if err != nil {
 					l.Error().
@@ -446,7 +444,6 @@ func (m *MarketplaceController) processFinishedAuctions() {
 				Group:                string(server.TransactionGroupSupremacy),
 				SubGroup:             string(server.TransactionGroupMarketplace),
 				Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), auctionItem.ID),
-				NotSafe:              true,
 			})
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to send sups to item seller.")
@@ -543,7 +540,7 @@ func (m *MarketplaceController) processFinishedAuctions() {
 		}()
 	}
 
-	gamelog.L.Info().
+	gamelog.L.Debug().
 		Int("num_processed", numProcessed).
 		Int("num_failed", len(auctions)-numProcessed).
 		Int("num_pending", len(auctions)).

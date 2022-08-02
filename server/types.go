@@ -670,10 +670,10 @@ type GameAbilityEvent struct {
 }
 
 type BattleZone struct {
-	Location   GameLocation `json:"location"`
-	Radius     int          `json:"radius"`
-	Time       int          `json:"time"`
-	ShrinkTime int          `json:"shrinkTime"`
+	Location   GameLocation `json:"location,omitempty"`
+	Radius     int          `json:"radius,omitempty"`
+	Time       int          `json:"time,omitempty"`
+	ShrinkTime int          `json:"shrinkTime,omitempty"`
 }
 
 var env string

@@ -273,7 +273,6 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Player Abilities",
 		Description:          fmt.Sprintf("Purchased player ability %s", spa.R.Blueprint.Label),
-		NotSafe:              true,
 	})
 	l = l.With().Interface("txID", supTransactionID).Logger()
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {

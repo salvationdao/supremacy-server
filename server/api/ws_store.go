@@ -133,7 +133,6 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Mystery Crate",
 		Description:          fmt.Sprintf("Purchased mystery crate id %s", storeCrate.ID),
-		NotSafe:              true,
 	})
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
 		if err == nil {

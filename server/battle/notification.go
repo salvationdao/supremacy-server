@@ -311,7 +311,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			Group:                string(server.TransactionGroupBattle),
 			SubGroup:             "Queue",
 			Description:          "Notification surcharge for queued mech in arena",
-			NotSafe:              true,
 		})
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms/telegram notification for mech in queue")

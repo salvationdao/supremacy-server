@@ -22,10 +22,8 @@ import (
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/sasha-s/go-deadlock"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
@@ -196,54 +194,6 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			return err
 		}
 
-		// clean up battle contributions
-		contributions, err := boiler.BattleContributions(
-			boiler.BattleContributionWhere.BattleID.EQ(btl.ID),
-			boiler.BattleContributionWhere.RefundTransactionID.IsNull(),
-			qm.OrderBy(boiler.BattleContributionColumns.PlayerID),
-		).All(gamedb.StdConn)
-		for _, c := range contributions {
-			if !c.TransactionID.Valid {
-				gamelog.L.Warn().
-					Str("contribution_id", c.ID).
-					Err(err).
-					Msg("contribution does not have a transaction id")
-				continue
-			}
-			contributeRefundTransactionID, err := btl.arena.RPCClient.RefundSupsMessage(c.TransactionID.String)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("queue_transaction_id", c.TransactionID.String).
-					Err(err).
-					Msg("failed to refund users queue fee")
-			}
-			c.RefundTransactionID = null.StringFrom(contributeRefundTransactionID)
-			if _, err := c.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleContributionColumns.RefundTransactionID)); err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("battle_contributions_id", c.ID).
-					Err(err).
-					Msg("failed to save refund")
-			}
-		}
-
-		// empty spoils of war
-		sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.ID)).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("battle_id", btl.ID).
-				Err(err).
-				Msg("unable to retrieve spoil of war for unfinished battle")
-		} else {
-			sow.Amount = decimal.Zero
-			sow.AmountSent = decimal.Zero
-			if _, err := sow.Update(gamedb.StdConn, boil.Infer()); err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").
-					Str("spoils_of_war_id", sow.ID).
-					Err(err).
-					Msg("failed to clear spoils of war for unfinished battle")
-			}
-		}
-
 		bmds, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
 		if err == nil {
 			_, err = bmds.DeleteAll(gamedb.StdConn)
@@ -331,8 +281,6 @@ func (btl *Battle) start() {
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	btl.BroadcastUpdate()
-	// broadcast spoil of war on the start of the battle
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -481,52 +429,14 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the creation of ending info: endCreateStats!", r)
 		}
 	}()
-	gamelog.L.Info().Msgf("battle end: looping TopSupsContributeFactions: %s", btl.ID)
-	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top faction contributors")
-	}
-	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
-	topPlayerContributorsBoilers, err := db.TopSupsContributors(uuid.Must(uuid.FromString(payload.BattleID)))
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player contributors")
-	}
-	gamelog.L.Info().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
+
+	gamelog.L.Debug().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
 	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
 	}
 
-	topFactionContributors := []*Faction{}
-	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
-	for _, f := range topFactionContributorBoilers {
-		topFactionContributors = append(topFactionContributors, &Faction{
-			ID:    f.ID,
-			Label: f.Label,
-			Theme: &Theme{
-				PrimaryColor:    f.PrimaryColor,
-				SecondaryColor:  f.SecondaryColor,
-				BackgroundColor: f.BackgroundColor,
-			},
-		})
-	}
-	topPlayerContributors := []*BattleUser{}
-
-	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
-	for _, p := range topPlayerContributorsBoilers {
-		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
-		if p.FactionID.Valid {
-			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
-		}
-
-		topPlayerContributors = append(topPlayerContributors, &BattleUser{
-			ID:        uuid.Must(uuid.FromString(p.ID)),
-			Username:  p.Username.String,
-			FactionID: factionID.String(),
-		})
-	}
-
-	gamelog.L.Info().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
 	topPlayerExecutors := []*BattleUser{}
 	for _, p := range topPlayerExecutorsBoilers {
 		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
@@ -541,9 +451,7 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 	}
 
 	gamelog.L.Debug().
-		Int("top_faction_contributors", len(topFactionContributors)).
 		Int("top_player_executors", len(topPlayerExecutors)).
-		Int("top_player_contributors", len(topPlayerContributors)).
 		Msg("get top players and factions")
 
 	return &BattleEndDetail{
@@ -554,8 +462,6 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		WinningCondition:             payload.WinCondition,
 		WinningFaction:               winningWarMachines[0].Faction,
 		WinningWarMachines:           winningWarMachines,
-		TopSupsContributeFactions:    topFactionContributors,
-		TopSupsContributors:          topPlayerContributors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 }
@@ -665,7 +571,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	}()
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
-	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
 	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {

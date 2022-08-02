@@ -758,6 +758,7 @@ type ZoneChangePayload struct {
 	ZoneIndex int    `json:"zoneIndex"`
 	WarnTime  int    `json:"warnTime"`
 }
+
 type ZoneChangeEvent struct {
 	Location   server.GameLocation `json:"location"`
 	Radius     int                 `json:"radius"`
@@ -844,116 +845,101 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message received")
+			L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(mt)).Str("battleCommand", msg.BattleCommand).Logger()
+			L.Info().Msg("game client message received")
 
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
 				var dataPayload *MapDetailsPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 
 				// update map detail
 				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 
 				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
 				if err != nil {
-					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+					L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
 				}
 
 				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-					gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+					L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
 				}
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
+					L.Error().Msg("battle start load out has failed")
 					return
 				}
 				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
 				arena.NewBattleChan <- battleInfo
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:OUTRO_FINISHED":
-				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
 				arena.beginBattle()
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 					continue
 				}
 				btl.Destroyed(&dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:WAR_MACHINE_PICKUP":
 				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
-
 			case "BATTLE:END":
 				var dataPayload *BattleEndPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 					continue
 				}
 				btl.end(dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:AI_SPAWNED":
 				var dataPayload *AISpawnedRequest
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 				err = btl.AISpawned(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed to spawn ai")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
 				var dataPayload *AbilityMoveCommandCompletePayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal ability move command complete payload")
+				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
 					continue
 				}
 				err = btl.UpdateWarMachineMoveCommand(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed update war machine move command")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:ZONE_CHANGE":
 				var dataPayload *ZoneChangePayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle zone change payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 					continue
 				}
 
 				err = btl.ZoneChange(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed to zone change")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			default:
-				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
+				L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 			}
+			L.Debug().Msg("game client message handled")
 		case Tick:
 			btl.Tick(payload)
 		default:
-			gamelog.L.Warn().Str("MessageType", string(mt)).Err(err).Msg("Battle Arena WS: no message response")
+			gamelog.L.Warn().Str("message_type", string(mt)).Str("msg", string(payload)).Err(err).Msg("Battle Arena WS: no message response")
 		}
 	}
 }
