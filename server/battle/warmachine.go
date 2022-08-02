@@ -16,6 +16,7 @@ type WarMachine struct {
 	OwnedByID     string `json:"ownedByID"`
 	OwnerUsername string `json:"ownerUsername"`
 	Name          string `json:"name"`
+	Label         string `json:"label"`
 	ParticipantID byte   `json:"participantID"`
 	FactionID     string `json:"factionID"`
 	MaxHealth     uint32 `json:"maxHealth"`

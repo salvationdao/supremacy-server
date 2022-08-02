@@ -105,7 +105,7 @@ type BattleEndDetail struct {
 	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
 
-	PlayerReward *PlayerReward `json:"player_reward,omitempty"` // reward for mech owner
+	MechRewards []*MechReward `json:"mech_rewards"` // reward for mech owners
 }
 
 type Faction struct {

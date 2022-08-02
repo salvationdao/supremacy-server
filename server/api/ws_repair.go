@@ -506,6 +506,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// log path
 	ral, err := boiler.RepairAgentLogs(
 		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("repair agent id", ra.ID).Msg("Failed to log mini-game records.")

@@ -143,6 +143,19 @@ func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
 	return nil
 }
 
+func (arena *Arena) CurrentBattleWarMachineByID(id string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.ID == id {
+			return wm
+		}
+	}
+
+	return nil
+}
+
 func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
