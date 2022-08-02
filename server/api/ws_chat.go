@@ -349,6 +349,67 @@ func (api *API) MessageBroadcaster() {
 	}
 }
 
+func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, user *boiler.Player, jsonTextMsgMeta null.JSON) {
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	player := boiler.Player{
+		ID:               user.ID,
+		Username:         user.Username,
+		Gid:              user.Gid,
+		FactionID:        user.FactionID,
+		Rank:             user.Rank,
+		SentMessageCount: user.SentMessageCount,
+	}
+
+	playerStat, err := db.UserStatsGet(player.ID)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Interface("player.ID", player.ID).Msg("issue UserStatsGet")
+	}
+
+	chatMessage := &ChatMessage{
+		ID:     chatHistory.ID,
+		Type:   boiler.ChatMSGTypeEnumTEXT,
+		SentAt: chatHistory.CreatedAt,
+		Data: &MessageText{
+			ID:           chatHistory.ID,
+			Message:      chatHistory.Text,
+			MessageColor: chatHistory.MessageColor,
+			FromUser:     player,
+			UserRank:     player.Rank,
+			FromUserStat: playerStat,
+			Lang:         chatHistory.Lang,
+			Metadata:     jsonTextMsgMeta,
+		},
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		api.RedMountainChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.RedMountainFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+	case server.BostonCyberneticsFactionID:
+		api.BostonChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.BostonCyberneticsFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+
+	case server.ZaibatsuFactionID:
+		api.ZaibatsuChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.ZaibatsuFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+	default:
+		api.GlobalChat.WriteRange(fn)
+		ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
+	}
+}
+
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
 	Payload struct {
@@ -659,30 +720,7 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fn := func(chatMessage *ChatMessage) bool {
-		if chatMessage.ID != chatHistory.ID {
-			return true
-		}
-
-		mt, ok := chatMessage.Data.(*MessageText)
-		if ok {
-			mt.Metadata = chatHistory.Metadata
-		}
-
-		return false
-	}
-
-	switch chatHistory.ChatStream {
-	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.WriteRange(fn)
-	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.WriteRange(fn)
-	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.WriteRange(fn)
-	default:
-		fc.API.GlobalChat.WriteRange(fn)
-	}
-
+	fc.API.updateMessageMetadata(chatHistory, user, jsonTextMsgMeta)
 	reply(true)
 	return nil
 }
@@ -779,29 +817,7 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fn := func(chatMessage *ChatMessage) bool {
-		if chatMessage.ID != chatHistory.ID {
-			return true
-		}
-
-		mt, ok := chatMessage.Data.(*MessageText)
-		if ok {
-			mt.Metadata = chatHistory.Metadata
-		}
-
-		return false
-	}
-
-	switch chatHistory.ChatStream {
-	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.WriteRange(fn)
-	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.WriteRange(fn)
-	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.WriteRange(fn)
-	default:
-		fc.API.GlobalChat.WriteRange(fn)
-	}
+	fc.API.updateMessageMetadata(chatHistory, user, jsonTextMsgMeta)
 
 	reply(metadata.Likes)
 	return nil
