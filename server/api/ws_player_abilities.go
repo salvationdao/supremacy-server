@@ -164,7 +164,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	inventoryLimit := spa.R.Blueprint.InventoryLimit
 	if pa.Count > inventoryLimit {
 		l.Debug().Msg("user has reached their player ability inventory count")
-		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+		return terror.Warn(fmt.Errorf("inventory limit reached"), fmt.Sprintf("You have reached your limit of %d for this ability.", inventoryLimit))
 	}
 
 	_, err = pa.Update(tx, boil.Infer())
@@ -331,7 +331,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if pa.Count > inventoryLimit {
 		refundFunc()
 		l.Debug().Msg("user has reached their player ability inventory count")
-		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+		return terror.Warn(fmt.Errorf("inventory limit reached"), fmt.Sprintf("You have reached your limit of %d for this ability.", inventoryLimit))
 	}
 
 	_, err = pa.Update(tx, boil.Infer())

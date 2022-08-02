@@ -169,9 +169,6 @@ func (btl *Battle) warMachineUpdateFromGameClient(payload *BattleStartPayload) (
 	return bmd, factions, nil
 }
 
-const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
-
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	gamelog.L.Trace().Str("func", "preIntro").Msg("start")
 
@@ -277,9 +274,9 @@ func (btl *Battle) start() {
 		//TODO: something more dramatic
 	}
 
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	btl.BroadcastUpdate()
 
 	// handle global announcements
@@ -1340,7 +1337,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 	}
 
-	gamelog.L.Info().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
+	gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
 
 	var warMachineID uuid.UUID
 	var killByWarMachineID uuid.UUID

@@ -1025,7 +1025,7 @@ func (arena *Arena) beginBattle() {
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 
 	err = btl.Load()
