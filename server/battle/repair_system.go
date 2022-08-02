@@ -261,7 +261,6 @@ func (rs *RepairSystem) StartStandardRepair(userID string, mechID string) error 
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          "Paying mech standard repair fee " + mechID + ".",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", mrc.MechID).Err(err).Msg("Failed to pay asset repair fee")
@@ -379,7 +378,6 @@ func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          "Paying mech fast repair fee " + mechID + ".",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", mrc.MechID).Err(err).Msg("Failed to pay asset repair fee")

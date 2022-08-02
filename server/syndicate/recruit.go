@@ -116,7 +116,6 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupSyndicate),
 		Description:          "submit syndicate join application.",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", application.ApplicantID).Str("amount", application.PaidAmount.String()).Err(err).Msg("Failed to submit syndicate join application fee.")

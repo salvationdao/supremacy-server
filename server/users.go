@@ -125,12 +125,6 @@ type UserBrief struct {
 	Faction  *boiler.Faction `json:"faction"`
 }
 
-type SupsMultiplier struct {
-	Key       string    `json:"key"`
-	Value     int       `json:"value"`
-	ExpiredAt time.Time `json:"expired_at"`
-}
-
 const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
 
 var (

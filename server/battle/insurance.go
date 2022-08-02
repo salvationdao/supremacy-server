@@ -143,7 +143,6 @@ package battle
 //		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_asset_repair_fee|%s|%d", ar.ID, time.Now().UnixNano())),
 //		Group:                string(server.TransactionGroupBattle),
 //		Description:          "Paying asset repair fee " + ar.ID + ".",
-//		NotSafe:              true,
 //	})
 //	if err != nil {
 //		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", ar.ID).Err(err).Msg("Failed to pay asset repair fee")

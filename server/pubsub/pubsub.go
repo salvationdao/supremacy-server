@@ -3,6 +3,7 @@ package pubsub
 import (
 	"encoding/json"
 	"errors"
+	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server/gamelog"

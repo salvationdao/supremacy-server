@@ -792,7 +792,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		Group:                "issue punish vote",
 		SubGroup:             string(punishOption.Key),
 		Description:          "issue vote for punishing player",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player punish vote")
