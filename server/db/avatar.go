@@ -193,6 +193,9 @@ func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []s
 		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
 	}
 
+	// filter deleted
+	queryMods = append(queryMods, boiler.ProfileCustomAvatarWhere.DeletedAt.IsNull())
+
 	// Build query
 	queryMods = append(queryMods,
 		qm.Select(

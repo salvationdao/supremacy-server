@@ -281,6 +281,49 @@ func (pac *PlayerController) PlayerProfileCustomAvatarUpdate(ctx context.Context
 	return nil
 }
 
+const HubKeyPlayerProfileCustomAvatarDelete = "PLAYER:PROFILE:CUSTOM_AVATAR:DELETE"
+
+type PlayerCustomAvatarDeleteRequest struct {
+	Payload struct {
+		AvatarID string `json:"avatar_id,omitempty"`
+	} `json:"payload,omitempty"`
+}
+
+func (pac *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerCustomAvatarDeleteRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(req.Payload.AvatarID)
+
+	// get avatar
+	ava, err := boiler.FindProfileCustomAvatar(gamedb.StdConn, req.Payload.AvatarID)
+	if err != nil {
+		return terror.Error(err, "Failed to get avatar")
+	}
+
+	// check ownership
+	if ava.PlayerID != user.ID {
+		return terror.Error(err, "You don't have permission to delete this item")
+	}
+
+	// set deleted at
+	ava.DeletedAt = null.TimeFrom(time.Now())
+	ava.Update((gamedb.StdConn), boil.Whitelist(boiler.ProfileCustomAvatarColumns.DeletedAt))
+	if err != nil {
+		return terror.Error(err, "Failed to delete custom avatar.")
+	}
+
+	reply(nil)
+	return nil
+}
+
 type PlayerAvatarListRequest struct {
 	Payload struct {
 		Search   string                `json:"search"`
@@ -480,12 +523,6 @@ func (pc *PlayerController) ProfileCustomAvatarDetailsHandler(ctx context.Contex
 		gamelog.L.Error().Interface("avatarID", avatarID).Err(err).Msg("issue getting custom avatar details")
 		return terror.Error(err, "Failed to find your avatar, please try again or contact support.")
 	}
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("ffffff")
 
 	reply(resp)
 	return nil

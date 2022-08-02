@@ -80,6 +80,7 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerCustomAvatarList, pc.ProfileCustomAvatarListHandler)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarCreate, pc.PlayerProfileCustomAvatarCreate)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarUpdate, pc.PlayerProfileCustomAvatarUpdate)
+	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarDelete, pc.PlayerProfileCustomAvatarDelete)
 
 	return pc
 }
