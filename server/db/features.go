@@ -31,16 +31,13 @@ func GetPlayerFeaturesByID(playerID string) ([]*boiler.Feature, error) {
 		qm.SQL(fmt.Sprintf(`
 			select *
 			from %s f
-			where (
-				f.%s is true or f.%s in (
-					select %s
-					from %s pf
-					where pf.%s = $1 and pf.%s is null
-				) 
+			where f.%s in (
+				select %s
+				from %s pf
+				where pf.%s = $1 and pf.%s is null
 			) and f.%s is null
 		`,
 			boiler.TableNames.Features,
-			boiler.FeatureColumns.GloballyEnabled,
 			boiler.FeatureColumns.Name,
 			boiler.PlayersFeatureColumns.FeatureName,
 			boiler.TableNames.PlayersFeatures,
@@ -49,6 +46,15 @@ func GetPlayerFeaturesByID(playerID string) ([]*boiler.Feature, error) {
 			boiler.FeatureColumns.DeletedAt,
 		), playerID),
 	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return features, nil
+}
+
+func GetGlobalFeatures() ([]*boiler.Feature, error) {
+	features, err := boiler.Features(boiler.FeatureWhere.GloballyEnabled.EQ(true)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
