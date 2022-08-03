@@ -55,10 +55,10 @@ type MiniMechMoveCommand struct {
 type PlayerAbilityManager struct {
 	hiddenWarMachines map[string]time.Time // map[mech hash]expiry timestamp
 
-	blackouts           map[string]BlackoutEntry //  map[timestamp-player_ability_id-owner_id]ability info
+	blackouts           map[string]*BlackoutEntry // map[timestamp-player_ability_id-owner_id]ability info
 	hasBlackoutsUpdated bool
 
-	movingMiniMechs map[string]MiniMechMoveCommand // map[mech_hash]mini mech move entry
+	movingMiniMechs map[string]*MiniMechMoveCommand // map[mech_hash]mini mech move entry
 
 	MiniMechMoveCoooldownSeconds int
 
@@ -68,8 +68,8 @@ type PlayerAbilityManager struct {
 func NewPlayerAbilityManager() *PlayerAbilityManager {
 	return &PlayerAbilityManager{
 		hiddenWarMachines:            make(map[string]time.Time),
-		blackouts:                    make(map[string]BlackoutEntry),
-		movingMiniMechs:              make(map[string]MiniMechMoveCommand),
+		blackouts:                    make(map[string]*BlackoutEntry),
+		movingMiniMechs:              make(map[string]*MiniMechMoveCommand),
 		MiniMechMoveCoooldownSeconds: db.GetIntWithDefault(db.KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds, 0), // default 0; i.e. no cooldown
 	}
 }
@@ -83,7 +83,7 @@ func (pam *PlayerAbilityManager) GetMiniMechMove(hash string) (*MiniMechMoveComm
 		return nil, fmt.Errorf("Mini mech is not moving")
 	}
 
-	return &mm, nil
+	return mm, nil
 }
 
 func (pam *PlayerAbilityManager) DeleteMiniMechMove(hash string) {
@@ -116,7 +116,7 @@ func (pam *PlayerAbilityManager) CancelMiniMechMove(hash string) (*MiniMechMoveC
 	now := time.Now()
 	mm.CancelledAt = null.TimeFrom(now)
 	pam.movingMiniMechs[hash] = mm
-	return &mm, nil
+	return mm, nil
 }
 
 func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) (*MiniMechMoveCommand, error) {
@@ -131,14 +131,14 @@ func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) (*MiniMechMov
 	now := time.Now()
 	mm.ReachedAt = null.TimeFrom(now)
 	pam.movingMiniMechs[hash] = mm
-	return &mm, nil
+	return mm, nil
 }
 
-func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []MiniMechMoveCommand {
+func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []*MiniMechMoveCommand {
 	pam.RLock()
 	defer pam.RUnlock()
 
-	result := []MiniMechMoveCommand{}
+	result := []*MiniMechMoveCommand{}
 	for _, mmm := range pam.movingMiniMechs {
 		if mmm.FactionID != factionID || mmm.ReachedAt.Valid || mmm.CancelledAt.Valid {
 			continue
@@ -159,7 +159,7 @@ func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID
 		return nil, fmt.Errorf("Command is still cooling down. Please wait another %f seconds.", time.Until(mm.CooldownExpiry).Seconds())
 	}
 
-	newMm := MiniMechMoveCommand{
+	newMm := &MiniMechMoveCommand{
 		BattleID:       battleID,
 		CellX:          cellX,
 		CellY:          cellY,
@@ -173,7 +173,7 @@ func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID
 	}
 	pam.movingMiniMechs[hash] = newMm
 
-	return &newMm, nil
+	return newMm, nil
 }
 
 func (pam *PlayerAbilityManager) ResetHasBlackoutsUpdated() {
@@ -190,7 +190,7 @@ func (pam *PlayerAbilityManager) HasBlackoutsUpdated() bool {
 	return pam.hasBlackoutsUpdated
 }
 
-func (pam *PlayerAbilityManager) Blackouts() map[string]BlackoutEntry {
+func (pam *PlayerAbilityManager) Blackouts() map[string]*BlackoutEntry {
 	pam.RLock()
 	defer pam.RUnlock()
 
@@ -226,7 +226,7 @@ func (pam *PlayerAbilityManager) AddBlackout(id string, cellCoords server.CellLo
 	if ok {
 		return fmt.Errorf("Blackout has already been cast")
 	}
-	pam.blackouts[id] = BlackoutEntry{
+	pam.blackouts[id] = &BlackoutEntry{
 		CellCoords: cellCoords,
 		GameCoords: gameCoords,
 		ExpiresAt:  time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),
