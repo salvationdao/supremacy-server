@@ -24,17 +24,11 @@ type RepairOfferClose struct {
 }
 
 func (arena *Arena) RepairOfferCleaner() {
-	expiryCheckChan := make(chan bool)
-	go func(expiryCheckChan chan bool) {
-		for {
-			time.Sleep(5 * time.Second)
-			expiryCheckChan <- true
-		}
-	}(expiryCheckChan)
+	ticker := time.NewTicker(1 * time.Minute)
 
 	for {
 		select {
-		case <-expiryCheckChan:
+		case <-ticker.C:
 			now := time.Now()
 			// expire repair offer
 			ros, err := boiler.RepairOffers(
@@ -46,12 +40,7 @@ func (arena *Arena) RepairOfferCleaner() {
 					boiler.RepairOfferRels.RepairAgents,
 					boiler.RepairAgentWhere.FinishedAt.IsNull(),
 				),
-				qm.Load(boiler.RepairOfferRels.OfferedBy,
-					qm.Select(boiler.PlayerColumns.ID),
-					qm.Select(boiler.PlayerColumns.Username),
-					qm.Select(boiler.PlayerColumns.Rank),
-					qm.Select(boiler.PlayerColumns.FactionID),
-				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy),
 			).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to get repair offer")
@@ -78,12 +67,7 @@ func (arena *Arena) RepairOfferCleaner() {
 					boiler.RepairOfferRels.RepairAgents,
 					boiler.RepairAgentWhere.FinishedAt.IsNull(),
 				),
-				qm.Load(boiler.RepairOfferRels.OfferedBy,
-					qm.Select(boiler.PlayerColumns.ID),
-					qm.Select(boiler.PlayerColumns.Username),
-					qm.Select(boiler.PlayerColumns.Rank),
-					qm.Select(boiler.PlayerColumns.FactionID),
-				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy),
 			).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to get repair offers")
@@ -136,7 +120,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 		}
 
 		if ro.R.OfferedBy != nil {
-			sro.JobOwner = ro.R.OfferedBy
+			sro.JobOwner = server.PublicPlayerFromBoiler(ro.R.OfferedBy)
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)

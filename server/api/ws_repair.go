@@ -40,12 +40,7 @@ func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte,
 		boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
 		qm.Load(boiler.RepairOfferRels.RepairCase, boiler.RepairCaseWhere.CompletedAt.IsNull()),
 		qm.Load(boiler.RepairOfferRels.RepairAgents, boiler.RepairAgentWhere.FinishedAt.IsNull()),
-		qm.Load(boiler.RepairOfferRels.OfferedBy,
-			qm.Select(boiler.PlayerColumns.ID),
-			qm.Select(boiler.PlayerColumns.Username),
-			qm.Select(boiler.PlayerColumns.Rank),
-			qm.Select(boiler.PlayerColumns.FactionID),
-		),
+		qm.Load(boiler.RepairOfferRels.OfferedBy),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load repair offer detail")
@@ -65,7 +60,7 @@ func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte,
 			BlocksRepaired:       rc.BlocksRepaired,
 			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 			WorkingAgentCount:    0,
-			JobOwner:             ro.R.OfferedBy,
+			JobOwner:             server.PublicPlayerFromBoiler(ro.R.OfferedBy),
 		}
 
 		if ro.R.RepairAgents != nil {
@@ -238,12 +233,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		BlocksRepaired:       mrc.BlocksRepaired,
 		SupsWorthPerBlock:    offeredSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
 		WorkingAgentCount:    0,
-		JobOwner: &boiler.Player{
-			ID:        user.ID,
-			Username:  user.Username,
-			FactionID: user.FactionID,
-			Gid:       user.Gid,
-		},
+		JobOwner:             server.PublicPlayerFromBoiler(user),
 	}
 
 	//  broadcast to repair offer market
@@ -379,19 +369,27 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		}
 	}
 
-	// abandon any unfinished repair task
-	_, err = boiler.RepairAgents(
-		boiler.RepairAgentWhere.PlayerID.EQ(user.ID),
-		boiler.RepairAgentWhere.FinishedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn,
-		boiler.M{
-			boiler.RepairAgentColumns.FinishedAt:     null.TimeFrom(time.Now()),
-			boiler.RepairAgentColumns.FinishedReason: null.StringFrom(boiler.RepairAgentFinishReasonABANDONED),
-		},
-	)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("player id", user.ID).Msg("Failed to close repair agents.")
-		return terror.Error(err, "Failed to abandon repair job")
+	// abandon last repair agent
+	if lastRegister != nil && !lastRegister.FinishedAt.Valid {
+		lastRegister.FinishedAt = null.TimeFrom(time.Now())
+		lastRegister.FinishedReason = null.StringFrom(boiler.RepairAgentFinishReasonABANDONED)
+		_, err = lastRegister.Update(gamedb.StdConn, boil.Whitelist(
+			boiler.RepairAgentColumns.FinishedAt,
+			boiler.RepairAgentColumns.FinishedReason,
+		))
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("player id", user.ID).Msg("Failed to close repair agents.")
+			return terror.Error(err, "Failed to abandon repair job")
+		}
+
+		// broadcast changes if targeting different repair offer
+		if lastRegister.RepairOfferID != ro.ID {
+			err = api.broadcastRepairOffer(lastRegister.RepairOfferID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to broadcast updated repair offer.")
+				return terror.Error(err, "Failed to broadcast updated repair offer")
+			}
+		}
 	}
 
 	// insert repair agent
@@ -766,7 +764,7 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 			sro.WorkingAgentCount = len(rc.R.RepairAgents)
 		}
 		if ro.R != nil && ro.R.OfferedBy != nil {
-			sro.JobOwner = ro.R.OfferedBy
+			sro.JobOwner = server.PublicPlayerFromBoiler(ro.R.OfferedBy)
 		}
 
 		reply(sro)

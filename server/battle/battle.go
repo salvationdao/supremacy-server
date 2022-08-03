@@ -410,7 +410,7 @@ func (btl *Battle) endAbilities() {
 		}
 	}()
 
-	gamelog.L.Info().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
+	gamelog.L.Debug().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
 
 	if btl.AbilitySystem() == nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
@@ -429,13 +429,13 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		}
 	}()
 
-	gamelog.L.Info().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
 	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
 	}
 
-	gamelog.L.Info().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
+	gamelog.L.Debug().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
 	topPlayerExecutors := []*BattleUser{}
 	for _, p := range topPlayerExecutorsBoilers {
 		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
@@ -761,15 +761,12 @@ func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward 
 	tax := supsReward.Mul(taxRatio)
 	challengeFund := decimal.New(1, 18)
 
-	rewardAfterTax := supsReward.Sub(tax)
-	finalReward := rewardAfterTax.Sub(challengeFund)
-
 	l := gamelog.L.With().Str("function", "RewardPlayerSups").Logger()
 
 	// record
 	pw := &PlayerReward{
 		PlayerID:     queueFee.PaidByID,
-		RewardedSups: finalReward,
+		RewardedSups: supsReward,
 	}
 
 	// pay battle queue fee

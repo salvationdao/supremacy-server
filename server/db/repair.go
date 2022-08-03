@@ -35,7 +35,7 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 	`
 	dro := &server.RepairOffer{
 		RepairOffer: &boiler.RepairOffer{},
-		JobOwner:    &boiler.Player{},
+		JobOwner:    &server.PublicPlayer{},
 	}
 	err := gamedb.StdConn.QueryRow(q, offerID).Scan(
 		&dro.ID,
