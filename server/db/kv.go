@@ -37,6 +37,7 @@ const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
 const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
 const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_show_up_until_seconds"
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
+const KeyFirstBattleAbilityLabel KVKey = "first_battle_ability_label"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
