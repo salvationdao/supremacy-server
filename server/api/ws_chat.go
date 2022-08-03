@@ -424,6 +424,7 @@ func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, jsonTextM
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
 	Payload struct {
+		Id              string           `json:"id"`
 		FactionID       server.FactionID `json:"faction_id"`
 		MessageColor    string           `json:"message_color"`
 		Message         string           `json:"message"`
@@ -586,6 +587,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 
 		cm := boiler.ChatHistory{
+			ID:              req.Payload.Id,
 			FactionID:       player.FactionID.String,
 			PlayerID:        player.ID,
 			MessageColor:    req.Payload.MessageColor,
@@ -633,6 +635,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 	// global message
 	cm := boiler.ChatHistory{
+		ID:              req.Payload.Id,
 		FactionID:       player.FactionID.String,
 		PlayerID:        player.ID,
 		MessageColor:    req.Payload.MessageColor,
@@ -671,7 +674,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 	fc.API.GlobalChat.AddMessage(chatMessage)
 	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
-	reply(true)
+	reply(chatMessage)
 
 	return nil
 }
