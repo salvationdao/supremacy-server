@@ -21,6 +21,7 @@ var TableNames = struct {
 	BattleKills                                        string
 	BattleMechs                                        string
 	BattleQueue                                        string
+	BattleQueueFees                                    string
 	BattleQueueNotifications                           string
 	BattleViewers                                      string
 	BattleWarMachineQueues                             string
@@ -51,6 +52,7 @@ var TableNames = struct {
 	ConsumedAbilities                                  string
 	CouponItems                                        string
 	Coupons                                            string
+	Devices                                            string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -70,8 +72,6 @@ var TableNames = struct {
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
-	MechRepairCases                                    string
-	MechRepairLogs                                     string
 	MechSkin                                           string
 	MechStats                                          string
 	MechUtility                                        string
@@ -96,14 +96,21 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersFeatures                                    string
+	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
 	Profanities                                        string
+	ProfileAvatars                                     string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
+	RepairAgentLogs                                    string
+	RepairAgents                                       string
+	RepairBlocks                                       string
+	RepairCases                                        string
+	RepairOffers                                       string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -156,6 +163,7 @@ var TableNames = struct {
 	BattleKills:                  "battle_kills",
 	BattleMechs:                  "battle_mechs",
 	BattleQueue:                  "battle_queue",
+	BattleQueueFees:              "battle_queue_fees",
 	BattleQueueNotifications:     "battle_queue_notifications",
 	BattleViewers:                "battle_viewers",
 	BattleWarMachineQueues:       "battle_war_machine_queues",
@@ -186,6 +194,7 @@ var TableNames = struct {
 	ConsumedAbilities:            "consumed_abilities",
 	CouponItems:                  "coupon_items",
 	Coupons:                      "coupons",
+	Devices:                      "devices",
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
@@ -205,8 +214,6 @@ var TableNames = struct {
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
-	MechRepairCases:              "mech_repair_cases",
-	MechRepairLogs:               "mech_repair_logs",
 	MechSkin:                     "mech_skin",
 	MechStats:                    "mech_stats",
 	MechUtility:                  "mech_utility",
@@ -231,14 +238,21 @@ var TableNames = struct {
 	PlayerStats:                  "player_stats",
 	Players:                      "players",
 	PlayersFeatures:              "players_features",
+	PlayersProfileAvatars:        "players_profile_avatars",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
+	ProfileAvatars:               "profile_avatars",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
 	QuestionnaireAnswer:          "questionnaire_answer",
 	QuestionnaireOptions:         "questionnaire_options",
+	RepairAgentLogs:              "repair_agent_logs",
+	RepairAgents:                 "repair_agents",
+	RepairBlocks:                 "repair_blocks",
+	RepairCases:                  "repair_cases",
+	RepairOffers:                 "repair_offers",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",

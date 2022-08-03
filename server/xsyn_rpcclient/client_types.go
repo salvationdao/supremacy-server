@@ -5,30 +5,9 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-type DefaultWarMachinesResp struct {
-	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
-}
-type WarMachineQueuePositionReq struct {
-	ApiKey                  string
-	WarMachineQueuePosition []*WarMachineQueueStat `json:"warMachineQueuePosition"`
-}
-type WarMachineQueueStat struct {
-	Hash           string          `json:"hash"`
-	Position       *int            `json:"position,omitempty"`
-	ContractReward decimal.Decimal `json:"contractReward,omitempty"`
-}
-
-type WarMachineQueuePositionResp struct{}
-
-type FactionAllReq struct{}
-
-type FactionAllResp struct {
-	Factions []*server.Faction `json:"factions"`
-}
 type SpendSupsReq struct {
 	ApiKey               string                      `json:"apiKey"`
 	Amount               string                      `json:"amount"`
@@ -38,8 +17,6 @@ type SpendSupsReq struct {
 	Group                string                      `json:"group,omitempty"`
 	SubGroup             string                      `json:"subGroup"`
 	Description          string                      `json:"description"`
-
-	NotSafe bool `json:"notSafe"`
 }
 
 type RefundTransactionReq struct {
@@ -80,10 +57,6 @@ type TopSupsContributorReq struct {
 	EndTime   time.Time `json:"endTime"`
 }
 
-type TopSupsContributorResp struct {
-	TopSupsContributors       []*server.User    `json:"topSupsContributors"`
-	TopSupsContributeFactions []*server.Faction `json:"topSupsContributeFactions"`
-}
 type GetAllReq struct{}
 type GetAll struct {
 	AssetPayload    types.JSON

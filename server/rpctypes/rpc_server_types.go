@@ -1,6 +1,8 @@
 package rpctypes
 
 import (
+	"fmt"
+	"server/gamelog"
 	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -409,6 +411,28 @@ type MechSetNameResp struct {
 	MechContainer *Mech
 }
 
+type Attributes []*Attribute
+
+func (a Attributes) AreValid() error {
+	errCount := 0
+	for _, val := range a {
+		if val.DisplayType != "" {
+			_, intOk := val.Value.(int)
+			_, floatOK := val.Value.(float32)
+			_, float64OK := val.Value.(float64)
+			if !intOk && !floatOK && !float64OK {
+				gamelog.L.Error().Err(fmt.Errorf("invalid attribute value %v for display type %s", val.Value, val.DisplayType)).Msg("invalid value in metadata")
+				errCount++
+			}
+		}
+	}
+	if errCount > 0 {
+		return fmt.Errorf("attributes are invalid")
+	}
+
+	return nil
+}
+
 type Attribute struct {
 	DisplayType DisplayType `json:"display_type,omitempty"`
 	TraitType   string      `json:"trait_type"`
@@ -426,27 +450,27 @@ const (
 )
 
 type XsynAsset struct {
-	ID               string       `json:"id,omitempty"`
-	CollectionSlug   string       `json:"collection_slug,omitempty"`
-	TokenID          int64        `json:"token_id,omitempty"`
-	Tier             string       `json:"tier,omitempty"`
-	Hash             string       `json:"hash,omitempty"`
-	OwnerID          string       `json:"owner_id,omitempty"`
-	Data             types.JSON   `json:"data,omitempty"`
-	Attributes       []*Attribute `json:"attributes,omitempty"`
-	Name             string       `json:"name,omitempty"`
-	AssetType        null.String  `json:"asset_type,omitempty"`
-	ImageURL         null.String  `json:"image_url,omitempty"`
-	ExternalURL      null.String  `json:"external_url,omitempty"`
-	Description      null.String  `json:"description,omitempty"`
-	BackgroundColor  null.String  `json:"background_color,omitempty"`
-	AnimationURL     null.String  `json:"animation_url,omitempty"`
-	YoutubeURL       null.String  `json:"youtube_url,omitempty"`
-	CardAnimationURL null.String  `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String  `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String  `json:"large_image_url,omitempty"`
-	UnlockedAt       time.Time    `json:"unlocked_at,omitempty"`
-	MintedAt         null.Time    `json:"minted_at,omitempty"`
-	OnChainStatus    string       `json:"on_chain_status,omitempty"`
-	XsynLocked       bool         `json:"xsyn_locked,omitempty"`
+	ID               string      `json:"id,omitempty"`
+	CollectionSlug   string      `json:"collection_slug,omitempty"`
+	TokenID          int64       `json:"token_id,omitempty"`
+	Tier             string      `json:"tier,omitempty"`
+	Hash             string      `json:"hash,omitempty"`
+	OwnerID          string      `json:"owner_id,omitempty"`
+	Data             types.JSON  `json:"data,omitempty"`
+	Attributes       Attributes  `json:"attributes,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	AssetType        null.String `json:"asset_type,omitempty"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	ExternalURL      null.String `json:"external_url,omitempty"`
+	Description      null.String `json:"description,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	UnlockedAt       time.Time   `json:"unlocked_at,omitempty"`
+	MintedAt         null.Time   `json:"minted_at,omitempty"`
+	OnChainStatus    string      `json:"on_chain_status,omitempty"`
+	XsynLocked       bool        `json:"xsyn_locked,omitempty"`
 }

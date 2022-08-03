@@ -33,6 +33,16 @@ type Player struct {
 	Features []*Feature `json:"features"`
 }
 
+type PublicPlayer struct {
+	ID        string      `json:"id"`
+	Username  null.String `json:"username"`
+	Gid       int         `json:"gid"`
+	FactionID null.String `json:"faction_id"`
+	AboutMe   null.String `json:"about_me"`
+	Rank      string      `json:"rank"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
 func (p *Player) Scan(value interface{}) error {
 	v, ok := value.([]byte)
 	if !ok {
@@ -72,6 +82,18 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 	}
 
 	return serverPlayer
+}
+
+func PublicPlayerFromBoiler(p *boiler.Player) *PublicPlayer {
+	return &PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		FactionID: p.FactionID,
+		Gid:       p.Gid,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
 }
 
 // Brief trim off confidential data from player

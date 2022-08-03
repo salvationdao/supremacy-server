@@ -46,8 +46,11 @@ func NewPlayerController(api *API) *PlayerController {
 		API: api,
 	}
 
+	//  secure user profile commands
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateAboutMe, pc.PlayerUpdateAboutMeHandler)
+	api.SecureUserCommand(HubKeyPlayerAvatarList, pc.ProfileAvatarListHandler)
+	api.SecureUserCommand(HubKeyPlayerAvatarUpdate, pc.ProfileAvatarUpdateHandler)
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
@@ -59,6 +62,7 @@ func NewPlayerController(api *API) *PlayerController {
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
+	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGidHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -68,11 +72,11 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyFactionEnlist, pc.PlayerFactionEnlistHandler)
 
-	api.SecureUserCommand(HubKeyPlayerRankGet, pc.PlayerRankGet)
-
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
+
+	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
 	return pc
 }
@@ -118,6 +122,12 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 	_, err = user.Update(tx, boil.Whitelist(boiler.PlayerColumns.FactionID))
 	if err != nil {
 		return terror.Error(err, "Failed to update faction in db")
+	}
+
+	// give user default profile avatar images
+	err = db.GiveDefaultAvatars(user.ID, user.FactionID.String)
+	if err != nil {
+		return err
 	}
 
 	// update user faction in passport
@@ -251,8 +261,6 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, user *
 	return nil
 }
 
-//const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
-
 func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *http.Request) (int, error) {
 	return helpers.EncodeJSON(w, false)
 }
@@ -362,6 +370,21 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 		}
 	}
 
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return nil
+	}
+
+	err = fap.Set(user.ID, isActive)
+	if err != nil {
+		return terror.Error(err, "Failed to update player active stat")
+	}
+
+	// debounce broadcast active player
+	fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: fap.CurrentFactionActivePlayer(),
+	}
+
 	return nil
 }
 
@@ -409,6 +432,51 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 	}
 
 	reply(ps)
+	return nil
+}
+
+type GetPlayerByGidRequest struct {
+	Payload struct {
+		Gid int `json:"gid"`
+	} `json:"payload"`
+}
+
+const HubKeyGetPlayerByGid = "GET:PLAYER:GID"
+
+func (pc *PlayerController) GetPlayerByGidHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GetPlayerByGidHandler").Str("user_id", user.ID).Logger()
+
+	req := &GetPlayerByGidRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received")
+	}
+
+	l = l.With().Interface("GID", req.Payload.Gid).Logger()
+	p, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
+	).One(gamedb.StdConn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			l.Error().Err(err).Msg("player with gid does not exist.")
+			return nil
+		}
+		l.Error().Err(err).Msg("unable to retrieve player by GID.")
+		return terror.Error(err, "Unable to find player, try again or contact support.")
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		FactionID: p.FactionID,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
+
+	reply(pp)
 	return nil
 }
 
@@ -720,7 +788,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		Group:                "issue punish vote",
 		SubGroup:             string(punishOption.Key),
 		Description:          "issue vote for punishing player",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player punish vote")
@@ -853,6 +920,19 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 	return nil
 }
 
+const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
+
+func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return terror.Error(terror.ErrForbidden, "Could not subscribe to active players in global chat, try again or contact support.")
+	}
+
+	reply(fap.CurrentFactionActivePlayer())
+
+	return nil
+}
+
 func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	// broadcast player
 	features, err := db.GetPlayerFeaturesByID(user.ID)
@@ -871,7 +951,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list
@@ -909,7 +989,19 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
-const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
+func (pc *PlayerController) PlayersStatSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	us, err := db.UserStatsGet(user.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		return terror.Error(err, "Failed to load player stat")
+	}
+
+	if us != nil {
+		reply(us)
+	}
+
+	return nil
+}
 
 func (pc *PlayerController) PlayerRankGet(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	player, err := boiler.Players(
@@ -1098,20 +1190,17 @@ type PlayerProfileRequest struct {
 	} `json:"payload"`
 }
 
-type PublicPlayer struct {
-	ID        string      `json:"id"`
-	Username  null.String `json:"username"`
-	Gid       int         `json:"gid"`
-	FactionID null.String `json:"faction_id"`
-	AboutMe   null.String `json:"about_me"`
-	Rank      string      `json:"rank"`
-	CreatedAt time.Time   `json:"created_at"`
+type PlayerAvatar struct {
+	ID        string `json:"id"`
+	AvatarURL string `json:"avatar_url"`
+	Tier      string `json:"tier"`
 }
 type PlayerProfileResponse struct {
-	*PublicPlayer `json:"player"`
-	Stats         *boiler.PlayerStat      `json:"stats"`
-	Faction       *boiler.Faction         `json:"faction"`
-	ActiveLog     *boiler.PlayerActiveLog `json:"active_log"`
+	*server.PublicPlayer `json:"player"`
+	Stats                *boiler.PlayerStat      `json:"stats"`
+	Faction              *boiler.Faction         `json:"faction"`
+	ActiveLog            *boiler.PlayerActiveLog `json:"active_log"`
+	Avatar               *PlayerAvatar           `json:"avatar"`
 }
 
 const HubKeyPlayerProfileGet = "PLAYER:PROFILE:GET"
@@ -1136,6 +1225,9 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 
 		// load faction
 		qm.Load(boiler.PlayerRels.Faction),
+
+		// load avatar
+		qm.Load(boiler.PlayerRels.ProfileAvatar),
 	).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
@@ -1145,7 +1237,7 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 
 	// get stats
 	stats, err := boiler.PlayerStats(boiler.PlayerStatWhere.ID.EQ(player.ID)).One(gamedb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().
 			Str("Player.ID", player.ID).Err(err).Msg("unable to get players stats")
 		return terror.Error(err, "Unable to retrieve player profile, try again or contact support.")
@@ -1168,8 +1260,20 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 	if player.R != nil && player.R.Faction != nil {
 		faction = player.R.Faction
 	}
+
+	// get / set avatar
+	var avatar *PlayerAvatar
+	if player.ProfileAvatarID.Valid && player.R != nil && player.R.ProfileAvatar != nil {
+		avatar = &PlayerAvatar{
+			ID:        player.R.ProfileAvatar.ID,
+			AvatarURL: player.R.ProfileAvatar.AvatarURL,
+			Tier:      player.R.ProfileAvatar.Tier,
+		}
+
+	}
+
 	reply(PlayerProfileResponse{
-		PublicPlayer: &PublicPlayer{
+		PublicPlayer: &server.PublicPlayer{
 			ID:        player.ID,
 			Username:  player.Username,
 			Gid:       player.Gid,
@@ -1178,6 +1282,7 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, key str
 			Rank:      player.Rank,
 			CreatedAt: player.CreatedAt,
 		},
+		Avatar:    avatar,
 		Stats:     stats,
 		Faction:   faction,
 		ActiveLog: activeLog,
@@ -1267,7 +1372,7 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	resp := &PublicPlayer{
+	resp := &server.PublicPlayer{
 		ID:        user.ID,
 		Username:  user.Username,
 		Gid:       user.Gid,
@@ -1360,4 +1465,119 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
+
+// GenOneTimeToken Generates a token used to create a QR code to log a player into the supremacy companion app
+func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GenOneTimeToken").Str("user id", user.ID).Logger()
+
+	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to generate QR code token")
+		return terror.Error(err, "Failed to get login token")
+	}
+
+	reply(resp)
+	return nil
+}
+
+type PlayerAvatarListRequest struct {
+	Payload struct {
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
+	} `json:"payload"`
+}
+
+type PlayerAvatarListResp struct {
+	Total   int64                   `json:"total"`
+	Avatars []*boiler.ProfileAvatar `json:"avatars"`
+}
+
+const HubKeyPlayerAvatarList = "PLAYER:AVATAR:LIST"
+
+func (pc *PlayerController) ProfileAvatarListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetWeaponListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.AvatarListOpts{
+		Search:   req.Payload.Search,
+		Filter:   req.Payload.Filter,
+		Sort:     req.Payload.Sort,
+		PageSize: req.Payload.PageSize,
+		Page:     req.Payload.Page,
+		OwnerID:  user.ID,
+	}
+
+	total, avatars, err := db.AvatarList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your avatars, please try again or contact support.")
+	}
+
+	reply(&PlayerAvatarListResp{
+		Total:   total,
+		Avatars: avatars,
+	})
+	return nil
+}
+
+type PlayerAvatarUpdateRequest struct {
+	Payload struct {
+		PlayerID        string `json:"player_id"`
+		ProfileAvatarID string `json:"profile_avatar_id"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerAvatarUpdate = "PLAYER:AVATAR:UPDATE"
+
+func (pc *PlayerController) ProfileAvatarUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAvatarUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// removing avatar
+	if req.Payload.ProfileAvatarID == "" {
+		user.ProfileAvatarID = null.StringFrom("")
+		reply(&PlayerAvatar{
+			Tier: "MEGA",
+		})
+		return nil
+	}
+
+	// get player avatar
+	ava, err := boiler.FindProfileAvatar(gamedb.StdConn, req.Payload.ProfileAvatarID)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+	}
+
+	// update player
+	user.ProfileAvatarID = null.StringFrom(ava.ID)
+	user.UpdatedAt = time.Now()
+	_, err = user.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.UpdatedAt, boiler.PlayerColumns.ProfileAvatarID))
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue updating player avatar")
+		return terror.Error(err, "Failed to update avatar, please try again or contact support.")
+	}
+
+	reply(&PlayerAvatar{
+		ID:        ava.ID,
+		AvatarURL: ava.AvatarURL,
+		Tier:      ava.Tier,
+	})
+	return nil
 }

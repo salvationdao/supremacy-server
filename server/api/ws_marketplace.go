@@ -464,6 +464,25 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	// check if opened
+	if collectionItem.ItemType == boiler.ItemTypeMysteryCrate {
+		crate, err := boiler.MysteryCrates(
+			boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("item_type", req.Payload.ItemType).
+				Err(err).
+				Msg("unable to check whether crate is opened")
+			return err
+		}
+		if crate.Opened {
+			return fmt.Errorf("unable to list opened crates")
+		}
+	}
+
 	// check if weapon is equipped
 	if collectionItem.ItemType == boiler.ItemTypeWeapon {
 		equipped, err := db.CheckWeaponAttached(collectionItem.ItemID)
@@ -563,7 +582,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (%s)", req.Payload.ItemID.String(), req.Payload.ItemType),
-		NotSafe:              true,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to process marketplace fee transaction")
@@ -823,7 +841,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace List Item Fee: %s (keycard)", req.Payload.ItemID.String()),
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().
@@ -984,7 +1001,6 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 					Group:                string(server.TransactionGroupSupremacy),
 					SubGroup:             string(server.TransactionGroupMarketplace),
 					Description:          fmt.Sprintf("Bid Refund for Player: %s (item sale: %s)", lastBid.BidderID, saleItem.ID),
-					NotSafe:              false,
 				})
 				if err != nil {
 					l.Error().
@@ -1272,7 +1288,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to process payment transaction")
@@ -1289,7 +1304,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1414,7 +1428,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Group:                string(server.TransactionGroupSupremacy),
 				SubGroup:             string(server.TransactionGroupMarketplace),
 				Description:          fmt.Sprintf("Bid Refund for Player ID: %s (item sale: %s)", b.BidderID, saleItem.ID),
-				NotSafe:              false,
 			})
 			if err != nil {
 				gamelog.L.Error().
@@ -1455,6 +1468,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})
+		}
+
+		err = db.GiveMechAvatar(gamedb.StdConn, user.ID, ci.ItemID)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to give player mech avatar")
 		}
 	}
 
@@ -1528,7 +1546,6 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace Buy Item Fee: %s", saleItem.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to process payment transaction")
@@ -1603,7 +1620,6 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace Buy Item Payment (%d%% cut): %s", salesCutPercentageFee.Mul(decimal.NewFromInt(100)).IntPart(), saleItem.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(feeTXID)
@@ -1791,7 +1807,6 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupMarketplace),
 		Description:          fmt.Sprintf("Marketplace Bid Item: %s", saleItem.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		l.Error().Err(err).Msg("payment failed")
@@ -1847,7 +1862,6 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 				Group:                string(server.TransactionGroupSupremacy),
 				SubGroup:             string(server.TransactionGroupMarketplace),
 				Description:          fmt.Sprintf("Bid Refund for Player ID: %s (item sale: %s)", b.BidderID, saleItem.ID),
-				NotSafe:              false,
 			})
 			if err != nil {
 				gamelog.L.Error().

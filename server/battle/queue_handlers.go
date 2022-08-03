@@ -6,11 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -45,70 +49,65 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
+	mci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.Hash.EQ(msg.Payload.AssetHash),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech collection item from hash")
 		return err
 	}
 
-	mech, err := db.Mech(gamedb.StdConn, mechID.String())
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
-		return err
-	}
-
-	if mech.XsynLocked {
+	if mci.XsynLocked {
 		err := fmt.Errorf("mech is locked to xsyn locked")
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is xsyn locked")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is xsyn locked")
 		return err
 	}
 
-	if mech.CollectionItem.LockedToMarketplace {
+	if mci.LockedToMarketplace {
 		err := fmt.Errorf("mech is listed in marketplace")
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is listed in marketplace")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is listed in marketplace")
 		return err
 	}
 
-	if !mech.BattleReady {
-		err := fmt.Errorf("mech is cannot be used")
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("war machine is not available for queuing")
-		return err
-	}
-
-	if mech.Faction == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
-		return terror.Error(fmt.Errorf("missing warmachine faction"))
-	}
-
-	ownerID, err := uuid.FromString(mech.OwnerID)
+	battleReady, err := db.MechBattleReady(mci.ItemID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+		gamelog.L.Error().Err(err).Msg("Failed to load battle ready status")
 		return err
 	}
 
-	if !mech.IsDefault && mech.OwnerID != user.ID {
-		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
+	if !battleReady {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is not available for queuing")
+		return fmt.Errorf("mech is cannot be used")
+	}
+
+	if mci.OwnerID != user.ID {
+		return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
 	}
 
 	// check mech is still in repair
-	inRepair, err := arena.RepairSystem.IsStillRepairing(mech.ID)
-	if err != nil {
-		return err
+	rc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(mci.ItemID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", mci.ItemID).Msg("Failed to get repair case")
+		return terror.Error(err, "Failed to queue mech.")
 	}
 
-	if inRepair {
+	if rc != nil {
 		return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is not fully recovered.")
 	}
 
-	// Insert mech into queue
-	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	// Check mech exist in the battle queue
+	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mci.ItemID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("check mech exists in queue")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("check mech exists in queue")
 		return terror.Error(err, "Failed to check whether mech is in the battle queue")
 	}
 	if existMech != nil {
-		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
-		position, err := db.MechQueuePosition(mechID.String(), factionID)
+		gamelog.L.Debug().Str("mech_id", mci.ItemID).Err(err).Msg("mech already in queue")
+		position, err := db.MechQueuePosition(mci.ItemID, factionID)
 		if err != nil {
 			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
@@ -136,49 +135,85 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 	defer tx.Rollback()
 
+	bqf := &boiler.BattleQueueFee{
+		MechID:   mci.ItemID,
+		PaidByID: user.ID,
+		Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+	}
+
+	err = bqf.Insert(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert battle queue fee.")
+	}
+
 	bq := &boiler.BattleQueue{
-		MechID:    mechID.String(),
+		MechID:    mci.ItemID,
 		QueuedAt:  time.Now(),
 		FactionID: factionID,
-		OwnerID:   ownerID.String(),
+		OwnerID:   mci.OwnerID,
+		FeeID:     null.StringFrom(bqf.ID),
 	}
 
 	err = bq.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
-			Interface("mech", mech).
+			Interface("mech id", mci.ItemID).
 			Err(err).Msg("unable to insert mech into queue")
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
-	// get faction user account
-	factionAccountID, ok := server.FactionUsers[factionID]
-	if !ok {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("mech ID", mech.ID).
-			Str("faction ID", factionID).
-			Err(err).
-			Msg("unable to get hard coded syndicate player ID from faction ID")
+	// pay battle queue fee
+	paidTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		Amount:               bqf.Amount.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          "queue mech to join the battle arena.",
+	})
+	if err != nil {
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("mech id", mci.ItemID).
+			Str("amount", bqf.Amount.StringFixed(0)).
+			Err(err).Msg("Failed to pay sups on queuing mech.")
+		return terror.Error(err, "Failed to pay sups on queuing mech.")
 	}
 
-	if ownerID.String() == factionAccountID {
-		err = tx.Commit()
+	refundFunc := func() {
+		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+			Amount:               bqf.Amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "refund the mech queuing fee.",
+		})
 		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("mech ID", mech.ID).
-				Str("faction ID", factionID).
-				Err(err).
-				Msg("unable to save battle queue join for faction owned mech")
-			return err
+			gamelog.L.Error().
+				Str("player_id", user.ID).
+				Str("mech id", mci.ItemID).
+				Str("amount", bqf.Amount.StringFixed(0)).
+				Err(err).Msg("Failed to refund sups on queuing mech.")
 		}
-		return nil
+	}
+
+	// do not return, if error occur.
+	bq.QueueFeeTXID = null.StringFrom(paidTxID)
+	_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID))
+	if err != nil {
+		refundFunc() // refund player
+		gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
+		return terror.Error(err, "Failed to update battle queue")
 	}
 
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
-			Interface("mech", mech).
+			Interface("mech id", mci.ItemID).
 			Err(err).Msg("unable to commit mech insertion into queue")
 		if bq.QueueFeeTXID.Valid {
 			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
@@ -196,6 +231,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
+	bqf.PaidTXID = null.StringFrom(paidTxID)
+	_, err = bqf.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
+	if err != nil {
+		gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
+	}
+
 	reply(QueueJoinHandlerResponse{
 		Success: true,
 		Code:    "",
@@ -205,13 +246,13 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	go func() {
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
 
-		queueDetails, err := db.MechArenaStatus(user.ID, mechID.String(), factionID)
+		queueDetails, err := db.MechArenaStatus(user.ID, mci.ItemID, factionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mci.ItemID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	}()
 
 	return nil
@@ -259,35 +300,27 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
+	mci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.Hash.EQ(msg.Payload.AssetHash),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
+		gamelog.L.Error().Str("log_name", "battle arena").Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech collection item from hash")
+		return err
 	}
 
-	mech, err := db.Mech(gamedb.StdConn, mechID.String())
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	if mech.Faction == nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	if user.ID != mech.OwnerID {
+	if user.ID != mci.OwnerID {
 		return terror.Error(terror.ErrForbidden, "Only the owners of the war machine can remove it from the queue.")
 	}
 
 	// Get queue position before deleting
-	position, err := db.MechQueuePosition(mechID.String(), factionID)
+	position, err := db.MechQueuePosition(mci.ItemID, factionID)
 	if errors.Is(sql.ErrNoRows, err) {
-		gamelog.L.Warn().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("tried to remove already unqueued mech from queue")
+		gamelog.L.Warn().Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("tried to remove already unqueued mech from queue")
 		return terror.Warn(fmt.Errorf("unable to find war machine in battle queue, ensure machine isn't already removed and contact support"))
 	}
 	if err != nil {
-		gamelog.L.Warn().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to get mech position")
+		gamelog.L.Warn().Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("unable to get mech position")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
@@ -297,8 +330,8 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 
 	// check current battle war machine id list
 	for _, wmID := range arena.currentBattleWarMachineIDs() {
-		if wmID == mechID {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("cannot remove battling mech from queue")
+		if wmID.String() == mci.ItemID {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("cannot remove battling mech from queue")
 			return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
 		}
 	}
@@ -311,11 +344,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	defer tx.Rollback()
 
 	// Remove from queue
-	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(tx)
+	bq, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.EQ(mci.ItemID),
+		qm.Load(boiler.BattleQueueRels.Fee),
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
 			Err(err).
-			Str("mech_id", mechID.String()).
+			Str("mech_id", mci.ItemID).
 			Msg("unable to get existing mech from queue")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
@@ -323,15 +359,39 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	_, err = bq.Delete(tx)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
-			Interface("mech", mech).
+			Str("mech id", mci.ItemID).
 			Err(err).Msg("unable to remove mech from queue")
 		return terror.Error(err, "Unable to leave queue, try again or contact support.")
+	}
+
+	// refund
+	if bq.R != nil && bq.R.Fee != nil {
+		bqf := bq.R.Fee
+
+		// pay battle queue fee
+		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+			Amount:               bqf.Amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "refund battle queue fee.",
+		})
+		if err != nil {
+			gamelog.L.Error().
+				Str("player_id", user.ID).
+				Str("mech id", mci.ItemID).
+				Str("amount", bqf.Amount.StringFixed(0)).
+				Err(err).Msg("Failed to refund battle queue fee.")
+			return terror.Error(err, "Failed to refund battle queue fee.")
+		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
-			Interface("mech", mech).
+			Str("mech id", mci.ItemID).
 			Err(err).Msg("unable to commit mech deletion from queue")
 		return terror.Error(err, "Unable to leave queue, try again or contact support.")
 	}
@@ -346,7 +406,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 
 	// Send updated battle queue status to all subscribers
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
-	gamelog.L.Debug().Str("factionID", factionID).Str("mechID", mechID.String()).Msg("published message on queue leave")
+	gamelog.L.Debug().Str("factionID", factionID).Str("mechID", mci.ItemID).Msg("published message on queue leave")
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 

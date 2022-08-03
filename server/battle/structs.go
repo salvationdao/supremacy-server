@@ -1,8 +1,7 @@
 package battle
 
 import (
-	"server/multipliers"
-	"sync"
+	"github.com/sasha-s/go-deadlock"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -10,7 +9,7 @@ import (
 )
 
 type usersMap struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	m map[uuid.UUID]*BattleUser
 }
 
@@ -54,15 +53,15 @@ func (u *usersMap) Delete(id uuid.UUID) {
 	u.Unlock()
 }
 
-func (um *usersMap) UsersByFactionID(factionID string) []BattleUser {
-	um.RLock()
+func (u *usersMap) UsersByFactionID(factionID string) []BattleUser {
+	u.RLock()
 	users := []BattleUser{}
-	for _, bu := range um.m {
+	for _, bu := range u.m {
 		if bu.FactionID == factionID {
 			users = append(users, *bu)
 		}
 	}
-	um.RUnlock()
+	u.RUnlock()
 	return users
 }
 
@@ -76,7 +75,7 @@ type BattleUser struct {
 	ID        uuid.UUID `json:"id"`
 	Username  string    `json:"username"`
 	FactionID string    `json:"faction_id"`
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 var FactionNames = map[string]string{
@@ -102,21 +101,11 @@ type BattleEndDetail struct {
 	EndedAt                      time.Time     `json:"ended_at"`
 	WinningCondition             string        `json:"winning_condition"`
 	WinningFaction               *Faction      `json:"winning_faction"`
+	WinningFactionIDOrder        []string      `json:"winning_faction_id_order"`
 	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
-	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
-	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	*MultiplierUpdate            `json:"battle_multipliers"`
-}
 
-type MultiplierUpdate struct {
-	Battles []*MultiplierUpdateBattles `json:"battles"`
-}
-
-type MultiplierUpdateBattles struct {
-	BattleNumber     int                             `json:"battle_number"`
-	TotalMultipliers string                          `json:"total_multipliers"`
-	UserMultipliers  []*multipliers.PlayerMultiplier `json:"multipliers"`
+	MechRewards []*MechReward `json:"mech_rewards"` // reward for mech owners
 }
 
 type Faction struct {
@@ -202,7 +191,7 @@ type GameAbility struct {
 
 	CooldownDurationSecond int `json:"cooldown_duration_second"`
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type GameAbilityPrice struct {

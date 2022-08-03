@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/helpers"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi/v5"
@@ -131,6 +132,12 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, err
 	}
 
+	// give user default profile avatar images
+	err = db.GiveDefaultAvatars(player.ID, player.FactionID.String)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	user := &server.User{
 		ID:            server.UserID(uuid.FromStringOrNil(player.ID)),
 		Username:      player.Username.String,
@@ -174,16 +181,12 @@ type WarMachineJoinResp struct {
 	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
-type UserSupsMultiplierGetRequest struct {
-	UserID server.UserID `json:"user_id"`
-}
-
 type UserStatGetRequest struct {
 	UserID server.UserID `json:"user_id"`
 }
 
 func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &UserSupsMultiplierGetRequest{}
+	req := &UserStatGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, err

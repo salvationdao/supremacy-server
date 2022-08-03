@@ -136,10 +136,10 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-drop-sync db-migrate-sync sync-data-dev db-migrate-up-to-seed db-seed db-migrate db-boiler
+db-reset: db-drop db-drop-sync db-migrate-sync dev-sync-data db-migrate-up-to-seed db-seed db-migrate db-boiler
 
 .PHONY: db-reset-windows
-db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate dev-sync-data-windows
+db-reset-windows: db-drop db-drop-sync db-migrate-sync dev-sync-data-windows db-migrate-up-to-seed db-seed-windows db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
@@ -178,13 +178,13 @@ lb:
 
 .PHONY: wt
 wt:
-	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Passport Web" -p "PowerShell" -d ../passport-web powershell -NoExit make watch ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit npm start
+	wt --window 0 --tabColor "#4747E2" --title "Supremacy - Game Server" -p "PowerShell" -d . powershell -NoExit make serve-arelo ; wt --window 0 sp --tabColor "#4747E2" --title "Supremacy - Load Balancer" -p "PowerShell" -d $(CURDIR)/../passport-web powershell -NoExit make lb-windows ; wt --window 0 mf right sp -H -s 0.8 --tabColor "#4747E2" --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d $(CURDIR)/../xsyn-services powershell -NoExit make serve-arelo ; wt --window 0 mf right sp --tabColor "#4747E2" --title "Passport Web" -p "PowerShell" -d $(CURDIR)/../passport-web powershell -NoExit npm run start:windows ; wt --window 0 mf right sp -H -s 0.5 --tabColor "#4747E2" --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d $(CURDIR)/../supremacy-play-web powershell -NoExit npm run start:windows
 
 .PHONY: pull
 pull:
 	git branch && git pull
-	cd ../supremacy-stream-site && git branch && git checkout -- package-lock.json && git pull
-	cd ../passport-server && git branch && git pull
+	cd ../supremacy-play-web && git branch && git checkout -- package-lock.json && git pull
+	cd ../xsyn-services && git branch && git pull
 	cd ../passport-web && git branch && git checkout -- package-lock.json && git pull
 
 .PHONY: serve-test
@@ -196,15 +196,15 @@ sync:
 	cd server && go run cmd/gameserver/main.go sync
 	rm -rf ./synctool/temp-sync
 
-.PHONY: sync-dev
-sync-dev:
+.PHONY: dev-sync
+dev-sync:
 	cd server && go run devsync/main.go sync
 	rm -rf ./synctool/temp-sync
 
 .PHONY: dev-sync-windows
 dev-sync-windows:
 	cd ./server && go run ./devsync/main.go sync
-	Powershell rm -r -Force .\server\synctool\temp-sync\
+	Powershell rm -r -Force ./synctool/temp-sync
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -248,6 +248,10 @@ dev-give-weapon-crates:
 dev-give-mech-crate:
 	curl -i -H "X-Authorization: NinjaDojo_!" -k https://api.supremacygame.io/api/give_crates/mech/${public_address}
 
+.PHONE: seed-avatars
+seed-avatars:
+	cd ./server && go run cmd/gameserver/main.go seed-avatars
+
 .PHONE: dev-give-mech-crates
 dev-give-mech-crates:
 	make dev-give-mech-crate public_address=0xb07d36f3250f4D5B081102C2f1fbA8cA21eD87B4
@@ -261,17 +265,24 @@ sync-data:
 	cd ../../../
 	make sync
 
-.PHONY: sync-data-dev
-sync-data-dev:
+.PHONY: dev-sync-data
+dev-sync-data:
 	cd ./server/synctool
 	mkdir temp-sync
 	cd temp-sync
 	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../../
-	make sync-dev
+	make dev-sync
+
+.PHONY: mac-sync-data
+mac-sync-data:
+	cd ./server/synctool && rm -rf temp-sync && mkdir temp-sync
+	cd ./server/synctool/temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
+	cd ../../../
+	make dev-sync
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
-	cd ./server/devtool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
-	cd ./server && go run ./devtool/main.go -sync_mech
-	Powershell rm -r -Force .\server\devtool\temp-sync\
+	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ../../
+	make dev-sync-windows

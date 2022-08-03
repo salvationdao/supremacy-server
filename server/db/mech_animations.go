@@ -1,21 +1,14 @@
 package db
 
 import (
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"server"
+	"server/db/boiler"
 )
 
-func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.BlueprintMechAnimation) (*server.MechAnimation, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
+func InsertNewMechAnimation(tx boil.Executor, ownerID uuid.UUID, animationBlueprint *server.BlueprintMechAnimation) (*server.MechAnimation, error) {
 	// first insert the animation
 	newAnimation := boiler.MechAnimation{
 		BlueprintID:    animationBlueprint.ID,
@@ -25,7 +18,7 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 		OutroAnimation: animationBlueprint.OutroAnimation,
 	}
 
-	err = newAnimation.Insert(tx, boil.Infer())
+	err := newAnimation.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -48,20 +41,15 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 		return nil, terror.Error(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return MechAnimation(newAnimation.ID)
+	return MechAnimation(tx, newAnimation.ID)
 }
 
-func MechAnimation(id string) (*server.MechAnimation, error) {
-	boilerMech, err := boiler.FindMechAnimation(gamedb.StdConn, id)
+func MechAnimation(tx boil.Executor, id string) (*server.MechAnimation, error) {
+	boilerMech, err := boiler.FindMechAnimation(tx, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
 		return nil, err
 	}

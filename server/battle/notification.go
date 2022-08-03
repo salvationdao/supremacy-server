@@ -10,11 +10,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/multipliers"
+	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
@@ -42,6 +41,7 @@ const (
 	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
 	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
 	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
+	GameNotificationTypeBattleZoneChange    GameNotificationType = "BATTLE_ZONE_CHANGE"
 )
 
 type GameNotificationKill struct {
@@ -114,44 +114,6 @@ type MechCommandNotification struct {
 	FiredByUser  *UserBrief `json:"fired_by_user,omitempty"`
 }
 
-const HubKeyMultiplierSubscribe = "USER:MULTIPLIERS:SUBSCRIBE"
-
-const HubKeyUserMultiplierSignalUpdate = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
-
-func (arena *Arena) MultiplierUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	id, err := uuid.FromString(user.ID)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("id", user.ID).Msg("unable to create uuid from websocket client identifier id")
-		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
-	}
-
-	spoils, err := boiler.SpoilsOfWars(
-		boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
-		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
-		qm.And("amount > amount_sent"),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to call SpoilsOfWars")
-		return terror.Error(err, "Unable to get recently battle multipliers.")
-	}
-
-	resp := &MultiplierUpdate{
-		Battles: []*MultiplierUpdateBattles{},
-	}
-
-	for _, spoil := range spoils {
-		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), spoil.BattleNumber)
-		resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
-			BattleNumber:     spoil.BattleNumber,
-			TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
-			UserMultipliers:  m,
-		})
-	}
-
-	reply(resp)
-	return nil
-}
-
 const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
 
 const HubKeyGameNotification = "GAME:NOTIFICATION"
@@ -196,6 +158,14 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 	})
 }
 
+// BroadcastGameNotificationBattleZoneChange broadcast game notification to client
+func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEvent) {
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+		Type: GameNotificationTypeBattleZoneChange,
+		Data: data,
+	})
+}
+
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
@@ -206,7 +176,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	}
 
 	// broadcast system message to mech owners
-	arena.SystemMessagingManager.BroadcastMechQueueMessage(q)
+	system_messages.BroadcastMechQueueMessage(q)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -341,7 +311,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			Group:                string(server.TransactionGroupBattle),
 			SubGroup:             "Queue",
 			Description:          "Notification surcharge for queued mech in arena",
-			NotSafe:              true,
 		})
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms/telegram notification for mech in queue")
