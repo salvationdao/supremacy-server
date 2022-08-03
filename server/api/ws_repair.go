@@ -31,6 +31,7 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
+	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 }
 
 func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -659,28 +660,46 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	endTime := time.Now()
 
 	// check each pattern is within the time frame
-	lastScore := 0
+	prevScore := 0
 	failedLastTime := false
-	lastStackAt := time.Now()
+	prevStackAt := time.Now()
 	totalStack := 0
 	for i, gp := range gps {
 		if i > 0 {
-			// 1. last score need to be greater than current score
-			// 2. if last challenge failed, current score need to be zero
-			if gp.Score <= lastScore && (gp.Score != lastScore || !gp.IsFailed) && (gp.Score != 0 || !failedLastTime) {
+			// valid score pattern
+			// 1. current score equal to previous score + 1
+			// 2. current score equal to previous score, and current stack is failed
+			// 3. current score equal to zero, and previous stack is failed
+
+			isValidScorePattern := false
+			if gp.Score == prevScore+1 {
+				// meet RULE 1
+				isValidScorePattern = true
+
+			} else if gp.Score == prevScore && gp.IsFailed {
+				// meet RULE 2
+				isValidScorePattern = true
+
+			} else if gp.Score == 0 && failedLastTime {
+				// meet RULE 3
+				isValidScorePattern = true
+			}
+
+			// if score pattern does not match
+			if !isValidScorePattern {
 				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
 			}
 
-			if !lastStackAt.Before(gp.CreatedAt) {
+			if !prevStackAt.Before(gp.CreatedAt) {
 				return terror.Error(fmt.Errorf("invalid stack time"), "Invalid game pattern detected.")
 			}
 
 		}
 
 		// set initial score and failed stat
-		lastScore = gp.Score
+		prevScore = gp.Score
 		failedLastTime = gp.IsFailed
-		lastStackAt = gp.CreatedAt
+		prevStackAt = gp.CreatedAt
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
 			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
@@ -699,6 +718,57 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	if totalStack != ra.RequiredStacks {
 		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
 	}
+
+	return nil
+}
+
+type RepairAgentAbandonRequest struct {
+	Payload struct {
+		RepairAgentID string `json:"repair_agent_id"`
+	} `json:"payload"`
+}
+
+func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
+		return nil
+	}
+	L := gamelog.L.With().Str("func", "RepairAgentAbandon").Interface("user", user).Logger()
+
+	req := &RepairAgentAbandonRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(req.Payload.RepairAgentID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load repair agent")
+	}
+
+	if ra.PlayerID != user.ID {
+		return terror.Error(fmt.Errorf("player not match"), "Player does not match")
+	}
+
+	if ra.FinishedAt.Valid {
+		return terror.Error(fmt.Errorf("repair agent is already closed"), "Repair agent is already closed.")
+	}
+
+	ra.FinishedAt = null.TimeFrom(time.Now())
+	ra.FinishedReason = null.StringFrom(boiler.RepairAgentFinishReasonABANDONED)
+	_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.FinishedAt, boiler.RepairAgentColumns.FinishedReason))
+	if err != nil {
+		L.Error().Err(err).Interface("repair agent", ra).Msg("Failed to close repair agent.")
+		return terror.Error(err, "Failed to abandon the repair agent.")
+	}
+
+	err = api.broadcastRepairOffer(ra.RepairOfferID)
+	if err != nil {
+		return err
+	}
+
+	reply(true)
 
 	return nil
 }
