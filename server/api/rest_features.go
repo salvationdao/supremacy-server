@@ -3,12 +3,13 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
 	"net/http"
 	"server"
 	"server/db"
 	"server/helpers"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
 )
 
 type FeaturesController struct {
@@ -26,6 +27,9 @@ func FeatureRouter(api *API) chi.Router {
 	r.Post("/add-feature-by-addresses", WithToken(api.Config.ServerStreamKey, WithError(f.AddFeatureByAddresses)))
 	r.Post("/remove-feature-by-IDs", WithToken(api.Config.ServerStreamKey, WithError(f.RemoveFeatureByIDs)))
 	r.Post("/remove-feature-by-addresses", WithToken(api.Config.ServerStreamKey, WithError(f.RemoveFeatureByAddresses)))
+
+	// Public routes
+	r.Get("/global-features", WithError(f.GlobalFeatures))
 
 	return r
 }
@@ -48,6 +52,15 @@ func (f *FeaturesController) AllFeatures(w http.ResponseWriter, r *http.Request)
 	features, err := db.GetAllFeatures()
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to query feature data from db")
+	}
+
+	return helpers.EncodeJSON(w, features)
+}
+
+func (f *FeaturesController) GlobalFeatures(w http.ResponseWriter, r *http.Request) (int, error) {
+	features, err := db.GetGlobalFeatures()
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to query global features from db")
 	}
 
 	return helpers.EncodeJSON(w, features)

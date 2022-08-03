@@ -33,12 +33,8 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// faction queue
 	api.SecureUserFactionCommand(battle.WSQueueJoin, api.BattleArena.QueueJoinHandler)
-	api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
+	//api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
 	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.BattleArena.AssetUpdateRequest)
-
-	// TODO: handle insurance and repair
-	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
-	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
 

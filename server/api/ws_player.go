@@ -65,8 +65,6 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyFactionEnlist, pc.PlayerFactionEnlistHandler)
 
-	api.SecureUserCommand(HubKeyPlayerRankGet, pc.PlayerRankGet)
-
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
 	// user profile commands
@@ -267,8 +265,6 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, user *
 	reply(userSettings.Value)
 	return nil
 }
-
-//const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
 func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *http.Request) (int, error) {
 	return helpers.EncodeJSON(w, false)
@@ -960,7 +956,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list
@@ -998,7 +994,19 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
-const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
+func (pc *PlayerController) PlayersStatSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	us, err := db.UserStatsGet(user.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		return terror.Error(err, "Failed to load player stat")
+	}
+
+	if us != nil {
+		reply(us)
+	}
+
+	return nil
+}
 
 func (pc *PlayerController) PlayerRankGet(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	player, err := boiler.Players(

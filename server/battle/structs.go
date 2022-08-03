@@ -101,8 +101,11 @@ type BattleEndDetail struct {
 	EndedAt                      time.Time     `json:"ended_at"`
 	WinningCondition             string        `json:"winning_condition"`
 	WinningFaction               *Faction      `json:"winning_faction"`
+	WinningFactionIDOrder        []string      `json:"winning_faction_id_order"`
 	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
+
+	MechRewards []*MechReward `json:"mech_rewards"` // reward for mech owners
 }
 
 type Faction struct {
