@@ -493,6 +493,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
 		return nil
 	}
+	L := gamelog.L.With().Str("func", "RepairAgentComplete").Interface("user", user).Logger()
 
 	req := &RepairAgentCompleteRequest{}
 	err := json.Unmarshal(payload, req)
@@ -500,16 +501,23 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	L = L.With().Interface("payload", req.Payload).Logger()
+
 	ra, err := boiler.FindRepairAgent(gamedb.StdConn, req.Payload.RepairAgentID)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to find repair agent")
 		return terror.Error(err, "Failed to load repair agent.")
 	}
 
+	L = L.With().Interface("repair agent", ra).Logger()
+
 	if ra.PlayerID != user.ID {
+		L.Error().Err(err).Msg(" wrong repair agent")
 		return terror.Error(fmt.Errorf("agnet id not match"), "Repair agent id mismatch")
 	}
 
 	if ra.FinishedAt.Valid {
+		L.Error().Err(err).Msg("already finished")
 		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
 	}
 
@@ -519,12 +527,13 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("repair agent id", ra.ID).Msg("Failed to log mini-game records.")
+		L.Error().Err(err).Msg("failed to log mini-game records")
 		return terror.Error(err, "Failed to load repair records.")
 	}
 
 	err = BlockStackingGameVerification(ra, ral)
 	if err != nil {
+		L.Error().Err(err).Msg("failed BlockStackingGameVerification")
 		return err
 	}
 
@@ -536,6 +545,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	err = rb.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
+		L.Warn().Err(err).Msg("unable to write block")
 		if err.Error() == "unable to write block" {
 			return terror.Error(err, "repair offer is already closed.")
 		}
@@ -546,14 +556,20 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// check repair case after insert
 	rc, err := ra.RepairCase().One(gamedb.StdConn)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to load repair case")
 		return terror.Error(err, "Failed to load repair case.")
 	}
+
+	L = L.With().Interface("repair case", rc).Logger()
 
 	// claim sups
 	ro, err := db.RepairOfferDetail(ra.RepairOfferID)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to load repair offer")
 		return terror.Error(err, "Failed to load repair offer")
 	}
+
+	L = L.With().Interface("repair offer", ro).Logger()
 
 	// if it is not a self offer, pay the agent
 	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
@@ -568,16 +584,14 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 			Description:          "claim repair offer reward.",
 		})
 		if err != nil {
-			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
+			L.Error().Err(err).Msg("failed to pay sups for offering repair job")
 			return terror.Error(err, "Failed to pay sups for offering repair job.")
 		}
 
 		ra.PayoutTXID = null.StringFrom(payoutTXID)
 		_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
 		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("repair agent", ra).
-				Msg("Failed to update repair agent payout tx id")
+			L.Error().Err(err).Msg("failed to update repair agent payout tx id")
 		}
 
 	}
@@ -602,7 +616,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	rc.CompletedAt = null.TimeFrom(time.Now())
 	_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update repair case.")
+		L.Error().Err(err).Msg("failed to update repair case")
 		return terror.Error(err, "Failed to close repair case.")
 	}
 
@@ -611,6 +625,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		boiler.RepairOfferWhere.ClosedAt.IsNull(),
 	).All(gamedb.StdConn)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to load incomplete repair offer")
 		return terror.Error(err, "Failed to load incomplete repair offer")
 	}
 
