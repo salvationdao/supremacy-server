@@ -3,14 +3,15 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // GetAllFeatures gets all features in the features table
@@ -27,18 +28,33 @@ func GetAllFeatures() ([]*server.Feature, error) {
 //GetPlayerFeaturesByID finds all Features for a player
 func GetPlayerFeaturesByID(playerID string) ([]*boiler.Feature, error) {
 	features, err := boiler.Features(
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.SQL(fmt.Sprintf(`
+			select *
+			from %s f
+			where f.%s in (
+				select %s
+				from %s pf
+				where pf.%s = $1 and pf.%s is null
+			) and f.%s is null
+		`,
+			boiler.TableNames.Features,
+			boiler.FeatureColumns.Name,
+			boiler.PlayersFeatureColumns.FeatureName,
 			boiler.TableNames.PlayersFeatures,
-			qm.Rels(boiler.TableNames.Features, boiler.FeatureColumns.Name),
-			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.FeatureName),
-		)),
-		qm.Where(fmt.Sprintf("%s = ?",
-			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.PlayerID),
+			boiler.PlayersFeatureColumns.PlayerID,
+			boiler.PlayersFeatureColumns.DeletedAt,
+			boiler.FeatureColumns.DeletedAt,
 		), playerID),
-		qm.And(fmt.Sprintf("%s IS NULL",
-			qm.Rels(boiler.TableNames.PlayersFeatures, boiler.PlayersFeatureColumns.DeletedAt),
-		)),
 	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return features, nil
+}
+
+func GetGlobalFeatures() ([]*boiler.Feature, error) {
+	features, err := boiler.Features(boiler.FeatureWhere.GloballyEnabled.EQ(true)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -196,13 +197,18 @@ func (smc *SystemMessagesController) SystemMessageSendHandler(ctx context.Contex
 	}
 	l = l.With().Interface("payload", req.Payload).Logger()
 
-	hasPermission, err := boiler.PlayersFeatures(
-		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
-		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameSYSTEM_MESSAGES),
-	).Exists(gamedb.StdConn)
+	features, err := db.GetPlayerFeaturesByID(user.ID)
 	if err != nil {
 		l.Error().Err(err).Msg("failed to check if user has permission to send system message")
 		return terror.Error(err)
+	}
+
+	hasPermission := false
+	for _, f := range features {
+		if f.Name == boiler.FeatureNameSYSTEM_MESSAGES {
+			hasPermission = true
+			break
+		}
 	}
 
 	if !hasPermission {
