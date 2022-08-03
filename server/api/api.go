@@ -13,8 +13,8 @@ import (
 	"server/db"
 	"server/gamelog"
 	"server/marketplace"
-	"server/player_abilities"
 	"server/profanities"
+	"server/sale_player_abilities"
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
@@ -84,7 +84,7 @@ type API struct {
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
-	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -146,7 +146,7 @@ func NewAPI(
 		Telegram:                 telegram,
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
-		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -329,7 +329,7 @@ func NewAPI(
 				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 
-				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
+				s.WS("/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 
