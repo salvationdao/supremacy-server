@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -22,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/pemistahl/lingua-go"
@@ -262,7 +263,7 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false, "sale_abilities", "repair"))
+				s.Use(api.AuthWS(false, false, "repair"))
 
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
@@ -275,7 +276,7 @@ func NewAPI(
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
 
 				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
-				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler), MustLogin)
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
