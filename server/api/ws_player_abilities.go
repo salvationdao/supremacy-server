@@ -67,7 +67,7 @@ type SaleAbilitiesListResponse struct {
 	SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
 	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
