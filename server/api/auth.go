@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"server/db"
 	"server/db/boiler"
@@ -13,6 +12,8 @@ import (
 	"server/helpers"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
