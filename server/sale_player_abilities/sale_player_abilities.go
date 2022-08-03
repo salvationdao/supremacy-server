@@ -1,8 +1,7 @@
-package player_abilities
+package sale_player_abilities
 
 import (
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"math/rand"
 	"server"
 	"server/db"
@@ -10,6 +9,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"

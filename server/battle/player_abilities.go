@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"server"
+	"server/battle/player_abilities"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -38,19 +39,6 @@ type BlackoutEntry struct {
 	ExpiresAt  time.Time
 }
 
-type MiniMechMoveCommand struct {
-	BattleID       string
-	CellX          int
-	CellY          int
-	TriggeredByID  string
-	FactionID      string
-	MechHash       string
-	CooldownExpiry time.Time
-	CancelledAt    null.Time
-	ReachedAt      null.Time
-	CreatedAt      time.Time
-}
-
 // PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
 type PlayerAbilityManager struct {
 	hiddenWarMachines map[string]time.Time // map[mech hash]expiry timestamp
@@ -58,7 +46,7 @@ type PlayerAbilityManager struct {
 	blackouts           map[string]*BlackoutEntry // map[timestamp-player_ability_id-owner_id]ability info
 	hasBlackoutsUpdated bool
 
-	movingMiniMechs map[string]*MiniMechMoveCommand // map[mech_hash]mini mech move entry
+	movingMiniMechs map[string]*player_abilities.MiniMechMoveCommand // map[mech_hash]mini mech move entry
 
 	MiniMechMoveCoooldownSeconds int
 
@@ -69,12 +57,12 @@ func NewPlayerAbilityManager() *PlayerAbilityManager {
 	return &PlayerAbilityManager{
 		hiddenWarMachines:            make(map[string]time.Time),
 		blackouts:                    make(map[string]*BlackoutEntry),
-		movingMiniMechs:              make(map[string]*MiniMechMoveCommand),
+		movingMiniMechs:              make(map[string]*player_abilities.MiniMechMoveCommand),
 		MiniMechMoveCoooldownSeconds: db.GetIntWithDefault(db.KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds, 0), // default 0; i.e. no cooldown
 	}
 }
 
-func (pam *PlayerAbilityManager) GetMiniMechMove(hash string) (*MiniMechMoveCommand, error) {
+func (pam *PlayerAbilityManager) GetMiniMechMove(hash string) (*player_abilities.MiniMechMoveCommand, error) {
 	pam.RLock()
 	defer pam.RUnlock()
 
@@ -96,7 +84,7 @@ func (pam *PlayerAbilityManager) DeleteMiniMechMove(hash string) {
 	}
 }
 
-func (pam *PlayerAbilityManager) CancelMiniMechMove(hash string) (*MiniMechMoveCommand, error) {
+func (pam *PlayerAbilityManager) CancelMiniMechMove(hash string) (*player_abilities.MiniMechMoveCommand, error) {
 	pam.Lock()
 	defer pam.Unlock()
 
@@ -105,21 +93,11 @@ func (pam *PlayerAbilityManager) CancelMiniMechMove(hash string) (*MiniMechMoveC
 		return nil, fmt.Errorf("Could not find mini mech move command to mark as cancelled")
 	}
 
-	if mm.CancelledAt.Valid {
-		return nil, fmt.Errorf("Mech move command is already cancelled.")
-	}
-
-	if mm.ReachedAt.Valid {
-		return nil, fmt.Errorf("Mech has already reached the commanded spot")
-	}
-
-	now := time.Now()
-	mm.CancelledAt = null.TimeFrom(now)
-	pam.movingMiniMechs[hash] = mm
+	mm.Cancel()
 	return mm, nil
 }
 
-func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) (*MiniMechMoveCommand, error) {
+func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) (*player_abilities.MiniMechMoveCommand, error) {
 	pam.Lock()
 	defer pam.Unlock()
 
@@ -128,38 +106,42 @@ func (pam *PlayerAbilityManager) CompleteMiniMechMove(hash string) (*MiniMechMov
 		return nil, fmt.Errorf("Could not find mini mech move command to mark as complete")
 	}
 
-	now := time.Now()
-	mm.ReachedAt = null.TimeFrom(now)
-	pam.movingMiniMechs[hash] = mm
+	mm.Complete()
 	return mm, nil
 }
 
-func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []*MiniMechMoveCommand {
+func (pam *PlayerAbilityManager) MovingFactionMiniMechs(factionID string) []*player_abilities.MiniMechMoveCommand {
 	pam.RLock()
 	defer pam.RUnlock()
 
-	result := []*MiniMechMoveCommand{}
+	result := []*player_abilities.MiniMechMoveCommand{}
 	for _, mmm := range pam.movingMiniMechs {
-		if mmm.FactionID != factionID || mmm.ReachedAt.Valid || mmm.CancelledAt.Valid {
-			continue
-		}
+		mmm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
+			if mmm.FactionID != factionID || mmm.ReachedAt.Valid || mmm.CancelledAt.Valid {
+				return
+			}
 
-		result = append(result, mmm)
+			result = append(result, mmm)
+		})
 	}
 
 	return result
 }
 
-func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, triggeredByID string, cellX int, cellY int, battleID string) (*MiniMechMoveCommand, error) {
+func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID string, triggeredByID string, cellX int, cellY int, battleID string) (*player_abilities.MiniMechMoveCommand, error) {
 	pam.Lock()
 	defer pam.Unlock()
 
 	mm, ok := pam.movingMiniMechs[hash]
-	if ok && time.Now().Before(mm.CooldownExpiry) {
+	onCooldown := true
+	mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
+		onCooldown = time.Now().Before(mmmc.CooldownExpiry)
+	})
+	if ok && onCooldown {
 		return nil, fmt.Errorf("Command is still cooling down. Please wait another %f seconds.", time.Until(mm.CooldownExpiry).Seconds())
 	}
 
-	newMm := &MiniMechMoveCommand{
+	newMm := &player_abilities.MiniMechMoveCommand{
 		BattleID:       battleID,
 		CellX:          cellX,
 		CellY:          cellY,
@@ -585,8 +567,6 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 	return nil
 }
 
-const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
-
 type MechMoveCommandResponse struct {
 	*boiler.MechMoveCommandLog
 	RemainCooldownSeconds int  `json:"remain_cooldown_seconds"`
@@ -915,7 +895,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 
 		// broadcast mech command log
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds,
 		})
@@ -927,7 +907,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 
 		// broadcast mech command log
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog: &boiler.MechMoveCommandLog{
 				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 				BattleID:      mmmc.BattleID,
@@ -1037,7 +1017,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
 		})
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 		})
@@ -1057,7 +1037,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
 		})
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog: &boiler.MechMoveCommandLog{
 				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 				BattleID:      mmmc.BattleID,
