@@ -3,12 +3,11 @@ package server
 // player_abilities
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
 const HubKeyPlayerWeaponsList = "PLAYER:WEAPONS:LIST:SUBSCRIBE"
+
+const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
 const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST:SUBSCRIBE"
 const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
-
-const HubKeyBattleMechHistoryDetailed = "BATTLE:MECH:HISTORY:DETAILED"
-const HubKeyBattleMechHistoryList = "BATTLE:MECH:HISTORY:LIST"
-const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
+const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
@@ -28,3 +27,4 @@ const HubKeySyndicateJoinApplicationUpdate = "SYNDICATE:JOIN:APPLICATION:UPDATE"
 const HubKeySystemMessageList = "SYSTEM:MESSAGE:LIST"
 const HubKeySystemMessageDismiss = "SYSTEM:MESSAGE:DISMISS"
 const HubKeySystemMessageListUpdatedSubscribe = "SYSTEM:MESSAGE:LIST:UPDATED"
+const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"

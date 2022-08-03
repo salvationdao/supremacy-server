@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"net/http"
 	"server"
 	"server/db"
@@ -11,7 +12,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -50,7 +50,7 @@ type PunishVoteTracker struct {
 
 	// mutex lock for issue vote
 	CurrentPunishVote *PunishVoteInstance
-	sync.RWMutex
+	deadlock.RWMutex
 
 	api *API
 }
@@ -460,7 +460,6 @@ func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClie
 		Group:                "punish vote",
 		SubGroup:             "instant passing",
 		Description:          "general rank player passes a punish vote instantly",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Str("punish vote id", punishVote.ID).Str("amount", punishVote.InstantPassFee.String()).Err(err).Msg("Failed to pay sups for instantly passing a punish vote")
@@ -704,6 +703,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	// construct punish vote message
 	message := MessagePunishVote{
+		ID: punishVote.ID,
 		IssuedByUser: boiler.Player{
 			ID:        punishVote.IssuedByID,
 			Username:  null.StringFrom(punishVote.IssuedByUsername),
@@ -732,6 +732,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	}
 
 	chatMessage := &ChatMessage{
+		ID:     message.ID,
 		Type:   ChatMessageTypePunishVote,
 		SentAt: time.Now(),
 		Data:   message,

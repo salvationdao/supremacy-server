@@ -338,6 +338,8 @@ type WeaponListOpts struct {
 	Search                        string
 	Filter                        *ListFilterRequest
 	Sort                          *ListSortRequest
+	SortBy                        string
+	SortDir                       SortByDir
 	PageSize                      int
 	Page                          int
 	OwnerID                       string
@@ -389,6 +391,12 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
+		qm.LeftOuterJoin(fmt.Sprintf("%s cws ON cws.%s = %s AND cws.%s = ?",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.ItemID,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+			boiler.CollectionItemColumns.ItemType,
+		), boiler.ItemTypeWeaponSkin),
 	}
 
 	// create the where owner id = clause
@@ -461,7 +469,11 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	if len(opts.FilterRarities) > 0 {
-		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(opts.FilterRarities))
+		vals := []interface{}{}
+		for _, r := range opts.FilterRarities {
+			vals = append(vals, r)
+		}
+		queryMods = append(queryMods, qm.AndIn("cws.tier IN ?", vals...))
 	}
 
 	if len(opts.FilterEquippedStatuses) > 0 {
@@ -505,6 +517,10 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 				),
 			)
 		}
+	}
+
+	if len(opts.FilterWeaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
 	}
 
 	// Filter - Weapon Stats
@@ -609,8 +625,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		qm.From(boiler.TableNames.CollectionItems),
 	)
 
-	if len(opts.FilterWeaponTypes) > 0 {
-		queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort("cws.tier", opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label))))
 	}
 
 	rows, err := boiler.NewQuery(
@@ -895,15 +917,15 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 }
 
 // GiveMechAvatar gives player mech skin avatar from mech
-func GiveMechAvatar(playerID string, mechID string) error {
+func GiveMechAvatar(conn boil.Executor, playerID string, mechID string) error {
 	// get mech skin
-	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(gamedb.StdConn)
+	ms, err := boiler.MechSkins(boiler.MechSkinWhere.EquippedOn.EQ(null.StringFrom(mechID))).One(conn)
 	if err != nil {
 		return err
 	}
 
 	// get blueprint mech skin
-	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(gamedb.StdConn)
+	bms, err := boiler.BlueprintMechSkins(boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID)).One(conn)
 	if err != nil {
 		return err
 	}
@@ -916,7 +938,7 @@ func GiveMechAvatar(playerID string, mechID string) error {
 	exists, err := boiler.PlayersProfileAvatars(
 		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(playerID),
 		boiler.PlayersProfileAvatarWhere.ProfileAvatarID.EQ(bms.ProfileAvatarID.String),
-	).One(gamedb.StdConn)
+	).One(conn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
@@ -931,7 +953,7 @@ func GiveMechAvatar(playerID string, mechID string) error {
 		ProfileAvatarID: bms.ProfileAvatarID.String,
 	}
 
-	err = ppa.Insert(gamedb.StdConn, boil.Infer())
+	err = ppa.Insert(conn, boil.Infer())
 	if err != nil {
 		return err
 	}

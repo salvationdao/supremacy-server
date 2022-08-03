@@ -6,6 +6,7 @@ import (
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
 	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
@@ -13,14 +14,13 @@ import (
 	"server/profanities"
 	"server/xsyn_rpcclient"
 	"strings"
-	"sync"
 )
 
 type System struct {
 	profanityManager *profanities.ProfanityManager
 	Passport         *xsyn_rpcclient.XsynXrpcClient
 	syndicateMap     map[string]*Syndicate
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (ss *System) getSyndicate(id string) (*Syndicate, error) {

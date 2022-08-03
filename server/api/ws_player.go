@@ -55,6 +55,7 @@ func NewPlayerController(api *API) *PlayerController {
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
+	api.SecureUserCommand(HubKeyGetPlayerByGid, pc.GetPlayerByGidHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -81,6 +82,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarCreate, pc.PlayerProfileCustomAvatarCreate)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarUpdate, pc.PlayerProfileCustomAvatarUpdate)
 	api.SecureUserCommand(HubKeyPlayerProfileCustomAvatarDelete, pc.PlayerProfileCustomAvatarDelete)
+
+	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
 	return pc
 }
@@ -376,6 +379,21 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 		}
 	}
 
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return nil
+	}
+
+	err = fap.Set(user.ID, isActive)
+	if err != nil {
+		return terror.Error(err, "Failed to update player active stat")
+	}
+
+	// debounce broadcast active player
+	fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: fap.CurrentFactionActivePlayer(),
+	}
+
 	return nil
 }
 
@@ -423,6 +441,51 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 	}
 
 	reply(ps)
+	return nil
+}
+
+type GetPlayerByGidRequest struct {
+	Payload struct {
+		Gid int `json:"gid"`
+	} `json:"payload"`
+}
+
+const HubKeyGetPlayerByGid = "GET:PLAYER:GID"
+
+func (pc *PlayerController) GetPlayerByGidHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GetPlayerByGidHandler").Str("user_id", user.ID).Logger()
+
+	req := &GetPlayerByGidRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received")
+	}
+
+	l = l.With().Interface("GID", req.Payload.Gid).Logger()
+	p, err := boiler.Players(
+		boiler.PlayerWhere.Gid.EQ(req.Payload.Gid),
+	).One(gamedb.StdConn)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			l.Error().Err(err).Msg("player with gid does not exist.")
+			return nil
+		}
+		l.Error().Err(err).Msg("unable to retrieve player by GID.")
+		return terror.Error(err, "Unable to find player, try again or contact support.")
+	}
+
+	pp := &server.PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		FactionID: p.FactionID,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
+
+	reply(pp)
 	return nil
 }
 
@@ -734,7 +797,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		Group:                "issue punish vote",
 		SubGroup:             string(punishOption.Key),
 		Description:          "issue vote for punishing player",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player punish vote")
@@ -860,6 +922,19 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 	fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]
 	if !ok {
 		return terror.Error(terror.ErrForbidden, "Faction does not exist in the list")
+	}
+
+	reply(fap.CurrentFactionActivePlayer())
+
+	return nil
+}
+
+const HubKeyGlobalActivePlayersSubscribe = "GLOBAL:ACTIVE:PLAYER:SUBSCRIBE"
+
+func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	fap, ok := pc.API.FactionActivePlayers["GLOBAL"]
+	if !ok {
+		return terror.Error(terror.ErrForbidden, "Could not subscribe to active players in global chat, try again or contact support.")
 	}
 
 	reply(fap.CurrentFactionActivePlayer())
@@ -1188,7 +1263,7 @@ func (pc *PlayerController) PlayerUpdateAboutMeHandler(ctx context.Context, user
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
-	resp := &PublicPlayer{
+	resp := &server.PublicPlayer{
 		ID:        user.ID,
 		Username:  user.Username,
 		Gid:       user.Gid,
@@ -1281,4 +1356,20 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
+
+// GenOneTimeToken Generates a token used to create a QR code to log a player into the supremacy companion app
+func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GenOneTimeToken").Str("user id", user.ID).Logger()
+
+	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to generate QR code token")
+		return terror.Error(err, "Failed to get login token")
+	}
+
+	reply(resp)
+	return nil
 }

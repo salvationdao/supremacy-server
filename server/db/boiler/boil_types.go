@@ -166,9 +166,11 @@ const (
 
 // Enum values for FeatureName
 const (
-	FeatureNameMECH_MOVE      = "MECH_MOVE"
-	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
-	FeatureNamePUBLIC_PROFILE = "PUBLIC_PROFILE"
+	FeatureNameMECH_MOVE       = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY  = "PLAYER_ABILITY"
+	FeatureNamePUBLIC_PROFILE  = "PUBLIC_PROFILE"
+	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
+	FeatureNameCHAT_BAN        = "CHAT_BAN"
 )
 
 // Enum values for AbilityLevel
@@ -316,10 +318,4 @@ const (
 const (
 	SyndicateTypeCORPORATION   = "CORPORATION"
 	SyndicateTypeDECENTRALISED = "DECENTRALISED"
-)
-
-// Enum values for SystemMessageType
-const (
-	SystemMessageTypeMECH_QUEUE           = "MECH_QUEUE"
-	SystemMessageTypeMECH_BATTLE_COMPLETE = "MECH_BATTLE_COMPLETE"
 )

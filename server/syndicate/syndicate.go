@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
 	"server"
 	"server/db/boiler"
 	"server/gamelog"
-	"sync"
 	"time"
 )
 
 type Syndicate struct {
 	system *System
 	*boiler.Syndicate
-	sync.RWMutex // for update syndicate
+	deadlock.RWMutex // for update syndicate
 
 	isLiquidated atomic.Bool
 

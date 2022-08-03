@@ -8,15 +8,12 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
 	"server/synctool"
 	"server/syndicate"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
@@ -82,7 +79,6 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
-	SystemMessagingManager   *system_messages.SystemMessagingManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -120,7 +116,6 @@ func NewAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-	smm *system_messages.SystemMessagingManager,
 	syncConfig *synctool.StaticSyncTool,
 ) (*API, error) {
 	// spin up syndicate system
@@ -143,7 +138,6 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
-		SystemMessagingManager:   smm,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -186,12 +180,13 @@ func NewAPI(
 	mc := NewMarketplaceController(api)
 	pac := NewPlayerAbilitiesController(api)
 	pasc := NewPlayerAssetsController(api)
+	_ = NewPlayerDevicesController(api)
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	NewSyndicateController(api)
 	_ = NewLeaderboardController(api)
-	NewWSWarMachineController(api)
 	_ = NewSystemMessagesController(api)
+	NewWSWarMachineController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -229,29 +224,22 @@ func NewAPI(
 				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
-			r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
-			r.Get("/video_server", WithError(api.GetStreamsHandler))
-			r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
-			r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
+			r.Mount("/battle_history", BattleHistoryRouter())
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
+			r.Mount("/system_messages", SystemMessagesRouter(api))
 
 			r.Mount("/battle", BattleRouter(battleArenaClient))
-			r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
-			r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
-
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
-
-			r.Post("/chat_shadowban", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayer)))
-			r.Post("/chat_shadowban/remove", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerRemove)))
-			r.Get("/chat_shadowban/list", WithToken(config.ServerStreamKey, WithError(api.ShadowbanChatPlayerList)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
 		})
+
+		r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
 
 		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
 		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
@@ -283,6 +271,7 @@ func NewAPI(
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
+				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
 			}))
 
 			// secured user route ws
@@ -290,7 +279,6 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
@@ -603,17 +591,7 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 		return nil, err
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, userResp.ID)
-
-	features, err := db.GetPlayerFeaturesByID(player.ID)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to find features")
-		}
-		return nil, err
-	}
-
-	serverPlayer := server.PlayerFromBoiler(player, features)
+	serverPlayer, err := db.GetPlayer(userResp.ID)
 	if err != nil {
 		if !ignoreError {
 			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")

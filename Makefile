@@ -178,13 +178,13 @@ lb:
 
 .PHONY: wt
 wt:
-	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Passport Web" -p "PowerShell" -d ../passport-web powershell -NoExit make watch ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit npm start
+	wt --window 0 --tabColor "#4747E2" --title "Supremacy - Game Server" -p "PowerShell" -d . powershell -NoExit make serve-arelo ; wt --window 0 sp --tabColor "#4747E2" --title "Supremacy - Load Balancer" -p "PowerShell" -d $(CURDIR)/../passport-web powershell -NoExit make lb-windows ; wt --window 0 mf right sp -H -s 0.8 --tabColor "#4747E2" --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d $(CURDIR)/../xsyn-services powershell -NoExit make serve-arelo ; wt --window 0 mf right sp --tabColor "#4747E2" --title "Passport Web" -p "PowerShell" -d $(CURDIR)/../passport-web powershell -NoExit npm run start:windows ; wt --window 0 mf right sp -H -s 0.5 --tabColor "#4747E2" --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d $(CURDIR)/../supremacy-play-web powershell -NoExit npm run start:windows
 
 .PHONY: pull
 pull:
 	git branch && git pull
-	cd ../supremacy-stream-site && git branch && git checkout -- package-lock.json && git pull
-	cd ../passport-server && git branch && git pull
+	cd ../supremacy-play-web && git branch && git checkout -- package-lock.json && git pull
+	cd ../xsyn-services && git branch && git pull
 	cd ../passport-web && git branch && git checkout -- package-lock.json && git pull
 
 .PHONY: serve-test
@@ -204,7 +204,7 @@ dev-sync:
 .PHONY: dev-sync-windows
 dev-sync-windows:
 	cd ./server && go run ./devsync/main.go sync
-	Powershell rm -r -Force .\server\synctool\temp-sync\
+	Powershell rm -r -Force ./synctool/temp-sync
 
 .PHONY: docker-db-dump
 docker-db-dump:
@@ -284,4 +284,5 @@ mac-sync-data:
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
 	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ../../
 	make dev-sync-windows

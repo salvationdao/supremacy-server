@@ -190,6 +190,7 @@ var PlayerRels = struct {
 	ChatHistories                            string
 	OwnerCollectionItems                     string
 	ConsumedByConsumedAbilities              string
+	Devices                                  string
 	MVPPlayerFactionStats                    string
 	OwnerItemKeycardSales                    string
 	SoldToItemKeycardSales                   string
@@ -235,6 +236,7 @@ var PlayerRels = struct {
 	CeoPlayerSyndicates                      string
 	FoundedBySyndicates                      string
 	SystemMessages                           string
+	SenderSystemMessages                     string
 	OwnerWeaponSkins                         string
 }{
 	CustomAvatar:                             "CustomAvatar",
@@ -256,6 +258,7 @@ var PlayerRels = struct {
 	ChatHistories:                            "ChatHistories",
 	OwnerCollectionItems:                     "OwnerCollectionItems",
 	ConsumedByConsumedAbilities:              "ConsumedByConsumedAbilities",
+	Devices:                                  "Devices",
 	MVPPlayerFactionStats:                    "MVPPlayerFactionStats",
 	OwnerItemKeycardSales:                    "OwnerItemKeycardSales",
 	SoldToItemKeycardSales:                   "SoldToItemKeycardSales",
@@ -301,6 +304,7 @@ var PlayerRels = struct {
 	CeoPlayerSyndicates:                      "CeoPlayerSyndicates",
 	FoundedBySyndicates:                      "FoundedBySyndicates",
 	SystemMessages:                           "SystemMessages",
+	SenderSystemMessages:                     "SenderSystemMessages",
 	OwnerWeaponSkins:                         "OwnerWeaponSkins",
 }
 
@@ -325,6 +329,7 @@ type playerR struct {
 	ChatHistories                            ChatHistorySlice                 `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	OwnerCollectionItems                     CollectionItemSlice              `boiler:"OwnerCollectionItems" boil:"OwnerCollectionItems" json:"OwnerCollectionItems" toml:"OwnerCollectionItems" yaml:"OwnerCollectionItems"`
 	ConsumedByConsumedAbilities              ConsumedAbilitySlice             `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
+	Devices                                  DeviceSlice                      `boiler:"Devices" boil:"Devices" json:"Devices" toml:"Devices" yaml:"Devices"`
 	MVPPlayerFactionStats                    FactionStatSlice                 `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerItemKeycardSales                    ItemKeycardSaleSlice             `boiler:"OwnerItemKeycardSales" boil:"OwnerItemKeycardSales" json:"OwnerItemKeycardSales" toml:"OwnerItemKeycardSales" yaml:"OwnerItemKeycardSales"`
 	SoldToItemKeycardSales                   ItemKeycardSaleSlice             `boiler:"SoldToItemKeycardSales" boil:"SoldToItemKeycardSales" json:"SoldToItemKeycardSales" toml:"SoldToItemKeycardSales" yaml:"SoldToItemKeycardSales"`
@@ -370,6 +375,7 @@ type playerR struct {
 	CeoPlayerSyndicates                      SyndicateSlice                   `boiler:"CeoPlayerSyndicates" boil:"CeoPlayerSyndicates" json:"CeoPlayerSyndicates" toml:"CeoPlayerSyndicates" yaml:"CeoPlayerSyndicates"`
 	FoundedBySyndicates                      SyndicateSlice                   `boiler:"FoundedBySyndicates" boil:"FoundedBySyndicates" json:"FoundedBySyndicates" toml:"FoundedBySyndicates" yaml:"FoundedBySyndicates"`
 	SystemMessages                           SystemMessageSlice               `boiler:"SystemMessages" boil:"SystemMessages" json:"SystemMessages" toml:"SystemMessages" yaml:"SystemMessages"`
+	SenderSystemMessages                     SystemMessageSlice               `boiler:"SenderSystemMessages" boil:"SenderSystemMessages" json:"SenderSystemMessages" toml:"SenderSystemMessages" yaml:"SenderSystemMessages"`
 	OwnerWeaponSkins                         WeaponSkinSlice                  `boiler:"OwnerWeaponSkins" boil:"OwnerWeaponSkins" json:"OwnerWeaponSkins" toml:"OwnerWeaponSkins" yaml:"OwnerWeaponSkins"`
 }
 
@@ -990,6 +996,28 @@ func (o *Player) ConsumedByConsumedAbilities(mods ...qm.QueryMod) consumedAbilit
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"consumed_abilities\".*"})
+	}
+
+	return query
+}
+
+// Devices retrieves all the device's Devices with an executor.
+func (o *Player) Devices(mods ...qm.QueryMod) deviceQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"devices\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"devices\".\"deleted_at\""),
+	)
+
+	query := Devices(queryMods...)
+	queries.SetFrom(query.Query, "\"devices\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"devices\".*"})
 	}
 
 	return query
@@ -1958,6 +1986,27 @@ func (o *Player) SystemMessages(mods ...qm.QueryMod) systemMessageQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"system_messages\".\"player_id\"=?", o.ID),
+	)
+
+	query := SystemMessages(queryMods...)
+	queries.SetFrom(query.Query, "\"system_messages\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"system_messages\".*"})
+	}
+
+	return query
+}
+
+// SenderSystemMessages retrieves all the system_message's SystemMessages with an executor via sender_id column.
+func (o *Player) SenderSystemMessages(mods ...qm.QueryMod) systemMessageQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"system_messages\".\"sender_id\"=?", o.ID),
 	)
 
 	query := SystemMessages(queryMods...)
@@ -3914,6 +3963,105 @@ func (playerL) LoadConsumedByConsumedAbilities(e boil.Executor, singular bool, m
 					foreign.R = &consumedAbilityR{}
 				}
 				foreign.R.ConsumedByPlayer = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadDevices allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadDevices(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`devices`),
+		qm.WhereIn(`devices.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`devices.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load devices")
+	}
+
+	var resultSlice []*Device
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice devices")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on devices")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for devices")
+	}
+
+	if len(deviceAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Devices = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &deviceR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.Devices = append(local.R.Devices, foreign)
+				if foreign.R == nil {
+					foreign.R = &deviceR{}
+				}
+				foreign.R.Player = local
 				break
 			}
 		}
@@ -8362,6 +8510,104 @@ func (playerL) LoadSystemMessages(e boil.Executor, singular bool, maybePlayer in
 	return nil
 }
 
+// LoadSenderSystemMessages allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadSenderSystemMessages(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`system_messages`),
+		qm.WhereIn(`system_messages.sender_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load system_messages")
+	}
+
+	var resultSlice []*SystemMessage
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice system_messages")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on system_messages")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for system_messages")
+	}
+
+	if len(systemMessageAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.SenderSystemMessages = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &systemMessageR{}
+			}
+			foreign.R.Sender = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.SenderID {
+				local.R.SenderSystemMessages = append(local.R.SenderSystemMessages, foreign)
+				if foreign.R == nil {
+					foreign.R = &systemMessageR{}
+				}
+				foreign.R.Sender = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadOwnerWeaponSkins allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadOwnerWeaponSkins(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -9709,6 +9955,58 @@ func (o *Player) AddConsumedByConsumedAbilities(exec boil.Executor, insert bool,
 			}
 		} else {
 			rel.R.ConsumedByPlayer = o
+		}
+	}
+	return nil
+}
+
+// AddDevices adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.Devices.
+// Sets related.R.Player appropriately.
+func (o *Player) AddDevices(exec boil.Executor, insert bool, related ...*Device) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"devices\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, devicePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			Devices: related,
+		}
+	} else {
+		o.R.Devices = append(o.R.Devices, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &deviceR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
 		}
 	}
 	return nil
@@ -12706,6 +13004,58 @@ func (o *Player) AddSystemMessages(exec boil.Executor, insert bool, related ...*
 			}
 		} else {
 			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddSenderSystemMessages adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.SenderSystemMessages.
+// Sets related.R.Sender appropriately.
+func (o *Player) AddSenderSystemMessages(exec boil.Executor, insert bool, related ...*SystemMessage) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.SenderID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"system_messages\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"sender_id"}),
+				strmangle.WhereClause("\"", "\"", 2, systemMessagePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.SenderID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			SenderSystemMessages: related,
+		}
+	} else {
+		o.R.SenderSystemMessages = append(o.R.SenderSystemMessages, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &systemMessageR{
+				Sender: o,
+			}
+		} else {
+			rel.R.Sender = o
 		}
 	}
 	return nil

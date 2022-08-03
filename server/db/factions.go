@@ -3,30 +3,7 @@ package db
 import (
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/shopspring/decimal"
 )
-
-func FactionAddContribute(factionID string, amount decimal.Decimal) error {
-	// NOTE: faction contribution only show integer in frontend, so just store the actual sups amount
-	storeAmount := amount.Div(decimal.New(1, 18)).IntPart()
-
-	q := `
-		UPDATE
-			faction_stats
-		SET
-			sups_contribute = sups_contribute + $2
-		WHERE
-			id = $1
-	`
-	_, err := gamedb.StdConn.Exec(q, factionID, storeAmount)
-	if err != nil {
-		gamelog.L.Error().Str("faction_id", factionID).Str("amount", amount.String()).Err(err).Msg("Failed to update faction contribution")
-		return err
-	}
-
-	return nil
-}
 
 func FactionAddAbilityKillCount(factionID string) error {
 	q := `

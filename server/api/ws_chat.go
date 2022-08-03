@@ -11,13 +11,15 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/multipliers"
 	"sort"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
+	"golang.org/x/exp/slices"
 
 	"github.com/gofrs/uuid"
 
+	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
@@ -41,6 +43,7 @@ var bm = bluemonday.StrictPolicy()
 
 // ChatMessage contains chat message data to send.
 type ChatMessage struct {
+	ID     string          `json:"id"`
 	Type   ChatMessageType `json:"type"`
 	SentAt time.Time       `json:"sent_at"`
 	Data   interface{}     `json:"data"`
@@ -56,18 +59,21 @@ const (
 )
 
 type MessageText struct {
-	Message         string           `json:"message"`
-	MessageColor    string           `json:"message_color"`
-	FromUser        boiler.Player    `json:"from_user"`
-	UserRank        string           `json:"user_rank"`
-	FromUserStat    *server.UserStat `json:"from_user_stat"`
-	Lang            string           `json:"lang"`
-	TotalMultiplier string           `json:"total_multiplier"`
-	IsCitizen       bool             `json:"is_citizen"`
-	BattleNumber    int              `json:"battle_number"`
+	ID           string           `json:"id"`
+	Message      string           `json:"message"`
+	MessageColor string           `json:"message_color"`
+	FromUser     boiler.Player    `json:"from_user"`
+	UserRank     string           `json:"user_rank"`
+	FromUserStat *server.UserStat `json:"from_user_stat"`
+	Lang         string           `json:"lang"`
+	// TotalMultiplier string           `json:"total_multiplier"`
+	// IsCitizen       bool             `json:"is_citizen"`
+	BattleNumber int       `json:"battle_number"`
+	Metadata     null.JSON `json:"metadata"`
 }
 
 type MessagePunishVote struct {
+	ID           string        `json:"id"`
 	IssuedByUser boiler.Player `json:"issued_by_user"`
 	ReportedUser boiler.Player `json:"reported_user"`
 
@@ -82,6 +88,7 @@ type MessagePunishVote struct {
 }
 
 type MessageSystemBan struct {
+	ID           string         `json:"id"`
 	BannedByUser *boiler.Player `json:"banned_by_user"`
 	BannedUser   *boiler.Player `json:"banned_user"`
 
@@ -99,9 +106,20 @@ type MessageNewBattle struct {
 	BattleNumber int `json:"battle_number"`
 }
 
+type Likes struct {
+	Likes    []string `json:"likes"`
+	Dislikes []string `json:"dislikes"`
+	Net      int      `json:"net"`
+}
+
+type TextMessageMetadata struct {
+	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
+	Likes           *Likes       `json:"likes"`
+}
+
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }
@@ -115,14 +133,24 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 	c.Unlock()
 }
 
-func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
+func (c *Chatroom) ReadRange(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
+	defer c.RUnlock()
 	for _, message := range c.messages {
 		if !fn(message) {
 			break
 		}
 	}
-	c.RUnlock()
+}
+
+func (c *Chatroom) WriteRange(fn func(chatMessage *ChatMessage) bool) {
+	c.Lock()
+	defer c.Unlock()
+	for _, message := range c.messages {
+		if !fn(message) {
+			break
+		}
+	}
 }
 
 func isFingerPrintBanned(playerID string) bool {
@@ -211,16 +239,17 @@ func NewChatroom(factionID string) *Chatroom {
 		}
 
 		cms[i] = &ChatMessage{
+			ID:     msg.ID,
 			Type:   ChatMessageType(msg.MSGType),
 			SentAt: msg.CreatedAt,
 			Data: &MessageText{
-				Message:         msg.Text,
-				MessageColor:    msg.MessageColor,
-				FromUser:        *player,
-				UserRank:        player.Rank,
-				FromUserStat:    stat,
-				TotalMultiplier: msg.TotalMultiplier,
-				IsCitizen:       msg.IsCitizen,
+				ID:           msg.ID,
+				Message:      msg.Text,
+				MessageColor: msg.MessageColor,
+				FromUser:     *player,
+				UserRank:     player.Rank,
+				FromUserStat: stat,
+				Metadata:     msg.Metadata,
 			},
 		}
 		cmstoSend = append(cmstoSend, cms[i])
@@ -253,6 +282,9 @@ func NewChatController(api *API) *ChatController {
 	}
 
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
+	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
+	api.SecureUserCommand(HubKeyChatBanPlayer, chatHub.ChatBanPlayerHandler)
+	api.SecureUserCommand(HubKeyReactToMessage, chatHub.ReactToMessageHandler)
 
 	go api.MessageBroadcaster()
 
@@ -271,8 +303,8 @@ func (api *API) MessageBroadcaster() {
 	for {
 		select {
 		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
-
 			banMessage := &MessageSystemBan{
+				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
 				BannedUser:     msg.BannedPlayer,
 				FactionID:      msg.FactionID,
@@ -284,6 +316,7 @@ func (api *API) MessageBroadcaster() {
 			}
 
 			cm := &ChatMessage{
+				ID:     banMessage.ID,
 				Type:   ChatMessageTypeSystemBan,
 				SentAt: time.Now(),
 				Data:   banMessage,
@@ -319,10 +352,10 @@ func (api *API) MessageBroadcaster() {
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
 	Payload struct {
-		FactionID    server.FactionID `json:"faction_id"`
-		MessageColor string           `json:"message_color"`
-		Message      string           `json:"message"`
-		BattleNumber int              `json:"battle_number"`
+		FactionID       server.FactionID `json:"faction_id"`
+		MessageColor    string           `json:"message_color"`
+		Message         string           `json:"message"`
+		TaggedUsersGids []int            `json:"tagged_users_gids"`
 	} `json:"payload"`
 }
 
@@ -348,13 +381,17 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	b2 := minuteBucket.Add(user.ID, 1)
 
 	if b1 == 0 || b2 == 0 {
-		return terror.Error(fmt.Errorf("too many messages"), "Too many messages.")
+		return terror.Warn(fmt.Errorf("too many messages"), "Too many messages.")
 	}
 
 	req := &FactionChatRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction to chat.")
 	}
 
 	// omit unused player detail
@@ -373,15 +410,19 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		boiler.PlayerBanWhere.BanSendChat.EQ(true),
 		boiler.PlayerBanWhere.ManuallyUnbanByID.IsNull(),
 		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
-	).Exists(gamedb.StdConn)
-	if err != nil {
+	).One(gamedb.StdConn)
+	if err == nil {
+		// if chat banned just return
+		hours := int(time.Until(isBanned.EndAt).Hours())
+		expiresIn := fmt.Sprintf("%d hour(s)", hours)
+		if hours < 1 {
+			expiresIn = fmt.Sprintf("%d minute(s)", int(time.Until(isBanned.EndAt).Minutes()))
+		}
+		return terror.Error(fmt.Errorf("player is banned to chat"), fmt.Sprintf("You are banned from chatting. Your ban ends in %s.", expiresIn))
+
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
 		return err
-	}
-
-	// if chat banned just return
-	if isBanned {
-		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
 
 	// user's fingerprint banned (shadow ban)
@@ -447,20 +488,21 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	lastBattleNum := 0
-	lastBattle, err := boiler.Battles(
-		qm.Select(boiler.BattleColumns.BattleNumber),
-		qm.OrderBy(fmt.Sprintf("%s %s", boiler.BattleColumns.BattleNumber, "DESC")),
-		boiler.BattleWhere.EndedAt.IsNotNull()).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Unable to get last battle for chat")
+	taggedUsersGid := make(map[int]bool)
+	for _, gid := range req.Payload.TaggedUsersGids {
+		taggedUsersGid[gid] = false
 	}
 
-	if lastBattle != nil {
-		lastBattleNum = lastBattle.BattleNumber
+	textMsgMetadata := &TextMessageMetadata{
+		Likes:           &Likes{[]string{}, []string{}, 0},
+		TaggedUsersRead: taggedUsersGid,
 	}
 
-	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, lastBattleNum)
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(textMsgMetadata)
+	if err != nil {
+		return terror.Error(err, "Could not marshal json")
+	}
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -471,22 +513,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to.")
 		}
 
-		chatMessage := &ChatMessage{
-			Type:   ChatMessageTypeText,
-			SentAt: time.Now(),
-			Data: MessageText{
-				Message:         msg,
-				MessageColor:    req.Payload.MessageColor,
-				FromUser:        player,
-				UserRank:        player.Rank,
-				FromUserStat:    playerStat,
-				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-				IsCitizen:       isCitizen,
-				Lang:            language,
-				BattleNumber:    req.Payload.BattleNumber,
-			},
-		}
-
 		cm := boiler.ChatHistory{
 			FactionID:       player.FactionID.String,
 			PlayerID:        player.ID,
@@ -494,17 +520,34 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			BattleID:        null.String{},
 			MSGType:         boiler.ChatMSGTypeEnumTEXT,
 			UserRank:        player.Rank,
-			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+			TotalMultiplier: "",
 			KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 			Text:            msg,
 			ChatStream:      player.FactionID.String,
-			IsCitizen:       isCitizen,
+			IsCitizen:       false,
 			Lang:            language,
+			Metadata:        jsonTextMsgMeta,
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
+		}
+
+		chatMessage := &ChatMessage{
+			ID:     cm.ID,
+			Type:   boiler.ChatMSGTypeEnumTEXT,
+			SentAt: cm.CreatedAt,
+			Data: &MessageText{
+				ID:           cm.ID,
+				Message:      msg,
+				MessageColor: req.Payload.MessageColor,
+				FromUser:     player,
+				UserRank:     player.Rank,
+				FromUserStat: playerStat,
+				Lang:         language,
+				Metadata:     jsonTextMsgMeta,
+			},
 		}
 
 		// Ability kills
@@ -517,22 +560,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	}
 
 	// global message
-	chatMessage := &ChatMessage{
-		Type:   ChatMessageTypeText,
-		SentAt: time.Now(),
-		Data: MessageText{
-			Message:         msg,
-			MessageColor:    req.Payload.MessageColor,
-			FromUser:        player,
-			UserRank:        player.Rank,
-			FromUserStat:    playerStat,
-			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
-			IsCitizen:       isCitizen,
-			Lang:            language,
-			BattleNumber:    req.Payload.BattleNumber,
-		},
-	}
-
 	cm := boiler.ChatHistory{
 		FactionID:       player.FactionID.String,
 		PlayerID:        player.ID,
@@ -540,12 +567,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		BattleID:        null.String{},
 		MSGType:         boiler.ChatMSGTypeEnumTEXT,
 		UserRank:        player.Rank,
-		TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
+		TotalMultiplier: "",
 		KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 		Text:            msg,
 		ChatStream:      "global",
-		IsCitizen:       isCitizen,
+		IsCitizen:       false,
 		Lang:            language,
+		Metadata:        jsonTextMsgMeta,
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -553,10 +581,229 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 	}
 
+	chatMessage := &ChatMessage{
+		ID:     cm.ID,
+		Type:   boiler.ChatMSGTypeEnumTEXT,
+		SentAt: cm.CreatedAt,
+		Data: &MessageText{
+			ID:           cm.ID,
+			Message:      msg,
+			MessageColor: req.Payload.MessageColor,
+			FromUser:     player,
+			UserRank:     player.Rank,
+			FromUserStat: playerStat,
+			Lang:         language,
+			Metadata:     jsonTextMsgMeta,
+		},
+	}
+
 	fc.API.GlobalChat.AddMessage(chatMessage)
 	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
 	reply(true)
 
+	return nil
+}
+
+type ReadTaggedMessageRequest struct {
+	Payload struct {
+		ChatHistoryID string `json:"chat_history_id"`
+	} `json:"payload"`
+}
+
+const HubKeyReadTaggedMessage = "READ:TAGGED:MESSAGE"
+
+func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ReadTaggedMessageHandler").Str("user_id", user.ID).Logger()
+	genericErrorMessage := "Unable to mark message as read, try again or contact support."
+
+	req := &ReadTaggedMessageRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata.TaggedUsersRead[user.Gid] = true
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update chat history to mark as read.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.WriteRange(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.WriteRange(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.WriteRange(fn)
+	default:
+		fc.API.GlobalChat.WriteRange(fn)
+	}
+
+	reply(true)
+	return nil
+}
+
+type ReactToMessageRequest struct {
+	Payload struct {
+		ChatHistoryID string `json:"chat_history_id"`
+		Reaction      string `json:"reaction"`
+	} `json:"payload"`
+}
+
+const HubKeyReactToMessage = "REACT:MESSAGE"
+
+func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ReactToMessageHandler").Str("user_id", user.ID).Logger()
+	genericErrorMessage := "Unable to react to message, try again or contact support."
+
+	req := &ReactToMessageRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	switch req.Payload.Reaction {
+	//handle likes
+	case "like":
+
+		//check if user id is in likes then "unlike"- take user name out of likes array
+		i := slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+			break
+		}
+		//check if user id is in dislikes then take username out of dislikes and put into likes array
+		i = slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+		}
+		//else put into likes array
+		metadata.Likes.Likes = append(metadata.Likes.Likes, user.ID)
+		break
+		//handle dislikes
+	case "dislike":
+		//check if user id is in dislikes the "undislike" - take username out of dislikes array
+		i := slices.Index(metadata.Likes.Dislikes, user.ID)
+		if i != -1 {
+			metadata.Likes.Dislikes = slices.Delete(metadata.Likes.Dislikes, i, i+1)
+			break
+		}
+		//check if user id is in likes then take username out of likes and put into dislikes array
+		i = slices.Index(metadata.Likes.Likes, user.ID)
+		if i != -1 {
+			metadata.Likes.Likes = slices.Delete(metadata.Likes.Likes, i, i+1)
+		}
+		//else put into dislikes array
+		metadata.Likes.Dislikes = append(metadata.Likes.Dislikes, user.ID)
+		break
+	}
+
+	metadata.Likes.Net = len(metadata.Likes.Likes) - len(metadata.Likes.Dislikes)
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update message's reactions.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
+	// change metadata of a specific message
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		fc.API.RedMountainChat.WriteRange(fn)
+	case server.BostonCyberneticsFactionID:
+		fc.API.BostonChat.WriteRange(fn)
+	case server.ZaibatsuFactionID:
+		fc.API.ZaibatsuChat.WriteRange(fn)
+	default:
+		fc.API.GlobalChat.WriteRange(fn)
+	}
+
+	reply(metadata.Likes)
 	return nil
 }
 
@@ -570,11 +817,11 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	}
 	switch factionID {
 	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.Range(chatRangeHandler)
+		fc.API.RedMountainChat.ReadRange(chatRangeHandler)
 	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.Range(chatRangeHandler)
+		fc.API.BostonChat.ReadRange(chatRangeHandler)
 	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.Range(chatRangeHandler)
+		fc.API.ZaibatsuChat.ReadRange(chatRangeHandler)
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
@@ -588,7 +835,7 @@ const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 
 func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
-	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
+	fc.API.GlobalChat.ReadRange(func(message *ChatMessage) bool {
 		resp = append(resp, message)
 		return true
 	})
@@ -678,4 +925,107 @@ func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 	case server.ZaibatsuFactionID:
 		api.ZaibatsuChat.AddMessage(msg)
 	}
+}
+
+type ChatBanPlayerRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		PlayerID        string `json:"player_id"`
+		Reason          string `json:"reason"`
+		DurationMinutes int    `json:"duration_minutes"`
+	} `json:"payload"`
+}
+
+const HubKeyChatBanPlayer = "CHAT:BAN:PLAYER"
+
+func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "ChatBanUserHandler").Str("user_id", user.ID).Logger()
+
+	req := &ChatBanPlayerRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+	l = l.With().Interface("payload", req).Logger()
+
+	if req.Payload.PlayerID == "" {
+		l.Warn().Msg("player id was not given when attempting to chat ban")
+		return terror.Error(terror.ErrInvalidInput, "Player must be specified.")
+	}
+
+	if req.Payload.Reason == "" {
+		return terror.Error(terror.ErrInvalidInput, "A reason must be provided.")
+	}
+
+	if req.Payload.DurationMinutes == 0 {
+		return terror.Error(terror.ErrInvalidInput, "A duration must be provided.")
+	}
+
+	if req.Payload.PlayerID == user.ID {
+		return terror.Error(terror.ErrForbidden, "You cannot ban yourself.")
+	}
+
+	hasPermission, err := boiler.PlayersFeatures(
+		boiler.PlayersFeatureWhere.PlayerID.EQ(user.ID),
+		boiler.PlayersFeatureWhere.FeatureName.EQ(boiler.FeatureNameCHAT_BAN),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("failed to check if user has permission to execute chat ban")
+		return terror.Error(err)
+	}
+
+	if !hasPermission {
+		return terror.Error(terror.ErrUnauthorised)
+	}
+
+	exists, err := boiler.PlayerExists(gamedb.StdConn, req.Payload.PlayerID)
+	if err != nil {
+		l.Error().Err(err).Msg("could not check if player associated with player ID exists")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
+	}
+
+	if !exists {
+		l.Warn().Msg("tried to ban player that doesn't exist")
+		return terror.Error(fmt.Errorf("attempted to chat ban a player that doesnt exist"))
+	}
+
+	isAlreadyBanned, err := boiler.PlayerBans(
+		boiler.PlayerBanWhere.BannedPlayerID.EQ(req.Payload.PlayerID),
+		boiler.PlayerBanWhere.BanSendChat.EQ(true),
+		boiler.PlayerBanWhere.EndAt.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err == nil {
+		l.Warn().Interface("existingPlayerBan", isAlreadyBanned).Msg("player is already chat banned, skipping")
+		hours := int(time.Until(isAlreadyBanned.EndAt).Hours())
+		expiresIn := fmt.Sprintf("%d hour(s)", hours)
+		if hours < 1 {
+			expiresIn = fmt.Sprintf("%d minute(s)", int(time.Until(isAlreadyBanned.EndAt).Minutes()))
+		}
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("Player is already chat banned. Reason: '%s'. Expires in: %s.", isAlreadyBanned.Reason, expiresIn))
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("failed to check if player is already chat banned")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again.")
+	}
+
+	duration := time.Duration(time.Minute * time.Duration(req.Payload.DurationMinutes))
+	pb := &boiler.PlayerBan{
+		BanFrom:        boiler.BanFromTypeADMIN,
+		BannedPlayerID: req.Payload.PlayerID,
+		BannedByID:     user.ID,
+		Reason:         req.Payload.Reason,
+		BannedAt:       time.Now(),
+		EndAt:          time.Now().Add(duration),
+		BanSendChat:    true,
+	}
+	l = l.With().Interface("playerBan", pb).Logger()
+	err = pb.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("failed to create new player_ban entry in db")
+		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again or contact")
+	}
+
+	reply(true)
+
+	return nil
 }

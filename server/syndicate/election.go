@@ -6,6 +6,7 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -14,7 +15,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"sync"
 	"time"
 )
 
@@ -22,7 +22,7 @@ type ElectionSystem struct {
 	syndicateID string
 	factionID   string
 	isClosed    atomic.Bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func newElectionSystem(s *Syndicate) (*ElectionSystem, error) {
