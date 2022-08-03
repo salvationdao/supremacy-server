@@ -1078,8 +1078,7 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 type ChatReportRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ReportedUserID   string `json:"reported_user_id"`
-		ChatHistoryID    string `json:"chat_history_id"`
+		MessageID        string `json:"message_id"`
 		Reason           string `json:"reason"`
 		OtherDescription string `json:"other_description,omitempty"`
 		Description      string `json:"description"`
@@ -1100,8 +1099,8 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 	l = l.With().Interface("payload", req).Logger()
 
-	l = l.With().Interface("ChatHistoryID", req.Payload.ChatHistoryID).Logger()
-	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.ChatHistoryID)
+	l = l.With().Interface("ChatHistoryID", req.Payload.MessageID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.MessageID)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
 		return terror.Error(err, genericErrorMessage)
@@ -1116,11 +1115,14 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 
 	//check if user has already reported, if so return error
-	i := slices.Index(metadata.Reports, user.ID)
-	if i != -1 {
-		l.Error().Err(err).Msg("user reported message more than once")
-		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
-	}
+	//i := slices.Index(metadata.Reports, user.ID)
+	//if i != -1 {
+	//	l.Error().Err(err).Msg("user reported message more than once")
+	//	return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
+	//}
+
+	//get user who sent offending msg
+	reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
 
 	//get 5 mins before and 5 mins after specific to chat stream
 	msgs, err := boiler.ChatHistories(
@@ -1140,13 +1142,19 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 			return terror.Error(err, genericErrorMessage)
 		}
 
-		reportContext = reportContext + fmt.Sprintf("[%s] %s (%s): %s \n", msg.CreatedAt, p.Username, p.ID, msg.Text)
+		reportContext = reportContext + fmt.Sprintf("[%s] %s(%s): %s \n", msg.CreatedAt, p.Username.String, p.ID, msg.Text)
 	}
-	
-	//send through to zen desk
-	//must be in json format
-	//add user id to report metadata (cant report again)
+	reason := req.Payload.Reason
+	if reason == "Other" {
+		reason = req.Payload.Reason + "- " + req.Payload.OtherDescription
+	}
 
+	subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
+	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message: %s \n Reporter Comment:%s \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.Text, req.Payload.Description, reportContext)
+	//send through to zendesk
+	err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+
+	//add user id to report metadata (cant report again)
 	metadata.Reports = append(metadata.Reports, user.ID)
 
 	l = l.With().Interface("MarshalMetadata", metadata).Logger()
@@ -1165,30 +1173,10 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		return terror.Error(err, genericErrorMessage)
 	}
 
-	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
-	// change metadata of a specific message
-	fn := func(chatMessage *ChatMessage) bool {
-		if chatMessage.ID != chatHistory.ID {
-			return true
-		}
-
-		mt, ok := chatMessage.Data.(*MessageText)
-		if ok {
-			mt.Metadata = chatHistory.Metadata
-		}
-
-		return false
-	}
-
-	switch chatHistory.ChatStream {
-	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.WriteRange(fn)
-	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.WriteRange(fn)
-	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.WriteRange(fn)
-	default:
-		fc.API.GlobalChat.WriteRange(fn)
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	reply(true)
