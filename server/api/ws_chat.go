@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"golang.org/x/exp/slices"
 	"html"
 	"server"
@@ -13,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -119,7 +119,7 @@ type TextMessageMetadata struct {
 
 // Chatroom holds a specific chat room
 type Chatroom struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	factionID *server.FactionID
 	messages  []*ChatMessage
 }
@@ -304,7 +304,6 @@ func (api *API) MessageBroadcaster() {
 	for {
 		select {
 		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
-
 			banMessage := &MessageSystemBan{
 				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
@@ -351,9 +350,82 @@ func (api *API) MessageBroadcaster() {
 	}
 }
 
+func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, jsonTextMsgMeta null.JSON, logger zerolog.Logger) error {
+	logger = logger.With().Interface("updateMessageMetadata", chatHistory.ID).Logger()
+	fn := func(chatMessage *ChatMessage) bool {
+		if chatMessage.ID != chatHistory.ID {
+			return true
+		}
+
+		mt, ok := chatMessage.Data.(*MessageText)
+		if ok {
+			mt.Metadata = chatHistory.Metadata
+		}
+
+		return false
+	}
+
+	p, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
+	if err != nil {
+		logger.Error().Err(err).Msg("could not find chatHistory player")
+		return err
+	}
+
+	player := boiler.Player{
+		ID:               p.ID,
+		Username:         p.Username,
+		Gid:              p.Gid,
+		FactionID:        p.FactionID,
+		Rank:             p.Rank,
+		SentMessageCount: p.SentMessageCount,
+	}
+
+	playerStat, err := db.UserStatsGet(player.ID)
+	if err != nil {
+		logger.Error().Err(err).Msg("could get player stats")
+		return err
+	}
+
+	chatMessage := &ChatMessage{
+		ID:     chatHistory.ID,
+		Type:   boiler.ChatMSGTypeEnumTEXT,
+		SentAt: chatHistory.CreatedAt,
+		Data: &MessageText{
+			ID:           chatHistory.ID,
+			Message:      chatHistory.Text,
+			MessageColor: chatHistory.MessageColor,
+			FromUser:     player,
+			UserRank:     player.Rank,
+			FromUserStat: playerStat,
+			Lang:         chatHistory.Lang,
+			Metadata:     jsonTextMsgMeta,
+		},
+	}
+
+	logger = logger.With().Interface("publishMetadata", chatMessage.Data).Logger()
+	switch chatHistory.ChatStream {
+	case server.RedMountainFactionID:
+		api.RedMountainChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.RedMountainFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+	case server.BostonCyberneticsFactionID:
+		api.BostonChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.BostonCyberneticsFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+
+	case server.ZaibatsuFactionID:
+		api.ZaibatsuChat.WriteRange(fn)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", server.ZaibatsuFactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+	default:
+		api.GlobalChat.WriteRange(fn)
+		ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
+	}
+
+	return nil
+}
+
 // FactionChatRequest sends chat message to specific faction.
 type FactionChatRequest struct {
 	Payload struct {
+		Id              string           `json:"id"`
 		FactionID       server.FactionID `json:"faction_id"`
 		MessageColor    string           `json:"message_color"`
 		Message         string           `json:"message"`
@@ -383,7 +455,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	b2 := minuteBucket.Add(user.ID, 1)
 
 	if b1 == 0 || b2 == 0 {
-		return terror.Error(fmt.Errorf("too many messages"), "Too many messages.")
+		return terror.Warn(fmt.Errorf("too many messages"), "Too many messages.")
 	}
 
 	req := &FactionChatRequest{}
@@ -517,6 +589,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 
 		cm := boiler.ChatHistory{
+			ID:              req.Payload.Id,
 			FactionID:       player.FactionID.String,
 			PlayerID:        player.ID,
 			MessageColor:    req.Payload.MessageColor,
@@ -564,6 +637,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 	// global message
 	cm := boiler.ChatHistory{
+		ID:              req.Payload.Id,
 		FactionID:       player.FactionID.String,
 		PlayerID:        player.ID,
 		MessageColor:    req.Payload.MessageColor,
@@ -602,7 +676,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 
 	fc.API.GlobalChat.AddMessage(chatMessage)
 	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
-	reply(true)
+	reply(chatMessage)
 
 	return nil
 }
@@ -662,28 +736,10 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fn := func(chatMessage *ChatMessage) bool {
-		if chatMessage.ID != chatHistory.ID {
-			return true
-		}
-
-		mt, ok := chatMessage.Data.(*MessageText)
-		if ok {
-			mt.Metadata = chatHistory.Metadata
-		}
-
-		return false
-	}
-
-	switch chatHistory.ChatStream {
-	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.WriteRange(fn)
-	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.WriteRange(fn)
-	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.WriteRange(fn)
-	default:
-		fc.API.GlobalChat.WriteRange(fn)
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	reply(true)
@@ -715,6 +771,10 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 	if err != nil {
 		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
 		return terror.Error(err, genericErrorMessage)
+	}
+
+	if chatHistory.PlayerID == user.ID {
+		return terror.Error(fmt.Errorf("cannot react to user's own message"), "Cannot react to your own message.")
 	}
 
 	metadata := &TextMessageMetadata{}
@@ -782,28 +842,10 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fn := func(chatMessage *ChatMessage) bool {
-		if chatMessage.ID != chatHistory.ID {
-			return true
-		}
-
-		mt, ok := chatMessage.Data.(*MessageText)
-		if ok {
-			mt.Metadata = chatHistory.Metadata
-		}
-
-		return false
-	}
-
-	switch chatHistory.ChatStream {
-	case server.RedMountainFactionID:
-		fc.API.RedMountainChat.WriteRange(fn)
-	case server.BostonCyberneticsFactionID:
-		fc.API.BostonChat.WriteRange(fn)
-	case server.ZaibatsuFactionID:
-		fc.API.ZaibatsuChat.WriteRange(fn)
-	default:
-		fc.API.GlobalChat.WriteRange(fn)
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	reply(metadata.Likes)

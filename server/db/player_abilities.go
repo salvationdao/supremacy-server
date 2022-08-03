@@ -86,3 +86,23 @@ func PlayerAbilitiesList(
 
 	return result, nil
 }
+
+func PlayerAbilityAssign(playerID string, blueprintID string) error {
+	q := `
+		INSERT INTO 
+		    player_abilities (owner_id, blueprint_id, count)
+		VALUES 
+		    ($1, $2, 1)
+		ON CONFLICT 
+		    (owner_id, blueprint_id)
+		DO UPDATE SET
+			count = player_abilities.count + 1;
+	`
+
+	_, err := gamedb.StdConn.Exec(q, playerID, blueprintID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

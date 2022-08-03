@@ -72,11 +72,11 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyFactionEnlist, pc.PlayerFactionEnlistHandler)
 
-	api.SecureUserCommand(HubKeyPlayerRankGet, pc.PlayerRankGet)
-
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
+
+	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
 	return pc
 }
@@ -260,8 +260,6 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, user *
 	reply(userSettings.Value)
 	return nil
 }
-
-//const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
 func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *http.Request) (int, error) {
 	return helpers.EncodeJSON(w, false)
@@ -790,7 +788,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		Group:                "issue punish vote",
 		SubGroup:             string(punishOption.Key),
 		Description:          "issue vote for punishing player",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", user.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player punish vote")
@@ -954,7 +951,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list
@@ -992,7 +989,19 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
-const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
+func (pc *PlayerController) PlayersStatSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	us, err := db.UserStatsGet(user.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		return terror.Error(err, "Failed to load player stat")
+	}
+
+	if us != nil {
+		reply(us)
+	}
+
+	return nil
+}
 
 func (pc *PlayerController) PlayerRankGet(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	player, err := boiler.Players(
@@ -1456,6 +1465,22 @@ func TrimUsername(username string) string {
 	output = strings.Join(strings.Fields(output), " ")
 
 	return output
+}
+
+const HubKeyGenOneTimeToken = "GEN:ONE:TIME:TOKEN"
+
+// GenOneTimeToken Generates a token used to create a QR code to log a player into the supremacy companion app
+func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "GenOneTimeToken").Str("user id", user.ID).Logger()
+
+	resp, err := pc.API.Passport.GenOneTimeToken(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to generate QR code token")
+		return terror.Error(err, "Failed to get login token")
+	}
+
+	reply(resp)
+	return nil
 }
 
 type PlayerAvatarListRequest struct {

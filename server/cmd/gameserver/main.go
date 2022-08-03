@@ -161,6 +161,9 @@ func main() {
 
 					&cli.StringFlag{Name: "github_token", Value: "", EnvVars: []string{envPrefix + "_GITHUB_ACCESS_TOKEN", "GITHUB_PAT"}, Usage: "Github token for access to private repo"},
 
+					&cli.StringFlag{Name: "captcha_site_key", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SITE_KEY", "CAPTCHA_SITE_KEY"}, Usage: "Captcha site key"},
+					&cli.StringFlag{Name: "captcha_secret", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SECRET", "CAPTCHA_SECRET"}, Usage: "Captcha secret"},
+
 					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
 				},
@@ -322,7 +325,7 @@ func main() {
 					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
+						ws.PublishMessage(fmt.Sprintf("/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
@@ -779,6 +782,8 @@ func SetupAPI(
 		Address:               apiAddr,
 		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
 		AuthHangarCallbackURL: ctxCLI.String("auth_hangar_callback_url"),
+		CaptchaSiteKey:        ctxCLI.String("captcha_site_key"),
+		CaptchaSecret:         ctxCLI.String("captcha_secret"),
 	}
 
 	syncConfig := &synctool.StaticSyncTool{

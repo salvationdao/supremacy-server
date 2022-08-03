@@ -5,6 +5,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
@@ -23,7 +24,7 @@ type RecruitSystem struct {
 
 	applicationMap map[string]*Application
 
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func newRecruitSystem(s *Syndicate) (*RecruitSystem, error) {
@@ -115,7 +116,6 @@ func (rs *RecruitSystem) receiveApplication(application *boiler.SyndicateJoinApp
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupSyndicate),
 		Description:          "submit syndicate join application.",
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Str("player_id", application.ApplicantID).Str("amount", application.PaidAmount.String()).Err(err).Msg("Failed to submit syndicate join application fee.")

@@ -18,7 +18,7 @@ type CommandFunc func(key string, payload []byte, reply ReplyFunc) error
 var (
 	commands *CommandTree
 	commOnce sync.Once
-	commLock sync.RWMutex
+	commLock deadlock.RWMutex
 )
 
 func Endpoint(key string, fn CommandFunc) {

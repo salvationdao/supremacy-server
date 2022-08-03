@@ -181,16 +181,12 @@ type WarMachineJoinResp struct {
 	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
-type UserSupsMultiplierGetRequest struct {
-	UserID server.UserID `json:"user_id"`
-}
-
 type UserStatGetRequest struct {
 	UserID server.UserID `json:"user_id"`
 }
 
 func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &UserSupsMultiplierGetRequest{}
+	req := &UserStatGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, err

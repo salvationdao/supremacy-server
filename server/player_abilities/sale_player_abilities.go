@@ -2,13 +2,13 @@ package player_abilities
 
 import (
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -58,7 +58,7 @@ type SalePlayerAbilityManager struct {
 	Purchase chan *Purchase
 
 	closed *atomic.Bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {

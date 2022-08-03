@@ -26,35 +26,18 @@ const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
-const QueueLengthAdd KVKey = "queue_length_add"
 
 type KVKey string
-
-// Default contributor formula https://www.desmos.com/calculator/vbfa5llasg
-// KeyContributorMaxMultiplier = 3
-// KeyContributorMinMultiplier = 0.5
-// KeyContributorDecayMultiplier = 2
-// KeyContributorSharpnessMultiplier = 0.02
-const KeyContributorMaxMultiplier KVKey = "contributor_max_multiplier"
-const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
-const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
-const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
-const KeyAbilityFloorPrice KVKey = "ability_floor_price"
-const KeyBattleAbilityPriceDropRate KVKey = "battle_ability_price_drop_rate"
-const KeyFactionAbilityFloorPrice KVKey = "faction_ability_floor_price"
-const KeyFactionAbilityPriceDropRate KVKey = "faction_ability_price_drop_rate"
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
 const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
 const KeyMarketplaceListingAuctionReserveFee KVKey = "marketplace_listing_auction_reserve_fee"
 const KeyMarketplaceSaleCutPercentageFee KVKey = "marketplace_sale_cut_percentage_fee"
 
-const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
 const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
 const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_show_up_until_seconds"
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
-const KeyAbilityBroadcastRateMilliseconds KVKey = "ability_broadcast_rate_milliseconds"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
@@ -67,13 +50,9 @@ const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ba
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
-
-// repair
-
-const KeyMechRepairDefaultDurationMinutes KVKey = "mech_repair_default_duration_minutes"
-const KeyMechFastRepairDurationMinutes KVKey = "mech_fast_repair_duration_minutes"
-const KeyMechStandardRepairFee KVKey = "mech_standard_repair_fee"
-const KeyMechFastRepairFee KVKey = "mech_fast_repair_fee"
+const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
+const KeyBattleQueueFee KVKey = "battle_queue_fee"
+const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
