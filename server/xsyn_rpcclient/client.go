@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/rpc"
 	"server/gamelog"
+	"strings"
 	"sync"
 	"time"
 
@@ -95,7 +96,10 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 		}
 
 		if !errors.Is(err, rpc.ErrShutdown) {
-			gamelog.L.Error().Err(err).Msg("RPC call has failed.")
+			// TODO: create a error type to check
+			if !strings.Contains(err.Error(), "not enough funds") {
+				gamelog.L.Error().Err(err).Msg("RPC call has failed.")
+			}
 			return err
 		}
 

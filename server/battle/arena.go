@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server"
@@ -58,8 +57,8 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
-	RepairSystem             *RepairSystem
-	deadlock.RWMutex
+	RepairOfferCloseChan     chan *RepairOfferClose
+	sync.RWMutex
 }
 
 func (arena *Arena) IsClientConnected() error {
@@ -137,6 +136,19 @@ func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
 
 	for _, wm := range arena._currentBattle.WarMachines {
 		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
+}
+
+func (arena *Arena) CurrentBattleWarMachineByID(id string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.ID == id {
 			return wm
 		}
 	}
@@ -236,11 +248,6 @@ const (
 	Tick
 )
 
-// BATTLESPAWNCOUNT defines how many mechs to spawn
-// this should be refactored to a number in the data base
-// config table may be necessary, suggest key/value
-const BATTLESPAWNCOUNT int = 3
-
 func (mt MessageType) String() string {
 	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick", "unknown", "unknown wtf"}[mt]
 }
@@ -256,8 +263,8 @@ func NewArena(opts *Opts) *Arena {
 		opts:                     opts,
 		SystemBanManager:         NewSystemBanManager(),
 		SystemMessagingManager:   opts.SystemMessagingManager,
-		RepairSystem:             New(opts.RPCClient),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
+		RepairOfferCloseChan:     make(chan *RepairOfferClose),
 	}
 
 	var err error
@@ -328,7 +335,57 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
 }
 
-func (btl *Battle) QueueDefaultMechs() error {
+type QueueDefaultMechReq struct {
+	factionID string    // faction of the mech
+	queuedAt  time.Time // the time of queue
+	amount    int       // amount of mechs should queue
+}
+
+func (btl *Battle) GenerateDefaultQueueRequest(bqs []*boiler.BattleQueue) map[string]*QueueDefaultMechReq {
+	reqMap := make(map[string]*QueueDefaultMechReq)
+	reqMap[server.RedMountainFactionID] = &QueueDefaultMechReq{
+		factionID: server.RedMountainFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+	reqMap[server.BostonCyberneticsFactionID] = &QueueDefaultMechReq{
+		factionID: server.BostonCyberneticsFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+	reqMap[server.ZaibatsuFactionID] = &QueueDefaultMechReq{
+		factionID: server.ZaibatsuFactionID,
+		queuedAt:  time.Now(),
+		amount:    3,
+	}
+
+	for _, bq := range bqs {
+		req, ok := reqMap[bq.FactionID]
+		if ok {
+			req.amount -= 1
+			if bq.QueuedAt.Before(req.queuedAt) {
+				req.queuedAt = bq.QueuedAt.Add(-1 * time.Second)
+			}
+		}
+	}
+
+	// get maximum queue number
+	maxNum := 0
+	for _, req := range reqMap {
+		if req.amount > maxNum {
+			maxNum = req.amount
+		}
+	}
+
+	// set max amount default mech to all the factions
+	for _, req := range reqMap {
+		req.amount = maxNum
+	}
+
+	return reqMap
+}
+
+func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq) error {
 	defMechs, err := db.DefaultMechs()
 	if err != nil {
 		return err
@@ -343,19 +400,17 @@ func (btl *Battle) QueueDefaultMechs() error {
 	defer tx.Rollback()
 
 	for _, mech := range defMechs {
+		qr, ok := queueReqMap[mech.FactionID.String]
+		if !ok || qr.amount == 0 {
+			continue
+		}
+
 		mech.Name = helpers.GenerateStupidName()
 		mechToUpdate := boiler.Mech{
 			ID:   mech.ID,
 			Name: mech.Name,
 		}
 		_, _ = mechToUpdate.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
-
-		// insert default mech into battle
-		ownerID, err := uuid.FromString(mech.OwnerID)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-			return err
-		}
 
 		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(tx)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -369,9 +424,9 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		bq := &boiler.BattleQueue{
 			MechID:    mech.ID,
-			QueuedAt:  time.Now(),
-			FactionID: mech.FactionID.String,
-			OwnerID:   ownerID.String(),
+			QueuedAt:  qr.queuedAt,
+			FactionID: qr.factionID,
+			OwnerID:   mech.OwnerID,
 		}
 
 		err = bq.Insert(tx, boil.Infer())
@@ -381,6 +436,8 @@ func (btl *Battle) QueueDefaultMechs() error {
 				Err(err).Msg("unable to insert mech into queue")
 			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
+
+		qr.amount -= 1
 	}
 
 	err = tx.Commit()
@@ -418,11 +475,6 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			arena.connected.Store(false)
 			gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
-
-			btl := arena.CurrentBattle()
-			if btl != nil && btl.spoils != nil {
-				btl.spoils.End()
-			}
 		}
 	}()
 
@@ -710,35 +762,12 @@ func (arena *Arena) BribeStageSubscribe(ctx context.Context, key string, payload
 	return nil
 }
 
-const HubKeyBattleAbilityProgressBarUpdated = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
-
-const HubKeyAbilityPriceUpdated = "ABILITY:PRICE:UPDATED"
-
 type GameAbilityPriceResponse struct {
 	ID          string `json:"id"`
 	OfferingID  string `json:"offering_id"`
 	SupsCost    string `json:"sups_cost"`
 	CurrentSups string `json:"current_sups"`
 	ShouldReset bool   `json:"should_reset"`
-}
-
-const HubKeySpoilOfWarUpdated = "SPOIL:OF:WAR:UPDATED"
-
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	sows, err := db.LastTwoSpoilOfWarAmount()
-	if err != nil || len(sows) == 0 {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get last two spoil of war amount")
-		return nil
-	}
-
-	spoilOfWars := []string{}
-	for _, sow := range sows {
-		spoilOfWars = append(spoilOfWars, sow.String())
-	}
-
-	reply(spoilOfWars)
-
-	return nil
 }
 
 func (arena *Arena) SendSettings(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -789,6 +818,7 @@ type ZoneChangePayload struct {
 	ZoneIndex int    `json:"zoneIndex"`
 	WarnTime  int    `json:"warnTime"`
 }
+
 type ZoneChangeEvent struct {
 	Location   server.GameLocation `json:"location"`
 	Radius     int                 `json:"radius"`
@@ -859,6 +889,7 @@ func (arena *Arena) start() {
 			gamelog.L.Warn().Bytes("payload", payload).Err(err).Msg("empty game client payload")
 			continue
 		}
+
 		mt := MessageType(payload[0])
 		if err != nil {
 			gamelog.L.Warn().Int("message_type", int(mt)).Bytes("payload", payload).Err(err).Msg("websocket to game client failed")
@@ -875,116 +906,109 @@ func (arena *Arena) start() {
 				continue
 			}
 
-			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message received")
+			L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(mt)).Str("battleCommand", msg.BattleCommand).Logger()
+			L.Info().Msg("game client message received")
 
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
 				var dataPayload *MapDetailsPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 
 				// update map detail
 				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 
 				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
 				if err != nil {
-					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+					L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
 				}
 
 				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-					gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+					L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
 				}
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
+					L.Error().Msg("battle start load out has failed")
 					return
 				}
 				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
 				arena.NewBattleChan <- battleInfo
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:OUTRO_FINISHED":
-				gamelog.L.Info().Msg("Battle outro is finished, starting a new battle")
 				arena.beginBattle()
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:INTRO_FINISHED":
 				btl.start()
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
 			case "BATTLE:WAR_MACHINE_DESTROYED":
+				// do not process, if battle already ended
+				if btl.stage.Load() == BattleStageEnd {
+					continue
+				}
+
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 					continue
 				}
 				btl.Destroyed(&dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:WAR_MACHINE_PICKUP":
 				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
-
 			case "BATTLE:END":
+				// set battle stage
+				btl.stage.Store(BattleStageEnd)
+
 				var dataPayload *BattleEndPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 					continue
 				}
 				btl.end(dataPayload)
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:AI_SPAWNED":
 				var dataPayload *AISpawnedRequest
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
 				err = btl.AISpawned(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed to spawn ai")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
 				var dataPayload *AbilityMoveCommandCompletePayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal ability move command complete payload")
+					L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
 					continue
 				}
 				err = btl.UpdateWarMachineMoveCommand(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed update war machine move command")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			case "BATTLE:ZONE_CHANGE":
 				var dataPayload *ZoneChangePayload
 				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle zone change payload")
+					L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 					continue
 				}
 
 				err = btl.ZoneChange(dataPayload)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Err(err)
+					L.Error().Err(err).Msg("failed to zone change")
 				}
-				gamelog.L.Info().Str("msg.BattleCommand", msg.BattleCommand).Msg("game client message handled")
-
 			default:
-				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
+				L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 			}
+			L.Debug().Msg("game client message handled")
 		case Tick:
 			btl.Tick(payload)
 		default:
-			gamelog.L.Warn().Str("MessageType", string(mt)).Err(err).Msg("Battle Arena WS: no message response")
+			gamelog.L.Warn().Str("message_type", string(mt)).Str("msg", string(payload)).Err(err).Msg("Battle Arena WS: no message response")
 		}
 	}
 }
@@ -1070,7 +1094,7 @@ func (arena *Arena) beginBattle() {
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
+	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 
 	err = btl.Load()
@@ -1078,7 +1102,7 @@ func (arena *Arena) beginBattle() {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
-	// order the mechs by facton id
+	// order the mechs by faction id
 
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount, btl *Battle) {

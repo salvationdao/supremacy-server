@@ -2,6 +2,7 @@ package xsyn_rpcclient
 
 import (
 	"server/gamelog"
+	"strings"
 )
 
 // SpendSupMessage tells the passport to make a transfer
@@ -10,7 +11,10 @@ func (pp *XsynXrpcClient) SpendSupMessage(req SpendSupsReq) (string, error) {
 	resp := &SpendSupsResp{}
 	err := pp.XrpcClient.Call("S.SupremacySpendSupsHandler", req, resp)
 	if err != nil {
-		gamelog.L.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+		// TODO: create a error type to check
+		if !strings.Contains(err.Error(), "not enough funds") {
+			gamelog.L.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+		}
 		return "", err
 	}
 

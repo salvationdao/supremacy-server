@@ -14,4 +14,7 @@ type Config struct {
 	Address               string
 	AuthCallbackURL       string
 	AuthHangarCallbackURL string
+
+	CaptchaSiteKey string
+	CaptchaSecret  string
 }

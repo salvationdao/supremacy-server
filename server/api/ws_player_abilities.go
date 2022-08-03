@@ -164,7 +164,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	inventoryLimit := spa.R.Blueprint.InventoryLimit
 	if pa.Count > inventoryLimit {
 		l.Debug().Msg("user has reached their player ability inventory count")
-		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+		return terror.Warn(fmt.Errorf("inventory limit reached"), fmt.Sprintf("You have reached your limit of %d for this ability.", inventoryLimit))
 	}
 
 	_, err = pa.Update(tx, boil.Infer())
@@ -268,12 +268,11 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	supTransactionID, err := pac.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
-		ToUserID:             battle.SupremacyUserID,
+		ToUserID:             uuid.FromStringOrNil(server.SupremacyGameUserID),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("player_ability_purchase|%s|%d", req.Payload.AbilityID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Player Abilities",
 		Description:          fmt.Sprintf("Purchased player ability %s", spa.R.Blueprint.Label),
-		NotSafe:              true,
 	})
 	l = l.With().Interface("txID", supTransactionID).Logger()
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
@@ -332,7 +331,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if pa.Count > inventoryLimit {
 		refundFunc()
 		l.Debug().Msg("user has reached their player ability inventory count")
-		return terror.Error(fmt.Errorf("You have reached your limit of %d for this ability.", inventoryLimit))
+		return terror.Warn(fmt.Errorf("inventory limit reached"), fmt.Sprintf("You have reached your limit of %d for this ability.", inventoryLimit))
 	}
 
 	_, err = pa.Update(tx, boil.Infer())

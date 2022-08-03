@@ -84,6 +84,18 @@ func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *P
 	return serverPlayer
 }
 
+func PublicPlayerFromBoiler(p *boiler.Player) *PublicPlayer {
+	return &PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		FactionID: p.FactionID,
+		Gid:       p.Gid,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
+}
+
 // Brief trim off confidential data from player
 func (p *Player) Brief() *Player {
 	return &Player{
