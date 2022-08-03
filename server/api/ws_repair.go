@@ -212,7 +212,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		Description:          "repair offer tax",
 	})
 	if err != nil {
-		gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay sups for offering repair job")
+		gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay tax for offering repair job")
 		return terror.Error(err, "Failed to pay sups for offering repair job.")
 	}
 
