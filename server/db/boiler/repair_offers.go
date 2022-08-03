@@ -34,6 +34,7 @@ type RepairOffer struct {
 	ClosedAt          null.Time       `boiler:"closed_at" boil:"closed_at" json:"closed_at,omitempty" toml:"closed_at" yaml:"closed_at,omitempty"`
 	PaidTXID          null.String     `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
 	TaxTXID           null.String     `boiler:"tax_tx_id" boil:"tax_tx_id" json:"tax_tx_id,omitempty" toml:"tax_tx_id" yaml:"tax_tx_id,omitempty"`
+	RefundTXID        null.String     `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
 	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt         time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt         null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -53,6 +54,7 @@ var RepairOfferColumns = struct {
 	ClosedAt          string
 	PaidTXID          string
 	TaxTXID           string
+	RefundTXID        string
 	CreatedAt         string
 	UpdatedAt         string
 	DeletedAt         string
@@ -67,6 +69,7 @@ var RepairOfferColumns = struct {
 	ClosedAt:          "closed_at",
 	PaidTXID:          "paid_tx_id",
 	TaxTXID:           "tax_tx_id",
+	RefundTXID:        "refund_tx_id",
 	CreatedAt:         "created_at",
 	UpdatedAt:         "updated_at",
 	DeletedAt:         "deleted_at",
@@ -83,6 +86,7 @@ var RepairOfferTableColumns = struct {
 	ClosedAt          string
 	PaidTXID          string
 	TaxTXID           string
+	RefundTXID        string
 	CreatedAt         string
 	UpdatedAt         string
 	DeletedAt         string
@@ -97,6 +101,7 @@ var RepairOfferTableColumns = struct {
 	ClosedAt:          "repair_offers.closed_at",
 	PaidTXID:          "repair_offers.paid_tx_id",
 	TaxTXID:           "repair_offers.tax_tx_id",
+	RefundTXID:        "repair_offers.refund_tx_id",
 	CreatedAt:         "repair_offers.created_at",
 	UpdatedAt:         "repair_offers.updated_at",
 	DeletedAt:         "repair_offers.deleted_at",
@@ -115,6 +120,7 @@ var RepairOfferWhere = struct {
 	ClosedAt          whereHelpernull_Time
 	PaidTXID          whereHelpernull_String
 	TaxTXID           whereHelpernull_String
+	RefundTXID        whereHelpernull_String
 	CreatedAt         whereHelpertime_Time
 	UpdatedAt         whereHelpertime_Time
 	DeletedAt         whereHelpernull_Time
@@ -129,6 +135,7 @@ var RepairOfferWhere = struct {
 	ClosedAt:          whereHelpernull_Time{field: "\"repair_offers\".\"closed_at\""},
 	PaidTXID:          whereHelpernull_String{field: "\"repair_offers\".\"paid_tx_id\""},
 	TaxTXID:           whereHelpernull_String{field: "\"repair_offers\".\"tax_tx_id\""},
+	RefundTXID:        whereHelpernull_String{field: "\"repair_offers\".\"refund_tx_id\""},
 	CreatedAt:         whereHelpertime_Time{field: "\"repair_offers\".\"created_at\""},
 	UpdatedAt:         whereHelpertime_Time{field: "\"repair_offers\".\"updated_at\""},
 	DeletedAt:         whereHelpernull_Time{field: "\"repair_offers\".\"deleted_at\""},
@@ -164,9 +171,9 @@ func (*repairOfferR) NewStruct() *repairOfferR {
 type repairOfferL struct{}
 
 var (
-	repairOfferAllColumns            = []string{"id", "repair_case_id", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "paid_tx_id", "tax_tx_id", "created_at", "updated_at", "deleted_at"}
+	repairOfferAllColumns            = []string{"id", "repair_case_id", "offered_by_id", "blocks_total", "offered_sups_amount", "expires_at", "finished_reason", "closed_at", "paid_tx_id", "tax_tx_id", "refund_tx_id", "created_at", "updated_at", "deleted_at"}
 	repairOfferColumnsWithoutDefault = []string{"repair_case_id", "blocks_total", "offered_sups_amount", "expires_at"}
-	repairOfferColumnsWithDefault    = []string{"id", "offered_by_id", "finished_reason", "closed_at", "paid_tx_id", "tax_tx_id", "created_at", "updated_at", "deleted_at"}
+	repairOfferColumnsWithDefault    = []string{"id", "offered_by_id", "finished_reason", "closed_at", "paid_tx_id", "tax_tx_id", "refund_tx_id", "created_at", "updated_at", "deleted_at"}
 	repairOfferPrimaryKeyColumns     = []string{"id"}
 	repairOfferGeneratedColumns      = []string{}
 )

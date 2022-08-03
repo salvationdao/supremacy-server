@@ -50,6 +50,7 @@ CREATE TABLE repair_offers(
     closed_at timestamptz,
     paid_tx_id text,
     tax_tx_id text,
+    refund_tx_id text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     deleted_at timestamptz,

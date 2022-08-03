@@ -162,7 +162,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 			}
 
 			// refund reward
-			_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			refundTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 				ToUserID:             uuid.Must(uuid.FromString(ro.OfferedByID.String)),
 				Amount:               amount.StringFixed(0),
@@ -178,6 +178,14 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 					Str("amount", amount.StringFixed(0)).
 					Err(err).Msg("Failed to refund unclaimed repair offer reward.")
 				return terror.Error(err, "Failed to refund unclaimed repair offer reward.")
+			}
+
+			ro.RefundTXID = null.StringFrom(refundTxID)
+			_, err = ro.Update(tx, boil.Whitelist(boiler.RepairOfferColumns.RefundTXID))
+			if err != nil {
+				gamelog.L.Error().
+					Interface("repair offer", ro).
+					Err(err).Msg("Failed to update repair offer refund transaction id")
 			}
 		}
 	}
