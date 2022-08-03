@@ -756,6 +756,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 	return playerRewards, mechRewars
 }
 
+// RewardPlayerSups reward player sups
 func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
 	playerID := queueFee.PaidByID
 	tax := supsReward.Mul(taxRatio)
@@ -838,6 +839,7 @@ func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward 
 	return pw
 }
 
+// RewardPlayerAbility reward mech owners from lose faction one player ability
 func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 	pws := []*PlayerReward{}
 
@@ -885,7 +887,7 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 			}
 		}
 
-		// skip, if no player ability is full
+		// skip, if no player ability is available
 		if len(availableAbilities) == 0 {
 			sysMsg := boiler.SystemMessage{
 				PlayerID: pid,

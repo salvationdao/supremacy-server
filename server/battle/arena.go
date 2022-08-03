@@ -267,7 +267,7 @@ func NewArena(opts *Opts) *Arena {
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 		RepairOfferCloseChan:     make(chan *RepairOfferClose),
-		gameClientJsonDataChan:   make(chan []byte, 10),
+		gameClientJsonDataChan:   make(chan []byte, 3),
 	}
 
 	var err error
@@ -288,6 +288,9 @@ func NewArena(opts *Opts) *Arena {
 
 	// start player rank updater
 	arena.PlayerRankUpdater()
+
+	// speed up mech stat broadcast by separate json data and binary data
+	go arena.GameClientJsonDataParser()
 
 	return arena
 }
