@@ -494,13 +494,18 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return nil
 	}
 
+	time.Sleep(1 * time.Second)
+
 	req := &RepairAgentCompleteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	ra, err := boiler.FindRepairAgent(gamedb.StdConn, req.Payload.RepairAgentID)
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(req.Payload.RepairAgentID),
+		qm.Load(boiler.RepairAgentRels.RepairOffer),
+	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load repair agent.")
 	}
@@ -549,48 +554,52 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to load repair case.")
 	}
 
-	// claim sups
-	ro, err := db.RepairOfferDetail(ra.RepairOfferID)
-	if err != nil {
-		return terror.Error(err, "Failed to load repair offer")
-	}
-
-	// if it is not a self offer, pay the agent
-	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
-		// claim reward
-		payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-			Amount:               ro.SupsWorthPerBlock.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupRepair),
-			Description:          "claim repair offer reward.",
-		})
+	// if it is not a self repair
+	if ra.R.RepairOffer.OfferedByID.Valid {
+		// claim sups
+		ro, err := db.RepairOfferDetail(ra.RepairOfferID)
 		if err != nil {
-			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
-			return terror.Error(err, "Failed to pay sups for offering repair job.")
+			return terror.Error(err, "Failed to load repair offer")
 		}
 
-		ra.PayoutTXID = null.StringFrom(payoutTXID)
-		_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
-		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("repair agent", ra).
-				Msg("Failed to update repair agent payout tx id")
+		// if it is not a self offer, pay the agent
+		if ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
+			// claim reward
+			payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+				Amount:               ro.SupsWorthPerBlock.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupRepair),
+				Description:          "claim repair offer reward.",
+			})
+			if err != nil {
+				gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
+				return terror.Error(err, "Failed to pay sups for offering repair job.")
+			}
+
+			ra.PayoutTXID = null.StringFrom(payoutTXID)
+			_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
+			if err != nil {
+				gamelog.L.Error().Err(err).
+					Interface("repair agent", ra).
+					Msg("Failed to update repair agent payout tx id")
+			}
+
 		}
 
+		// broadcast result if repair is not completed
+		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
+			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
+		}
 	}
 
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-		if ro.OfferedByID.Valid {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
-		}
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
-
 		reply(true)
 		return nil
 	}
