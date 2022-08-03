@@ -610,6 +610,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		}
 	}
 
+	firstRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyFirstRankFactionRewardRatio, decimal.NewFromFloat(0.5))
+	secondRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeySecondRankFactionRewardRatio, decimal.NewFromFloat(0.3))
+	thirdRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyThirdRankFactionRewardRatio, decimal.NewFromFloat(0.2))
+
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 	for i, factionID := range winningFactionOrder {
@@ -619,7 +623,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.5)).Div(playerPerFaction),
+						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
@@ -658,7 +662,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.3)).Div(playerPerFaction),
+						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
@@ -696,7 +700,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.2)).Div(playerPerFaction),
+						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
@@ -756,6 +760,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 	return playerRewards, mechRewars
 }
 
+// RewardPlayerSups reward player sups
 func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
 	playerID := queueFee.PaidByID
 	tax := supsReward.Mul(taxRatio)
@@ -838,16 +843,20 @@ func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward 
 	return pw
 }
 
+// RewardPlayerAbility reward mech owners from lose faction one player ability
 func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 	pws := []*PlayerReward{}
 
 	if len(playerIDs) == 0 {
 		return pws
 	}
-	bpas, err := boiler.BlueprintPlayerAbilities().All(gamedb.StdConn)
+
+	bpas, err := boiler.SalePlayerAbilities(
+		boiler.SalePlayerAbilityWhere.RarityWeight.GT(0),
+		qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load blueprint player abilities")
-		return pws
+		gamelog.L.Error().Err(err).Msg("failed to refresh pool of sale abilities from db")
 	}
 
 	for _, pid := range playerIDs {
@@ -860,7 +869,7 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 			continue
 		}
 
-		availableAbility := []*boiler.BlueprintPlayerAbility{}
+		availableAbilities := []*boiler.SalePlayerAbility{}
 		for _, bpa := range bpas {
 			isAvailable := true
 			for _, pa := range pas {
@@ -869,20 +878,21 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 				}
 
 				// if player has the ability, check ability is reach the limit
-				if pa.Count >= bpa.InventoryLimit {
+				if pa.Count >= bpa.R.Blueprint.InventoryLimit {
 					isAvailable = false
 				}
 
 				break
 			}
 
+			// collect available abilities
 			if isAvailable {
-				availableAbility = append(availableAbility, bpa)
+				availableAbilities = append(availableAbilities, bpa)
 			}
 		}
 
-		// skip, if no player ability is full
-		if len(availableAbility) == 0 {
+		// skip, if no player ability is available
+		if len(availableAbilities) == 0 {
 			sysMsg := boiler.SystemMessage{
 				PlayerID: pid,
 				SenderID: server.SupremacyBattleUserID,
@@ -900,11 +910,22 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 			continue
 		}
 
+		// create the pool
+		pool := []*boiler.SalePlayerAbility{}
+		for _, aa := range availableAbilities {
+			for i := 0; i < aa.RarityWeight; i++ {
+				pool = append(pool, aa)
+			}
+		}
+
 		// randomly assign an ability
 		rand.Seed(time.Now().UnixNano())
-		ability := availableAbility[rand.Intn(len(availableAbility))]
+		rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 
-		err = db.PlayerAbilityAssign(pid, ability.ID)
+		rand.Seed(time.Now().UnixNano())
+		ability := availableAbilities[rand.Intn(len(availableAbilities))]
+
+		err = db.PlayerAbilityAssign(pid, ability.BlueprintID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("player id", pid).Str("ability id", ability.ID).Msg("Failed to assign ability to the player")
 			continue
@@ -912,7 +933,7 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 
 		pws = append(pws, &PlayerReward{
 			PlayerID:              pid,
-			RewardedPlayerAbility: ability,
+			RewardedPlayerAbility: ability.R.Blueprint,
 		})
 	}
 

@@ -171,6 +171,7 @@ const (
 	FeatureNamePUBLIC_PROFILE  = "PUBLIC_PROFILE"
 	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
 	FeatureNameCHAT_BAN        = "CHAT_BAN"
+	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
 )
 
 // Enum values for AbilityLevel
