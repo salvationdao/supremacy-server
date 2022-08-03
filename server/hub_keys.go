@@ -37,6 +37,7 @@ const HubKeyRepairOfferClose = "MECH:REPAIR:OFFER:CLOSE"
 const HubKeyRepairAgentRegister = "REPAIR:AGENT:REGISTER"
 const HubKeyRepairAgentRecord = "REPAIR:AGENT:RECORD"
 const HubKeyRepairAgentComplete = "REPAIR:AGENT:COMPLETE"
+const HubKeyRepairAgentAbandon = "REPAIR:AGENT:ABANDON"
 const HubKeyMechRepairCase = "MECH:REPAIR:CASE"
 const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
 
