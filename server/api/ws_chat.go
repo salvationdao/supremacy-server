@@ -1115,11 +1115,11 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 
 	//check if user has already reported, if so return error
-	//i := slices.Index(metadata.Reports, user.ID)
-	//if i != -1 {
-	//	l.Error().Err(err).Msg("user reported message more than once")
-	//	return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
-	//}
+	i := slices.Index(metadata.Reports, user.ID)
+	if i != -1 {
+		l.Error().Err(err).Msg("user reported message more than once")
+		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
+	}
 
 	//get user who sent offending msg
 	reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
@@ -1129,6 +1129,7 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		boiler.ChatHistoryWhere.ChatStream.EQ(chatHistory.ChatStream),
 		boiler.ChatHistoryWhere.CreatedAt.GT(chatHistory.CreatedAt.Add(time.Minute*(-5))),
 		boiler.ChatHistoryWhere.CreatedAt.LT(chatHistory.CreatedAt.Add(time.Minute*5)),
+		qm.OrderBy("created_at"),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
@@ -1142,7 +1143,13 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 			return terror.Error(err, genericErrorMessage)
 		}
 
+		if msg.ID == chatHistory.ID {
+			reportContext = reportContext + fmt.Sprintf(" \n ")
+		}
 		reportContext = reportContext + fmt.Sprintf("[%s] %s(%s): %s \n", msg.CreatedAt, p.Username.String, p.ID, msg.Text)
+		if msg.ID == chatHistory.ID {
+			reportContext = reportContext + fmt.Sprintf(" \n ")
+		}
 	}
 	reason := req.Payload.Reason
 	if reason == "Other" {
@@ -1150,7 +1157,7 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 
 	subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
-	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message: %s \n Reporter Comment:%s \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.Text, req.Payload.Description, reportContext)
+	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
 	//send through to zendesk
 	err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
 
