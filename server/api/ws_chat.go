@@ -768,6 +768,10 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 		return terror.Error(err, genericErrorMessage)
 	}
 
+	if chatHistory.PlayerID == user.ID {
+		return terror.Error(fmt.Errorf("cannot react to user's own message"), "Cannot react to your own message.")
+	}
+
 	metadata := &TextMessageMetadata{}
 
 	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
