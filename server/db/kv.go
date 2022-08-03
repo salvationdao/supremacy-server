@@ -52,13 +52,9 @@ const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ba
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
-
-// repair
-
-const KeyMechRepairDefaultDurationMinutes KVKey = "mech_repair_default_duration_minutes"
-const KeyMechFastRepairDurationMinutes KVKey = "mech_fast_repair_duration_minutes"
-const KeyMechStandardRepairFee KVKey = "mech_standard_repair_fee"
-const KeyMechFastRepairFee KVKey = "mech_fast_repair_fee"
+const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
+const KeyBattleQueueFee KVKey = "battle_queue_fee"
+const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"

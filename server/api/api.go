@@ -2,9 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"server"
 	"server/battle"
 	"server/db"
@@ -15,8 +18,11 @@ import (
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/pemistahl/lingua-go"
@@ -98,6 +104,9 @@ type API struct {
 	ZaibatsuChat     *Chatroom
 	ProfanityManager *profanities.ProfanityManager
 
+	// captcha
+	captcha *captcha
+
 	SyndicateSystem *syndicate.System
 
 	Config *server.Config
@@ -155,6 +164,11 @@ func NewAPI(
 		ProfanityManager: pm,
 		SyndicateSystem:  ss,
 		SyncConfig:       syncConfig,
+		captcha: &captcha{
+			secret:    config.CaptchaSecret,
+			siteKey:   config.CaptchaSiteKey,
+			verifyUrl: "https://hcaptcha.com/siteverify",
+		},
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -186,7 +200,7 @@ func NewAPI(
 	NewSyndicateController(api)
 	_ = NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
-	NewWSWarMachineController(api)
+	NewMechRepairController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -249,18 +263,20 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false, "/sale_abilities"))
+				s.Use(api.AuthWS(false, false, "repair"))
 
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
+				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
+				s.WS("/battle_end_result", battle.HubKeyBattleEndDetailUpdated, nil)
 
 				// endpoint for demoing battle ability showcase to non-login player
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
 
 				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
-				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler), MustLogin)
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
@@ -270,7 +286,12 @@ func NewAPI(
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
-				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
+
+				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe, MustLogin)
+				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList, MustLogin)
+				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil, MustLogin)
+				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe, MustLogin)
+				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe, MustLogin)
 			}))
 
 			// secured user route ws
@@ -278,11 +299,14 @@ func NewAPI(
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
+				s.WS("/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler))
+				s.WS("/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
 				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
+				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
 			}))
 
 			// secured faction route ws
@@ -296,6 +320,7 @@ func NewAPI(
 				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechDetail))
+				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
 				// subscription from battle
@@ -307,9 +332,6 @@ func NewAPI(
 				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
-
-				s.WS("/mech/{mech_id}/repair_status", server.WarMachineRepairStatusSubscribe, server.MustSecureFaction(api.WarMachineRepairStatusSubscribeHandler))
-				s.WS("/mech/{mech_id}/repair-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 
 				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
@@ -363,6 +385,7 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
+	go api.BattleArena.RepairOfferCleaner()
 
 	return api, nil
 }
@@ -508,7 +531,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 
 				exists := false
 				for _, p := range onlyAuthPaths {
-					if p == path {
+					if strings.Contains(path, p) {
 						exists = true
 						break
 					}
@@ -598,4 +621,52 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 	}
 
 	return serverPlayer, nil
+}
+
+type captcha struct {
+	secret    string
+	siteKey   string
+	verifyUrl string
+}
+
+func (c *captcha) verify(token string) error {
+	if token == "" {
+		return terror.Error(fmt.Errorf("token is empty"), "Token is empty.")
+	}
+
+	resp, err := http.PostForm(c.verifyUrl, url.Values{
+		"secret":   {c.secret},
+		"response": {token},
+	})
+
+	if err != nil {
+		return terror.Error(err, "Failed to verify token")
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return terror.Error(err, "Read token")
+	}
+
+	type captchaResp struct {
+		Success   bool   `json:"success"`
+		ErrorCode string `json:"error-codes"`
+	}
+
+	cr := &captchaResp{}
+	err = json.Unmarshal(body, cr)
+	if err != nil {
+		return terror.Error(err, "Failed to read captcha response")
+	}
+
+	if cr.ErrorCode != "" {
+		gamelog.L.Debug().Msg(cr.ErrorCode)
+	}
+
+	if !cr.Success {
+		return terror.Error(fmt.Errorf("verification failed"), "Failed to verify captcha token")
+	}
+
+	return nil
 }

@@ -1,10 +1,11 @@
 package battle
 
 import (
-	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -16,6 +17,7 @@ type WarMachine struct {
 	OwnedByID     string  `json:"ownedByID"`
 	OwnerUsername string  `json:"ownerUsername"`
 	Name          string  `json:"name"`
+	Label         string  `json:"label"`
 	ParticipantID byte    `json:"participantID"`
 	FactionID     string  `json:"factionID"`
 	MaxHealth     uint32  `json:"maxHealth"`
@@ -23,9 +25,10 @@ type WarMachine struct {
 	Health        uint32  `json:"health"`
 	AIType        *AIType `json:"aiType"`
 
-	Model string `json:"model"`
-	Skin  string `json:"skin"`
-	Speed int    `json:"speed"`
+	ModelID string `json:"modelID"`
+	Model   string `json:"model"`
+	Skin    string `json:"skin"`
+	Speed   int    `json:"speed"`
 
 	Faction *Faction `json:"faction"`
 	Tier    string   `json:"tier"`

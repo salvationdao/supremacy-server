@@ -29,6 +29,7 @@ type MechModel struct {
 	DefaultChassisSkinID string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
 	BrandID              null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
 	MechType             null.String `boiler:"mech_type" boil:"mech_type" json:"mech_type,omitempty" toml:"mech_type" yaml:"mech_type,omitempty"`
+	RepairBlocks         int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
 
 	R *mechModelR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechModelL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var MechModelColumns = struct {
 	DefaultChassisSkinID string
 	BrandID              string
 	MechType             string
+	RepairBlocks         string
 }{
 	ID:                   "id",
 	Label:                "label",
@@ -48,6 +50,7 @@ var MechModelColumns = struct {
 	DefaultChassisSkinID: "default_chassis_skin_id",
 	BrandID:              "brand_id",
 	MechType:             "mech_type",
+	RepairBlocks:         "repair_blocks",
 }
 
 var MechModelTableColumns = struct {
@@ -57,6 +60,7 @@ var MechModelTableColumns = struct {
 	DefaultChassisSkinID string
 	BrandID              string
 	MechType             string
+	RepairBlocks         string
 }{
 	ID:                   "mech_models.id",
 	Label:                "mech_models.label",
@@ -64,6 +68,7 @@ var MechModelTableColumns = struct {
 	DefaultChassisSkinID: "mech_models.default_chassis_skin_id",
 	BrandID:              "mech_models.brand_id",
 	MechType:             "mech_models.mech_type",
+	RepairBlocks:         "mech_models.repair_blocks",
 }
 
 // Generated where
@@ -75,6 +80,7 @@ var MechModelWhere = struct {
 	DefaultChassisSkinID whereHelperstring
 	BrandID              whereHelpernull_String
 	MechType             whereHelpernull_String
+	RepairBlocks         whereHelperint
 }{
 	ID:                   whereHelperstring{field: "\"mech_models\".\"id\""},
 	Label:                whereHelperstring{field: "\"mech_models\".\"label\""},
@@ -82,6 +88,7 @@ var MechModelWhere = struct {
 	DefaultChassisSkinID: whereHelperstring{field: "\"mech_models\".\"default_chassis_skin_id\""},
 	BrandID:              whereHelpernull_String{field: "\"mech_models\".\"brand_id\""},
 	MechType:             whereHelpernull_String{field: "\"mech_models\".\"mech_type\""},
+	RepairBlocks:         whereHelperint{field: "\"mech_models\".\"repair_blocks\""},
 }
 
 // MechModelRels is where relationship names are stored.
@@ -126,9 +133,9 @@ func (*mechModelR) NewStruct() *mechModelR {
 type mechModelL struct{}
 
 var (
-	mechModelAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type"}
+	mechModelAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks"}
 	mechModelColumnsWithoutDefault = []string{"label", "default_chassis_skin_id"}
-	mechModelColumnsWithDefault    = []string{"id", "created_at", "brand_id", "mech_type"}
+	mechModelColumnsWithDefault    = []string{"id", "created_at", "brand_id", "mech_type", "repair_blocks"}
 	mechModelPrimaryKeyColumns     = []string{"id"}
 	mechModelGeneratedColumns      = []string{}
 )

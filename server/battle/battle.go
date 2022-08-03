@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -18,6 +19,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -407,7 +411,7 @@ func (btl *Battle) endAbilities() {
 		}
 	}()
 
-	gamelog.L.Info().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
+	gamelog.L.Debug().Msgf("cleaning up AbilitySystem(): %s", btl.ID)
 
 	if btl.AbilitySystem() == nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Msg("battle did not have AbilitySystem()!")
@@ -446,6 +450,30 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		})
 	}
 
+	// winning factions
+	winningFaction := winningWarMachines[0].Faction
+
+	// get winning faction order
+	winningFactionIDOrder := []string{winningFaction.ID}
+
+	factionIDs, err := db.FactionMechDestroyedOrderGet(btl.ID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech destroy order.")
+	}
+
+	for _, fid := range factionIDs {
+		exist := false
+		for _, wid := range winningFactionIDOrder {
+			if wid == fid {
+				exist = true
+			}
+		}
+
+		if !exist {
+			winningFactionIDOrder = append(winningFactionIDOrder, fid)
+		}
+	}
+
 	gamelog.L.Debug().
 		Int("top_player_executors", len(topPlayerExecutors)).
 		Msg("get top players and factions")
@@ -456,7 +484,8 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		StartedAt:                    btl.Battle.StartedAt,
 		EndedAt:                      btl.Battle.EndedAt.Time,
 		WinningCondition:             payload.WinCondition,
-		WinningFaction:               winningWarMachines[0].Faction,
+		WinningFaction:               winningFaction,
+		WinningFactionIDOrder:        winningFactionIDOrder,
 		WinningWarMachines:           winningWarMachines,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
@@ -524,6 +553,373 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	}
 }
 
+type PlayerReward struct {
+	PlayerID              string                         `json:"player_id"`
+	RewardedSups          decimal.Decimal                `json:"rewarded_sups"`
+	RewardedPlayerAbility *boiler.BlueprintPlayerAbility `json:"rewarded_player_ability"`
+	FactionRank           string                         `json:"faction_rank"`
+}
+type MechReward struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Label        string          `json:"label"`
+	FactionID    string          `json:"faction_id"`
+	AvatarURL    string          `json:"avatar_url"`
+	OwnerID      string          `json:"owner_id"`
+	RewardedSups decimal.Decimal `json:"rewarded_sups"`
+}
+
+// RewardBattleMechOwners give reward to war machine owner
+func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*PlayerReward, []*MechReward) {
+	playerRewards := []*PlayerReward{}
+	mechRewars := []*MechReward{}
+
+	abilityRewardPlayers := []string{}
+
+	// get sups pool
+	bqs, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.ID)),
+		qm.Load(boiler.BattleQueueRels.Fee),
+		qm.Load(boiler.BattleQueueRels.Owner),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("battle id", btl.ID).Msg("Failed to load battle queue fees")
+		return []*PlayerReward{}, []*MechReward{}
+	}
+
+	totalSups := decimal.Zero
+	for _, bq := range bqs {
+		if bq.R != nil && bq.R.Fee != nil {
+			totalSups = totalSups.Add(bq.R.Fee.Amount)
+		}
+	}
+
+	if totalSups.Equal(decimal.Zero) {
+		gamelog.L.Debug().Msg("No sups to distribute.")
+		return []*PlayerReward{}, []*MechReward{}
+	}
+
+	// get players per faction
+	playerPerFaction := decimal.Zero
+	for _, bq := range bqs {
+		if bq.FactionID != server.RedMountainFactionID {
+			continue
+		}
+		// if owner is not AI
+		if bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+			playerPerFaction = playerPerFaction.Add(decimal.NewFromInt(1))
+		}
+	}
+
+	// reward sups
+	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
+	for i, factionID := range winningFactionOrder {
+		switch i {
+		case 0: // winning faction
+			for _, bq := range bqs {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+					pw := btl.RewardPlayerSups(
+						bq.R.Fee,
+						totalSups.Mul(decimal.NewFromFloat(0.5)).Div(playerPerFaction),
+						taxRatio,
+					)
+
+					// record mech reward
+					if m := btl.arena.CurrentBattleWarMachineByID(bq.MechID); m != nil {
+						mechRewars = append(mechRewars, &MechReward{
+							ID:           m.ID,
+							FactionID:    m.FactionID,
+							Name:         m.Name,
+							Label:        m.Label,
+							AvatarURL:    m.ImageAvatar,
+							RewardedSups: pw.RewardedSups,
+							OwnerID:      bq.OwnerID,
+						})
+					}
+
+					// append or update player rewards
+					exist := false
+					for _, pr := range playerRewards {
+						if pr.PlayerID == pw.PlayerID {
+							pr.RewardedSups = pr.RewardedSups.Add(pw.RewardedSups)
+							exist = true
+						}
+					}
+					if !exist {
+						// fill war machine
+						pw.FactionRank = "FIRST"
+						playerRewards = append(playerRewards, pw)
+					}
+
+				}
+			}
+
+		case 1: // second faction
+			for _, bq := range bqs {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+					pw := btl.RewardPlayerSups(
+						bq.R.Fee,
+						totalSups.Mul(decimal.NewFromFloat(0.3)).Div(playerPerFaction),
+						taxRatio,
+					)
+
+					// record mech reward
+					if m := btl.arena.CurrentBattleWarMachineByID(bq.MechID); m != nil {
+						mechRewars = append(mechRewars, &MechReward{
+							ID:           m.ID,
+							FactionID:    m.FactionID,
+							Name:         m.Name,
+							Label:        m.Label,
+							AvatarURL:    m.ImageAvatar,
+							RewardedSups: pw.RewardedSups,
+							OwnerID:      bq.OwnerID,
+						})
+					}
+
+					// append or update player rewards
+					exist := false
+					for _, pr := range playerRewards {
+						if pr.PlayerID == pw.PlayerID {
+							pr.RewardedSups = pr.RewardedSups.Add(pw.RewardedSups)
+							exist = true
+						}
+					}
+					if !exist {
+						pw.FactionRank = "SECOND"
+						playerRewards = append(playerRewards, pw)
+					}
+
+				}
+			}
+
+		case 2: // lose faction
+			for _, bq := range bqs {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+					pw := btl.RewardPlayerSups(
+						bq.R.Fee,
+						totalSups.Mul(decimal.NewFromFloat(0.2)).Div(playerPerFaction),
+						taxRatio,
+					)
+
+					// record mech reward
+					if m := btl.arena.CurrentBattleWarMachineByID(bq.MechID); m != nil {
+						mechRewars = append(mechRewars, &MechReward{
+							ID:           m.ID,
+							FactionID:    m.FactionID,
+							Name:         m.Name,
+							Label:        m.Label,
+							AvatarURL:    m.ImageAvatar,
+							RewardedSups: pw.RewardedSups,
+							OwnerID:      bq.OwnerID,
+						})
+					}
+
+					// append or update player rewards
+					exist := false
+					for _, pr := range playerRewards {
+						if pr.PlayerID == pw.PlayerID {
+							pr.RewardedSups = pr.RewardedSups.Add(pw.RewardedSups)
+							exist = true
+						}
+					}
+					if !exist {
+						pw.FactionRank = "THIRD"
+						playerRewards = append(playerRewards, pw)
+					}
+
+					// add player ability reward list
+					exists := false
+					for _, pid := range abilityRewardPlayers {
+						if pid == bq.OwnerID {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						abilityRewardPlayers = append(abilityRewardPlayers, bq.OwnerID)
+					}
+				}
+			}
+		}
+	}
+
+	// reward player abilities
+	pws := btl.RewardPlayerAbility(abilityRewardPlayers)
+	for _, pw := range pws {
+		for _, pr := range playerRewards {
+			if pr.PlayerID == pw.PlayerID {
+				pr.RewardedPlayerAbility = pw.RewardedPlayerAbility
+				break
+			}
+		}
+	}
+
+	return playerRewards, mechRewars
+}
+
+func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
+	playerID := queueFee.PaidByID
+	tax := supsReward.Mul(taxRatio)
+	challengeFund := decimal.New(1, 18)
+
+	l := gamelog.L.With().Str("function", "RewardPlayerSups").Logger()
+
+	// record
+	pw := &PlayerReward{
+		PlayerID:     queueFee.PaidByID,
+		RewardedSups: supsReward,
+	}
+
+	// pay battle queue fee
+	payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		ToUserID:             uuid.Must(uuid.FromString(playerID)),
+		Amount:               supsReward.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", server.SupremacyBattleUserID).
+			Str("to", playerID).
+			Str("amount", supsReward.StringFixed(0)).
+			Msg("Failed to pay player battel reward")
+	}
+	queueFee.PayoutTXID = null.StringFrom(payoutTXID)
+
+	// pay reward tax
+	taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
+		ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+		Amount:               tax.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.XsynTreasuryUserID.String()).
+			Str("amount", tax.StringFixed(0)).
+			Msg("Failed to pay player battle reward")
+	}
+	queueFee.TaxTXID = null.StringFrom(taxTXID)
+
+	// pay challenge fund
+	challengeFundTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+		Amount:               challengeFund.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.SupremacyChallengeFundUserID).
+			Str("amount", challengeFund.StringFixed(0)).
+			Msg("Failed to pay player battle reward")
+	}
+	queueFee.ChallengeFundTXID = null.StringFrom(challengeFundTXID)
+
+	_, err = queueFee.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.BattleQueueFeeColumns.PayoutTXID,
+		boiler.BattleQueueFeeColumns.TaxTXID,
+		boiler.BattleQueueFeeColumns.ChallengeFundTXID,
+	))
+	if err != nil {
+		l.Error().Err(err).Interface("queue fee", queueFee).Msg("Failed to update payout, tax and challenge fund transaction id")
+	}
+
+	return pw
+}
+
+func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
+	pws := []*PlayerReward{}
+
+	if len(playerIDs) == 0 {
+		return pws
+	}
+	bpas, err := boiler.BlueprintPlayerAbilities().All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load blueprint player abilities")
+		return pws
+	}
+
+	for _, pid := range playerIDs {
+		// load existing player abilities
+		pas, err := boiler.PlayerAbilities(
+			boiler.PlayerAbilityWhere.OwnerID.EQ(pid),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("player id", pid).Msg("Failed to load player abilities")
+			continue
+		}
+
+		availableAbility := []*boiler.BlueprintPlayerAbility{}
+		for _, bpa := range bpas {
+			isAvailable := true
+			for _, pa := range pas {
+				if pa.BlueprintID != bpa.ID {
+					continue
+				}
+
+				// if player has the ability, check ability is reach the limit
+				if pa.Count >= bpa.InventoryLimit {
+					isAvailable = false
+				}
+
+				break
+			}
+
+			if isAvailable {
+				availableAbility = append(availableAbility, bpa)
+			}
+		}
+
+		// skip, if no player ability is full
+		if len(availableAbility) == 0 {
+			sysMsg := boiler.SystemMessage{
+				PlayerID: pid,
+				SenderID: server.SupremacyBattleUserID,
+				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeMechOwnerBattleReward)),
+				Title:    "Battle Reward",
+				Message:  "Unable to reward you new player ability due to your inventory is full.",
+			}
+			err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
+				break
+			}
+			ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", pid), server.HubKeySystemMessageListUpdatedSubscribe, true)
+
+			continue
+		}
+
+		// randomly assign an ability
+		rand.Seed(time.Now().UnixNano())
+		ability := availableAbility[rand.Intn(len(availableAbility))]
+
+		err = db.PlayerAbilityAssign(pid, ability.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("player id", pid).Str("ability id", ability.ID).Msg("Failed to assign ability to the player")
+			continue
+		}
+
+		pws = append(pws, &PlayerReward{
+			PlayerID:              pid,
+			RewardedPlayerAbility: ability,
+		})
+	}
+
+	return pws
+}
+
 func (btl *Battle) processWarMachineRepair() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -531,12 +927,13 @@ func (btl *Battle) processWarMachineRepair() {
 		}
 	}()
 	for _, wm := range btl.WarMachines {
-		wm.Lock()
+		wm.RLock()
 		mechID := wm.ID
+		modelID := wm.ModelID
 		maxHealth := wm.MaxHealth
 		health := wm.Health
 		ownerID := wm.OwnedByID
-		wm.Unlock()
+		wm.RUnlock()
 
 		go func() {
 			// skip, if player is AI
@@ -551,7 +948,7 @@ func (btl *Battle) processWarMachineRepair() {
 			}
 
 			// register mech repair case
-			err = btl.arena.RepairSystem.RegisterMechRepairCase(mechID, maxHealth, health)
+			err = RegisterMechRepairCase(mechID, modelID, maxHealth, health)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to register mech repair")
 			}
@@ -754,13 +1151,40 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	return winningWarMachines
 }
 
-func (btl *Battle) endBroadcast(endInfo *BattleEndDetail) {
+const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
+
+func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []*PlayerReward, mechRewardRecords []*MechReward) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the ending of end broadcast!", r)
 		}
 	}()
-	btl.endInfoBroadcast(*endInfo)
+	for _, prr := range playerRewardRecords {
+		// send battle reward system message
+		b, err := json.Marshal(prr)
+		if err != nil {
+			gamelog.L.Error().Interface("player reward data", prr).Err(err).Msg("Failed to marshal player reward data into json.")
+			break
+		}
+		sysMsg := boiler.SystemMessage{
+			PlayerID: prr.PlayerID,
+			SenderID: server.SupremacyBattleUserID,
+			DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeMechOwnerBattleReward)),
+			Title:    "Battle Reward",
+			Message:  fmt.Sprintf("Your faction is the %s rank in the battle #%d.", prr.FactionRank, btl.BattleNumber),
+			Data:     null.JSONFrom(b),
+		}
+		err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
+			break
+		}
+		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", prr.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+	}
+
+	endInfo.MechRewards = mechRewardRecords
+
+	ws.PublishMessage("/public/battle_end_result", HubKeyBattleEndDetailUpdated, endInfo)
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
@@ -788,7 +1212,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	winningWarMachines := btl.endWarMachines(payload)
 	endInfo := btl.endCreateStats(payload, winningWarMachines)
-
+	playerRewardRecords, mechRewardRecords := btl.RewardBattleMechOwners(endInfo.WinningFactionIDOrder)
 	btl.processWinners(payload)
 
 	btl.processWarMachineRepair()
@@ -811,17 +1235,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
-	btl.endBroadcast(endInfo)
-}
-
-const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
-
-func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
-	btl.users.Range(func(user *BattleUser) bool {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), HubKeyBattleEndDetailUpdated, info)
-		return true
-	})
-
+	btl.endBroadcast(endInfo, playerRewardRecords, mechRewardRecords)
 }
 
 type GameSettingsResponse struct {
@@ -842,12 +1256,9 @@ type ViewerLiveCount struct {
 }
 
 func (btl *Battle) UserOnline(user *BattleUser) *ViewerLiveCount {
-	exists := false
 	_, ok := btl.users.User(user.ID)
 	if !ok {
 		btl.users.Add(user)
-	} else {
-		exists = true
 	}
 
 	if btl.inserted {
@@ -887,10 +1298,7 @@ func (btl *Battle) UserOnline(user *BattleUser) *ViewerLiveCount {
 		return true
 	})
 
-	if !exists {
-		// send result to broadcast debounce function
-		btl.viewerCountInputChan <- resp
-	}
+	btl.viewerCountInputChan <- resp
 
 	return resp
 }
@@ -984,6 +1392,11 @@ func (btl *Battle) Tick(payload []byte) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		return
 	}
+
+	if btl.stage.Load() == BattleStageEnd {
+		return
+	}
+
 	btl.lastTick = &payload
 
 	// return if the war machines list is not ready
@@ -1338,7 +1751,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 				}
 				if us != nil {
-					ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), server.HubKeyUserStatSubscribe, us)
+					ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
 				}
 			}
 
@@ -1557,7 +1970,8 @@ func (btl *Battle) Load() error {
 	if len(q) < 9 {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. replacing with default battle.")
 
-		err = btl.QueueDefaultMechs()
+		// build the mechs
+		err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
@@ -1582,28 +1996,11 @@ func (btl *Battle) Load() error {
 				}
 			}
 		}
-		tx, err := gamedb.StdConn.Begin()
+		_, err = boiler.BattleQueues(boiler.BattleQueueWhere.MechID.IN(ids)).DeleteAll(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
+			gamelog.L.Panic().Strs("mechIDs", ids).Err(err).Msg("unable to delete mech from queue")
 		}
-		defer tx.Rollback()
-		for _, id := range ids {
-			gamelog.L.Warn().Str("mechID", id).Msg("mech did not load - likely has no faction associated with its owner")
-			canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-			_, err = tx.Exec(canxq, id)
-			if err != nil {
-				gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
-			}
-			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id)).One(tx)
-			_, err = bq.Delete(tx)
-			if err != nil {
-				gamelog.L.Panic().Str("mechID", id).Err(err).Msg("unable to delete factionless mech from queue")
-			}
-		}
-		err = tx.Commit()
-		if err != nil {
-			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
-		}
+
 		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return btl.Load()
 	}
@@ -1686,6 +2083,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Hash:        mech.Hash,
 			OwnedByID:   mech.OwnerID,
 			Name:        TruncateString(mech.Name, 20),
+			Label:       mech.Label,
 			FactionID:   mech.FactionID.String,
 			MaxHealth:   uint32(mech.MaxHitpoints),
 			Health:      uint32(mech.MaxHitpoints),
@@ -1736,6 +2134,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				model = "WREX"
 			}
 			newWarMachine.Model = model
+			newWarMachine.ModelID = mech.ModelID
 		}
 
 		// check model skin

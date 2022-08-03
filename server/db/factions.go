@@ -132,3 +132,42 @@ func FactionStatMVPUpdate(factionID string) error {
 	}
 	return nil
 }
+
+// FactionMechDestroyedOrderGet return a list which contain the faction id of the destroyed mech, start from the most recent destroyed mech
+func FactionMechDestroyedOrderGet(battleID string) ([]string, error) {
+	ids := []string{}
+	q := `
+		SELECT bm.faction_id FROM battle_history bh
+		INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id
+		WHERE bh.battle_id = $1
+		ORDER BY bh.created_at DESC
+	`
+	rows, err := gamedb.StdConn.Query(q, battleID)
+	if err != nil {
+		return []string{}, err
+	}
+
+	for rows.Next() {
+		factionID := ""
+
+		err = rows.Scan(&factionID)
+		if err != nil {
+			return []string{}, err
+		}
+
+		// append faction to the list
+		exists := false
+		for _, id := range ids {
+			if id == factionID {
+				exists = true
+				break
+			}
+		}
+
+		if !exists {
+			ids = append(ids, factionID)
+		}
+	}
+
+	return ids, nil
+}
