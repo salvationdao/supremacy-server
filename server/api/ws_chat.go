@@ -349,7 +349,8 @@ func (api *API) MessageBroadcaster() {
 	}
 }
 
-func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, user *boiler.Player, jsonTextMsgMeta null.JSON) {
+func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, jsonTextMsgMeta null.JSON, logger zerolog.Logger) error {
+	logger = logger.With().Interface("updateMessageMetadata", chatHistory.ID).Logger()
 	fn := func(chatMessage *ChatMessage) bool {
 		if chatMessage.ID != chatHistory.ID {
 			return true
@@ -363,18 +364,25 @@ func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, user *boi
 		return false
 	}
 
+	p, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
+	if err != nil {
+		logger.Error().Err(err).Msg("could not find chatHistory player")
+		return err
+	}
+
 	player := boiler.Player{
-		ID:               user.ID,
-		Username:         user.Username,
-		Gid:              user.Gid,
-		FactionID:        user.FactionID,
-		Rank:             user.Rank,
-		SentMessageCount: user.SentMessageCount,
+		ID:               p.ID,
+		Username:         p.Username,
+		Gid:              p.Gid,
+		FactionID:        p.FactionID,
+		Rank:             p.Rank,
+		SentMessageCount: p.SentMessageCount,
 	}
 
 	playerStat, err := db.UserStatsGet(player.ID)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Interface("player.ID", player.ID).Msg("issue UserStatsGet")
+		logger.Error().Err(err).Msg("could get player stats")
+		return err
 	}
 
 	chatMessage := &ChatMessage{
@@ -393,6 +401,7 @@ func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, user *boi
 		},
 	}
 
+	logger = logger.With().Interface("publishMetadata", chatMessage.Data).Logger()
 	switch chatHistory.ChatStream {
 	case server.RedMountainFactionID:
 		api.RedMountainChat.WriteRange(fn)
@@ -408,6 +417,8 @@ func (api *API) updateMessageMetadata(chatHistory *boiler.ChatHistory, user *boi
 		api.GlobalChat.WriteRange(fn)
 		ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
 	}
+
+	return nil
 }
 
 // FactionChatRequest sends chat message to specific faction.
@@ -720,7 +731,12 @@ func (fc *ChatController) ReadTaggedMessageHandler(ctx context.Context, user *bo
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fc.API.updateMessageMetadata(chatHistory, user, jsonTextMsgMeta)
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
+	}
+
 	reply(true)
 	return nil
 }
@@ -817,7 +833,11 @@ func (fc *ChatController) ReactToMessageHandler(ctx context.Context, user *boile
 
 	l = l.With().Interface("UpdateCachedMessages", chatHistory).Logger()
 	// change metadata of a specific message
-	fc.API.updateMessageMetadata(chatHistory, user, jsonTextMsgMeta)
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
+	}
 
 	reply(metadata.Likes)
 	return nil
