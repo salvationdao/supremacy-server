@@ -26,7 +26,6 @@ const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
-
 type KVKey string
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
@@ -53,6 +52,9 @@ const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
 const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
 const KeyBattleQueueFee KVKey = "battle_queue_fee"
 const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
+const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
+const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
+const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"

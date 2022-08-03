@@ -610,6 +610,10 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		}
 	}
 
+	firstRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyFirstRankFactionRewardRatio, decimal.NewFromFloat(0.5))
+	secondRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeySecondRankFactionRewardRatio, decimal.NewFromFloat(0.3))
+	thirdRankSupsRewardRatio := db.GetDecimalWithDefault(db.KeyThirdRankFactionRewardRatio, decimal.NewFromFloat(0.2))
+
 	// reward sups
 	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
 	for i, factionID := range winningFactionOrder {
@@ -619,7 +623,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.5)).Div(playerPerFaction),
+						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
@@ -658,7 +662,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.3)).Div(playerPerFaction),
+						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
@@ -696,7 +700,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
 						bq.R.Fee,
-						totalSups.Mul(decimal.NewFromFloat(0.2)).Div(playerPerFaction),
+						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction),
 						taxRatio,
 					)
 
