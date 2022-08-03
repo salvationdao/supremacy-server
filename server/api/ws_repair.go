@@ -593,11 +593,8 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
 			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
 			ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-			if ro.OfferedByID.Valid {
-				ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
-			}
+			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
-
 	}
 
 	// broadcast result if repair is not completed
