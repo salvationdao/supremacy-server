@@ -616,9 +616,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		switch i {
 		case 0: // winning faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
-						bq.OwnerID,
+						bq.R.Fee,
 						totalSups.Mul(decimal.NewFromFloat(0.5)).Div(playerPerFaction),
 						taxRatio,
 					)
@@ -655,9 +655,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 
 		case 1: // second faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
-						bq.OwnerID,
+						bq.R.Fee,
 						totalSups.Mul(decimal.NewFromFloat(0.3)).Div(playerPerFaction),
 						taxRatio,
 					)
@@ -693,9 +693,9 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 
 		case 2: // lose faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
 					pw := btl.RewardPlayerSups(
-						bq.OwnerID,
+						bq.R.Fee,
 						totalSups.Mul(decimal.NewFromFloat(0.2)).Div(playerPerFaction),
 						taxRatio,
 					)
@@ -756,39 +756,44 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 	return playerRewards, mechRewars
 }
 
-func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
+func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
+	playerID := queueFee.PaidByID
 	tax := supsReward.Mul(taxRatio)
-	rewardAfterTax := supsReward.Sub(tax)
 	challengeFund := decimal.New(1, 18)
+
+	rewardAfterTax := supsReward.Sub(tax)
 	finalReward := rewardAfterTax.Sub(challengeFund)
+
+	l := gamelog.L.With().Str("function", "RewardPlayerSups").Logger()
 
 	// record
 	pw := &PlayerReward{
-		PlayerID:     playerID,
+		PlayerID:     queueFee.PaidByID,
 		RewardedSups: finalReward,
 	}
 
 	// pay battle queue fee
-	_, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		ToUserID:             uuid.Must(uuid.FromString(playerID)),
-		Amount:               finalReward.StringFixed(0),
+		Amount:               supsReward.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupBattle),
 		Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
 	})
 	if err != nil {
-		gamelog.L.Error().Err(err).
+		l.Error().Err(err).
 			Str("from", server.SupremacyBattleUserID).
-			Str("player id", playerID).
-			Str("amount", finalReward.StringFixed(0)).
+			Str("to", playerID).
+			Str("amount", supsReward.StringFixed(0)).
 			Msg("Failed to pay player battel reward")
 	}
+	queueFee.PayoutTXID = null.StringFrom(payoutTXID)
 
 	// pay reward tax
-	_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+	taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
 		ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
 		Amount:               tax.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
@@ -797,16 +802,17 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
 	})
 	if err != nil {
-		gamelog.L.Error().Err(err).
-			Str("from", server.SupremacyBattleUserID).
-			Str("player id", playerID).
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.XsynTreasuryUserID.String()).
 			Str("amount", tax.StringFixed(0)).
 			Msg("Failed to pay player battle reward")
 	}
+	queueFee.TaxTXID = null.StringFrom(taxTXID)
 
 	// pay challenge fund
-	_, err = btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+	challengeFundTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
 		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
 		Amount:               challengeFund.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
@@ -815,11 +821,21 @@ func (btl *Battle) RewardPlayerSups(playerID string, supsReward decimal.Decimal,
 		Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
 	})
 	if err != nil {
-		gamelog.L.Error().Err(err).
-			Str("from", server.SupremacyBattleUserID).
-			Str("player id", playerID).
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.SupremacyChallengeFundUserID).
 			Str("amount", challengeFund.StringFixed(0)).
 			Msg("Failed to pay player battle reward")
+	}
+	queueFee.ChallengeFundTXID = null.StringFrom(challengeFundTXID)
+
+	_, err = queueFee.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.BattleQueueFeeColumns.PayoutTXID,
+		boiler.BattleQueueFeeColumns.TaxTXID,
+		boiler.BattleQueueFeeColumns.ChallengeFundTXID,
+	))
+	if err != nil {
+		l.Error().Err(err).Interface("queue fee", queueFee).Msg("Failed to update payout, tax and challenge fund transaction id")
 	}
 
 	return pw

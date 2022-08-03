@@ -31,6 +31,7 @@ type RepairAgent struct {
 	StartedAt      time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
 	FinishedAt     null.Time   `boiler:"finished_at" boil:"finished_at" json:"finished_at,omitempty" toml:"finished_at" yaml:"finished_at,omitempty"`
 	FinishedReason null.String `boiler:"finished_reason" boil:"finished_reason" json:"finished_reason,omitempty" toml:"finished_reason" yaml:"finished_reason,omitempty"`
+	PayoutTXID     null.String `boiler:"payout_tx_id" boil:"payout_tx_id" json:"payout_tx_id,omitempty" toml:"payout_tx_id" yaml:"payout_tx_id,omitempty"`
 	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -48,6 +49,7 @@ var RepairAgentColumns = struct {
 	StartedAt      string
 	FinishedAt     string
 	FinishedReason string
+	PayoutTXID     string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -60,6 +62,7 @@ var RepairAgentColumns = struct {
 	StartedAt:      "started_at",
 	FinishedAt:     "finished_at",
 	FinishedReason: "finished_reason",
+	PayoutTXID:     "payout_tx_id",
 	CreatedAt:      "created_at",
 	UpdatedAt:      "updated_at",
 	DeletedAt:      "deleted_at",
@@ -74,6 +77,7 @@ var RepairAgentTableColumns = struct {
 	StartedAt      string
 	FinishedAt     string
 	FinishedReason string
+	PayoutTXID     string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -86,6 +90,7 @@ var RepairAgentTableColumns = struct {
 	StartedAt:      "repair_agents.started_at",
 	FinishedAt:     "repair_agents.finished_at",
 	FinishedReason: "repair_agents.finished_reason",
+	PayoutTXID:     "repair_agents.payout_tx_id",
 	CreatedAt:      "repair_agents.created_at",
 	UpdatedAt:      "repair_agents.updated_at",
 	DeletedAt:      "repair_agents.deleted_at",
@@ -102,6 +107,7 @@ var RepairAgentWhere = struct {
 	StartedAt      whereHelpertime_Time
 	FinishedAt     whereHelpernull_Time
 	FinishedReason whereHelpernull_String
+	PayoutTXID     whereHelpernull_String
 	CreatedAt      whereHelpertime_Time
 	UpdatedAt      whereHelpertime_Time
 	DeletedAt      whereHelpernull_Time
@@ -114,6 +120,7 @@ var RepairAgentWhere = struct {
 	StartedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"started_at\""},
 	FinishedAt:     whereHelpernull_Time{field: "\"repair_agents\".\"finished_at\""},
 	FinishedReason: whereHelpernull_String{field: "\"repair_agents\".\"finished_reason\""},
+	PayoutTXID:     whereHelpernull_String{field: "\"repair_agents\".\"payout_tx_id\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"created_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"repair_agents\".\"updated_at\""},
 	DeletedAt:      whereHelpernull_Time{field: "\"repair_agents\".\"deleted_at\""},
@@ -152,9 +159,9 @@ func (*repairAgentR) NewStruct() *repairAgentR {
 type repairAgentL struct{}
 
 var (
-	repairAgentAllColumns            = []string{"id", "repair_case_id", "repair_offer_id", "player_id", "required_stacks", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
+	repairAgentAllColumns            = []string{"id", "repair_case_id", "repair_offer_id", "player_id", "required_stacks", "started_at", "finished_at", "finished_reason", "payout_tx_id", "created_at", "updated_at", "deleted_at"}
 	repairAgentColumnsWithoutDefault = []string{"repair_case_id", "repair_offer_id", "player_id", "required_stacks"}
-	repairAgentColumnsWithDefault    = []string{"id", "started_at", "finished_at", "finished_reason", "created_at", "updated_at", "deleted_at"}
+	repairAgentColumnsWithDefault    = []string{"id", "started_at", "finished_at", "finished_reason", "payout_tx_id", "created_at", "updated_at", "deleted_at"}
 	repairAgentPrimaryKeyColumns     = []string{"id"}
 	repairAgentGeneratedColumns      = []string{}
 )

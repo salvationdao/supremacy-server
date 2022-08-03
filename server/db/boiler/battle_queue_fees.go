@@ -24,72 +24,100 @@ import (
 
 // BattleQueueFee is an object representing the database table.
 type BattleQueueFee struct {
-	ID        string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID    string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	PaidByID  string          `boiler:"paid_by_id" boil:"paid_by_id" json:"paid_by_id" toml:"paid_by_id" yaml:"paid_by_id"`
-	Amount    decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	CreatedAt time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID            string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	PaidByID          string          `boiler:"paid_by_id" boil:"paid_by_id" json:"paid_by_id" toml:"paid_by_id" yaml:"paid_by_id"`
+	Amount            decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
+	PaidTXID          null.String     `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
+	PayoutTXID        null.String     `boiler:"payout_tx_id" boil:"payout_tx_id" json:"payout_tx_id,omitempty" toml:"payout_tx_id" yaml:"payout_tx_id,omitempty"`
+	TaxTXID           null.String     `boiler:"tax_tx_id" boil:"tax_tx_id" json:"tax_tx_id,omitempty" toml:"tax_tx_id" yaml:"tax_tx_id,omitempty"`
+	ChallengeFundTXID null.String     `boiler:"challenge_fund_tx_id" boil:"challenge_fund_tx_id" json:"challenge_fund_tx_id,omitempty" toml:"challenge_fund_tx_id" yaml:"challenge_fund_tx_id,omitempty"`
+	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt         time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt         null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *battleQueueFeeR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueFeeL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleQueueFeeColumns = struct {
-	ID        string
-	MechID    string
-	PaidByID  string
-	Amount    string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID                string
+	MechID            string
+	PaidByID          string
+	Amount            string
+	PaidTXID          string
+	PayoutTXID        string
+	TaxTXID           string
+	ChallengeFundTXID string
+	CreatedAt         string
+	UpdatedAt         string
+	DeletedAt         string
 }{
-	ID:        "id",
-	MechID:    "mech_id",
-	PaidByID:  "paid_by_id",
-	Amount:    "amount",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	DeletedAt: "deleted_at",
+	ID:                "id",
+	MechID:            "mech_id",
+	PaidByID:          "paid_by_id",
+	Amount:            "amount",
+	PaidTXID:          "paid_tx_id",
+	PayoutTXID:        "payout_tx_id",
+	TaxTXID:           "tax_tx_id",
+	ChallengeFundTXID: "challenge_fund_tx_id",
+	CreatedAt:         "created_at",
+	UpdatedAt:         "updated_at",
+	DeletedAt:         "deleted_at",
 }
 
 var BattleQueueFeeTableColumns = struct {
-	ID        string
-	MechID    string
-	PaidByID  string
-	Amount    string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID                string
+	MechID            string
+	PaidByID          string
+	Amount            string
+	PaidTXID          string
+	PayoutTXID        string
+	TaxTXID           string
+	ChallengeFundTXID string
+	CreatedAt         string
+	UpdatedAt         string
+	DeletedAt         string
 }{
-	ID:        "battle_queue_fees.id",
-	MechID:    "battle_queue_fees.mech_id",
-	PaidByID:  "battle_queue_fees.paid_by_id",
-	Amount:    "battle_queue_fees.amount",
-	CreatedAt: "battle_queue_fees.created_at",
-	UpdatedAt: "battle_queue_fees.updated_at",
-	DeletedAt: "battle_queue_fees.deleted_at",
+	ID:                "battle_queue_fees.id",
+	MechID:            "battle_queue_fees.mech_id",
+	PaidByID:          "battle_queue_fees.paid_by_id",
+	Amount:            "battle_queue_fees.amount",
+	PaidTXID:          "battle_queue_fees.paid_tx_id",
+	PayoutTXID:        "battle_queue_fees.payout_tx_id",
+	TaxTXID:           "battle_queue_fees.tax_tx_id",
+	ChallengeFundTXID: "battle_queue_fees.challenge_fund_tx_id",
+	CreatedAt:         "battle_queue_fees.created_at",
+	UpdatedAt:         "battle_queue_fees.updated_at",
+	DeletedAt:         "battle_queue_fees.deleted_at",
 }
 
 // Generated where
 
 var BattleQueueFeeWhere = struct {
-	ID        whereHelperstring
-	MechID    whereHelperstring
-	PaidByID  whereHelperstring
-	Amount    whereHelperdecimal_Decimal
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
-	DeletedAt whereHelpernull_Time
+	ID                whereHelperstring
+	MechID            whereHelperstring
+	PaidByID          whereHelperstring
+	Amount            whereHelperdecimal_Decimal
+	PaidTXID          whereHelpernull_String
+	PayoutTXID        whereHelpernull_String
+	TaxTXID           whereHelpernull_String
+	ChallengeFundTXID whereHelpernull_String
+	CreatedAt         whereHelpertime_Time
+	UpdatedAt         whereHelpertime_Time
+	DeletedAt         whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: "\"battle_queue_fees\".\"id\""},
-	MechID:    whereHelperstring{field: "\"battle_queue_fees\".\"mech_id\""},
-	PaidByID:  whereHelperstring{field: "\"battle_queue_fees\".\"paid_by_id\""},
-	Amount:    whereHelperdecimal_Decimal{field: "\"battle_queue_fees\".\"amount\""},
-	CreatedAt: whereHelpertime_Time{field: "\"battle_queue_fees\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"battle_queue_fees\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"battle_queue_fees\".\"deleted_at\""},
+	ID:                whereHelperstring{field: "\"battle_queue_fees\".\"id\""},
+	MechID:            whereHelperstring{field: "\"battle_queue_fees\".\"mech_id\""},
+	PaidByID:          whereHelperstring{field: "\"battle_queue_fees\".\"paid_by_id\""},
+	Amount:            whereHelperdecimal_Decimal{field: "\"battle_queue_fees\".\"amount\""},
+	PaidTXID:          whereHelpernull_String{field: "\"battle_queue_fees\".\"paid_tx_id\""},
+	PayoutTXID:        whereHelpernull_String{field: "\"battle_queue_fees\".\"payout_tx_id\""},
+	TaxTXID:           whereHelpernull_String{field: "\"battle_queue_fees\".\"tax_tx_id\""},
+	ChallengeFundTXID: whereHelpernull_String{field: "\"battle_queue_fees\".\"challenge_fund_tx_id\""},
+	CreatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"created_at\""},
+	UpdatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"updated_at\""},
+	DeletedAt:         whereHelpernull_Time{field: "\"battle_queue_fees\".\"deleted_at\""},
 }
 
 // BattleQueueFeeRels is where relationship names are stored.
@@ -119,9 +147,9 @@ func (*battleQueueFeeR) NewStruct() *battleQueueFeeR {
 type battleQueueFeeL struct{}
 
 var (
-	battleQueueFeeAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "created_at", "updated_at", "deleted_at"}
+	battleQueueFeeAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleQueueFeeColumnsWithoutDefault = []string{"mech_id", "paid_by_id", "amount"}
-	battleQueueFeeColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	battleQueueFeeColumnsWithDefault    = []string{"id", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleQueueFeePrimaryKeyColumns     = []string{"id"}
 	battleQueueFeeGeneratedColumns      = []string{}
 )

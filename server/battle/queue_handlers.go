@@ -163,7 +163,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// pay battle queue fee
-	_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	paidTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		Amount:               bqf.Amount.StringFixed(0),
@@ -179,6 +179,34 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 			Str("amount", bqf.Amount.StringFixed(0)).
 			Err(err).Msg("Failed to pay sups on queuing mech.")
 		return terror.Error(err, "Failed to pay sups on queuing mech.")
+	}
+
+	refundFunc := func() {
+		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+			Amount:               bqf.Amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "refund the mech queuing fee.",
+		})
+		if err != nil {
+			gamelog.L.Error().
+				Str("player_id", user.ID).
+				Str("mech id", mci.ItemID).
+				Str("amount", bqf.Amount.StringFixed(0)).
+				Err(err).Msg("Failed to refund sups on queuing mech.")
+		}
+	}
+
+	// do not return, if error occur.
+	bq.QueueFeeTXID = null.StringFrom(paidTxID)
+	_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID))
+	if err != nil {
+		refundFunc() // refund player
+		gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
+		return terror.Error(err, "Failed to update battle queue")
 	}
 
 	// Commit transaction
@@ -201,6 +229,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		}
 
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
+	}
+
+	bqf.PaidTXID = null.StringFrom(paidTxID)
+	_, err = bqf.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
+	if err != nil {
+		gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
 	}
 
 	reply(QueueJoinHandlerResponse{

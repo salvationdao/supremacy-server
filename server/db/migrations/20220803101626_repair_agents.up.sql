@@ -48,6 +48,8 @@ CREATE TABLE repair_offers(
     expires_at timestamptz not null,
     finished_reason REPAIR_FINISH_REASON null,
     closed_at timestamptz,
+    paid_tx_id text,
+    tax_tx_id text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     deleted_at timestamptz,
@@ -72,6 +74,8 @@ CREATE TABLE repair_agents(
     started_at timestamptz not null default now(),
     finished_at timestamptz null,
     finished_reason REPAIR_AGENT_FINISH_REASON null,
+
+    payout_tx_id text,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -188,6 +192,12 @@ CREATE TABLE battle_queue_fees(
     mech_id uuid not null references mechs(id),
     paid_by_id uuid not null references players(id),
     amount numeric(28) not null,
+
+    paid_tx_id text,
+    payout_tx_id text,
+    tax_tx_id text,
+    challenge_fund_tx_id text,
+
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     deleted_at timestamptz

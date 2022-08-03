@@ -185,7 +185,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	tax := offeredSups.Mul(decimal.NewFromFloat(0.1)).Round(0)
 
 	// pay sups to offer repair job
-	_, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	offerTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 		ToUserID:             uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 		Amount:               offeredSups.Add(tax).String(),
@@ -199,8 +199,10 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Failed to pay sups for offering repair job.")
 	}
 
+	ro.PaidTXID = null.StringFrom(offerTXID)
+
 	// pay tax to XSYN treasury
-	_, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	offerTaxTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 		ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
 		Amount:               tax.String(),
@@ -214,10 +216,20 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Failed to pay sups for offering repair job.")
 	}
 
+	ro.TaxTXID = null.StringFrom(offerTaxTXID)
+
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 		return terror.Error(err, "Failed to offer repair contract.")
+	}
+
+	_, err = ro.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.RepairOfferColumns.PaidTXID,
+		boiler.RepairOfferColumns.TaxTXID,
+	))
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to update repair offer transaction id.")
 	}
 
 	sro := &server.RepairOffer{
@@ -548,7 +560,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// if it is not a self offer, pay the agent
 	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
 		// claim reward
-		_, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
 			Amount:               ro.SupsWorthPerBlock.StringFixed(0),
@@ -561,6 +573,15 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
 			return terror.Error(err, "Failed to pay sups for offering repair job.")
 		}
+
+		ra.PayoutTXID = null.StringFrom(payoutTXID)
+		_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
+		if err != nil {
+			gamelog.L.Error().Err(err).
+				Interface("repair agent", ra).
+				Msg("Failed to update repair agent payout tx id")
+		}
+
 	}
 
 	// broadcast result if repair is not completed
