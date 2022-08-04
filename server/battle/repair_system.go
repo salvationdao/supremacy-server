@@ -126,9 +126,9 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 		if ro.R.OfferedBy != nil {
 			sro.JobOwner = server.PublicPlayerFromBoiler(ro.R.OfferedBy)
 
-			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-			ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+			ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 		}
 
 		if ro.R.RepairAgents != nil && len(ro.R.RepairAgents) > 0 {

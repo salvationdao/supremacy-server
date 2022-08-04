@@ -48,6 +48,7 @@ const KeySystemBanTeamKillDefaultReason KVKey = "system_ban_team_kill_default_re
 const KeySystemBanTeamKillBanBaseDurationHours KVKey = "system_ban_team_kill_ban_base_duration_hours"
 const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ban_duration_multiplier"
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
+const KeyRepairMiniGameFailedRate KVKey = "repair_mini_game_failed_rate"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
 const KeyRequiredRepairStacks KVKey = "required_repair_stacks"

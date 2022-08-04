@@ -504,6 +504,8 @@ type MechAbilityTriggerRequest struct {
 	} `json:"payload"`
 }
 
+var mechAbilityBucket = leakybucket.NewCollector(1, 1, true)
+
 func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// check battle stage
 	if arena.currentBattleState() == BattleStageEnd {
@@ -514,6 +516,10 @@ func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
+	}
+
+	if mechAbilityBucket.Add(req.Payload.Hash, 1) == 0 {
+		return terror.Error(fmt.Errorf("too many request"), "Too many mech ability request.")
 	}
 
 	// get mech
@@ -528,22 +534,54 @@ func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.
 		return terror.Error(err, err.Error())
 	}
 
+	// get current battle
+	bn := arena.currentBattleNumber()
+	if bn == -1 {
+		return terror.Error(fmt.Errorf("current battle is cleaned up"), "Current battle is cleaned up.")
+	}
+
+	// get ability
+	a, err := boiler.FindGameAbility(gamedb.StdConn, req.Payload.GameAbilityID)
+	if err != nil {
+		return terror.Error(err, "Failed to load game ability")
+	}
+
 	// get cooldown timer
 	abilityCooldownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
 
-	// get ability from db
-	lastTrigger, err := boiler.MechAbilityTriggerLogs(
-		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
-		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to get last ability trigger")
-	}
+	// validate the ability can be triggered
+	switch a.Label {
+	case "REPAIR":
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Failed to get last ability trigger")
+		}
 
-	if lastTrigger != nil {
-		return terror.Error(fmt.Errorf("ability is still cooling down"), fmt.Sprintf("The ability is still cooling down."))
+		if lastTrigger != nil {
+			return terror.Error(fmt.Errorf("can only trigger once"), fmt.Sprintf("Repair can only be triggered once per battle."))
+		}
+	default:
+
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Failed to get last ability trigger")
+		}
+
+		if lastTrigger != nil {
+			return terror.Error(fmt.Errorf("ability is still cooling down"), fmt.Sprintf("The ability is still cooling down."))
+		}
 	}
 
 	// get game ability
@@ -579,6 +617,7 @@ func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.
 		MechID:        wm.ID,
 		TriggeredByID: user.ID,
 		GameAbilityID: ga.ID,
+		BattleNumber:  bn,
 		CreatedAt:     now,
 	}
 
@@ -610,8 +649,15 @@ func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.
 		},
 	})
 
-	// broadcast cool down seconds
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
+	switch a.Label {
+	case "REPAIR":
+		// HACK: set cool down to 1 day, to implement once per battle
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, 86400)
+	default:
+		// broadcast cool down seconds
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
+
+	}
 
 	return nil
 }
