@@ -7,7 +7,7 @@ where
     exists(
         SELECT 1 FROM blueprint_player_abilities bpa
         WHERE bpa.id = spa.blueprint_id AND (
-            bpa.game_client_ability_id = 0 || bpa.game_client_ability_id = 1 || bpa.game_client_ability_id = 11
+            bpa.game_client_ability_id = 0 or bpa.game_client_ability_id = 1 or bpa.game_client_ability_id = 11
         )
 );
 
