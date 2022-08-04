@@ -39,6 +39,13 @@ type QueueJoinRequest struct {
 	} `json:"payload"`
 }
 
+func CalcNextQueueStatus(length int64) QueueStatusResponse {
+	return QueueStatusResponse{
+		QueueLength: length, // return the current queue length
+		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+	}
+}
+
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
 func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -414,7 +421,8 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 }
 
 type QueueStatusResponse struct {
-	QueueLength int64 `json:"queue_length"`
+	QueueLength int64           `json:"queue_length"`
+	QueueCost   decimal.Decimal `json:"queue_cost"`
 }
 
 const WSQueueStatusSubscribe = "BATTLE:QUEUE:STATUS:SUBSCRIBE"
