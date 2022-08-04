@@ -716,6 +716,13 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 
 	// check the stack amount match
 	if totalStack < ra.RequiredStacks {
+		gamelog.L.Warn().
+			Err(fmt.Errorf("stack not complete")).
+			Int("totalStack", totalStack).
+			Int("requiredStacks", ra.RequiredStacks).
+			Interface("gps", gps).
+			Interface("repair agent", ra).
+			Msg("totalStack less than required stacks")
 		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
 	}
 
