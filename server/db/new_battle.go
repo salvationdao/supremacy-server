@@ -270,14 +270,23 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 }
 
 func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
-	query := `
-		SELECT id, mech_id, queued_at, faction_id, owner_id, battle_id, notified
+	query := fmt.Sprintf(`
+		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
 		) x
 		WHERE x.r <= $1
-		`
+	`,
+		boiler.BattleQueueColumns.ID,
+		boiler.BattleQueueColumns.MechID,
+		boiler.BattleQueueColumns.QueuedAt,
+		boiler.BattleQueueColumns.FactionID,
+		boiler.BattleQueueColumns.OwnerID,
+		boiler.BattleQueueColumns.BattleID,
+		boiler.BattleQueueColumns.Notified,
+		boiler.BattleQueueColumns.SystemMessageNotified,
+	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
 	if err != nil {
@@ -290,7 +299,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 
 	for result.Next() {
 		mc := &boiler.BattleQueue{}
-		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified)
+		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified, &mc.SystemMessageNotified)
 		if err != nil {
 			return nil, err
 		}
