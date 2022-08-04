@@ -23,58 +23,51 @@ import (
 
 // Feature is an object representing the database table.
 type Feature struct {
-	Name            string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	GloballyEnabled bool      `boiler:"globally_enabled" boil:"globally_enabled" json:"globally_enabled" toml:"globally_enabled" yaml:"globally_enabled"`
+	Name      string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *featureR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L featureL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FeatureColumns = struct {
-	Name            string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
-	GloballyEnabled string
+	Name      string
+	DeletedAt string
+	UpdatedAt string
+	CreatedAt string
 }{
-	Name:            "name",
-	DeletedAt:       "deleted_at",
-	UpdatedAt:       "updated_at",
-	CreatedAt:       "created_at",
-	GloballyEnabled: "globally_enabled",
+	Name:      "name",
+	DeletedAt: "deleted_at",
+	UpdatedAt: "updated_at",
+	CreatedAt: "created_at",
 }
 
 var FeatureTableColumns = struct {
-	Name            string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
-	GloballyEnabled string
+	Name      string
+	DeletedAt string
+	UpdatedAt string
+	CreatedAt string
 }{
-	Name:            "features.name",
-	DeletedAt:       "features.deleted_at",
-	UpdatedAt:       "features.updated_at",
-	CreatedAt:       "features.created_at",
-	GloballyEnabled: "features.globally_enabled",
+	Name:      "features.name",
+	DeletedAt: "features.deleted_at",
+	UpdatedAt: "features.updated_at",
+	CreatedAt: "features.created_at",
 }
 
 // Generated where
 
 var FeatureWhere = struct {
-	Name            whereHelperstring
-	DeletedAt       whereHelpernull_Time
-	UpdatedAt       whereHelpertime_Time
-	CreatedAt       whereHelpertime_Time
-	GloballyEnabled whereHelperbool
+	Name      whereHelperstring
+	DeletedAt whereHelpernull_Time
+	UpdatedAt whereHelpertime_Time
+	CreatedAt whereHelpertime_Time
 }{
-	Name:            whereHelperstring{field: "\"features\".\"name\""},
-	DeletedAt:       whereHelpernull_Time{field: "\"features\".\"deleted_at\""},
-	UpdatedAt:       whereHelpertime_Time{field: "\"features\".\"updated_at\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"features\".\"created_at\""},
-	GloballyEnabled: whereHelperbool{field: "\"features\".\"globally_enabled\""},
+	Name:      whereHelperstring{field: "\"features\".\"name\""},
+	DeletedAt: whereHelpernull_Time{field: "\"features\".\"deleted_at\""},
+	UpdatedAt: whereHelpertime_Time{field: "\"features\".\"updated_at\""},
+	CreatedAt: whereHelpertime_Time{field: "\"features\".\"created_at\""},
 }
 
 // FeatureRels is where relationship names are stored.
@@ -98,9 +91,9 @@ func (*featureR) NewStruct() *featureR {
 type featureL struct{}
 
 var (
-	featureAllColumns            = []string{"name", "deleted_at", "updated_at", "created_at", "globally_enabled"}
+	featureAllColumns            = []string{"name", "deleted_at", "updated_at", "created_at"}
 	featureColumnsWithoutDefault = []string{"name"}
-	featureColumnsWithDefault    = []string{"deleted_at", "updated_at", "created_at", "globally_enabled"}
+	featureColumnsWithDefault    = []string{"deleted_at", "updated_at", "created_at"}
 	featurePrimaryKeyColumns     = []string{"name"}
 	featureGeneratedColumns      = []string{}
 )

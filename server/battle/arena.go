@@ -677,6 +677,11 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 		return nil
 	}
 
+	bn := arena.currentBattleNumber()
+	if bn == -1 {
+		return nil
+	}
+
 	participantID, err := strconv.Atoi(slotNumber)
 	if err != nil {
 		return fmt.Errorf("invalid participant id")
@@ -691,26 +696,51 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 		return terror.Error(fmt.Errorf("does not own the mech"), "You do not own the mech.")
 	}
 
+	ga, err := boiler.FindGameAbility(gamedb.StdConn, mechAbilityID)
+	if err != nil {
+		return terror.Error(err, "Failed to load game ability.")
+	}
+
 	coolDownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
 
-	// calculate remain seconds
-	mat, err := boiler.MechAbilityTriggerLogs(
-		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
-		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
-		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
-		return terror.Error(err, "Failed to load game ability")
-	}
+	// validate the ability can be triggered
+	switch ga.Label {
+	case "REPAIR":
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Failed to get last ability trigger")
+		}
 
-	if mat != nil {
-		reply(coolDownSeconds - int(time.Now().Sub(mat.CreatedAt).Seconds()))
-		return nil
-	}
+		if lastTrigger != nil {
+			reply(86400)
+		}
 
-	reply(0)
+	default:
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
+			return terror.Error(err, "Failed to load game ability")
+		}
+
+		if lastTrigger != nil {
+			reply(coolDownSeconds - int(time.Now().Sub(lastTrigger.CreatedAt).Seconds()))
+			return nil
+		}
+
+		reply(0)
+	}
 
 	return nil
 }
