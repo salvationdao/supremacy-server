@@ -479,6 +479,10 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Failed to insert repair agent request")
 	}
 
+	if req.Payload.IsFailed || req.Payload.Score == 0 {
+		reply(false)
+		return nil
+	}
 	reply(true)
 
 	return nil
