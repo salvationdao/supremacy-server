@@ -240,7 +240,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		if minutes < 1 {
 			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pa.CooldownExpiresOn).Seconds()))
 		}
-		return terror.Error(err, fmt.Sprintf("This ability is still on cooldown. %s", msg))
+		return terror.Error(fmt.Errorf("This ability is still on cooldown. %s", msg))
 	}
 
 	defer func() {
