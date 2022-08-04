@@ -719,6 +719,7 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 
 		if lastTrigger != nil {
 			reply(86400)
+			return nil
 		}
 
 	default:
@@ -739,8 +740,8 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 			return nil
 		}
 
-		reply(0)
 	}
+	reply(0)
 
 	return nil
 }
@@ -1085,6 +1086,14 @@ func (arena *Arena) beginBattle() {
 	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
+	}
+
+	// delete all the mech ability trigger logs
+	_, err = boiler.MechAbilityTriggerLogs(
+		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechAbilityTriggerLogColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
 	}
 
 	gm, err := db.GameMapGetRandom(false)

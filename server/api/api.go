@@ -276,7 +276,6 @@ func NewAPI(
 				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
 
 				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
-				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
@@ -287,11 +286,15 @@ func NewAPI(
 				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
 				s.WS("/live_data", "", nil)
 
-				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe, MustLogin)
-				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList, MustLogin)
-				s.WS("/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, nil, MustLogin)
-				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe, MustLogin)
-				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe, MustLogin)
+			}))
+
+			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, false))
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
+				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
+				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList)
+				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
+				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 			}))
 
 			// secured user route ws

@@ -238,10 +238,10 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	}
 
 	//  broadcast to repair offer market
-	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
-	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-	ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+	ws.PublishMessage("/secure_public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
+	ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+	ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 
 	reply(true)
 
@@ -428,8 +428,8 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	}
 
 	if sro != nil {
-		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
-		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+		ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
+		ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 	}
 
 	return nil
@@ -606,21 +606,21 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 		// broadcast result if repair is not completed
 		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-			ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-			ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
+			ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
+			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
 	}
 
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+		ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		reply(true)
 		return nil
 	}
 
 	// clean up repair case if repair is completed
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
 
 	// close repair case
 	rc.CompletedAt = null.TimeFrom(time.Now())
@@ -659,7 +659,11 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	startTime := ra.StartedAt
 	endTime := time.Now()
 
+	failedRate := db.GetDecimalWithDefault(db.KeyRepairMiniGameFailedRate, decimal.NewFromFloat(0.25))
+
 	// check each pattern is within the time frame
+	failedCount := 0
+
 	prevScore := 0
 	failedLastTime := false
 	prevStackAt := time.Now()
@@ -706,12 +710,22 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		}
 
 		// reduce the invalid score
-		if gp.IsFailed || gp.Score == 0 {
+		if gp.IsFailed {
+			failedCount += 1
+			continue
+		}
+
+		if gp.Score == 0 {
 			continue
 		}
 
 		// increment score
 		totalStack += 1
+	}
+
+	// if player failed 75% of the clicks
+	if decimal.NewFromInt(int64(failedCount)).GreaterThanOrEqual(decimal.NewFromInt(int64(ra.RequiredStacks)).Mul(failedRate)) {
+		return terror.Error(fmt.Errorf("stack failed"), "Too many failed stacks.")
 	}
 
 	// check the stack amount match
