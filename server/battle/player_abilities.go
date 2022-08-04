@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"math"
 	"server"
 	"server/db"
@@ -14,6 +13,8 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -232,6 +233,16 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return terror.Error(err, "You do not have any more of this ability to use.")
 	}
 
+	if time.Now().Before(pa.CooldownExpiresOn) {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("player ability is on cooldown")
+		minutes := int(time.Until(pa.CooldownExpiresOn).Minutes())
+		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
+		if minutes < 1 {
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pa.CooldownExpiresOn).Seconds()))
+		}
+		return terror.Error(err, fmt.Sprintf("This ability is still on cooldown. %s", msg))
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the PlayerAbilityUse!", r)
@@ -339,8 +350,9 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	// Update the count of the player_abilities entry
+	// Update the count and cooldown expiry of the player_abilities entry
 	pa.Count = pa.Count - 1
+	pa.CooldownExpiresOn = time.Now().Add(time.Second * time.Duration(bpa.CooldownSeconds))
 	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to update player ability count")
