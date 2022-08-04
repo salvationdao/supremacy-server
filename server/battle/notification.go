@@ -178,13 +178,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// broadcast system message to mech owners
 	system_messages.BroadcastMechQueueMessage(q)
 
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
-		return
-	}
-	defer tx.Rollback()
-
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {
 		// if in battle or already notified skip

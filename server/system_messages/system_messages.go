@@ -151,32 +151,63 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 }
 
 func BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
+	l := gamelog.L.With().Str("func", "BroadcastMechQueueMessage").Logger()
+
 	for _, q := range queue {
-		mech, err := q.Mech().One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
+		if q.BattleID.Valid {
+			continue
+		}
+		if q.SystemMessageNotified {
 			continue
 		}
 
-		label := mech.Label
-		if mech.Name != "" {
-			label = mech.Name
-		}
+		func() {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				l.Error().Err(err).Msg("unable to begin tx")
+				return
+			}
+			defer tx.Rollback()
 
-		msg := &boiler.SystemMessage{
-			PlayerID: q.OwnerID,
-			SenderID: server.SupremacyBattleUserID,
-			DataType: null.StringFrom(string(SystemMessageDataTypeMechQueue)),
-			Title:    "Queue Update",
-			Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
-		}
-		err = msg.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
-			continue
-		}
+			mech, err := q.Mech().One(tx)
+			if err != nil {
+				l.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
+				return
+			}
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+			label := mech.Label
+			if mech.Name != "" {
+				label = mech.Name
+			}
+
+			msg := &boiler.SystemMessage{
+				PlayerID: q.OwnerID,
+				SenderID: server.SupremacyBattleUserID,
+				DataType: null.StringFrom(string(SystemMessageDataTypeMechQueue)),
+				Title:    "Queue Update",
+				Message:  fmt.Sprintf("Your mech, %s, is about to enter the battle arena.", label),
+			}
+			err = msg.Insert(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
+				return
+			}
+
+			q.SystemMessageNotified = true
+			_, err = q.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.SystemMessageNotified))
+			if err != nil {
+				l.Error().Err(err).Interface("battleQueue", q).Msg("failed to update system_message_notified field of battle_queue in db")
+				return
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				l.Error().Err(err).Msg("failed to commit transaction")
+				return
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		}()
 	}
 }
 
