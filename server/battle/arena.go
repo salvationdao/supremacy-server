@@ -1016,8 +1016,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
-			battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
-			arena.NewBattleChan <- battleInfo
+			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":

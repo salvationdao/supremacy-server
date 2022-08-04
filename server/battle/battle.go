@@ -109,7 +109,8 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 func (btl *Battle) setBattleQueue() error {
 	l := gamelog.L.With().Str("log_name", "battle arena").Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Logger()
 	if btl.inserted {
-		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
+		btl.Battle.StartedAt = time.Now()
+		_, err := btl.Battle.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleColumns.StartedAt))
 		if err != nil {
 			l.Error().Err(err).Msg("unable to update Battle in database")
 			return err
