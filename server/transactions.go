@@ -34,5 +34,7 @@ const (
 	TransactionGroupMarketplace     TransactionGroup = "MARKETPLACE"
 	TransactionGroupBattle          TransactionGroup = "BATTLE"
 	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
+	TransactionGroupRepair          TransactionGroup = "REPAIR"
+	TransactionGroupSyndicate       TransactionGroup = "SYNDICATE"
 	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
 )

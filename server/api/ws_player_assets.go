@@ -75,6 +75,7 @@ type PlayerAssetMechListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		ExcludeDamagedMech  bool                  `json:"exclude_damaged_mech"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterStatuses      []string              `json:"statuses"`
@@ -153,6 +154,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		ExcludeDamagedMech:  req.Payload.ExcludeDamagedMech,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterStatuses:      req.Payload.FilterStatuses,
 	}
@@ -361,6 +363,60 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+// PlayerAssetMechBriefInfo load brief mech info for quick deploy
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
+	}
+
+	// get collection and check ownership
+	_, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+		qm.Load(boiler.MechRels.ChassisSkin),
+		qm.Load(boiler.MechRels.Model),
+		qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load mech info")
+	}
+
+	m := server.Mech{
+		ID:    mech.ID,
+		Label: mech.Label,
+	}
+
+	if mech.R.ChassisSkin != nil {
+		ms := mech.R.ChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.Label,
+			AvatarURL: ms.AvatarURL,
+			ImageURL:  ms.ImageURL,
+		}
+	} else if mech.R.Model != nil && mech.R.Model.R.DefaultChassisSkin != nil {
+		ms := mech.R.Model.R.DefaultChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.Label,
+			AvatarURL: ms.AvatarURL,
+			ImageURL:  ms.ImageURL,
+		}
+	}
+
+	reply(m)
 	return nil
 }
 
@@ -837,6 +893,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("crate blueprint", blueprintItem).Msg(fmt.Sprintf("failed to insert new mech from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 				return terror.Error(err, "Could not get mech during crate opening, try again or contact support.")
 			}
+
 			items.Mech = mech
 		case boiler.TemplateItemTypeWEAPON:
 			bp, err := db.BlueprintWeapon(blueprintItem.BlueprintID)
@@ -987,6 +1044,11 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
+		err = db.GiveMechAvatar(tx, mech.OwnerID, mech.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get final mech during CRATE:OPEN crate: %s", crate.ID))
+			return terror.Error(err, "Could not open crate, try again or contact support.")
+		}
 	}
 
 	if crate.Type == boiler.CrateTypeWEAPON {

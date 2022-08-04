@@ -1,9 +1,9 @@
 package battle
 
 import (
+	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -16,15 +16,17 @@ type WarMachine struct {
 	OwnedByID     string `json:"ownedByID"`
 	OwnerUsername string `json:"ownerUsername"`
 	Name          string `json:"name"`
+	Label         string `json:"label"`
 	ParticipantID byte   `json:"participantID"`
 	FactionID     string `json:"factionID"`
 	MaxHealth     uint32 `json:"maxHealth"`
 	MaxShield     uint32 `json:"maxShield"`
 	Health        uint32 `json:"health"`
 
-	Model string `json:"model"`
-	Skin  string `json:"skin"`
-	Speed int    `json:"speed"`
+	ModelID string `json:"modelID"`
+	Model   string `json:"model"`
+	Skin    string `json:"skin"`
+	Speed   int    `json:"speed"`
 
 	Faction *Faction `json:"faction"`
 	Tier    string   `json:"tier"`
@@ -55,7 +57,7 @@ type WarMachine struct {
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
 
-	sync.RWMutex // lock for any mech detail changes
+	deadlock.RWMutex // lock for any mech detail changes
 }
 
 type Stats struct {

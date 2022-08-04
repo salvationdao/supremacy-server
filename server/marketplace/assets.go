@@ -23,6 +23,7 @@ func TransferAssetsToXsyn(
 	hash string,
 	itemSaleID string,
 ) (TransferAssetToXsynRollbackFunc, error) {
+
 	err := passport.TransferAsset(
 		fromUserID,
 		toUserID,
@@ -65,7 +66,7 @@ func TransferAssetsToXsyn(
 	}
 
 	// Check whether to transfer mech only
-	transferMechOnly, err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
+	transferMechOnly,  err := db.MarketplaceItemIsGenesisOrLimitedMech(conn, itemSaleID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -111,6 +112,7 @@ func TransferAssetsToXsyn(
 					Msg("Failed to start purchase sale item rpc TransferAsset rollback (attachment).")
 			}
 		})
+
 	}
 
 	return rollbackFunc, nil

@@ -33,24 +33,15 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// faction queue
 	api.SecureUserFactionCommand(battle.WSQueueJoin, api.BattleArena.QueueJoinHandler)
-	api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
+	//api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
 	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.BattleArena.AssetUpdateRequest)
-
-	// TODO: handle insurance and repair
-	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
-	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
 
 	// mech move command related
 	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
 	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
 	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
-
-	// faction unique ability related (sup contribution)
-	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
-
 	return bc
 }
 

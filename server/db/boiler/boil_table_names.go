@@ -5,8 +5,10 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
+	ApplicationVotes                                   string
 	Availabilities                                     string
 	BattleAbilities                                    string
+	BattleAbilityOptInLogs                             string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
 	BattleContributions                                string
@@ -19,6 +21,7 @@ var TableNames = struct {
 	BattleKills                                        string
 	BattleMechs                                        string
 	BattleQueue                                        string
+	BattleQueueFees                                    string
 	BattleQueueNotifications                           string
 	BattleViewers                                      string
 	BattleWarMachineQueues                             string
@@ -49,6 +52,7 @@ var TableNames = struct {
 	ConsumedAbilities                                  string
 	CouponItems                                        string
 	Coupons                                            string
+	Devices                                            string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
@@ -68,7 +72,6 @@ var TableNames = struct {
 	MechAnimation                                      string
 	MechModels                                         string
 	MechMoveCommandLogs                                string
-	MechRepair                                         string
 	MechSkin                                           string
 	MechStats                                          string
 	MechUtility                                        string
@@ -93,12 +96,21 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersFeatures                                    string
+	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
 	Profanities                                        string
+	ProfileAvatars                                     string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
+	QuestionnaireAnswer                                string
+	QuestionnaireOptions                               string
+	RepairAgentLogs                                    string
+	RepairAgents                                       string
+	RepairBlocks                                       string
+	RepairCases                                        string
+	RepairOffers                                       string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -106,6 +118,18 @@ var TableNames = struct {
 	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
+	SyndicateCommittees                                string
+	SyndicateDirectors                                 string
+	SyndicateElectionCandidates                        string
+	SyndicateElectionVotes                             string
+	SyndicateElections                                 string
+	SyndicateJoinApplications                          string
+	SyndicateMotionVotes                               string
+	SyndicateMotions                                   string
+	SyndicatePendingMotions                            string
+	SyndicateQuestionnaires                            string
+	SyndicateRules                                     string
+	Syndicates                                         string
 	SystemMessages                                     string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
@@ -123,8 +147,10 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
+	ApplicationVotes:                "application_votes",
 	Availabilities:                  "availabilities",
 	BattleAbilities:                 "battle_abilities",
+	BattleAbilityOptInLogs:          "battle_ability_opt_in_logs",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
 	BattleContributions:             "battle_contributions",
@@ -137,6 +163,7 @@ var TableNames = struct {
 	BattleKills:                  "battle_kills",
 	BattleMechs:                  "battle_mechs",
 	BattleQueue:                  "battle_queue",
+	BattleQueueFees:              "battle_queue_fees",
 	BattleQueueNotifications:     "battle_queue_notifications",
 	BattleViewers:                "battle_viewers",
 	BattleWarMachineQueues:       "battle_war_machine_queues",
@@ -167,6 +194,7 @@ var TableNames = struct {
 	ConsumedAbilities:            "consumed_abilities",
 	CouponItems:                  "coupon_items",
 	Coupons:                      "coupons",
+	Devices:                      "devices",
 	FactionStats:                 "faction_stats",
 	Factions:                     "factions",
 	FailedPlayerKeycardsSync:     "failed_player_keycards_sync",
@@ -186,7 +214,6 @@ var TableNames = struct {
 	MechAnimation:                "mech_animation",
 	MechModels:                   "mech_models",
 	MechMoveCommandLogs:          "mech_move_command_logs",
-	MechRepair:                   "mech_repair",
 	MechSkin:                     "mech_skin",
 	MechStats:                    "mech_stats",
 	MechUtility:                  "mech_utility",
@@ -211,12 +238,21 @@ var TableNames = struct {
 	PlayerStats:                  "player_stats",
 	Players:                      "players",
 	PlayersFeatures:              "players_features",
+	PlayersProfileAvatars:        "players_profile_avatars",
 	PlayersPunishVotes:           "players_punish_votes",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
+	ProfileAvatars:               "profile_avatars",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",
+	QuestionnaireAnswer:          "questionnaire_answer",
+	QuestionnaireOptions:         "questionnaire_options",
+	RepairAgentLogs:              "repair_agent_logs",
+	RepairAgents:                 "repair_agents",
+	RepairBlocks:                 "repair_blocks",
+	RepairCases:                  "repair_cases",
+	RepairOffers:                 "repair_offers",
 	SalePlayerAbilities:          "sale_player_abilities",
 	SchemaMigrations:             "schema_migrations",
 	SpoilsOfWar:                  "spoils_of_war",
@@ -224,6 +260,18 @@ var TableNames = struct {
 	StorePurchaseHistory:         "store_purchase_history",
 	StorefrontMysteryCrates:      "storefront_mystery_crates",
 	StreamList:                   "stream_list",
+	SyndicateCommittees:          "syndicate_committees",
+	SyndicateDirectors:           "syndicate_directors",
+	SyndicateElectionCandidates:  "syndicate_election_candidates",
+	SyndicateElectionVotes:       "syndicate_election_votes",
+	SyndicateElections:           "syndicate_elections",
+	SyndicateJoinApplications:    "syndicate_join_applications",
+	SyndicateMotionVotes:         "syndicate_motion_votes",
+	SyndicateMotions:             "syndicate_motions",
+	SyndicatePendingMotions:      "syndicate_pending_motions",
+	SyndicateQuestionnaires:      "syndicate_questionnaires",
+	SyndicateRules:               "syndicate_rules",
+	Syndicates:                   "syndicates",
 	SystemMessages:               "system_messages",
 	TelegramNotifications:        "telegram_notifications",
 	TemplateBlueprints:           "template_blueprints",

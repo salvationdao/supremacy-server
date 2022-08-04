@@ -14,7 +14,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.12
-	github.com/ninja-syndicate/ws v0.16.3
+	github.com/ninja-syndicate/ws v0.16.17
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.1
 	github.com/urfave/cli/v2 v2.10.3
@@ -24,6 +24,7 @@ require (
 
 require (
 	github.com/DataDog/gostackparse v0.5.0
+	github.com/adrg/strutil v0.3.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gobwas/ws v1.1.0
@@ -35,6 +36,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/ninja-syndicate/hub v1.9.2
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shopspring/decimal v1.3.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
@@ -43,6 +45,7 @@ require (
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
 	go.uber.org/atomic v1.9.0
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	gopkg.in/telebot.v3 v3.0.0
 )
 
@@ -63,6 +66,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
@@ -120,7 +124,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.1 // indirect
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
 	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461 // indirect
 	golang.org/x/text v0.3.7 // indirect

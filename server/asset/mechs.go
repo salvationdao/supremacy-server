@@ -2,9 +2,11 @@ package asset
 
 import (
 	"fmt"
+	"server/db"
+	"server/db/boiler"
+
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"server/db/boiler"
 )
 
 func TransferMechToNewOwner(
@@ -21,7 +23,7 @@ func TransferMechToNewOwner(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
 	).UpdateAll(conn, boiler.M{
-		"owner_id": toID,
+		"owner_id":    toID,
 		"xsyn_locked": xsynLocked,
 	})
 	if err != nil {
@@ -96,11 +98,17 @@ func TransferMechToNewOwner(
 		itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
 	}
 
+	// give mech skin avatar
+	err = db.GiveMechAvatar(conn, toID, mechID)
+	if err != nil {
+		return nil, err
+	}
+
 	// update!
 	_, err = boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(itemIDsToTransfer),
 	).UpdateAll(conn, boiler.M{
-		"owner_id": toID,
+		"owner_id":     toID,
 		"asset_hidden": assetHidden,
 	})
 	if err != nil {

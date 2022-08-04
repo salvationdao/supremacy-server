@@ -15,11 +15,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewPowerCore(trx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
+func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
 		BlueprintID:           null.StringFrom(ec.ID),

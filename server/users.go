@@ -12,6 +12,8 @@ import (
 
 var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
 
+const RepairCenterUserID = "a988b1e3-5556-4cad-83bd-d61c2b149cb7"
+
 // User is a single user on the platform
 type User struct {
 	ID                  UserID      `json:"id" db:"id"`
@@ -38,6 +40,8 @@ type User struct {
 	PassportURL string `json:"passport_url"`
 	Sups        BigInt `json:"sups"`
 	Gid         int    `json:"gid" db:"gid"`
+
+	SyndicateID null.String `json:"syndicate_id,omitempty"`
 
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
@@ -123,13 +127,8 @@ type UserBrief struct {
 	Faction  *boiler.Faction `json:"faction"`
 }
 
-type SupsMultiplier struct {
-	Key       string    `json:"key"`
-	Value     int       `json:"value"`
-	ExpiredAt time.Time `json:"expired_at"`
-}
-
 const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
+const SupremacyChallengeFundUserID = "5bca9b58-a71c-4134-85d4-50106a8966dc"
 
 var (
 	SupremacyZaibatsuUserID          = uuid.Must(uuid.FromString("1a657a32-778e-4612-8cc1-14e360665f2b"))

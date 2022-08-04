@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"server/db"
 	"server/db/boiler"
@@ -13,6 +12,8 @@ import (
 	"server/helpers"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
@@ -28,6 +29,9 @@ func AuthRouter(api *API) chi.Router {
 	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
 	r.Get("/bot_check", WithError(api.AuthBotCheckHandler))
+
+	r.Post("/companion_app_token_login", WithError(api.AuthAppTokenLoginHandler))
+	r.Post("/qr_code_login", WithError(api.AuthQRCodeLoginHandler))
 
 	return r
 }
@@ -116,10 +120,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
+			api.DeleteCookie(w, r)
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
@@ -143,10 +144,7 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	player, err := api.TokenLogin(token)
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w, r)
-			if err != nil {
-				return http.StatusInternalServerError, err
-			}
+			api.DeleteCookie(w, r)
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
@@ -160,6 +158,94 @@ func (api *API) AuthBotCheckHandler(w http.ResponseWriter, r *http.Request) (int
 	return helpers.EncodeJSON(w, player)
 }
 
+// AuthAppTokenLoginHandler logs a player into the companion app
+func (api *API) AuthAppTokenLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	// Get token
+	token := r.Header.Get("token")
+	if token == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no token provided"), "Player is not signed in.")
+	}
+
+	// Check user from token
+	player, err := api.TokenLogin(token)
+	if err != nil {
+		if errors.Is(err, errors.New("Session is expired")) {
+			return http.StatusBadRequest, terror.Error(err, "Session is expired.")
+		}
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate player.")
+	}
+
+	return helpers.EncodeJSON(w, player)
+}
+
+// AuthQRCodeLoginHandler is used to log a player into the companion app
+// - uses the one time token displayed the QR code
+func (api *API) AuthQRCodeLoginHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	l := gamelog.L.With().Str("func", "AuthQRCodeLoginHandler").Logger()
+	// Get token
+	token := r.Header.Get("token")
+	if token == "" {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("no token provided"), "Failed to authenticate device.")
+	}
+
+	// Get device info
+	deviceID := r.Header.Get("id")
+	if deviceID == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no device ID provided"), "Failed to authenticate device.")
+	}
+	deviceName := r.Header.Get("name")
+	if deviceName == "" {
+		return http.StatusBadRequest, terror.Warn(fmt.Errorf("no device name provided"), "Failed to authenticate device.")
+	}
+
+	// Get user token from passport
+	tokenResp, err := api.Passport.OneTimeTokenLogin(token, r.UserAgent(), "login")
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to get token from passport.")
+		return http.StatusBadRequest, terror.Error(err, "Unable to retrieve player, try again or contact support.")
+	}
+
+	// Get user with token
+	user, err := api.TokenLogin(tokenResp.Token)
+	if err != nil {
+		if errors.Is(err, errors.New("Session is expired")) {
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
+		return http.StatusBadRequest, terror.Error(err, "Unable to authenticate player, try again or contact support")
+	}
+	l = l.With().Str("user id", user.ID).Logger()
+
+	// Check if device exists (and is not deleted)
+	exists, err := boiler.Devices(
+		boiler.DeviceWhere.DeviceID.EQ(deviceID),
+		boiler.DeviceWhere.PlayerID.EQ(user.ID),
+		boiler.DeviceWhere.DeletedAt.IsNull(),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get player devices")
+		return http.StatusBadRequest, terror.Error(err, "Failed to authenticate device.")
+	}
+
+	// Add device to table
+	if !exists {
+		d := boiler.Device{
+			DeviceID: deviceID,
+			PlayerID: user.ID,
+			Name:     deviceName,
+		}
+		err = d.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to insert user device.")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to connect device, try again or contact support.")
+		}
+	}
+
+	// Write auth token to header - this is saved on the device
+	w.Header().Set("xsyn-token", tokenResp.Token)
+
+	return helpers.EncodeJSON(w, user)
+}
+
 func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	_, err := r.Cookie("xsyn-token")
@@ -167,10 +253,7 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Player is not login")
 	}
 
-	err = api.DeleteCookie(w, r)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to delete cookie")
-	}
+	api.DeleteCookie(w, r)
 
 	return http.StatusOK, nil
 }
@@ -335,7 +418,6 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 			return terror.Error(err, "browser identification fail.")
 		}
 	}
-
 	return nil
 }
 
@@ -360,7 +442,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -383,8 +465,6 @@ func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 		SameSite: http.SameSiteNoneMode,
 	}
 	http.SetCookie(w, cookie)
-
-	return nil
 }
 
 func domain(host string) string {

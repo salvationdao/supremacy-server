@@ -25,20 +25,37 @@ type Player struct {
 	Gid              int             `json:"gid"`
 	Rank             string          `json:"rank"`
 	SentMessageCount int             `json:"sent_message_count"`
+	SyndicateID      null.String     `json:"syndicate_id"`
+
+	Stat      *boiler.PlayerStat `json:"stat"`
+	Syndicate *boiler.Syndicate  `json:"syndicate"`
 
 	Features []*Feature `json:"features"`
 }
 
-func (b *Player) Scan(value interface{}) error {
+type PublicPlayer struct {
+	ID        string      `json:"id"`
+	Username  null.String `json:"username"`
+	Gid       int         `json:"gid"`
+	FactionID null.String `json:"faction_id"`
+	AboutMe   null.String `json:"about_me"`
+	Rank      string      `json:"rank"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+func (p *Player) Scan(value interface{}) error {
 	v, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("unable to scan value into byte array")
 	}
-	return json.Unmarshal(v, b)
+	return json.Unmarshal(v, p)
 }
 
-func PlayerFromBoiler(player *boiler.Player, features boiler.FeatureSlice) (*Player, error) {
-	serverFeatures := FeaturesFromBoiler(features)
+func PlayerFromBoiler(player *boiler.Player, features ...boiler.FeatureSlice) *Player {
+	var serverFeatures []*Feature
+	if len(features) > 0 {
+		serverFeatures = FeaturesFromBoiler(features[0])
+	}
 
 	serverPlayer := &Player{
 		ID:               player.ID,
@@ -55,8 +72,39 @@ func PlayerFromBoiler(player *boiler.Player, features boiler.FeatureSlice) (*Pla
 		Gid:              player.Gid,
 		Rank:             player.Rank,
 		SentMessageCount: player.SentMessageCount,
+		SyndicateID:      player.SyndicateID,
 		Features:         serverFeatures,
 	}
 
-	return serverPlayer, nil
+	if player.R != nil {
+		serverPlayer.Stat = player.R.IDPlayerStat
+		serverPlayer.Syndicate = player.R.Syndicate
+	}
+
+	return serverPlayer
+}
+
+func PublicPlayerFromBoiler(p *boiler.Player) *PublicPlayer {
+	return &PublicPlayer{
+		ID:        p.ID,
+		Username:  p.Username,
+		FactionID: p.FactionID,
+		Gid:       p.Gid,
+		AboutMe:   p.AboutMe,
+		Rank:      p.Rank,
+		CreatedAt: p.CreatedAt,
+	}
+}
+
+// Brief trim off confidential data from player
+func (p *Player) Brief() *Player {
+	return &Player{
+		ID:        p.ID,
+		FactionID: p.FactionID,
+		Username:  p.Username,
+		Gid:       p.Gid,
+		Rank:      p.Rank,
+		Stat:      p.Stat,
+		Syndicate: p.Syndicate,
+	}
 }

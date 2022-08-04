@@ -276,7 +276,6 @@ func transferSups(userID string, amount string, api *API, code string) (string, 
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Coupon Redemption",
 		Description:          fmt.Sprintf("Coupon redemption code: %s", code),
-		NotSafe:              true,
 	})
 	if err != nil {
 		return "", terror.Error(err, "Could not transfer user SUPS from Supremacy Game User, try again or contact support")

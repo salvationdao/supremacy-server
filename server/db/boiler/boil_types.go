@@ -166,9 +166,12 @@ const (
 
 // Enum values for FeatureName
 const (
-	FeatureNameMECH_MOVE      = "MECH_MOVE"
-	FeatureNamePLAYER_ABILITY = "PLAYER_ABILITY"
-	FeatureNamePUBLIC_PROFILE = "PUBLIC_PROFILE"
+	FeatureNameMECH_MOVE       = "MECH_MOVE"
+	FeatureNamePLAYER_ABILITY  = "PLAYER_ABILITY"
+	FeatureNamePUBLIC_PROFILE  = "PUBLIC_PROFILE"
+	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
+	FeatureNameCHAT_BAN        = "CHAT_BAN"
+	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
 )
 
 // Enum values for AbilityLevel
@@ -234,8 +237,92 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
-// Enum values for SystemMessageType
+// Enum values for RepairTriggerWithType
 const (
-	SystemMessageTypeMECH_QUEUE           = "MECH_QUEUE"
-	SystemMessageTypeMECH_BATTLE_COMPLETE = "MECH_BATTLE_COMPLETE"
+	RepairTriggerWithTypeSPACE_BAR  = "SPACE_BAR"
+	RepairTriggerWithTypeLEFT_CLICK = "LEFT_CLICK"
+	RepairTriggerWithTypeTOUCH      = "TOUCH"
+	RepairTriggerWithTypeNONE       = "NONE"
+)
+
+// Enum values for RepairAgentFinishReason
+const (
+	RepairAgentFinishReasonABANDONED = "ABANDONED"
+	RepairAgentFinishReasonEXPIRED   = "EXPIRED"
+	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for RepairFinishReason
+const (
+	RepairFinishReasonEXPIRED   = "EXPIRED"
+	RepairFinishReasonSTOPPED   = "STOPPED"
+	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
+)
+
+// Enum values for SyndicateElectionType
+const (
+	SyndicateElectionTypeADMIN = "ADMIN"
+	SyndicateElectionTypeCEO   = "CEO"
+)
+
+// Enum values for SyndicateElectionResult
+const (
+	SyndicateElectionResultWINNER_APPEAR   = "WINNER_APPEAR"
+	SyndicateElectionResultTIE             = "TIE"
+	SyndicateElectionResultTIE_SECOND_TIME = "TIE_SECOND_TIME"
+	SyndicateElectionResultNO_VOTE         = "NO_VOTE"
+	SyndicateElectionResultNO_CANDIDATE    = "NO_CANDIDATE"
+	SyndicateElectionResultTERMINATED      = "TERMINATED"
+)
+
+// Enum values for SyndicateJoinApplicationResult
+const (
+	SyndicateJoinApplicationResultACCEPTED   = "ACCEPTED"
+	SyndicateJoinApplicationResultREJECTED   = "REJECTED"
+	SyndicateJoinApplicationResultTERMINATED = "TERMINATED"
+)
+
+// Enum values for SyndicateMotionType
+const (
+	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"
+	SyndicateMotionTypeCHANGE_ENTRY_FEE      = "CHANGE_ENTRY_FEE"
+	SyndicateMotionTypeCHANGE_MONTHLY_DUES   = "CHANGE_MONTHLY_DUES"
+	SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT = "CHANGE_BATTLE_WIN_CUT"
+	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
+	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
+	SyndicateMotionTypeCHANGE_RULE           = "CHANGE_RULE"
+	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
+	SyndicateMotionTypeAPPOINT_COMMITTEE     = "APPOINT_COMMITTEE"
+	SyndicateMotionTypeREMOVE_COMMITTEE      = "REMOVE_COMMITTEE"
+	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
+	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
+	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
+	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"
+)
+
+// Enum values for SyndicateMotionResult
+const (
+	SyndicateMotionResultPASSED          = "PASSED"
+	SyndicateMotionResultFAILED          = "FAILED"
+	SyndicateMotionResultTERMINATED      = "TERMINATED"
+	SyndicateMotionResultLEADER_ACCEPTED = "LEADER_ACCEPTED"
+	SyndicateMotionResultLEADER_REJECTED = "LEADER_REJECTED"
+)
+
+// Enum values for QuestionnaireUsage
+const (
+	QuestionnaireUsageJOIN_REQUEST = "JOIN_REQUEST"
+)
+
+// Enum values for QuestionnaireType
+const (
+	QuestionnaireTypeTEXT          = "TEXT"
+	QuestionnaireTypeSINGLE_SELECT = "SINGLE_SELECT"
+	QuestionnaireTypeMULTI_SELECT  = "MULTI_SELECT"
+)
+
+// Enum values for SyndicateType
+const (
+	SyndicateTypeCORPORATION   = "CORPORATION"
+	SyndicateTypeDECENTRALISED = "DECENTRALISED"
 )

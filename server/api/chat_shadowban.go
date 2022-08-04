@@ -16,7 +16,7 @@ import (
 )
 
 // ShadowbanChatPlayer shadow bans a player from chat
-func (a *API) ShadowbanChatPlayer(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) ShadowbanChatPlayer(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
 		ColumnName string `json:"column_name"`
 		Value      string `json:"value"`
@@ -67,7 +67,7 @@ func (a *API) ShadowbanChatPlayer(w http.ResponseWriter, r *http.Request) (int, 
 }
 
 // RemoveShadowbanChatPlayer removes player from shadow banned fingerprints
-func (a *API) ShadowbanChatPlayerRemove(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) ShadowbanChatPlayerRemove(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
 		ColumnName string `json:"column_name"`
 		Value      string `json:"value"`
@@ -112,7 +112,7 @@ func (a *API) ShadowbanChatPlayerRemove(w http.ResponseWriter, r *http.Request) 
 }
 
 // ShadowbanChatPlayerList lists all players that are chat shadow banned
-func (a *API) ShadowbanChatPlayerList(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) ShadowbanChatPlayerList(w http.ResponseWriter, r *http.Request) (int, error) {
 	// get banned players
 	bannedPlayers, err := boiler.Players(
 		qm.Select(

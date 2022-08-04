@@ -20,7 +20,6 @@ import (
 	"server/profanities"
 	"server/sms"
 	"server/synctool"
-	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
 
@@ -160,6 +159,9 @@ func main() {
 					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
 
 					&cli.StringFlag{Name: "github_token", Value: "", EnvVars: []string{envPrefix + "_GITHUB_ACCESS_TOKEN", "GITHUB_PAT"}, Usage: "Github token for access to private repo"},
+
+					&cli.StringFlag{Name: "captcha_site_key", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SITE_KEY", "CAPTCHA_SITE_KEY"}, Usage: "Captcha site key"},
+					&cli.StringFlag{Name: "captcha_secret", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SECRET", "CAPTCHA_SECRET"}, Usage: "Captcha secret"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -316,7 +318,7 @@ func main() {
 					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
+						ws.PublishMessage(fmt.Sprintf("/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
@@ -362,12 +364,6 @@ func main() {
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
 					start = time.Now()
-					// initialise system messaging manager
-					gamelog.L.Info().Msg("Setting up system messaging manager")
-					smm := system_messages.NewSystemMessagingManager()
-					gamelog.L.Info().Msgf("System messaging manager took %s", time.Since(start))
-
-					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 					ba := battle.NewArena(&battle.Opts{
@@ -376,7 +372,6 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
-						SystemMessagingManager:   smm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -385,7 +380,7 @@ func main() {
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, smm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -732,7 +727,6 @@ func SetupAPI(
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
-	smm *system_messages.SystemMessagingManager,
 	staticSyncURL string,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
@@ -778,6 +772,8 @@ func SetupAPI(
 		Address:               apiAddr,
 		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
 		AuthHangarCallbackURL: ctxCLI.String("auth_hangar_callback_url"),
+		CaptchaSiteKey:        ctxCLI.String("captcha_site_key"),
+		CaptchaSecret:         ctxCLI.String("captcha_secret"),
 	}
 
 	syncConfig := &synctool.StaticSyncTool{
@@ -789,6 +785,9 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, smm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	if err != nil {
+		return nil, err
+	}
 	return serverAPI, nil
 }
