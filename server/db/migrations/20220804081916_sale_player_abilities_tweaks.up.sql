@@ -75,7 +75,7 @@ INSERT INTO
     game_maps ("name", max_spawns)
 VALUES
     ('CityBlockArena', 9),
-    ('RedMountainMine', 9);
+    ('RedMountainMine', 9) ON CONFLICT ("name") DO NOTHING;
 
 UPDATE
     game_maps
