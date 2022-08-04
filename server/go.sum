@@ -1249,8 +1249,8 @@ github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3Q
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.9.2 h1:eM3BPPxipuQaAoWLkLk98s8BpseA6RiXZN++kpPBv40=
 github.com/ninja-syndicate/hub v1.9.2/go.mod h1:1nWmVtwMNyHwQqDc8q3+N3FxvGD8LKOLtNWztCErgTo=
-github.com/ninja-syndicate/ws v0.16.13 h1:IKPKtgElfIwKH6+57rUR1jG2J06L9gl9JoqnrqIgtvs=
-github.com/ninja-syndicate/ws v0.16.13/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
+github.com/ninja-syndicate/ws v0.16.14 h1:ZY915Rl4oUOuqKj0Z309mgHXSjZEjxmuK3kjWKt9MfQ=
+github.com/ninja-syndicate/ws v0.16.14/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
