@@ -447,33 +447,36 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 	cctx := chi.RouteContext(ctx)
 	hash := cctx.URLParam("hash")
 
-	wm := arena.CurrentBattleWarMachineByHash(hash)
-	if wm == nil {
-		return terror.Error(terror.ErrInvalidInput, "Current mech is not on the battlefield")
-	}
-
-	// query unfinished mech move command
-	mmc, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
-		return terror.Error(err, "Failed to get mech move command.")
-	}
-
 	resp := &MechMoveCommandResponse{
 		RemainCooldownSeconds: 0,
 	}
 
-	if mmc != nil {
-		resp.MechMoveCommandLog = mmc
-		resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
-		if resp.RemainCooldownSeconds < 0 {
-			resp.RemainCooldownSeconds = 0
+	// skip, if battle not loaded
+	if arena.currentBattleState() == BattleStageStart {
+		wm := arena.CurrentBattleWarMachineByHash(hash)
+		if wm == nil {
+			return terror.Error(terror.ErrInvalidInput, "Current mech is not on the battlefield")
+		}
+
+		// query unfinished mech move command
+		mmc, err := boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
+			boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
+			boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
+			boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Err(err).Msg("Failed to get mech move command from db")
+			return terror.Error(err, "Failed to get mech move command.")
+		}
+
+		if mmc != nil {
+			resp.MechMoveCommandLog = mmc
+			resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
+			if resp.RemainCooldownSeconds < 0 {
+				resp.RemainCooldownSeconds = 0
+			}
 		}
 	}
 
