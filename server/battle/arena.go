@@ -981,16 +981,23 @@ func (arena *Arena) GameClientJsonDataParser() {
 		switch msg.BattleCommand {
 		case "BATTLE:MAP_DETAILS":
 			var dataPayload *MapDetailsPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 				continue
 			}
 
 			// update map detail
 			btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
+
+			err = btl.setBattleQueue()
+			if err != nil {
+				L.Error().Msg("battle start load out has failed")
+				return
+			}
+
 		case "BATTLE:START":
 			var dataPayload *BattleStartPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 				continue
 			}

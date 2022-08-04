@@ -106,6 +106,69 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
 }
 
+func (btl *Battle) setBattleQueue() error {
+	l := gamelog.L.With().Str("log_name", "battle arena").Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Logger()
+	if btl.inserted {
+		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("unable to update Battle in database")
+			return err
+		}
+
+		_, err = boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).DeleteAll(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to delete delete stale battle mechs from database")
+		}
+
+		_, err = boiler.BattleWins(boiler.BattleWinWhere.BattleID.EQ(btl.ID)).DeleteAll(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to delete delete stale battle wins from database")
+		}
+
+		_, err = boiler.BattleKills(boiler.BattleKillWhere.BattleID.EQ(btl.ID)).DeleteAll(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to delete delete stale battle kills from database")
+		}
+
+		_, err = boiler.BattleHistories(boiler.BattleHistoryWhere.BattleID.EQ(btl.ID)).DeleteAll(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to delete delete stale battle histories from database")
+		}
+
+	} else {
+		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			l.Error().Err(err).Msg("unable to insert Battle into database")
+			return err
+		}
+
+		gamelog.L.Debug().Msg("Inserted battle into db")
+		btl.inserted = true
+
+		// insert current users to
+		btl.users.Range(func(user *BattleUser) bool {
+			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
+			if err != nil {
+				l.Error().Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
+				return true
+			}
+			return true
+		})
+
+		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
+		if err != nil {
+			l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
+			return err
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	}
+
+	return nil
+}
+
 func (btl *Battle) storePlayerAbilityManager(im *PlayerAbilityManager) {
 	btl.Lock()
 	defer btl.Unlock()
@@ -186,75 +249,6 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 	btl.factions = factions
 	btl.battleMechData = bmd
-
-	if btl.inserted {
-		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
-			return err
-		}
-
-		bmds, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
-		if err == nil {
-			_, err = bmds.DeleteAll(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle mechs from database")
-			}
-		}
-
-		bws, err := boiler.BattleWins(boiler.BattleWinWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
-		if err == nil {
-			_, err = bws.DeleteAll(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle wins from database")
-			}
-		}
-
-		bks, err := boiler.BattleKills(boiler.BattleKillWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
-		if err == nil {
-			_, err = bks.DeleteAll(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle kills from database")
-			}
-		}
-
-		bhs, err := boiler.BattleHistories(boiler.BattleHistoryWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
-		if err == nil {
-			_, err = bhs.DeleteAll(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle historys from database")
-			}
-		}
-	} else {
-		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-			return err
-		}
-
-		gamelog.L.Debug().Msg("Inserted battle into db")
-		btl.inserted = true
-
-		// insert current users to
-		btl.users.Range(func(user *BattleUser) bool {
-			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("battle_id", btl.ID).Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
-				return true
-			}
-			return true
-		})
-
-		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
-			return err
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-	}
 
 	btl.BroadcastUpdate()
 	gamelog.L.Trace().Str("func", "preIntro").Msg("end")
