@@ -620,8 +620,10 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
 		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 
+		totalBlocks := db.TotalRepairBlocks(rc.MechID)
+
 		// broadcast current mech stat if repair is above can deploy ratio
-		if decimal.NewFromInt(int64(rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(rc.BlocksRequiredRepair))).GreaterThanOrEqual(canDeployRatio) {
+		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThanOrEqual(canDeployRatio) {
 			go BroadcastMechQueueStat(rc.MechID)
 		}
 		ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)

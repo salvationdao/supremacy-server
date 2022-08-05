@@ -126,8 +126,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	if rc != nil {
 		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 
+		totalBlocks := db.TotalRepairBlocks(mci.ItemID)
+
 		// broadcast current mech stat if repair is above can deploy ratio
-		if decimal.NewFromInt(int64(rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(rc.BlocksRequiredRepair))).LessThan(canDeployRatio) {
+		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThan(canDeployRatio) {
 			// if mech has more than half of the block to repair
 			return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is still under repair.")
 		}
