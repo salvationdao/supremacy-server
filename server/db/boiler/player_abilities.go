@@ -22,58 +22,65 @@ import (
 
 // PlayerAbility is an object representing the database table.
 type PlayerAbility struct {
-	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID         string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	BlueprintID     string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	Count           int       `boiler:"count" boil:"count" json:"count" toml:"count" yaml:"count"`
-	LastPurchasedAt time.Time `boiler:"last_purchased_at" boil:"last_purchased_at" json:"last_purchased_at" toml:"last_purchased_at" yaml:"last_purchased_at"`
+	ID                string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	OwnerID           string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	BlueprintID       string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	Count             int       `boiler:"count" boil:"count" json:"count" toml:"count" yaml:"count"`
+	LastPurchasedAt   time.Time `boiler:"last_purchased_at" boil:"last_purchased_at" json:"last_purchased_at" toml:"last_purchased_at" yaml:"last_purchased_at"`
+	CooldownExpiresOn time.Time `boiler:"cooldown_expires_on" boil:"cooldown_expires_on" json:"cooldown_expires_on" toml:"cooldown_expires_on" yaml:"cooldown_expires_on"`
 
 	R *playerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerAbilityColumns = struct {
-	ID              string
-	OwnerID         string
-	BlueprintID     string
-	Count           string
-	LastPurchasedAt string
+	ID                string
+	OwnerID           string
+	BlueprintID       string
+	Count             string
+	LastPurchasedAt   string
+	CooldownExpiresOn string
 }{
-	ID:              "id",
-	OwnerID:         "owner_id",
-	BlueprintID:     "blueprint_id",
-	Count:           "count",
-	LastPurchasedAt: "last_purchased_at",
+	ID:                "id",
+	OwnerID:           "owner_id",
+	BlueprintID:       "blueprint_id",
+	Count:             "count",
+	LastPurchasedAt:   "last_purchased_at",
+	CooldownExpiresOn: "cooldown_expires_on",
 }
 
 var PlayerAbilityTableColumns = struct {
-	ID              string
-	OwnerID         string
-	BlueprintID     string
-	Count           string
-	LastPurchasedAt string
+	ID                string
+	OwnerID           string
+	BlueprintID       string
+	Count             string
+	LastPurchasedAt   string
+	CooldownExpiresOn string
 }{
-	ID:              "player_abilities.id",
-	OwnerID:         "player_abilities.owner_id",
-	BlueprintID:     "player_abilities.blueprint_id",
-	Count:           "player_abilities.count",
-	LastPurchasedAt: "player_abilities.last_purchased_at",
+	ID:                "player_abilities.id",
+	OwnerID:           "player_abilities.owner_id",
+	BlueprintID:       "player_abilities.blueprint_id",
+	Count:             "player_abilities.count",
+	LastPurchasedAt:   "player_abilities.last_purchased_at",
+	CooldownExpiresOn: "player_abilities.cooldown_expires_on",
 }
 
 // Generated where
 
 var PlayerAbilityWhere = struct {
-	ID              whereHelperstring
-	OwnerID         whereHelperstring
-	BlueprintID     whereHelperstring
-	Count           whereHelperint
-	LastPurchasedAt whereHelpertime_Time
+	ID                whereHelperstring
+	OwnerID           whereHelperstring
+	BlueprintID       whereHelperstring
+	Count             whereHelperint
+	LastPurchasedAt   whereHelpertime_Time
+	CooldownExpiresOn whereHelpertime_Time
 }{
-	ID:              whereHelperstring{field: "\"player_abilities\".\"id\""},
-	OwnerID:         whereHelperstring{field: "\"player_abilities\".\"owner_id\""},
-	BlueprintID:     whereHelperstring{field: "\"player_abilities\".\"blueprint_id\""},
-	Count:           whereHelperint{field: "\"player_abilities\".\"count\""},
-	LastPurchasedAt: whereHelpertime_Time{field: "\"player_abilities\".\"last_purchased_at\""},
+	ID:                whereHelperstring{field: "\"player_abilities\".\"id\""},
+	OwnerID:           whereHelperstring{field: "\"player_abilities\".\"owner_id\""},
+	BlueprintID:       whereHelperstring{field: "\"player_abilities\".\"blueprint_id\""},
+	Count:             whereHelperint{field: "\"player_abilities\".\"count\""},
+	LastPurchasedAt:   whereHelpertime_Time{field: "\"player_abilities\".\"last_purchased_at\""},
+	CooldownExpiresOn: whereHelpertime_Time{field: "\"player_abilities\".\"cooldown_expires_on\""},
 }
 
 // PlayerAbilityRels is where relationship names are stored.
@@ -100,9 +107,9 @@ func (*playerAbilityR) NewStruct() *playerAbilityR {
 type playerAbilityL struct{}
 
 var (
-	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "count", "last_purchased_at"}
+	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "count", "last_purchased_at", "cooldown_expires_on"}
 	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id"}
-	playerAbilityColumnsWithDefault    = []string{"id", "count", "last_purchased_at"}
+	playerAbilityColumnsWithDefault    = []string{"id", "count", "last_purchased_at", "cooldown_expires_on"}
 	playerAbilityPrimaryKeyColumns     = []string{"id"}
 	playerAbilityGeneratedColumns      = []string{}
 )
