@@ -2029,6 +2029,7 @@ func (btl *Battle) Load() error {
 	// set mechs current health
 	rcs, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.IN(mechIDs),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load mech repair cases.")
