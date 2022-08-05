@@ -1122,9 +1122,15 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	}
 
 	//get user who sent offending msg
+	l = l.With().Interface("GetReportedPlayer", chatHistory.PlayerID).Logger()
 	reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get reported player")
+		return terror.Error(err, genericErrorMessage)
+	}
 
 	//get 5 mins before and 5 mins after specific to chat stream
+	l = l.With().Interface("GetContext", chatHistory.ID).Logger()
 	msgs, err := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.ChatStream.EQ(chatHistory.ChatStream),
 		boiler.ChatHistoryWhere.CreatedAt.GT(chatHistory.CreatedAt.Add(time.Minute*(-5))),
@@ -1135,6 +1141,8 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
 		return terror.Error(err, genericErrorMessage)
 	}
+
+	l = l.With().Interface("CreateContextString", chatHistory.ID).Logger()
 	reportContext := ""
 	for _, msg := range msgs {
 		p, err := boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
@@ -1158,8 +1166,14 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 
 	subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
 	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
+
 	//send through to zendesk
+	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
 	err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+	if err != nil {
+		l.Error().Err(err).Msg("unable send zendesk request.")
+		return terror.Error(err, genericErrorMessage)
+	}
 
 	//add user id to report metadata (cant report again)
 	metadata.Reports = append(metadata.Reports, user.ID)
