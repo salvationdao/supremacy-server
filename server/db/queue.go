@@ -79,17 +79,18 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	// check damaged
 	mrc, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.EQ(mechID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to load mech rapair stat")
 		return nil, terror.Error(err, "Failed to load mech stat")
 	}
 
-	if mrc != nil && !mrc.CompletedAt.Valid {
+	if mrc != nil {
 		resp.Status = server.MechArenaStatusDamaged
 		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 		totalBlocks := TotalRepairBlocks(mrc.MechID)
-		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThanOrEqual(canDeployRatio) {
+		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
 			resp.CanDeploy = false
 			return resp, nil
 		}
