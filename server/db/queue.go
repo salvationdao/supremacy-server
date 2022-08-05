@@ -89,7 +89,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 		resp.Status = server.MechArenaStatusDamaged
 		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 		totalBlocks := TotalRepairBlocks(mrc.MechID)
-		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThan(canDeployRatio) {
+		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThanOrEqual(canDeployRatio) {
 			resp.CanDeploy = false
 			return resp, nil
 		}

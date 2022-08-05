@@ -2039,7 +2039,7 @@ func (btl *Battle) Load() error {
 			for _, wm := range btl.WarMachines {
 				if rc.MechID == wm.ID {
 					totalBlocks := db.TotalRepairBlocks(rc.MechID)
-					wm.Health = wm.MaxHealth * uint32(rc.BlocksRequiredRepair-rc.BlocksRepaired) / uint32(totalBlocks)
+					wm.Health = wm.MaxHealth * uint32(totalBlocks-(rc.BlocksRequiredRepair-rc.BlocksRepaired)) / uint32(totalBlocks)
 					break
 				}
 			}
