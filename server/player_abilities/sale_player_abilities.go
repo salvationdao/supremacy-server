@@ -2,7 +2,6 @@ package player_abilities
 
 import (
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"math/rand"
 	"server"
 	"server/db"
@@ -10,6 +9,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -311,7 +312,7 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability price
-				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
@@ -341,7 +342,7 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability price
-				ws.PublishMessage("/public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
 				})
