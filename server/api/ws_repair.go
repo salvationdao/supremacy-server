@@ -362,13 +362,13 @@ func (api *API) RepairAgentRegister(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to load repair agent.")
 	}
 
-	//// verify token, if players have not done any repair, or they are doing different offer
-	//if lastRegister == nil || lastRegister.RepairOfferID != ro.ID {
-	//	err = api.captcha.verify(req.Payload.CaptchaToken)
-	//	if err != nil {
-	//		return terror.Error(err, "Failed to complete captcha verification.")
-	//	}
-	//}
+	// verify token, if players have not done any repair, or they are doing different offer
+	if lastRegister == nil || lastRegister.RepairOfferID != ro.ID {
+		err = api.captcha.verify(req.Payload.CaptchaToken)
+		if err != nil {
+			return terror.Error(err, "Failed to complete captcha verification.")
+		}
+	}
 
 	// abandon last repair agent
 	if lastRegister != nil && !lastRegister.FinishedAt.Valid {
