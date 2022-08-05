@@ -622,7 +622,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 		totalBlocks := db.TotalRepairBlocks(rc.MechID)
 
-		// broadcast current mech stat if repair is above can deploy ratio
+		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
 		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
 			go BroadcastMechQueueStat(rc.MechID)
 		}
