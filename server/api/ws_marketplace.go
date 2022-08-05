@@ -1066,9 +1066,27 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
-			Status: server.MechArenaStatusIdle,
-		})
+		mai := &server.MechArenaInfo{
+			Status:    server.MechArenaStatusIdle,
+			CanDeploy: true,
+		}
+
+		mrc, err := boiler.RepairCases(
+			boiler.RepairCaseWhere.MechID.EQ(ci.ItemID),
+			boiler.RepairCaseWhere.CompletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			l.Error().Err(err).Msg("Failed to load repair case")
+		}
+
+		if mrc != nil {
+			mai.Status = server.MechArenaStatusDamaged
+			if mrc.BlocksRepaired*2 < mrc.BlocksRequiredRepair {
+				mai.CanDeploy = false
+			}
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, mai)
 	}
 
 	return nil
