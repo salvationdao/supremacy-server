@@ -13,11 +13,11 @@ func (api *API) Command(key string, fn ws.CommandFunc) {
 }
 
 func (api *API) SecureUserCommand(key string, fn server.SecureCommandFunc) {
-	api.SecureUserCommander.Command(string(key), server.MustSecure(fn))
+	api.SecureUserCommander.Command(string(key), server.MustSecure(server.SecureTracer(fn)))
 }
 
 func (api *API) SecureUserFactionCommand(key string, fn server.SecureFactionCommandFunc) {
-	api.SecureFactionCommander.Command(string(key), server.MustSecureFaction(fn))
+	api.SecureFactionCommander.Command(string(key), server.MustSecureFaction(server.SecureFactionTracer(fn)))
 }
 
 func MustHaveFaction(ctx context.Context) bool {
@@ -69,9 +69,9 @@ func MustMatchSyndicate(ctx context.Context) bool {
 }
 
 func (api *API) SecureUserFeatureCheckCommand(featureType string, key string, fn server.SecureCommandFunc) {
-	api.SecureUserCommander.Command(string(key), server.MustSecureWithFeature(featureType, fn))
+	api.SecureUserCommander.Command(string(key), server.MustSecureWithFeature(featureType, server.SecureTracer(fn)))
 }
 
 func (api *API) SecureUserFactionFeatureCheckCommand(featureType string, key string, fn server.SecureFactionCommandFunc) {
-	api.SecureFactionCommander.Command(string(key), server.MustSecureFactionWithFeature(featureType, fn))
+	api.SecureFactionCommander.Command(string(key), server.MustSecureFactionWithFeature(featureType, server.SecureFactionTracer(fn)))
 }
