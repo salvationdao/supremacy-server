@@ -167,11 +167,11 @@ func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
 		if mech.FactionWon.Bool {
 			switch mech.FactionID {
 			case server.ZaibatsuFactionID:
-				*winner = ZaibatsuShortcode
+				winner = &ZaibatsuShortcode
 			case server.RedMountainFactionID:
-				*winner = RedMountainShortcode
+				winner = &RedMountainShortcode
 			case server.BostonCyberneticsFactionID:
-				*winner = BostonShortcode
+				winner = &BostonShortcode
 			default:
 				return nil, fmt.Errorf("faction not recognised: %s", mech.FactionID)
 			}
@@ -183,11 +183,11 @@ func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
 
 		switch mech.FactionID {
 		case server.ZaibatsuFactionID:
-			*runnerUp = ZaibatsuShortcode
+			runnerUp = &ZaibatsuShortcode
 		case server.RedMountainFactionID:
-			*runnerUp = RedMountainShortcode
+			runnerUp = &RedMountainShortcode
 		case server.BostonCyberneticsFactionID:
-			*runnerUp = BostonShortcode
+			runnerUp = &BostonShortcode
 		default:
 			return nil, fmt.Errorf("faction not recognised: %s", mech.FactionID)
 		}

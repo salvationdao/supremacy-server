@@ -26,7 +26,6 @@ const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
-
 type KVKey string
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
@@ -38,6 +37,7 @@ const KeyBattleAbilityBribeDuration KVKey = "battle_ability_bribe_duration"
 const KeyBattleAbilityLocationSelectDuration KVKey = "battle_ability_location_select_duration"
 const KeyAdvanceBattleAbilityShowUpUntilSeconds KVKey = "advance_battle_ability_show_up_until_seconds"
 const KeyAdvanceBattleAbilityLabel KVKey = "advance_battle_ability_label"
+const KeyFirstBattleAbilityLabel KVKey = "first_battle_ability_label"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 const KeyLastTransferEventID KVKey = "last_transfer_event_id"
@@ -48,11 +48,15 @@ const KeySystemBanTeamKillDefaultReason KVKey = "system_ban_team_kill_default_re
 const KeySystemBanTeamKillBanBaseDurationHours KVKey = "system_ban_team_kill_ban_base_duration_hours"
 const KeySystemBanTeamKillBanDurationMultiplier KVKey = "system_ban_team_kill_ban_duration_multiplier"
 const KeySystemBanTeamKillPermanentBanBottomLineHours KVKey = "system_ban_team_kill_permanent_ban_bottom_line_hours"
+const KeyRepairMiniGameFailedRate KVKey = "repair_mini_game_failed_rate"
 
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
 const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
 const KeyBattleQueueFee KVKey = "battle_queue_fee"
 const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
+const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
+const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
+const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"

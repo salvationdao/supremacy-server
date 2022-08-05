@@ -281,6 +281,7 @@ type AbilityConfig struct {
 	BattleAbilityLocationSelectDuration time.Duration
 	AdvanceAbilityShowUpUntilSeconds    int
 	AdvanceAbilityLabel                 string
+	FirstAbilityLabel                   string
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -303,6 +304,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
 				AdvanceAbilityShowUpUntilSeconds:    db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
+				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
 		},
 		isClosed:           atomic.Bool{},
@@ -318,7 +320,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	// init battle ability
-	_, err := as.SetNewBattleAbility()
+	_, err := as.SetNewBattleAbility(true)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set up battle ability")
 		return nil
@@ -331,7 +333,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 }
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
-func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
+func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 	if !AbilitySystemIsAvailable(as) {
 		return 30, terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
 	}
@@ -361,6 +363,11 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	as.BattleAbilityPool.Lock()
 	defer as.BattleAbilityPool.Unlock()
 
+	firstAbilityLabel := as.BattleAbilityPool.config.FirstAbilityLabel
+	if !isFirst {
+		firstAbilityLabel = ""
+	}
+
 	excludedAbility := as.BattleAbilityPool.config.AdvanceAbilityLabel
 	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.AdvanceAbilityShowUpUntilSeconds {
 		// bring in advance battle ability
@@ -368,7 +375,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	}
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(excludedAbility)
+	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, excludedAbility)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 30, err
@@ -526,7 +533,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				// get another ability if no one opt in
 				if as.BattleAbilityPool.LocationDeciders.maxSelectorCount() == 0 {
 					// set new battle ability
-					cooldownSecond, err := as.SetNewBattleAbility()
+					cooldownSecond, err := as.SetNewBattleAbility(false)
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 					}
@@ -575,7 +582,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
+				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 				}
@@ -714,7 +721,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			// enter cool down, when every selector fire the ability
 			if !as.BattleAbilityPool.LocationDeciders.hasSelector() {
 				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
+				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 				}
@@ -775,8 +782,7 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 	rand.Shuffle(len(bao), func(i, j int) { bao[i], bao[j] = bao[j], bao[i] })
 
 	// get maximum selector count
-	rand.Seed(time.Now().UnixNano())
-	maximumCommanderCount := 1 + rand.Intn(as.BattleAbilityPool.BattleAbility.MaximumCommanderCount)
+	maximumCommanderCount := as.BattleAbilityPool.BattleAbility.MaximumCommanderCount
 
 	wg := sync.WaitGroup{}
 	for factionID := range as.BattleAbilityPool.LocationDeciders.m {
