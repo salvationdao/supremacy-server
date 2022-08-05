@@ -99,7 +99,7 @@ type AvatarCreateRequest struct {
 }
 
 // CustomAvatarCreate creates a custom avatar
-func CustomAvatarCreate(playerID string, req AvatarCreateRequest) error {
+func CustomAvatarCreate(playerID string, req AvatarCreateRequest) (*boiler.ProfileCustomAvatar, error) {
 	ava := boiler.ProfileCustomAvatar{
 		PlayerID:    playerID,
 		FaceID:      req.FaceID,
@@ -112,10 +112,10 @@ func CustomAvatarCreate(playerID string, req AvatarCreateRequest) error {
 	// insert
 	err := ava.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &ava, nil
 }
 
 // CustomAvatarUpdate updates a custom avatar

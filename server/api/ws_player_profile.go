@@ -245,12 +245,12 @@ func (pac *PlayerController) PlayerProfileCustomAvatarCreate(ctx context.Context
 		EyeWearID:   req.Payload.EyewearID,
 	}
 
-	err = db.CustomAvatarCreate(user.ID, ava)
+	avatar, err := db.CustomAvatarCreate(user.ID, ava)
 	if err != nil {
 		return terror.Error(err, "Failed to create custom avatar, please try again or contact support.")
 	}
 
-	reply(nil)
+	reply(avatar.ID)
 
 	return nil
 }
@@ -296,12 +296,6 @@ func (pac *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(req.Payload.AvatarID)
-
 	// get avatar
 	ava, err := boiler.FindProfileCustomAvatar(gamedb.StdConn, req.Payload.AvatarID)
 	if err != nil {
@@ -311,6 +305,11 @@ func (pac *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context
 	// check ownership
 	if ava.PlayerID != user.ID {
 		return terror.Error(err, "You don't have permission to delete this item")
+	}
+
+	// check if player has avatar equipped
+	if user.CustomAvatarID.Valid && user.CustomAvatarID.String == req.Payload.AvatarID {
+		return terror.Error(fmt.Errorf("cannot delete an avatar that is equipped"), "Cannot delete an avatar that is equipped")
 	}
 
 	// set deleted at
