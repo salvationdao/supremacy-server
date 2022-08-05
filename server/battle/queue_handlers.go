@@ -124,8 +124,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	if rc != nil {
-		// if mech has more than half of the block to repair
-		if rc.BlocksRepaired*2 < rc.BlocksRequiredRepair {
+		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+
+		// broadcast current mech stat if repair is above can deploy ratio
+		if decimal.NewFromInt(int64(rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(rc.BlocksRequiredRepair))).LessThan(canDeployRatio) {
+			// if mech has more than half of the block to repair
 			return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is still under repair.")
 		}
 	}
@@ -312,135 +315,6 @@ func (arena *Arena) AssetUpdateRequest(ctx context.Context, user *boiler.Player,
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, msg.Payload.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
-	return nil
-}
-
-type QueueLeaveRequest struct {
-	Payload struct {
-		AssetHash string `json:"asset_hash"`
-	} `json:"payload"`
-}
-
-const WSQueueLeave = "BATTLE:QUEUE:LEAVE"
-
-func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	msg := &QueueLeaveRequest{}
-	err := json.Unmarshal(payload, msg)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue leave")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	mci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.Hash.EQ(msg.Payload.AssetHash),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech collection item from hash")
-		return err
-	}
-
-	if user.ID != mci.OwnerID {
-		return terror.Error(terror.ErrForbidden, "Only the owners of the war machine can remove it from the queue.")
-	}
-
-	// Get queue position before deleting
-	position, err := db.MechQueuePosition(mci.ItemID, factionID)
-	if errors.Is(sql.ErrNoRows, err) {
-		gamelog.L.Warn().Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("tried to remove already unqueued mech from queue")
-		return terror.Warn(fmt.Errorf("unable to find war machine in battle queue, ensure machine isn't already removed and contact support"))
-	}
-	if err != nil {
-		gamelog.L.Warn().Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("unable to get mech position")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	if position.QueuePosition == 0 {
-		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"))
-	}
-
-	// check current battle war machine id list
-	for _, wmID := range arena.currentBattleWarMachineIDs() {
-		if wmID.String() == mci.ItemID {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("mechID", mci.ItemID).Interface("factionID", factionID).Err(err).Msg("cannot remove battling mech from queue")
-			return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
-		}
-	}
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-	defer tx.Rollback()
-
-	// Remove from queue
-	bq, err := boiler.BattleQueues(
-		boiler.BattleQueueWhere.MechID.EQ(mci.ItemID),
-		qm.Load(boiler.BattleQueueRels.Fee),
-	).One(tx)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Err(err).
-			Str("mech_id", mci.ItemID).
-			Msg("unable to get existing mech from queue")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	_, err = bq.Delete(tx)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("mech id", mci.ItemID).
-			Err(err).Msg("unable to remove mech from queue")
-		return terror.Error(err, "Unable to leave queue, try again or contact support.")
-	}
-
-	// refund
-	if bq.R != nil && bq.R.Fee != nil {
-		bqf := bq.R.Fee
-
-		// pay battle queue fee
-		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-			Amount:               bqf.Amount.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          "refund battle queue fee.",
-		})
-		if err != nil {
-			gamelog.L.Error().
-				Str("player_id", user.ID).
-				Str("mech id", mci.ItemID).
-				Str("amount", bqf.Amount.StringFixed(0)).
-				Err(err).Msg("Failed to refund battle queue fee.")
-			return terror.Error(err, "Failed to refund battle queue fee.")
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Str("mech id", mci.ItemID).
-			Err(err).Msg("unable to commit mech deletion from queue")
-		return terror.Error(err, "Unable to leave queue, try again or contact support.")
-	}
-
-	reply(true)
-
-	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-		return terror.Error(err, "Unable to leave queue, try again or contact support.")
-	}
-
-	// Send updated battle queue status to all subscribers
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
-	gamelog.L.Debug().Str("factionID", factionID).Str("mechID", mci.ItemID).Msg("published message on queue leave")
-
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-
 	return nil
 }
 
