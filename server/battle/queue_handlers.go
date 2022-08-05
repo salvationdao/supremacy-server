@@ -92,20 +92,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
 	}
 
-	// check mech is still in repair
-	rc, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.MechID.EQ(mci.ItemID),
-		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("mech id", mci.ItemID).Msg("Failed to get repair case")
-		return terror.Error(err, "Failed to queue mech.")
-	}
-
-	if rc != nil {
-		return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is not fully recovered.")
-	}
-
 	// Check mech exist in the battle queue
 	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mci.ItemID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -124,6 +110,24 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		}
 
 		return terror.Error(fmt.Errorf("your mech is already in queue, current position is %d", position.QueuePosition))
+	}
+
+	// check mech is still in repair
+	rc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(mci.ItemID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+		qm.Load(boiler.RepairCaseRels.RepairOffers),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", mci.ItemID).Msg("Failed to get repair case")
+		return terror.Error(err, "Failed to queue mech.")
+	}
+
+	if rc != nil {
+		// if mech has more than half of the block to repair
+		if rc.BlocksRepaired*2 < rc.BlocksRequiredRepair {
+			return terror.Error(fmt.Errorf("mech is not fully recovered"), "Your mech is still under repair.")
+		}
 	}
 
 	// Get current queue length and calculate queue fee and reward
@@ -214,6 +218,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		refundFunc() // refund player
 		gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
 		return terror.Error(err, "Failed to update battle queue")
+	}
+
+	if rc != nil {
+		// otherwise, cancel all the existing offer
+		if rc.R != nil && rc.R.RepairOffers != nil {
+			ids := []string{}
+			for _, ro := range rc.R.RepairOffers {
+				ids = append(ids, ro.ID)
+			}
+
+			select {
+			case arena.RepairOfferCloseChan <- &RepairOfferClose{
+				OfferIDs:          ids,
+				OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
+				AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
+			}:
+			case <-time.After(5 * time.Second):
+				return terror.Error(fmt.Errorf("failed to terminate repair case"), "Failed to close the repair case of the mech.")
+			}
+		}
 	}
 
 	// Commit transaction

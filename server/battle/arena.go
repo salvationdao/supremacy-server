@@ -266,7 +266,7 @@ func NewArena(opts *Opts) *Arena {
 		SystemBanManager:         NewSystemBanManager(),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		NewBattleChan:            make(chan *NewBattleChan, 10),
-		RepairOfferCloseChan:     make(chan *RepairOfferClose),
+		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
 		gameClientJsonDataChan:   make(chan []byte, 3),
 	}
 

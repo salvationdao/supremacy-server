@@ -2015,12 +2015,38 @@ func (btl *Battle) Load() error {
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
 	uuids := make([]uuid.UUID, len(q))
+	mechIDs := make([]string, len(q))
 	for i, bq := range q {
+		mechIDs[i] = bq.MechID
 		uuids[i], err = uuid.FromString(bq.MechID)
 		if err != nil {
 			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return err
+		}
+	}
+
+	// set mechs current health
+	rcs, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.IN(mechIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load mech repair cases.")
+	}
+
+	if rcs != nil {
+		for _, rc := range rcs {
+			for _, wm := range btl.WarMachines {
+				if rc.MechID == wm.ID {
+					wm.Health = wm.MaxHealth * uint32(rc.BlocksRepaired) / uint32(rc.BlocksRequiredRepair)
+					break
+				}
+			}
+		}
+
+		_, err = rcs.UpdateAll(gamedb.StdConn, boiler.M{boiler.RepairCaseColumns.CompletedAt: null.TimeFrom(time.Now())})
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to update mech repair cases.")
 		}
 	}
 
@@ -2076,7 +2102,6 @@ var SubmodelSkinMap = map[string]string{
 
 func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 	var warMachines []*WarMachine
-
 	for _, mech := range mechs {
 		if !mech.FactionID.Valid {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("mech without a faction"))
