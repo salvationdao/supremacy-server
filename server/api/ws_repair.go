@@ -537,18 +537,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
 	}
 
-	// log path
-	ral, err := boiler.RepairAgentLogs(
-		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
-		boiler.RepairAgentLogWhere.Score.GT(0),
-		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
-	).All(gamedb.StdConn)
-	if err != nil {
-		L.Error().Err(err).Msg("failed to log mini-game records")
-		return terror.Error(err, "Failed to load repair records.")
-	}
-
-	err = BlockStackingGameVerification(ra, ral)
+	err = BlockStackingGameVerification(ra)
 	if err != nil {
 		L.Error().Err(err).Msg("failed BlockStackingGameVerification")
 		return err
@@ -700,7 +689,18 @@ func BroadcastMechQueueStat(mechID string) {
 	}
 }
 
-func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairAgentLog) error {
+func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
+	// log path
+	gps, err := ra.RepairAgentLogs(
+		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+		boiler.RepairAgentLogWhere.Score.GT(0),
+		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to log mini-game records")
+		return terror.Error(err, "Failed to load repair records.")
+	}
+
 	startTime := ra.StartedAt
 	endTime := time.Now()
 
@@ -745,10 +745,6 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		// increase failed count, if failed
 		if gp.IsFailed {
 			failedCount += 1
-			continue
-		}
-
-		if gp.Score == 0 {
 			continue
 		}
 
