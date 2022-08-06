@@ -457,11 +457,17 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// skip, if it is an initial block
+	if req.Payload.Score == 0 {
+		reply(false)
+		return nil
+	}
+
 	switch req.Payload.TriggerWith {
 	case boiler.RepairTriggerWithTypeSPACE_BAR, boiler.RepairTriggerWithTypeLEFT_CLICK, boiler.RepairTriggerWithTypeTOUCH:
 	default:
 		gamelog.L.Debug().Str("repair agent id", req.Payload.RepairAgentID).Msg("Unknown trigger type is detected.")
-		return nil
+		return terror.Error(fmt.Errorf("invalid trigger type"), "Unknown trigger type is detected.")
 	}
 
 	// log record
@@ -479,7 +485,7 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Failed to insert repair agent request")
 	}
 
-	if req.Payload.IsFailed || req.Payload.Score == 0 {
+	if req.Payload.IsFailed {
 		reply(false)
 		return nil
 	}
@@ -534,6 +540,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// log path
 	ral, err := boiler.RepairAgentLogs(
 		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+		boiler.RepairAgentLogWhere.Score.GT(0),
 		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -703,15 +710,12 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	failedCount := 0
 
 	prevScore := 0
-	failedLastTime := false
-	prevStackAt := time.Now()
 	totalStack := 0
 	for i, gp := range gps {
 		if i > 0 {
 			// valid score pattern
 			// 1. current score equal to previous score + 1
 			// 2. current score equal to previous score, and current stack is failed
-			// 3. current score equal to zero, and previous stack is failed
 
 			isValidScorePattern := false
 			if gp.Score == prevScore+1 {
@@ -721,27 +725,16 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 			} else if gp.Score == prevScore && gp.IsFailed {
 				// meet RULE 2
 				isValidScorePattern = true
-
-			} else if gp.Score == 0 && failedLastTime {
-				// meet RULE 3
-				isValidScorePattern = true
 			}
 
 			// if score pattern does not match
 			if !isValidScorePattern {
 				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
 			}
-
-			if !prevStackAt.Before(gp.CreatedAt) {
-				return terror.Error(fmt.Errorf("invalid stack time"), "Invalid game pattern detected.")
-			}
-
 		}
 
 		// set initial score and failed stat
 		prevScore = gp.Score
-		failedLastTime = gp.IsFailed
-		prevStackAt = gp.CreatedAt
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
 			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
@@ -761,7 +754,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		totalStack += 1
 	}
 
-	// if player failed 75% of the clicks
+	// if player failed 25% of the clicks
 	if decimal.NewFromInt(int64(failedCount)).GreaterThanOrEqual(decimal.NewFromInt(int64(ra.RequiredStacks)).Mul(failedRate)) {
 		return terror.Error(fmt.Errorf("stack failed"), "Too many failed stacks.")
 	}
