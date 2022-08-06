@@ -729,7 +729,8 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 
 			// if score pattern does not match
 			if !isValidScorePattern {
-				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
+				gamelog.L.Debug().Interface("current stack", gp).Int("prev score", prevScore).Msg("Invalid game pattern detected")
+				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v", gp.Score, prevScore, gp.IsFailed), "Invalid game pattern detected.")
 			}
 		}
 
@@ -737,10 +738,11 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		prevScore = gp.Score
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
-			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
+			gamelog.L.Debug().Time("current stack time", gp.CreatedAt).Time("start time", startTime).Time("end time", endTime).Msg("Invalid game pattern detected")
+			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v", gp.CreatedAt, startTime, endTime), "Game stack is outside of the time frame.")
 		}
 
-		// reduce the invalid score
+		// increase failed count, if failed
 		if gp.IsFailed {
 			failedCount += 1
 			continue
