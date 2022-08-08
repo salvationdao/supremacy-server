@@ -42,7 +42,7 @@ func NewZendesk(token, email string) *Zendesk {
 	return z
 }
 
-func (z *Zendesk) NewRequest(username, userID, subject, comment, service string) error {
+func (z *Zendesk) NewRequest(username, userID, subject, comment, service string) (int, error) {
 	fmt.Println(z.Key)
 	//organize data
 	request := &RequestObj{
@@ -61,25 +61,21 @@ func (z *Zendesk) NewRequest(username, userID, subject, comment, service string)
 	//marshall
 	payloadBytes, err := json.Marshal(reqJSON)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 	body := bytes.NewReader(payloadBytes)
 
 	req, err := http.NewRequest("POST", "https://supremacyhelp.zendesk.com/api/v2/requests.json", body)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 	req.Header.Set("Authorization", "Basic "+z.Key)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return http.StatusBadRequest, err
 	}
-
-	fmt.Println(resp)
-
 	defer resp.Body.Close()
-	return nil
+	return resp.StatusCode, nil
 }

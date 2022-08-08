@@ -1169,8 +1169,8 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 
 	//send through to zendesk
 	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
-	err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
-	if err != nil {
+	statusCode, err := fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+	if err != nil || statusCode != 200 {
 		l.Error().Err(err).Msg("unable send zendesk request.")
 		return terror.Error(err, genericErrorMessage)
 	}
