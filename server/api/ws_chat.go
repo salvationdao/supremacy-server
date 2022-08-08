@@ -1087,7 +1087,17 @@ type ChatReportRequest struct {
 
 const HubKeyChatReport = "CHAT:REPORT:MESSAGE"
 
+//leak 1 request per user per 30 sec
+var chatReportBucket = leakybucket.NewCollector(1, 30, true)
+
 func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	reportBucket := chatReportBucket.Add(user.ID, 30)
+
+	//only allow request to go through if it has been 30 seconds since user's last report
+	if reportBucket < 30 {
+		return terror.Error(fmt.Errorf("too many reports"), "Too many report requests, your original request would have contained the context of the message.")
+	}
+
 	l := gamelog.L.With().Str("func", "ChatReportHandler").Str("user_id", user.ID).Logger()
 
 	genericErrorMessage := "Could not report message, try again or contact support."
@@ -1123,11 +1133,11 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 
 	//get user who sent offending msg
 	l = l.With().Interface("GetReportedPlayer", chatHistory.PlayerID).Logger()
-	reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
-	if err != nil {
-		l.Error().Err(err).Msg("unable to get reported player")
-		return terror.Error(err, genericErrorMessage)
-	}
+	//reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
+	//if err != nil {
+	//	l.Error().Err(err).Msg("unable to get reported player")
+	//	return terror.Error(err, genericErrorMessage)
+	//}
 
 	//get 5 mins before and 5 mins after specific to chat stream
 	l = l.With().Interface("GetContext", chatHistory.ID).Logger()
@@ -1164,16 +1174,16 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		reason = req.Payload.Reason + "- " + req.Payload.OtherDescription
 	}
 
-	subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
-	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
+	//subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
+	//comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
 
 	//send through to zendesk
 	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
-	statusCode, err := fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
-	if err != nil || statusCode != 200 {
-		l.Error().Err(err).Msg("unable send zendesk request.")
-		return terror.Error(err, genericErrorMessage)
-	}
+	//statusCode, err := fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+	//if err != nil || statusCode != 200 {
+	//	l.Error().Err(err).Msg("unable send zendesk request.")
+	//	return terror.Error(err, genericErrorMessage)
+	//}
 
 	//add user id to report metadata (cant report again)
 	metadata.Reports = append(metadata.Reports, user.ID)
