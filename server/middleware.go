@@ -95,7 +95,7 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 	}
 }
 
-// SecureUserTracer is a ws middleware used to implement datadog for WS Handlers.
+// SecureTracer is a ws middleware used to implement datadog for WS Handlers.
 func SecureTracer(fn ws.CommandFunc) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		span, augmentedCtx := tracer.StartSpanFromContext(
