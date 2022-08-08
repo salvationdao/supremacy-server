@@ -618,6 +618,12 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
+		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+
+		// broadcast current mech stat if repair is above can deploy ratio
+		if decimal.NewFromInt(int64(rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(rc.BlocksRequiredRepair))).GreaterThanOrEqual(canDeployRatio) {
+			go BroadcastMechQueueStat(rc.MechID)
+		}
 		ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		reply(true)
 		return nil
@@ -625,6 +631,9 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	// clean up repair case if repair is completed
 	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+
+	// broadcast current mech stat
+	go BroadcastMechQueueStat(rc.MechID)
 
 	// close repair case
 	rc.CompletedAt = null.TimeFrom(time.Now())
@@ -657,6 +666,29 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	reply(true)
 
 	return nil
+}
+
+// BroadcastMechQueueStat broadcast current mech queue stat
+func BroadcastMechQueueStat(mechID string) {
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		qm.Load(boiler.CollectionItemRels.Owner),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return
+	}
+
+	if ci != nil && ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
+		owner := ci.R.Owner
+		queueDetails, err := db.MechArenaStatus(owner.ID, mechID, owner.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), battle.WSPlayerAssetMechQueueSubscribe, queueDetails)
+	}
 }
 
 func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairAgentLog) error {
@@ -733,7 +765,14 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	}
 
 	// check the stack amount match
-	if totalStack != ra.RequiredStacks {
+	if totalStack < ra.RequiredStacks {
+		gamelog.L.Warn().
+			Err(fmt.Errorf("stack not complete")).
+			Int("totalStack", totalStack).
+			Int("requiredStacks", ra.RequiredStacks).
+			Interface("gps", gps).
+			Interface("repair agent", ra).
+			Msg("totalStack less than required stacks")
 		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
 	}
 
