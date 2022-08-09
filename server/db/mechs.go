@@ -1080,12 +1080,7 @@ func MechRename(mechID string, ownerID string, name string) (string, error) {
 
 }
 
-func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
+func MechEquippedOnDetails(tx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
 	eid := &server.EquippedOnDetails{}
 
 	err := boiler.NewQuery(
@@ -1093,7 +1088,7 @@ func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Equi
 			boiler.CollectionItemColumns.ItemID,
 			boiler.CollectionItemColumns.Hash,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf(
@@ -1102,12 +1097,18 @@ func MechEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Equi
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
+		qm.InnerJoin(fmt.Sprintf(
+			"%s on %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
 		qm.Where(fmt.Sprintf("%s = ?", boiler.CollectionItemColumns.ItemID), equippedOnID),
 	).QueryRow(tx).Scan(
 		&eid.ID,
 		&eid.Hash,
 		&eid.Name,
-		//&eid.Label, // TODO: vinnie fix me (label now on blueprint)
+		&eid.Label,
 	)
 	if err != nil {
 		return nil, err

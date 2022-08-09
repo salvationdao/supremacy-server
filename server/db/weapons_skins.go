@@ -65,10 +65,6 @@ func WeaponSkin(tx boil.Executor, id string, modelID *string) (*server.WeaponSki
 		queryMods...
 		).One(tx)
 	if err != nil {
-		fmt.Println(boilerWeaponSkin.BlueprintID)
-		fmt.Println(boilerWeaponSkin.BlueprintID)
-		fmt.Println(boilerWeaponSkin.BlueprintID)
-		fmt.Println(*modelID)
 		return nil, err
 	}
 	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerMechCollectionDetails, weaponSkinCompatMatrix), nil

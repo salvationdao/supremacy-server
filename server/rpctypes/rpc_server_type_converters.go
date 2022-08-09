@@ -111,6 +111,19 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
 				continue
 			}
+			asset.ImageURL = i.ChassisSkin.Images.ImageURL
+			asset.BackgroundColor = i.ChassisSkin.Images.BackgroundColor
+			asset.AnimationURL = i.ChassisSkin.Images.AnimationURL
+			asset.YoutubeURL = i.ChassisSkin.Images.YoutubeURL
+			asset.AvatarURL = i.ChassisSkin.Images.AvatarURL
+			asset.CardAnimationURL = i.ChassisSkin.Images.CardAnimationURL
+		} else {
+			asset.ImageURL = i.Images.ImageURL
+			asset.BackgroundColor = i.Images.BackgroundColor
+			asset.AnimationURL = i.Images.AnimationURL
+			asset.YoutubeURL = i.Images.YoutubeURL
+			asset.AvatarURL = i.Images.AvatarURL
+			asset.CardAnimationURL = i.Images.CardAnimationURL
 		}
 
 		asset.Attributes = append(asset.Attributes,
@@ -220,7 +233,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(gamedb.StdConn, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue
@@ -245,17 +258,24 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			AssetType:      null.StringFrom(i.ItemType),
-			XsynLocked:     i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			AssetType:        null.StringFrom(i.ItemType),
+			XsynLocked:       i.XsynLocked,
+			ImageURL:         i.Images.ImageURL,
+			AnimationURL:     i.Images.AnimationURL,
+			LargeImageURL:    i.Images.LargeImageURL,
+			CardAnimationURL: i.Images.CardAnimationURL,
+			AvatarURL:        i.Images.AvatarURL,
+			BackgroundColor:  i.Images.BackgroundColor,
+			YoutubeURL:       i.Images.YoutubeURL,
 		})
 	}
 
@@ -305,7 +325,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(gamedb.StdConn, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue
@@ -330,16 +350,23 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			AssetType:      null.StringFrom(i.ItemType),
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			XsynLocked:     i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			XsynLocked:       i.XsynLocked,
+			ImageURL:         i.Images.ImageURL,
+			AnimationURL:     i.Images.AnimationURL,
+			LargeImageURL:    i.Images.LargeImageURL,
+			CardAnimationURL: i.Images.CardAnimationURL,
+			AvatarURL:        i.Images.AvatarURL,
+			BackgroundColor:  i.Images.BackgroundColor,
+			YoutubeURL:       i.Images.YoutubeURL,
 		})
 
 	}
@@ -447,7 +474,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(gamedb.StdConn, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue
@@ -484,14 +511,24 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
 				continue
 			}
+			asset.ImageURL = i.WeaponSkin.Images.ImageURL
+			asset.AnimationURL = i.WeaponSkin.Images.AnimationURL
+			asset.LargeImageURL = i.WeaponSkin.Images.LargeImageURL
+			asset.CardAnimationURL = i.WeaponSkin.Images.CardAnimationURL
+			asset.AvatarURL = i.WeaponSkin.Images.AvatarURL
+			asset.BackgroundColor = i.WeaponSkin.Images.BackgroundColor
+			asset.YoutubeURL = i.WeaponSkin.Images.YoutubeURL
+
+		} else {
+			asset.ImageURL = i.Images.ImageURL
+			asset.AnimationURL = i.Images.AnimationURL
+			asset.LargeImageURL = i.Images.LargeImageURL
+			asset.CardAnimationURL = i.Images.CardAnimationURL
+			asset.AvatarURL = i.Images.AvatarURL
+			asset.BackgroundColor = i.Images.BackgroundColor
+			asset.YoutubeURL = i.Images.YoutubeURL
 		}
 
-		//asset.ImageURL = i.WeaponSkin.ImageURL
-		//asset.BackgroundColor = i.WeaponSkin.BackgroundColor
-		//asset.AnimationURL = i.WeaponSkin.AnimationURL
-		//asset.YoutubeURL = i.WeaponSkin.YoutubeURL
-		//asset.AvatarURL = i.WeaponSkin.AvatarURL
-		//asset.CardAnimationURL = i.WeaponSkin.CardAnimationURL
 
 		asset.Attributes = append(asset.Attributes,
 			&Attribute{
@@ -568,17 +605,24 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			AssetType:      null.StringFrom(i.ItemType),
-			XsynLocked:     i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			AssetType:        null.StringFrom(i.ItemType),
+			XsynLocked:       i.XsynLocked,
+			ImageURL:         i.Images.ImageURL,
+			AnimationURL:     i.Images.AnimationURL,
+			LargeImageURL:    i.Images.LargeImageURL,
+			CardAnimationURL: i.Images.CardAnimationURL,
+			AvatarURL:        i.Images.AvatarURL,
+			BackgroundColor:  i.Images.BackgroundColor,
+			YoutubeURL:       i.Images.YoutubeURL,
 		})
 	}
 
@@ -613,7 +657,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		if i.EquippedOn.Valid {
 			if i.EquippedOnDetails == nil {
 				// make db call
-				i.EquippedOnDetails, err = db.MechEquippedOnDetails(nil, i.EquippedOn.String)
+				i.EquippedOnDetails, err = db.MechEquippedOnDetails(gamedb.StdConn, i.EquippedOn.String)
 				if err != nil {
 					gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to get db.MechEquippedOnDetails")
 					continue
@@ -638,16 +682,23 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			AssetType:      null.StringFrom(i.ItemType),
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			XsynLocked:     i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			XsynLocked:       i.XsynLocked,
+			ImageURL:         i.Images.ImageURL,
+			AnimationURL:     i.Images.AnimationURL,
+			LargeImageURL:    i.Images.LargeImageURL,
+			CardAnimationURL: i.Images.CardAnimationURL,
+			AvatarURL:        i.Images.AvatarURL,
+			BackgroundColor:  i.Images.BackgroundColor,
+			YoutubeURL:       i.Images.YoutubeURL,
 		})
 	}
 
@@ -681,15 +732,21 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate, factionNam
 	}
 
 	asset := &XsynAsset{
-		ID:             mysteryCrate.ID,
-		CollectionSlug: mysteryCrate.CollectionSlug,
-		TokenID:        mysteryCrate.TokenID,
-		Data:           asJson,
-		Attributes:     attributes,
-		Hash:           mysteryCrate.Hash,
-		OwnerID:        mysteryCrate.OwnerID,
-		AssetType:      null.StringFrom(mysteryCrate.ItemType),
-		Name:           mysteryCrate.Label,
+		ID:               mysteryCrate.ID,
+		CollectionSlug:   mysteryCrate.CollectionSlug,
+		TokenID:          mysteryCrate.TokenID,
+		Data:             asJson,
+		Attributes:       attributes,
+		Hash:             mysteryCrate.Hash,
+		OwnerID:          mysteryCrate.OwnerID,
+		AssetType:        null.StringFrom(mysteryCrate.ItemType),
+		Name:             mysteryCrate.Label,
+		ImageURL:         mysteryCrate.Images.ImageURL,
+		BackgroundColor:  mysteryCrate.Images.BackgroundColor,
+		AnimationURL:     mysteryCrate.Images.AnimationURL,
+		YoutubeURL:       mysteryCrate.Images.YoutubeURL,
+		AvatarURL:        mysteryCrate.Images.AvatarURL,
+		CardAnimationURL: mysteryCrate.Images.CardAnimationURL,
 	}
 
 	return asset

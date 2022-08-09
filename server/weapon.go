@@ -38,7 +38,7 @@ type Weapon struct {
 	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
-	WeaponModelID         string         `json:"weapon_model_id,omitempty"`
+	WeaponModelID         string              `json:"weapon_model_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails
@@ -144,18 +144,25 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
-		CollectionItemID: collection.ID,
-		ID:               weapon.ID,
-		BrandID:          weapon.BrandID,
-		// TODO: vinnie fix me please
-		//Label:                weapon.Label,
-		Slug:              weapon.Slug,
-		Damage:            weapon.Damage,
-		BlueprintID:       weapon.BlueprintID,
-		DefaultDamageType: weapon.DefaultDamageType,
-		GenesisTokenID:    weapon.GenesisTokenID,
-		// TODO: vinnie fix me please
-		//WeaponType:           weapon.WeaponType,
+		Images: &Images{
+			ImageURL:         weaponSkin.ImageURL,
+			CardAnimationURL: weaponSkin.CardAnimationURL,
+			AvatarURL:        weaponSkin.AvatarURL,
+			LargeImageURL:    weaponSkin.LargeImageURL,
+			BackgroundColor:  weaponSkin.BackgroundColor,
+			AnimationURL:     weaponSkin.AnimationURL,
+			YoutubeURL:       weaponSkin.YoutubeURL,
+		},
+		CollectionItemID:     collection.ID,
+		ID:                   weapon.ID,
+		BrandID:              weapon.BrandID,
+		Label:                weapon.R.Blueprint.Label,
+		Slug:                 weapon.Slug,
+		Damage:               weapon.Damage,
+		BlueprintID:          weapon.BlueprintID,
+		DefaultDamageType:    weapon.DefaultDamageType,
+		GenesisTokenID:       weapon.GenesisTokenID,
+		WeaponType:           weapon.R.Blueprint.WeaponType,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,

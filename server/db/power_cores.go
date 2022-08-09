@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -48,13 +49,11 @@ func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.Blueprin
 	return PowerCore(tx, newPowerCore.ID)
 }
 
-func PowerCore(trx boil.Executor, id string) (*server.PowerCore, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
-	boilerMech, err := boiler.FindPowerCore(tx, id)
+func PowerCore(tx boil.Executor, id string) (*server.PowerCore, error) {
+	boilerMech, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.ID.EQ(id),
+		qm.Load(boiler.PowerCoreRels.Blueprint),
+		).One(tx)
 	if err != nil {
 		return nil, err
 	}
