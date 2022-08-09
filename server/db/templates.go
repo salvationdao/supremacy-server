@@ -3,12 +3,11 @@ package db
 import (
 	"context"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -37,7 +36,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		BlueprintMech:               []*server.BlueprintMech{},
 		BlueprintWeapon:             []*server.BlueprintWeapon{},
 		BlueprintUtility:            []*server.BlueprintUtility{},
-		BlueprintMechSkin:           []*server.BlueprintMechSkin{},
 		BlueprintMechAnimation:      []*server.BlueprintMechAnimation{},
 		BlueprintPowerCore:          []*server.BlueprintPowerCore{},
 	}
@@ -45,7 +43,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	// filter them into IDs first to optimize db queries
 	var blueprintMechIDS []string
 	var blueprintWeaponIDS []string
-	var blueprintWeaponSkinIDS []string
 	var blueprintUtilityIDS []string
 	var blueprintMechSkinIDS []string
 	var blueprintMechAnimationIDS []string
@@ -67,7 +64,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		case boiler.TemplateItemTypePOWER_CORE:
 			blueprintPowerCoreIDS = append(blueprintPowerCoreIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
-			blueprintWeaponSkinIDS = append(blueprintWeaponSkinIDS, bp.BlueprintID)
+			continue
 		case boiler.TemplateItemTypePLAYER_ABILITY:
 			continue
 		case boiler.TemplateItemTypeAMMO:
@@ -84,10 +81,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		return nil, terror.Error(err)
 	}
 	result.BlueprintWeapon, err = BlueprintWeapons(blueprintWeaponIDS)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	result.BlueprintWeaponSkin, err = BlueprintWeaponSkins(blueprintWeaponSkinIDS)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -283,14 +276,23 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	L = L.With().Interface("inserted mech powercores", powerCores).Logger()
 
 	// inserts weapons blueprints
-	for i, weapon := range tmpl.BlueprintWeapon {
+	for _, weapon := range tmpl.BlueprintWeapon {
 		weapon.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
 		// get default weapon skins
-		tmpl.BlueprintWeaponSkin[i].LimitedReleaseTokenID = tokenIDs.LimitedTokenID
-		tmpl.BlueprintWeaponSkin[i].GenesisTokenID = tokenIDs.GenesisTokenID
+		wpSkin, err := boiler.WeaponModelSkinCompatibilities(
+			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(weapon.WeaponModelID),
+			qm.Load(boiler.WeaponModelSkinCompatibilityRels.BlueprintWeaponSkin),
+			).One(tx)
+		if err != nil {
+			L.Error().Err(err).Msg("failed to get weapon skin")
+			return mechs, mechAnimations, mechSkins, powerCores, weapons, weaponSkins, utilities, terror.Error(err)
+		}
+		weaponSkin := server.BlueprintWeaponSkinFromBoiler(wpSkin.R.BlueprintWeaponSkin)
+		weaponSkin.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		weaponSkin.GenesisTokenID = tokenIDs.GenesisTokenID
 
-		insertedWeapon, insertedWeaponSkin, err := InsertNewWeapon(tx, ownerID, weapon, tmpl.BlueprintWeaponSkin[i])
+		insertedWeapon, insertedWeaponSkin, err := InsertNewWeapon(tx, ownerID, weapon, weaponSkin)
 		if err != nil {
 			L.Error().Err(err).Msg("failed to insert new weapon for user")
 			return mechs, mechAnimations, mechSkins, powerCores, weapons, weaponSkins, utilities, terror.Error(err)

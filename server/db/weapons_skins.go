@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -37,16 +38,18 @@ func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *ser
 	return WeaponSkin(tx, newWeaponSkin.ID, modelID)
 }
 
-func WeaponSkin(trx boil.Executor, id string, modelID *string) (*server.WeaponSkin, error) {
+func WeaponSkin(tx boil.Executor, id string, modelID *string) (*server.WeaponSkin, error) {
 	boilerWeaponSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.ID.EQ(id),
 		qm.Load(boiler.WeaponSkinRels.Blueprint),
-		).One(trx)
+		).One(tx)
 	if err != nil {
+		fmt.Println("here1")
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(trx)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
+		fmt.Println("here2")
 		return nil, err
 	}
 
@@ -60,8 +63,12 @@ func WeaponSkin(trx boil.Executor, id string, modelID *string) (*server.WeaponSk
 
 	weaponSkinCompatMatrix, err := boiler.WeaponModelSkinCompatibilities(
 		queryMods...
-		).One(trx)
+		).One(tx)
 	if err != nil {
+		fmt.Println(boilerWeaponSkin.BlueprintID)
+		fmt.Println(boilerWeaponSkin.BlueprintID)
+		fmt.Println(boilerWeaponSkin.BlueprintID)
+		fmt.Println(*modelID)
 		return nil, err
 	}
 	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerMechCollectionDetails, weaponSkinCompatMatrix), nil
