@@ -35,23 +35,11 @@ CREATE TABLE IF NOT EXISTS brands
     created_at timestamp with time zone DEFAULT now()             NOT NULL
 );
 
-DO
-$$
-    BEGIN
-        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'mech_type') THEN
-            CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
-        END IF;
-    END
-$$;
+DROP TYPE MECH_TYPE;
+CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
 
-DO
-$$
-    BEGIN
-        IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'collection') THEN
-            CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
-        END IF;
-    END
-$$;
+DROP TYPE COLLECTION;
+CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables','supremacy-achievements');
 
 
 CREATE TABLE IF NOT EXISTS blueprint_mech_skin
