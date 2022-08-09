@@ -340,11 +340,11 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 												blueprint_mech_skin_id,
 												mech_model_id,
 												image_url,
+											 	animation_url,
 												card_animation_url,
+											 	large_image_url,
 												avatar_url,
-												large_image_url,
 												background_color,
-												animation_url,
 												youtube_url
 			)
 			VALUES ($1,$2,$3,$4,$5, $6, $7, $8, $9)
@@ -353,11 +353,11 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 				UPDATE SET 	blueprint_mech_skin_id = $1,
 							mech_model_id = $2,
 							image_url = $3,
-							card_animation_url = $4,
-							avatar_url = $5,
+							animation_url = $4,
+							card_animation_url = $5,
 							large_image_url = $6,
-							background_color = $7,
-							animation_url = $8,
+							avatar_url = $7,
+							background_color = $8,
 							youtube_url = $9;
 		`,
 			mechModelSkinCompat.MechSkinID,

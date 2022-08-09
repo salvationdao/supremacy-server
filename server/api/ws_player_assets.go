@@ -338,6 +338,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		return terror.Error(err, "Failed to find mech from db")
 	}
 
+	if mech.ChassisSkin.Images == nil {
+		mech.ChassisSkin.Images = &server.Images{
+			ImageURL:         mech.ImageURL,
+			CardAnimationURL: mech.CardAnimationURL,
+			AvatarURL:        mech.AvatarURL,
+			LargeImageURL:    mech.LargeImageURL,
+			BackgroundColor:  mech.BackgroundColor,
+			AnimationURL:     mech.AnimationURL,
+			YoutubeURL:       mech.YoutubeURL,
+		}
+	}
+
 	reply(mech)
 	return nil
 }

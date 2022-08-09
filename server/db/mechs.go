@@ -45,6 +45,13 @@ func getDefaultQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.ImageURL),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.CardAnimationURL),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.LargeImageURL),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BackgroundColor),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AnimationURL),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.YoutubeURL),
 			fmt.Sprintf(`COALESCE(%s, '')`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username)),
 			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalWins)),
 			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalDeaths)),
@@ -130,7 +137,12 @@ func getDefaultQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID),
 		)),
 		// outer join power cores
-		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.LeftOuterJoin(fmt.Sprintf(`(
+					SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bppc.image_url, _bppc.avatar_url, _bppc.card_animation_url, _bppc.animation_url
+					FROM power_cores _pc
+					INNER JOIN collection_items _ci on _ci.item_id = _pc.id
+					INNER JOIN blueprint_power_cores _bppc on _pc.blueprint_id = _bppc.id
+					) %s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.PowerCores,
 			qm.Rels(boiler.TableNames.PowerCores, boiler.PowerCoreColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
@@ -154,10 +166,22 @@ func getDefaultQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.BrandID),
 		)),
 		// inner join skin
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.InnerJoin(fmt.Sprintf(`(
+					SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+					FROM mech_skin _ms
+					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
+				 )%s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.MechSkin,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+		)),
+		// inner join mech skin compatability table (to get images)
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID),
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
 		)),
 		// left join outro
 		qm.LeftOuterJoin(fmt.Sprintf("%s AS %s ON %s = %s",
@@ -260,6 +284,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 		CollectionItem: &server.CollectionItem{},
 		Stats:          &server.Stats{},
 		Owner:          &server.User{},
+		Images:         &server.Images{},
 	}
 
 	queryMods := getDefaultQueryMods()
@@ -274,7 +299,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	rows, err := boiler.NewQuery(
 		queryMods...,
-	).Query(gamedb.StdConn)
+	).Query(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -293,6 +318,13 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
+			&mc.Images.ImageURL,
+			&mc.Images.CardAnimationURL,
+			&mc.Images.AvatarURL,
+			&mc.Images.LargeImageURL,
+			&mc.Images.BackgroundColor,
+			&mc.Images.AnimationURL,
+			&mc.Images.YoutubeURL,
 			&mc.Owner.Username,
 			&mc.Stats.TotalWins,
 			&mc.Stats.TotalDeaths,
@@ -361,15 +393,12 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 		qm.OrderBy(qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID)),
 	)
 
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		return nil, err
 	}
-	boil.DebugMode = false
 	defer rows.Close()
 
 	i := 0
@@ -378,6 +407,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			CollectionItem: &server.CollectionItem{},
 			Stats:          &server.Stats{},
 			Owner:          &server.User{},
+			Images:         &server.Images{},
 		}
 		err = rows.Scan(
 			&mc.CollectionItem.CollectionSlug,
@@ -391,6 +421,13 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.LockedToMarketplace,
 			&mc.CollectionItem.AssetHidden,
 			&mc.CollectionItemID,
+			&mc.Images.ImageURL,
+			&mc.Images.CardAnimationURL,
+			&mc.Images.AvatarURL,
+			&mc.Images.LargeImageURL,
+			&mc.Images.BackgroundColor,
+			&mc.Images.AnimationURL,
+			&mc.Images.YoutubeURL,
 			&mc.Owner.Username,
 			&mc.Stats.TotalWins,
 			&mc.Stats.TotalDeaths,

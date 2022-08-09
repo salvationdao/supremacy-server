@@ -11,6 +11,7 @@ import (
 
 type MechSkin struct {
 	*CollectionItem
+	*Images
 	ID                    string      `json:"id"`
 	BlueprintID           string      `json:"blueprint_id"`
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
