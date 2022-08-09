@@ -457,11 +457,17 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// skip, if it is an initial block
+	if req.Payload.Score == 0 {
+		reply(false)
+		return nil
+	}
+
 	switch req.Payload.TriggerWith {
 	case boiler.RepairTriggerWithTypeSPACE_BAR, boiler.RepairTriggerWithTypeLEFT_CLICK, boiler.RepairTriggerWithTypeTOUCH:
 	default:
 		gamelog.L.Debug().Str("repair agent id", req.Payload.RepairAgentID).Msg("Unknown trigger type is detected.")
-		return nil
+		return terror.Error(fmt.Errorf("invalid trigger type"), "Unknown trigger type is detected.")
 	}
 
 	// log record
@@ -479,7 +485,7 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Failed to insert repair agent request")
 	}
 
-	if req.Payload.IsFailed || req.Payload.Score == 0 {
+	if req.Payload.IsFailed {
 		reply(false)
 		return nil
 	}
@@ -531,17 +537,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
 	}
 
-	// log path
-	ral, err := boiler.RepairAgentLogs(
-		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
-		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
-	).All(gamedb.StdConn)
-	if err != nil {
-		L.Error().Err(err).Msg("failed to log mini-game records")
-		return terror.Error(err, "Failed to load repair records.")
-	}
-
-	err = BlockStackingGameVerification(ra, ral)
+	err = BlockStackingGameVerification(ra)
 	if err != nil {
 		L.Error().Err(err).Msg("failed BlockStackingGameVerification")
 		return err
@@ -693,7 +689,18 @@ func BroadcastMechQueueStat(mechID string) {
 	}
 }
 
-func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairAgentLog) error {
+func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
+	// log path
+	gps, err := ra.RepairAgentLogs(
+		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+		boiler.RepairAgentLogWhere.Score.GT(0),
+		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to log mini-game records")
+		return terror.Error(err, "Failed to load repair records.")
+	}
+
 	startTime := ra.StartedAt
 	endTime := time.Now()
 
@@ -703,15 +710,12 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 	failedCount := 0
 
 	prevScore := 0
-	failedLastTime := false
-	prevStackAt := time.Now()
 	totalStack := 0
 	for i, gp := range gps {
 		if i > 0 {
 			// valid score pattern
 			// 1. current score equal to previous score + 1
 			// 2. current score equal to previous score, and current stack is failed
-			// 3. current score equal to zero, and previous stack is failed
 
 			isValidScorePattern := false
 			if gp.Score == prevScore+1 {
@@ -721,39 +725,26 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 			} else if gp.Score == prevScore && gp.IsFailed {
 				// meet RULE 2
 				isValidScorePattern = true
-
-			} else if gp.Score == 0 && failedLastTime {
-				// meet RULE 3
-				isValidScorePattern = true
 			}
 
 			// if score pattern does not match
 			if !isValidScorePattern {
-				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
+				gamelog.L.Debug().Interface("current stack", gp).Int("prev score", prevScore).Msg("Invalid game pattern detected")
+				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v", gp.Score, prevScore, gp.IsFailed), "Invalid game pattern detected.")
 			}
-
-			if !prevStackAt.Before(gp.CreatedAt) {
-				return terror.Error(fmt.Errorf("invalid stack time"), "Invalid game pattern detected.")
-			}
-
 		}
 
 		// set initial score and failed stat
 		prevScore = gp.Score
-		failedLastTime = gp.IsFailed
-		prevStackAt = gp.CreatedAt
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
-			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
+			gamelog.L.Debug().Time("current stack time", gp.CreatedAt).Time("start time", startTime).Time("end time", endTime).Msg("Invalid game pattern detected")
+			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v", gp.CreatedAt, startTime, endTime), "Game stack is outside of the time frame.")
 		}
 
-		// reduce the invalid score
+		// increase failed count, if failed
 		if gp.IsFailed {
 			failedCount += 1
-			continue
-		}
-
-		if gp.Score == 0 {
 			continue
 		}
 
@@ -761,7 +752,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		totalStack += 1
 	}
 
-	// if player failed 75% of the clicks
+	// if player failed 25% of the clicks
 	if decimal.NewFromInt(int64(failedCount)).GreaterThanOrEqual(decimal.NewFromInt(int64(ra.RequiredStacks)).Mul(failedRate)) {
 		return terror.Error(fmt.Errorf("stack failed"), "Too many failed stacks.")
 	}
