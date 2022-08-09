@@ -3,9 +3,9 @@ package server
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"math/big"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
@@ -669,8 +669,15 @@ type GameAbilityEvent struct {
 	GameLocationEnd     *GameLocation `json:"gameLocationEnd"`
 }
 
+type BattleZone struct {
+	Location   GameLocation `json:"location"`
+	Radius     int          `json:"radius"`
+	Time       int          `json:"time"`
+	ShrinkTime int          `json:"shrinkTime"`
+}
+
 var env string
-var lock = sync.RWMutex{}
+var lock = deadlock.RWMutex{}
 
 func SetEnv(environment string) {
 	lock.Lock()

@@ -197,7 +197,6 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	result, err := conn.Query(query, mechID)
 	if err != nil {
-		fmt.Println("here 11")
 		return nil, err
 	}
 	defer result.Close()
@@ -257,14 +256,12 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.BattleReady,
 		)
 		if err != nil {
-			fmt.Println("here 22")
 			gamelog.L.Error().Err(err).Msg("failed to get mech")
 			return nil, err
 		}
 	}
 
 	if mc.ID == "" {
-		fmt.Println("here 33")
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
 
@@ -445,9 +442,8 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 }
 
 type BattleQueuePosition struct {
-	MechID           uuid.UUID   `db:"mech_id"`
-	QueuePosition    int64       `db:"queue_position"`
-	BattleContractID null.String `db:"battle_contract_id"`
+	MechID        uuid.UUID `db:"mech_id"`
+	QueuePosition int64     `db:"queue_position"`
 }
 
 // TODO: I want InsertNewMech tested.
@@ -533,6 +529,7 @@ type MechListOpts struct {
 	DisplayXsynMechs    bool
 	ExcludeMarketLocked bool
 	IncludeMarketListed bool
+	ExcludeDamagedMech  bool
 	FilterRarities      []string `json:"rarities"`
 	FilterStatuses      []string `json:"statuses"`
 }
@@ -593,6 +590,19 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
 			Operator: OperatorValueTypeIsFalse,
 		}, 0, ""))
+	}
+	if opts.ExcludeDamagedMech {
+		queryMods = append(queryMods, qm.Where(
+			fmt.Sprintf(
+				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s * 2 < %s)",
+				boiler.TableNames.RepairCases,
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.CompletedAt),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRepaired),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRequiredRepair),
+			),
+		))
 	}
 
 	// Filters
@@ -807,7 +817,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Select("_bq.queue_position AS queue_position"),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(`(
-					SELECT  _bq.mech_id, _bq.battle_contract_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
+					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
 						from battle_queue _bq
 						where _bq.faction_id = ?
 							AND _bq.battle_id IS NULL
@@ -1032,4 +1042,23 @@ func MechSetAllEquippedAssetsAsHidden(trx boil.Executor, mechID string, reason n
 	}
 
 	return nil
+}
+
+func MechBattleReady(mechID string) (bool, error) {
+	q := `
+		SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
+		FROM blueprint_mechs _bm 
+			LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
+		WHERE _bm.id = (SELECT m.blueprint_id FROM mechs m WHERE m.id = $1)
+		LIMIT 1
+	`
+
+	battleReady := false
+
+	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&battleReady)
+	if err != nil {
+		return false, terror.Error(err, "Failed to load battle ready status")
+	}
+
+	return battleReady, nil
 }

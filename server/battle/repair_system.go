@@ -1,9 +1,7 @@
 package battle
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -12,7 +10,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -20,430 +17,244 @@ import (
 	"time"
 )
 
-type RepairSystem struct {
-	passport *xsyn_rpcclient.XsynXrpcClient
+type RepairOfferClose struct {
+	OfferIDs          []string
+	OfferClosedReason string
+	AgentClosedReason string
 }
 
-func New(pp *xsyn_rpcclient.XsynXrpcClient) *RepairSystem {
-	s := &RepairSystem{
-		passport: pp,
-	}
+func (arena *Arena) RepairOfferCleaner() {
+	ticker := time.NewTicker(1 * time.Minute)
 
-	// start repair case cleaner
-	go s.start()
-
-	return s
-}
-
-// start a routine that cleans up any ended repair cases
-func (rs *RepairSystem) start() {
 	for {
-		time.Sleep(5 * time.Second)
-
-		// wrap the process in a function to enable db transaction and defer rollback
-		func() {
-			tx, err := gamedb.StdConn.Begin()
+		select {
+		case <-ticker.C:
+			now := time.Now()
+			// expire repair offer
+			ros, err := boiler.RepairOffers(
+				boiler.RepairOfferWhere.ExpiresAt.LTE(now),
+				boiler.RepairOfferWhere.ClosedAt.IsNull(),
+				qm.Load(boiler.RepairOfferRels.RepairCase),
+				qm.Load(boiler.RepairOfferRels.RepairBlocks),
+				qm.Load(
+					boiler.RepairOfferRels.RepairAgents,
+					boiler.RepairAgentWhere.FinishedAt.IsNull(),
+				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy),
+			).All(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to begin db transaction")
-				return
+				gamelog.L.Error().Err(err).Msg("Failed to get repair offer")
+				continue
 			}
 
-			defer tx.Rollback()
+			if len(ros) == 0 {
+				continue
+			}
 
-			q := `
-				UPDATE
-					mech_repair_cases
-				SET
-					ended_at = expected_end_at
-				WHERE
-					expected_end_at NOTNULL AND expected_end_at <= NOW() AND ended_at ISNULL;
-			`
-			_, err = tx.Exec(q)
+			err = arena.closeRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to update ended at in mech repair cases table")
-				return
+				gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
+				continue
 			}
 
-			endedCases, err := boiler.MechRepairCases(
-				boiler.MechRepairCaseWhere.EndedAt.IsNotNull(),
-			).All(tx)
+		case roc := <-arena.RepairOfferCloseChan:
+			ros, err := boiler.RepairOffers(
+				boiler.RepairOfferWhere.ID.IN(roc.OfferIDs),
+				boiler.RepairOfferWhere.ClosedAt.IsNull(), // double check it is not closed yet
+				qm.Load(boiler.RepairOfferRels.RepairCase),
+				qm.Load(boiler.RepairOfferRels.RepairBlocks),
+				qm.Load(
+					boiler.RepairOfferRels.RepairAgents,
+					boiler.RepairAgentWhere.FinishedAt.IsNull(),
+				),
+				qm.Load(boiler.RepairOfferRels.OfferedBy),
+			).All(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to load ended mech repair cases")
-				return
+				gamelog.L.Error().Err(err).Msg("Failed to get repair offers")
+				continue
 			}
 
-			// log and remove cases, if there is any ended cases
-			if len(endedCases) > 0 {
-				// log ended repair cases
-				for _, ec := range endedCases {
-					mrl := &boiler.MechRepairLog{
-						MechID:    ec.MechID,
-						Type:      boiler.MechRepairLogTypeREPAIR_ENDED,
-						CreatedAt: ec.EndedAt.Time,
-					}
-					err = mrl.Insert(tx, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Interface("mech repair log", mrl).Err(err).Msg("Failed to insert mech repair log.")
-						return
-					}
-				}
-
-				// delete all the mech repair cases
-				_, err = endedCases.DeleteAll(tx)
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to delete ended repair cases")
-					return
-				}
-
-				mechIDs := []string{}
-				for _, ec := range endedCases {
-					mechIDs = append(mechIDs, ec.MechID)
-				}
-
-				// broadcast nil to all the mech
-				go func(mechIDs []string) {
-					cis, err := boiler.CollectionItems(
-						boiler.CollectionItemWhere.ItemID.IN(mechIDs),
-						qm.Load(boiler.CollectionItemRels.Owner),
-					).All(gamedb.StdConn)
-					if err != nil {
-						gamelog.L.Error().Err(err).Strs("mech ids", mechIDs).Msg("Failed to load collection items")
-						return
-					}
-
-					for _, ci := range cis {
-						if ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
-							ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair_status", ci.R.Owner.FactionID.String, ci.ItemID), server.WarMachineRepairStatusSubscribe, nil)
-							ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair-update", ci.R.Owner.FactionID.String, ci.ItemID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-						}
-					}
-				}(mechIDs)
+			if len(ros) == 0 {
+				continue
 			}
 
-			err = tx.Commit()
+			err = arena.closeRepairOffers(ros, roc.OfferClosedReason, roc.AgentClosedReason)
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
-				return
+				gamelog.L.Error().Err(err).Msg("Failed to close repair offers.")
+				continue
 			}
-		}()
+		}
 	}
 }
 
-// RegisterMechRepairCase register a mech repair case
-func (rs *RepairSystem) RegisterMechRepairCase(mechID string, maxHealth, remainHealth uint32) error {
-	// no need to repair
-	if maxHealth == remainHealth {
+func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
+	now := time.Now()
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
+		return terror.Error(err, "Failed to begin db transaction.")
+	}
+
+	defer tx.Rollback()
+
+	for _, ro := range ros {
+		ro.ClosedAt = null.TimeFrom(now)
+		ro.FinishedReason = null.StringFrom(offerCloseReason)
+		_, err := ro.Update(tx, boil.Whitelist(
+			boiler.RepairOfferColumns.ClosedAt,
+			boiler.RepairOfferColumns.FinishedReason,
+		))
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to close expired repair offer.")
+			return terror.Error(err, "Failed to close expired repair offer.")
+		}
+
+		if ro.R == nil {
+			continue
+		}
+
+		// broadcast close offer
+		rc := ro.R.RepairCase
+		sro := &server.RepairOffer{
+			RepairOffer:          ro,
+			BlocksRequiredRepair: rc.BlocksRequiredRepair,
+			BlocksRepaired:       rc.BlocksRepaired,
+			SupsWorthPerBlock:    ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
+			WorkingAgentCount:    0,
+		}
+
+		if ro.R.OfferedBy != nil {
+			sro.JobOwner = server.PublicPlayerFromBoiler(ro.R.OfferedBy)
+
+			ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", rc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+		}
+
+		if ro.R.RepairAgents != nil && len(ro.R.RepairAgents) > 0 {
+			_, err = ro.R.RepairAgents.UpdateAll(tx, boiler.M{
+				boiler.RepairAgentColumns.FinishedAt:     null.TimeFrom(now),
+				boiler.RepairAgentColumns.FinishedReason: null.StringFrom(agentCloseReason),
+			})
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to close expired repair agent.")
+				return terror.Error(err, "Failed to close expired repair agent.")
+			}
+		}
+
+		// refund process
+		if !ro.OfferedByID.Valid || ro.OfferedSupsAmount.Equal(decimal.Zero) {
+			continue
+		}
+
+		totalRefundBlocks := ro.BlocksTotal
+		if ro.R.RepairBlocks != nil {
+			totalRefundBlocks = totalRefundBlocks - len(ro.R.RepairBlocks)
+		}
+
+		if totalRefundBlocks > 0 {
+			amount := ro.OfferedSupsAmount.Div(decimal.NewFromInt(int64(ro.BlocksTotal))).Mul(decimal.NewFromInt(int64(totalRefundBlocks)))
+
+			if amount.Equal(decimal.Zero) {
+				continue
+			}
+
+			// refund reward
+			refundTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(ro.OfferedByID.String)),
+				Amount:               amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_unclaimed_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupRepair),
+				Description:          "refund unclaimed repair offer reward.",
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("player_id", ro.OfferedByID.String).
+					Str("repair offer id", ro.ID).
+					Str("amount", amount.StringFixed(0)).
+					Err(err).Msg("Failed to refund unclaimed repair offer reward.")
+				return terror.Error(err, "Failed to refund unclaimed repair offer reward.")
+			}
+
+			ro.RefundTXID = null.StringFrom(refundTxID)
+			_, err = ro.Update(tx, boil.Whitelist(boiler.RepairOfferColumns.RefundTXID))
+			if err != nil {
+				gamelog.L.Error().
+					Interface("repair offer", ro).
+					Err(err).Msg("Failed to update repair offer refund transaction id")
+			}
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+		return terror.Error(err, "Failed to commit db transaction.")
+	}
+
+	return nil
+}
+
+// RegisterMechRepairCase insert mech repair case and track repair stack
+func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, remainHealth uint32) error {
+	if remainHealth == maxHealth {
 		return nil
 	}
 
-	// delete any mech repair case
-	_, err := boiler.MechRepairCases(
-		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-	).DeleteAll(gamedb.StdConn)
+	damagedPortion := decimal.NewFromInt(1)
+	if remainHealth != 0 {
+		mh := decimal.NewFromInt(int64(maxHealth))
+		rh := decimal.NewFromInt(int64(remainHealth))
+		damagedPortion = mh.Sub(rh).Div(mh)
+	}
+
+	// get mech model
+	model, err := boiler.FindMechModel(gamedb.StdConn, modelID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to clean up any mech repair cases")
-		return terror.Error(err, "Failed to clean up any mech repair cases")
-	}
-
-	now := time.Now()
-
-	mh := decimal.NewFromInt(int64(maxHealth))
-	rh := decimal.NewFromInt(int64(remainHealth))
-	damagedPortion := mh.Sub(rh).Div(mh)
-
-	drm := db.GetDecimalWithDefault(db.KeyMechRepairDefaultDurationMinutes, decimal.NewFromInt(360))
-
-	// calculate portion of the remaining health
-	durationMinutes := drm.Mul(damagedPortion).IntPart()
-
-	if durationMinutes == 0 {
-		durationMinutes = 1
-	}
-
-	mrc := &boiler.MechRepairCase{
-		MechID:              mechID,
-		Status:              boiler.MechRepairStatusPENDING,
-		Fee:                 db.GetDecimalWithDefault(db.KeyMechStandardRepairFee, decimal.New(5, 18)),
-		FastRepairFee:       db.GetDecimalWithDefault(db.KeyMechFastRepairFee, decimal.New(30, 18)),
-		RepairPeriodMinutes: int(durationMinutes),
-		MaxHealth:           mh,
-		RemainHealth:        rh,
-	}
-
-	err = mrc.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Interface("mech repair case", mrc).Err(err).Msg("Failed to insert mech repair case.")
-		return terror.Error(err, "Failed to register mech repair case")
-	}
-
-	// mech repair log
-	mrl := &boiler.MechRepairLog{
-		MechID:    mechID,
-		Type:      boiler.MechRepairLogTypeREGISTER_REPAIR,
-		CreatedAt: now,
-	}
-
-	err = mrl.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to log mech repair event.")
-	}
-
-	BroadcastMechRepairStatus(mrc)
-
-	return nil
-}
-
-func (rs *RepairSystem) IsStillRepairing(mechID string) (bool, error) {
-	mrc, err := boiler.MechRepairCases(
-		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return false, terror.Error(err, "Failed to check mech repair status")
-	}
-
-	if mrc == nil || mrc.EndedAt.Valid {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (rs *RepairSystem) StartStandardRepair(userID string, mechID string) error {
-	now := time.Now()
-	mrc, err := boiler.MechRepairCases(
-		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to log mech repair case.")
-		return terror.Error(err, "Failed to load mech repair case.")
-	}
-
-	if mrc == nil {
-		return terror.Error(fmt.Errorf("no mech to repair"), "The mech is not in the repair center.")
-	}
-
-	if mrc.EndedAt.Valid {
-		return terror.Error(fmt.Errorf("no mech to repair"), "The mech is already repaired.")
-	}
-
-	// cna only start standard repair when current status is pending
-	if mrc.Status != boiler.MechRepairStatusPENDING {
-		return terror.Error(fmt.Errorf("repair process has already started"), "The repair process has already started.")
+		gamelog.L.Error().Err(err).Str("mech model id", modelID).Msg("Failed to load mech model for repair block detail.")
+		return terror.Error(err, "Failed to load mech model")
 	}
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		gamelog.L.Error().Msg("Failed to begin db transaction.")
-		return terror.Error(err, "Failed to pay instant repair fee.")
+		gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
+		return terror.Error(err, "Failed to begin db transaction.")
 	}
 
 	defer tx.Rollback()
 
-	// start the process
-	mrc.StartedAt = null.TimeFrom(now)
-	mrc.ExpectedEndAt = null.TimeFrom(now.Add(time.Duration(mrc.RepairPeriodMinutes) * time.Minute))
-	mrc.Status = boiler.MechRepairStatusSTANDARD_REPAIR
-	_, err = mrc.Update(tx, boil.Whitelist(
-		boiler.MechRepairCaseColumns.StartedAt,
-		boiler.MechRepairCaseColumns.ExpectedEndAt,
-		boiler.MechRepairCaseColumns.Status,
-	))
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update mech repair process.")
-		return terror.Error(err, "Failed to start repair process.")
+	// set block total
+	blocksTotal := decimal.NewFromInt(int64(model.RepairBlocks)).Mul(damagedPortion).Ceil().IntPart()
+
+	rc := &boiler.RepairCase{
+		MechID:               mechID,
+		BlocksRequiredRepair: int(blocksTotal),
 	}
 
-	_, err = rs.passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(userID),
-		ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
-		Amount:               mrc.Fee.StringFixed(0),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_mech_standard_repair_fee|%s|%d", mrc.MechID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupBattle),
-		Description:          "Paying mech standard repair fee " + mechID + ".",
-		NotSafe:              true,
-	})
+	err = rc.Insert(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", mrc.MechID).Err(err).Msg("Failed to pay asset repair fee")
-		return terror.Error(err, "Failed to pay asset repair fee")
+		gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to insert repair case.")
+		return terror.Error(err, "Failed to insert repair case.")
+	}
+
+	// insert self repair offer
+	ro := boiler.RepairOffer{
+		RepairCaseID:      rc.ID,
+		BlocksTotal:       int(blocksTotal),
+		OfferedSupsAmount: decimal.Zero,
+		ExpiresAt:         time.Now().AddDate(10, 0, 0),
+	}
+	err = ro.Insert(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to insert repair offer.")
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return terror.Error(err, "Failed to pay instant repair fee.")
+		return terror.Error(err, "Failed to commit db transaction.")
 	}
-
-	// mech repair log
-	mrl := &boiler.MechRepairLog{
-		MechID:           mechID,
-		Type:             boiler.MechRepairLogTypeSTART_STANDARD_REPAIR,
-		InvolvedPlayerID: null.StringFrom(userID),
-		CreatedAt:        now,
-	}
-	err = mrl.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to log mech repair event.")
-	}
-
-	BroadcastMechRepairStatus(mrc)
 
 	return nil
-}
-
-// StartFastRepair start a fast repair process or speed up an existing standard repair process
-func (rs *RepairSystem) StartFastRepair(userID string, mechID string) error {
-	now := time.Now()
-
-	mrc, err := boiler.MechRepairCases(
-		boiler.MechRepairCaseWhere.MechID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to load mech repair case.")
-	}
-
-	if mrc == nil {
-		return terror.Error(fmt.Errorf("no mech is repairing"), "The mech is not in the repair center.")
-	}
-
-	if mrc.EndedAt.Valid {
-		return terror.Error(fmt.Errorf("repair process has already ended"), "The repair process has already ended")
-	}
-
-	// cna only start standard repair when current status is pending
-	if mrc.Status == boiler.MechRepairStatusFAST_REPAIR {
-		return terror.Error(fmt.Errorf("already in fast repair"), "The mech is already in fast repair mode.")
-	}
-
-	if mrc.FastRepairTXID.Valid {
-		return terror.Error(fmt.Errorf("process already speed up"), "Repair process is already speed up.")
-	}
-
-	damagedPortion := mrc.MaxHealth.Sub(mrc.RemainHealth).Div(mrc.MaxHealth)
-	drm := db.GetDecimalWithDefault(db.KeyMechFastRepairDurationMinutes, decimal.NewFromInt(30))
-	durationMinutes := drm.Mul(damagedPortion).IntPart()
-	if durationMinutes == 0 {
-		durationMinutes = 1
-	}
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Msg("Failed to begin db transaction.")
-		return terror.Error(err, "Failed to pay instant repair fee.")
-	}
-
-	defer tx.Rollback()
-
-	fastRepairFee := mrc.FastRepairFee
-	logType := boiler.MechRepairLogTypeSTART_FAST_REPAIR
-	if mrc.StartedAt.Valid {
-		// deduct fee if repair is already started
-		fastRepairFee = mrc.FastRepairFee.Sub(mrc.Fee)
-
-		// change log to speed up
-		logType = boiler.MechRepairLogTypeSPEED_UP
-	}
-
-	if !mrc.StartedAt.Valid {
-		mrc.StartedAt = null.TimeFrom(now)
-	}
-
-	mrc.Status = boiler.MechRepairStatusFAST_REPAIR
-	mrc.RepairPeriodMinutes = int(durationMinutes)
-	mrc.ExpectedEndAt = null.TimeFrom(mrc.StartedAt.Time.Add(time.Duration(durationMinutes) * time.Minute))
-	mrc.FastRepairTXID = null.StringFrom("SPEED_UP_TX") // will be replaced after sups spend is success
-
-	// check repair is already ended
-	if mrc.ExpectedEndAt.Time.Before(now) {
-		mrc.EndedAt = null.TimeFrom(now)
-	}
-
-	_, err = mrc.Update(tx, boil.Whitelist(
-		boiler.MechRepairCaseColumns.StartedAt,
-		boiler.MechRepairCaseColumns.Status,
-		boiler.MechRepairCaseColumns.RepairPeriodMinutes,
-		boiler.MechRepairCaseColumns.ExpectedEndAt,
-		boiler.MechRepairCaseColumns.FastRepairTXID,
-		boiler.MechRepairCaseColumns.EndedAt,
-	))
-	if err != nil {
-		gamelog.L.Error().Interface("mech repair case", mrc).Err(err).Msg("Failed to update the ended_at column of mech repair case.")
-		return terror.Error(err, "Failed to pay instant repair fee")
-	}
-
-	// pay speed up repair fee
-	txID, err := rs.passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-		FromUserID:           uuid.FromStringOrNil(userID),
-		ToUserID:             uuid.FromStringOrNil(server.XsynTreasuryUserID.String()),
-		Amount:               fastRepairFee.StringFixed(0),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_mech_fast_repair_fee|%s|%d", mrc.MechID, time.Now().UnixNano())),
-		Group:                string(server.TransactionGroupSupremacy),
-		SubGroup:             string(server.TransactionGroupBattle),
-		Description:          "Paying mech fast repair fee " + mechID + ".",
-		NotSafe:              true,
-	})
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("asset repair id", mrc.MechID).Err(err).Msg("Failed to pay asset repair fee")
-		return terror.Error(err, "Failed to pay asset repair fee")
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return terror.Error(err, "Failed to pay instant repair fee.")
-	}
-
-	mrc.FastRepairTXID = null.StringFrom(txID)
-	_, err = mrc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechRepairCaseColumns.FastRepairFee))
-	if err != nil {
-		gamelog.L.Error().Interface("mech repair case", mrc).Err(err).Msg("Failed to update the instant repair txid of mech repair case.")
-	}
-
-	// mech repair log
-	mrl := &boiler.MechRepairLog{
-		MechID:           mechID,
-		Type:             logType,
-		InvolvedPlayerID: null.StringFrom(userID),
-		CreatedAt:        now,
-	}
-	err = mrl.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to log mech repair event.")
-	}
-
-	BroadcastMechRepairStatus(mrc)
-
-	return nil
-}
-
-type MechRepairStatus struct {
-	RepairStatus  string   `json:"repair_status"`
-	RemainSeconds null.Int `json:"remain_seconds"`
-}
-
-func BroadcastMechRepairStatus(mrc *boiler.MechRepairCase) {
-	if mrc == nil {
-		return
-	}
-
-	// get faction
-	ci, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(mrc.MechID),
-		qm.Load(boiler.CollectionItemRels.Owner),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("item id (mech)", mrc.MechID).Err(err).Msg("Failed to load collection item.")
-		return
-	}
-
-	mrs := MechRepairStatus{
-		RepairStatus: mrc.Status,
-	}
-
-	if mrc.ExpectedEndAt.Valid && mrc.StartedAt.Valid {
-		// add a second delay
-		mrs.RemainSeconds = null.IntFrom(1 + int(mrc.ExpectedEndAt.Time.Sub(mrc.StartedAt.Time).Seconds()))
-	}
-	if ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair_status", ci.R.Owner.FactionID.String, mrc.MechID), server.WarMachineRepairStatusSubscribe, mrs)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%s/repair-update", ci.R.Owner.FactionID.String, mrc.MechID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-	}
 }

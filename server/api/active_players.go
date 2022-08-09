@@ -2,10 +2,11 @@ package api
 
 import (
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -19,7 +20,7 @@ import (
 type ActivePlayers struct {
 	FactionID string
 	Map       map[string]*ActiveStat
-	sync.RWMutex
+	deadlock.RWMutex
 
 	// channel for debounce broadcast
 	ActivePlayerListChan chan *ActivePlayerBroadcast
@@ -27,7 +28,7 @@ type ActivePlayers struct {
 
 type ActiveStat struct {
 	// player stat
-	Player *boiler.Player
+	Player *server.PublicPlayer
 
 	// active stat
 	ActivedAt time.Time
@@ -55,14 +56,27 @@ func (api *API) FactionActivePlayerSetup() {
 
 		api.FactionActivePlayers[f.ID] = ap
 	}
+
+	ap := &ActivePlayers{
+		FactionID:            "GLOBAL",
+		Map:                  make(map[string]*ActiveStat),
+		ActivePlayerListChan: make(chan *ActivePlayerBroadcast),
+	}
+
+	go ap.Run()
+
+	go ap.debounceBroadcastActivePlayers()
+
+	api.FactionActivePlayers["GLOBAL"] = ap
+
 }
 
 // CurrentFactionActivePlayer return a copy of current faction active player list
-func (ap *ActivePlayers) CurrentFactionActivePlayer() []boiler.Player {
+func (ap *ActivePlayers) CurrentFactionActivePlayer() []server.PublicPlayer {
 	ap.RLock()
 	defer ap.RUnlock()
 
-	players := []boiler.Player{}
+	var players []server.PublicPlayer
 	for _, as := range ap.Map {
 		players = append(players, *as.Player)
 	}
@@ -71,7 +85,7 @@ func (ap *ActivePlayers) CurrentFactionActivePlayer() []boiler.Player {
 }
 
 type ActivePlayerBroadcast struct {
-	Players []boiler.Player
+	Players []server.PublicPlayer
 }
 
 func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
@@ -108,12 +122,13 @@ func (ap *ActivePlayers) CheckExpiry() {
 	now := time.Now()
 
 	// collect active player list for broadcast
-	players := []boiler.Player{}
+	var players []server.PublicPlayer
 
 	for playerID, activeStat := range ap.Map {
 
 		// skip, if active stat is not expired
 		if activeStat.ExpiredAt.After(now) {
+
 			players = append(players, *activeStat.Player)
 			continue
 		}
@@ -151,12 +166,12 @@ func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
 	defer ap.Unlock()
 
 	if isActive {
-		err := ap.Add(playerID)
+		err := ap.add(playerID)
 		if err != nil {
 			return terror.Error(err, "Failed to add player onto active player map")
 		}
 	} else {
-		err := ap.Remove(playerID)
+		err := ap.remove(playerID)
 		if err != nil {
 			return terror.Error(err, "Failed to remove player from active player map")
 		}
@@ -165,7 +180,7 @@ func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
 	return nil
 }
 
-func (ap *ActivePlayers) Add(playerID string) error {
+func (ap *ActivePlayers) add(playerID string) error {
 	now := time.Now()
 
 	// check player's active stat is in the list
@@ -193,8 +208,18 @@ func (ap *ActivePlayers) Add(playerID string) error {
 		return terror.Error(err, "Failed to get player from db")
 	}
 
+	pp := &server.PublicPlayer{
+		ID:        player.ID,
+		Username:  player.Username,
+		Gid:       player.Gid,
+		FactionID: player.FactionID,
+		AboutMe:   player.AboutMe,
+		Rank:      player.Rank,
+		CreatedAt: player.CreatedAt,
+	}
+
 	ap.Map[playerID] = &ActiveStat{
-		Player:    player,
+		Player:    pp,
 		ActivedAt: now,
 		ExpiredAt: now.Add(2 * time.Minute),
 	}
@@ -213,7 +238,7 @@ func (ap *ActivePlayers) Add(playerID string) error {
 	return nil
 }
 
-func (ap *ActivePlayers) Remove(playerID string) error {
+func (ap *ActivePlayers) remove(playerID string) error {
 	if _, ok := ap.Map[playerID]; !ok {
 		// skip, if player is not in the list
 		return nil

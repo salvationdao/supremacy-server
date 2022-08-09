@@ -160,19 +160,18 @@ type MarketplaceSaleItem1155 struct {
 type MechArenaStatus string
 
 const (
-	MechArenaStatusQueue          MechArenaStatus = "QUEUE"
-	MechArenaStatusBattle         MechArenaStatus = "BATTLE"
-	MechArenaStatusMarket         MechArenaStatus = "MARKET"
-	MechArenaStatusIdle           MechArenaStatus = "IDLE"
-	MechArenaStatusSold           MechArenaStatus = "SOLD"
-	MechArenaStatusDamaged        MechArenaStatus = "DAMAGED"
-	MechArenaStatusStandardRepair MechArenaStatus = "REPAIRING (STANDARD)"
-	MechArenaStatusFastRepair     MechArenaStatus = "REPAIRING (FAST)"
+	MechArenaStatusQueue   MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle  MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket  MechArenaStatus = "MARKET"
+	MechArenaStatusIdle    MechArenaStatus = "IDLE"
+	MechArenaStatusSold    MechArenaStatus = "SOLD"
+	MechArenaStatusDamaged MechArenaStatus = "DAMAGED"
 )
 
 type MechArenaInfo struct {
 	Status        MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
 	QueuePosition int64           `json:"queue_position"`
+	CanDeploy     bool            `json:"can_deploy"`
 }
 
 type MarketplaceEvent struct {

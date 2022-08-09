@@ -62,7 +62,6 @@ func (as *AccountSystem) liquidate() error {
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupSyndicate),
 		Description:          fmt.Sprintf("Tax for liquidating %s syndicate (%s%%): %s", as.syndicate.Type, taxRatio.String(), as.syndicate.ID),
-		NotSafe:              true,
 	})
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to tax syndicate for liquidation.")
@@ -92,7 +91,6 @@ func (as *AccountSystem) liquidate() error {
 			Group:                string(server.TransactionGroupSupremacy),
 			SubGroup:             string(server.TransactionGroupSyndicate),
 			Description:          fmt.Sprintf("Liquidated syndicate fund for remaining members: %s", as.syndicate.ID),
-			NotSafe:              true,
 		}
 		_, err := as.syndicate.system.Passport.SpendSupMessage(transaction)
 		if err != nil {
@@ -121,7 +119,6 @@ func (as *AccountSystem) receiveFund(fromID string, fund decimal.Decimal, refere
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupSyndicate),
 		Description:          description,
-		NotSafe:              true,
 	}
 	_, err := as.syndicate.system.Passport.SpendSupMessage(transaction)
 	if err != nil {
@@ -149,7 +146,6 @@ func (as *AccountSystem) transferFund(toID string, fund decimal.Decimal, referen
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             string(server.TransactionGroupSyndicate),
 		Description:          description,
-		NotSafe:              true,
 	}
 	_, err := as.syndicate.system.Passport.SpendSupMessage(transaction)
 	if err != nil {

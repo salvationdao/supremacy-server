@@ -3,30 +3,7 @@ package db
 import (
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/shopspring/decimal"
 )
-
-func FactionAddContribute(factionID string, amount decimal.Decimal) error {
-	// NOTE: faction contribution only show integer in frontend, so just store the actual sups amount
-	storeAmount := amount.Div(decimal.New(1, 18)).IntPart()
-
-	q := `
-		UPDATE
-			faction_stats
-		SET
-			sups_contribute = sups_contribute + $2
-		WHERE
-			id = $1
-	`
-	_, err := gamedb.StdConn.Exec(q, factionID, storeAmount)
-	if err != nil {
-		gamelog.L.Error().Str("faction_id", factionID).Str("amount", amount.String()).Err(err).Msg("Failed to update faction contribution")
-		return err
-	}
-
-	return nil
-}
 
 func FactionAddAbilityKillCount(factionID string) error {
 	q := `
@@ -154,4 +131,43 @@ func FactionStatMVPUpdate(factionID string) error {
 		return err
 	}
 	return nil
+}
+
+// FactionMechDestroyedOrderGet return a list which contain the faction id of the destroyed mech, start from the most recent destroyed mech
+func FactionMechDestroyedOrderGet(battleID string) ([]string, error) {
+	ids := []string{}
+	q := `
+		SELECT bm.faction_id FROM battle_history bh
+		INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id
+		WHERE bh.battle_id = $1
+		ORDER BY bh.created_at DESC
+	`
+	rows, err := gamedb.StdConn.Query(q, battleID)
+	if err != nil {
+		return []string{}, err
+	}
+
+	for rows.Next() {
+		factionID := ""
+
+		err = rows.Scan(&factionID)
+		if err != nil {
+			return []string{}, err
+		}
+
+		// append faction to the list
+		exists := false
+		for _, id := range ids {
+			if id == factionID {
+				exists = true
+				break
+			}
+		}
+
+		if !exists {
+			ids = append(ids, factionID)
+		}
+	}
+
+	return ids, nil
 }

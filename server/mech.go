@@ -174,6 +174,7 @@ type MechModel struct {
 	Label                string      `json:"label"`
 	CreatedAt            time.Time   `json:"created_at"`
 	DefaultChassisSkinID null.String `json:"default_chassis_skin_id,omitempty"`
+	RepairBlocks         int         `json:"repair_blocks"`
 }
 
 func (b *MechModel) Scan(value interface{}) error {

@@ -7,6 +7,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -25,7 +26,7 @@ type MotionSystem struct {
 	syndicate *Syndicate
 
 	ongoingMotions map[string]*Motion
-	sync.RWMutex
+	deadlock.RWMutex
 
 	isClosed atomic.Bool
 }

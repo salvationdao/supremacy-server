@@ -75,6 +75,7 @@ type PlayerAssetMechListRequest struct {
 		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed bool                  `json:"include_market_listed"`
+		ExcludeDamagedMech  bool                  `json:"exclude_damaged_mech"`
 		QueueSort           db.SortByDir          `json:"queue_sort"`
 		FilterRarities      []string              `json:"rarities"`
 		FilterStatuses      []string              `json:"statuses"`
@@ -146,6 +147,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked: req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed: req.Payload.IncludeMarketListed,
+		ExcludeDamagedMech:  req.Payload.ExcludeDamagedMech,
 		FilterRarities:      req.Payload.FilterRarities,
 		FilterStatuses:      req.Payload.FilterStatuses,
 	}
@@ -340,6 +342,67 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+// PlayerAssetMechBriefInfo load brief mech info for quick deploy
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	mechID := cctx.URLParam("mech_id")
+	if mechID == "" {
+		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
+	}
+
+	// get collection and check ownership
+	_, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from the collection")
+	}
+
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+		qm.Load(boiler.MechRels.ChassisSkin),
+		qm.Load(qm.Rels(boiler.MechRels.ChassisSkin, boiler.MechSkinRels.Blueprint)),
+		qm.Load(boiler.MechRels.Blueprint),
+		qm.Load(qm.Rels(boiler.MechRels.Blueprint, boiler.BlueprintMechRels.Model)),
+		qm.Load(qm.Rels(boiler.MechRels.Blueprint, boiler.BlueprintMechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load mech info")
+	}
+
+	m := server.Mech{
+		ID:    mech.ID,
+		Label: mech.R.Blueprint.Label,
+	}
+
+	if mech.R.ChassisSkin != nil {
+		ms := mech.R.ChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.R.Blueprint.Label,
+			//AvatarURL: ms.AvatarURL, // TODO: vinnie fix
+			//ImageURL:  ms.ImageURL,
+		}
+	} else if mech.R != nil &&
+		mech.R.Blueprint != nil &&
+		mech.R.Blueprint.R != nil &&
+		mech.R.Blueprint.R.Model != nil &&
+		mech.R.Blueprint.R.Model.R != nil &&
+		mech.R.Blueprint.R.Model.R.DefaultChassisSkin != nil {
+		ms := mech.R.Blueprint.R.Model.R.DefaultChassisSkin
+		m.ChassisSkin = &server.MechSkin{
+			ID:        ms.ID,
+			Label:     ms.Label,
+			//AvatarURL: ms.AvatarURL, // TODO: vinnie fix
+			//ImageURL:  ms.ImageURL,
+		}
+	}
+
+	reply(m)
 	return nil
 }
 
