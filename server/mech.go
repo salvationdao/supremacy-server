@@ -94,6 +94,7 @@ type BlueprintMech struct {
 	Tier                 string    `json:"tier,omitempty"`
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
 	Collection           string    `json:"collection"`
+	ModelID              string    `json:"model_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -122,6 +123,7 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 		PowerCoreSize:    mech.PowerCoreSize,
 		Tier:             mech.Tier,
 		Collection:       mech.Collection,
+		ModelID:          mech.ModelID,
 	}
 }
 

@@ -45,6 +45,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	// filter them into IDs first to optimize db queries
 	var blueprintMechIDS []string
 	var blueprintWeaponIDS []string
+	var blueprintWeaponSkinIDS []string
 	var blueprintUtilityIDS []string
 	var blueprintMechSkinIDS []string
 	var blueprintMechAnimationIDS []string
@@ -66,7 +67,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		case boiler.TemplateItemTypePOWER_CORE:
 			blueprintPowerCoreIDS = append(blueprintPowerCoreIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
-			continue
+			blueprintWeaponSkinIDS = append(blueprintWeaponSkinIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypePLAYER_ABILITY:
 			continue
 		case boiler.TemplateItemTypeAMMO:
@@ -83,6 +84,10 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		return nil, terror.Error(err)
 	}
 	result.BlueprintWeapon, err = BlueprintWeapons(blueprintWeaponIDS)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	result.BlueprintWeaponSkin, err = BlueprintWeaponSkins(blueprintWeaponSkinIDS)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -278,10 +283,14 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	L = L.With().Interface("inserted mech powercores", powerCores).Logger()
 
 	// inserts weapons blueprints
-	for _, weapon := range tmpl.BlueprintWeapon {
+	for i, weapon := range tmpl.BlueprintWeapon {
 		weapon.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
 		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
-		insertedWeapon, insertedWeaponSkin, err := InsertNewWeapon(tx, ownerID, weapon, nil)
+		// get default weapon skins
+		tmpl.BlueprintWeaponSkin[i].LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		tmpl.BlueprintWeaponSkin[i].GenesisTokenID = tokenIDs.GenesisTokenID
+
+		insertedWeapon, insertedWeaponSkin, err := InsertNewWeapon(tx, ownerID, weapon, tmpl.BlueprintWeaponSkin[i])
 		if err != nil {
 			L.Error().Err(err).Msg("failed to insert new weapon for user")
 			return mechs, mechAnimations, mechSkins, powerCores, weapons, weaponSkins, utilities, terror.Error(err)

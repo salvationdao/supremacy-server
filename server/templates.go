@@ -15,6 +15,7 @@ type TemplateContainer struct {
 
 	BlueprintMech          []*BlueprintMech          `json:"blueprint_mech,omitempty"`
 	BlueprintWeapon        []*BlueprintWeapon        `json:"blueprint_weapon,omitempty"`
+	BlueprintWeaponSkin    []*BlueprintWeaponSkin    `json:"blueprint_weapon_skin,omitempty"`
 	BlueprintUtility       []*BlueprintUtility       `json:"blueprint_utility,omitempty"`
 	BlueprintMechSkin      []*BlueprintMechSkin      `json:"blueprint_mech_skin,omitempty"`
 	BlueprintMechAnimation []*BlueprintMechAnimation `json:"blueprint_mech_animation,omitempty"`

@@ -69,7 +69,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{obj})[0]
 	case boiler.ItemTypeWeaponSkin:
-		obj, err := db.WeaponSkin(gamedb.StdConn, ci.ItemID)
+		obj, err := db.WeaponSkin(gamedb.StdConn, ci.ItemID, nil)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon skin in Asset rpc call ")
 			return terror.Error(err)
@@ -83,7 +83,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{obj})[0]
 	case boiler.ItemTypeMechSkin:
-		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID)
+		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID, nil)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)

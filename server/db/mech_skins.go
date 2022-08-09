@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -12,7 +13,8 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*server.MechSkin, error) {
+// InsertNewMechSkin if modelID is nil it will return images of a random mech in this skin
+func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.BlueprintMechSkin, modelID *string) (*server.MechSkin, error) {
 	// first insert the skin
 	newSkin := boiler.MechSkin{
 		BlueprintID:           skin.ID,
@@ -37,23 +39,44 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 		return nil, terror.Error(err)
 	}
 
-	return MechSkin(tx, newSkin.ID)
+	return MechSkin(tx, newSkin.ID, modelID)
 }
 
-func MechSkin(trx boil.Executor, id string) (*server.MechSkin, error) {
+// MechSkin if modelID is nil it will return images of a random mech in this skin
+func MechSkin(trx boil.Executor, id string, modelID *string) (*server.MechSkin, error) {
 	boilerMech, err := boiler.MechSkins(
 		boiler.MechSkinWhere.ID.EQ(id),
-		//qm.Load(boiler.MechSkinRels.MechSkinMechModel),
+		qm.Load(boiler.MechSkinRels.Blueprint),
 	).One(trx)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(trx)
+
+	boilerMechCollectionDetails, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(id),
+	).One(trx)
 	if err != nil {
 		return nil, err
 	}
 
-	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+	queryMods := []qm.QueryMod{
+		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(boilerMech.BlueprintID),
+	}
+
+	// if nil was passed in, we get a random one
+	// TODO: check if equipped on a mech, if so get that skin
+	if modelID != nil && *modelID != "" {
+		queryMods = append(queryMods, boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(*modelID))
+	}
+
+	mechSkinCompatabilityMatrix, err := boiler.MechModelSkinCompatibilities(
+		queryMods...,
+	).One(trx)
+	if err != nil {
+		return nil, err
+	}
+
+	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails, mechSkinCompatabilityMatrix), nil
 }
 
 func MechSkins(id ...string) ([]*server.MechSkin, error) {
@@ -68,7 +91,7 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 		if err != nil {
 			return nil, err
 		}
-		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails))
+		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails, nil))
 	}
 	return skins, nil
 }

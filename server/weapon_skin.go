@@ -13,6 +13,7 @@ import (
 // WeaponSkin is the struct that rpc expects for weapons skins
 type WeaponSkin struct {
 	*CollectionItem
+	*Images
 	ID            string      `json:"id"`
 	BlueprintID   string      `json:"blueprint_id"`
 	Label         string      `json:"label"`
@@ -39,6 +40,10 @@ type BlueprintWeaponSkin struct {
 	Collection       string              `json:"collection"`
 	StatModifier     decimal.NullDecimal `json:"stat_modifier,omitempty"`
 	CreatedAt        time.Time           `json:"created_at"`
+
+	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintWeaponSkin) Scan(value interface{}) error {
@@ -73,7 +78,7 @@ func BlueprintWeaponSkinFromBoiler(weaponSkin *boiler.BlueprintWeaponSkin) *Blue
 	}
 }
 
-func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem) *WeaponSkin {
+func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem, weaponSkinCompatMatrix *boiler.WeaponModelSkinCompatibility) *WeaponSkin {
 	return &WeaponSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
@@ -87,10 +92,19 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			XsynLocked:       collection.XsynLocked,
 			AssetHidden:      collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         weaponSkinCompatMatrix.ImageURL,
+			CardAnimationURL: weaponSkinCompatMatrix.CardAnimationURL,
+			AvatarURL:        weaponSkinCompatMatrix.AvatarURL,
+			LargeImageURL:    weaponSkinCompatMatrix.LargeImageURL,
+			BackgroundColor:  weaponSkinCompatMatrix.BackgroundColor,
+			AnimationURL:     weaponSkinCompatMatrix.AnimationURL,
+			YoutubeURL:       weaponSkinCompatMatrix.YoutubeURL,
+		},
+		Label: weaponSkin.R.Blueprint.Label,
+		Tier: weaponSkin.R.Blueprint.Tier,
 		ID:            weaponSkin.ID,
 		BlueprintID:   weaponSkin.BlueprintID,
-		// TODO: vinnie fix me please
-		//Label:         weaponSkin.Label,
 		EquippedOn:    weaponSkin.EquippedOn,
 		CreatedAt:     weaponSkin.CreatedAt,
 	}

@@ -69,7 +69,7 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 	}
 }
 
-func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
+func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem, skinDetails *boiler.MechModelSkinCompatibility) *MechSkin {
 	mskin := &MechSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
@@ -83,11 +83,19 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			XsynLocked:       collection.XsynLocked,
 			AssetHidden:      collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL: skinDetails.ImageURL,
+			CardAnimationURL: skinDetails.CardAnimationURL,
+			AvatarURL: skinDetails.AvatarURL,
+			LargeImageURL: skinDetails.LargeImageURL,
+			BackgroundColor: skinDetails.BackgroundColor,
+			AnimationURL: skinDetails.AnimationURL,
+			YoutubeURL: skinDetails.YoutubeURL,
+		},
+		Label:            skin.R.Blueprint.Label,
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
 		GenesisTokenID:   skin.GenesisTokenID,
-		// TODO: vinnie fix me please
-		//Label:            skin.Label,
 		EquippedOn:       skin.EquippedOn,
 		CreatedAt:        skin.CreatedAt,
 	}

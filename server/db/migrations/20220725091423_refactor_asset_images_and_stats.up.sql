@@ -1356,3 +1356,15 @@ UPDATE mystery_crate mc SET blueprint_id = (select id from storefront_mystery_cr
 
 ALTER TABLE mystery_crate
     ALTER COLUMN blueprint_id SET NOT NULL;
+
+WITH wps AS (
+SELECT tpb.template_id, bpws.id as blueprint_id, 'WEAPON_SKIN' as "type"
+FROM template_blueprints tpb
+INNER JOIN blueprint_weapons bpw ON bpw.id = tpb.blueprint_id
+INNER JOIN weapon_models wm ON wm.id = bpw.weapon_model_id
+INNER JOIN blueprint_weapon_skin bpws ON bpws.weapon_model_id = wm.id
+WHERE tpb.type = 'WEAPON')
+INSERT INTO template_blueprints(template_id, type, blueprint_id)
+SELECT wps.template_id, wps.type, wps.blueprint_id
+FROM wps;
+

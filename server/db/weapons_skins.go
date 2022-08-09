@@ -6,12 +6,12 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
-	"server/gamedb"
 )
 
-func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin) (*server.WeaponSkin, error) {
+func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin, modelID *string) (*server.WeaponSkin, error) {
 	newWeaponSkin := boiler.WeaponSkin{
 		BlueprintID:   blueprintWeaponSkin.ID,
 		EquippedOn:    null.String{},
@@ -34,11 +34,14 @@ func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *ser
 		return nil, terror.Error(err)
 	}
 
-	return WeaponSkin(tx, newWeaponSkin.ID)
+	return WeaponSkin(tx, newWeaponSkin.ID, modelID)
 }
 
-func WeaponSkin(trx boil.Executor, id string) (*server.WeaponSkin, error) {
-	boilerWeaponSkin, err := boiler.FindWeaponSkin(trx, id)
+func WeaponSkin(trx boil.Executor, id string, modelID *string) (*server.WeaponSkin, error) {
+	boilerWeaponSkin, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.ID.EQ(id),
+		qm.Load(boiler.WeaponSkinRels.Blueprint),
+		).One(trx)
 	if err != nil {
 		return nil, err
 	}
@@ -47,23 +50,19 @@ func WeaponSkin(trx boil.Executor, id string) (*server.WeaponSkin, error) {
 		return nil, err
 	}
 
-	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerMechCollectionDetails), nil
-}
+	queryMods := []qm.QueryMod{
+		boiler.WeaponModelSkinCompatibilityWhere.BlueprintWeaponSkinID.EQ(boilerWeaponSkin.BlueprintID),
+	}
 
-func WeaponSkins(id ...string) ([]*server.WeaponSkin, error) {
-	var weaponSkins []*server.WeaponSkin
-	boilerWeaponSkins, err := boiler.WeaponSkins(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
+	if modelID != nil && *modelID != "" {
+		queryMods = append(queryMods, boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(*modelID))
+	}
+
+	weaponSkinCompatMatrix, err := boiler.WeaponModelSkinCompatibilities(
+		queryMods...
+		).One(trx)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, bws := range boilerWeaponSkins {
-		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bws.ID)).One(gamedb.StdConn)
-		if err != nil {
-			return nil, err
-		}
-		weaponSkins = append(weaponSkins, server.WeaponSkinFromBoiler(bws, boilerMechCollectionDetails))
-	}
-
-	return weaponSkins, nil
+	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerMechCollectionDetails, weaponSkinCompatMatrix), nil
 }

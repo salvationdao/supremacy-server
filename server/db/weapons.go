@@ -63,25 +63,8 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeapon, weaponSkin *server.BlueprintWeaponSkin) (*server.Weapon, *server.WeaponSkin, error) {
 	L := gamelog.L.With().Str("func", "InsertNewWeapon").Interface("weaponBlueprint", weapon).Interface("weaponSkin", weaponSkin).Str("ownerID", ownerID.String()).Logger()
 
-	// get default weapon skin if nil
-	if weaponSkin == nil {
-		wpnModel, err := boiler.WeaponModels(
-			boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
-		).One(tx)
-		if err != nil {
-			L.Error().Err(err).Msg("failed to get weapon model")
-			return nil, nil, err
-		}
-
-		weaponSkin, err = BlueprintWeaponSkin(wpnModel.DefaultSkinID)
-		if err != nil {
-			L.Error().Err(err).Msg("failed to get blueprint weapon skin")
-			return nil, nil, err
-		}
-	}
-
 	// first insert the new weapon skin
-	wpnSkin, err := InsertNewWeaponSkin(tx, ownerID, weaponSkin)
+	wpnSkin, err := InsertNewWeaponSkin(tx, ownerID, weaponSkin, &weapon.WeaponModelID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to insert new weapon skin")
 		return nil, nil, err
@@ -151,7 +134,10 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 }
 
 func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
-	boilerWeapon, err := boiler.FindWeapon(tx, id)
+	boilerWeapon, err := boiler.Weapons(
+		boiler.WeaponWhere.ID.EQ(id),
+		qm.Load(boiler.WeaponRels.Blueprint),
+		).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +146,7 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
-	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID)
+	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID, &boilerWeapon.R.Blueprint.WeaponModelID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,56 +165,6 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 		itemSaleID = null.StringFrom(itemSale.ID)
 	}
 	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID), nil
-}
-
-func Weapons(id ...string) ([]*server.Weapon, error) {
-	var weapons []*server.Weapon
-	boilerWeapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	collectionItemToWeapon := map[string]string{}
-	collectionItemIDs := []string{}
-
-	for _, bw := range boilerWeapons {
-		boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bw.ID)).One(gamedb.StdConn)
-		if err != nil {
-			return nil, err
-		}
-		collectionItemToWeapon[bw.ID] = boilerWeaponCollectionDetails.ID
-		collectionItemIDs = append(collectionItemIDs, boilerWeaponCollectionDetails.ID)
-
-		weaponSkin, err := WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID)
-		if err != nil {
-			return nil, err
-		}
-
-		weapons = append(weapons, server.WeaponFromBoiler(bw, boilerWeaponCollectionDetails, weaponSkin, null.String{}))
-	}
-
-	if len(collectionItemIDs) > 0 {
-		itemSales, err := boiler.ItemSales(
-			boiler.ItemSaleWhere.CollectionItemID.IN(collectionItemIDs),
-			boiler.ItemSaleWhere.SoldAt.IsNull(),
-			boiler.ItemSaleWhere.DeletedAt.IsNull(),
-			boiler.ItemSaleWhere.EndAt.GT(time.Now()),
-		).All(gamedb.StdConn)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		for i := range weapons {
-			if collectionItemID, ok := collectionItemToWeapon[weapons[i].ID]; ok {
-				for _, s := range itemSales {
-					if s.CollectionItemID == collectionItemID {
-						weapons[i].ItemSaleID = null.StringFrom(s.ID)
-					}
-				}
-			}
-		}
-	}
-
-	return weapons, nil
 }
 
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
@@ -623,8 +559,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
 
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			//qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), // TODO: vinnie fix me (label now on blueprint)
-
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
 			fmt.Sprintf(
 				`(
 					SELECT _i.%s
@@ -644,6 +579,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.BlueprintWeapons,
+				qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+			),
+		),
 	)
 
 	// TODO: vinnie fix me (label now on blueprint)

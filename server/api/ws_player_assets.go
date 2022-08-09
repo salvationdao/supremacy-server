@@ -476,7 +476,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	}
 
 	// get weapon
-	weapon, err := db.Weapon(nil, collectionItem.ItemID)
+	weapon, err := db.Weapon(gamedb.StdConn, collectionItem.ItemID)
 	if err != nil {
 		return terror.Error(err, "Failed to find weapon from db")
 	}
@@ -819,6 +819,9 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	if collectionItem.XsynLocked {
 		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s while XSYN locked", user.ID, req.Payload.Id), "This crate is locked to XSYN, move asset to Supremacy and try again.")
 	}
+	if collectionItem.LockedToMarketplace {
+		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s while market locked", user.ID, req.Payload.Id), "This crate is still on Marketplace, try again or contact support.")
+	}
 
 	crate := boiler.MysteryCrate{}
 
@@ -892,10 +895,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		}
 	}
 
-	if len(blueprintMechs) > len(blueprintMechSkins) {
-		// error out
-	}
-
 	for _, blueprintItemID := range blueprintMechs {
 		mechSkinBlueprints, err := db.BlueprintMechSkinSkins(tx, blueprintMechSkins)
 		if err != nil {
@@ -932,7 +931,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		// insert the rest of the skins
 		for _, skin := range mechSkinBlueprints {
-			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), skin)
+			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), skin, &insertedMech.ModelID)
 			if err != nil {
 				crateRollback()
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("skin", skin).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
@@ -965,27 +964,20 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
 		}
 
-		weapon, weaponSkins, err := db.InsertNewWeapon(tx, uuid.FromStringOrNil(user.ID), bp, weaponSkinBlueprints[rarerSkinIndex])
+		weapon, weaponSkin, err := db.InsertNewWeapon(tx, uuid.FromStringOrNil(user.ID), bp, weaponSkinBlueprints[rarerSkinIndex])
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Interface("blueprintItemID", blueprintItemID).Msg(fmt.Sprintf("failed to insert new weapon from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 			return terror.Error(err, "Could not get weapon during crate opening, try again or contact support.")
 		}
 		items.Weapons = append(items.Weapons, weapon)
-		items.WeaponSkins = append(items.WeaponSkins, weaponSkins)
+		items.WeaponSkins = append(items.WeaponSkins, weaponSkin)
 
-		// remove the already inserted skin
-		weaponSkinBlueprints = append(weaponSkinBlueprints[:rarerSkinIndex], weaponSkinBlueprints[rarerSkinIndex+1:]...)
-
-		// insert the rest of the skins
-		for _, skin := range weaponSkinBlueprints {
-			wpnSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), skin)
-			if err != nil {
-				crateRollback()
-				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("skin", skin).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
-				return terror.Error(err, "Could not get weapon skin during crate opening, try again or contact support.")
+		for i, bpws := range blueprintWeaponSkins {
+			if bpws == weaponSkin.BlueprintID {
+				blueprintWeaponSkins = append(blueprintWeaponSkins[:i], blueprintWeaponSkins[i+1:]...)
+				break
 			}
-			items.WeaponSkins = append(items.WeaponSkins, wpnSkin)
 		}
 	}
 	for _, blueprintItemID := range blueprintWeaponSkins {
@@ -995,7 +987,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Interface("blueprintItemID", blueprintItemID).Msg(fmt.Sprintf("failed to get weapon skin blueprint from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
 			return terror.Error(err, "Could not get weapon skin blueprint during crate opening, try again or contact support.")
 		}
-		weaponSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), bp)
+		weaponSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), bp, nil)
 		if err != nil {
 			crateRollback()
 			gamelog.L.Error().Err(err).Interface("crate", crate).Interface("blueprintItemID", blueprintItemID).Msg(fmt.Sprintf("failed to insert new weapon skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))
@@ -1036,14 +1028,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			}
 		}
 
-		//attach mech_skin to mech - mech
-		// TODO: vinnie fix (mech skins cant be null, so skin needs to be attached on mech insert)
-		//err = db.AttachMechSkinToMech(tx, user.ID, items.Mech.ID, rarerSkin.ID, false)
-		//if err != nil {
-		//	crateRollback()
-		//	gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach mech skin to mech during CRATE:OPEN crate: %s", crate.ID))
-		//	return terror.Error(err, "Could not open crate, try again or contact support.")
-		//}
 		rarerSkin.EquippedOn = null.StringFrom(items.Mech.ID)
 		rarerSkin.EquippedOnDetails = eod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerMechSkinsToXsynAsset(items.MechSkins)...)
@@ -1075,15 +1059,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 				gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to get WeaponEquippedOnDetails during CRATE:OPEN crate: %s", crate.ID))
 				return terror.Error(err, "Could not open crate, try again or contact support.")
 			}
-
-			//attach weapon_skin to weapon -weapon
-			// TODO: vinnie fix (weapon skins cant be null, so skin needs to be attached on weapon insert)
-			//err = db.AttachWeaponSkinToWeapon(tx, user.ID, weapon.ID, items.WeaponSkins[i].ID)
-			//if err != nil {
-			//	crateRollback()
-			//	gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
-			//	return terror.Error(err, "Could not open crate, try again or contact support.")
-			//}
 
 			weapon.WeaponSkin = items.WeaponSkins[i]
 			weapon.WeaponSkin.EquippedOn = null.StringFrom(items.Weapons[i].ID)
@@ -1125,13 +1100,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("too many weapons in crate: %s", crate.ID))
 			return terror.Error(fmt.Errorf("too many weapons in weapon crate"), "Could not open crate, try again or contact support.")
 		}
-		// TODO: vinnie fix (weapon skins cant be null, so skin needs to be attached on weapon insert)
-		//err = db.AttachWeaponSkinToWeapon(tx, user.ID, items.Weapons[0].ID, items.WeaponSkins[0].ID)
-		//if err != nil {
-		//	crateRollback()
-		//	gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed to attach weapon skin to weapon during CRATE:OPEN crate: %s", crate.ID))
-		//	return terror.Error(err, "Could not open crate, try again or contact support.")
-		//}
+
 		items.WeaponSkins[0].EquippedOn = null.StringFrom(items.Weapons[0].ID)
 		items.WeaponSkins[0].EquippedOnDetails = wod
 		xsynAsserts = append(xsynAsserts, rpctypes.ServerWeaponSkinsToXsynAsset([]*server.WeaponSkin{items.WeaponSkins[0]})...)

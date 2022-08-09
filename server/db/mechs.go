@@ -567,7 +567,7 @@ func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *se
 	L := gamelog.L.With().Str("func", "InsertNewMech").Interface("mechBlueprint", mechBlueprint).Interface("mechSkinBlueprint", mechSkinBlueprint).Str("ownerID", ownerID.String()).Logger()
 
 	// first insert the new skin
-	mechSkin, err := InsertNewMechSkin(tx, ownerID, mechSkinBlueprint)
+	mechSkin, err := InsertNewMechSkin(tx, ownerID, mechSkinBlueprint, &mechBlueprint.ModelID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to insert new mech skin")
 		return nil, nil, terror.Error(err)

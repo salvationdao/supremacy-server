@@ -106,7 +106,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 
 		if i.ChassisSkin == nil {
-			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID)
+			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.ModelID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
 				continue
@@ -479,7 +479,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		if i.WeaponSkin == nil {
-			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID)
+			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID, &i.WeaponModelID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
 				continue
