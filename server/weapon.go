@@ -13,6 +13,7 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionItem
+	*Images
 	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
 	BrandID               null.String         `json:"brand_id,omitempty"`

@@ -12,6 +12,7 @@ import (
 // Utility is the struct that rpc expects for utility
 type Utility struct {
 	*CollectionItem
+	*Images
 	ID                    string      `json:"id"`
 	BrandID               null.String `json:"brand_id,omitempty"`
 	Label                 string      `json:"label"`

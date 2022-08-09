@@ -12,6 +12,7 @@ import (
 
 type PowerCore struct {
 	*CollectionItem
+	*Images
 	ID                    string          `json:"id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`

@@ -816,11 +816,11 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			weaponModelSkinCompat.WeaponSkinID,
 			weaponModelSkinCompat.WeaponModelID,
 			null.NewString(weaponModelSkinCompat.ImageUrl, weaponModelSkinCompat.ImageUrl != ""),
-			null.NewString(weaponModelSkinCompat.AnimationUrl, weaponModelSkinCompat.AnimationUrl != ""),
 			null.NewString(weaponModelSkinCompat.CardAnimationUrl, weaponModelSkinCompat.CardAnimationUrl != ""),
-			null.NewString(weaponModelSkinCompat.LargeImageUrl, weaponModelSkinCompat.LargeImageUrl != ""),
 			null.NewString(weaponModelSkinCompat.AvatarUrl, weaponModelSkinCompat.AvatarUrl != ""),
+			null.NewString(weaponModelSkinCompat.LargeImageUrl, weaponModelSkinCompat.LargeImageUrl != ""),
 			null.NewString(weaponModelSkinCompat.BackgroundColor, weaponModelSkinCompat.BackgroundColor != ""),
+			null.NewString(weaponModelSkinCompat.AnimationUrl, weaponModelSkinCompat.AnimationUrl != ""),
 			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
 		)
 		if err != nil {
