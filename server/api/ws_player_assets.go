@@ -827,8 +827,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		SET opened = TRUE
 		WHERE id = $1 AND opened = FALSE AND locked_until <= NOW()
 		RETURNING id, type, faction_id, label, opened, locked_until, purchased, deleted_at, updated_at, created_at, description`
-	err = gamedb.StdConn.
-		QueryRow(q, collectionItem.ItemID).
+	err = gamedb.StdConn.QueryRow(q, collectionItem.ItemID).
 		Scan(
 			&crate.ID,
 			&crate.Type,
@@ -848,7 +847,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 	crateRollback := func() {
 		crate.Opened = false
-		_, err = crate.Update(gamedb.StdConn, boil.Infer())
+		_, err = crate.Update(gamedb.StdConn, boil.Whitelist(boiler.MysteryCrateColumns.Opened))
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("crate", crate).Msg(fmt.Sprintf("failed rollback crate opened: %s", crate.ID))
 		}
@@ -901,6 +900,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		mechSkinBlueprints, err := db.BlueprintMechSkinSkins(tx, blueprintMechSkins)
 		if err != nil {
 			crateRollback()
+			gamelog.L.Error().Err(err).Msg("failed BlueprintMechSkinSkins")
 			return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
 		}
 
@@ -946,6 +946,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		weaponSkinBlueprints, err := db.BlueprintWeaponSkins(blueprintWeaponSkins)
 		if err != nil {
 			crateRollback()
+ 			gamelog.L.Error().Err(err).Msg("failed BlueprintWeaponSkins")
 			return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
 		}
 

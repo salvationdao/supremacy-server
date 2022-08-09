@@ -32,6 +32,7 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		m.CheckAndSetAsGenesisOrLimited()
 	}
 
+
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
 	if loadedMechs != nil && !loadedMechs[0].GenesisTokenID.Valid && !loadedMechs[0].LimitedReleaseTokenID.Valid {
 		assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)

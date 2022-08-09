@@ -157,6 +157,11 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	L = L.With().Interface("template", tmpl).Logger()
 
+	if len(tmpl.BlueprintWeapon) != 3 {
+		L.Error().Err(fmt.Errorf("not 3 blueprint weapons")).Msg("not 3 blueprint weapons")
+		return mechs, mechAnimations, mechSkins, powerCores, weapons, weaponSkins, utilities, fmt.Errorf("not 3 blueprint weapons")
+	}
+
 	// do these checks here because we can't return error after we assign the items
 	if tmpl.ContainsCompleteMechExactly {
 		if len(tmpl.BlueprintMech) != 1 {

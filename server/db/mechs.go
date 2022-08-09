@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"server"
@@ -168,9 +167,10 @@ func getDefaultQueryMods() []qm.QueryMod {
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
-					SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+					SELECT _ms.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpms.label
 					FROM mech_skin _ms
 					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
+					INNER JOIN blueprint_mech_skin _bpms on _bpms.id = _ms.blueprint_id
 				 )%s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.MechSkin,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
@@ -207,7 +207,7 @@ func getDefaultQueryMods() []qm.QueryMod {
 						FROM mech_weapons mw
 						INNER JOIN
 							(
-								SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin, _wmsc.image_url as image_url, _wmsc.avatar_url as avatar_url, _wmsc.card_animation_url as card_animation_url, _wmsc.animation_url as animation_url
+								SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin, _bpw.label, _wmsc.image_url as image_url, _wmsc.avatar_url as avatar_url, _wmsc.card_animation_url as card_animation_url, _wmsc.animation_url as animation_url
 								FROM weapons _w
 								INNER JOIN collection_items _ci on _ci.item_id = _w.id
 								INNER JOIN blueprint_weapons _bpw on _bpw.id = _w.blueprint_id
@@ -233,7 +233,7 @@ func getDefaultQueryMods() []qm.QueryMod {
 					FROM mech_utility mw
 					INNER JOIN (
 						SELECT
-							_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
+							_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpu.image_url as image_url, _bpu.avatar_url as avatar_url, _bpu.card_animation_url as card_animation_url, _bpu.animation_url as animation_url,
 							to_json(_us) as shield,
 							to_json(_ua) as accelerator,
 							to_json(_uam) as attack_drone,
@@ -241,6 +241,7 @@ func getDefaultQueryMods() []qm.QueryMod {
 							to_json(_urd) as repair_drone
 						FROM utility _u
 						INNER JOIN collection_items _ci on _ci.item_id = _u.id
+						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
 						LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
 						LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
 						LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
@@ -372,9 +373,6 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			return nil, err
 		}
 	}
-
-	jsnStr, _ := json.Marshal(mc.PowerCore)
-	fmt.Println(string(jsnStr))
 
 	if mc.ID == "" {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)

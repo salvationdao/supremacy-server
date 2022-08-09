@@ -1240,6 +1240,7 @@ func MarketplaceEventList(
 				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Description),
 			),
 			boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
+			qm.Load(boiler.MysteryCrateRels.Blueprint),
 		).Bind(nil, gamedb.StdConn, &mysteryCrates)
 		if err != nil {
 			return 0, nil, terror.Error(err)

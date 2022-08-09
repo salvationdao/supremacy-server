@@ -1348,3 +1348,11 @@ ALTER TABLE mechs
 
 ALTER TABLE weapons
     ALTER COLUMN equipped_weapon_skin_id SET NOT NULL;
+
+ALTER TABLE mystery_crate
+    ADD COLUMN blueprint_id UUID REFERENCES storefront_mystery_crates(id);
+
+UPDATE mystery_crate mc SET blueprint_id = (select id from storefront_mystery_crates sfmc where sfmc.mystery_crate_type = mc.type AND sfmc.faction_id = mc.faction_id);
+
+ALTER TABLE mystery_crate
+    ALTER COLUMN blueprint_id SET NOT NULL;

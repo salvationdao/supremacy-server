@@ -12,6 +12,7 @@ import (
 
 type MysteryCrate struct {
 	*CollectionItem
+	*Images
 	ID          string      `json:"id"`
 	Type        string      `json:"type"`
 	FactionID   string      `json:"faction_id"`
@@ -49,6 +50,15 @@ func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate, collection *boile
 			XsynLocked:          collection.XsynLocked,
 			AssetHidden:         collection.AssetHidden,
 			LockedToMarketplace: collection.LockedToMarketplace,
+		},
+		Images: &Images{
+			ImageURL:         mysteryCrate.R.Blueprint.ImageURL,
+			CardAnimationURL: mysteryCrate.R.Blueprint.CardAnimationURL,
+			AvatarURL:        mysteryCrate.R.Blueprint.AvatarURL,
+			LargeImageURL:    mysteryCrate.R.Blueprint.LargeImageURL,
+			BackgroundColor:  mysteryCrate.R.Blueprint.BackgroundColor,
+			AnimationURL:     mysteryCrate.R.Blueprint.AnimationURL,
+			YoutubeURL:       mysteryCrate.R.Blueprint.YoutubeURL,
 		},
 		ID:          mysteryCrate.ID,
 		Type:        mysteryCrate.Type,

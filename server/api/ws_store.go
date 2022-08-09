@@ -239,6 +239,7 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 		boiler.MysteryCrateWhere.Type.EQ(storeCrate.MysteryCrateType),
 		boiler.MysteryCrateWhere.Purchased.EQ(false),
 		boiler.MysteryCrateWhere.Opened.EQ(false),
+		qm.Load(boiler.MysteryCrateRels.Blueprint),
 	).All(tx)
 	if err != nil {
 		return nil, nil, terror.Error(err, "Failed to get available crates, please try again or contact support.")
