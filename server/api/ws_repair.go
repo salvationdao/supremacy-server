@@ -717,7 +717,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
 			// valid score pattern
 			// 1. current score equal to previous score + 1
 			// 2. current score equal to previous score, and current stack is failed
-			// 3. current score is 1 and last stack failed
+			// 3. current score equal to 1, and last stack failed
 
 			isValidScorePattern := false
 			if gp.Score == prevScore+1 {
@@ -728,7 +728,7 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
 				// meet RULE 2
 				isValidScorePattern = true
 
-			} else if lastStackFailed {
+			} else if gp.Score == 1 && lastStackFailed {
 				// meet RULE 3
 				isValidScorePattern = true
 
