@@ -105,27 +105,25 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				})
 		}
 
-		if i.ChassisSkinID.Valid {
-			if i.ChassisSkin == nil {
-				i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID.String)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
-					continue
-				}
+		if i.ChassisSkin == nil {
+			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
+				continue
 			}
-
-			asset.Attributes = append(asset.Attributes,
-				&Attribute{
-					TraitType: "Submodel",
-					Value:     i.ChassisSkin.Label,
-					AssetHash: i.ChassisSkin.Hash,
-				},
-				&Attribute{
-					TraitType: "Rarity",
-					Value:     i.ChassisSkin.Tier,
-				},
-			)
 		}
+
+		asset.Attributes = append(asset.Attributes,
+			&Attribute{
+				TraitType: "Submodel",
+				Value:     i.ChassisSkin.Label,
+				AssetHash: i.ChassisSkin.Hash,
+			},
+			&Attribute{
+				TraitType: "Rarity",
+				Value:     i.ChassisSkin.Tier,
+			},
+		)
 
 		err = asset.Attributes.AreValid()
 		if err != nil {

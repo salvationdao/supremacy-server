@@ -112,11 +112,10 @@ type PlayerAssetMech struct {
 	ModelID               string     `json:"model_id"`
 
 	// Connected objects
-	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	ChassisSkinID        null.String `json:"chassis_skin_id,omitempty"`
-	IntroAnimationID     null.String `json:"intro_animation_id,omitempty"`
-	OutroAnimationID     null.String `json:"outro_animation_id,omitempty"`
-	PowerCoreID          null.String `json:"power_core_id,omitempty"`
+	ChassisSkinID    string      `json:"chassis_skin_id"`
+	IntroAnimationID null.String `json:"intro_animation_id,omitempty"`
+	OutroAnimationID null.String `json:"outro_animation_id,omitempty"`
+	PowerCoreID      null.String `json:"power_core_id,omitempty"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -187,7 +186,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			BrandID:               m.BrandID,
 			FactionID:             m.FactionID.String,
 			ModelID:               m.ModelID,
-			DefaultChassisSkinID:  m.DefaultChassisSkinID,
 			ChassisSkinID:         m.ChassisSkinID,
 			IntroAnimationID:      m.IntroAnimationID,
 			OutroAnimationID:      m.OutroAnimationID,
@@ -282,7 +280,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 			BrandID:               m.BrandID,
 			FactionID:             m.FactionID.String,
 			ModelID:               m.ModelID,
-			DefaultChassisSkinID:  m.DefaultChassisSkinID,
 			ChassisSkinID:         m.ChassisSkinID,
 			IntroAnimationID:      m.IntroAnimationID,
 			OutroAnimationID:      m.OutroAnimationID,
@@ -922,7 +919,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		mechSkinBlueprints = append(mechSkinBlueprints[:rarerSkinIndex], mechSkinBlueprints[rarerSkinIndex+1:]...)
 
 		// insert the rest of the skins
-		for _, skin := range mechSkinBlueprints{
+		for _, skin := range mechSkinBlueprints {
 			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), skin)
 			if err != nil {
 				crateRollback()
@@ -968,7 +965,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		weaponSkinBlueprints = append(weaponSkinBlueprints[:rarerSkinIndex], weaponSkinBlueprints[rarerSkinIndex+1:]...)
 
 		// insert the rest of the skins
-		for _, skin := range weaponSkinBlueprints{
+		for _, skin := range weaponSkinBlueprints {
 			wpnSkin, err := db.InsertNewWeaponSkin(tx, uuid.FromStringOrNil(user.ID), skin)
 			if err != nil {
 				crateRollback()

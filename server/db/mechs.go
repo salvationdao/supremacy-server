@@ -26,138 +26,209 @@ func (c MechColumns) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid mech column"))
 }
 
-const CompleteMechQuery = `
-SELECT
-	collection_items.collection_slug,
-	collection_items.hash,
-	collection_items.token_id,
-	collection_items.owner_id,
-	collection_items.tier,
-	collection_items.item_type,
-	collection_items.market_locked,
-	collection_items.xsyn_locked,
-	collection_items.locked_to_marketplace,
-	collection_items.asset_hidden,
-	collection_items.id AS collection_item_id,
-	COALESCE(p.username, ''),
-	COALESCE(mech_stats.total_wins, 0),
-	COALESCE(mech_stats.total_deaths, 0),
-	COALESCE(mech_stats.total_kills, 0),
-	COALESCE(mech_stats.battles_survived, 0), 
-	COALESCE(mech_stats.total_losses, 0),
-	mechs.id,
-	mechs.name,
---	mechs.label,
-	mechs.weapon_hardpoints,
-	mechs.utility_slots,
-	mechs.speed,
-	mechs.max_hitpoints,
-	mechs.is_default,
-	mechs.is_insured,
-	mechs.genesis_token_id,
-	mechs.limited_release_token_id,
-	mechs.power_core_size,
-	mechs.blueprint_id,
---	mechs.brand_id,
---	to_json(b) as brand,
-	to_json(p) as owner,
-	p.faction_id,
-	to_json(f) as faction,
---	mechs.model_id,
---	to_json(mm) as model,
---	mm.default_chassis_skin_id,
---	to_json(dms) as default_chassis_skin,
-	mechs.chassis_skin_id,
-	to_json(ms) as chassis_skin,
-	mechs.intro_animation_id,
-	to_json(ma2) as intro_animation,
-	mechs.outro_animation_id,
-	to_json(ma1) as outro_animation,
-	mechs.power_core_id,
-	to_json(ec) as power_core,
-	w.weapons,
-	u.utility,
-	(
-		SELECT _i.id
-		FROM item_sales _i
-		WHERE _i.collection_item_id = collection_items.id
-			AND _i.sold_at IS NULL
-			AND _i.deleted_at IS NULL
-			AND _i.end_at > NOW()
-		LIMIT 1
-	) AS item_sale_id,
-	(
-		SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
-		FROM blueprint_mechs _bm 
-			LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
-		WHERE _bm.id = mechs.blueprint_id
-		LIMIT 1
-	) AS battle_ready
-FROM collection_items 
-INNER JOIN mechs on collection_items.item_id = mechs.id
-INNER JOIN players p ON p.id = collection_items.owner_id
-LEFT OUTER JOIN mech_stats  ON mech_stats.mech_id = mechs.id
-LEFT OUTER JOIN factions f on p.faction_id = f.id
-LEFT OUTER JOIN (
-	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-	FROM power_cores _pc
-	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
-	) ec ON ec.id = mechs.power_core_id
--- LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
--- LEFT OUTER JOIN mech_models mm ON mechs.model_id = mm.id
-LEFT OUTER JOIN (
-	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-	FROM mech_skin _ms
-	INNER JOIN collection_items _ci on _ci.item_id = _ms.id
-) ms ON mechs.chassis_skin_id = ms.id
--- LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
-LEFT OUTER JOIN (
-	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-	FROM mech_animation _ma
-	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-) ma1 on ma1.id = mechs.outro_animation_id
-LEFT OUTER JOIN (
-	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-	FROM mech_animation _ma
-	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-) ma2 on ma2.id = mechs.intro_animation_id
-LEFT OUTER JOIN (
-	SELECT mw.chassis_id, json_agg(w2) as weapons
-	FROM mech_weapons mw
-	INNER JOIN
-		(
-			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin
-			FROM weapons _w
-			INNER JOIN collection_items _ci on _ci.item_id = _w.id
-			LEFT OUTER JOIN (
-					SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-					FROM weapon_skin __ws
-					INNER JOIN collection_items _ci on _ci.item_id = __ws.id
-			) _ws ON _ws.equipped_on = _w.id
-		) w2 ON mw.weapon_id = w2.id
-	GROUP BY mw.chassis_id
-) w on w.chassis_id = mechs.id
-LEFT OUTER JOIN (
-	SELECT mw.chassis_id, json_agg(_u) as utility
-	FROM mech_utility mw
-	INNER JOIN (
-		SELECT
-			_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
-			to_json(_us) as shield,
-			to_json(_ua) as accelerator,
-			to_json(_uam) as attack_drone,
-			to_json(_uad) as anti_missile,
-			to_json(_urd) as repair_drone
-		FROM utility _u
-		INNER JOIN collection_items _ci on _ci.item_id = _u.id
-		LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-		LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-		LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-		LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-		LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
-	) _u ON mw.utility_id = _u.id
-	GROUP BY mw.chassis_id
-) u on u.chassis_id = mechs.id `
+const outroTableName = "outro"
+const introTableName = "intro"
+const weaponsTableName = "weapons"
+const utilityTableName = "utility"
+
+func getDefaultQueryMods() []qm.QueryMod {
+	return []qm.QueryMod{
+		qm.Select(
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			fmt.Sprintf(`COALESCE(%s, '')`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username)),
+			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalWins)),
+			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalDeaths)),
+			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalKills)),
+			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.BattlesSurvived)),
+			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalLosses)),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.Label),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.BrandID),
+			fmt.Sprintf("to_json(%s) as brand", boiler.TableNames.Brands),
+			fmt.Sprintf("to_json(%s) as owner", boiler.TableNames.Players),
+			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID),
+			fmt.Sprintf("to_json(%s) as faction", boiler.TableNames.Factions),
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
+			fmt.Sprintf("to_json(%s) as model", boiler.TableNames.MechModels),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			fmt.Sprintf("to_json(%s) as chassis_skin", boiler.TableNames.MechSkin),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
+			fmt.Sprintf("to_json(%s) as intro_animation", introTableName),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
+			fmt.Sprintf("to_json(%s) as outro_animation", outroTableName),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
+			fmt.Sprintf("to_json(%s) as power_core", boiler.TableNames.PowerCores),
+			weaponsTableName,
+			utilityTableName,
+			fmt.Sprintf(` 
+					(
+						SELECT _i.id
+						FROM item_sales _i
+						WHERE _i.collection_item_id = %s
+							AND _i.sold_at IS NULL
+							AND _i.deleted_at IS NULL
+							AND _i.end_at > NOW()
+						LIMIT 1
+					) AS item_sale_id`,
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			), // TODO: make this boiler/typesafe
+			fmt.Sprintf(`
+					(
+					SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
+					FROM blueprint_mechs _bm 
+						LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
+					WHERE _bm.id = %s
+					LIMIT 1
+				) AS battle_ready`,
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+			), // TODO: make this boiler/typesafe
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		// inner join mechs
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// inner join players
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+		)),
+		// outer join mech stats
+		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.MechStats,
+			qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.MechID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// outer join player faction
+		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Factions,
+			qm.Rels(boiler.TableNames.Factions, boiler.FactionColumns.ID),
+			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID),
+		)),
+		// outer join power cores
+		qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.PowerCores,
+			qm.Rels(boiler.TableNames.PowerCores, boiler.PowerCoreColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
+		)),
+		// inner join mech blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
+		// inner join mech model
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.MechModels,
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID),
+		)),
+		// inner join brand
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Brands,
+			qm.Rels(boiler.TableNames.Brands, boiler.BrandColumns.ID),
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.BrandID),
+		)),
+		// inner join skin
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+		)),
+		// left join outro
+		qm.LeftOuterJoin(fmt.Sprintf("%s AS %s ON %s = %s",
+			boiler.TableNames.MechAnimation,
+			outroTableName,
+			qm.Rels(outroTableName, boiler.MechAnimationColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
+		)),
+		// left join intro
+		qm.LeftOuterJoin(fmt.Sprintf("%s AS %s ON %s = %s",
+			boiler.TableNames.MechAnimation,
+			introTableName,
+			qm.Rels(introTableName, boiler.MechAnimationColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
+		)),
+		// left join weapons
+		qm.LeftOuterJoin(
+			// TODO: make this boiler/typesafe
+			fmt.Sprintf(`
+					(
+						SELECT mw.chassis_id, json_agg(w2) as weapons
+						FROM mech_weapons mw
+						INNER JOIN
+							(
+								SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin
+								FROM weapons _w
+								INNER JOIN collection_items _ci on _ci.item_id = _w.id
+								LEFT OUTER JOIN (
+										SELECT __ws.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+										FROM weapon_skin __ws
+										INNER JOIN collection_items _ci on _ci.item_id = __ws.id
+								) _ws ON _ws.equipped_on = _w.id
+							) w2 ON mw.weapon_id = w2.id
+						GROUP BY mw.chassis_id
+				) %s on %s = %s `,
+				weaponsTableName,
+				qm.Rels(weaponsTableName, boiler.MechWeaponColumns.ChassisID),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			)),
+		// left join utility
+		qm.LeftOuterJoin(
+			// TODO: make this boiler/typesafe
+			fmt.Sprintf(`
+				(
+					SELECT mw.chassis_id, json_agg(_u) as utility
+					FROM mech_utility mw
+					INNER JOIN (
+						SELECT
+							_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
+							to_json(_us) as shield,
+							to_json(_ua) as accelerator,
+							to_json(_uam) as attack_drone,
+							to_json(_uad) as anti_missile,
+							to_json(_urd) as repair_drone
+						FROM utility _u
+						INNER JOIN collection_items _ci on _ci.item_id = _u.id
+						LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+						LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+						LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+						LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+						LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+					) _u ON mw.utility_id = _u.id
+					GROUP BY mw.chassis_id
+				) %s on %s = %s `,
+				utilityTableName,
+				qm.Rels(utilityTableName, boiler.MechUtilityColumns.ChassisID),
+				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			),
+		),
+	}
+}
 
 func DefaultMechs() ([]*server.Mech, error) {
 	idq := `SELECT id FROM mechs WHERE is_default=TRUE`
@@ -184,8 +255,6 @@ func DefaultMechs() ([]*server.Mech, error) {
 
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
-// Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
-// If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
@@ -193,40 +262,26 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 		Owner:          &server.User{},
 	}
 
-	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
+	queryMods := getDefaultQueryMods()
 
-	result, err := conn.Query(query, mechID)
+	// Build query
+	queryMods = append(queryMods,
+		// where mech id in
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		// order by faction?
+		qm.OrderBy(qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID)),
+	)
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
-	defer result.Close()
+	defer rows.Close()
 
-	for result.Next() {
-		err = result.Scan(
-			//	mechs.id,
-			//	mechs.name,
-			//--	mechs.label,
-			//	mechs.weapon_hardpoints,
-			//	mechs.utility_slots,
-			//	mechs.speed,
-			//	mechs.max_hitpoints,
-			//	mechs.is_default,
-			//	mechs.is_insured,
-			//	mechs.genesis_token_id,
-			//	mechs.limited_release_token_id,
-			//	mechs.power_core_size,
-			//	mechs.blueprint_id,
-			//--	mechs.brand_id,
-			//--	to_json(b) as brand,
-			//	to_json(p) as owner,
-			//	p.faction_id,
-			//	to_json(f) as faction,
-			//--	mechs.model_id,
-			//--	to_json(mm) as model,
-			//--	mm.default_chassis_skin_id,
-			//--	to_json(dms) as default_chassis_skin,
-			//	mechs.chassis_skin_id,
-			//	to_json(ms) as chassis_skin,
+	for rows.Next() {
+		err = rows.Scan(
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -246,7 +301,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
-			//&mc.Label,
+			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
@@ -257,15 +312,13 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.LimitedReleaseTokenID,
 			&mc.PowerCoreSize,
 			&mc.BlueprintID,
-			//&mc.BrandID,
-			//&mc.Brand,
+			&mc.BrandID,
+			&mc.Brand,
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			//&mc.ModelID,
-			//&mc.Model,
-			//&mc.DefaultChassisSkinID,
-			//&mc.DefaultChassisSkin,
+			&mc.ModelID,
+			&mc.Model,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -296,62 +349,37 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
 	}
-
 	mcs := make([]*server.Mech, len(mechIDs))
 
-	mechids := make([]interface{}, len(mechIDs))
-	var paramrefs string
-	for i, id := range mechIDs {
-		paramrefs += `$` + strconv.Itoa(i+1) + `,`
-		mechids[i] = id
-	}
-	paramrefs = paramrefs[:len(paramrefs)-1]
+	queryMods := getDefaultQueryMods()
 
-	query := fmt.Sprintf(
-		`%s 	
-		WHERE mechs.id IN (%s)
-		ORDER BY p.faction_id `,
-		CompleteMechQuery,
-		paramrefs)
+	// Build query
+	queryMods = append(queryMods,
+		// where mech id in
+		boiler.CollectionItemWhere.ItemID.IN(mechIDs),
+		// order by faction?
+		qm.OrderBy(qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID)),
+	)
 
-	result, err := gamedb.StdConn.Query(query, mechids...)
+	boil.DebugMode = true
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
 		return nil, err
 	}
-	defer result.Close()
+	boil.DebugMode = false
+	defer rows.Close()
 
 	i := 0
-	for result.Next() {
+	for rows.Next() {
 		mc := &server.Mech{
 			CollectionItem: &server.CollectionItem{},
 			Stats:          &server.Stats{},
 			Owner:          &server.User{},
 		}
-		err = result.Scan(
-			// 	mechs.id,
-			//	mechs.name,
-			//--	mechs.label,
-			//	mechs.weapon_hardpoints,
-			//	mechs.utility_slots,
-			//	mechs.speed,
-			//	mechs.max_hitpoints,
-			//	mechs.is_default,
-			//	mechs.is_insured,
-			//	mechs.genesis_token_id,
-			//	mechs.limited_release_token_id,
-			//	mechs.power_core_size,
-			//	mechs.blueprint_id,
-			//--	mechs.brand_id,
-			//--	to_json(b) as brand,
-			//	to_json(p) as owner,
-			//	p.faction_id,
-			//	to_json(f) as faction,
-			//--	mechs.model_id,
-			//--	to_json(mm) as model,
-			//--	mm.default_chassis_skin_id,
-			//--	to_json(dms) as default_chassis_skin,
-			//	mechs.chassis_skin_id,
-			//	to_json(ms) as chassis_skin,
+		err = rows.Scan(
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -371,7 +399,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
-			//&mc.Label,
+			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
@@ -382,15 +410,13 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.LimitedReleaseTokenID,
 			&mc.PowerCoreSize,
 			&mc.BlueprintID,
-			//&mc.BrandID,
-			//&mc.Brand,
+			&mc.BrandID,
+			&mc.Brand,
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			//&mc.ModelID,
-			//&mc.Model,
-			//&mc.DefaultChassisSkinID,
-			//&mc.DefaultChassisSkin,
+			&mc.ModelID,
+			&mc.Model,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -621,24 +647,28 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	var queryMods []qm.QueryMod
 
-	// create the where owner id = clause
-	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-		Table:    boiler.TableNames.CollectionItems,
-		Column:   boiler.CollectionItemColumns.OwnerID,
-		Operator: OperatorValueTypeEquals,
-		Value:    opts.OwnerID,
-	}, 0, ""),
+	queryMods = append(queryMods,
+		// where owner id = ?
+		GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.OwnerID,
+			Operator: OperatorValueTypeEquals,
+			Value:    opts.OwnerID,
+		}, 0, ""),
+		// and item type = mech
 		GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
 			Column:   boiler.CollectionItemColumns.ItemType,
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"),
+		// inner join mechs
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.Mechs,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
+		// left outer join skin
 		qm.LeftOuterJoin(fmt.Sprintf("%s cms ON cms.%s = %s AND cms.%s = ?",
 			boiler.TableNames.CollectionItems,
 			boiler.CollectionItemColumns.ItemID,
@@ -838,6 +868,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	//			))
 	//	}
 	//}
+
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -949,7 +980,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
-			&mc.Label,
+			//&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,

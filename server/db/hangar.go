@@ -107,8 +107,8 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 			StaticID:    mechSilo.SkinIDStr,
 		}
 
-		if mech.ChassisSkinID.Valid {
-			mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(gamedb.StdConn)
+		if mech.ChassisSkinID != "" {
+			mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID)).One(gamedb.StdConn)
 			if err != nil {
 				continue
 			}
@@ -330,8 +330,8 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 		StaticID:    &mech.ChassisSkin.BlueprintID,
 	}
 
-	if mech.ChassisSkinID.Valid {
-		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(trx)
+	if mech.ChassisSkinID != "" {
+		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID)).One(trx)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to get mech skin ownership")
 		}
