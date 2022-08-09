@@ -6,6 +6,7 @@ ALTER TABLE mechs
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS owner_id,
     DROP COLUMN IF EXISTS weapon_type,
+    DROP COLUMN IF EXISTS weapon_model_id,
     DROP COLUMN IF EXISTS label;
 
 ALTER TABLE mech_skin

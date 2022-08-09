@@ -60,14 +60,39 @@ func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.Eq
 	return eid, nil
 }
 
-func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server.Weapon, error) {
+func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeapon, weaponSkin *server.BlueprintWeaponSkin) (*server.Weapon, *server.WeaponSkin, error) {
+	L := gamelog.L.With().Str("func", "InsertNewWeapon").Interface("weaponBlueprint", weapon).Interface("weaponSkin", weaponSkin).Str("ownerID", ownerID.String()).Logger()
+
+	// get default weapon skin if nil
+	if weaponSkin == nil {
+		wpnModel, err := boiler.WeaponModels(
+			boiler.WeaponModelWhere.ID.EQ(weapon.WeaponModelID),
+		).One(tx)
+		if err != nil {
+			L.Error().Err(err).Msg("failed to get weapon model")
+			return nil, nil, err
+		}
+
+		weaponSkin, err = BlueprintWeaponSkin(wpnModel.DefaultSkinID)
+		if err != nil {
+			L.Error().Err(err).Msg("failed to get blueprint weapon skin")
+			return nil, nil, err
+		}
+	}
+
+	// first insert the new weapon skin
+	wpnSkin, err := InsertNewWeaponSkin(tx, ownerID, weaponSkin)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to insert new weapon skin")
+		return nil, nil, err
+	}
+
 	newWeapon := boiler.Weapon{
 		Slug:                  weapon.Slug,
 		Damage:                weapon.Damage,
 		BlueprintID:           weapon.ID,
 		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:        weapon.GenesisTokenID,
-		WeaponModelID:         null.StringFrom(weapon.WeaponModelID),
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		DamageFalloff:         weapon.DamageFalloff,
 		DamageFalloffRate:     weapon.DamageFalloffRate,
@@ -78,11 +103,13 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		ProjectileSpeed:       weapon.ProjectileSpeed,
 		EnergyCost:            weapon.EnergyCost,
 		MaxAmmo:               weapon.MaxAmmo,
+		EquippedWeaponSkinID:  wpnSkin.ID,
 	}
 
-	err := newWeapon.Insert(tx, boil.Infer())
+	err = newWeapon.Insert(tx, boil.Infer())
 	if err != nil {
-		return nil, terror.Error(err)
+		L.Error().Err(err).Msg("failed to insert new weapon")
+		return nil, nil, err
 	}
 
 	_, err = InsertNewCollectionItem(tx,
@@ -93,10 +120,34 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		ownerID.String(),
 	)
 	if err != nil {
-		return nil, terror.Error(err)
+		L.Error().Err(err).Msg("failed to insert new weapon collection item")
+		return nil, nil, err
 	}
 
-	return Weapon(tx, newWeapon.ID)
+	// update skin to say equipped to this mech
+	updated, err := boiler.WeaponSkins(
+		boiler.WeaponSkinWhere.ID.EQ(wpnSkin.ID),
+	).UpdateAll(tx, boiler.M{
+		boiler.WeaponSkinColumns.EquippedOn: newWeapon.ID,
+	})
+	if err != nil {
+		L.Error().Err(err).Msg("failed to update weapon skin")
+		return nil, nil, err
+	}
+	if updated != 1 {
+		err = fmt.Errorf("updated %d, expected 1", updated)
+		L.Error().Err(err).Msg("failed to update weapon skin")
+		return nil, nil, err
+	}
+
+	wpnSkin.EquippedOn = null.StringFrom(newWeapon.ID)
+
+	wpn, err := Weapon(tx, newWeapon.ID)
+	if err != nil {
+		return nil, nil, terror.Error(err)
+	}
+
+	return wpn, wpnSkin, nil
 }
 
 func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
@@ -108,7 +159,6 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID)
 	if err != nil {
@@ -148,7 +198,6 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 		}
 		collectionItemToWeapon[bw.ID] = boilerWeaponCollectionDetails.ID
 		collectionItemIDs = append(collectionItemIDs, boilerWeaponCollectionDetails.ID)
-
 
 		weaponSkin, err := WeaponSkin(gamedb.StdConn, bw.EquippedWeaponSkinID)
 		if err != nil {

@@ -136,14 +136,15 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeWeapon,
 	),
-	qm.LeftOuterJoin(
-		fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.WeaponModels,
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
-		),
-	),
+	// TODO: vinnie fix
+	//qm.LeftOuterJoin(
+	//	fmt.Sprintf(
+	//		"%s ON %s = %s",
+	//		boiler.TableNames.WeaponModels,
+	//		qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+	//		qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+	//	),
+	//),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -1266,14 +1267,15 @@ func MarketplaceEventList(
 				//qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.WeaponType)+` AS "weapons.weapon_type"`,
 				//qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL)+` AS "weapons.avatar_url"`,
 			),
-			qm.LeftOuterJoin(
-				fmt.Sprintf(
-					"%s ON %s = %s",
-					boiler.TableNames.WeaponModels,
-					qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
-				),
-			),
+			// TODO: vinnie fix me (model now on blueprint)
+			//qm.LeftOuterJoin(
+			//	fmt.Sprintf(
+			//		"%s ON %s = %s",
+			//		boiler.TableNames.WeaponModels,
+			//		qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			//		qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
+			//	),
+			//),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(
 					"%s ON %s = %s",

@@ -47,7 +47,7 @@ SELECT
 	COALESCE(mech_stats.total_losses, 0),
 	mechs.id,
 	mechs.name,
-	mechs.label,
+--	mechs.label,
 	mechs.weapon_hardpoints,
 	mechs.utility_slots,
 	mechs.speed,
@@ -58,15 +58,15 @@ SELECT
 	mechs.limited_release_token_id,
 	mechs.power_core_size,
 	mechs.blueprint_id,
-	mechs.brand_id,
-	to_json(b) as brand,
+--	mechs.brand_id,
+--	to_json(b) as brand,
 	to_json(p) as owner,
 	p.faction_id,
 	to_json(f) as faction,
-	mechs.model_id,
-	to_json(mm) as model,
-	mm.default_chassis_skin_id,
-	to_json(dms) as default_chassis_skin,
+--	mechs.model_id,
+--	to_json(mm) as model,
+--	mm.default_chassis_skin_id,
+--	to_json(dms) as default_chassis_skin,
 	mechs.chassis_skin_id,
 	to_json(ms) as chassis_skin,
 	mechs.intro_animation_id,
@@ -103,14 +103,14 @@ LEFT OUTER JOIN (
 	FROM power_cores _pc
 	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
 	) ec ON ec.id = mechs.power_core_id
-LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
-LEFT OUTER JOIN mech_models mm ON mechs.model_id = mm.id
+-- LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
+-- LEFT OUTER JOIN mech_models mm ON mechs.model_id = mm.id
 LEFT OUTER JOIN (
 	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_skin _ms
 	INNER JOIN collection_items _ci on _ci.item_id = _ms.id
 ) ms ON mechs.chassis_skin_id = ms.id
-LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
+-- LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
 LEFT OUTER JOIN (
 	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
 	FROM mech_animation _ma
@@ -203,6 +203,30 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 
 	for result.Next() {
 		err = result.Scan(
+			//	mechs.id,
+			//	mechs.name,
+			//--	mechs.label,
+			//	mechs.weapon_hardpoints,
+			//	mechs.utility_slots,
+			//	mechs.speed,
+			//	mechs.max_hitpoints,
+			//	mechs.is_default,
+			//	mechs.is_insured,
+			//	mechs.genesis_token_id,
+			//	mechs.limited_release_token_id,
+			//	mechs.power_core_size,
+			//	mechs.blueprint_id,
+			//--	mechs.brand_id,
+			//--	to_json(b) as brand,
+			//	to_json(p) as owner,
+			//	p.faction_id,
+			//	to_json(f) as faction,
+			//--	mechs.model_id,
+			//--	to_json(mm) as model,
+			//--	mm.default_chassis_skin_id,
+			//--	to_json(dms) as default_chassis_skin,
+			//	mechs.chassis_skin_id,
+			//	to_json(ms) as chassis_skin,
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -222,7 +246,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
-			&mc.Label,
+			//&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
@@ -233,15 +257,15 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.LimitedReleaseTokenID,
 			&mc.PowerCoreSize,
 			&mc.BlueprintID,
-			&mc.BrandID,
-			&mc.Brand,
+			//&mc.BrandID,
+			//&mc.Brand,
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			&mc.ModelID,
-			&mc.Model,
-			&mc.DefaultChassisSkinID,
-			&mc.DefaultChassisSkin,
+			//&mc.ModelID,
+			//&mc.Model,
+			//&mc.DefaultChassisSkinID,
+			//&mc.DefaultChassisSkin,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -304,6 +328,30 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			Owner:          &server.User{},
 		}
 		err = result.Scan(
+			// 	mechs.id,
+			//	mechs.name,
+			//--	mechs.label,
+			//	mechs.weapon_hardpoints,
+			//	mechs.utility_slots,
+			//	mechs.speed,
+			//	mechs.max_hitpoints,
+			//	mechs.is_default,
+			//	mechs.is_insured,
+			//	mechs.genesis_token_id,
+			//	mechs.limited_release_token_id,
+			//	mechs.power_core_size,
+			//	mechs.blueprint_id,
+			//--	mechs.brand_id,
+			//--	to_json(b) as brand,
+			//	to_json(p) as owner,
+			//	p.faction_id,
+			//	to_json(f) as faction,
+			//--	mechs.model_id,
+			//--	to_json(mm) as model,
+			//--	mm.default_chassis_skin_id,
+			//--	to_json(dms) as default_chassis_skin,
+			//	mechs.chassis_skin_id,
+			//	to_json(ms) as chassis_skin,
 			&mc.CollectionItem.CollectionSlug,
 			&mc.CollectionItem.Hash,
 			&mc.CollectionItem.TokenID,
@@ -323,7 +371,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Stats.TotalLosses,
 			&mc.ID,
 			&mc.Name,
-			&mc.Label,
+			//&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,
@@ -334,15 +382,15 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.LimitedReleaseTokenID,
 			&mc.PowerCoreSize,
 			&mc.BlueprintID,
-			&mc.BrandID,
-			&mc.Brand,
+			//&mc.BrandID,
+			//&mc.Brand,
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			&mc.ModelID,
-			&mc.Model,
-			&mc.DefaultChassisSkinID,
-			&mc.DefaultChassisSkin,
+			//&mc.ModelID,
+			//&mc.Model,
+			//&mc.DefaultChassisSkinID,
+			//&mc.DefaultChassisSkin,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -448,7 +496,16 @@ type BattleQueuePosition struct {
 
 // TODO: I want InsertNewMech tested.
 
-func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
+func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech, mechSkinBlueprint *server.BlueprintMechSkin) (*server.Mech, *server.MechSkin, error) {
+	L := gamelog.L.With().Str("func", "InsertNewMech").Interface("mechBlueprint", mechBlueprint).Interface("mechSkinBlueprint", mechSkinBlueprint).Str("ownerID", ownerID.String()).Logger()
+
+	// first insert the new skin
+	mechSkin, err := InsertNewMechSkin(tx, ownerID, mechSkinBlueprint)
+	if err != nil {
+		L.Error().Err(err).Msg("failed to insert new mech skin")
+		return nil, nil, terror.Error(err)
+	}
+
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
@@ -456,6 +513,7 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		UtilitySlots:          mechBlueprint.UtilitySlots,
 		Speed:                 mechBlueprint.Speed,
 		MaxHitpoints:          mechBlueprint.MaxHitpoints,
+		ChassisSkinID:         mechSkin.ID,
 		IsDefault:             false,
 		IsInsured:             false,
 		Name:                  "",
@@ -464,9 +522,10 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		LimitedReleaseTokenID: mechBlueprint.LimitedReleaseTokenID,
 	}
 
-	err := newMech.Insert(tx, boil.Infer())
+	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
-		return nil, terror.Error(err)
+		L.Error().Err(err).Interface("newMech", newMech).Msg("failed to insert new mech")
+		return nil, nil, terror.Error(err)
 	}
 
 	_, err = InsertNewCollectionItem(tx,
@@ -477,16 +536,34 @@ func InsertNewMech(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.Bl
 		ownerID.String(),
 	)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to insert col item")
-		return nil, terror.Error(err)
+		L.Error().Err(err).Msg("failed to insert col item")
+		return nil, nil, terror.Error(err)
 	}
+
+	// update skin to say equipped to this mech
+	updated, err := boiler.MechSkins(
+		boiler.MechSkinWhere.ID.EQ(mechSkin.ID),
+	).UpdateAll(tx, boiler.M{
+		boiler.MechSkinColumns.EquippedOn: newMech.ID,
+	})
+	if err != nil {
+		L.Error().Err(err).Msg("failed to update mech skin")
+		return nil, nil, terror.Error(err)
+	}
+	if updated != 1 {
+		err = fmt.Errorf("updated %d, expected 1", updated)
+		L.Error().Err(err).Msg("failed to update mech skin")
+		return nil, nil, terror.Error(err)
+	}
+
+	mechSkin.EquippedOn = null.StringFrom(newMech.ID)
 
 	mech, err := Mech(tx, newMech.ID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to get mech")
-		return nil, terror.Error(err)
+		L.Error().Err(err).Str("newMechID", newMech.ID).Msg("failed to get mech")
+		return nil, nil, terror.Error(err)
 	}
-	return mech, nil
+	return mech, mechSkin, nil
 }
 
 func IsMechColumn(col string) bool {

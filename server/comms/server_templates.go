@@ -9,7 +9,7 @@ import (
 func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpctypes.TemplateRegisterResp) error {
 	gamelog.L.Debug().Msg("comms.TemplateRegisterHandler")
 
-	mechs, mechAnimations, mechSkins, powerCores, weapons, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
+	mechs, mechAnimations, mechSkins, powerCores, weapons, weaponSkins, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to register template")
 		return err
@@ -38,6 +38,7 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
 		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
 		assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
+		assets = append(assets, rpctypes.ServerWeaponSkinsToXsynAsset(weaponSkins)...)
 		assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
 	}
 
