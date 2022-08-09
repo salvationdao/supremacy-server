@@ -711,11 +711,13 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
 
 	prevScore := 0
 	totalStack := 0
+	lastStackFailed := false
 	for i, gp := range gps {
 		if i > 0 {
 			// valid score pattern
 			// 1. current score equal to previous score + 1
 			// 2. current score equal to previous score, and current stack is failed
+			// 3. current score is 1 and last stack failed
 
 			isValidScorePattern := false
 			if gp.Score == prevScore+1 {
@@ -725,21 +727,27 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
 			} else if gp.Score == prevScore && gp.IsFailed {
 				// meet RULE 2
 				isValidScorePattern = true
+
+			} else if lastStackFailed {
+				// meet RULE 3
+				isValidScorePattern = true
+
 			}
 
 			// if score pattern does not match
 			if !isValidScorePattern {
 				gamelog.L.Debug().Interface("current stack", gp).Int("prev score", prevScore).Msg("Invalid game pattern detected")
-				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v", gp.Score, prevScore, gp.IsFailed), "Invalid game pattern detected.")
+				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v, agent id: %s", gp.Score, prevScore, gp.IsFailed, gp.RepairAgentID), "Invalid game pattern detected.")
 			}
 		}
 
 		// set initial score and failed stat
 		prevScore = gp.Score
+		lastStackFailed = gp.IsFailed
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
 			gamelog.L.Debug().Time("current stack time", gp.CreatedAt).Time("start time", startTime).Time("end time", endTime).Msg("Invalid game pattern detected")
-			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v", gp.CreatedAt, startTime, endTime), "Game stack is outside of the time frame.")
+			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v, agent id: %s", gp.CreatedAt, startTime, endTime, gp.RepairAgentID), "Game stack is outside of the time frame.")
 		}
 
 		// increase failed count, if failed
