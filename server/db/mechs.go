@@ -8,6 +8,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -234,19 +235,19 @@ func getDefaultQueryMods() []qm.QueryMod {
 					INNER JOIN (
 						SELECT
 							_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpu.image_url as image_url, _bpu.avatar_url as avatar_url, _bpu.card_animation_url as card_animation_url, _bpu.animation_url as animation_url,
-							to_json(_us) as shield,
-							to_json(_ua) as accelerator,
-							to_json(_uam) as attack_drone,
-							to_json(_uad) as anti_missile,
-							to_json(_urd) as repair_drone
+							to_json(_us) as shield
+						--	to_json(_ua) as accelerator,
+						--	to_json(_uam) as attack_drone,
+						--	to_json(_uad) as anti_missile,
+						--	to_json(_urd) as repair_drone
 						FROM utility _u
 						INNER JOIN collection_items _ci on _ci.item_id = _u.id
 						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
 						LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-						LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-						LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-						LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-						LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+						--LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+						--LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+						--LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+						--LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
 					) _u ON mw.utility_id = _u.id
 					GROUP BY mw.chassis_id
 				) %s on %s = %s `,
@@ -284,6 +285,7 @@ func DefaultMechs() ([]*server.Mech, error) {
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
+	startTime := time.Now()
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
 		Stats:          &server.Stats{},
@@ -377,6 +379,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	if mc.ID == "" {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
+	gamelog.L.Info().Msgf("Mech took %s", time.Since(startTime))
 
 	return mc, err
 }
