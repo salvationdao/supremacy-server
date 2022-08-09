@@ -237,6 +237,16 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+// Enum values for QuestKey
+const (
+	QuestKeyAbilityKill               = "ability_kill"
+	QuestKeyMechKill                  = "mech_kill"
+	QuestKeyMechCommanderUsedInBattle = "mech_commander_used_in_battle"
+	QuestKeyRepairForOther            = "repair_for_other"
+	QuestKeyChatSent                  = "chat_sent"
+	QuestKeyMechJoinBattle            = "mech_join_battle"
+)
+
 // Enum values for RepairTriggerWithType
 const (
 	RepairTriggerWithTypeSPACE_BAR  = "SPACE_BAR"

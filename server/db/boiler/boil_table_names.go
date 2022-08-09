@@ -98,6 +98,7 @@ var TableNames = struct {
 	PlayersFeatures                                    string
 	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
+	PlayersQuests                                      string
 	PowerCores                                         string
 	Profanities                                        string
 	ProfileAvatars                                     string
@@ -106,6 +107,7 @@ var TableNames = struct {
 	PunishVotes                                        string
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
+	Quests                                             string
 	RepairAgentLogs                                    string
 	RepairAgents                                       string
 	RepairBlocks                                       string
@@ -240,6 +242,7 @@ var TableNames = struct {
 	PlayersFeatures:              "players_features",
 	PlayersProfileAvatars:        "players_profile_avatars",
 	PlayersPunishVotes:           "players_punish_votes",
+	PlayersQuests:                "players_quests",
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
 	ProfileAvatars:               "profile_avatars",
@@ -248,6 +251,7 @@ var TableNames = struct {
 	PunishVotes:                  "punish_votes",
 	QuestionnaireAnswer:          "questionnaire_answer",
 	QuestionnaireOptions:         "questionnaire_options",
+	Quests:                       "quests",
 	RepairAgentLogs:              "repair_agent_logs",
 	RepairAgents:                 "repair_agents",
 	RepairBlocks:                 "repair_blocks",
