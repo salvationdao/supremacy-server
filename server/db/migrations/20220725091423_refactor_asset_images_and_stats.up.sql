@@ -1358,13 +1358,13 @@ ALTER TABLE mystery_crate
     ALTER COLUMN blueprint_id SET NOT NULL;
 
 WITH wps AS (
-SELECT tpb.template_id, bpws.id as blueprint_id, 'WEAPON_SKIN' as "type"
-FROM template_blueprints tpb
-INNER JOIN blueprint_weapons bpw ON bpw.id = tpb.blueprint_id
-INNER JOIN weapon_models wm ON wm.id = bpw.weapon_model_id
-INNER JOIN blueprint_weapon_skin bpws ON bpws.weapon_model_id = wm.id
-WHERE tpb.type = 'WEAPON')
+    SELECT tpb.template_id, wmsc.blueprint_weapon_skin_id as blueprint_id, 'WEAPON_SKIN' as "type"
+    FROM template_blueprints tpb
+             INNER JOIN blueprint_weapons bpw ON bpw.id = tpb.blueprint_id
+             INNER JOIN weapon_models wm ON wm.id = bpw.weapon_model_id
+             INNER JOIN weapon_model_skin_compatibilities wmsc ON wmsc.weapon_model_id = wm.id
+    WHERE tpb.type = 'WEAPON')
 INSERT INTO template_blueprints(template_id, type, blueprint_id)
-SELECT wps.template_id, wps.type, wps.blueprint_id
+SELECT wps.template_id, wps.type::template_item_type, wps.blueprint_id
 FROM wps;
 
