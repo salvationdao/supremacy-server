@@ -133,12 +133,14 @@ func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID
 	defer pam.Unlock()
 
 	mm, ok := pam.movingMiniMechs[hash]
-	onCooldown := true
-	mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
-		onCooldown = time.Now().Before(mmmc.CooldownExpiry)
-	})
-	if ok && onCooldown {
-		return nil, fmt.Errorf("Command is still cooling down. Please wait another %f seconds.", time.Until(mm.CooldownExpiry).Seconds())
+	if ok {
+		onCooldown := true
+		mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
+			onCooldown = time.Now().Before(mmmc.CooldownExpiry)
+		})
+		if onCooldown {
+			return nil, fmt.Errorf("Command is still cooling down. Please wait another %f seconds.", time.Until(mm.CooldownExpiry).Seconds())
+		}
 	}
 
 	newMm := &player_abilities.MiniMechMoveCommand{
