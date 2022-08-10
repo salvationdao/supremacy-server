@@ -3,18 +3,17 @@ package db
 import (
 	"errors"
 	"fmt"
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"strconv"
-	"time"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
+	"server/benchmark"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"strconv"
 )
 
 type MechColumns string
@@ -285,7 +284,10 @@ func DefaultMechs() ([]*server.Mech, error) {
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
-	startTime := time.Now()
+	bm := benchmark.New()
+	bm.Start("db Mech")
+	defer bm.Alert(150)
+
 	mc := &server.Mech{
 		CollectionItem: &server.CollectionItem{},
 		Stats:          &server.Stats{},
@@ -379,8 +381,8 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	if mc.ID == "" {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
-	gamelog.L.Info().Msgf("Mech took %s", time.Since(startTime))
 
+	bm.End("db Mech")
 	return mc, err
 }
 
