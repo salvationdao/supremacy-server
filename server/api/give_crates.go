@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -25,7 +24,7 @@ import (
 
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+		if server.Env() != "development" {
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		devPass := r.Header.Get("X-Authorization")

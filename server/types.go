@@ -691,6 +691,12 @@ func Env() string {
 	return env
 }
 
+func IsProductionEnv() bool {
+	lock.RLock()
+	defer lock.RUnlock()
+	return env == "production"
+}
+
 type OnChainStatus string
 
 const (

@@ -8,7 +8,6 @@ import (
 	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -377,7 +376,7 @@ func (btl *Battle) GenerateDefaultQueueRequest(bqs []*boiler.BattleQueue) map[st
 		}
 	}
 
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" {
+	if server.IsProductionEnv() {
 		// get maximum queue number
 		maxNum := 0
 		for _, req := range reqMap {
@@ -450,7 +449,7 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 		qr.amount -= 1
 
 		// pay queue fee from treasury when it is not in production
-		if os.Getenv("GAMESERVER_ENVIRONMENT") != "production" {
+		if !server.IsProductionEnv() {
 			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18))
 
 			bqf := &boiler.BattleQueueFee{

@@ -10,7 +10,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -605,7 +604,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		if bq.R != nil && bq.R.Owner != nil {
 
 			// skip AI player, when it is in production
-			if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" && bq.R.Owner.IsAi {
+			if server.IsProductionEnv() && bq.R.Owner.IsAi {
 				continue
 			}
 
@@ -627,7 +626,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					player := bq.R.Owner
 
 					// skip AI player, when it is in production
-					if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" && player.IsAi {
+					if server.IsProductionEnv() && player.IsAi {
 						continue
 					}
 
@@ -674,7 +673,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					player := bq.R.Owner
 
 					// skip AI player, when it is in production
-					if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" && player.IsAi {
+					if server.IsProductionEnv() && player.IsAi {
 						continue
 					}
 
@@ -720,7 +719,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					player := bq.R.Owner
 
 					// skip AI player, when it is in production
-					if os.Getenv("GAMESERVER_ENVIRONMENT") == "production" && player.IsAi {
+					if server.IsProductionEnv() && player.IsAi {
 						continue
 					}
 
@@ -801,8 +800,8 @@ func (btl *Battle) RewardPlayerSups(player *boiler.Player, queueFee *boiler.Batt
 		RewardedSups: supsReward,
 	}
 
+	// if player is AI, pay reward back to treasury fund, and return
 	if player.IsAi {
-		// pay reward back to treasury fund
 		payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 			ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
@@ -820,66 +819,75 @@ func (btl *Battle) RewardPlayerSups(player *boiler.Player, queueFee *boiler.Batt
 				Msg("Failed to pay player battel reward")
 		}
 		queueFee.PayoutTXID = null.StringFrom(payoutTXID)
-	} else {
-		// pay battle queue fee
-		payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-			ToUserID:             uuid.Must(uuid.FromString(playerID)),
-			Amount:               supsReward.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
-		})
-		if err != nil {
-			l.Error().Err(err).
-				Str("from", server.SupremacyBattleUserID).
-				Str("to", playerID).
-				Str("amount", supsReward.StringFixed(0)).
-				Msg("Failed to pay player battel reward")
-		}
-		queueFee.PayoutTXID = null.StringFrom(payoutTXID)
 
-		// pay reward tax
-		taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(playerID)),
-			ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
-			Amount:               tax.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
-		})
+		_, err = queueFee.Update(gamedb.StdConn, boil.Whitelist(
+			boiler.BattleQueueFeeColumns.PayoutTXID,
+		))
 		if err != nil {
-			l.Error().Err(err).
-				Str("from", playerID).
-				Str("to", server.XsynTreasuryUserID.String()).
-				Str("amount", tax.StringFixed(0)).
-				Msg("Failed to pay player battle reward")
+			l.Error().Err(err).Interface("queue fee", queueFee).Msg("Failed to update payout, tax and challenge fund transaction id")
 		}
-		queueFee.TaxTXID = null.StringFrom(taxTXID)
 
-		// pay challenge fund
-		challengeFundTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(playerID)),
-			ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
-			Amount:               challengeFund.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
-		})
-		if err != nil {
-			l.Error().Err(err).
-				Str("from", playerID).
-				Str("to", server.SupremacyChallengeFundUserID).
-				Str("amount", challengeFund.StringFixed(0)).
-				Msg("Failed to pay player battle reward")
-		}
-		queueFee.ChallengeFundTXID = null.StringFrom(challengeFundTXID)
+		return nil
 	}
 
-	_, err := queueFee.Update(gamedb.StdConn, boil.Whitelist(
+	// otherwise, pay battle reward to the actual player
+	payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+		ToUserID:             uuid.Must(uuid.FromString(playerID)),
+		Amount:               supsReward.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", server.SupremacyBattleUserID).
+			Str("to", playerID).
+			Str("amount", supsReward.StringFixed(0)).
+			Msg("Failed to pay player battel reward")
+	}
+	queueFee.PayoutTXID = null.StringFrom(payoutTXID)
+
+	// pay reward tax
+	taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
+		ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+		Amount:               tax.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward_tax|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("reward tax from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.XsynTreasuryUserID.String()).
+			Str("amount", tax.StringFixed(0)).
+			Msg("Failed to pay player battle reward")
+	}
+	queueFee.TaxTXID = null.StringFrom(taxTXID)
+
+	// pay challenge fund
+	challengeFundTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           uuid.Must(uuid.FromString(playerID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)),
+		Amount:               challengeFund.StringFixed(0),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("supremacy_challenge_fund|%s|%d", btl.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupSupremacy),
+		SubGroup:             string(server.TransactionGroupBattle),
+		Description:          fmt.Sprintf("challenge fund from battle #%d.", btl.BattleNumber),
+	})
+	if err != nil {
+		l.Error().Err(err).
+			Str("from", playerID).
+			Str("to", server.SupremacyChallengeFundUserID).
+			Str("amount", challengeFund.StringFixed(0)).
+			Msg("Failed to pay player battle reward")
+	}
+	queueFee.ChallengeFundTXID = null.StringFrom(challengeFundTXID)
+
+	_, err = queueFee.Update(gamedb.StdConn, boil.Whitelist(
 		boiler.BattleQueueFeeColumns.PayoutTXID,
 		boiler.BattleQueueFeeColumns.TaxTXID,
 		boiler.BattleQueueFeeColumns.ChallengeFundTXID,
