@@ -22,7 +22,6 @@ import (
 
 func getDefaultWeaponQueryMods() []qm.QueryMod {
 	return []qm.QueryMod{
-		qm.From(boiler.TableNames.CollectionItems),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.Weapons,
@@ -485,10 +484,12 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		if len(xSearch) > 0 {
 			queryMods = append(queryMods,
 				qm.And(fmt.Sprintf(
-					"((to_tsvector('english', %s) @@ to_tsquery(?) OR (to_tsvector('english', %s::text) @@ to_tsquery(?)) ))",
+					"((to_tsvector('english', %s) @@ to_tsquery(?) OR (to_tsvector('english', %s::text) @@ to_tsquery(?)) OR (to_tsvector('english', %s::text) @@ to_tsquery(?)) ))",
 					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
 					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponType),
+					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponColumns.Label),
 				),
+					xSearch,
 					xSearch,
 					xSearch,
 				))
@@ -542,14 +543,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s",
-				boiler.TableNames.BlueprintWeapons,
-				qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
-				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
-			),
-		),
 	)
 
 	if opts.SortBy != "" && opts.SortDir.IsValid() {
