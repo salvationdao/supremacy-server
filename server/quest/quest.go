@@ -17,12 +17,18 @@ import (
 )
 
 type System struct {
-	playerQuestChan chan func()
+	playerQuestChan chan *playerQuestCheck
+}
+
+type playerQuestCheck struct {
+	questKey  string
+	playerID  string
+	checkFunc func(playerID string, quest *boiler.Quest) bool
 }
 
 func New() *System {
 	q := &System{
-		playerQuestChan: make(chan func(), 30),
+		playerQuestChan: make(chan *playerQuestCheck, 50),
 	}
 
 	go q.Run()
@@ -37,8 +43,40 @@ func (q *System) Run() {
 		select {
 		case <-regenerateTicker.C:
 			regenerateQuest()
-		case fn := <-q.playerQuestChan:
-			fn()
+		case pqc := <-q.playerQuestChan:
+			l := gamelog.L.With().Str("quest key", pqc.questKey).Str("player id", pqc.playerID).Logger()
+			// get all the ability related quests
+			pqs, err := boiler.Quests(
+				boiler.QuestWhere.Key.EQ(pqc.questKey),
+				boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
+			).All(gamedb.StdConn)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get quest")
+				return
+			}
+
+			for _, pq := range pqs {
+				playerQuest, err := pq.PlayersQuests(
+					boiler.PlayersQuestWhere.PlayerID.EQ(pqc.playerID),
+				).One(gamedb.StdConn)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					l.Error().Err(err).Msg("Failed to check player quest")
+					return
+				}
+
+				// skip, if player has already done the quest
+				if playerQuest != nil {
+					continue
+				}
+
+				if pqc.checkFunc(pqc.playerID, pq) {
+					err = playerQuestGrant(pqc.playerID, pq.ID)
+					if err != nil {
+						l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
+						return
+					}
+				}
+			}
 		}
 	}
 }
@@ -115,31 +153,10 @@ func playerQuestGrant(playerID string, questID string) error {
 func (q *System) AbilityKillQuestCheck(playerID string) {
 	l := gamelog.L.With().Str("quest key", boiler.QuestKeyAbilityKill).Str("player id", playerID).Logger()
 
-	q.playerQuestChan <- func() {
-		// get all the ability kill quest
-		pqs, err := boiler.Quests(
-			boiler.QuestWhere.Key.EQ(boiler.QuestKeyAbilityKill),
-			boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
-		).All(gamedb.StdConn)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to get quest")
-			return
-		}
-
-		for _, pq := range pqs {
-			playerQuest, err := pq.PlayersQuests(
-				boiler.PlayersQuestWhere.PlayerID.EQ(playerID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				l.Error().Err(err).Msg("Failed to check player quest")
-				return
-			}
-
-			// skip, if player has already done the quest
-			if playerQuest != nil {
-				continue
-			}
-
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyAbilityKill,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
 			// check player ability kill match the amount
 			playerKillLogs, err := boiler.PlayerKillLogs(
 				boiler.PlayerKillLogWhere.PlayerID.EQ(playerID),
@@ -147,7 +164,7 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 			).All(gamedb.StdConn)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get player kill logs")
-				return
+				return false
 			}
 
 			totalKill := 0
@@ -161,101 +178,122 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 
 			// return if not eligible
 			if totalKill < pq.RequestAmount {
-				return
+				return false
 			}
 
-			err = playerQuestGrant(playerID, pq.ID)
-			if err != nil {
-				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
-				return
-			}
-		}
+			return true
+		},
 	}
 }
 
 func (q *System) MechKillQuestCheck(playerID string) {
 	l := gamelog.L.With().Str("quest key", boiler.QuestKeyMechKill).Str("player id", playerID).Logger()
 
-	q.playerQuestChan <- func() {
-		// get all the mech kill quest
-		pqs, err := boiler.Quests(
-			boiler.QuestWhere.Key.EQ(boiler.QuestKeyMechKill),
-			boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
-		).All(gamedb.StdConn)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to get quest")
-			return
-		}
-
-		for _, pq := range pqs {
-			playerQuest, err := pq.PlayersQuests(
-				boiler.PlayersQuestWhere.PlayerID.EQ(playerID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				l.Error().Err(err).Msg("Failed to check player quest")
-				return
-			}
-
-			// skip, if player has already done the quest
-			if playerQuest != nil {
-				continue
-			}
-
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyMechKill,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
 			// check player eligible to claim
 			mechKillCount, err := db.PlayerMechKillCount(playerID, pq.CreatedAt)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get player mech kill count")
-				return
+				return false
 			}
 
 			if mechKillCount < pq.RequestAmount {
-				continue
+				return false
 			}
 
-			err = playerQuestGrant(playerID, pq.ID)
-			if err != nil {
-				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
-				return
-			}
-		}
+			return true
+		},
 	}
 }
 
 func (q *System) MechCommanderQuestCheck(playerID string) {
 	l := gamelog.L.With().Str("quest key", boiler.QuestKeyTotalBattleUsedMechCommander).Str("player id", playerID).Logger()
 
-	q.playerQuestChan <- func() {
-		// get all the mech kill quest
-		pqs, err := boiler.Quests(
-			boiler.QuestWhere.Key.EQ(boiler.QuestKeyTotalBattleUsedMechCommander),
-			boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
-		).All(gamedb.StdConn)
-		if err != nil {
-			l.Error().Err(err).Msg("Failed to get quest")
-			return
-		}
-
-		for _, pq := range pqs {
-			playerQuest, err := pq.PlayersQuests(
-				boiler.PlayersQuestWhere.PlayerID.EQ(playerID),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				l.Error().Err(err).Msg("Failed to check player quest")
-				return
-			}
-
-			// skip, if player has already done the quest
-			if playerQuest != nil {
-				continue
-			}
-
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyTotalBattleUsedMechCommander,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
 			// check player eligible to claim
-
-			err = playerQuestGrant(playerID, pq.ID)
+			battleCount, err := db.PlayerTotalBattleMechCommanderUsed(playerID, pq.CreatedAt)
 			if err != nil {
-				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
-				return
+				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to count total battles.")
+				return false
 			}
-		}
+
+			if battleCount < pq.RequestAmount {
+				return false
+			}
+
+			return true
+		},
+	}
+}
+
+func (q *System) RepairQuestCheck(playerID string) {
+	l := gamelog.L.With().Str("quest key", boiler.QuestKeyRepairForOther).Str("player id", playerID).Logger()
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyRepairForOther,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+			// check player eligible to claim
+			blockCount, err := db.PlayerRepairForOthersCount(playerID, pq.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return false
+			}
+
+			if blockCount < pq.RequestAmount {
+				return false
+			}
+
+			return true
+		},
+	}
+}
+
+func (q *System) ChatMessageQuestCheck(playerID string) {
+	l := gamelog.L.With().Str("quest key", boiler.QuestKeyChatSent).Str("player id", playerID).Logger()
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyChatSent,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+			// check player eligible to claim
+			mechCount, err := db.PlayerChatSendCount(playerID, pq.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return false
+			}
+
+			if mechCount < pq.RequestAmount {
+				return false
+			}
+
+			return true
+		},
+	}
+}
+
+func (q *System) MechJoinBattleQuestCheck(playerID string) {
+	l := gamelog.L.With().Str("quest key", boiler.QuestKeyMechJoinBattle).Str("player id", playerID).Logger()
+	q.playerQuestChan <- &playerQuestCheck{
+		questKey: boiler.QuestKeyMechJoinBattle,
+		playerID: playerID,
+		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+			// check player eligible to claim
+			mechCount, err := db.PlayerMechJoinBattleCount(playerID, pq.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return false
+			}
+
+			if mechCount < pq.RequestAmount {
+				return false
+			}
+
+			return true
+		},
 	}
 }

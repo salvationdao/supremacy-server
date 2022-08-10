@@ -165,6 +165,11 @@ func (btl *Battle) setBattleQueue() error {
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+
+		// check mech join battle quest for each mech owner
+		for _, wm := range btl.WarMachines {
+			btl.arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
+		}
 	}
 
 	return nil

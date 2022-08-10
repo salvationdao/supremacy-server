@@ -384,7 +384,7 @@ func main() {
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -732,6 +732,7 @@ func SetupAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
+	questManager *quest.System,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -789,7 +790,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig, questManager)
 	if err != nil {
 		return nil, err
 	}

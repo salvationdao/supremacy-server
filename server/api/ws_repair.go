@@ -610,6 +610,12 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
 			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
+
+		// if repair for others
+		if ra.R.RepairOffer.OfferedByID.String != user.ID {
+			api.questManager.RepairQuestCheck(user.ID)
+		}
+
 	}
 
 	// broadcast result if repair is not completed

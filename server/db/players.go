@@ -493,3 +493,64 @@ func PlayerMechKillCount(playerID string, afterTime time.Time) (int, error) {
 
 	return mechKillCount, nil
 }
+
+func PlayerTotalBattleMechCommanderUsed(playerID string, startFromTime time.Time) (int, error) {
+	q := `
+		select count(distinct battle_id) from mech_move_command_logs
+		where triggered_by_id = $1 AND created_at >= $2;
+	`
+
+	battleCount := 0
+	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&battleCount)
+	if err != nil {
+		return 0, terror.Error(err, "Failed to get battle count.")
+	}
+
+	return battleCount, nil
+}
+
+func PlayerRepairForOthersCount(playerID string, startFromTime time.Time) (int, error) {
+	q := `
+		select count(ra.id) from repair_agents ra
+		inner join repair_offers ro on ra.repair_offer_id = ro.id and ro.offered_by_id notnull and ro.offered_by_id != ra.player_id
+		where ra.finished_reason = 'SUCCEEDED' AND ra.player_id = $1 AND ra.finished_at >= $2;
+	`
+
+	blockCount := 0
+	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&blockCount)
+	if err != nil {
+		return 0, terror.Error(err, "Failed to get battle count.")
+	}
+
+	return blockCount, nil
+}
+
+func PlayerMechJoinBattleCount(playerID string, startFromTime time.Time) (int, error) {
+	q := `
+		select count(*) from battle_mechs
+		where owner_id = $1 AND created_at >= $2;
+	`
+
+	mechCount := 0
+	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&mechCount)
+	if err != nil {
+		return 0, terror.Error(err, "Failed to get battle count.")
+	}
+
+	return mechCount, nil
+}
+
+func PlayerChatSendCount(playerID string, startFromTime time.Time) (int, error) {
+	q := `
+		SELECT count(id) from chat_history
+		WHERE player_id = $1 AND created_at >= $2;
+	`
+
+	chatCount := 0
+	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&chatCount)
+	if err != nil {
+		return 0, terror.Error(err, "Failed to get battle count.")
+	}
+
+	return chatCount, nil
+}

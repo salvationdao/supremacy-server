@@ -520,6 +520,9 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		language = db.GetUserLanguage(player.ID)
 	}
 
+	// check player quest reward
+	fc.API.questManager.ChatMessageQuestCheck(user.ID)
+
 	func() {
 		if exists && language != "English" {
 			dbLanguageExists, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).Exists(gamedb.StdConn)

@@ -15,6 +15,7 @@ import (
 	"server/marketplace"
 	"server/player_abilities"
 	"server/profanities"
+	"server/quest"
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
@@ -112,6 +113,8 @@ type API struct {
 	Config *server.Config
 
 	SyncConfig *synctool.StaticSyncTool
+
+	questManager *quest.System
 }
 
 // NewAPI registers routes
@@ -126,6 +129,7 @@ func NewAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
+	questManager *quest.System,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -169,6 +173,7 @@ func NewAPI(
 			siteKey:   config.CaptchaSiteKey,
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
+		questManager: questManager,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
