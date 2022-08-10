@@ -24,7 +24,7 @@ import (
 
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if server.Env() != "development" {
+		if !server.IsDevelopmentEnv() {
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		devPass := r.Header.Get("X-Authorization")
