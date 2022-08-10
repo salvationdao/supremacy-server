@@ -65,6 +65,3 @@ INSERT INTO layers (type, image_url) VALUES
 -- add custom avatar id to players
 ALTER TABLE players 
     ADD column custom_avatar_id UUID REFERENCES profile_custom_avatars(id);
-
---  add feature flag
-INSERT INTO features (name) VALUES ('PUBLIC_PROFILE');
