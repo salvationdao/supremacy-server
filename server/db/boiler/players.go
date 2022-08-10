@@ -41,6 +41,7 @@ type Player struct {
 	AboutMe          null.String     `boiler:"about_me" boil:"about_me" json:"about_me,omitempty" toml:"about_me" yaml:"about_me,omitempty"`
 	ProfileAvatarID  null.String     `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 	SyndicateID      null.String     `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicate_id,omitempty" toml:"syndicate_id" yaml:"syndicate_id,omitempty"`
+	CustomAvatarID   null.String     `boiler:"custom_avatar_id" boil:"custom_avatar_id" json:"custom_avatar_id,omitempty" toml:"custom_avatar_id" yaml:"custom_avatar_id,omitempty"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -64,6 +65,7 @@ var PlayerColumns = struct {
 	AboutMe          string
 	ProfileAvatarID  string
 	SyndicateID      string
+	CustomAvatarID   string
 }{
 	ID:               "id",
 	FactionID:        "faction_id",
@@ -82,6 +84,7 @@ var PlayerColumns = struct {
 	AboutMe:          "about_me",
 	ProfileAvatarID:  "profile_avatar_id",
 	SyndicateID:      "syndicate_id",
+	CustomAvatarID:   "custom_avatar_id",
 }
 
 var PlayerTableColumns = struct {
@@ -102,6 +105,7 @@ var PlayerTableColumns = struct {
 	AboutMe          string
 	ProfileAvatarID  string
 	SyndicateID      string
+	CustomAvatarID   string
 }{
 	ID:               "players.id",
 	FactionID:        "players.faction_id",
@@ -120,6 +124,7 @@ var PlayerTableColumns = struct {
 	AboutMe:          "players.about_me",
 	ProfileAvatarID:  "players.profile_avatar_id",
 	SyndicateID:      "players.syndicate_id",
+	CustomAvatarID:   "players.custom_avatar_id",
 }
 
 // Generated where
@@ -142,6 +147,7 @@ var PlayerWhere = struct {
 	AboutMe          whereHelpernull_String
 	ProfileAvatarID  whereHelpernull_String
 	SyndicateID      whereHelpernull_String
+	CustomAvatarID   whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
@@ -160,10 +166,12 @@ var PlayerWhere = struct {
 	AboutMe:          whereHelpernull_String{field: "\"players\".\"about_me\""},
 	ProfileAvatarID:  whereHelpernull_String{field: "\"players\".\"profile_avatar_id\""},
 	SyndicateID:      whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
+	CustomAvatarID:   whereHelpernull_String{field: "\"players\".\"custom_avatar_id\""},
 }
 
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
+	CustomAvatar                             string
 	Faction                                  string
 	ProfileAvatar                            string
 	Syndicate                                string
@@ -209,6 +217,7 @@ var PlayerRels = struct {
 	PlayersFeatures                          string
 	PlayersProfileAvatars                    string
 	PlayersPunishVotes                       string
+	ProfileCustomAvatars                     string
 	VoteByPlayerPunishVoteInstantPassRecords string
 	InstantPassByPunishVotes                 string
 	IssuedByPunishVotes                      string
@@ -232,6 +241,7 @@ var PlayerRels = struct {
 	SenderSystemMessages                     string
 	OwnerWeaponSkins                         string
 }{
+	CustomAvatar:                             "CustomAvatar",
 	Faction:                                  "Faction",
 	ProfileAvatar:                            "ProfileAvatar",
 	Syndicate:                                "Syndicate",
@@ -277,6 +287,7 @@ var PlayerRels = struct {
 	PlayersFeatures:                          "PlayersFeatures",
 	PlayersProfileAvatars:                    "PlayersProfileAvatars",
 	PlayersPunishVotes:                       "PlayersPunishVotes",
+	ProfileCustomAvatars:                     "ProfileCustomAvatars",
 	VoteByPlayerPunishVoteInstantPassRecords: "VoteByPlayerPunishVoteInstantPassRecords",
 	InstantPassByPunishVotes:                 "InstantPassByPunishVotes",
 	IssuedByPunishVotes:                      "IssuedByPunishVotes",
@@ -303,6 +314,7 @@ var PlayerRels = struct {
 
 // playerR is where relationships are stored.
 type playerR struct {
+	CustomAvatar                             *ProfileCustomAvatar             `boiler:"CustomAvatar" boil:"CustomAvatar" json:"CustomAvatar" toml:"CustomAvatar" yaml:"CustomAvatar"`
 	Faction                                  *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	ProfileAvatar                            *ProfileAvatar                   `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
 	Syndicate                                *Syndicate                       `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
@@ -348,6 +360,7 @@ type playerR struct {
 	PlayersFeatures                          PlayersFeatureSlice              `boiler:"PlayersFeatures" boil:"PlayersFeatures" json:"PlayersFeatures" toml:"PlayersFeatures" yaml:"PlayersFeatures"`
 	PlayersProfileAvatars                    PlayersProfileAvatarSlice        `boiler:"PlayersProfileAvatars" boil:"PlayersProfileAvatars" json:"PlayersProfileAvatars" toml:"PlayersProfileAvatars" yaml:"PlayersProfileAvatars"`
 	PlayersPunishVotes                       PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	ProfileCustomAvatars                     ProfileCustomAvatarSlice         `boiler:"ProfileCustomAvatars" boil:"ProfileCustomAvatars" json:"ProfileCustomAvatars" toml:"ProfileCustomAvatars" yaml:"ProfileCustomAvatars"`
 	VoteByPlayerPunishVoteInstantPassRecords PunishVoteInstantPassRecordSlice `boiler:"VoteByPlayerPunishVoteInstantPassRecords" boil:"VoteByPlayerPunishVoteInstantPassRecords" json:"VoteByPlayerPunishVoteInstantPassRecords" toml:"VoteByPlayerPunishVoteInstantPassRecords" yaml:"VoteByPlayerPunishVoteInstantPassRecords"`
 	InstantPassByPunishVotes                 PunishVoteSlice                  `boiler:"InstantPassByPunishVotes" boil:"InstantPassByPunishVotes" json:"InstantPassByPunishVotes" toml:"InstantPassByPunishVotes" yaml:"InstantPassByPunishVotes"`
 	IssuedByPunishVotes                      PunishVoteSlice                  `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
@@ -381,9 +394,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count", "about_me", "profile_avatar_id", "syndicate_id", "custom_avatar_id"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
@@ -628,6 +641,21 @@ func (q playerQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// CustomAvatar pointed to by the foreign key.
+func (o *Player) CustomAvatar(mods ...qm.QueryMod) profileCustomAvatarQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.CustomAvatarID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := ProfileCustomAvatars(queryMods...)
+	queries.SetFrom(query.Query, "\"profile_custom_avatars\"")
+
+	return query
 }
 
 // Faction pointed to by the foreign key.
@@ -1562,6 +1590,28 @@ func (o *Player) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQuery 
 	return query
 }
 
+// ProfileCustomAvatars retrieves all the profile_custom_avatar's ProfileCustomAvatars with an executor.
+func (o *Player) ProfileCustomAvatars(mods ...qm.QueryMod) profileCustomAvatarQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"profile_custom_avatars\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"profile_custom_avatars\".\"deleted_at\""),
+	)
+
+	query := ProfileCustomAvatars(queryMods...)
+	queries.SetFrom(query.Query, "\"profile_custom_avatars\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"profile_custom_avatars\".*"})
+	}
+
+	return query
+}
+
 // VoteByPlayerPunishVoteInstantPassRecords retrieves all the punish_vote_instant_pass_record's PunishVoteInstantPassRecords with an executor via vote_by_player_id column.
 func (o *Player) VoteByPlayerPunishVoteInstantPassRecords(mods ...qm.QueryMod) punishVoteInstantPassRecordQuery {
 	var queryMods []qm.QueryMod
@@ -2039,6 +2089,115 @@ func (o *Player) OwnerWeaponSkins(mods ...qm.QueryMod) weaponSkinQuery {
 	}
 
 	return query
+}
+
+// LoadCustomAvatar allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerL) LoadCustomAvatar(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		if !queries.IsNil(object.CustomAvatarID) {
+			args = append(args, object.CustomAvatarID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.CustomAvatarID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.CustomAvatarID) {
+				args = append(args, obj.CustomAvatarID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`profile_custom_avatars`),
+		qm.WhereIn(`profile_custom_avatars.id in ?`, args...),
+		qmhelper.WhereIsNull(`profile_custom_avatars.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load ProfileCustomAvatar")
+	}
+
+	var resultSlice []*ProfileCustomAvatar
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice ProfileCustomAvatar")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for profile_custom_avatars")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for profile_custom_avatars")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.CustomAvatar = foreign
+		if foreign.R == nil {
+			foreign.R = &profileCustomAvatarR{}
+		}
+		foreign.R.CustomAvatarPlayers = append(foreign.R.CustomAvatarPlayers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.CustomAvatarID, foreign.ID) {
+				local.R.CustomAvatar = foreign
+				if foreign.R == nil {
+					foreign.R = &profileCustomAvatarR{}
+				}
+				foreign.R.CustomAvatarPlayers = append(foreign.R.CustomAvatarPlayers, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadFaction allows an eager lookup of values, cached into the
@@ -6525,6 +6684,105 @@ func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlaye
 	return nil
 }
 
+// LoadProfileCustomAvatars allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadProfileCustomAvatars(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`profile_custom_avatars`),
+		qm.WhereIn(`profile_custom_avatars.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`profile_custom_avatars.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load profile_custom_avatars")
+	}
+
+	var resultSlice []*ProfileCustomAvatar
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice profile_custom_avatars")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on profile_custom_avatars")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for profile_custom_avatars")
+	}
+
+	if len(profileCustomAvatarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ProfileCustomAvatars = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &profileCustomAvatarR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.ProfileCustomAvatars = append(local.R.ProfileCustomAvatars, foreign)
+				if foreign.R == nil {
+					foreign.R = &profileCustomAvatarR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadVoteByPlayerPunishVoteInstantPassRecords allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadVoteByPlayerPunishVoteInstantPassRecords(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -8695,6 +8953,85 @@ func (playerL) LoadOwnerWeaponSkins(e boil.Executor, singular bool, maybePlayer 
 		}
 	}
 
+	return nil
+}
+
+// SetCustomAvatar of the player to the related item.
+// Sets o.R.CustomAvatar to related.
+// Adds o to related.R.CustomAvatarPlayers.
+func (o *Player) SetCustomAvatar(exec boil.Executor, insert bool, related *ProfileCustomAvatar) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"players\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"custom_avatar_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.CustomAvatarID, related.ID)
+	if o.R == nil {
+		o.R = &playerR{
+			CustomAvatar: related,
+		}
+	} else {
+		o.R.CustomAvatar = related
+	}
+
+	if related.R == nil {
+		related.R = &profileCustomAvatarR{
+			CustomAvatarPlayers: PlayerSlice{o},
+		}
+	} else {
+		related.R.CustomAvatarPlayers = append(related.R.CustomAvatarPlayers, o)
+	}
+
+	return nil
+}
+
+// RemoveCustomAvatar relationship.
+// Sets o.R.CustomAvatar to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Player) RemoveCustomAvatar(exec boil.Executor, related *ProfileCustomAvatar) error {
+	var err error
+
+	queries.SetScanner(&o.CustomAvatarID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("custom_avatar_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.CustomAvatar = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.CustomAvatarPlayers {
+		if queries.Equal(o.CustomAvatarID, ri.CustomAvatarID) {
+			continue
+		}
+
+		ln := len(related.R.CustomAvatarPlayers)
+		if ln > 1 && i < ln-1 {
+			related.R.CustomAvatarPlayers[i] = related.R.CustomAvatarPlayers[ln-1]
+		}
+		related.R.CustomAvatarPlayers = related.R.CustomAvatarPlayers[:ln-1]
+		break
+	}
 	return nil
 }
 
@@ -11487,6 +11824,58 @@ func (o *Player) AddPlayersPunishVotes(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playersPunishVoteR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddProfileCustomAvatars adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.ProfileCustomAvatars.
+// Sets related.R.Player appropriately.
+func (o *Player) AddProfileCustomAvatars(exec boil.Executor, insert bool, related ...*ProfileCustomAvatar) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"profile_custom_avatars\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, profileCustomAvatarPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			ProfileCustomAvatars: related,
+		}
+	} else {
+		o.R.ProfileCustomAvatars = append(o.R.ProfileCustomAvatars, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &profileCustomAvatarR{
 				Player: o,
 			}
 		} else {
