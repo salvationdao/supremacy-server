@@ -1,3 +1,8 @@
+ALTER TABLE
+    mech_move_command_logs
+ADD
+    COLUMN is_moving bool NOT NULL DEFAULT false;
+
 INSERT INTO
     blueprint_player_abilities (
         game_client_ability_id,

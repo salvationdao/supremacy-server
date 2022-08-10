@@ -154,6 +154,7 @@ func (pam *PlayerAbilityManager) IssueMiniMechMoveCommand(hash string, factionID
 		CancelledAt:    null.TimeFromPtr(nil),
 		ReachedAt:      null.TimeFromPtr(nil),
 		CreatedAt:      time.Now(),
+		IsMoving:       true,
 	}
 	pam.movingMiniMechs[hash] = newMm
 
@@ -636,6 +637,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 				CellY:         mmmc.CellY,
 				CancelledAt:   mmmc.CancelledAt,
 				ReachedAt:     mmmc.ReachedAt,
+				IsMoving:      mmmc.IsMoving,
 			}
 			resp.RemainCooldownSeconds = int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds())
 			resp.IsMiniMech = true
@@ -936,7 +938,10 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
 			boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 			boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
-		).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: time.Now()})
+		).UpdateAll(gamedb.StdConn, boiler.M{
+			boiler.MechMoveCommandLogColumns.CancelledAt: time.Now(),
+			boiler.MechMoveCommandLogColumns.IsMoving:    false,
+		})
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", wm.ID).Str("battle id", arena.CurrentBattle().ID).Err(err).Msg("Failed to cancel unfinished mech move command in db")
 			return terror.Error(err, "Failed to update mech move command.")
@@ -950,6 +955,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			CellY:         req.Payload.StartCoords.Y,
 			BattleID:      arena.CurrentBattle().ID,
 			CreatedAt:     now,
+			IsMoving:      true,
 		}
 		err = mmc.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -981,6 +987,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 				CancelledAt:   mmmc.CancelledAt,
 				ReachedAt:     mmmc.ReachedAt,
 				CreatedAt:     mmmc.CreatedAt,
+				IsMoving:      mmmc.IsMoving,
 			},
 			RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
 			IsMiniMech:            true,
@@ -1066,7 +1073,8 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 
 		// cancel command
 		mmc.CancelledAt = null.TimeFrom(time.Now())
-		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.CancelledAt))
+		mmc.IsMoving = false
+		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.CancelledAt, boiler.MechMoveCommandLogColumns.IsMoving))
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech move command id", mmc.ID).Msg("Failed to up date mech move command in db")
 			return terror.Error(err, "Failed to cancel mech move command")
@@ -1084,7 +1092,6 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 		})
-
 	} else {
 		mmmc, err := arena._currentBattle.playerAbilityManager().CancelMiniMechMove(wm.Hash)
 		if err != nil {
@@ -1111,6 +1118,7 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 				CancelledAt:   mmmc.CancelledAt,
 				ReachedAt:     mmmc.ReachedAt,
 				CreatedAt:     mmmc.CreatedAt,
+				IsMoving:      mmmc.IsMoving,
 			},
 			RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
 			IsMiniMech:            true,

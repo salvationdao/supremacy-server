@@ -1095,7 +1095,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
 				continue
 			}
-			err = btl.UpdateWarMachineMoveCommand(dataPayload)
+			err = btl.CompleteWarMachineMoveCommand(dataPayload)
 			if err != nil {
 				L.Error().Err(err).Msg("failed update war machine move command")
 			}
@@ -1302,7 +1302,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	return nil
 }
 
-func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
 	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
 	defer gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 
@@ -1335,6 +1335,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 
 		// update completed_at
 		mmc.ReachedAt = null.TimeFrom(time.Now())
+		mmc.IsMoving = false
 		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
 		if err != nil {
 			return terror.Error(err, "Failed to update mech move command")
@@ -1358,6 +1359,7 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 					CancelledAt:   mmmc.CancelledAt,
 					ReachedAt:     mmmc.ReachedAt,
 					CreatedAt:     mmmc.CreatedAt,
+					IsMoving:      mmmc.IsMoving,
 				},
 				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
 				IsMiniMech:            true,

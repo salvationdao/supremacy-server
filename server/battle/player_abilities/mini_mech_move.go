@@ -19,6 +19,7 @@ type MiniMechMoveCommand struct {
 	CancelledAt    null.Time
 	ReachedAt      null.Time
 	CreatedAt      time.Time
+	IsMoving       bool
 
 	deadlock.RWMutex
 }
@@ -46,6 +47,7 @@ func (mm *MiniMechMoveCommand) Cancel() error {
 
 	now := time.Now()
 	mm.CancelledAt = null.TimeFrom(now)
+	mm.IsMoving = false
 
 	return nil
 }
@@ -56,4 +58,5 @@ func (mm *MiniMechMoveCommand) Complete() {
 
 	now := time.Now()
 	mm.ReachedAt = null.TimeFrom(now)
+	mm.IsMoving = false
 }
