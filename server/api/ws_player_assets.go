@@ -339,15 +339,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	if mech.ChassisSkin.Images == nil {
-		mech.ChassisSkin.Images = &server.Images{
-			ImageURL:         mech.ImageURL,
-			CardAnimationURL: mech.CardAnimationURL,
-			AvatarURL:        mech.AvatarURL,
-			LargeImageURL:    mech.LargeImageURL,
-			BackgroundColor:  mech.BackgroundColor,
-			AnimationURL:     mech.AnimationURL,
-			YoutubeURL:       mech.YoutubeURL,
-		}
+		mech.ChassisSkin.Images = mech.Images
 	}
 
 	reply(mech)
@@ -393,15 +385,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	m := server.Mech{
 		ID:    mech.ID,
 		Label: mech.R.Blueprint.Label,
+		Images: &server.Images{
+			AvatarURL: mechSkin.AvatarURL,
+			ImageURL:  mechSkin.ImageURL,
+		},
 		ChassisSkin: &server.MechSkin{
 			Images: &server.Images{
 				AvatarURL: mechSkin.AvatarURL,
 				ImageURL:  mechSkin.ImageURL,
 			},
-		},
-		Images: &server.Images{
-			AvatarURL: mechSkin.AvatarURL,
-			ImageURL:  mechSkin.ImageURL,
 		},
 	}
 
@@ -431,6 +423,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
+	mech.ChassisSkin.Images = mech.Images
+
 	reply(mech)
 	return nil
 }
