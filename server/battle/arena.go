@@ -58,6 +58,8 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	RepairOfferCloseChan     chan *RepairOfferClose
+
+	gameClientJsonDataChan chan []byte
 	sync.RWMutex
 }
 
@@ -289,7 +291,8 @@ func NewArena(opts *Opts) *Arena {
 		SystemBanManager:         NewSystemBanManager(),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		NewBattleChan:            make(chan *NewBattleChan, 10),
-		RepairOfferCloseChan:     make(chan *RepairOfferClose),
+		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
+		gameClientJsonDataChan:   make(chan []byte, 3),
 	}
 
 	var err error
@@ -310,6 +313,9 @@ func NewArena(opts *Opts) *Arena {
 
 	// start player rank updater
 	arena.PlayerRankUpdater()
+
+	// speed up mech stat broadcast by separate json data and binary data
+	go arena.GameClientJsonDataParser()
 
 	return arena
 }
@@ -696,6 +702,11 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 		return nil
 	}
 
+	bn := arena.currentBattleNumber()
+	if bn == -1 {
+		return nil
+	}
+
 	participantID, err := strconv.Atoi(slotNumber)
 	if err != nil {
 		return fmt.Errorf("invalid participant id")
@@ -710,25 +721,51 @@ func (arena *Arena) WarMachineAbilitySubscribe(ctx context.Context, user *boiler
 		return terror.Error(fmt.Errorf("does not own the mech"), "You do not own the mech.")
 	}
 
+	ga, err := boiler.FindGameAbility(gamedb.StdConn, mechAbilityID)
+	if err != nil {
+		return terror.Error(err, "Failed to load game ability.")
+	}
+
 	coolDownSeconds := db.GetIntWithDefault(db.KeyMechAbilityCoolDownSeconds, 30)
 
-	// calculate remain seconds
-	mat, err := boiler.MechAbilityTriggerLogs(
-		boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-		boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
-		boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
-		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
-		return terror.Error(err, "Failed to load game ability")
-	}
+	// validate the ability can be triggered
+	switch ga.Label {
+	case "REPAIR":
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Failed to get last ability trigger")
+		}
 
-	if mat != nil {
-		reply(coolDownSeconds - int(time.Now().Sub(mat.CreatedAt).Seconds()))
-		return nil
-	}
+		if lastTrigger != nil {
+			reply(86400)
+			return nil
+		}
 
+	default:
+		// get ability from db
+		lastTrigger, err := boiler.MechAbilityTriggerLogs(
+			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
+			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
+			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
+			return terror.Error(err, "Failed to load game ability")
+		}
+
+		if lastTrigger != nil {
+			reply(coolDownSeconds - int(time.Now().Sub(lastTrigger.CreatedAt).Seconds()))
+			return nil
+		}
+
+	}
 	reply(0)
 
 	return nil
@@ -906,12 +943,6 @@ type BattleWMPickupPayload struct {
 }
 
 func (arena *Arena) start() {
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on battle arena!", r)
-	//	}
-	//}()
-
 	ctx := context.Background()
 	arena.beginBattle()
 
@@ -921,7 +952,6 @@ func (arena *Arena) start() {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("empty game client disconnected")
 			break
 		}
-		btl := arena.CurrentBattle()
 		if len(payload) == 0 {
 			gamelog.L.Warn().Bytes("payload", payload).Err(err).Msg("empty game client payload")
 			continue
@@ -939,114 +969,151 @@ func (arena *Arena) start() {
 			msg := &BattleMsg{}
 			err := json.Unmarshal(data, msg)
 			if err != nil {
-				gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message")
+				gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
 				continue
 			}
 
-			L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(mt)).Str("battleCommand", msg.BattleCommand).Logger()
-			L.Info().Msg("game client message received")
-
-			switch msg.BattleCommand {
-			case "BATTLE:MAP_DETAILS":
-				var dataPayload *MapDetailsPayload
-				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
-					continue
-				}
-
-				// update map detail
-				btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
-			case "BATTLE:START":
-				var dataPayload *BattleStartPayload
-				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
-					continue
-				}
-
-				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
-				if err != nil {
-					L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
-				}
-
-				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-					L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
-				}
-
-				err = btl.preIntro(dataPayload)
-				if err != nil {
-					L.Error().Msg("battle start load out has failed")
-					return
-				}
-				battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
-				arena.NewBattleChan <- battleInfo
-			case "BATTLE:OUTRO_FINISHED":
-				arena.beginBattle()
-			case "BATTLE:INTRO_FINISHED":
-				btl.start()
-			case "BATTLE:WAR_MACHINE_DESTROYED":
-				// do not process, if battle already ended
-				if btl.stage.Load() == BattleStageEnd {
-					continue
-				}
-
-				var dataPayload BattleWMDestroyedPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-					continue
-				}
-				btl.Destroyed(&dataPayload)
-			case "BATTLE:WAR_MACHINE_PICKUP":
-				// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
-			case "BATTLE:END":
-				// set battle stage
+			// set battle stage to end when receive "battle:end" message
+			btl := arena.CurrentBattle()
+			if btl != nil && msg.BattleCommand == "BATTLE:END" {
 				btl.stage.Store(BattleStageEnd)
-
-				var dataPayload *BattleEndPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
-					continue
-				}
-				btl.end(dataPayload)
-			case "BATTLE:AI_SPAWNED":
-				var dataPayload *AISpawnedRequest
-				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
-					continue
-				}
-				err = btl.AISpawned(dataPayload)
-				if err != nil {
-					L.Error().Err(err).Msg("failed to spawn ai")
-				}
-			case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
-				var dataPayload *AbilityMoveCommandCompletePayload
-				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
-					continue
-				}
-				err = btl.UpdateWarMachineMoveCommand(dataPayload)
-				if err != nil {
-					L.Error().Err(err).Msg("failed update war machine move command")
-				}
-			case "BATTLE:ZONE_CHANGE":
-				var dataPayload *ZoneChangePayload
-				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
-					L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
-					continue
-				}
-
-				err = btl.ZoneChange(dataPayload)
-				if err != nil {
-					L.Error().Err(err).Msg("failed to zone change")
-				}
-			default:
-				L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 			}
-			L.Debug().Msg("game client message handled")
+			// handle message through channel
+			arena.gameClientJsonDataChan <- data
 		case Tick:
-			btl.Tick(payload)
+			if btl := arena.CurrentBattle(); btl != nil && btl.stage.Load() == BattleStageStart {
+				btl.Tick(payload)
+			}
+
 		default:
 			gamelog.L.Warn().Str("message_type", string(mt)).Str("msg", string(payload)).Err(err).Msg("Battle Arena WS: no message response")
 		}
+	}
+}
+
+func (arena *Arena) GameClientJsonDataParser() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on GameClientJsonDataParser!", r)
+		}
+	}()
+	for {
+		data := <-arena.gameClientJsonDataChan
+		msg := &BattleMsg{}
+		err := json.Unmarshal(data, msg)
+		if err != nil {
+			gamelog.L.Warn().Str("msg", string(data)).Err(err).Msg("unable to unmarshal battle message")
+			continue
+		}
+
+		btl := arena.CurrentBattle()
+		if btl == nil && msg.BattleCommand != "BATTLE:OUTRO_FINISHED" {
+			gamelog.L.Warn().Msg("current battle has already been cleaned up")
+			continue
+		}
+
+		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
+		L.Info().Msg("game client message received")
+
+		switch msg.BattleCommand {
+		case "BATTLE:MAP_DETAILS":
+			var dataPayload *MapDetailsPayload
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
+				continue
+			}
+
+			// update map detail
+			btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
+
+			err = btl.setBattleQueue()
+			if err != nil {
+				L.Error().Msg("battle start load out has failed")
+				return
+			}
+
+		case "BATTLE:START":
+			var dataPayload *BattleStartPayload
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
+				continue
+			}
+
+			gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
+			if err != nil {
+				L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+			}
+
+			if gameClientBuildNo < arena.gameClientMinimumBuildNo {
+				L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+			}
+
+			err = btl.preIntro(dataPayload)
+			if err != nil {
+				L.Error().Msg("battle start load out has failed")
+				return
+			}
+			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
+		case "BATTLE:OUTRO_FINISHED":
+			arena.beginBattle()
+		case "BATTLE:INTRO_FINISHED":
+			btl.start()
+		case "BATTLE:WAR_MACHINE_DESTROYED":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload BattleWMDestroyedPayload
+			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.Destroyed(&dataPayload)
+		case "BATTLE:WAR_MACHINE_PICKUP":
+			// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
+		case "BATTLE:END":
+			var dataPayload *BattleEndPayload
+			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
+				continue
+			}
+			btl.end(dataPayload)
+		case "BATTLE:AI_SPAWNED":
+			var dataPayload *AISpawnedRequest
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
+				continue
+			}
+			err = btl.AISpawned(dataPayload)
+			if err != nil {
+				L.Error().Err(err).Msg("failed to spawn ai")
+			}
+		case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
+			var dataPayload *AbilityMoveCommandCompletePayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
+				continue
+			}
+			err = btl.UpdateWarMachineMoveCommand(dataPayload)
+			if err != nil {
+				L.Error().Err(err).Msg("failed update war machine move command")
+			}
+		case "BATTLE:ZONE_CHANGE":
+			var dataPayload *ZoneChangePayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
+				continue
+			}
+
+			err = btl.ZoneChange(dataPayload)
+			if err != nil {
+				L.Error().Err(err).Msg("failed to zone change")
+			}
+		default:
+			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
+		}
+		L.Debug().Msg("game client message handled")
 	}
 }
 
@@ -1062,6 +1129,14 @@ func (arena *Arena) beginBattle() {
 	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.DeletedAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
+	}
+
+	// delete all the mech ability trigger logs
+	_, err = boiler.MechAbilityTriggerLogs(
+		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechAbilityTriggerLogColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
 	}
 
 	gm, err := db.GameMapGetRandom(false)

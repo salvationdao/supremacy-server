@@ -30,6 +30,7 @@ type MechAbilityTriggerLog struct {
 	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	BattleNumber  int       `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
 
 	R *mechAbilityTriggerLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechAbilityTriggerLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +44,7 @@ var MechAbilityTriggerLogColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	BattleNumber  string
 }{
 	ID:            "id",
 	TriggeredByID: "triggered_by_id",
@@ -51,6 +53,7 @@ var MechAbilityTriggerLogColumns = struct {
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
+	BattleNumber:  "battle_number",
 }
 
 var MechAbilityTriggerLogTableColumns = struct {
@@ -61,6 +64,7 @@ var MechAbilityTriggerLogTableColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	BattleNumber  string
 }{
 	ID:            "mech_ability_trigger_logs.id",
 	TriggeredByID: "mech_ability_trigger_logs.triggered_by_id",
@@ -69,6 +73,7 @@ var MechAbilityTriggerLogTableColumns = struct {
 	CreatedAt:     "mech_ability_trigger_logs.created_at",
 	UpdatedAt:     "mech_ability_trigger_logs.updated_at",
 	DeletedAt:     "mech_ability_trigger_logs.deleted_at",
+	BattleNumber:  "mech_ability_trigger_logs.battle_number",
 }
 
 // Generated where
@@ -81,6 +86,7 @@ var MechAbilityTriggerLogWhere = struct {
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
+	BattleNumber  whereHelperint
 }{
 	ID:            whereHelperstring{field: "\"mech_ability_trigger_logs\".\"id\""},
 	TriggeredByID: whereHelperstring{field: "\"mech_ability_trigger_logs\".\"triggered_by_id\""},
@@ -89,6 +95,7 @@ var MechAbilityTriggerLogWhere = struct {
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"mech_ability_trigger_logs\".\"deleted_at\""},
+	BattleNumber:  whereHelperint{field: "\"mech_ability_trigger_logs\".\"battle_number\""},
 }
 
 // MechAbilityTriggerLogRels is where relationship names are stored.
@@ -118,9 +125,9 @@ func (*mechAbilityTriggerLogR) NewStruct() *mechAbilityTriggerLogR {
 type mechAbilityTriggerLogL struct{}
 
 var (
-	mechAbilityTriggerLogAllColumns            = []string{"id", "triggered_by_id", "mech_id", "game_ability_id", "created_at", "updated_at", "deleted_at"}
+	mechAbilityTriggerLogAllColumns            = []string{"id", "triggered_by_id", "mech_id", "game_ability_id", "created_at", "updated_at", "deleted_at", "battle_number"}
 	mechAbilityTriggerLogColumnsWithoutDefault = []string{"triggered_by_id", "mech_id", "game_ability_id"}
-	mechAbilityTriggerLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	mechAbilityTriggerLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at", "battle_number"}
 	mechAbilityTriggerLogPrimaryKeyColumns     = []string{"id"}
 	mechAbilityTriggerLogGeneratedColumns      = []string{}
 )

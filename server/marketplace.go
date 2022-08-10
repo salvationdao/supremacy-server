@@ -171,6 +171,7 @@ const (
 type MechArenaInfo struct {
 	Status        MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
 	QueuePosition int64           `json:"queue_position"`
+	CanDeploy     bool            `json:"can_deploy"`
 }
 
 type MarketplaceEvent struct {

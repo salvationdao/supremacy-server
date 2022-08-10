@@ -642,11 +642,13 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if opts.ExcludeDamagedMech {
 		queryMods = append(queryMods, qm.Where(
 			fmt.Sprintf(
-				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
+				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s * 2 < %s)",
 				boiler.TableNames.RepairCases,
 				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
 				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.CompletedAt),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRepaired),
+				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRequiredRepair),
 			),
 		))
 	}

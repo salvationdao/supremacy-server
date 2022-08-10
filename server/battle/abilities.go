@@ -8,6 +8,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"math/rand"
 	"server"
 	"server/benchmark"
@@ -202,17 +203,6 @@ func (ld *LocationDeciders) maxSelectorCount() int {
 	return len(ld.currentDeciders)
 }
 
-func (ld *LocationDeciders) store(factionID string, userID string) {
-	ld.Lock()
-	defer ld.Unlock()
-
-	if _, ok := ld.m[factionID]; !ok {
-		return
-	}
-
-	ld.m[factionID] = append(ld.m[factionID], userID)
-}
-
 func (ld *LocationDeciders) length(factionID string) int {
 	ld.RLock()
 	defer ld.RUnlock()
@@ -223,9 +213,14 @@ func (ld *LocationDeciders) length(factionID string) int {
 	return 0
 }
 
-func (ld *LocationDeciders) setSelector(playerID string) {
+func (ld *LocationDeciders) setSelector(factionID string, playerID string) {
 	ld.Lock()
 	defer ld.Unlock()
+
+	if _, ok := ld.m[factionID]; !ok {
+		return
+	}
+	ld.m[factionID] = append(ld.m[factionID], playerID)
 
 	ld.currentDeciders[playerID] = true
 }
@@ -281,6 +276,7 @@ type AbilityConfig struct {
 	BattleAbilityLocationSelectDuration time.Duration
 	AdvanceAbilityShowUpUntilSeconds    int
 	AdvanceAbilityLabel                 string
+	FirstAbilityLabel                   string
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -303,6 +299,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
 				AdvanceAbilityShowUpUntilSeconds:    db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
+				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
 		},
 		isClosed:           atomic.Bool{},
@@ -318,7 +315,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	// init battle ability
-	_, err := as.SetNewBattleAbility()
+	_, err := as.SetNewBattleAbility(true)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set up battle ability")
 		return nil
@@ -331,7 +328,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 }
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
-func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
+func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 	if !AbilitySystemIsAvailable(as) {
 		return 30, terror.Error(fmt.Errorf("ability system is closed"), "Ability system is closed.")
 	}
@@ -361,6 +358,11 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	as.BattleAbilityPool.Lock()
 	defer as.BattleAbilityPool.Unlock()
 
+	firstAbilityLabel := as.BattleAbilityPool.config.FirstAbilityLabel
+	if !isFirst {
+		firstAbilityLabel = ""
+	}
+
 	excludedAbility := as.BattleAbilityPool.config.AdvanceAbilityLabel
 	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.AdvanceAbilityShowUpUntilSeconds {
 		// bring in advance battle ability
@@ -368,7 +370,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	}
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(excludedAbility)
+	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, excludedAbility)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 30, err
@@ -526,7 +528,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				// get another ability if no one opt in
 				if as.BattleAbilityPool.LocationDeciders.maxSelectorCount() == 0 {
 					// set new battle ability
-					cooldownSecond, err := as.SetNewBattleAbility()
+					cooldownSecond, err := as.SetNewBattleAbility(false)
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 					}
@@ -575,7 +577,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
+				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 				}
@@ -714,7 +716,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			// enter cool down, when every selector fire the ability
 			if !as.BattleAbilityPool.LocationDeciders.hasSelector() {
 				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
+				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to set new battle ability")
 				}
@@ -775,8 +777,7 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 	rand.Shuffle(len(bao), func(i, j int) { bao[i], bao[j] = bao[j], bao[i] })
 
 	// get maximum selector count
-	rand.Seed(time.Now().UnixNano())
-	maximumCommanderCount := 1 + rand.Intn(as.BattleAbilityPool.BattleAbility.MaximumCommanderCount)
+	maximumCommanderCount := as.BattleAbilityPool.BattleAbility.MaximumCommanderCount
 
 	wg := sync.WaitGroup{}
 	for factionID := range as.BattleAbilityPool.LocationDeciders.m {
@@ -792,41 +793,22 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 					continue
 				}
 
-				// check user is banned
-				isBanned := false
-				for _, pb := range pbs {
-					if pb.BannedPlayerID == ba.PlayerID {
-						isBanned = true
-						break
-					}
-				}
-
 				// skip, if player is banned
-				if isBanned {
+				if slices.IndexFunc(pbs, func(pb *boiler.PlayerBan) bool { return pb.BannedPlayerID == ba.PlayerID }) >= 0 {
 					continue
 				}
 
 				// check player is inactive (no mouse movement)
-				exist := false
-				for _, ap := range aps {
-					if ap.PlayerID == ba.PlayerID {
-						exist = true
-						break
-					}
-				}
-
-				// skip, if player is inactive
-				if !exist {
+				if slices.IndexFunc(aps, func(ap *boiler.PlayerActiveLog) bool { return ap.PlayerID == ba.PlayerID }) == -1 {
 					continue
 				}
 
 				// set location decider list
-				as.BattleAbilityPool.LocationDeciders.setSelector(ba.PlayerID)
+				as.BattleAbilityPool.LocationDeciders.setSelector(ba.FactionID, ba.PlayerID)
 
-				// check limit is reached
-				as.BattleAbilityPool.LocationDeciders.store(ba.FactionID, ba.PlayerID)
+				// exit, if maximum reached
 				if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) >= maximumCommanderCount {
-					continue
+					break
 				}
 			}
 

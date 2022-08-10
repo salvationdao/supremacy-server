@@ -33,6 +33,7 @@ type BlueprintPlayerAbility struct {
 	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	RarityWeight        int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
 	InventoryLimit      int       `boiler:"inventory_limit" boil:"inventory_limit" json:"inventory_limit" toml:"inventory_limit" yaml:"inventory_limit"`
+	CooldownSeconds     int       `boiler:"cooldown_seconds" boil:"cooldown_seconds" json:"cooldown_seconds" toml:"cooldown_seconds" yaml:"cooldown_seconds"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -50,6 +51,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	CreatedAt           string
 	RarityWeight        string
 	InventoryLimit      string
+	CooldownSeconds     string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -62,6 +64,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	CreatedAt:           "created_at",
 	RarityWeight:        "rarity_weight",
 	InventoryLimit:      "inventory_limit",
+	CooldownSeconds:     "cooldown_seconds",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -76,6 +79,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	CreatedAt           string
 	RarityWeight        string
 	InventoryLimit      string
+	CooldownSeconds     string
 }{
 	ID:                  "blueprint_player_abilities.id",
 	GameClientAbilityID: "blueprint_player_abilities.game_client_ability_id",
@@ -88,6 +92,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	CreatedAt:           "blueprint_player_abilities.created_at",
 	RarityWeight:        "blueprint_player_abilities.rarity_weight",
 	InventoryLimit:      "blueprint_player_abilities.inventory_limit",
+	CooldownSeconds:     "blueprint_player_abilities.cooldown_seconds",
 }
 
 // Generated where
@@ -104,6 +109,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	CreatedAt           whereHelpertime_Time
 	RarityWeight        whereHelperint
 	InventoryLimit      whereHelperint
+	CooldownSeconds     whereHelperint
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -116,6 +122,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
 	RarityWeight:        whereHelperint{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
 	InventoryLimit:      whereHelperint{field: "\"blueprint_player_abilities\".\"inventory_limit\""},
+	CooldownSeconds:     whereHelperint{field: "\"blueprint_player_abilities\".\"cooldown_seconds\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -145,9 +152,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )

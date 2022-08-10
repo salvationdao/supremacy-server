@@ -31,6 +31,7 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRegister, api.RepairAgentRegister)
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
+	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
 }
 
 func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -237,10 +238,10 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	}
 
 	//  broadcast to repair offer market
-	ws.PublishMessage("/public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
-	ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-	ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+	ws.PublishMessage("/secure_public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
+	ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+	ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 
 	reply(true)
 
@@ -427,8 +428,8 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	}
 
 	if sro != nil {
-		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
-		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+		ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
+		ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 	}
 
 	return nil
@@ -456,11 +457,17 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	// skip, if it is an initial block
+	if req.Payload.Score == 0 {
+		reply(false)
+		return nil
+	}
+
 	switch req.Payload.TriggerWith {
 	case boiler.RepairTriggerWithTypeSPACE_BAR, boiler.RepairTriggerWithTypeLEFT_CLICK, boiler.RepairTriggerWithTypeTOUCH:
 	default:
 		gamelog.L.Debug().Str("repair agent id", req.Payload.RepairAgentID).Msg("Unknown trigger type is detected.")
-		return nil
+		return terror.Error(fmt.Errorf("invalid trigger type"), "Unknown trigger type is detected.")
 	}
 
 	// log record
@@ -478,6 +485,10 @@ func (api *API) RepairAgentRecord(ctx context.Context, user *boiler.Player, key 
 		return terror.Error(err, "Failed to insert repair agent request")
 	}
 
+	if req.Payload.IsFailed {
+		reply(false)
+		return nil
+	}
 	reply(true)
 
 	return nil
@@ -493,6 +504,9 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
 		return nil
 	}
+	L := gamelog.L.With().Str("func", "RepairAgentComplete").Interface("user", user).Logger()
+
+	time.Sleep(1 * time.Second)
 
 	req := &RepairAgentCompleteRequest{}
 	err := json.Unmarshal(payload, req)
@@ -500,31 +514,32 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	ra, err := boiler.FindRepairAgent(gamedb.StdConn, req.Payload.RepairAgentID)
+	L = L.With().Interface("payload", req.Payload).Logger()
+
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(req.Payload.RepairAgentID),
+		qm.Load(boiler.RepairAgentRels.RepairOffer),
+	).One(gamedb.StdConn)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to find repair agent")
 		return terror.Error(err, "Failed to load repair agent.")
 	}
 
+	L = L.With().Interface("repair agent", ra).Logger()
+
 	if ra.PlayerID != user.ID {
+		L.Error().Err(err).Msg(" wrong repair agent")
 		return terror.Error(fmt.Errorf("agnet id not match"), "Repair agent id mismatch")
 	}
 
 	if ra.FinishedAt.Valid {
+		L.Error().Err(err).Msg("already finished")
 		return terror.Error(fmt.Errorf("agent finalised"), "This repair agent is already finalised.")
 	}
 
-	// log path
-	ral, err := boiler.RepairAgentLogs(
-		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
-		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
-	).All(gamedb.StdConn)
+	err = BlockStackingGameVerification(ra)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("repair agent id", ra.ID).Msg("Failed to log mini-game records.")
-		return terror.Error(err, "Failed to load repair records.")
-	}
-
-	err = BlockStackingGameVerification(ra, ral)
-	if err != nil {
+		L.Error().Err(err).Msg("failed BlockStackingGameVerification")
 		return err
 	}
 
@@ -536,6 +551,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 	err = rb.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
+		L.Warn().Err(err).Msg("unable to write block")
 		if err.Error() == "unable to write block" {
 			return terror.Error(err, "repair offer is already closed.")
 		}
@@ -546,63 +562,82 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	// check repair case after insert
 	rc, err := ra.RepairCase().One(gamedb.StdConn)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to load repair case")
 		return terror.Error(err, "Failed to load repair case.")
 	}
 
-	// claim sups
-	ro, err := db.RepairOfferDetail(ra.RepairOfferID)
-	if err != nil {
-		return terror.Error(err, "Failed to load repair offer")
-	}
+	L = L.With().Interface("repair case", rc).Logger()
 
-	// if it is not a self offer, pay the agent
-	if ro.OfferedByID.Valid && ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
-		// claim reward
-		payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-			Amount:               ro.SupsWorthPerBlock.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupRepair),
-			Description:          "claim repair offer reward.",
-		})
+	// if it is not a self repair
+	if ra.R.RepairOffer.OfferedByID.Valid {
+		// claim sups
+		ro, err := db.RepairOfferDetail(ra.RepairOfferID)
 		if err != nil {
-			gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", ro.SupsWorthPerBlock.StringFixed(0)).Err(err).Msg("Failed to pay sups for offering repair job")
-			return terror.Error(err, "Failed to pay sups for offering repair job.")
+			L.Error().Err(err).Msg("failed to load repair offer")
+			return terror.Error(err, "Failed to load repair offer")
 		}
 
-		ra.PayoutTXID = null.StringFrom(payoutTXID)
-		_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
-		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("repair agent", ra).
-				Msg("Failed to update repair agent payout tx id")
+		L = L.With().Interface("repair offer", ro).Logger()
+
+		// if it is not a self offer, pay the agent
+		if ro.SupsWorthPerBlock.GreaterThan(decimal.Zero) {
+			// claim reward
+			payoutTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+				ToUserID:             uuid.Must(uuid.FromString(user.ID)),
+				Amount:               ro.SupsWorthPerBlock.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("claim_repair_offer_reward|%s|%d", ro.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupRepair),
+				Description:          "claim repair offer reward.",
+			})
+			if err != nil {
+				L.Error().Err(err).Msg("failed to pay sups for offering repair job")
+				return terror.Error(err, "Failed to pay sups for offering repair job.")
+			}
+
+			ra.PayoutTXID = null.StringFrom(payoutTXID)
+			_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.PayoutTXID))
+			if err != nil {
+				L.Error().Err(err).Msg("failed to update repair agent payout tx id")
+			}
+
 		}
 
+		// broadcast result if repair is not completed
+		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
+			ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
+			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
+		}
 	}
 
 	// broadcast result if repair is not completed
 	if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-		ws.PublishMessage(fmt.Sprintf("/public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-		ws.PublishMessage("/public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-		if ro.OfferedByID.Valid {
-			ws.PublishMessage(fmt.Sprintf("/public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
-		}
-		ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+		canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 
+		totalBlocks := db.TotalRepairBlocks(rc.MechID)
+
+		// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
+		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
+			go BroadcastMechQueueStat(rc.MechID)
+		}
+		ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		reply(true)
 		return nil
 	}
 
 	// clean up repair case if repair is completed
-	ws.PublishMessage(fmt.Sprintf("/public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+
+	// broadcast current mech stat
+	go BroadcastMechQueueStat(rc.MechID)
 
 	// close repair case
 	rc.CompletedAt = null.TimeFrom(time.Now())
 	_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to update repair case.")
+		L.Error().Err(err).Msg("failed to update repair case")
 		return terror.Error(err, "Failed to close repair case.")
 	}
 
@@ -611,6 +646,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		boiler.RepairOfferWhere.ClosedAt.IsNull(),
 	).All(gamedb.StdConn)
 	if err != nil {
+		L.Error().Err(err).Msg("failed to load incomplete repair offer")
 		return terror.Error(err, "Failed to load incomplete repair offer")
 	}
 
@@ -630,40 +666,93 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 	return nil
 }
 
-func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairAgentLog) error {
+// BroadcastMechQueueStat broadcast current mech queue stat
+func BroadcastMechQueueStat(mechID string) {
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+		qm.Load(boiler.CollectionItemRels.Owner),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return
+	}
+
+	if ci != nil && ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
+		owner := ci.R.Owner
+		queueDetails, err := db.MechArenaStatus(owner.ID, mechID, owner.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), battle.WSPlayerAssetMechQueueSubscribe, queueDetails)
+	}
+}
+
+func BlockStackingGameVerification(ra *boiler.RepairAgent) error {
+	// log path
+	gps, err := ra.RepairAgentLogs(
+		boiler.RepairAgentLogWhere.RepairAgentID.EQ(ra.ID),
+		boiler.RepairAgentLogWhere.Score.GT(0),
+		qm.OrderBy(boiler.RepairAgentLogColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to log mini-game records")
+		return terror.Error(err, "Failed to load repair records.")
+	}
+
 	startTime := ra.StartedAt
 	endTime := time.Now()
 
+	failedRate := db.GetDecimalWithDefault(db.KeyRepairMiniGameFailedRate, decimal.NewFromFloat(0.25))
+
 	// check each pattern is within the time frame
-	lastScore := 0
-	failedLastTime := false
-	lastStackAt := time.Now()
+	failedCount := 0
+
+	prevScore := 0
 	totalStack := 0
+	lastStackFailed := false
 	for i, gp := range gps {
 		if i > 0 {
-			// 1. last score need to be greater than current score
-			// 2. if last challenge failed, current score need to be zero
-			if gp.Score <= lastScore && (gp.Score != lastScore || !gp.IsFailed) && (gp.Score != 0 || !failedLastTime) {
-				return terror.Error(fmt.Errorf("invalid game score"), "Invalid game pattern detected.")
+			// valid score pattern
+			// 1. current score equal to previous score + 1
+			// 2. current score equal to previous score, and current stack is failed
+			// 3. current score equal to 1, and last stack failed
+
+			isValidScorePattern := false
+			if gp.Score == prevScore+1 {
+				// meet RULE 1
+				isValidScorePattern = true
+
+			} else if gp.Score == prevScore && gp.IsFailed {
+				// meet RULE 2
+				isValidScorePattern = true
+
+			} else if gp.Score == 1 && lastStackFailed {
+				// meet RULE 3
+				isValidScorePattern = true
+
 			}
 
-			if !lastStackAt.Before(gp.CreatedAt) {
-				return terror.Error(fmt.Errorf("invalid stack time"), "Invalid game pattern detected.")
+			// if score pattern does not match
+			if !isValidScorePattern {
+				gamelog.L.Debug().Interface("current stack", gp).Int("prev score", prevScore).Msg("Invalid game pattern detected")
+				return terror.Error(fmt.Errorf("invalid game score, current score: %d, prev score: %d, current failed: %v, agent id: %s", gp.Score, prevScore, gp.IsFailed, gp.RepairAgentID), "Invalid game pattern detected.")
 			}
-
 		}
 
 		// set initial score and failed stat
-		lastScore = gp.Score
-		failedLastTime = gp.IsFailed
-		lastStackAt = gp.CreatedAt
+		prevScore = gp.Score
+		lastStackFailed = gp.IsFailed
 
 		if gp.CreatedAt.Before(startTime) || gp.CreatedAt.After(endTime) {
-			return terror.Error(fmt.Errorf("pattern is outside of time frame"), "Invalid game pattern detected.")
+			gamelog.L.Debug().Time("current stack time", gp.CreatedAt).Time("start time", startTime).Time("end time", endTime).Msg("Invalid game pattern detected")
+			return terror.Error(fmt.Errorf("pattern is outside of time frame, stack time: %v, start time: %v, end time: %v, agent id: %s", gp.CreatedAt, startTime, endTime, gp.RepairAgentID), "Game stack is outside of the time frame.")
 		}
 
-		// reduce the invalid score
-		if gp.IsFailed || gp.Score == 0 {
+		// increase failed count, if failed
+		if gp.IsFailed {
+			failedCount += 1
 			continue
 		}
 
@@ -671,10 +760,73 @@ func BlockStackingGameVerification(ra *boiler.RepairAgent, gps []*boiler.RepairA
 		totalStack += 1
 	}
 
+	// if player failed 25% of the clicks
+	if decimal.NewFromInt(int64(failedCount)).GreaterThanOrEqual(decimal.NewFromInt(int64(ra.RequiredStacks)).Mul(failedRate)) {
+		return terror.Error(fmt.Errorf("stack failed"), "Too many failed stacks.")
+	}
+
 	// check the stack amount match
-	if totalStack != ra.RequiredStacks {
+	if totalStack < ra.RequiredStacks {
+		gamelog.L.Warn().
+			Err(fmt.Errorf("stack not complete")).
+			Int("totalStack", totalStack).
+			Int("requiredStacks", ra.RequiredStacks).
+			Interface("gps", gps).
+			Interface("repair agent", ra).
+			Msg("totalStack less than required stacks")
 		return terror.Error(fmt.Errorf("stack not complete"), "The task is not completed.")
 	}
+
+	return nil
+}
+
+type RepairAgentAbandonRequest struct {
+	Payload struct {
+		RepairAgentID string `json:"repair_agent_id"`
+	} `json:"payload"`
+}
+
+func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	if mechRepairAgentBucket.Add(user.ID, 1) == 0 {
+		return nil
+	}
+	L := gamelog.L.With().Str("func", "RepairAgentAbandon").Interface("user", user).Logger()
+
+	req := &RepairAgentAbandonRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	ra, err := boiler.RepairAgents(
+		boiler.RepairAgentWhere.ID.EQ(req.Payload.RepairAgentID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load repair agent")
+	}
+
+	if ra.PlayerID != user.ID {
+		return terror.Error(fmt.Errorf("player not match"), "Player does not match")
+	}
+
+	if ra.FinishedAt.Valid {
+		return terror.Error(fmt.Errorf("repair agent is already closed"), "Repair agent is already closed.")
+	}
+
+	ra.FinishedAt = null.TimeFrom(time.Now())
+	ra.FinishedReason = null.StringFrom(boiler.RepairAgentFinishReasonABANDONED)
+	_, err = ra.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairAgentColumns.FinishedAt, boiler.RepairAgentColumns.FinishedReason))
+	if err != nil {
+		L.Error().Err(err).Interface("repair agent", ra).Msg("Failed to close repair agent.")
+		return terror.Error(err, "Failed to abandon the repair agent.")
+	}
+
+	err = api.broadcastRepairOffer(ra.RepairOfferID)
+	if err != nil {
+		return err
+	}
+
+	reply(true)
 
 	return nil
 }
