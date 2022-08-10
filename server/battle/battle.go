@@ -136,40 +136,42 @@ func (btl *Battle) setBattleQueue() error {
 			l.Error().Err(err).Msg("unable to delete delete stale battle histories from database")
 		}
 
-	} else {
-		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+		return nil
+	}
+
+	// otherwise, insert new battle
+	err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		l.Error().Err(err).Msg("unable to insert Battle into database")
+		return err
+	}
+
+	gamelog.L.Debug().Msg("Inserted battle into db")
+	btl.inserted = true
+
+	// insert current users to
+	btl.users.Range(func(user *BattleUser) bool {
+		err = db.BattleViewerUpsert(btl.ID, user.ID.String())
 		if err != nil {
-			l.Error().Err(err).Msg("unable to insert Battle into database")
-			return err
-		}
-
-		gamelog.L.Debug().Msg("Inserted battle into db")
-		btl.inserted = true
-
-		// insert current users to
-		btl.users.Range(func(user *BattleUser) bool {
-			err = db.BattleViewerUpsert(btl.ID, user.ID.String())
-			if err != nil {
-				l.Error().Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
-				return true
-			}
+			l.Error().Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
 			return true
-		})
-
-		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
-		if err != nil {
-			l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
-			return err
 		}
+		return true
+	})
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
+	if err != nil {
+		l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
+		return err
+	}
 
-		// check mech join battle quest for each mech owner
-		for _, wm := range btl.WarMachines {
-			btl.arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
-		}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+
+	// check mech join battle quest for each mech owner
+	for _, wm := range btl.WarMachines {
+		btl.arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
 
 	return nil

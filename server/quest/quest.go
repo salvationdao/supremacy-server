@@ -37,7 +37,7 @@ func New() *System {
 }
 
 func (q *System) Run() {
-	regenerateTicker := time.NewTicker(3 * time.Second)
+	regenerateTicker := time.NewTicker(5 * time.Second)
 
 	for {
 		select {
@@ -129,7 +129,6 @@ func regenerateQuest() {
 			}
 		}()
 	}
-
 }
 
 func playerQuestGrant(playerID string, questID string) error {
