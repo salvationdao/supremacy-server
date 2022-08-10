@@ -26,14 +26,19 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest) bool
 }
 
-func New() *System {
+func New() (*System, error) {
 	q := &System{
 		playerQuestChan: make(chan *playerQuestCheck, 50),
 	}
 
+	err := regenExpiredQuest()
+	if err != nil {
+		return nil, err
+	}
+
 	go q.Run()
 
-	return q
+	return q, nil
 }
 
 func (q *System) Run() {
@@ -42,13 +47,16 @@ func (q *System) Run() {
 	for {
 		select {
 		case <-regenerateTicker.C:
-			regenerateQuest()
+			err := regenExpiredQuest()
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to regen new quest")
+			}
 		case pqc := <-q.playerQuestChan:
 			l := gamelog.L.With().Str("quest key", pqc.questKey).Str("player id", pqc.playerID).Logger()
 			// get all the ability related quests
 			pqs, err := boiler.Quests(
 				boiler.QuestWhere.Key.EQ(pqc.questKey),
-				boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
+				boiler.QuestWhere.ExpiresAt.GT(time.Now()), // impact by quest regen
 			).All(gamedb.StdConn)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get quest")
@@ -81,54 +89,68 @@ func (q *System) Run() {
 	}
 }
 
-// regenerateQuest check expired quest and regenerate new quest for it
-func regenerateQuest() {
-	pqs, err := boiler.Quests(
+// regenExpiredQuest check expired quest and regenerate new quest for it
+func regenExpiredQuest() error {
+	now := time.Now()
+	l := gamelog.L.With().Str("func name", "regenExpiredQuest()").Logger()
+
+	quests, err := boiler.Quests(
+		boiler.QuestWhere.Repeatable.EQ(true),
+		boiler.QuestWhere.ExpiresAt.LTE(now),
 		boiler.QuestWhere.NextQuestID.IsNull(),
-		boiler.QuestWhere.EndedAt.IsNotNull(),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to load ended quest.")
-		return
+		l.Error().Err(err).Msg("Failed to query expired quests")
+		return terror.Error(err, "Failed to load expired quests")
 	}
 
-	for _, pq := range pqs {
+	for _, pq := range quests {
 		newQuest := &boiler.Quest{
 			Name:          pq.Name,
 			Key:           pq.Key,
 			Description:   pq.Description,
 			RequestAmount: pq.RequestAmount,
+			ExpiresAt:     now.AddDate(0, 0, pq.LastForDays),
+			LastForDays:   pq.LastForDays,
+			Repeatable:    true,
 		}
 
-		func() {
+		err = func() error {
 			tx, err := gamedb.StdConn.Begin()
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to start db transaction")
-				return
+				l.Error().Err(err).Msg("Failed to start db transaction")
+				return terror.Error(err, "Failed to start db transaction")
 			}
 
 			defer tx.Rollback()
 
 			err = newQuest.Insert(tx, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().Err(err).Interface("quest", newQuest).Msg("Failed to insert new quest")
-				return
+				l.Error().Err(err).Interface("quest", newQuest).Msg("Failed to insert new quest")
+				return terror.Error(err, "Failed to insert new quest")
 			}
 
 			pq.NextQuestID = null.StringFrom(newQuest.ID)
 			_, err = pq.Update(tx, boil.Whitelist(boiler.QuestColumns.NextQuestID))
 			if err != nil {
-				gamelog.L.Error().Err(err).Interface("involved quest", pq).Msg("Failed to update next quest id column")
-				return
+				l.Error().Err(err).Interface("involved quest", pq).Msg("Failed to update next quest id column")
+				return terror.Error(err, "Failed to update expired quest")
 			}
 
 			err = tx.Commit()
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to commit db transaction")
-				return
+				l.Error().Err(err).Msg("Failed to commit db transaction")
+				return terror.Error(err, "Failed to commit db transaction.")
 			}
+
+			return nil
 		}()
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func playerQuestGrant(playerID string, questID string) error {

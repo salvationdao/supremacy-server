@@ -28,7 +28,9 @@ type Quest struct {
 	Key           string      `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
 	Description   string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	RequestAmount int         `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
-	EndedAt       null.Time   `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
+	ExpiresAt     time.Time   `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
+	LastForDays   int         `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
+	Repeatable    bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
 	NextQuestID   null.String `boiler:"next_quest_id" boil:"next_quest_id" json:"next_quest_id,omitempty" toml:"next_quest_id" yaml:"next_quest_id,omitempty"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
@@ -44,7 +46,9 @@ var QuestColumns = struct {
 	Key           string
 	Description   string
 	RequestAmount string
-	EndedAt       string
+	ExpiresAt     string
+	LastForDays   string
+	Repeatable    string
 	NextQuestID   string
 	CreatedAt     string
 	UpdatedAt     string
@@ -55,7 +59,9 @@ var QuestColumns = struct {
 	Key:           "key",
 	Description:   "description",
 	RequestAmount: "request_amount",
-	EndedAt:       "ended_at",
+	ExpiresAt:     "expires_at",
+	LastForDays:   "last_for_days",
+	Repeatable:    "repeatable",
 	NextQuestID:   "next_quest_id",
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
@@ -68,7 +74,9 @@ var QuestTableColumns = struct {
 	Key           string
 	Description   string
 	RequestAmount string
-	EndedAt       string
+	ExpiresAt     string
+	LastForDays   string
+	Repeatable    string
 	NextQuestID   string
 	CreatedAt     string
 	UpdatedAt     string
@@ -79,7 +87,9 @@ var QuestTableColumns = struct {
 	Key:           "quests.key",
 	Description:   "quests.description",
 	RequestAmount: "quests.request_amount",
-	EndedAt:       "quests.ended_at",
+	ExpiresAt:     "quests.expires_at",
+	LastForDays:   "quests.last_for_days",
+	Repeatable:    "quests.repeatable",
 	NextQuestID:   "quests.next_quest_id",
 	CreatedAt:     "quests.created_at",
 	UpdatedAt:     "quests.updated_at",
@@ -94,7 +104,9 @@ var QuestWhere = struct {
 	Key           whereHelperstring
 	Description   whereHelperstring
 	RequestAmount whereHelperint
-	EndedAt       whereHelpernull_Time
+	ExpiresAt     whereHelpertime_Time
+	LastForDays   whereHelperint
+	Repeatable    whereHelperbool
 	NextQuestID   whereHelpernull_String
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
@@ -105,7 +117,9 @@ var QuestWhere = struct {
 	Key:           whereHelperstring{field: "\"quests\".\"key\""},
 	Description:   whereHelperstring{field: "\"quests\".\"description\""},
 	RequestAmount: whereHelperint{field: "\"quests\".\"request_amount\""},
-	EndedAt:       whereHelpernull_Time{field: "\"quests\".\"ended_at\""},
+	ExpiresAt:     whereHelpertime_Time{field: "\"quests\".\"expires_at\""},
+	LastForDays:   whereHelperint{field: "\"quests\".\"last_for_days\""},
+	Repeatable:    whereHelperbool{field: "\"quests\".\"repeatable\""},
 	NextQuestID:   whereHelpernull_String{field: "\"quests\".\"next_quest_id\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"quests\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"quests\".\"updated_at\""},
@@ -139,9 +153,9 @@ func (*questR) NewStruct() *questR {
 type questL struct{}
 
 var (
-	questAllColumns            = []string{"id", "name", "key", "description", "request_amount", "ended_at", "next_quest_id", "created_at", "updated_at", "deleted_at"}
-	questColumnsWithoutDefault = []string{"name", "key", "description", "request_amount"}
-	questColumnsWithDefault    = []string{"id", "ended_at", "next_quest_id", "created_at", "updated_at", "deleted_at"}
+	questAllColumns            = []string{"id", "name", "key", "description", "request_amount", "expires_at", "last_for_days", "repeatable", "next_quest_id", "created_at", "updated_at", "deleted_at"}
+	questColumnsWithoutDefault = []string{"name", "key", "description", "request_amount", "expires_at", "last_for_days"}
+	questColumnsWithDefault    = []string{"id", "repeatable", "next_quest_id", "created_at", "updated_at", "deleted_at"}
 	questPrimaryKeyColumns     = []string{"id"}
 	questGeneratedColumns      = []string{}
 )

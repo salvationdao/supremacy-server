@@ -364,7 +364,11 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
-					qm := quest.New()
+					qm, err := quest.New()
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
 
 					start = time.Now()
 					// initialise battle arena
