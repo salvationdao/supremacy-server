@@ -266,7 +266,7 @@ func NewArena(opts *Opts) *Arena {
 		SystemBanManager:         NewSystemBanManager(),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		NewBattleChan:            make(chan *NewBattleChan, 10),
-		RepairOfferCloseChan:     make(chan *RepairOfferClose),
+		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
 		gameClientJsonDataChan:   make(chan []byte, 3),
 	}
 
@@ -981,16 +981,23 @@ func (arena *Arena) GameClientJsonDataParser() {
 		switch msg.BattleCommand {
 		case "BATTLE:MAP_DETAILS":
 			var dataPayload *MapDetailsPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 				continue
 			}
 
 			// update map detail
 			btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
+
+			err = btl.setBattleQueue()
+			if err != nil {
+				L.Error().Msg("battle start load out has failed")
+				return
+			}
+
 		case "BATTLE:START":
 			var dataPayload *BattleStartPayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
 				continue
 			}
@@ -1009,8 +1016,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
-			battleInfo := &NewBattleChan{BattleNumber: btl.BattleNumber}
-			arena.NewBattleChan <- battleInfo
+			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":

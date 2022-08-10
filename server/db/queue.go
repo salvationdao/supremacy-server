@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"github.com/shopspring/decimal"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,20 +16,8 @@ import (
 // MechArenaStatus return mech arena status from given collection item
 func MechArenaStatus(userID string, mechID string, factionID string) (*server.MechArenaInfo, error) {
 	resp := &server.MechArenaInfo{
-		Status: server.MechArenaStatusIdle,
-	}
-
-	mrc, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.MechID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to load mech rapair stat")
-		return nil, terror.Error(err, "Failed to load mech stat")
-	}
-
-	if mrc != nil && !mrc.CompletedAt.Valid {
-		resp.Status = server.MechArenaStatusDamaged
-		return resp, nil
+		Status:    server.MechArenaStatusIdle,
+		CanDeploy: true,
 	}
 
 	// check ownership of the mech
@@ -54,6 +43,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 
 	if is != nil {
 		resp.Status = server.MechArenaStatusMarket
+		resp.CanDeploy = false
 		return resp, nil
 	}
 
@@ -69,6 +59,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	// if mech is in battle
 	if bq != nil {
 		resp.Status = server.MechArenaStatusBattle
+		resp.CanDeploy = false
 		return resp, nil
 	}
 
@@ -81,6 +72,28 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	if bqp != nil {
 		resp.Status = server.MechArenaStatusQueue
 		resp.QueuePosition = bqp.QueuePosition
+		resp.CanDeploy = false
+		return resp, nil
+	}
+
+	// check damaged
+	mrc, err := boiler.RepairCases(
+		boiler.RepairCaseWhere.MechID.EQ(mechID),
+		boiler.RepairCaseWhere.CompletedAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to load mech rapair stat")
+		return nil, terror.Error(err, "Failed to load mech stat")
+	}
+
+	if mrc != nil {
+		resp.Status = server.MechArenaStatusDamaged
+		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+		totalBlocks := TotalRepairBlocks(mrc.MechID)
+		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
+			resp.CanDeploy = false
+			return resp, nil
+		}
 	}
 
 	return resp, nil
