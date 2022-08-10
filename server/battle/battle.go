@@ -827,7 +827,7 @@ func (btl *Battle) RewardPlayerSups(player *boiler.Player, queueFee *boiler.Batt
 			l.Error().Err(err).Interface("queue fee", queueFee).Msg("Failed to update payout, tax and challenge fund transaction id")
 		}
 
-		return nil
+		return pw
 	}
 
 	// otherwise, pay battle reward to the actual player
