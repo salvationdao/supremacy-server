@@ -597,11 +597,12 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 	}
 
 	// get players per faction
-	playerPerFaction := decimal.Zero
+	playerPerFaction := make(map[string]decimal.Decimal)
 	for _, bq := range bqs {
-		if bq.FactionID != server.RedMountainFactionID {
-			continue
+		if _, ok := playerPerFaction[bq.FactionID]; !ok {
+			playerPerFaction[bq.FactionID] = decimal.Zero
 		}
+
 		// if owner is not AI
 		if bq.R != nil && bq.R.Owner != nil {
 
@@ -610,7 +611,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 				continue
 			}
 
-			playerPerFaction = playerPerFaction.Add(decimal.NewFromInt(1))
+			playerPerFaction[bq.FactionID] = playerPerFaction[bq.FactionID].Add(decimal.NewFromInt(1))
 		}
 	}
 
@@ -635,7 +636,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					pw := btl.RewardPlayerSups(
 						player,
 						bq.R.Fee,
-						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
@@ -682,7 +683,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					pw := btl.RewardPlayerSups(
 						player,
 						bq.R.Fee,
-						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
@@ -728,7 +729,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 					pw := btl.RewardPlayerSups(
 						player,
 						bq.R.Fee,
-						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
