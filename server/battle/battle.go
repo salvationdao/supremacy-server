@@ -582,8 +582,6 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		return []*PlayerReward{}, []*MechReward{}
 	}
 
-	fmt.Println(len(bqs))
-
 	totalSups := decimal.Zero
 	for _, bq := range bqs {
 		if bq.R != nil && bq.R.Fee != nil {
