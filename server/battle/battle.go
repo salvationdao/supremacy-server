@@ -594,14 +594,21 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 	}
 
 	// get players per faction
-	playerPerFaction := decimal.Zero
+	playerPerFaction := make(map[string]decimal.Decimal)
 	for _, bq := range bqs {
-		if bq.FactionID != server.RedMountainFactionID {
-			continue
+		if _, ok := playerPerFaction[bq.FactionID]; !ok {
+			playerPerFaction[bq.FactionID] = decimal.Zero
 		}
+
 		// if owner is not AI
-		if bq.R != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
-			playerPerFaction = playerPerFaction.Add(decimal.NewFromInt(1))
+		if bq.R != nil && bq.R.Owner != nil {
+
+			// skip AI player, when it is in production
+			if server.IsProductionEnv() && bq.R.Owner.IsAi {
+				continue
+			}
+
+			playerPerFaction[bq.FactionID] = playerPerFaction[bq.FactionID].Add(decimal.NewFromInt(1))
 		}
 	}
 
@@ -615,10 +622,18 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 		switch i {
 		case 0: // winning faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+					player := bq.R.Owner
+
+					// skip AI player, when it is in production
+					if server.IsProductionEnv() && player.IsAi {
+						continue
+					}
+
 					pw := btl.RewardPlayerSups(
+						player,
 						bq.R.Fee,
-						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(firstRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
@@ -654,10 +669,18 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 
 		case 1: // second faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+					player := bq.R.Owner
+
+					// skip AI player, when it is in production
+					if server.IsProductionEnv() && player.IsAi {
+						continue
+					}
+
 					pw := btl.RewardPlayerSups(
+						player,
 						bq.R.Fee,
-						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(secondRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
@@ -692,10 +715,18 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 
 		case 2: // lose faction
 			for _, bq := range bqs {
-				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil && !bq.R.Owner.IsAi {
+				if bq.FactionID == factionID && bq.R != nil && bq.R.Fee != nil && bq.R.Owner != nil {
+					player := bq.R.Owner
+
+					// skip AI player, when it is in production
+					if server.IsProductionEnv() && player.IsAi {
+						continue
+					}
+
 					pw := btl.RewardPlayerSups(
+						player,
 						bq.R.Fee,
-						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction),
+						totalSups.Mul(thirdRankSupsRewardRatio).Div(playerPerFaction[bq.FactionID]),
 						taxRatio,
 					)
 
@@ -756,8 +787,8 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) ([]*Play
 }
 
 // RewardPlayerSups reward player sups
-func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
-	playerID := queueFee.PaidByID
+func (btl *Battle) RewardPlayerSups(player *boiler.Player, queueFee *boiler.BattleQueueFee, supsReward decimal.Decimal, taxRatio decimal.Decimal) *PlayerReward {
+	playerID := player.ID
 	tax := supsReward.Mul(taxRatio)
 	challengeFund := decimal.New(1, 18)
 
@@ -765,11 +796,41 @@ func (btl *Battle) RewardPlayerSups(queueFee *boiler.BattleQueueFee, supsReward 
 
 	// record
 	pw := &PlayerReward{
-		PlayerID:     queueFee.PaidByID,
+		PlayerID:     playerID,
 		RewardedSups: supsReward,
 	}
 
-	// pay battle queue fee
+	// if player is AI, pay reward back to treasury fund, and return
+	if player.IsAi {
+		payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+			Amount:               supsReward.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          fmt.Sprintf("reward from battle #%d.", btl.BattleNumber),
+		})
+		if err != nil {
+			l.Error().Err(err).
+				Str("from", server.SupremacyBattleUserID).
+				Str("to", playerID).
+				Str("amount", supsReward.StringFixed(0)).
+				Msg("Failed to pay player battel reward")
+		}
+		queueFee.PayoutTXID = null.StringFrom(payoutTXID)
+
+		_, err = queueFee.Update(gamedb.StdConn, boil.Whitelist(
+			boiler.BattleQueueFeeColumns.PayoutTXID,
+		))
+		if err != nil {
+			l.Error().Err(err).Interface("queue fee", queueFee).Msg("Failed to update payout, tax and challenge fund transaction id")
+		}
+
+		return pw
+	}
+
+	// otherwise, pay battle reward to the actual player
 	payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		ToUserID:             uuid.Must(uuid.FromString(playerID)),
