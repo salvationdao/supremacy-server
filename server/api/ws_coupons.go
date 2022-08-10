@@ -201,8 +201,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			ci.ItemID = null.StringFrom(assignedMechCrate.ID)
 			reward := &Reward{
 				Label:       storeMechCrate.MysteryCrateType,
-				// TODO: vinnie fix me
-				//ImageURL:    assignedMechCrate.ImageURL,
+				ImageURL:    assignedMechCrate.ImageURL,
 				LockedUntil: null.TimeFrom(assignedMechCrate.LockedUntil),
 				Amount:      ci.Amount,
 			}
@@ -228,8 +227,7 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 			ci.ItemID = null.StringFrom(assignedWeaponCrate.ID)
 			reward := &Reward{
 				Label:       storeWeaponCrate.MysteryCrateType,
-				// TODO: vinnie fix me
-				//ImageURL:    assignedWeaponCrate.ImageURL,
+				ImageURL:    assignedWeaponCrate.ImageURL,
 				LockedUntil: null.TimeFrom(assignedWeaponCrate.LockedUntil),
 				Amount:      ci.Amount,
 			}

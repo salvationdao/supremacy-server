@@ -82,7 +82,7 @@ func PowerCores(id ...string) ([]*server.PowerCore, error) {
 	return powerCores, nil
 }
 
-// AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
+// AttachPowerCoreToMech attaches a power core to a mech
 func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner

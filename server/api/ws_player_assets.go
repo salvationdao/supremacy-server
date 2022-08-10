@@ -377,8 +377,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		qm.Load(qm.Rels(boiler.MechRels.ChassisSkin, boiler.MechSkinRels.Blueprint)),
 		qm.Load(boiler.MechRels.Blueprint),
 		qm.Load(qm.Rels(boiler.MechRels.Blueprint, boiler.BlueprintMechRels.Model)),
-		qm.Load(qm.Rels(boiler.MechRels.Blueprint, boiler.BlueprintMechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
 	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to load mech info")
+	}
+
+	mechSkin, err := boiler.MechModelSkinCompatibilities(
+		boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ModelID),
+		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(mech.R.ChassisSkin.BlueprintID),
+		).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load mech info")
 	}
@@ -386,29 +393,16 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	m := server.Mech{
 		ID:    mech.ID,
 		Label: mech.R.Blueprint.Label,
-	}
-
-	if mech.R.ChassisSkin != nil {
-		ms := mech.R.ChassisSkin
-		m.ChassisSkin = &server.MechSkin{
-			ID:    ms.ID,
-			Label: ms.R.Blueprint.Label,
-			//AvatarURL: ms.AvatarURL, // TODO: vinnie fix
-			//ImageURL:  ms.ImageURL,
-		}
-	} else if mech.R != nil &&
-		mech.R.Blueprint != nil &&
-		mech.R.Blueprint.R != nil &&
-		mech.R.Blueprint.R.Model != nil &&
-		mech.R.Blueprint.R.Model.R != nil &&
-		mech.R.Blueprint.R.Model.R.DefaultChassisSkin != nil {
-		ms := mech.R.Blueprint.R.Model.R.DefaultChassisSkin
-		m.ChassisSkin = &server.MechSkin{
-			ID:    ms.ID,
-			Label: ms.Label,
-			//AvatarURL: ms.AvatarURL, // TODO: vinnie fix
-			//ImageURL:  ms.ImageURL,
-		}
+		ChassisSkin: &server.MechSkin{
+			Images: &server.Images{
+				AvatarURL: mechSkin.AvatarURL,
+				ImageURL:  mechSkin.ImageURL,
+			},
+		},
+		Images: &server.Images{
+			AvatarURL: mechSkin.AvatarURL,
+			ImageURL:  mechSkin.ImageURL,
+		},
 	}
 
 	reply(m)
@@ -427,14 +421,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-		qm.InnerJoin(
-			fmt.Sprintf(
-				"%s on %s = %s",
-				boiler.TableNames.Players,
-				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			),
-		),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
@@ -482,17 +468,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	}
 
 	reply(weapon)
-	return nil
-}
-
-func (pac *PlayerAssetsControllerWS) PlayerWeaponsListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	pas, err := db.PlayerWeaponsList(user.ID)
-	if err != nil {
-		gamelog.L.Error().Str("db func", "TalliedPlayerWeaponsList").Str("userID", user.ID).Err(err).Msg("unable to get player weapons")
-		return terror.Error(err, "Unable to retrieve weapons, try again or contact support.")
-	}
-
-	reply(pas)
 	return nil
 }
 

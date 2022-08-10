@@ -58,8 +58,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		fmt.Sprintf(`%s AS "players.gid"`, qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Gid)),
 		fmt.Sprintf(`%s AS "mechs.id"`, qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 		fmt.Sprintf(`%s AS "mechs.name"`, qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name)),
-		//fmt.Sprintf(`%s "mechs.label"`, qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.la)), //todo fix me
-		//fmt.Sprintf(`%s "mech_skin.avatar_url"`, qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.)), //todo fix me
+		fmt.Sprintf(`%s "mechs.label"`, qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label)),
 		fmt.Sprintf(`%s AS "mystery_crate.id"`, qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID)),
 		fmt.Sprintf(`%s AS "mystery_crate.label"`, qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label)),
 		fmt.Sprintf(`%s AS "mystery_crate.description"`, qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Description)),
@@ -68,9 +67,8 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		qm.Rels(boiler.TableNames.StorefrontMysteryCrates, boiler.StorefrontMysteryCrateColumns.LargeImageURL),
 		qm.Rels(boiler.TableNames.StorefrontMysteryCrates, boiler.StorefrontMysteryCrateColumns.AnimationURL),
 		fmt.Sprintf(`%s AS "weapons.id"`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID)),
-		//fmt.Sprintf(`%s AS "weapons.label"`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label)),
-		//fmt.Sprintf(`%s AS "weapons.weapon_type"`, qm.Rels(boiler.TableNames.Weapons, boiler.MysteryCrateColumns.wea)), //todo fix me
-		//fmt.Sprintf(`%s AS "weapons.avatar_url"`, qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.MysteryCrateColumns.wea)), //todo fix me
+		fmt.Sprintf(`%s AS "weapons.label"`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label)),
+		fmt.Sprintf(`%s AS "weapons.weapon_type"`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponType)),
 		fmt.Sprintf(`
 		(
 			CASE
@@ -94,6 +92,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		fmt.Sprintf(`%s AS "bidder.public_address"`, qm.Rels(bidderTable, boiler.PlayerColumns.PublicAddress)),
 		fmt.Sprintf(`%s AS "bidder.gid"`, qm.Rels(bidderTable, boiler.PlayerColumns.Gid)),
 	),
+	// collection items
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -102,6 +101,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CollectionItemID),
 		),
 	),
+	// mechs
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s AND %s = ?",
@@ -112,6 +112,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeMech,
 	),
+	// mech skin
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -120,6 +121,16 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		),
 	),
+	// mech blueprint
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		),
+	),
+	// mech skin collection items
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s msc ON %s = %s AND %s = ?",
@@ -130,6 +141,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeMechSkin,
 	),
+	// mystery crate
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s AND %s = ?",
@@ -140,11 +152,13 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeMysteryCrate,
 	),
+	// storefront mystery crate (for images)
 	qm.LeftOuterJoin(fmt.Sprintf("%s ON %s = %s",
 		boiler.TableNames.StorefrontMysteryCrates,
 		qm.Rels(boiler.TableNames.StorefrontMysteryCrates, boiler.StorefrontMysteryCrateColumns.ID),
 		qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.BlueprintID),
 	)),
+	// weapons
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s AND %s = ?",
@@ -155,15 +169,25 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeWeapon,
 	),
-	// TODO: vinnie fix
-	//qm.LeftOuterJoin(
-	//	fmt.Sprintf(
-	//		"%s ON %s = %s",
-	//		boiler.TableNames.WeaponModels,
-	//		qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-	//		qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.WeaponModelID),
-	//	),
-	//),
+	// blueprint weapons
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+		),
+	),
+	// weapon model
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+		),
+	),
+	// weapon skin
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -172,6 +196,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
 		),
 	),
+	// weapon skin collection item
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s wsc ON %s = %s AND %s = ?",
@@ -182,6 +207,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 		),
 		boiler.ItemTypeWeaponSkin,
 	),
+	// blueprint weapon skin
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -190,6 +216,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
 		),
 	),
+	// players
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -198,6 +225,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
 		),
 	),
+	// sold to player
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s AS %s ON %s = %s",
@@ -207,7 +235,6 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.SoldTo),
 		),
 	),
-
 	// Last Auction Bidder
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -219,6 +246,7 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSalesBidHistory, boiler.ItemSalesBidHistoryColumns.RefundBidTXID),
 		),
 	),
+	// bidder player
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s AS %s ON %s = %s",
@@ -397,8 +425,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Owner.Gid,
 		&output.Mech.ID,
 		&output.Mech.Name,
-		//&output.Mech.Label,
-		//&output.Mech.AvatarURL,
+		&output.Mech.Label,
 		&output.MysteryCrate.ID,
 		&output.MysteryCrate.Label,
 		&output.MysteryCrate.Description,
@@ -407,16 +434,9 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.MysteryCrate.CardAnimationURL,
 		&output.MysteryCrate.AnimationURL,
 		&output.Weapon.ID,
-		//&output.Weapon.Label,
-		//&output.Weapon.WeaponType,
-		//&output.Weapon.AvatarURL,
+		&output.Weapon.Label,
+		&output.Weapon.WeaponType,
 		&output.CollectionItem.Tier,
-		//&output.CollectionItem.ImageURL,
-		//&output.CollectionItem.CardAnimationURL,
-		//&output.CollectionItem.AvatarURL,
-		//&output.CollectionItem.LargeImageURL,
-		//&output.CollectionItem.BackgroundColor,
-		//&output.CollectionItem.YoutubeURL,
 		&output.CollectionItem.XsynLocked,
 		&output.CollectionItem.MarketLocked,
 		&output.CollectionItem.Hash,
@@ -573,10 +593,10 @@ func MarketplaceItemSaleList(
 			queryMods = append(queryMods, boiler.ItemSaleWhere.OwnerID.NEQ(userID))
 		}
 	}
-	// TODO: vinnie fix this (weapon type doesn't exist on the skin)
-	//if len(weaponTypes) > 0 {
-	//	queryMods = append(queryMods, boiler.WeaponSkinWhere.WeaponType.IN(weaponTypes))
-	//}
+
+	if len(weaponTypes) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintWeaponWhere.WeaponType.IN(weaponTypes))
+	}
 	if weaponStats != nil {
 		if weaponStats.FilterStatAmmo != nil {
 			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
@@ -665,11 +685,15 @@ func MarketplaceItemSaleList(
 						(to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s::text) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
-					//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-					//qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
+					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponType),
 					qm.Rels("msc", boiler.CollectionItemColumns.Tier),
 					qm.Rels("wsc", boiler.CollectionItemColumns.Tier),
 					qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username),
@@ -1006,8 +1030,9 @@ func MarketplaceEventList(
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 						OR (to_tsvector('english', %s) @@ to_tsquery(?))
+						OR (to_tsvector('english', %s) @@ to_tsquery(?))
 					)`,
-					//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 					qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
 					qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
@@ -1050,7 +1075,7 @@ func MarketplaceEventList(
 			END`,
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			boiler.ItemTypeMech,
-			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			boiler.ItemTypeMysteryCrate,
 			qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.Label),
@@ -1221,7 +1246,7 @@ func MarketplaceEventList(
 			qm.Select(
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-				//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label), // TODO: vinnie fix me (label now on blueprint)
+				qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 			),
 			qm.InnerJoin(
 				fmt.Sprintf(
@@ -1229,6 +1254,14 @@ func MarketplaceEventList(
 					boiler.TableNames.MechSkin,
 					qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+				),
+			),
+			qm.InnerJoin(
+				fmt.Sprintf(
+					"%s ON %s = %s",
+					boiler.TableNames.BlueprintMechs,
+					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 				),
 			),
 			boiler.MechWhere.ID.IN(mechIDs),

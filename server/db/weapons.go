@@ -20,6 +20,50 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+func getDefaultWeaponQueryMods() []qm.QueryMod {
+	return []qm.QueryMod{
+		qm.From(boiler.TableNames.CollectionItems),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// join weapon blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+		)),
+		// join weapon model
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+		)),
+		// join weapon skin
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.WeaponSkin,
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
+		)),
+		// join weapon skin blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintWeaponSkin,
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+		)),
+		// join weapon skin matrix
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+		)),
+	}
+}
+
 func WeaponEquippedOnDetails(trx boil.Executor, equippedOnID string) (*server.EquippedOnDetails, error) {
 	tx := trx
 	if trx == nil {
@@ -137,7 +181,7 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 	boilerWeapon, err := boiler.Weapons(
 		boiler.WeaponWhere.ID.EQ(id),
 		qm.Load(boiler.WeaponRels.Blueprint),
-		).One(tx)
+	).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +211,7 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 	return server.WeaponFromBoiler(boilerWeapon, boilerMechCollectionDetails, weaponSkin, itemSaleID), nil
 }
 
-// AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
+// AttachWeaponToMech attaches a Weapon to a mech
 func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	tx := trx
 	var err error
@@ -341,76 +385,26 @@ func GenerateWeaponStatFilterQueryMods(column string, filter *WeaponStatFilterRa
 func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	var weapons []*server.Weapon
 
-	queryMods := []qm.QueryMod{
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.Weapons,
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
-		)),
-		qm.LeftOuterJoin(fmt.Sprintf("%s cws ON cws.%s = %s AND cws.%s = ?",
-			boiler.TableNames.CollectionItems,
-			boiler.CollectionItemColumns.ItemID,
-			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EquippedWeaponSkinID),
-			boiler.CollectionItemColumns.ItemType,
-		), boiler.ItemTypeWeaponSkin),
-	}
+	queryMods := getDefaultWeaponQueryMods()
 
-	// create the where owner id = clause
-	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-		Table:    boiler.TableNames.CollectionItems,
-		Column:   boiler.CollectionItemColumns.OwnerID,
-		Operator: OperatorValueTypeEquals,
-		Value:    opts.OwnerID,
-	}, 0, ""),
-		GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.CollectionItems,
-			Column:   boiler.CollectionItemColumns.ItemType,
-			Operator: OperatorValueTypeEquals,
-			Value:    boiler.ItemTypeWeapon,
-		}, 0, "and"),
-	)
-
-	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.CollectionItems,
-			Column:   boiler.CollectionItemColumns.XsynLocked,
-			Operator: OperatorValueTypeIsFalse,
-		}, 0, ""))
+	if opts.OwnerID != "" {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.OwnerID.EQ(opts.OwnerID))
 	}
-	if opts.ExcludeMarketLocked {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.CollectionItems,
-			Column:   boiler.CollectionItemColumns.MarketLocked,
-			Operator: OperatorValueTypeIsFalse,
-		}, 0, ""))
+	if !opts.DisplayXsynMechs {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.XsynLocked.EQ(false))
 	}
 	if !opts.IncludeMarketListed {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.CollectionItems,
-			Column:   boiler.CollectionItemColumns.LockedToMarketplace,
-			Operator: OperatorValueTypeIsFalse,
-		}, 0, ""))
+		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.MarketLocked.EQ(false))
 	}
 	if !opts.DisplayGenesisAndLimited {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.Weapons,
-			Column:   boiler.WeaponColumns.GenesisTokenID,
-			Operator: OperatorValueTypeIsNull,
-		}, 0, ""))
-	}
-	if !opts.DisplayGenesisAndLimited {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.Weapons,
-			Column:   boiler.WeaponColumns.LimitedReleaseTokenID,
-			Operator: OperatorValueTypeIsNull,
-		}, 0, ""))
+		queryMods = append(queryMods, boiler.WeaponWhere.GenesisTokenID.IsNull())
+		queryMods = append(queryMods, boiler.WeaponWhere.LimitedReleaseTokenID.IsNull())
 	}
 	if !opts.DisplayHidden {
-		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
-			Table:    boiler.TableNames.CollectionItems,
-			Column:   boiler.CollectionItemColumns.AssetHidden,
-			Operator: OperatorValueTypeIsNull,
-		}, 0, ""))
+		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
 	}
 
 	// Filters
@@ -425,11 +419,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	if len(opts.FilterRarities) > 0 {
-		vals := []interface{}{}
-		for _, r := range opts.FilterRarities {
-			vals = append(vals, r)
-		}
-		queryMods = append(queryMods, qm.AndIn("cws.tier IN ?", vals...))
+		queryMods = append(queryMods, boiler.BlueprintWeaponSkinWhere.Tier.IN(opts.FilterRarities))
 	}
 
 	if len(opts.FilterEquippedStatuses) > 0 {
@@ -447,36 +437,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		}
 
 		if showEquipped && !showUnequipped {
-			queryMods = append(queryMods,
-				qm.LeftOuterJoin(fmt.Sprintf(
-					`%s on %s = %s`,
-					boiler.TableNames.MechWeapons,
-					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
-					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-				)),
-				qm.Expr(
-					boiler.WeaponWhere.EquippedOn.IsNotNull(),
-					qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
-				),
-			)
+			queryMods = append(queryMods, boiler.WeaponWhere.EquippedOn.IsNotNull())
 		} else if showUnequipped && !showEquipped {
-			queryMods = append(queryMods,
-				qm.LeftOuterJoin(fmt.Sprintf(
-					`%s on %s = %s`,
-					boiler.TableNames.MechWeapons,
-					qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID),
-					qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
-				)),
-				qm.Expr(
-					boiler.WeaponWhere.EquippedOn.IsNull(),
-					qm.Or(fmt.Sprintf(`%s IS NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
-				),
-			)
+			queryMods = append(queryMods, boiler.WeaponWhere.EquippedOn.IsNull())
 		}
 	}
 
 	if len(opts.FilterWeaponTypes) > 0 {
-		//queryMods = append(queryMods, boiler.WeaponWhere.WeaponType.IN(opts.FilterWeaponTypes)) // TODO: vinnie fix please (weapon type is now on blueprint)
+		queryMods = append(queryMods, boiler.BlueprintWeaponWhere.WeaponType.IN(opts.FilterWeaponTypes))
 	}
 
 	// Filter - Weapon Stats
@@ -512,24 +480,20 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	// Search
-	// TODO: vinnie fix me (label and weapon type now on blueprint)
-	//if opts.Search != "" {
-	//	xSearch := ParseQueryText(opts.Search, true)
-	//	if len(xSearch) > 0 {
-	//		queryMods = append(queryMods,
-	//
-	//			qm.And(fmt.Sprintf(
-	//				"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?) OR (to_tsvector('english', %[3]s.%[4]s::text) @@ to_tsquery(?)) ))",
-	//				boiler.TableNames.Weapons,
-	//				boiler.WeaponColumns.Label,
-	//				boiler.TableNames.Weapons,
-	//				boiler.WeaponColumns.WeaponType,
-	//			),
-	//				xSearch,
-	//				xSearch,
-	//			))
-	//	}
-	//}
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %s) @@ to_tsquery(?) OR (to_tsvector('english', %s::text) @@ to_tsquery(?)) ))",
+					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
+					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponType),
+				),
+					xSearch,
+					xSearch,
+				))
+		}
+	}
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -557,7 +521,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
-
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
 			fmt.Sprintf(
@@ -589,16 +552,15 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		),
 	)
 
-	// TODO: vinnie fix me (label now on blueprint)
-	//if opts.SortBy != "" && opts.SortDir.IsValid() {
-	//	if opts.SortBy == "alphabetical" {
-	//		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label), opts.SortDir)))
-	//	} else if opts.SortBy == "rarity" {
-	//		queryMods = append(queryMods, GenerateTierSort("cws.tier", opts.SortDir))
-	//	}
-	//} else {
-	//	queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Label))))
-	//}
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier), opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label))))
+	}
 
 	rows, err := boiler.NewQuery(
 		queryMods...,
@@ -637,34 +599,6 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 
 	return total, weapons, nil
-}
-
-// PlayerWeaponsList returns a list of tallied player weapons, ordered by last purchased date from the weapons table.
-func PlayerWeaponsList(
-	userID string,
-) ([]*boiler.Weapon, error) {
-
-	items, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(userID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []string{}
-
-	for _, i := range items {
-		ids = append(ids, i.ItemID)
-	}
-
-	// get weapons
-	weapons, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(ids)).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	return weapons, nil
 }
 
 func WeaponSetAllEquippedAssetsAsHidden(conn boil.Executor, weaponID string, reason null.String) error {

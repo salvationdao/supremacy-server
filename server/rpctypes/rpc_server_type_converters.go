@@ -219,11 +219,6 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 				TraitType: "Label",
 				Value:     i.Label,
 			},
-			// TODO: vinnie fix me
-			//{
-			//	TraitType: "Mech Model",
-			//	Value:     i.MechModelName,
-			//},
 			{
 				TraitType: "Rarity",
 				Value:     i.Tier,

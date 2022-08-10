@@ -218,7 +218,7 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 	return utilities, nil
 }
 
-// AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
+// AttachUtilityToMech attaches a Utility to a mech
 // If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
 func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

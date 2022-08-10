@@ -36,14 +36,6 @@ type BlueprintMechSkin struct {
 	Collection       string      `json:"collection"`
 	Label            string      `json:"label"`
 	Tier             string      `json:"tier,omitempty"`
-	// TODO: vinnie add
-	//ImageURL         null.String `json:"image_url,omitempty"`
-	//AnimationURL     null.String `json:"animation_url,omitempty"`
-	//CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	//LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	//AvatarURL        null.String `json:"avatar_url,omitempty"`
-	//BackgroundColor  null.String `json:"background_color,omitempty"`
-	//YoutubeURL       null.String `json:"youtube_url,omitempty"`
 	CreatedAt        time.Time   `json:"created_at"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis

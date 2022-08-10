@@ -32,7 +32,7 @@ const introTableName = "intro"
 const weaponsTableName = "weapons"
 const utilityTableName = "utility"
 
-func getDefaultQueryMods() []qm.QueryMod {
+func getDefaultMechQueryMods() []qm.QueryMod {
 	return []qm.QueryMod{
 		qm.Select(
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
@@ -293,7 +293,7 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 		Images:         &server.Images{},
 	}
 
-	queryMods := getDefaultQueryMods()
+	queryMods := getDefaultMechQueryMods()
 
 	// Build query
 	queryMods = append(queryMods,
@@ -390,7 +390,7 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	}
 	mcs := make([]*server.Mech, len(mechIDs))
 
-	queryMods := getDefaultQueryMods()
+	queryMods := getDefaultMechQueryMods()
 
 	// Build query
 	queryMods = append(queryMods,
@@ -564,8 +564,6 @@ type BattleQueuePosition struct {
 	QueuePosition int64     `db:"queue_position"`
 }
 
-// TODO: I want InsertNewMech tested.
-
 func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *server.BlueprintMech, mechSkinBlueprint *server.BlueprintMechSkin) (*server.Mech, *server.MechSkin, error) {
 	L := gamelog.L.With().Str("func", "InsertNewMech").Interface("mechBlueprint", mechBlueprint).Interface("mechSkinBlueprint", mechSkinBlueprint).Str("ownerID", ownerID.String()).Logger()
 
@@ -712,13 +710,30 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 		)),
-		// left outer join skin
-		qm.LeftOuterJoin(fmt.Sprintf("%s cms ON cms.%s = %s AND cms.%s = ?",
-			boiler.TableNames.CollectionItems,
-			boiler.CollectionItemColumns.ItemID,
+		// inner join mechs skin
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
-			boiler.CollectionItemColumns.ItemType,
-		), boiler.ItemTypeMechSkin),
+		)),
+		// inner join mechs skin blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintMechSkin,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+		)),
+		// inner join mech blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
+		// inner join mech model
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.MechModels,
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID),
+		)),
 	)
 
 	if !opts.DisplayXsynMechs || !opts.IncludeMarketListed {
@@ -772,7 +787,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		for _, r := range opts.FilterRarities {
 			vals = append(vals, r)
 		}
-		queryMods = append(queryMods, qm.AndIn("cms.tier IN ?", vals...))
+		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID)), vals...))
 	}
 	if len(opts.FilterStatuses) > 0 {
 		hasIdleToggled := false
@@ -898,20 +913,19 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}
 	}
 
-	// Search
-	// TODO: vinnie fix me (label now on blueprint)
-	//if opts.Search != "" {
-	//	xSearch := ParseQueryText(opts.Search, true)
-	//	if len(xSearch) > 0 {
-	//		queryMods = append(queryMods,
-	//			qm.And(fmt.Sprintf(
-	//				"(to_tsvector('english', %s) @@ to_tsquery(?))",
-	//				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
-	//			),
-	//				xSearch,
-	//			))
-	//	}
-	//}
+	//Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
+				),
+					xSearch,
+				))
+		}
+	}
 
 	total, err := boiler.CollectionItems(
 		queryMods...,
@@ -944,7 +958,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			//qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
@@ -986,17 +1000,28 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		)
 	} else if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+	} else if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods,
+				qm.OrderBy(
+					fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s",
+						boiler.TableNames.Mechs,
+						boiler.MechColumns.Name,
+						boiler.BlueprintMechColumns.Label,
+						opts.SortDir,
+					)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID), opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods,
+			qm.OrderBy(
+				fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC",
+					boiler.TableNames.Mechs,
+					boiler.MechColumns.Name,
+					boiler.BlueprintMechColumns.Label,
+				)))
 	}
-	// TODO: vinnie fix me (label now on blueprint)
-	//else if opts.SortBy != "" && opts.SortDir.IsValid() {
-	//	if opts.SortBy == "alphabetical" {
-	//		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label, opts.SortDir)))
-	//	} else if opts.SortBy == "rarity" {
-	//		queryMods = append(queryMods, GenerateTierSort("cms.tier", opts.SortDir))
-	//	}
-	//} else {
-	//	queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC", boiler.TableNames.Mechs, boiler.MechColumns.Name, boiler.MechColumns.Label)))
-	//}
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -1024,7 +1049,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.CollectionItemID,
 			&mc.ID,
 			&mc.Name,
-			//&mc.Label,
+			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
 			&mc.Speed,

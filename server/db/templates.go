@@ -69,7 +69,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 			continue
 		case boiler.TemplateItemTypeAMMO:
 			continue
-		// TODO: AMMO  //				blueprintMechAnimationIDS = append(blueprintMechAnimationIDS, bp.BlueprintID)
+		// TODO: AMMO
 		default:
 			return nil, terror.Error(fmt.Errorf("invalid template item type %s", bp.Type))
 		}
@@ -103,8 +103,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 
 	return result, nil
 }
-
-// TODO: I want TemplateRegister tested.
 
 // TemplateRegister copies everything out of a template into a new mech
 func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
