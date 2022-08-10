@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -258,7 +257,7 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 	assignedCrate.Purchased = true
 
 	// set newly bought crates openable on staging/dev (this is so people cannot open already purchased crates and see what is in them)
-	if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+	if server.IsDevelopmentEnv() || server.IsStagingEnv() {
 		assignedCrate.LockedUntil = time.Now()
 	}
 

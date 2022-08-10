@@ -174,6 +174,16 @@ const (
 	AbilityLevelPLAYER  = "PLAYER"
 )
 
+// Enum values for AvatarLayer
+const (
+	AvatarLayerHAIR      = "HAIR"
+	AvatarLayerFACE      = "FACE"
+	AvatarLayerBODY      = "BODY"
+	AvatarLayerACCESSORY = "ACCESSORY"
+	AvatarLayerEYEWEAR   = "EYEWEAR"
+	AvatarLayerHELMET    = "HELMET"
+)
+
 // Enum values for MarketplaceEvent
 const (
 	MarketplaceEventBid       = "bid"

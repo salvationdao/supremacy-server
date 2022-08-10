@@ -7,7 +7,6 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
-	"os"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -16,7 +15,7 @@ import (
 
 func WithDev(next func(w http.ResponseWriter, r *http.Request) (int, error)) func(w http.ResponseWriter, r *http.Request) (int, error) {
 	fn := func(w http.ResponseWriter, r *http.Request) (int, error) {
-		if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+		if !server.IsDevelopmentEnv() {
 			return http.StatusUnauthorized, terror.Error(terror.ErrUnauthorised, "Unauthorized.")
 		}
 		devPass := r.Header.Get("X-Authorization")
