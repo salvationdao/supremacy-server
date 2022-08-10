@@ -419,3 +419,58 @@ func GetPublicPlayerByID(playerID string) (*server.PublicPlayer, error) {
 
 	return pp, nil
 }
+
+func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
+	result := []*server.QuestStat{}
+
+	q := `
+		select
+    		q.id,
+    		q.name,
+    		q.key,
+    		q.description,
+    		COALESCE(
+    		    (SELECT true FROM players_quests pq WHERE pq.quest_id = q.id AND pq.player_id = $1),
+    		    false
+    		) as obtained
+    	from quests q where q.deleted_at isnull;
+	`
+	rows, err := gamedb.StdConn.Query(q, playerID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("query", q).Msg("Failed to get player quests.")
+		return nil, terror.Error(err, "Failed to get player quests.")
+	}
+
+	for rows.Next() {
+		pq := &server.QuestStat{}
+		err = rows.Scan(&pq.ID, &pq.Name, &pq.Key, &pq.Description, &pq.Obtained)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan player quests.")
+			return nil, terror.Error(err, "Failed to parse player quest.")
+		}
+
+		result = append(result, pq)
+	}
+
+	return result, nil
+}
+
+func PlayerQuestUpsert(playerID string, questID string) error {
+	q := `
+		INSERT INTO 
+		    players_quests (player_id, quest_id)
+		VALUES 
+			($1, $2)
+		ON CONFLICT 
+		    (player_id, quest_id)
+		DO NOTHING 
+	`
+
+	_, err := gamedb.StdConn.Exec(q, playerID, questID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("player id", playerID).Str("quest id", questID).Msg("Failed to upsert player quest")
+		return terror.Error(err, "Failed to upsert player quest.")
+	}
+
+	return nil
+}

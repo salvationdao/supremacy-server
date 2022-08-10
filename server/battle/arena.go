@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/quest"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -58,6 +59,8 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	RepairOfferCloseChan     chan *RepairOfferClose
+
+	QuestManager *quest.System
 
 	gameClientJsonDataChan chan []byte
 	sync.RWMutex
@@ -240,6 +243,7 @@ type Opts struct {
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
+	QuestManager             *quest.System
 }
 
 type MessageType byte
@@ -268,6 +272,7 @@ func NewArena(opts *Opts) *Arena {
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
 		gameClientJsonDataChan:   make(chan []byte, 3),
+		QuestManager:             opts.QuestManager,
 	}
 
 	var err error

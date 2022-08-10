@@ -15,6 +15,7 @@ CREATE TABLE quests (
     description text not null,
     -- requirement
     request_amount int not null,
+    ended_at timestamptz,
     next_quest_id uuid references quests (id),
 
     created_at timestamptz not null default now(),

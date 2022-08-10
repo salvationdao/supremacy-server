@@ -1750,6 +1750,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
 				}
+
+				// check player quest reward
+				btl.arena.QuestManager.AbilityKillQuestCheck(abl.PlayerID.String)
 			}
 
 			// broadcast player stat to the player

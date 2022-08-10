@@ -108,3 +108,8 @@ func (p *Player) Brief() *Player {
 		Syndicate: p.Syndicate,
 	}
 }
+
+type QuestStat struct {
+	*boiler.Quest
+	Obtained bool `db:"obtained" json:"obtained"`
+}

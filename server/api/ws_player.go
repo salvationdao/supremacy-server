@@ -1581,3 +1581,14 @@ func (pc *PlayerController) ProfileAvatarUpdateHandler(ctx context.Context, user
 	})
 	return nil
 }
+
+func (pc *PlayerController) PlayerQuestStat(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pqs, err := db.PlayerQuestStatGet(user.ID)
+	if err != nil {
+		return err
+	}
+
+	reply(pqs)
+
+	return nil
+}

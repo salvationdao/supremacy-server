@@ -310,6 +310,8 @@ func NewAPI(
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
+
+				s.WS("/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat))
 			}))
 
 			// secured faction route ws

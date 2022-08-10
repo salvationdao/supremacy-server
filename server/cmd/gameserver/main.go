@@ -18,6 +18,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
+	"server/quest"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
@@ -363,6 +364,8 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					qm := quest.New()
+
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
@@ -372,6 +375,7 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						QuestManager:             qm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
