@@ -43,3 +43,10 @@ VALUES
         100000000000000000000,
         2
     );
+
+UPDATE
+    blueprint_player_abilities
+SET
+    description = 'Deploy a drone onto the battlefield that hacks into the nearest enemy War Machine, overriding both targeting and movement systems and causing them to attack their allies when within range.'
+WHERE
+    game_client_ability_id = 13;
