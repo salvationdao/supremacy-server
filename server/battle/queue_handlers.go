@@ -226,7 +226,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	if rc != nil {
-		// otherwise, cancel all the existing offer
+		// cancel all the existing offer
 		if rc.R != nil && rc.R.RepairOffers != nil {
 			ids := []string{}
 			for _, ro := range rc.R.RepairOffers {
