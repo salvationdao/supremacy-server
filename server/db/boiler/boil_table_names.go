@@ -67,6 +67,7 @@ var TableNames = struct {
 	ItemSalesBidHistory                                string
 	KV                                                 string
 	Languages                                          string
+	Layers                                             string
 	MarketplaceEvents                                  string
 	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
@@ -102,6 +103,7 @@ var TableNames = struct {
 	PowerCores                                         string
 	Profanities                                        string
 	ProfileAvatars                                     string
+	ProfileCustomAvatars                               string
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
@@ -211,6 +213,7 @@ var TableNames = struct {
 	ItemSalesBidHistory:          "item_sales_bid_history",
 	KV:                           "kv",
 	Languages:                    "languages",
+	Layers:                       "layers",
 	MarketplaceEvents:            "marketplace_events",
 	MechAbilityTriggerLogs:       "mech_ability_trigger_logs",
 	MechAnimation:                "mech_animation",
@@ -246,6 +249,7 @@ var TableNames = struct {
 	PowerCores:                   "power_cores",
 	Profanities:                  "profanities",
 	ProfileAvatars:               "profile_avatars",
+	ProfileCustomAvatars:         "profile_custom_avatars",
 	PunishOptions:                "punish_options",
 	PunishVoteInstantPassRecords: "punish_vote_instant_pass_records",
 	PunishVotes:                  "punish_votes",

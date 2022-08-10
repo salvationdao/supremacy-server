@@ -13,7 +13,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -27,7 +26,7 @@ func SyndicateRouter(api *API) chi.Router {
 	r := chi.NewRouter()
 
 	// NOTE: syndicate is ONLY available on development at the moment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+	if !server.IsDevelopmentEnv() {
 		return r
 	}
 
