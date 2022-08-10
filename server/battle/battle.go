@@ -1654,7 +1654,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 							gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 						}
 					}
+
+					// check player obtain mech kill quest yet
+					btl.arena.QuestManager.MechKillQuestCheck(wm.OwnedByID)
 				}
+				break
 			}
 		}
 		if destroyedWarMachine == nil {

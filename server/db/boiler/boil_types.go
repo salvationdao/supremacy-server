@@ -239,12 +239,12 @@ const (
 
 // Enum values for QuestKey
 const (
-	QuestKeyAbilityKill               = "ability_kill"
-	QuestKeyMechKill                  = "mech_kill"
-	QuestKeyMechCommanderUsedInBattle = "mech_commander_used_in_battle"
-	QuestKeyRepairForOther            = "repair_for_other"
-	QuestKeyChatSent                  = "chat_sent"
-	QuestKeyMechJoinBattle            = "mech_join_battle"
+	QuestKeyAbilityKill                  = "ability_kill"
+	QuestKeyMechKill                     = "mech_kill"
+	QuestKeyTotalBattleUsedMechCommander = "total_battle_used_mech_commander"
+	QuestKeyRepairForOther               = "repair_for_other"
+	QuestKeyChatSent                     = "chat_sent"
+	QuestKeyMechJoinBattle               = "mech_join_battle"
 )
 
 // Enum values for RepairTriggerWithType

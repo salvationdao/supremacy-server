@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/friendsofgo/errors"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -93,6 +94,23 @@ func regenerateQuest() {
 
 }
 
+func playerQuestGrant(playerID string, questID string) error {
+	err := db.PlayerQuestUpsert(playerID, questID)
+	if err != nil {
+		return terror.Error(err, "Failed to upsert player")
+	}
+
+	playerQuestStat, err := db.PlayerQuestStatGet(playerID)
+	if err != nil {
+		return terror.Error(err, "Failed to get player quest stat")
+	}
+
+	// broadcast player quest stat
+	ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+
+	return nil
+}
+
 // AbilityKillQuestCheck gain players ability kill quest if they are eligible.
 func (q *System) AbilityKillQuestCheck(playerID string) {
 	l := gamelog.L.With().Str("quest key", boiler.QuestKeyAbilityKill).Str("player id", playerID).Logger()
@@ -117,10 +135,15 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				return
 			}
 
+			// skip, if player has already done the quest
+			if playerQuest != nil {
+				continue
+			}
+
 			// check player ability kill match the amount
 			playerKillLogs, err := boiler.PlayerKillLogs(
 				boiler.PlayerKillLogWhere.PlayerID.EQ(playerID),
-				boiler.PlayerKillLogWhere.CreatedAt.GT(playerQuest.CreatedAt),
+				boiler.PlayerKillLogWhere.CreatedAt.GT(pq.CreatedAt), // involve the logs after the quest issue time
 			).All(gamedb.StdConn)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get player kill logs")
@@ -141,20 +164,11 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				return
 			}
 
-			err = db.PlayerQuestUpsert(playerID, pq.ID)
+			err = playerQuestGrant(playerID, pq.ID)
 			if err != nil {
-				l.Error().Err(err).Msg("Failed to upsert player quest")
+				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
 				return
 			}
-
-			playerQuestStat, err := db.PlayerQuestStatGet(playerID)
-			if err != nil {
-				l.Error().Err(err).Msg("Failed to query player quest stat")
-				return
-			}
-
-			// broadcast player quest stat
-			ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
 		}
 	}
 }
@@ -174,6 +188,74 @@ func (q *System) MechKillQuestCheck(playerID string) {
 		}
 
 		for _, pq := range pqs {
+			playerQuest, err := pq.PlayersQuests(
+				boiler.PlayersQuestWhere.PlayerID.EQ(playerID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				l.Error().Err(err).Msg("Failed to check player quest")
+				return
+			}
+
+			// skip, if player has already done the quest
+			if playerQuest != nil {
+				continue
+			}
+
+			// check player eligible to claim
+			mechKillCount, err := db.PlayerMechKillCount(playerID, pq.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get player mech kill count")
+				return
+			}
+
+			if mechKillCount < pq.RequestAmount {
+				continue
+			}
+
+			err = playerQuestGrant(playerID, pq.ID)
+			if err != nil {
+				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
+				return
+			}
+		}
+	}
+}
+
+func (q *System) MechCommanderQuestCheck(playerID string) {
+	l := gamelog.L.With().Str("quest key", boiler.QuestKeyTotalBattleUsedMechCommander).Str("player id", playerID).Logger()
+
+	q.playerQuestChan <- func() {
+		// get all the mech kill quest
+		pqs, err := boiler.Quests(
+			boiler.QuestWhere.Key.EQ(boiler.QuestKeyTotalBattleUsedMechCommander),
+			boiler.QuestWhere.EndedAt.IsNull(), // impact by quest regen
+		).All(gamedb.StdConn)
+		if err != nil {
+			l.Error().Err(err).Msg("Failed to get quest")
+			return
+		}
+
+		for _, pq := range pqs {
+			playerQuest, err := pq.PlayersQuests(
+				boiler.PlayersQuestWhere.PlayerID.EQ(playerID),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				l.Error().Err(err).Msg("Failed to check player quest")
+				return
+			}
+
+			// skip, if player has already done the quest
+			if playerQuest != nil {
+				continue
+			}
+
+			// check player eligible to claim
+
+			err = playerQuestGrant(playerID, pq.ID)
+			if err != nil {
+				l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
+				return
+			}
 		}
 	}
 }

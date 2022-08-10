@@ -2,7 +2,7 @@ DROP TYPE IF EXISTS QUEST_KEY;
 CREATE TYPE QUEST_KEY AS ENUM (
     'ability_kill',
     'mech_kill',
-    'mech_commander_used_in_battle',
+    'total_battle_used_mech_commander',
     'repair_for_other',
     'chat_sent',
     'mech_join_battle'
@@ -27,7 +27,7 @@ INSERT INTO quests (name, key, description, request_amount)
 VALUES
     ('3 Ability Kills', 'ability_kill', 'Kill three opponent mechs by abilities.', 3),
     ('3 Mech Kills', 'mech_kill', 'Kill three opponent mechs by your mech.', 3),
-    ('3 battles using mech commander', 'mech_commander_used_in_battle', 'Use mech commander in three different battle.', 3),
+    ('3 battles using mech commander', 'total_battle_used_mech_commander', 'Use mech commander in three different battle.', 3),
     ('3 blocks repaired for other players', 'repair_for_other', 'Repair three blocks for other players', 3),
     ('20 chat messages', 'chat_sent', 'Send 20 chat messages', 20),
     ('30 mechs join battle', 'mech_join_battle', '30 mechs engaged in battle.', 30);

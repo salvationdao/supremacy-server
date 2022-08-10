@@ -442,7 +442,9 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 	}
 
 	for rows.Next() {
-		pq := &server.QuestStat{}
+		pq := &server.QuestStat{
+			Quest: &boiler.Quest{},
+		}
 		err = rows.Scan(&pq.ID, &pq.Name, &pq.Key, &pq.Description, &pq.Obtained)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player quests.")
@@ -473,4 +475,21 @@ func PlayerQuestUpsert(playerID string, questID string) error {
 	}
 
 	return nil
+}
+
+func PlayerMechKillCount(playerID string, afterTime time.Time) (int, error) {
+	q := `
+		SELECT count(bm.owner_id) FROM battle_history bh
+		INNER JOIN battle_mechs bm ON bh.battle_id = bm.battle_id AND bm.mech_id = bh.war_machine_two_id AND bm.owner_id = $1
+		where event_type = 'killed' AND bh.war_machine_two_id notnull AND bh.created_at >= $2;
+	`
+
+	mechKillCount := 0
+	err := gamedb.StdConn.QueryRow(q, playerID, afterTime).Scan(&mechKillCount)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to scan player mech kill count")
+		return 0, terror.Error(err, "Failed to get player mech kill count")
+	}
+
+	return mechKillCount, nil
 }
