@@ -929,12 +929,16 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}
 	}
 
+	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
+		fmt.Println("here1")
 		return 0, nil, err
 	}
+	boil.DebugMode = false
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
@@ -1006,9 +1010,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		if opts.SortBy == "alphabetical" {
 			queryMods = append(queryMods,
 				qm.OrderBy(
-					fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) %[4]s",
-						boiler.TableNames.Mechs,
-						boiler.MechColumns.Name,
+					fmt.Sprintf("(CASE WHEN %[1]s IS NOT NULL AND %[1]s != '' THEN %[1]s ELSE %[2]s END) %[3]s",
+						qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+						qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 						boiler.BlueprintMechColumns.Label,
 						opts.SortDir,
 					)))
@@ -1018,18 +1022,21 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	} else {
 		queryMods = append(queryMods,
 			qm.OrderBy(
-				fmt.Sprintf("(CASE WHEN %[1]s.%[2]s IS NOT NULL AND %[1]s.%[2]s != '' THEN %[1]s.%[2]s ELSE %[1]s.%[3]s END) ASC",
-					boiler.TableNames.Mechs,
-					boiler.MechColumns.Name,
-					boiler.BlueprintMechColumns.Label,
+				fmt.Sprintf("(CASE WHEN %[1]s IS NOT NULL AND %[1]s != '' THEN %[1]s ELSE %[2]s END) ASC",
+					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 				)))
 	}
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
+		fmt.Println("here2")
 		return 0, nil, err
 	}
+	boil.DebugMode = false
 	defer rows.Close()
 
 	for rows.Next() {
