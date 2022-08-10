@@ -568,11 +568,13 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 
 	movingMiniMechs := arena._currentBattle.playerAbilityManager().MovingFactionMiniMechs(factionID)
 	for _, mm := range movingMiniMechs {
-		result = append(result, &FactionMechCommands{
-			BattleID: mm.BattleID,
-			CellX:    mm.CellX,
-			CellY:    mm.CellY,
-			IsAI:     true,
+		mm.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
+			result = append(result, &FactionMechCommands{
+				BattleID: mm.BattleID,
+				CellX:    mm.CellX,
+				CellY:    mm.CellY,
+				IsAI:     true,
+			})
 		})
 	}
 
@@ -626,8 +628,13 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 			}
 		}
 	} else {
-		mmmc, _ := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
-		if mmmc != nil {
+		mmmc, err := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech hash", wm.Hash).Err(err).Msg("Failed to get mini mech move command")
+			return terror.Error(err, "Failed to get mini mech move command.")
+		}
+
+		mmmc.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
 			resp.MechMoveCommandLog = &boiler.MechMoveCommandLog{
 				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 				BattleID:      mmmc.BattleID,
@@ -641,7 +648,7 @@ func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.
 			}
 			resp.RemainCooldownSeconds = int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds())
 			resp.IsMiniMech = true
-		}
+		})
 	}
 
 	reply(resp)
@@ -971,26 +978,28 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	} else {
 		mmmc, err := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
 		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to insert mech move command")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mini mech move command")
 			return terror.Error(err, "Failed to trigger mech move command.")
 		}
 
-		// broadcast mech command log
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog: &boiler.MechMoveCommandLog{
-				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
-				BattleID:      mmmc.BattleID,
-				MechID:        mmmc.MechHash,
-				TriggeredByID: mmmc.TriggeredByID,
-				CellX:         mmmc.CellX,
-				CellY:         mmmc.CellY,
-				CancelledAt:   mmmc.CancelledAt,
-				ReachedAt:     mmmc.ReachedAt,
-				CreatedAt:     mmmc.CreatedAt,
-				IsMoving:      mmmc.IsMoving,
-			},
-			RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-			IsMiniMech:            true,
+		mmmc.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
+			// broadcast mech command log
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+				MechMoveCommandLog: &boiler.MechMoveCommandLog{
+					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
+					BattleID:      mmmc.BattleID,
+					MechID:        mmmc.MechHash,
+					TriggeredByID: mmmc.TriggeredByID,
+					CellX:         mmmc.CellX,
+					CellY:         mmmc.CellY,
+					CancelledAt:   mmmc.CancelledAt,
+					ReachedAt:     mmmc.ReachedAt,
+					CreatedAt:     mmmc.CreatedAt,
+					IsMoving:      mmmc.IsMoving,
+				},
+				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
+				IsMiniMech:            true,
+			})
 		})
 	}
 
