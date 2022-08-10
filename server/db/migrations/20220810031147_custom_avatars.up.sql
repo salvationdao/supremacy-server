@@ -1,7 +1,9 @@
+DROP TYPE IF EXISTS AVATAR_LAYER;
+CREATE TYPE AVATAR_LAYER AS ENUM ('HAIR', 'FACE', 'BODY', 'ACCESSORY', 'EYEWEAR', 'HELMET');
 CREATE TABLE layers
 (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type        TEXT CHECK (type IN ('HAIR', 'FACE', 'BODY', 'ACCESSORY', 'EYEWEAR', 'HELMET')),
+    type        AVATAR_LAYER NOT NULL,
     image_url   TEXT        NOT NULL,
 
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -314,7 +314,7 @@ func (pac *PlayerController) PlayerProfileCustomAvatarDelete(ctx context.Context
 
 	// set deleted at
 	ava.DeletedAt = null.TimeFrom(time.Now())
-	ava.Update((gamedb.StdConn), boil.Whitelist(boiler.ProfileCustomAvatarColumns.DeletedAt))
+	_, err = ava.Update(gamedb.StdConn, boil.Whitelist(boiler.ProfileCustomAvatarColumns.DeletedAt))
 	if err != nil {
 		return terror.Error(err, "Failed to delete custom avatar.")
 	}

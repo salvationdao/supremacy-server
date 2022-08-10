@@ -50,7 +50,7 @@ func LayersList(opts *AvatarLayersListOpts) (int64, []*Layer, error) {
 
 	// filter type
 	if opts.LayerType.Valid {
-		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
+		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType.String))
 	}
 
 	// Build query
@@ -190,7 +190,7 @@ func CustomAvatarsList(playerID string, opts *CustomAvatarsListOpts) (int64, []s
 
 	// filter type
 	if opts.LayerType.Valid {
-		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType))
+		queryMods = append(queryMods, boiler.LayerWhere.Type.EQ(opts.LayerType.String))
 	}
 
 	// filter deleted

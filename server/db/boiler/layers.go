@@ -23,12 +23,12 @@ import (
 
 // Layer is an object representing the database table.
 type Layer struct {
-	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type      null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
-	ImageURL  string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	UpdatedAt time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type      string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	ImageURL  string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *layerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L layerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -70,14 +70,14 @@ var LayerTableColumns = struct {
 
 var LayerWhere = struct {
 	ID        whereHelperstring
-	Type      whereHelpernull_String
+	Type      whereHelperstring
 	ImageURL  whereHelperstring
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 	CreatedAt whereHelpertime_Time
 }{
 	ID:        whereHelperstring{field: "\"layers\".\"id\""},
-	Type:      whereHelpernull_String{field: "\"layers\".\"type\""},
+	Type:      whereHelperstring{field: "\"layers\".\"type\""},
 	ImageURL:  whereHelperstring{field: "\"layers\".\"image_url\""},
 	UpdatedAt: whereHelpertime_Time{field: "\"layers\".\"updated_at\""},
 	DeletedAt: whereHelpernull_Time{field: "\"layers\".\"deleted_at\""},
@@ -121,8 +121,8 @@ type layerL struct{}
 
 var (
 	layerAllColumns            = []string{"id", "type", "image_url", "updated_at", "deleted_at", "created_at"}
-	layerColumnsWithoutDefault = []string{"image_url"}
-	layerColumnsWithDefault    = []string{"id", "type", "updated_at", "deleted_at", "created_at"}
+	layerColumnsWithoutDefault = []string{"type", "image_url"}
+	layerColumnsWithDefault    = []string{"id", "updated_at", "deleted_at", "created_at"}
 	layerPrimaryKeyColumns     = []string{"id"}
 	layerGeneratedColumns      = []string{}
 )
