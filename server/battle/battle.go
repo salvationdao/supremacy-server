@@ -1722,16 +1722,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 							gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 						}
 					}
-
-					// check player obtain mech kill quest yet
-					btl.arena.QuestManager.MechKillQuestCheck(wm.OwnedByID)
 				}
 				break
 			}
-		}
-		if destroyedWarMachine == nil {
-			gamelog.L.Warn().Str("killed_by_hash", dp.DestroyedWarMachineEvent.KillByWarMachineHash).Msg("can't match killer mech with battle state")
-			return
 		}
 	} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
 		// check related event id
@@ -1823,8 +1816,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
 				}
 
-				// check player quest reward
-				btl.arena.QuestManager.AbilityKillQuestCheck(abl.PlayerID.String)
 			}
 
 			// broadcast player stat to the player
@@ -1893,6 +1884,17 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				Err(err).
 				Msg("unable to store mech event data")
 		}
+
+		// check player obtain mech kill quest yet
+		if killByWarMachine != nil {
+			btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
+		}
+
+		if killedByUser != nil && destroyedWarMachine.OwnedByID != killedByUser.ID.String() {
+			// check player quest reward
+			btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
+		}
+
 	}
 
 	_, err = db.UpdateKilledBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, killByWarMachineID)

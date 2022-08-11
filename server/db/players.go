@@ -433,7 +433,7 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
     		    (SELECT true FROM players_quests pq WHERE pq.quest_id = q.id AND pq.player_id = $1),
     		    false
     		) as obtained
-    	from quests q where q.deleted_at isnull;
+    	from quests q where q.expires_at > now() and q.deleted_at isnull;
 	`
 	rows, err := gamedb.StdConn.Query(q, playerID)
 	if err != nil {
