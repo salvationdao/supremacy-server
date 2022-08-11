@@ -31,9 +31,9 @@ CREATE INDEX idx_quest_available_check ON quests (key, expires_at DESC);
 -- insert the very first quests
 INSERT INTO quests (name, key, description, request_amount, expires_at, last_for_days, repeatable)
 VALUES
-    ('3 ability kills', 'ability_kill', 'Kill three opponent mechs by abilities.', 3, now(), 3, true),
+    ('3 ability kills', 'ability_kill', 'Kill three opponent mechs by triggering abilities.', 3, now(), 3, true),
     ('3 mech kills', 'mech_kill', 'Kill three opponent mechs by your mech.', 3, now(), 3, true),
-    ('3 battles using mech commander', 'total_battle_used_mech_commander', 'Use mech commander in three different battle.', 3, now(), 3, true),
+    ('3 battles using mech commander', 'total_battle_used_mech_commander', 'Use mech commander in three different battles.', 3, now(), 3, true),
     ('3 blocks repaired for other players', 'repair_for_other', 'Repair three blocks for other players', 3, now(), 3, true),
     ('20 chat messages', 'chat_sent', 'Send 20 chat messages', 20, now(), 3, true),
     ('30 mechs join battle', 'mech_join_battle', '30 mechs engaged in battle.', 30, now(), 3, true);
