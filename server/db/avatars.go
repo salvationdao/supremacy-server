@@ -17,10 +17,9 @@ func GiveDefaultAvatars(playerID string, factionID string) error {
 
 	// get faction logo urls from profile avatars table
 	ava, err := boiler.ProfileAvatars(boiler.ProfileAvatarWhere.AvatarURL.EQ(fac.LogoURL)).One(gamedb.StdConn)
-	if err != nil && err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return err
 	}
 
