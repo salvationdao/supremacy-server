@@ -120,6 +120,7 @@ func regenExpiredQuest() error {
 			Endat:       now.AddDate(0, 0, r.LastForDays),
 			LastForDays: r.LastForDays,
 			Repeatable:  r.Repeatable,
+			RoundNumber: r.RoundNumber + 1, // increment round number by one
 		}
 
 		err = func() error {

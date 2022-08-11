@@ -18,12 +18,18 @@ type PlayerMechSurvives struct {
 	MechSurvives int            `db:"mech_survive_count" json:"mech_survive_count"`
 }
 
-func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMechSurvives, error) {
+func GetPlayerMechSurvives(roundID null.String) ([]*PlayerMechSurvives, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+
 		whereClause = "WHERE created_at BETWEEN $1 AND $2"
-		args = append(args, startTime.Time, endTime.Time)
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`
@@ -159,15 +165,21 @@ type PlayerBattlesSpectated struct {
 	ViewBattleCount int            `db:"view_battle_count" json:"view_battle_count"`
 }
 
-func TopBattleViewers(startTime, endTime null.Time) ([]*PlayerBattlesSpectated, error) {
+func TopBattleViewers(roundID null.String) ([]*PlayerBattlesSpectated, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+
 		whereClause = `
 			INNER JOIN battles b ON b.id = bv.battle_id 
 			WHERE b.started_at BETWEEN $1 AND $2
 		`
-		args = append(args, startTime.Time, endTime.Time)
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`
@@ -214,14 +226,18 @@ type PlayerMechKills struct {
 	MechKillCount int            `db:"mech_kill_count" json:"mech_kill_count"`
 }
 
-func TopMechKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerMechKills, error) {
+func TopMechKillPlayers(roundID null.String) ([]*PlayerMechKills, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
-		whereClause = `
-			AND bh.created_at BETWEEN $1 AND $2
-		`
-		args = append(args, startTime.Time, endTime.Time)
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+
+		whereClause = "AND bh.created_at BETWEEN $1 AND $2"
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`
@@ -267,14 +283,18 @@ type PlayerAbilityKills struct {
 	AbilityKillCount int            `db:"ability_kill_count" json:"ability_kill_count"`
 }
 
-func TopAbilityKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerAbilityKills, error) {
+func TopAbilityKillPlayers(roundID null.String) ([]*PlayerAbilityKills, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
-		whereClause = `
-			WHERE pkg.created_at BETWEEN $1 AND $2
-		`
-		args = append(args, startTime.Time, endTime.Time)
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+
+		whereClause = "WHERE pkg.created_at BETWEEN $1 AND $2"
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`
@@ -332,14 +352,17 @@ type PlayerAbilityTriggers struct {
 	TotalAbilityTriggered int            `db:"total_ability_triggered" json:"total_ability_triggered"`
 }
 
-func TopAbilityTriggerPlayers(startTime null.Time, endTime null.Time) ([]*PlayerAbilityTriggers, error) {
+func TopAbilityTriggerPlayers(roundID null.String) ([]*PlayerAbilityTriggers, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
-		whereClause = `
-			WHERE triggered_at BETWEEN $1 AND $2
-		`
-		args = append(args, startTime.Time, endTime.Time)
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+		whereClause = "WHERE triggered_at BETWEEN $1 AND $2"
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`
@@ -384,14 +407,17 @@ type PlayerRepairBlocks struct {
 	TotalBlockRepaired int            `db:"total_block_repaired" json:"total_block_repaired"`
 }
 
-func TopRepairBlockPlayers(startTime null.Time, endTime null.Time) ([]*PlayerRepairBlocks, error) {
+func TopRepairBlockPlayers(roundID null.String) ([]*PlayerRepairBlocks, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if startTime.Valid && endTime.Valid {
-		whereClause = `
-			 AND finished_at BETWEEN $1 AND $2
-		`
-		args = append(args, startTime.Time, endTime.Time)
+	if roundID.Valid {
+		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+		if err != nil {
+			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			return nil, terror.Error(err, "Failed to query round.")
+		}
+		whereClause = "AND finished_at BETWEEN $1 AND $2"
+		args = append(args, r.StartedAt, r.Endat)
 	}
 
 	q := fmt.Sprintf(`

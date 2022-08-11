@@ -46,8 +46,9 @@ func (api *API) GetLeaderboardRoundsHandler(ctx context.Context, key string, pay
 const HubKeyPlayerBattlesSpectatedLeaderboard = "LEADERBOARD:PLAYER:BATTLE:SPECTATED"
 
 type LeaderboardRequest struct {
-	StartTime null.Time `json:"start_time"`
-	EndTime   null.Time `json:"end_time"`
+	Payload struct {
+		RoundID null.String `json:"round_id"`
+	} `json:"payload"`
 }
 
 func (api *API) GetPlayerBattlesSpectatedLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -57,7 +58,7 @@ func (api *API) GetPlayerBattlesSpectatedLeaderboardHandler(ctx context.Context,
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.TopBattleViewers(req.StartTime, req.EndTime)
+	resp, err := db.TopBattleViewers(req.Payload.RoundID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load top battle spectators")
 		return err
@@ -79,7 +80,7 @@ func (api *API) GetPlayerMechSurvivesLeaderboardHandler(ctx context.Context, key
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.GetPlayerMechSurvives(req.StartTime, req.EndTime)
+	resp, err := db.GetPlayerMechSurvives(req.Payload.RoundID)
 
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech survives.")
@@ -102,7 +103,7 @@ func (api *API) GetPlayerMechKillsLeaderboardHandler(ctx context.Context, key st
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.TopMechKillPlayers(req.StartTime, req.EndTime)
+	resp, err := db.TopMechKillPlayers(req.Payload.RoundID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
 		return err
@@ -124,7 +125,7 @@ func (api *API) GetPlayerAbilityKillsLeaderboardHandler(ctx context.Context, key
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.TopAbilityKillPlayers(req.StartTime, req.EndTime)
+	resp, err := db.TopAbilityKillPlayers(req.Payload.RoundID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
 		return err
@@ -146,7 +147,7 @@ func (api *API) GetPlayerAbilityTriggersLeaderboardHandler(ctx context.Context, 
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.TopAbilityTriggerPlayers(req.StartTime, req.EndTime)
+	resp, err := db.TopAbilityTriggerPlayers(req.Payload.RoundID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
 		return err
@@ -169,7 +170,7 @@ func (api *API) GetPlayerRepairBlockLeaderboardHandler(ctx context.Context, key 
 		return terror.Error(err, "Invalid request received")
 	}
 
-	resp, err := db.TopRepairBlockPlayers(req.StartTime, req.EndTime)
+	resp, err := db.TopRepairBlockPlayers(req.Payload.RoundID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
 		return err

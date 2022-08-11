@@ -10,6 +10,7 @@ CREATE TABLE rounds(
     repeatable bool not null default false,
     next_round_id uuid references rounds (id), -- used for recording the season which generated from the current one
     is_init bool not null default false,
+    round_number int not null default 0,
 
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),

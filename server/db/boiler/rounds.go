@@ -31,6 +31,7 @@ type Round struct {
 	Repeatable  bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
 	NextRoundID null.String `boiler:"next_round_id" boil:"next_round_id" json:"next_round_id,omitempty" toml:"next_round_id" yaml:"next_round_id,omitempty"`
 	IsInit      bool        `boiler:"is_init" boil:"is_init" json:"is_init" toml:"is_init" yaml:"is_init"`
+	RoundNumber int         `boiler:"round_number" boil:"round_number" json:"round_number" toml:"round_number" yaml:"round_number"`
 	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt   time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt   null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -48,6 +49,7 @@ var RoundColumns = struct {
 	Repeatable  string
 	NextRoundID string
 	IsInit      string
+	RoundNumber string
 	CreatedAt   string
 	UpdatedAt   string
 	DeletedAt   string
@@ -60,6 +62,7 @@ var RoundColumns = struct {
 	Repeatable:  "repeatable",
 	NextRoundID: "next_round_id",
 	IsInit:      "is_init",
+	RoundNumber: "round_number",
 	CreatedAt:   "created_at",
 	UpdatedAt:   "updated_at",
 	DeletedAt:   "deleted_at",
@@ -74,6 +77,7 @@ var RoundTableColumns = struct {
 	Repeatable  string
 	NextRoundID string
 	IsInit      string
+	RoundNumber string
 	CreatedAt   string
 	UpdatedAt   string
 	DeletedAt   string
@@ -86,6 +90,7 @@ var RoundTableColumns = struct {
 	Repeatable:  "rounds.repeatable",
 	NextRoundID: "rounds.next_round_id",
 	IsInit:      "rounds.is_init",
+	RoundNumber: "rounds.round_number",
 	CreatedAt:   "rounds.created_at",
 	UpdatedAt:   "rounds.updated_at",
 	DeletedAt:   "rounds.deleted_at",
@@ -102,6 +107,7 @@ var RoundWhere = struct {
 	Repeatable  whereHelperbool
 	NextRoundID whereHelpernull_String
 	IsInit      whereHelperbool
+	RoundNumber whereHelperint
 	CreatedAt   whereHelpertime_Time
 	UpdatedAt   whereHelpertime_Time
 	DeletedAt   whereHelpernull_Time
@@ -114,6 +120,7 @@ var RoundWhere = struct {
 	Repeatable:  whereHelperbool{field: "\"rounds\".\"repeatable\""},
 	NextRoundID: whereHelpernull_String{field: "\"rounds\".\"next_round_id\""},
 	IsInit:      whereHelperbool{field: "\"rounds\".\"is_init\""},
+	RoundNumber: whereHelperint{field: "\"rounds\".\"round_number\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"rounds\".\"created_at\""},
 	UpdatedAt:   whereHelpertime_Time{field: "\"rounds\".\"updated_at\""},
 	DeletedAt:   whereHelpernull_Time{field: "\"rounds\".\"deleted_at\""},
@@ -146,9 +153,9 @@ func (*roundR) NewStruct() *roundR {
 type roundL struct{}
 
 var (
-	roundAllColumns            = []string{"id", "name", "started_at", "endat", "last_for_days", "repeatable", "next_round_id", "is_init", "created_at", "updated_at", "deleted_at"}
+	roundAllColumns            = []string{"id", "name", "started_at", "endat", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundColumnsWithoutDefault = []string{"name", "started_at", "endat", "last_for_days"}
-	roundColumnsWithDefault    = []string{"id", "repeatable", "next_round_id", "is_init", "created_at", "updated_at", "deleted_at"}
+	roundColumnsWithDefault    = []string{"id", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundPrimaryKeyColumns     = []string{"id"}
 	roundGeneratedColumns      = []string{}
 )
