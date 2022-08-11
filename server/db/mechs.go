@@ -90,26 +90,39 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			utilityTableName,
 			fmt.Sprintf(` 
 					(
-						SELECT _i.id
-						FROM item_sales _i
-						WHERE _i.collection_item_id = %s
-							AND _i.sold_at IS NULL
-							AND _i.deleted_at IS NULL
-							AND _i.end_at > NOW()
+						SELECT %s
+						FROM %s _i
+						WHERE %s = %s
+							AND %s IS NULL
+							AND %s IS NULL
+							AND %s > NOW()
 						LIMIT 1
 					) AS item_sale_id`,
+				qm.Rels("_i", boiler.ItemSaleColumns.ID),
+				boiler.TableNames.ItemSales,
+				qm.Rels("_i", boiler.ItemSaleColumns.CollectionItemID),
 				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			), // TODO: make this boiler/typesafe
+				qm.Rels("_i", boiler.ItemSaleColumns.SoldAt),
+				qm.Rels("_i", boiler.ItemSaleColumns.DeletedAt),
+				qm.Rels("_i", boiler.ItemSaleColumns.EndAt),
+			),
 			fmt.Sprintf(`
 					(
-					SELECT (_bm.availability_id IS NULL OR _a.available_at <= NOW())
-					FROM blueprint_mechs _bm 
-						LEFT JOIN availabilities _a ON _a.id = _bm.availability_id
-					WHERE _bm.id = %s
-					LIMIT 1
-				) AS battle_ready`,
+						SELECT (%s IS NULL OR %s <= NOW())
+						FROM %s _bm 
+							LEFT JOIN %s _a ON %s = %s
+						WHERE %s = %s
+						LIMIT 1
+					) AS battle_ready`,
+				qm.Rels("_bm", boiler.BlueprintMechColumns.AvailabilityID),
+				qm.Rels("_a", boiler.AvailabilityColumns.AvailableAt),
+				boiler.TableNames.BlueprintMechs,
+				boiler.TableNames.Availabilities,
+				qm.Rels("_a", boiler.AvailabilityColumns.ID),
+				qm.Rels("_bm", boiler.BlueprintMechColumns.AvailabilityID),
+				qm.Rels("_bm", boiler.BlueprintMechColumns.ID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-			), // TODO: make this boiler/typesafe
+			),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		// inner join mechs
@@ -929,16 +942,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		}
 	}
 
-	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
-		fmt.Println("here1")
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
@@ -1027,16 +1036,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 				)))
 	}
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
-		fmt.Println("here2")
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 	defer rows.Close()
 
 	for rows.Next() {

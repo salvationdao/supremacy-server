@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -44,12 +43,10 @@ func WeaponSkin(tx boil.Executor, id string, modelID *string) (*server.WeaponSki
 		qm.Load(boiler.WeaponSkinRels.Blueprint),
 		).One(tx)
 	if err != nil {
-		fmt.Println("here1")
 		return nil, err
 	}
 	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
 	if err != nil {
-		fmt.Println("here2")
 		return nil, err
 	}
 

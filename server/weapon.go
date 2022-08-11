@@ -16,7 +16,6 @@ type Weapon struct {
 	*Images
 	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
-	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
 	Slug                  string              `json:"slug"`
 	Damage                int                 `json:"damage"`
@@ -155,7 +154,6 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		},
 		CollectionItemID:     collection.ID,
 		ID:                   weapon.ID,
-		BrandID:              weapon.BrandID,
 		Label:                weapon.R.Blueprint.Label,
 		Slug:                 weapon.Slug,
 		Damage:               weapon.Damage,

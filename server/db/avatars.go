@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
@@ -55,7 +56,7 @@ func AvatarList(opts *AvatarListOpts) (int64, []*boiler.ProfileAvatar, error) {
 			qm.Rels(boiler.TableNames.PlayersProfileAvatars, boiler.PlayersProfileAvatarColumns.ProfileAvatarID),
 			qm.Rels(boiler.TableNames.ProfileAvatars, boiler.ProfileAvatarColumns.ID),
 		)),
-		qm.Where("players_profile_avatars.player_id = ?", opts.OwnerID),
+		boiler.PlayersProfileAvatarWhere.PlayerID.EQ(opts.OwnerID),
 	}
 
 	total, err := boiler.ProfileAvatars(
