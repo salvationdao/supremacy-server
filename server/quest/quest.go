@@ -8,6 +8,7 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -100,25 +101,25 @@ func regenExpiredQuest() error {
 	now := time.Now()
 	l := gamelog.L.With().Str("func name", "regenExpiredQuest()").Logger()
 
-	quests, err := boiler.Quests(
-		boiler.QuestWhere.Repeatable.EQ(true),
-		boiler.QuestWhere.ExpiresAt.LTE(now),
-		boiler.QuestWhere.NextQuestID.IsNull(),
+	// get expired rounds
+	rounds, err := boiler.Rounds(
+		boiler.RoundWhere.Repeatable.EQ(true),
+		boiler.RoundWhere.Endat.LTE(now),
+		boiler.RoundWhere.NextRoundID.IsNull(),
+		qm.Load(boiler.RoundRels.Quests),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to query expired quests")
 		return terror.Error(err, "Failed to load expired quests")
 	}
 
-	for _, pq := range quests {
-		newQuest := &boiler.Quest{
-			Name:          pq.Name,
-			Key:           pq.Key,
-			Description:   pq.Description,
-			RequestAmount: pq.RequestAmount,
-			ExpiresAt:     now.AddDate(0, 0, pq.LastForDays),
-			LastForDays:   pq.LastForDays,
-			Repeatable:    true,
+	for _, r := range rounds {
+		newRound := &boiler.Round{
+			Name:        r.Name,
+			StartedAt:   now,
+			Endat:       now.AddDate(0, 0, r.LastForDays),
+			LastForDays: r.LastForDays,
+			Repeatable:  r.Repeatable,
 		}
 
 		err = func() error {
@@ -130,17 +131,38 @@ func regenExpiredQuest() error {
 
 			defer tx.Rollback()
 
-			err = newQuest.Insert(tx, boil.Infer())
+			err = newRound.Insert(tx, boil.Infer())
 			if err != nil {
-				l.Error().Err(err).Interface("quest", newQuest).Msg("Failed to insert new quest")
+				l.Error().Err(err).Interface("round", newRound).Msg("Failed to insert new quest")
 				return terror.Error(err, "Failed to insert new quest")
 			}
 
-			pq.NextQuestID = null.StringFrom(newQuest.ID)
-			_, err = pq.Update(tx, boil.Whitelist(boiler.QuestColumns.NextQuestID))
+			r.NextRoundID = null.StringFrom(newRound.ID)
+			_, err = r.Update(tx, boil.Whitelist(boiler.RoundColumns.NextRoundID))
 			if err != nil {
-				l.Error().Err(err).Interface("involved quest", pq).Msg("Failed to update next quest id column")
+				l.Error().Err(err).Interface("involved round", r).Msg("Failed to update next quest id column")
 				return terror.Error(err, "Failed to update expired quest")
+			}
+
+			// regenerate new quest
+			if r.R != nil {
+				for _, q := range r.R.Quests {
+					// regenerate new quest
+					newQuest := &boiler.Quest{
+						RoundID:       newRound.ID,
+						Name:          q.Name,
+						Key:           q.Key,
+						Description:   q.Description,
+						RequestAmount: q.RequestAmount,
+						ExpiresAt:     newRound.Endat,
+						CreatedAt:     newRound.StartedAt,
+					}
+
+					err = newQuest.Insert(tx, boil.Infer())
+					if err != nil {
+						return terror.Error(err, "Failed to generate new quest")
+					}
+				}
 			}
 
 			err = tx.Commit()

@@ -2,17 +2,15 @@ package api
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
+	"encoding/json"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/friendsofgo/errors"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // LeaderboardController holds handlers for leaderboard
@@ -25,6 +23,7 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 		API: api,
 	}
 
+	api.Command(HubKeyLeaderboardRounds, leaderboardHub.GetLeaderboardRoundsHandler)
 	api.Command(HubKeyPlayerBattlesSpectated, leaderboardHub.GetPlayerBattlesSpectatedHandler)
 	api.Command(HubKeyPlayerMechSurvives, leaderboardHub.GetPlayerMechSurvivesHandler)
 	api.Command(HubKeyPlayerMechKills, leaderboardHub.GetPlayerMechKillsHandler)
@@ -35,47 +34,43 @@ func NewLeaderboardController(api *API) *LeaderboardController {
 	return leaderboardHub
 }
 
+const HubKeyLeaderboardRounds = "LEADERBOARD:ROUNDS"
+
+func (lc *LeaderboardController) GetLeaderboardRoundsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	rs, err := boiler.Rounds(
+		boiler.RoundWhere.IsInit.EQ(false),
+		qm.OrderBy(boiler.RoundColumns.CreatedAt+" DESC"),
+		qm.Limit(10),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get leaderboard rounds")
+	}
+
+	reply(rs)
+	return nil
+}
+
 /**
 * Get top players battles spectated
  */
 const HubKeyPlayerBattlesSpectated = "LEADERBOARD:PLAYER:BATTLE:SPECTATED"
 
-type PlayerBattlesSpectated struct {
-	Player          *boiler.Player `json:"player"`
-	ViewBattleCount int            `json:"view_battle_count"`
+type LeaderboardRequest struct {
+	StartTime null.Time `json:"start_time"`
+	EndTime   null.Time `json:"end_time"`
 }
 
 func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	rows, err := boiler.PlayerStats(
-		qm.Select(
-			boiler.PlayerStatColumns.ID,
-			boiler.PlayerStatColumns.ViewBattleCount,
-		),
-		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ViewBattleCount, db.SortByDirDesc)),
-		qm.Limit(10),
-		qm.Load(
-			boiler.PlayerStatRels.IDPlayer,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-				boiler.PlayerColumns.Rank,
-			),
-		),
-	).All(gamedb.StdConn)
-
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player battles spectated.")
-		return terror.Error(err, "Failed to get leaderboard player battles spectated.")
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
 	}
 
-	resp := []*PlayerBattlesSpectated{}
-	for _, row := range rows {
-		resp = append(resp, &PlayerBattlesSpectated{
-			Player:          row.R.IDPlayer,
-			ViewBattleCount: row.ViewBattleCount,
-		})
+	resp, err := db.TopBattleViewers(req.StartTime, req.EndTime)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load top battle spectators")
+		return err
 	}
 
 	reply(resp)
@@ -88,7 +83,13 @@ func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Co
 const HubKeyPlayerMechSurvives = "LEADERBOARD:PLAYER:MECH:SURVIVES"
 
 func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	resp, err := db.GetPlayerMechSurvives()
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	resp, err := db.GetPlayerMechSurvives(req.StartTime, req.EndTime)
 
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech survives.")
@@ -104,42 +105,17 @@ func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Contex
  */
 const HubKeyPlayerMechKills = "LEADERBOARD:PLAYER:MECH:KILLS"
 
-type PlayerMechKills struct {
-	Player        *boiler.Player `json:"player"`
-	MechKillCount int            `json:"mech_kill_count"`
-}
-
 func (lc *LeaderboardController) GetPlayerMechKillsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	rows, err := boiler.PlayerStats(
-		qm.Select(
-			boiler.PlayerStatColumns.ID,
-			boiler.PlayerStatColumns.MechKillCount,
-		),
-		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.MechKillCount, db.SortByDirDesc)),
-		qm.Limit(10),
-		qm.Load(
-			boiler.PlayerStatRels.IDPlayer,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-				boiler.PlayerColumns.Rank,
-			),
-		),
-	).All(gamedb.StdConn)
-
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player mech kills.")
-		return terror.Error(err, "Failed to get leaderboard player mech kills.")
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
 	}
 
-	resp := []*PlayerMechKills{}
-	for _, row := range rows {
-		resp = append(resp, &PlayerMechKills{
-			Player:        row.R.IDPlayer,
-			MechKillCount: row.MechKillCount,
-		})
+	resp, err := db.TopMechKillPlayers(req.StartTime, req.EndTime)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
+		return err
 	}
 
 	reply(resp)
@@ -151,42 +127,17 @@ func (lc *LeaderboardController) GetPlayerMechKillsHandler(ctx context.Context, 
  */
 const HubKeyPlayerAbilityKills = "LEADERBOARD:PLAYER:ABILITY:KILLS"
 
-type PlayerAbilityKills struct {
-	Player           *boiler.Player `json:"player"`
-	AbilityKillCount int            `json:"ability_kill_count"`
-}
-
 func (lc *LeaderboardController) GetPlayerAbilityKillsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	rows, err := boiler.PlayerStats(
-		qm.Select(
-			boiler.PlayerStatColumns.ID,
-			boiler.PlayerStatColumns.AbilityKillCount,
-		),
-		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.AbilityKillCount, db.SortByDirDesc)),
-		qm.Limit(10),
-		qm.Load(
-			boiler.PlayerStatRels.IDPlayer,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-				boiler.PlayerColumns.Rank,
-			),
-		),
-	).All(gamedb.StdConn)
-
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player ability kills.")
-		return terror.Error(err, "Failed to get leaderboard player ability kills.")
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
 	}
 
-	resp := []*PlayerAbilityKills{}
-	for _, row := range rows {
-		resp = append(resp, &PlayerAbilityKills{
-			Player:           row.R.IDPlayer,
-			AbilityKillCount: row.AbilityKillCount,
-		})
+	resp, err := db.TopAbilityKillPlayers(req.StartTime, req.EndTime)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
+		return err
 	}
 
 	reply(resp)
@@ -198,42 +149,17 @@ func (lc *LeaderboardController) GetPlayerAbilityKillsHandler(ctx context.Contex
  */
 const HubKeyPlayerAbilityTriggers = "LEADERBOARD:PLAYER:ABILITY:TRIGGERS"
 
-type PlayerAbilityTriggers struct {
-	Player                *boiler.Player `json:"player"`
-	TotalAbilityTriggered int            `json:"total_ability_triggered"`
-}
-
 func (lc *LeaderboardController) GetPlayerAbilityTriggersHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	rows, err := boiler.PlayerStats(
-		qm.Select(
-			boiler.PlayerStatColumns.ID,
-			boiler.PlayerStatColumns.TotalAbilityTriggered,
-		),
-		qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.TotalAbilityTriggered, db.SortByDirDesc)),
-		qm.Limit(10),
-		qm.Load(
-			boiler.PlayerStatRels.IDPlayer,
-			qm.Select(
-				boiler.PlayerColumns.ID,
-				boiler.PlayerColumns.Username,
-				boiler.PlayerColumns.FactionID,
-				boiler.PlayerColumns.Gid,
-				boiler.PlayerColumns.Rank,
-			),
-		),
-	).All(gamedb.StdConn)
-
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msg("Failed to get leaderboard player ability triggers.")
-		return terror.Error(err, "Failed to get leaderboard player ability triggers.")
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
 	}
 
-	resp := []*PlayerAbilityTriggers{}
-	for _, row := range rows {
-		resp = append(resp, &PlayerAbilityTriggers{
-			Player:                row.R.IDPlayer,
-			TotalAbilityTriggered: row.TotalAbilityTriggered,
-		})
+	resp, err := db.TopAbilityTriggerPlayers(req.StartTime, req.EndTime)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
+		return err
 	}
 
 	reply(resp)

@@ -23,18 +23,16 @@ import (
 
 // Quest is an object representing the database table.
 type Quest struct {
-	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Name          string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	Key           string      `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	Description   string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	RequestAmount int         `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
-	ExpiresAt     time.Time   `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
-	LastForDays   int         `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
-	Repeatable    bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
-	NextQuestID   null.String `boiler:"next_quest_id" boil:"next_quest_id" json:"next_quest_id,omitempty" toml:"next_quest_id" yaml:"next_quest_id,omitempty"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	RoundID       string    `boiler:"round_id" boil:"round_id" json:"round_id" toml:"round_id" yaml:"round_id"`
+	Name          string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	Key           string    `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	Description   string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	RequestAmount int       `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
+	ExpiresAt     time.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
+	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *questR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L questL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,27 +40,23 @@ type Quest struct {
 
 var QuestColumns = struct {
 	ID            string
+	RoundID       string
 	Name          string
 	Key           string
 	Description   string
 	RequestAmount string
 	ExpiresAt     string
-	LastForDays   string
-	Repeatable    string
-	NextQuestID   string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
 }{
 	ID:            "id",
+	RoundID:       "round_id",
 	Name:          "name",
 	Key:           "key",
 	Description:   "description",
 	RequestAmount: "request_amount",
 	ExpiresAt:     "expires_at",
-	LastForDays:   "last_for_days",
-	Repeatable:    "repeatable",
-	NextQuestID:   "next_quest_id",
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
@@ -70,27 +64,23 @@ var QuestColumns = struct {
 
 var QuestTableColumns = struct {
 	ID            string
+	RoundID       string
 	Name          string
 	Key           string
 	Description   string
 	RequestAmount string
 	ExpiresAt     string
-	LastForDays   string
-	Repeatable    string
-	NextQuestID   string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
 }{
 	ID:            "quests.id",
+	RoundID:       "quests.round_id",
 	Name:          "quests.name",
 	Key:           "quests.key",
 	Description:   "quests.description",
 	RequestAmount: "quests.request_amount",
 	ExpiresAt:     "quests.expires_at",
-	LastForDays:   "quests.last_for_days",
-	Repeatable:    "quests.repeatable",
-	NextQuestID:   "quests.next_quest_id",
 	CreatedAt:     "quests.created_at",
 	UpdatedAt:     "quests.updated_at",
 	DeletedAt:     "quests.deleted_at",
@@ -100,27 +90,23 @@ var QuestTableColumns = struct {
 
 var QuestWhere = struct {
 	ID            whereHelperstring
+	RoundID       whereHelperstring
 	Name          whereHelperstring
 	Key           whereHelperstring
 	Description   whereHelperstring
 	RequestAmount whereHelperint
 	ExpiresAt     whereHelpertime_Time
-	LastForDays   whereHelperint
-	Repeatable    whereHelperbool
-	NextQuestID   whereHelpernull_String
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
 }{
 	ID:            whereHelperstring{field: "\"quests\".\"id\""},
+	RoundID:       whereHelperstring{field: "\"quests\".\"round_id\""},
 	Name:          whereHelperstring{field: "\"quests\".\"name\""},
 	Key:           whereHelperstring{field: "\"quests\".\"key\""},
 	Description:   whereHelperstring{field: "\"quests\".\"description\""},
 	RequestAmount: whereHelperint{field: "\"quests\".\"request_amount\""},
 	ExpiresAt:     whereHelpertime_Time{field: "\"quests\".\"expires_at\""},
-	LastForDays:   whereHelperint{field: "\"quests\".\"last_for_days\""},
-	Repeatable:    whereHelperbool{field: "\"quests\".\"repeatable\""},
-	NextQuestID:   whereHelpernull_String{field: "\"quests\".\"next_quest_id\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"quests\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"quests\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"quests\".\"deleted_at\""},
@@ -128,20 +114,17 @@ var QuestWhere = struct {
 
 // QuestRels is where relationship names are stored.
 var QuestRels = struct {
-	NextQuest       string
-	PlayersQuests   string
-	NextQuestQuests string
+	Round         string
+	PlayersQuests string
 }{
-	NextQuest:       "NextQuest",
-	PlayersQuests:   "PlayersQuests",
-	NextQuestQuests: "NextQuestQuests",
+	Round:         "Round",
+	PlayersQuests: "PlayersQuests",
 }
 
 // questR is where relationships are stored.
 type questR struct {
-	NextQuest       *Quest            `boiler:"NextQuest" boil:"NextQuest" json:"NextQuest" toml:"NextQuest" yaml:"NextQuest"`
-	PlayersQuests   PlayersQuestSlice `boiler:"PlayersQuests" boil:"PlayersQuests" json:"PlayersQuests" toml:"PlayersQuests" yaml:"PlayersQuests"`
-	NextQuestQuests QuestSlice        `boiler:"NextQuestQuests" boil:"NextQuestQuests" json:"NextQuestQuests" toml:"NextQuestQuests" yaml:"NextQuestQuests"`
+	Round         *Round            `boiler:"Round" boil:"Round" json:"Round" toml:"Round" yaml:"Round"`
+	PlayersQuests PlayersQuestSlice `boiler:"PlayersQuests" boil:"PlayersQuests" json:"PlayersQuests" toml:"PlayersQuests" yaml:"PlayersQuests"`
 }
 
 // NewStruct creates a new relationship struct
@@ -153,9 +136,9 @@ func (*questR) NewStruct() *questR {
 type questL struct{}
 
 var (
-	questAllColumns            = []string{"id", "name", "key", "description", "request_amount", "expires_at", "last_for_days", "repeatable", "next_quest_id", "created_at", "updated_at", "deleted_at"}
-	questColumnsWithoutDefault = []string{"name", "key", "description", "request_amount", "expires_at", "last_for_days"}
-	questColumnsWithDefault    = []string{"id", "repeatable", "next_quest_id", "created_at", "updated_at", "deleted_at"}
+	questAllColumns            = []string{"id", "round_id", "name", "key", "description", "request_amount", "expires_at", "created_at", "updated_at", "deleted_at"}
+	questColumnsWithoutDefault = []string{"round_id", "name", "key", "description", "request_amount", "expires_at"}
+	questColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	questPrimaryKeyColumns     = []string{"id"}
 	questGeneratedColumns      = []string{}
 )
@@ -402,17 +385,17 @@ func (q questQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// NextQuest pointed to by the foreign key.
-func (o *Quest) NextQuest(mods ...qm.QueryMod) questQuery {
+// Round pointed to by the foreign key.
+func (o *Quest) Round(mods ...qm.QueryMod) roundQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.NextQuestID),
+		qm.Where("\"id\" = ?", o.RoundID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Quests(queryMods...)
-	queries.SetFrom(query.Query, "\"quests\"")
+	query := Rounds(queryMods...)
+	queries.SetFrom(query.Query, "\"rounds\"")
 
 	return query
 }
@@ -439,31 +422,9 @@ func (o *Quest) PlayersQuests(mods ...qm.QueryMod) playersQuestQuery {
 	return query
 }
 
-// NextQuestQuests retrieves all the quest's Quests with an executor via next_quest_id column.
-func (o *Quest) NextQuestQuests(mods ...qm.QueryMod) questQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"quests\".\"next_quest_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"quests\".\"deleted_at\""),
-	)
-
-	query := Quests(queryMods...)
-	queries.SetFrom(query.Query, "\"quests\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"quests\".*"})
-	}
-
-	return query
-}
-
-// LoadNextQuest allows an eager lookup of values, cached into the
+// LoadRound allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
+func (questL) LoadRound(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
 	var slice []*Quest
 	var object *Quest
 
@@ -478,9 +439,7 @@ func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface
 		if object.R == nil {
 			object.R = &questR{}
 		}
-		if !queries.IsNil(object.NextQuestID) {
-			args = append(args, object.NextQuestID)
-		}
+		args = append(args, object.RoundID)
 
 	} else {
 	Outer:
@@ -490,14 +449,12 @@ func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.NextQuestID) {
+				if a == obj.RoundID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.NextQuestID) {
-				args = append(args, obj.NextQuestID)
-			}
+			args = append(args, obj.RoundID)
 
 		}
 	}
@@ -507,9 +464,9 @@ func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface
 	}
 
 	query := NewQuery(
-		qm.From(`quests`),
-		qm.WhereIn(`quests.id in ?`, args...),
-		qmhelper.WhereIsNull(`quests.deleted_at`),
+		qm.From(`rounds`),
+		qm.WhereIn(`rounds.id in ?`, args...),
+		qmhelper.WhereIsNull(`rounds.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -517,19 +474,19 @@ func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Quest")
+		return errors.Wrap(err, "failed to eager load Round")
 	}
 
-	var resultSlice []*Quest
+	var resultSlice []*Round
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Quest")
+		return errors.Wrap(err, "failed to bind eager loaded slice Round")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for quests")
+		return errors.Wrap(err, "failed to close results of eager load for rounds")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for quests")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for rounds")
 	}
 
 	if len(questAfterSelectHooks) != 0 {
@@ -546,22 +503,22 @@ func (questL) LoadNextQuest(e boil.Executor, singular bool, maybeQuest interface
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.NextQuest = foreign
+		object.R.Round = foreign
 		if foreign.R == nil {
-			foreign.R = &questR{}
+			foreign.R = &roundR{}
 		}
-		foreign.R.NextQuestQuests = append(foreign.R.NextQuestQuests, object)
+		foreign.R.Quests = append(foreign.R.Quests, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.NextQuestID, foreign.ID) {
-				local.R.NextQuest = foreign
+			if local.RoundID == foreign.ID {
+				local.R.Round = foreign
 				if foreign.R == nil {
-					foreign.R = &questR{}
+					foreign.R = &roundR{}
 				}
-				foreign.R.NextQuestQuests = append(foreign.R.NextQuestQuests, local)
+				foreign.R.Quests = append(foreign.R.Quests, local)
 				break
 			}
 		}
@@ -669,109 +626,10 @@ func (questL) LoadPlayersQuests(e boil.Executor, singular bool, maybeQuest inter
 	return nil
 }
 
-// LoadNextQuestQuests allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (questL) LoadNextQuestQuests(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
-	var slice []*Quest
-	var object *Quest
-
-	if singular {
-		object = maybeQuest.(*Quest)
-	} else {
-		slice = *maybeQuest.(*[]*Quest)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &questR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &questR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`quests`),
-		qm.WhereIn(`quests.next_quest_id in ?`, args...),
-		qmhelper.WhereIsNull(`quests.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load quests")
-	}
-
-	var resultSlice []*Quest
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice quests")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on quests")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for quests")
-	}
-
-	if len(questAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.NextQuestQuests = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &questR{}
-			}
-			foreign.R.NextQuest = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.NextQuestID) {
-				local.R.NextQuestQuests = append(local.R.NextQuestQuests, foreign)
-				if foreign.R == nil {
-					foreign.R = &questR{}
-				}
-				foreign.R.NextQuest = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// SetNextQuest of the quest to the related item.
-// Sets o.R.NextQuest to related.
-// Adds o to related.R.NextQuestQuests.
-func (o *Quest) SetNextQuest(exec boil.Executor, insert bool, related *Quest) error {
+// SetRound of the quest to the related item.
+// Sets o.R.Round to related.
+// Adds o to related.R.Quests.
+func (o *Quest) SetRound(exec boil.Executor, insert bool, related *Round) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -781,7 +639,7 @@ func (o *Quest) SetNextQuest(exec boil.Executor, insert bool, related *Quest) er
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"quests\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"next_quest_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"round_id"}),
 		strmangle.WhereClause("\"", "\"", 2, questPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -794,56 +652,23 @@ func (o *Quest) SetNextQuest(exec boil.Executor, insert bool, related *Quest) er
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.NextQuestID, related.ID)
+	o.RoundID = related.ID
 	if o.R == nil {
 		o.R = &questR{
-			NextQuest: related,
+			Round: related,
 		}
 	} else {
-		o.R.NextQuest = related
+		o.R.Round = related
 	}
 
 	if related.R == nil {
-		related.R = &questR{
-			NextQuestQuests: QuestSlice{o},
+		related.R = &roundR{
+			Quests: QuestSlice{o},
 		}
 	} else {
-		related.R.NextQuestQuests = append(related.R.NextQuestQuests, o)
+		related.R.Quests = append(related.R.Quests, o)
 	}
 
-	return nil
-}
-
-// RemoveNextQuest relationship.
-// Sets o.R.NextQuest to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Quest) RemoveNextQuest(exec boil.Executor, related *Quest) error {
-	var err error
-
-	queries.SetScanner(&o.NextQuestID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("next_quest_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.NextQuest = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.NextQuestQuests {
-		if queries.Equal(o.NextQuestID, ri.NextQuestID) {
-			continue
-		}
-
-		ln := len(related.R.NextQuestQuests)
-		if ln > 1 && i < ln-1 {
-			related.R.NextQuestQuests[i] = related.R.NextQuestQuests[ln-1]
-		}
-		related.R.NextQuestQuests = related.R.NextQuestQuests[:ln-1]
-		break
-	}
 	return nil
 }
 
@@ -896,131 +721,6 @@ func (o *Quest) AddPlayersQuests(exec boil.Executor, insert bool, related ...*Pl
 			rel.R.Quest = o
 		}
 	}
-	return nil
-}
-
-// AddNextQuestQuests adds the given related objects to the existing relationships
-// of the quest, optionally inserting them as new records.
-// Appends related to o.R.NextQuestQuests.
-// Sets related.R.NextQuest appropriately.
-func (o *Quest) AddNextQuestQuests(exec boil.Executor, insert bool, related ...*Quest) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.NextQuestID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"quests\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"next_quest_id"}),
-				strmangle.WhereClause("\"", "\"", 2, questPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.NextQuestID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &questR{
-			NextQuestQuests: related,
-		}
-	} else {
-		o.R.NextQuestQuests = append(o.R.NextQuestQuests, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &questR{
-				NextQuest: o,
-			}
-		} else {
-			rel.R.NextQuest = o
-		}
-	}
-	return nil
-}
-
-// SetNextQuestQuests removes all previously related items of the
-// quest replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.NextQuest's NextQuestQuests accordingly.
-// Replaces o.R.NextQuestQuests with related.
-// Sets related.R.NextQuest's NextQuestQuests accordingly.
-func (o *Quest) SetNextQuestQuests(exec boil.Executor, insert bool, related ...*Quest) error {
-	query := "update \"quests\" set \"next_quest_id\" = null where \"next_quest_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.NextQuestQuests {
-			queries.SetScanner(&rel.NextQuestID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.NextQuest = nil
-		}
-
-		o.R.NextQuestQuests = nil
-	}
-	return o.AddNextQuestQuests(exec, insert, related...)
-}
-
-// RemoveNextQuestQuests relationships from objects passed in.
-// Removes related items from R.NextQuestQuests (uses pointer comparison, removal does not keep order)
-// Sets related.R.NextQuest.
-func (o *Quest) RemoveNextQuestQuests(exec boil.Executor, related ...*Quest) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.NextQuestID, nil)
-		if rel.R != nil {
-			rel.R.NextQuest = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("next_quest_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.NextQuestQuests {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.NextQuestQuests)
-			if ln > 1 && i < ln-1 {
-				o.R.NextQuestQuests[i] = o.R.NextQuestQuests[ln-1]
-			}
-			o.R.NextQuestQuests = o.R.NextQuestQuests[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

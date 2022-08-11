@@ -1403,7 +1403,6 @@ func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *b
 	// get all the available quests
 	quests, err := boiler.Quests(
 		boiler.QuestWhere.ExpiresAt.GT(now),
-		boiler.QuestWhere.NextQuestID.IsNull(),
 		qm.Load(
 			boiler.QuestRels.PlayersQuests,
 			boiler.PlayersQuestWhere.PlayerID.EQ(user.ID),
