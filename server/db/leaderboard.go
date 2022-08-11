@@ -14,7 +14,7 @@ import (
 )
 
 type PlayerMechSurvives struct {
-	Player       *boiler.Player `json:"player"`
+	Player       *server.Player `json:"player"`
 	MechSurvives int            `db:"mech_survive_count" json:"mech_survive_count"`
 }
 
@@ -22,21 +22,23 @@ func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMec
 	args := []interface{}{}
 	whereClause := ""
 	if startTime.Valid && endTime.Valid {
-		whereClause = "WHERE bw.created_at BETWEEN $1 AND $2"
+		whereClause = "WHERE created_at BETWEEN $1 AND $2"
 		args = append(args, startTime.Time, endTime.Time)
 	}
 
 	q := fmt.Sprintf(`
-        WITH bw AS (
-        	SELECT owner_id, COUNT(mech_id) AS mech_survive_count 
-        	FROM battle_wins bw 
+		SELECT TO_JSON(p.*), bw.mech_survive_count
+		FROM (
+			SELECT owner_id, COUNT(mech_id) AS mech_survive_count 
+        	FROM battle_wins 
 			%s
         	GROUP BY owner_id 
         	ORDER BY COUNT(mech_id) DESC 
         	LIMIT 100
-        )
-        SELECT p.id, p.username, p.faction_id, p.gid, p.rank, bw.mech_survive_count FROM players p
-        INNER JOIN bw on p.id = bw.owner_id
+		) bw
+		INNER JOIN (
+			SELECT id, username, faction_id, gid, rank FROM players 
+		) p ON p.id = bw.owner_id
         ORDER BY bw.mech_survive_count DESC;
     `, whereClause)
 	rows, err := gamedb.StdConn.Query(q, args...)
@@ -49,11 +51,9 @@ func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMec
 
 	resp := []*PlayerMechSurvives{}
 	for rows.Next() {
-		mechSurvive := &PlayerMechSurvives{
-			Player: &boiler.Player{},
-		}
+		ms := &PlayerMechSurvives{}
 
-		err := rows.Scan(&mechSurvive.Player.ID, &mechSurvive.Player.Username, &mechSurvive.Player.FactionID, &mechSurvive.Player.Gid, &mechSurvive.Player.Rank, &mechSurvive.MechSurvives)
+		err := rows.Scan(&ms.Player, &ms.MechSurvives)
 
 		if err != nil {
 			gamelog.L.Error().
@@ -61,7 +61,7 @@ func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMec
 			return nil, err
 		}
 
-		resp = append(resp, mechSurvive)
+		resp = append(resp, ms)
 	}
 
 	return resp, nil
