@@ -33,7 +33,7 @@ func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMec
 			%s
         	GROUP BY owner_id 
         	ORDER BY COUNT(mech_id) DESC 
-        	LIMIT 10
+        	LIMIT 100
         )
         SELECT p.id, p.username, p.faction_id, p.gid, p.rank, bw.mech_survive_count FROM players p
         INNER JOIN bw on p.id = bw.owner_id
@@ -80,7 +80,7 @@ func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 			WHERE "item_type" = 'mech' 
 			GROUP BY owner_id 
 			ORDER BY COUNT(id) 
-			DESC LIMIT 10
+			DESC LIMIT 100
 		)
 		SELECT p.id, p.username, p.faction_id, p.gid, p.rank, ci.mechs_owned FROM players p
 		INNER JOIN ci on p.id = ci.owner_id
@@ -173,7 +173,7 @@ func TopBattleViewers(startTime, endTime null.Time) ([]*PlayerBattlesSpectated, 
 			%s
     		group by bv.player_id
     		order by count(bv.battle_id) DESC
-    		limit 10
+    		limit 100
 		)bv
 		INNER JOIN (
 			select id, username, faction_id, gid, rank from players
@@ -225,7 +225,7 @@ func TopMechKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerMechKi
 		    WHERE bh.event_type = 'killed' %s
 		    GROUP BY bm.owner_id
 		    ORDER BY count(bm.mech_id) DESC
-		    LIMIT 10
+		    LIMIT 100
 		) mkc
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
@@ -289,7 +289,7 @@ func TopAbilityKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerAbi
 			) pk
 			GROUP BY pk.player_id
 			ORDER BY sum(pk.ability_kill_count) DESC
-			LIMIT 10
+			LIMIT 100
 		) pak
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
@@ -340,7 +340,7 @@ func TopAbilityTriggerPlayers(startTime null.Time, endTime null.Time) ([]*Player
 		    %s
 		    GROUP BY player_id
 		    ORDER BY COUNT(id) DESC
-		    LIMIT 10
+		    LIMIT 100
 		) bat
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
@@ -391,7 +391,7 @@ func TopRepairBlockPlayers(startTime null.Time, endTime null.Time) ([]*PlayerRep
 		    WHERE finished_reason = 'SUCCEEDED' AND finished_at NOTNULL %s
 		    GROUP BY player_id
 		    ORDER BY COUNT(id) DESC
-		    LIMIT 10
+		    LIMIT 100
 		) ra
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
