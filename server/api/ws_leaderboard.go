@@ -13,30 +13,20 @@ import (
 	"server/gamelog"
 )
 
-// LeaderboardController holds handlers for leaderboard
-type LeaderboardController struct {
-	API *API
-}
-
-func NewLeaderboardController(api *API) *LeaderboardController {
-	leaderboardHub := &LeaderboardController{
-		API: api,
-	}
-
-	api.Command(HubKeyLeaderboardRounds, leaderboardHub.GetLeaderboardRoundsHandler)
-	api.Command(HubKeyPlayerBattlesSpectated, leaderboardHub.GetPlayerBattlesSpectatedHandler)
-	api.Command(HubKeyPlayerMechSurvives, leaderboardHub.GetPlayerMechSurvivesHandler)
-	api.Command(HubKeyPlayerMechKills, leaderboardHub.GetPlayerMechKillsHandler)
-	api.Command(HubKeyPlayerAbilityKills, leaderboardHub.GetPlayerAbilityKillsHandler)
-	api.Command(HubKeyPlayerAbilityTriggers, leaderboardHub.GetPlayerAbilityTriggersHandler)
-	api.Command(HubKeyPlayerMechsOwned, leaderboardHub.GetPlayerMechsOwnedHandler)
-
-	return leaderboardHub
+func NewLeaderboardController(api *API) {
+	api.Command(HubKeyLeaderboardRounds, api.GetLeaderboardRoundsHandler)
+	api.Command(HubKeyPlayerBattlesSpectatedLeaderboard, api.GetPlayerBattlesSpectatedLeaderboardHandler)
+	api.Command(HubKeyPlayerMechSurvivesLeaderboard, api.GetPlayerMechSurvivesLeaderboardHandler)
+	api.Command(HubKeyPlayerMechKillsLeaderboard, api.GetPlayerMechKillsLeaderboardHandler)
+	api.Command(HubKeyPlayerAbilityKillsLeaderboard, api.GetPlayerAbilityKillsLeaderboardHandler)
+	api.Command(HubKeyPlayerAbilityTriggersLeaderboard, api.GetPlayerAbilityTriggersLeaderboardHandler)
+	api.Command(HubKeyPlayerMechsOwnedLeaderboard, api.GetPlayerMechsOwnedLeaderboardHandler)
+	api.Command(HubKeyPlayerRepairBlockLeaderboard, api.GetPlayerRepairBlockLeaderboardHandler)
 }
 
 const HubKeyLeaderboardRounds = "LEADERBOARD:ROUNDS"
 
-func (lc *LeaderboardController) GetLeaderboardRoundsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetLeaderboardRoundsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	rs, err := boiler.Rounds(
 		boiler.RoundWhere.IsInit.EQ(false),
 		qm.OrderBy(boiler.RoundColumns.CreatedAt+" DESC"),
@@ -53,14 +43,14 @@ func (lc *LeaderboardController) GetLeaderboardRoundsHandler(ctx context.Context
 /**
 * Get top players battles spectated
  */
-const HubKeyPlayerBattlesSpectated = "LEADERBOARD:PLAYER:BATTLE:SPECTATED"
+const HubKeyPlayerBattlesSpectatedLeaderboard = "LEADERBOARD:PLAYER:BATTLE:SPECTATED"
 
 type LeaderboardRequest struct {
 	StartTime null.Time `json:"start_time"`
 	EndTime   null.Time `json:"end_time"`
 }
 
-func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerBattlesSpectatedLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &LeaderboardRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -80,9 +70,9 @@ func (lc *LeaderboardController) GetPlayerBattlesSpectatedHandler(ctx context.Co
 /**
 * Get top players mech survivals based on the mechs they own
  */
-const HubKeyPlayerMechSurvives = "LEADERBOARD:PLAYER:MECH:SURVIVES"
+const HubKeyPlayerMechSurvivesLeaderboard = "LEADERBOARD:PLAYER:MECH:SURVIVES"
 
-func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerMechSurvivesLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &LeaderboardRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -103,9 +93,9 @@ func (lc *LeaderboardController) GetPlayerMechSurvivesHandler(ctx context.Contex
 /**
 * Get top players mech kills
  */
-const HubKeyPlayerMechKills = "LEADERBOARD:PLAYER:MECH:KILLS"
+const HubKeyPlayerMechKillsLeaderboard = "LEADERBOARD:PLAYER:MECH:KILLS"
 
-func (lc *LeaderboardController) GetPlayerMechKillsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerMechKillsLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &LeaderboardRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -125,9 +115,9 @@ func (lc *LeaderboardController) GetPlayerMechKillsHandler(ctx context.Context, 
 /**
 * Get top players ability kills
  */
-const HubKeyPlayerAbilityKills = "LEADERBOARD:PLAYER:ABILITY:KILLS"
+const HubKeyPlayerAbilityKillsLeaderboard = "LEADERBOARD:PLAYER:ABILITY:KILLS"
 
-func (lc *LeaderboardController) GetPlayerAbilityKillsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerAbilityKillsLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &LeaderboardRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -147,9 +137,9 @@ func (lc *LeaderboardController) GetPlayerAbilityKillsHandler(ctx context.Contex
 /**
 * Get top players ability triggers
  */
-const HubKeyPlayerAbilityTriggers = "LEADERBOARD:PLAYER:ABILITY:TRIGGERS"
+const HubKeyPlayerAbilityTriggersLeaderboard = "LEADERBOARD:PLAYER:ABILITY:TRIGGERS"
 
-func (lc *LeaderboardController) GetPlayerAbilityTriggersHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerAbilityTriggersLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &LeaderboardRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -166,12 +156,31 @@ func (lc *LeaderboardController) GetPlayerAbilityTriggersHandler(ctx context.Con
 	return nil
 }
 
+const HubKeyPlayerRepairBlockLeaderboard = "LEADERBOARD:PLAYER:REPAIR:BLOCK"
+
+func (api *API) GetPlayerRepairBlockLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &LeaderboardRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	resp, err := db.TopRepairBlockPlayers(req.StartTime, req.EndTime)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load player mech kill count")
+		return err
+	}
+
+	reply(resp)
+	return nil
+}
+
 /**
 * Get top players most mech survivals based on the mechs they own
  */
-const HubKeyPlayerMechsOwned = "LEADERBOARD:PLAYER:MECHS:OWNED"
+const HubKeyPlayerMechsOwnedLeaderboard = "LEADERBOARD:PLAYER:MECHS:OWNED"
 
-func (lc *LeaderboardController) GetPlayerMechsOwnedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) GetPlayerMechsOwnedLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp, err := db.GetPlayerMechsOwned()
 
 	if err != nil {

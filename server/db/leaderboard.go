@@ -333,7 +333,7 @@ func TopAbilityTriggerPlayers(startTime null.Time, endTime null.Time) ([]*Player
 	}
 
 	q := fmt.Sprintf(`
-		SELECT TO_JSON(p.*), bat.ability_trigger_count
+		SELECT TO_JSON(p.*), bat.ability_trigger_count AS total_ability_triggered
 		FROM (
 		    SELECT player_id, COUNT(id) as ability_trigger_count
 		    FROM battle_ability_triggers
@@ -357,6 +357,57 @@ func TopAbilityTriggerPlayers(startTime null.Time, endTime null.Time) ([]*Player
 	for rows.Next() {
 		pbs := &PlayerAbilityTriggers{}
 		err = rows.Scan(&pbs.Player, &pbs.TotalAbilityTriggered)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan player ability trigger count from db.")
+			return nil, terror.Error(err, "Failed to load player ability trigger count.")
+		}
+
+		resp = append(resp, pbs)
+	}
+
+	return resp, nil
+}
+
+type PlayerRepairBlocks struct {
+	Player             *server.Player `json:"player"`
+	TotalBlockRepaired int            `db:"total_block_repaired" json:"total_block_repaired"`
+}
+
+func TopRepairBlockPlayers(startTime null.Time, endTime null.Time) ([]*PlayerRepairBlocks, error) {
+	args := []interface{}{}
+	whereClause := ""
+	if startTime.Valid && endTime.Valid {
+		whereClause = `
+			 AND finished_at BETWEEN $1 AND $2
+		`
+		args = append(args, startTime.Time, endTime.Time)
+	}
+
+	q := fmt.Sprintf(`
+		SELECT TO_JSON(p.*), ra.total_block_repaired
+		FROM (
+		    SELECT player_id, COUNT(id) as total_block_repaired
+		    FROM repair_agents
+		    WHERE finished_reason = 'SUCCEEDED' AND finished_at NOTNULL %s
+		    GROUP BY player_id
+		    ORDER BY COUNT(id) DESC
+		    LIMIT 10
+		) ra
+		INNER JOIN (
+		    SELECT id, username, faction_id, gid, rank FROM players
+		) p ON p.id = ra.player_id;
+	`, whereClause)
+
+	rows, err := gamedb.StdConn.Query(q, args...)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get player ability trigger leaderboard.")
+		return nil, terror.Error(err, "Failed to get player ability trigger leaderboard.")
+	}
+
+	resp := []*PlayerRepairBlocks{}
+	for rows.Next() {
+		pbs := &PlayerRepairBlocks{}
+		err = rows.Scan(&pbs.Player, &pbs.TotalBlockRepaired)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to scan player ability trigger count from db.")
 			return nil, terror.Error(err, "Failed to load player ability trigger count.")
