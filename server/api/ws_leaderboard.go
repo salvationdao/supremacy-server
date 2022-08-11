@@ -156,6 +156,10 @@ func (api *API) GetPlayerAbilityTriggersLeaderboardHandler(ctx context.Context, 
 	return nil
 }
 
+/**
+* Get top 10 players who repair the most blocks
+ */
+
 const HubKeyPlayerRepairBlockLeaderboard = "LEADERBOARD:PLAYER:REPAIR:BLOCK"
 
 func (api *API) GetPlayerRepairBlockLeaderboardHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
