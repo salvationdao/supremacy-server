@@ -25,7 +25,6 @@ import (
 // Weapon is an object representing the database table.
 type Weapon struct {
 	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID               null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
 	Slug                  string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Damage                int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
 	DeletedAt             null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -55,7 +54,6 @@ type Weapon struct {
 
 var WeaponColumns = struct {
 	ID                    string
-	BrandID               string
 	Slug                  string
 	Damage                string
 	DeletedAt             string
@@ -80,7 +78,6 @@ var WeaponColumns = struct {
 	EquippedWeaponSkinID  string
 }{
 	ID:                    "id",
-	BrandID:               "brand_id",
 	Slug:                  "slug",
 	Damage:                "damage",
 	DeletedAt:             "deleted_at",
@@ -107,7 +104,6 @@ var WeaponColumns = struct {
 
 var WeaponTableColumns = struct {
 	ID                    string
-	BrandID               string
 	Slug                  string
 	Damage                string
 	DeletedAt             string
@@ -132,7 +128,6 @@ var WeaponTableColumns = struct {
 	EquippedWeaponSkinID  string
 }{
 	ID:                    "weapons.id",
-	BrandID:               "weapons.brand_id",
 	Slug:                  "weapons.slug",
 	Damage:                "weapons.damage",
 	DeletedAt:             "weapons.deleted_at",
@@ -161,7 +156,6 @@ var WeaponTableColumns = struct {
 
 var WeaponWhere = struct {
 	ID                    whereHelperstring
-	BrandID               whereHelpernull_String
 	Slug                  whereHelperstring
 	Damage                whereHelperint
 	DeletedAt             whereHelpernull_Time
@@ -186,7 +180,6 @@ var WeaponWhere = struct {
 	EquippedWeaponSkinID  whereHelperstring
 }{
 	ID:                    whereHelperstring{field: "\"weapons\".\"id\""},
-	BrandID:               whereHelpernull_String{field: "\"weapons\".\"brand_id\""},
 	Slug:                  whereHelperstring{field: "\"weapons\".\"slug\""},
 	Damage:                whereHelperint{field: "\"weapons\".\"damage\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"weapons\".\"deleted_at\""},
@@ -214,7 +207,6 @@ var WeaponWhere = struct {
 // WeaponRels is where relationship names are stored.
 var WeaponRels = struct {
 	Blueprint             string
-	Brand                 string
 	EquippedOnMech        string
 	EquippedWeaponSkin    string
 	MechWeapon            string
@@ -222,7 +214,6 @@ var WeaponRels = struct {
 	EquippedOnWeaponSkins string
 }{
 	Blueprint:             "Blueprint",
-	Brand:                 "Brand",
 	EquippedOnMech:        "EquippedOnMech",
 	EquippedWeaponSkin:    "EquippedWeaponSkin",
 	MechWeapon:            "MechWeapon",
@@ -233,7 +224,6 @@ var WeaponRels = struct {
 // weaponR is where relationships are stored.
 type weaponR struct {
 	Blueprint             *BlueprintWeapon `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	Brand                 *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	EquippedOnMech        *Mech            `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
 	EquippedWeaponSkin    *WeaponSkin      `boiler:"EquippedWeaponSkin" boil:"EquippedWeaponSkin" json:"EquippedWeaponSkin" toml:"EquippedWeaponSkin" yaml:"EquippedWeaponSkin"`
 	MechWeapon            *MechWeapon      `boiler:"MechWeapon" boil:"MechWeapon" json:"MechWeapon" toml:"MechWeapon" yaml:"MechWeapon"`
@@ -250,9 +240,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "equipped_weapon_skin_id"}
+	weaponAllColumns            = []string{"id", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "equipped_weapon_skin_id"}
 	weaponColumnsWithoutDefault = []string{"slug", "damage", "blueprint_id", "equipped_weapon_skin_id"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech"}
+	weaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )
@@ -514,21 +504,6 @@ func (o *Weapon) Blueprint(mods ...qm.QueryMod) blueprintWeaponQuery {
 	return query
 }
 
-// Brand pointed to by the foreign key.
-func (o *Weapon) Brand(mods ...qm.QueryMod) brandQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.BrandID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Brands(queryMods...)
-	queries.SetFrom(query.Query, "\"brands\"")
-
-	return query
-}
-
 // EquippedOnMech pointed to by the foreign key.
 func (o *Weapon) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
@@ -712,115 +687,6 @@ func (weaponL) LoadBlueprint(e boil.Executor, singular bool, maybeWeapon interfa
 					foreign.R = &blueprintWeaponR{}
 				}
 				foreign.R.BlueprintWeapons = append(foreign.R.BlueprintWeapons, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBrand allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (weaponL) LoadBrand(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
-	var slice []*Weapon
-	var object *Weapon
-
-	if singular {
-		object = maybeWeapon.(*Weapon)
-	} else {
-		slice = *maybeWeapon.(*[]*Weapon)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &weaponR{}
-		}
-		if !queries.IsNil(object.BrandID) {
-			args = append(args, object.BrandID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &weaponR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.BrandID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.BrandID) {
-				args = append(args, obj.BrandID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`brands`),
-		qm.WhereIn(`brands.id in ?`, args...),
-		qmhelper.WhereIsNull(`brands.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Brand")
-	}
-
-	var resultSlice []*Brand
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Brand")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for brands")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for brands")
-	}
-
-	if len(weaponAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Brand = foreign
-		if foreign.R == nil {
-			foreign.R = &brandR{}
-		}
-		foreign.R.Weapons = append(foreign.R.Weapons, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.BrandID, foreign.ID) {
-				local.R.Brand = foreign
-				if foreign.R == nil {
-					foreign.R = &brandR{}
-				}
-				foreign.R.Weapons = append(foreign.R.Weapons, local)
 				break
 			}
 		}
@@ -1383,85 +1249,6 @@ func (o *Weapon) SetBlueprint(exec boil.Executor, insert bool, related *Blueprin
 		related.R.BlueprintWeapons = append(related.R.BlueprintWeapons, o)
 	}
 
-	return nil
-}
-
-// SetBrand of the weapon to the related item.
-// Sets o.R.Brand to related.
-// Adds o to related.R.Weapons.
-func (o *Weapon) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"weapons\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"brand_id"}),
-		strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.BrandID, related.ID)
-	if o.R == nil {
-		o.R = &weaponR{
-			Brand: related,
-		}
-	} else {
-		o.R.Brand = related
-	}
-
-	if related.R == nil {
-		related.R = &brandR{
-			Weapons: WeaponSlice{o},
-		}
-	} else {
-		related.R.Weapons = append(related.R.Weapons, o)
-	}
-
-	return nil
-}
-
-// RemoveBrand relationship.
-// Sets o.R.Brand to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Weapon) RemoveBrand(exec boil.Executor, related *Brand) error {
-	var err error
-
-	queries.SetScanner(&o.BrandID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("brand_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Brand = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.Weapons {
-		if queries.Equal(o.BrandID, ri.BrandID) {
-			continue
-		}
-
-		ln := len(related.R.Weapons)
-		if ln > 1 && i < ln-1 {
-			related.R.Weapons[i] = related.R.Weapons[ln-1]
-		}
-		related.R.Weapons = related.R.Weapons[:ln-1]
-		break
-	}
 	return nil
 }
 
