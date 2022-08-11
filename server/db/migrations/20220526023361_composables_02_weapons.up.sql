@@ -364,10 +364,33 @@ SET weapon_hardpoints = 3;
 UPDATE blueprint_chassis bc
 SET weapon_hardpoints = 3;
 
+-- set equipped on
+WITH wsp AS (SELECT _w.id, mw.chassis_id
+             FROM weapons _w
+                      INNER JOIN chassis_weapons mw ON _w.id = mw.weapon_id)
+UPDATE weapons w
+SET equipped_on = wsp.chassis_id
+FROM wsp
+WHERE wsp.id = w.id;
 
 -- below adds the blueprint ids for the weapons
-UPDATE weapons w
-SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
+-- UPDATE weapons w
+-- SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
+WITH wpns AS (
+    SELECT w.id, w.label, w.equipped_on, mm.brand_id
+    FROM weapons w
+    INNER JOIN chassis m ON m.id = w.equipped_on
+    INNER JOIN mech_models mm ON mm.id = m.model_id
+)
+UPDATE weapons w SET blueprint_id = (
+    SELECT bw.id
+    FROM blueprint_weapons bw
+    INNER JOIN weapon_models wm on bw.weapon_model_id = wm.id
+    WHERE wpns.label = bw.label and wpns.brand_id = wm.brand_id
+)
+FROM wpns
+WHERE w.id = wpns.id;
+
 
 ALTER TABLE weapons
     ALTER COLUMN blueprint_id SET NOT NULL;
@@ -383,20 +406,21 @@ FROM blueprint_chassis_blueprint_weapons bpcbpw
 WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
 
 
-WITH bpc AS (SELECT _bpc.id FROM blueprint_chassis _bpc)
+WITH bpc AS (
+    SELECT _bpc.id, mm.brand_id
+    FROM blueprint_chassis _bpc
+             INNER JOIN mech_models mm on _bpc.model_id = mm.id
+)
 INSERT
 INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
+SELECT (
+           SELECT bpw.id
+           FROM blueprint_weapons bpw
+                    INNER JOIN weapon_models wm on bpw.weapon_model_id = wm.id
+           WHERE bpw.label ILIKE '%Rocket Pod%' and wm.brand_id = bpc.brand_id
+       ),
        bpc.id,
        2,
        'TURRET'
 FROM bpc;
 
--- set equipped on
-WITH wsp AS (SELECT _w.id, mw.chassis_id
-             FROM weapons _w
-                      INNER JOIN chassis_weapons mw ON _w.id = mw.weapon_id)
-UPDATE weapons w
-SET equipped_on = wsp.chassis_id
-FROM wsp
-WHERE wsp.id = w.id;

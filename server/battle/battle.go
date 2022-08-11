@@ -1955,7 +1955,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		DestroyedWarMachine: &WarMachineBrief{
 			ParticipantID: destroyedWarMachine.ParticipantID,
 			ImageUrl:      destroyedWarMachine.Image,
-			ImageAvatar:   destroyedWarMachine.ImageAvatar, // TODO: should be imageavatar
+			ImageAvatar:   destroyedWarMachine.ImageAvatar,
 			Name:          destroyedWarMachine.Name,
 			Hash:          destroyedWarMachine.Hash,
 			FactionID:     destroyedWarMachine.FactionID,
@@ -2194,8 +2194,8 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Health:      uint32(mech.MaxHitpoints),
 			Speed:       mech.Speed,
 			Tier:        mech.Tier,
-			Image:       mech.ChassisSkin.ImageURL.String,
-			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
+			Image:       mech.ImageURL.String,
+			ImageAvatar: mech.AvatarURL.String,
 
 			Faction: &Faction{
 				ID:    mech.Faction.ID,

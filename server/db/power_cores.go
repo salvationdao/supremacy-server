@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -16,7 +17,6 @@ import (
 )
 
 func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
-	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
 		BlueprintID:           null.StringFrom(ec.ID),
 		Label:                 ec.Label,
@@ -41,13 +41,6 @@ func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.Blueprin
 		newPowerCore.ID,
 		ec.Tier,
 		ownerID.String(),
-		ec.ImageURL,
-		ec.CardAnimationURL,
-		ec.AvatarURL,
-		ec.LargeImageURL,
-		ec.BackgroundColor,
-		ec.AnimationURL,
-		ec.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -56,13 +49,11 @@ func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.Blueprin
 	return PowerCore(tx, newPowerCore.ID)
 }
 
-func PowerCore(trx boil.Executor, id string) (*server.PowerCore, error) {
-	tx := trx
-	if trx == nil {
-		tx = gamedb.StdConn
-	}
-
-	boilerMech, err := boiler.FindPowerCore(tx, id)
+func PowerCore(tx boil.Executor, id string) (*server.PowerCore, error) {
+	boilerMech, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.ID.EQ(id),
+		qm.Load(boiler.PowerCoreRels.Blueprint),
+		).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +82,7 @@ func PowerCores(id ...string) ([]*server.PowerCore, error) {
 	return powerCores, nil
 }
 
-// AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
+// AttachPowerCoreToMech attaches a power core to a mech
 func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	// check owner

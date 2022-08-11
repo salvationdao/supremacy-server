@@ -238,6 +238,7 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 		boiler.MysteryCrateWhere.Type.EQ(storeCrate.MysteryCrateType),
 		boiler.MysteryCrateWhere.Purchased.EQ(false),
 		boiler.MysteryCrateWhere.Opened.EQ(false),
+		qm.Load(boiler.MysteryCrateRels.Blueprint),
 	).All(tx)
 	if err != nil {
 		return nil, nil, terror.Error(err, "Failed to get available crates, please try again or contact support.")
@@ -272,13 +273,6 @@ func assignAndRegisterPurchasedCrate(userID string, storeCrate *boiler.Storefron
 		assignedCrate.ID,
 		"",
 		userID,
-		storeCrate.ImageURL,
-		storeCrate.CardAnimationURL,
-		storeCrate.AvatarURL,
-		storeCrate.LargeImageURL,
-		storeCrate.BackgroundColor,
-		storeCrate.AnimationURL,
-		storeCrate.YoutubeURL,
 	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")

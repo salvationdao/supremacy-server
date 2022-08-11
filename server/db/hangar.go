@@ -107,8 +107,8 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 			StaticID:    mechSilo.SkinIDStr,
 		}
 
-		if mech.ChassisSkinID.Valid {
-			mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(gamedb.StdConn)
+		if mech.ChassisSkinID != "" {
+			mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID)).One(gamedb.StdConn)
 			if err != nil {
 				continue
 			}
@@ -125,7 +125,6 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 
 				weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
 					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-					boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
@@ -133,24 +132,15 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				}
 				if err == nil {
 					weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
-				} else if !weapon.EquippedWeaponSkinID.Valid {
-					weaponModel, err := boiler.WeaponModels(
-						boiler.WeaponModelWhere.ID.EQ(mech.ModelID),
-					).One(gamedb.StdConn)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-						continue
-					}
-					weaponSkinBlueprintID = weaponModel.DefaultSkinID
 				} else {
-					skinBP, err := boiler.FindWeaponSkin(gamedb.StdConn, weapon.EquippedWeaponSkinID.String)
+					skinBP, err := boiler.FindWeaponSkin(gamedb.StdConn, weapon.EquippedWeaponSkinID)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
 						continue
 					}
 					weaponSkinBlueprintID = skinBP.BlueprintID
 
-					weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID.String), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
+					weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
 					if err != nil {
 						continue
 					}
@@ -165,7 +155,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				newAttribute := MechSiloAccessories{
 					Type:        "weapon",
 					OwnershipID: weaponCollection.ID,
-					StaticID:    weapon.WeaponModelID.String,
+					StaticID:    weapon.WeaponModelID,
 					Skin: &SiloSkin{
 						Type:        "skin",
 						OwnershipID: weaponSkinCollectionID,
@@ -266,7 +256,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 			continue
 		}
 
-		if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
+		if weapon.EquippedOn.Valid {
 			continue
 		}
 
@@ -281,7 +271,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 			StaticID:    &weaponBlueprint.R.WeaponModel.ID,
 		}
 
-		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(gamedb.StdConn)
+		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(gamedb.StdConn)
 		if err != nil {
 			continue
 		}
@@ -340,8 +330,8 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 		StaticID:    &mech.ChassisSkin.BlueprintID,
 	}
 
-	if mech.ChassisSkinID.Valid {
-		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID.String)).One(trx)
+	if mech.ChassisSkinID != "" {
+		mechSkinOwnership, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mech.ChassisSkinID)).One(trx)
 		if err != nil {
 			return nil, terror.Error(err, "Failed to get mech skin ownership")
 		}
@@ -358,7 +348,6 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 
 			weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
 				boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-				boiler.BlueprintWeaponSkinWhere.WeaponType.EQ(weapon.WeaponType),
 			).One(trx)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
@@ -366,24 +355,15 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			}
 			if err == nil {
 				weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
-			} else if !weapon.EquippedWeaponSkinID.Valid {
-				weaponModel, err := boiler.WeaponModels(
-					boiler.WeaponModelWhere.ID.EQ(mech.ModelID),
-				).One(trx)
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-					continue
-				}
-				weaponSkinBlueprintID = weaponModel.DefaultSkinID
 			} else {
-				skinBP, err := boiler.FindWeaponSkin(trx, weapon.EquippedWeaponSkinID.String)
+				skinBP, err := boiler.FindWeaponSkin(trx, weapon.EquippedWeaponSkinID)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
 					continue
 				}
 				weaponSkinBlueprintID = skinBP.BlueprintID
 
-				weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID.String), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
+				weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
 				if err != nil {
 					continue
 				}
@@ -398,7 +378,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			newAttribute := MechSiloAccessories{
 				Type:        "weapon",
 				OwnershipID: weaponCollection.ID,
-				StaticID:    weapon.WeaponModelID.String,
+				StaticID:    weapon.WeaponModelID,
 				Skin: &SiloSkin{
 					Type:        "skin",
 					OwnershipID: weaponSkinCollectionID,
@@ -441,7 +421,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 		return nil, terror.Error(fmt.Errorf("no tx provided"), "Failed to get weapon hangar details")
 	}
 
-	if weapon.EquippedOn.Valid || !weapon.EquippedWeaponSkinID.Valid {
+	if weapon.EquippedOn.Valid {
 		return nil, terror.Error(fmt.Errorf("weapon not availiable in hangar"), "Weapon not available on hangar by itself")
 	}
 
@@ -456,7 +436,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
 	}
 
-	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID.String)).One(trx)
+	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get weapon skin")
 	}
