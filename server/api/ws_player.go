@@ -14,6 +14,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/quest"
 	"server/xsyn_rpcclient"
 	"strings"
 	"time"
@@ -1390,6 +1391,117 @@ func (pc *PlayerController) PlayerQuestStat(ctx context.Context, user *boiler.Pl
 	}
 
 	reply(pqs)
+
+	return nil
+}
+
+// PlayerQuestProgressions return current player quest progression
+func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "PlayerQuestProgressions").Logger()
+
+	now := time.Now()
+	// get all the available quests
+	quests, err := boiler.Quests(
+		boiler.QuestWhere.ExpiresAt.GT(now),
+		boiler.QuestWhere.NextQuestID.IsNull(),
+		qm.Load(
+			boiler.QuestRels.PlayersQuests,
+			boiler.PlayersQuestWhere.PlayerID.EQ(user.ID),
+		),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to query available quest")
+		return terror.Error(err, "Failed to get available quests")
+	}
+
+	result := []*quest.PlayerQuestProgression{}
+	for _, q := range quests {
+		pqp := &quest.PlayerQuestProgression{
+			QuestID: q.ID,
+			Current: 0,
+			Goal:    q.RequestAmount,
+		}
+
+		// if player already obtained the quest
+		if q.R != nil && q.R.PlayersQuests != nil && len(q.R.PlayersQuests) > 0 {
+			// set current score to goal, and append to result
+			pqp.Current = pqp.Goal
+			result = append(result, pqp)
+			continue
+		}
+
+		// log quest id
+		l = l.With().Str("quest id", q.ID).Logger()
+
+		// otherwise, load current progression
+		switch q.Key {
+		case boiler.QuestKeyAbilityKill:
+			playerKillLogs, err := boiler.PlayerKillLogs(
+				boiler.PlayerKillLogWhere.PlayerID.EQ(user.ID),
+				boiler.PlayerKillLogWhere.CreatedAt.GT(q.CreatedAt), // involve the logs after the quest issue time
+			).All(gamedb.StdConn)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get player kill logs")
+				return err
+			}
+
+			for _, pkl := range playerKillLogs {
+				if pkl.IsTeamKill {
+					pqp.Current -= 1
+					continue
+				}
+				pqp.Current += 1
+			}
+
+			// cap at zero
+			if pqp.Current < 0 {
+				pqp.Current = 0
+			}
+
+		case boiler.QuestKeyMechKill:
+			pqp.Current, err = db.PlayerMechKillCount(user.ID, q.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get player mech kill count")
+				return err
+			}
+
+		case boiler.QuestKeyMechJoinBattle:
+			pqp.Current, err = db.PlayerMechJoinBattleCount(user.ID, q.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return err
+			}
+
+		case boiler.QuestKeyChatSent:
+			pqp.Current, err = db.PlayerChatSendCount(user.ID, q.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return err
+			}
+
+		case boiler.QuestKeyRepairForOther:
+			pqp.Current, err = db.PlayerRepairForOthersCount(user.ID, q.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to get total repair block")
+				return err
+			}
+
+		case boiler.QuestKeyTotalBattleUsedMechCommander:
+			pqp.Current, err = db.PlayerTotalBattleMechCommanderUsed(user.ID, q.CreatedAt)
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to count total battles.")
+				return err
+			}
+		}
+
+		// cap current score with the quest goal
+		if pqp.Current > pqp.Goal {
+			pqp.Current = pqp.Goal
+		}
+		result = append(result, pqp)
+	}
+
+	reply(result)
 
 	return nil
 }

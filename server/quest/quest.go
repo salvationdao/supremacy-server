@@ -26,6 +26,12 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest) bool
 }
 
+type PlayerQuestProgression struct {
+	QuestID string `json:"quest_id"`
+	Current int    `json:"current"`
+	Goal    int    `json:"goal"`
+}
+
 func New() (*System, error) {
 	q := &System{
 		playerQuestChan: make(chan *playerQuestCheck, 50),
@@ -197,6 +203,17 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				totalKill += 1
 			}
 
+			if totalKill < 0 {
+				totalKill = 0
+			}
+
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, totalKill, pq.RequestAmount}},
+			)
+
 			// return if not eligible
 			if totalKill < pq.RequestAmount {
 				return false
@@ -221,6 +238,13 @@ func (q *System) MechKillQuestCheck(playerID string) {
 				return false
 			}
 
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, mechKillCount, pq.RequestAmount}},
+			)
+
 			if mechKillCount < pq.RequestAmount {
 				return false
 			}
@@ -244,6 +268,13 @@ func (q *System) MechCommanderQuestCheck(playerID string) {
 				return false
 			}
 
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, battleCount, pq.RequestAmount}},
+			)
+
 			if battleCount < pq.RequestAmount {
 				return false
 			}
@@ -266,6 +297,13 @@ func (q *System) RepairQuestCheck(playerID string) {
 				return false
 			}
 
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, blockCount, pq.RequestAmount}},
+			)
+
 			if blockCount < pq.RequestAmount {
 				return false
 			}
@@ -282,13 +320,20 @@ func (q *System) ChatMessageQuestCheck(playerID string) {
 		playerID: playerID,
 		checkFunc: func(playerID string, pq *boiler.Quest) bool {
 			// check player eligible to claim
-			mechCount, err := db.PlayerChatSendCount(playerID, pq.CreatedAt)
+			chatCount, err := db.PlayerChatSendCount(playerID, pq.CreatedAt)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get total repair block")
 				return false
 			}
 
-			if mechCount < pq.RequestAmount {
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, chatCount, pq.RequestAmount}},
+			)
+
+			if chatCount < pq.RequestAmount {
 				return false
 			}
 
@@ -309,6 +354,13 @@ func (q *System) MechJoinBattleQuestCheck(playerID string) {
 				l.Error().Err(err).Msg("Failed to get total repair block")
 				return false
 			}
+
+			// broadcast changes
+			ws.PublishMessage(
+				fmt.Sprintf("/user/%s/quest_progression", playerID),
+				server.HubKeyPlayerQuestProgressions,
+				[]*PlayerQuestProgression{{pq.ID, mechCount, pq.RequestAmount}},
+			)
 
 			if mechCount < pq.RequestAmount {
 				return false

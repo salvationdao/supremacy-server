@@ -313,6 +313,7 @@ func NewAPI(
 				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
 
 				s.WS("/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat))
+				s.WS("/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions))
 			}))
 
 			// secured faction route ws
