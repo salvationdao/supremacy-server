@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -33,17 +32,11 @@ const BlackoutGameAbilityID = 16
 
 const BlackoutDurationSeconds = 15 // has to match duration specified in supremacy-gameclient/abilities.json
 
-type BlackoutEntry struct {
-	GameCoords server.GameLocation
-	CellCoords server.CellLocation
-	ExpiresAt  time.Time
-}
-
 // PlayerAbilityManager tracks all player abilities and mech states that are active in the current battle
 type PlayerAbilityManager struct {
 	hiddenWarMachines map[string]time.Time // map[mech hash]expiry timestamp
 
-	blackouts           map[string]*BlackoutEntry // map[timestamp-player_ability_id-owner_id]ability info
+	blackouts           map[string]*player_abilities.BlackoutEntry // map[timestamp-player_ability_id-owner_id]ability info
 	hasBlackoutsUpdated bool
 
 	movingMiniMechs map[string]*player_abilities.MiniMechMoveCommand // map[mech_hash]mini mech move entry
@@ -56,7 +49,7 @@ type PlayerAbilityManager struct {
 func NewPlayerAbilityManager() *PlayerAbilityManager {
 	return &PlayerAbilityManager{
 		hiddenWarMachines:            make(map[string]time.Time),
-		blackouts:                    make(map[string]*BlackoutEntry),
+		blackouts:                    make(map[string]*player_abilities.BlackoutEntry),
 		movingMiniMechs:              make(map[string]*player_abilities.MiniMechMoveCommand),
 		MiniMechMoveCoooldownSeconds: db.GetIntWithDefault(db.KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds, 0), // default 0; i.e. no cooldown
 	}
@@ -175,7 +168,7 @@ func (pam *PlayerAbilityManager) HasBlackoutsUpdated() bool {
 	return pam.hasBlackoutsUpdated
 }
 
-func (pam *PlayerAbilityManager) Blackouts() map[string]*BlackoutEntry {
+func (pam *PlayerAbilityManager) Blackouts() map[string]*player_abilities.BlackoutEntry {
 	pam.RLock()
 	defer pam.RUnlock()
 
@@ -187,16 +180,13 @@ func (pam *PlayerAbilityManager) IsWarMachineInBlackout(position server.GameLoca
 	defer pam.Unlock()
 	for id, b := range pam.blackouts {
 		// Check if blackout is currently active, if not then delete it
-		if time.Now().After(b.ExpiresAt) {
+		if b.IsExpired() {
 			delete(pam.blackouts, id)
 			pam.hasBlackoutsUpdated = true
 			continue
 		}
 
-		c1 := position
-		c2 := b.GameCoords
-		d := math.Sqrt(math.Pow(float64(c2.X)-float64(c1.X), 2) + math.Pow(float64(c2.Y)-float64(c1.Y), 2))
-		if d < float64(BlackoutRadius) {
+		if b.ContainsPosition(position) {
 			return true
 		}
 	}
@@ -211,7 +201,7 @@ func (pam *PlayerAbilityManager) AddBlackout(id string, cellCoords server.CellLo
 	if ok {
 		return fmt.Errorf("Blackout has already been cast")
 	}
-	pam.blackouts[id] = &BlackoutEntry{
+	pam.blackouts[id] = &player_abilities.BlackoutEntry{
 		CellCoords: cellCoords,
 		GameCoords: gameCoords,
 		ExpiresAt:  time.Now().Add(time.Duration(BlackoutDurationSeconds) * time.Second),

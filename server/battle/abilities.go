@@ -5,12 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/exp/slices"
 	"math/rand"
 	"server"
+	"server/battle/player_abilities"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -18,6 +15,11 @@ import (
 	"server/gamelog"
 	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -33,7 +35,7 @@ type AbilityRadius int
 
 const (
 	NukeRadius     AbilityRadius = 5200
-	BlackoutRadius AbilityRadius = 20000
+	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 
 type AbilitiesSystem struct {

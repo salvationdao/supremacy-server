@@ -24,9 +24,9 @@ type MiniMechMoveCommand struct {
 	deadlock.RWMutex
 }
 
-type ReadFunc func(*MiniMechMoveCommand)
+type ReadMiniMechMoveCommandFunc func(*MiniMechMoveCommand)
 
-func (mm *MiniMechMoveCommand) Read(fn ReadFunc) {
+func (mm *MiniMechMoveCommand) Read(fn ReadMiniMechMoveCommandFunc) {
 	mm.RLock()
 	defer mm.RUnlock()
 
