@@ -51,7 +51,6 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 			return err
 		}
 	}
-
 	return tx.Commit()
 }
 

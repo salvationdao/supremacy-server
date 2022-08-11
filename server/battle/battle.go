@@ -169,11 +169,6 @@ func (btl *Battle) setBattleQueue() error {
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 
-	// check mech join battle quest for each mech owner
-	for _, wm := range btl.WarMachines {
-		btl.arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
-	}
-
 	return nil
 }
 
@@ -276,6 +271,11 @@ func (btl *Battle) start() {
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic
+	}
+
+	// check mech join battle quest for each mech owner
+	for _, wm := range btl.WarMachines {
+		btl.arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
 
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle AbilitySystem()")
@@ -1885,16 +1885,16 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				Msg("unable to store mech event data")
 		}
 
-		// check player obtain mech kill quest yet
+		// check player obtain mech kill quest
 		if killByWarMachine != nil {
 			btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
 		}
 
+		// check player obtain ability kill quest
 		if killedByUser != nil && destroyedWarMachine.OwnedByID != killedByUser.ID.String() {
 			// check player quest reward
 			btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
 		}
-
 	}
 
 	_, err = db.UpdateKilledBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, killByWarMachineID)

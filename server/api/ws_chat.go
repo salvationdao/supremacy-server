@@ -520,9 +520,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		language = db.GetUserLanguage(player.ID)
 	}
 
-	// check player quest reward
-	fc.API.questManager.ChatMessageQuestCheck(user.ID)
-
 	func() {
 		if exists && language != "English" {
 			dbLanguageExists, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).Exists(gamedb.StdConn)
@@ -611,6 +608,9 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 		}
 
+		// check player quest reward
+		fc.API.questManager.ChatMessageQuestCheck(user.ID)
+
 		chatMessage := &ChatMessage{
 			ID:     cm.ID,
 			Type:   boiler.ChatMSGTypeEnumTEXT,
@@ -627,7 +627,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			},
 		}
 
-		// Ability kills
+		// add message to chatroom
 		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
 		// send message
@@ -658,6 +658,9 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 	}
+
+	// check player quest reward
+	fc.API.questManager.ChatMessageQuestCheck(user.ID)
 
 	chatMessage := &ChatMessage{
 		ID:     cm.ID,
