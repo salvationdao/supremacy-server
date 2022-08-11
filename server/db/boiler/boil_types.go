@@ -96,13 +96,6 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
-
-// Enum values for MechType
-const (
-	MechTypeHUMANOID = "HUMANOID"
-	MechTypePLATFORM = "PLATFORM"
-)
-
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for LocationSelectTypeEnum
@@ -199,6 +192,12 @@ const (
 	MarketplaceEventCreated   = "created"
 	MarketplaceEventSold      = "sold"
 	MarketplaceEventCancelled = "cancelled"
+)
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
 )
 
 // Enum values for MultiplierTypeEnum

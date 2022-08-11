@@ -231,11 +231,6 @@ func NewAPI(
 			if config.Environment != "development" {
 				// TODO: Create new tracer not using HUB
 				r.Use(DatadogTracer.Middleware())
-
-			}
-
-			if config.Environment == "development" {
-				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
@@ -307,7 +302,6 @@ func NewAPI(
 				s.WS("/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
-				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
 
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)

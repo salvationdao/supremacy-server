@@ -2,7 +2,6 @@ package asset
 
 import (
 	"fmt"
-	"server/db"
 	"server/db/boiler"
 
 	"github.com/volatiletech/null/v8"
@@ -96,12 +95,6 @@ func TransferMechToNewOwner(
 	}
 	for _, itm := range mUtil {
 		itemIDsToTransfer = append(itemIDsToTransfer, itm.ID)
-	}
-
-	// give mech skin avatar
-	err = db.GiveMechAvatar(conn, toID, mechID)
-	if err != nil {
-		return nil, err
 	}
 
 	// update!
