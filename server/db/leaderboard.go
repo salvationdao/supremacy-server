@@ -68,22 +68,24 @@ func GetPlayerMechSurvives(startTime null.Time, endTime null.Time) ([]*PlayerMec
 }
 
 type PlayerMechsOwned struct {
-	Player     *boiler.Player  `json:"player"`
+	Player     *server.Player  `json:"player"`
 	MechsOwned decimal.Decimal `db:"mechs_owned" json:"mechs_owned"`
 }
 
 func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 	q := `
-		WITH ci AS (
-			SELECT owner_id, COUNT(id) AS mechs_owned 
-			FROM collection_items ci 
-			WHERE "item_type" = 'mech' 
-			GROUP BY owner_id 
-			ORDER BY COUNT(id) 
-			DESC LIMIT 100
-		)
-		SELECT p.id, p.username, p.faction_id, p.gid, p.rank, ci.mechs_owned FROM players p
-		INNER JOIN ci on p.id = ci.owner_id
+		SELECT TO_JSON(p.*), ci.mechs_owned
+		FROM (
+		    SELECT owner_id, COUNT(id) AS mechs_owned 
+		    FROM collection_items
+			WHERE item_type = 'mech'
+			GROUP BY owner_id
+			ORDER BY COUNT(id) DESC
+			LIMIT 100
+		) ci
+		INNER JOIN (
+		    SELECT id, username, faction_id, gid, rank FROM players
+		) p ON p.id = ci.owner_id
 		ORDER BY ci.mechs_owned DESC;
     `
 	rows, err := gamedb.StdConn.Query(q)
@@ -96,11 +98,9 @@ func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 
 	resp := []*PlayerMechsOwned{}
 	for rows.Next() {
-		battleContributions := &PlayerMechsOwned{
-			Player: &boiler.Player{},
-		}
+		pmo := &PlayerMechsOwned{}
 
-		err := rows.Scan(&battleContributions.Player.ID, &battleContributions.Player.Username, &battleContributions.Player.FactionID, &battleContributions.Player.Gid, &battleContributions.Player.Rank, &battleContributions.MechsOwned)
+		err := rows.Scan(&pmo.Player, &pmo.MechsOwned)
 
 		if err != nil {
 			gamelog.L.Error().
@@ -108,7 +108,7 @@ func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 			return nil, err
 		}
 
-		resp = append(resp, battleContributions)
+		resp = append(resp, pmo)
 	}
 
 	return resp, nil
@@ -117,12 +117,19 @@ func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) {
 	players := []*boiler.Player{}
 	q := `
-	 SELECT p.id, p.faction_id, p.username, p.public_address, p.is_ai, p.created_at
-	 FROM battle_contributions bc
-	 INNER JOIN players p ON p.id = bc.player_id
-	 INNER JOIN factions f ON f.id = p.faction_id
-	 WHERE battle_id = $1 AND did_trigger = TRUE
-	 GROUP BY p.id ORDER BY COUNT(bc.id) DESC LIMIT 2;
+		SELECT p.id, p.username, p.faction_id
+		FROM (
+		    SELECT player_id, count(id) as ability_trigger_count
+		    FROM battle_ability_triggers
+		    WHERE battle_id = $1
+		    GROUP BY player_id
+		    ORDER BY COUNT(id) DESC
+		    LIMIT 2
+		) bat
+		INNER JOIN (
+		    SELECT id, username, faction_id  FROM players
+		) p ON p.id = bat.player_id
+		ORDER BY bat.ability_trigger_count DESC;
 	`
 
 	rows, err := gamedb.StdConn.Query(q, battleID)
@@ -135,7 +142,7 @@ func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) 
 	defer rows.Close()
 	for rows.Next() {
 		pl := &boiler.Player{}
-		err := rows.Scan(&pl.ID, &pl.FactionID, &pl.Username, &pl.PublicAddress, &pl.IsAi, &pl.CreatedAt)
+		err := rows.Scan(&pl.ID, &pl.Username, &pl.FactionID)
 		if err != nil {
 			gamelog.L.Error().
 				Str("db func", "TopSupsContributors").Err(err).Msg("unable to scan player into struct")
@@ -177,7 +184,8 @@ func TopBattleViewers(startTime, endTime null.Time) ([]*PlayerBattlesSpectated, 
 		)bv
 		INNER JOIN (
 			select id, username, faction_id, gid, rank from players
-		) p ON p.id = bv.player_id;
+		) p ON p.id = bv.player_id
+		ORDER BY bv.battle_count DESC;
 	`, whereClause)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
@@ -229,7 +237,8 @@ func TopMechKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerMechKi
 		) mkc
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = mkc.owner_id;
+		) p ON p.id = mkc.owner_id
+		ORDER BY mkc.mech_kill_count DESC;
 	`, whereClause)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
@@ -294,6 +303,7 @@ func TopAbilityKillPlayers(startTime null.Time, endTime null.Time) ([]*PlayerAbi
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
 		) p ON p.id = pak.player_id
+		ORDER BY pak.ability_kill_count DESC;
 	`, whereClause)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
@@ -345,6 +355,7 @@ func TopAbilityTriggerPlayers(startTime null.Time, endTime null.Time) ([]*Player
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
 		) p ON p.id = bat.player_id
+		ORDER BY bat.ability_trigger_count DESC;
 	`, whereClause)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
@@ -395,7 +406,8 @@ func TopRepairBlockPlayers(startTime null.Time, endTime null.Time) ([]*PlayerRep
 		) ra
 		INNER JOIN (
 		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = ra.player_id;
+		) p ON p.id = ra.player_id
+		ORDER BY ra.total_block_repaired DESC;
 	`, whereClause)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
