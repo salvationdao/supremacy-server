@@ -283,6 +283,6 @@ mac-sync-data:
 
 .PHONY: dev-sync-data-windows
 dev-sync-data-windows:
-	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git
+	cd ./server/synctool && mkdir temp-sync && cd temp-sync && git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
 	cd ../../
 	make dev-sync-windows
