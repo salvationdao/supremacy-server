@@ -360,8 +360,7 @@ ALTER TABLE blueprint_chassis
 UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
                        FROM blueprint_mech_skin bcs
-                       WHERE bcs.label = bc.skin
-                         AND bcs.mech_model = bc.model_id);
+                       WHERE bcs.label = bc.skin);
 
 -- fix ones we missed somehow
 UPDATE chassis_skin
@@ -371,8 +370,7 @@ WHERE label = 'Gundam';
 UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
                     FROM blueprint_mech_skin bms
-                    WHERE bms.label = ms.label
-                      AND ms.mech_model = bms.mech_model);
+                    WHERE bms.label = ms.label);
 
 -- here
 ALTER TABLE chassis_skin

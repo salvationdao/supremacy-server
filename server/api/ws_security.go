@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
-	"os"
 	"server"
 )
 
@@ -42,7 +41,7 @@ func MustLogin(ctx context.Context) bool {
 
 func MustMatchSyndicate(ctx context.Context) bool {
 	// NOTE: syndicate is ONLY available on development at the moment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+	if !server.IsDevelopmentEnv() {
 		return false
 	}
 

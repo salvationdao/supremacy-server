@@ -10,6 +10,21 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
+
+type CollectionItem struct {
+	CollectionSlug      string      `json:"collection_slug"`
+	Hash                string      `json:"hash"`
+	TokenID             int64       `json:"token_id"`
+	ItemType            string      `json:"item_type"`
+	ItemID              string      `json:"item_id"`
+	Tier                string      `json:"tier"`
+	OwnerID             string      `json:"owner_id"`
+	MarketLocked        bool        `json:"market_locked"`
+	XsynLocked          bool        `json:"xsyn_locked"`
+	LockedToMarketplace bool        `json:"locked_to_marketplace"`
+	AssetHidden         null.String `json:"asset_hidden"`
+}
+
 type EquippedOnDetails struct {
 	ID    string `json:"id"`
 	Hash  string `json:"hash"`

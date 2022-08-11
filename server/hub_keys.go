@@ -2,7 +2,6 @@ package server
 
 // player_abilities
 const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
-const HubKeyPlayerWeaponsList = "PLAYER:WEAPONS:LIST:SUBSCRIBE"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"

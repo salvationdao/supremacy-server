@@ -6,7 +6,6 @@ import (
 	"server/db/boiler"
 	"server/gamelog"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -21,13 +20,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 	itemID,
 	tier,
 	ownerID string,
-	imageURL,
-	cardAnimationURL,
-	avatarURL,
-	largeImageURL,
-	backgroundURL,
-	animationURL,
-	youtubeURL null.String) (*boiler.CollectionItem, error) {
+) (*boiler.CollectionItem, error) {
 	item := &boiler.CollectionItem{}
 
 	// I couldn't find the boiler enum types for some reason, so just doing strings
@@ -52,16 +45,9 @@ func InsertNewCollectionItem(tx boil.Executor,
 			item_type, 
 			item_id, 
 			tier, 
-			owner_id,
-			image_url,
-			card_animation_url,
-			avatar_url,
-			large_image_url,
-			background_color,
-			animation_url,
-			youtube_url
+			owner_id
 			)
-		VALUES($1, %s, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING 
+		VALUES($1, %s, $2, $3, $4, $5) RETURNING 
 			id,
 			collection_slug,
 			hash,
@@ -71,14 +57,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 			tier,
 			owner_id,
 			market_locked,
-			xsyn_locked,
-			image_url,
-			card_animation_url,
-			avatar_url,
-			large_image_url,
-			background_color,
-			animation_url,
-			youtube_url
+			xsyn_locked
 			`, tokenClause)
 
 	err := tx.QueryRow(query,
@@ -87,13 +66,6 @@ func InsertNewCollectionItem(tx boil.Executor,
 		itemID,
 		tier,
 		ownerID,
-		imageURL,
-		cardAnimationURL,
-		avatarURL,
-		largeImageURL,
-		backgroundURL,
-		animationURL,
-		youtubeURL,
 	).Scan(&item.ID,
 		&item.CollectionSlug,
 		&item.Hash,
@@ -104,13 +76,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 		&item.OwnerID,
 		&item.MarketLocked,
 		&item.XsynLocked,
-		&item.ImageURL,
-		&item.CardAnimationURL,
-		&item.AvatarURL,
-		&item.LargeImageURL,
-		&item.BackgroundColor,
-		&item.AnimationURL,
-		&item.YoutubeURL)
+	)
 
 	if err != nil {
 		gamelog.L.Error().Err(err).
@@ -146,22 +112,15 @@ func CollectionItemFromItemID(tx boil.Executor, id string) (*server.CollectionIt
 
 func CollectionItemFromBoiler(ci *boiler.CollectionItem) *server.CollectionItem {
 	return &server.CollectionItem{
-		CollectionSlug:   ci.CollectionSlug,
-		Hash:             ci.Hash,
-		TokenID:          ci.TokenID,
-		ItemType:         ci.ItemType,
-		ItemID:           ci.ItemID,
-		Tier:             ci.Tier,
-		OwnerID:          ci.OwnerID,
-		XsynLocked:       ci.XsynLocked,
-		MarketLocked:     ci.MarketLocked,
-		ImageURL:         ci.ImageURL,
-		CardAnimationURL: ci.CardAnimationURL,
-		AvatarURL:        ci.AvatarURL,
-		LargeImageURL:    ci.LargeImageURL,
-		BackgroundColor:  ci.BackgroundColor,
-		AnimationURL:     ci.AnimationURL,
-		YoutubeURL:       ci.YoutubeURL,
+		CollectionSlug: ci.CollectionSlug,
+		Hash:           ci.Hash,
+		TokenID:        ci.TokenID,
+		ItemType:       ci.ItemType,
+		ItemID:         ci.ItemID,
+		Tier:           ci.Tier,
+		OwnerID:        ci.OwnerID,
+		XsynLocked:     ci.XsynLocked,
+		MarketLocked:   ci.MarketLocked,
 	}
 }
 

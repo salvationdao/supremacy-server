@@ -33,13 +33,6 @@ type CollectionItem struct {
 	OwnerID             string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	MarketLocked        bool        `boiler:"market_locked" boil:"market_locked" json:"market_locked" toml:"market_locked" yaml:"market_locked"`
 	XsynLocked          bool        `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked" toml:"xsyn_locked" yaml:"xsyn_locked"`
-	ImageURL            null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	CardAnimationURL    null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL           null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL       null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	BackgroundColor     null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	AnimationURL        null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	YoutubeURL          null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 	LockedToMarketplace bool        `boiler:"locked_to_marketplace" boil:"locked_to_marketplace" json:"locked_to_marketplace" toml:"locked_to_marketplace" yaml:"locked_to_marketplace"`
 	AssetHidden         null.String `boiler:"asset_hidden" boil:"asset_hidden" json:"asset_hidden,omitempty" toml:"asset_hidden" yaml:"asset_hidden,omitempty"`
 
@@ -58,13 +51,6 @@ var CollectionItemColumns = struct {
 	OwnerID             string
 	MarketLocked        string
 	XsynLocked          string
-	ImageURL            string
-	CardAnimationURL    string
-	AvatarURL           string
-	LargeImageURL       string
-	BackgroundColor     string
-	AnimationURL        string
-	YoutubeURL          string
 	LockedToMarketplace string
 	AssetHidden         string
 }{
@@ -78,13 +64,6 @@ var CollectionItemColumns = struct {
 	OwnerID:             "owner_id",
 	MarketLocked:        "market_locked",
 	XsynLocked:          "xsyn_locked",
-	ImageURL:            "image_url",
-	CardAnimationURL:    "card_animation_url",
-	AvatarURL:           "avatar_url",
-	LargeImageURL:       "large_image_url",
-	BackgroundColor:     "background_color",
-	AnimationURL:        "animation_url",
-	YoutubeURL:          "youtube_url",
 	LockedToMarketplace: "locked_to_marketplace",
 	AssetHidden:         "asset_hidden",
 }
@@ -100,13 +79,6 @@ var CollectionItemTableColumns = struct {
 	OwnerID             string
 	MarketLocked        string
 	XsynLocked          string
-	ImageURL            string
-	CardAnimationURL    string
-	AvatarURL           string
-	LargeImageURL       string
-	BackgroundColor     string
-	AnimationURL        string
-	YoutubeURL          string
 	LockedToMarketplace string
 	AssetHidden         string
 }{
@@ -120,13 +92,6 @@ var CollectionItemTableColumns = struct {
 	OwnerID:             "collection_items.owner_id",
 	MarketLocked:        "collection_items.market_locked",
 	XsynLocked:          "collection_items.xsyn_locked",
-	ImageURL:            "collection_items.image_url",
-	CardAnimationURL:    "collection_items.card_animation_url",
-	AvatarURL:           "collection_items.avatar_url",
-	LargeImageURL:       "collection_items.large_image_url",
-	BackgroundColor:     "collection_items.background_color",
-	AnimationURL:        "collection_items.animation_url",
-	YoutubeURL:          "collection_items.youtube_url",
 	LockedToMarketplace: "collection_items.locked_to_marketplace",
 	AssetHidden:         "collection_items.asset_hidden",
 }
@@ -144,13 +109,6 @@ var CollectionItemWhere = struct {
 	OwnerID             whereHelperstring
 	MarketLocked        whereHelperbool
 	XsynLocked          whereHelperbool
-	ImageURL            whereHelpernull_String
-	CardAnimationURL    whereHelpernull_String
-	AvatarURL           whereHelpernull_String
-	LargeImageURL       whereHelpernull_String
-	BackgroundColor     whereHelpernull_String
-	AnimationURL        whereHelpernull_String
-	YoutubeURL          whereHelpernull_String
 	LockedToMarketplace whereHelperbool
 	AssetHidden         whereHelpernull_String
 }{
@@ -164,13 +122,6 @@ var CollectionItemWhere = struct {
 	OwnerID:             whereHelperstring{field: "\"collection_items\".\"owner_id\""},
 	MarketLocked:        whereHelperbool{field: "\"collection_items\".\"market_locked\""},
 	XsynLocked:          whereHelperbool{field: "\"collection_items\".\"xsyn_locked\""},
-	ImageURL:            whereHelpernull_String{field: "\"collection_items\".\"image_url\""},
-	CardAnimationURL:    whereHelpernull_String{field: "\"collection_items\".\"card_animation_url\""},
-	AvatarURL:           whereHelpernull_String{field: "\"collection_items\".\"avatar_url\""},
-	LargeImageURL:       whereHelpernull_String{field: "\"collection_items\".\"large_image_url\""},
-	BackgroundColor:     whereHelpernull_String{field: "\"collection_items\".\"background_color\""},
-	AnimationURL:        whereHelpernull_String{field: "\"collection_items\".\"animation_url\""},
-	YoutubeURL:          whereHelpernull_String{field: "\"collection_items\".\"youtube_url\""},
 	LockedToMarketplace: whereHelperbool{field: "\"collection_items\".\"locked_to_marketplace\""},
 	AssetHidden:         whereHelpernull_String{field: "\"collection_items\".\"asset_hidden\""},
 }
@@ -199,9 +150,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace", "asset_hidden"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "locked_to_marketplace", "asset_hidden"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )

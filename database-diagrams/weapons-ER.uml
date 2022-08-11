@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>DATABASE</ID>
+  <OriginalElement>2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapons</OriginalElement>
+  <nodes>
+    <node x="805.254959161567" y="-1237.6024137450663">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_models</node>
+    <node x="1179.4496751859626" y="-1204.6024137450663">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.brands</node>
+    <node x="721.6208618875189" y="-386.50085942335716">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapon_skin</node>
+    <node x="982.1062727362728" y="-834.4495344203644">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_model_skin_compatibilities</node>
+    <node x="342.3400572738295" y="-1380.4040046260639">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapons</node>
+    <node x="1627.6609738810548" y="-1303.6024137450663">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.factions</node>
+    <node x="343.84005727382953" y="-556.0001305519077">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_skin</node>
+    <node x="40.19140706123028" y="-955.4495344203644">2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapons</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapons" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapons" relationship="REFERENCES">
+      <point x="118.0" y="-262.0" />
+      <point x="-118.0" y="162.9544702056994" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.brands" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.factions" relationship="REFERENCES">
+      <point x="118.0" y="0.0" />
+      <point x="-118.0" y="0.0" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_models" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapon_skin" relationship="REFERENCES">
+      <point x="-23.02428451141884" y="115.5" />
+      <point x="900.2306746501481" y="-705.1513498988581" />
+      <point x="745.82876077455" y="-705.1513498988581" />
+      <point x="-92.29210111296891" y="-82.5" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_models" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.brands" relationship="REFERENCES">
+      <point x="118.0" y="17.199426629292702" />
+      <point x="1033.1513602359657" y="-1104.9029871157736" />
+      <point x="1033.1513602359657" y="-1122.1024137450663" />
+      <point x="-118.0" y="0.0" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapons" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_models" relationship="REFERENCES">
+      <point x="117.99999999999994" y="-43.397995373936055" />
+      <point x="614.5965512798991" y="-1154.302" />
+      <point x="614.5965512798991" y="-1137.1025733707072" />
+      <point x="-118.0" y="-15.00015962564089" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_skin" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapons" relationship="REFERENCES">
+      <point x="-116.5" y="0.0" />
+      <point x="118.0" y="190.44940386845678" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapons" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_skin" relationship="REFERENCES">
+      <point x="118.0" y="205.44940386845678" />
+      <point x="-116.5" y="15.0" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_model_skin_compatibilities" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapon_skin" relationship="REFERENCES">
+      <point x="0.0" y="148.5" />
+      <point x="1124.1062727362728" y="-304.00085942335716" />
+      <point x="116.5" y="0.0" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_model_skin_compatibilities" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_models" relationship="REFERENCES">
+      <point x="-134.5000000000001" y="-148.5" />
+      <point x="66.35131357470573" y="115.5" />
+    </edge>
+    <edge source="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.weapon_skin" target="2669be9d-68e8-4e3c-856d-4986ab2fe879.TABLE:gameserver.public.blueprint_weapon_skin" relationship="REFERENCES">
+      <point x="0.0" y="60.5" />
+      <point x="460.34005727382953" y="-304.00085942335716" />
+      <point x="-116.5" y="0.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic" zoom="0.9067245119305857" showDependencies="false" x="962.0" y="-767.0" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Columns</Category>
+    <Category>Comments</Category>
+    <Category>Key columns</Category>
+    <Category>Virtual foreign keys</Category>
+  </Categories>
+</Diagram>
+
