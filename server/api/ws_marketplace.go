@@ -468,7 +468,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	if collectionItem.ItemType == boiler.ItemTypeMysteryCrate {
 		crate, err := boiler.MysteryCrates(
 			boiler.MysteryCrateWhere.ID.EQ(collectionItem.ItemID),
-			qm.Load(boiler.MysteryCrateRels.Blueprint),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().
