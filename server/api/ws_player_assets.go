@@ -50,6 +50,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
@@ -1359,6 +1360,93 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 	reply(&PlayerAssetPowerCoreListResp{
 		Total:      total,
 		PowerCores: playerAssets,
+	})
+	return nil
+}
+
+type PlayerAssetUtilityListRequest struct {
+	Payload struct {
+		Search                 string                `json:"search"`
+		Filter                 *db.ListFilterRequest `json:"filter"`
+		Sort                   *db.ListSortRequest   `json:"sort"`
+		SortBy                 string                `json:"sort_by"`
+		SortDir                db.SortByDir          `json:"sort_dir"`
+		PageSize               int                   `json:"page_size"`
+		Page                   int                   `json:"page"`
+		DisplayXsynLocked      bool                  `json:"display_xsyn_locked"`
+		ExcludeMarketLocked    bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed    bool                  `json:"include_market_listed"`
+		FilterRarities         []string              `json:"rarities"`
+		FilterTypes            []string              `json:"sizes"`
+		FilterEquippedStatuses []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetUtilityListResp struct {
+	Total     int64          `json:"total"`
+	Utilities []*PlayerAsset `json:"utilities"`
+}
+
+const HubKeyPlayerAssetUtilityList = "PLAYER:ASSET:UTILITY:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetUtilityListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.UtilityListOpts{
+		Search:                 req.Payload.Search,
+		Filter:                 req.Payload.Filter,
+		Sort:                   req.Payload.Sort,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterTypes:            req.Payload.FilterTypes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, utilities, err := db.UtilityList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssets := []*PlayerAsset{}
+
+	for _, m := range utilities {
+		playerAssets = append(playerAssets, &PlayerAsset{
+			ID:                  m.ID,
+			Label:               m.Label,
+			UpdatedAt:           m.CreatedAt,
+			CreatedAt:           m.CreatedAt,
+			CollectionSlug:      m.CollectionItem.CollectionSlug,
+			Hash:                m.CollectionItem.Hash,
+			TokenID:             m.CollectionItem.TokenID,
+			Tier:                m.CollectionItem.Tier,
+			OwnerID:             m.CollectionItem.OwnerID,
+			XsynLocked:          m.CollectionItem.XsynLocked,
+			MarketLocked:        m.CollectionItem.MarketLocked,
+			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+		})
+	}
+
+	reply(&PlayerAssetUtilityListResp{
+		Total:     total,
+		Utilities: playerAssets,
 	})
 	return nil
 }

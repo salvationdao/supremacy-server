@@ -16,6 +16,215 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+func getDefaultUtilityQueryMods() []qm.QueryMod {
+	return []qm.QueryMod{
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Utility,
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// join utility blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintUtility,
+			qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.ID),
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.BlueprintID),
+		)),
+		boiler.UtilityWhere.LockedToMech.EQ(false),
+	}
+}
+
+type UtilityListOpts struct {
+	Search                 string
+	Filter                 *ListFilterRequest
+	Sort                   *ListSortRequest
+	SortBy                 string
+	SortDir                SortByDir
+	PageSize               int
+	Page                   int
+	OwnerID                string
+	DisplayXsynLocked      bool
+	DisplayHidden          bool
+	ExcludeMarketLocked    bool
+	IncludeMarketListed    bool
+	FilterRarities         []string `json:"rarities"`
+	FilterTypes            []string `json:"types"`
+	FilterEquippedStatuses []string `json:"equipped_statuses"`
+}
+
+type UtilityStatFilterRange struct {
+	Min null.Int `json:"min"`
+	Max null.Int `json:"max"`
+}
+
+func GenerateUtilityStatFilterQueryMods(column string, filter *UtilityStatFilterRange) []qm.QueryMod {
+	output := []qm.QueryMod{}
+	if filter == nil {
+		return output
+	}
+	if filter.Min.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Utility, column)+" >= ?", filter.Min))
+	}
+	if filter.Max.Valid {
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Utility, column)+" <= ?", filter.Max))
+	}
+	return output
+}
+
+func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
+	queryMods := getDefaultUtilityQueryMods()
+
+	if opts.OwnerID != "" {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.OwnerID.EQ(opts.OwnerID))
+	}
+	if !opts.DisplayXsynLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.XsynLocked.EQ(false))
+	}
+	if !opts.IncludeMarketListed {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.LockedToMarketplace.EQ(false))
+	}
+	if opts.ExcludeMarketLocked {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.MarketLocked.EQ(false))
+	}
+	if !opts.DisplayHidden {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
+	}
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Utility && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+		}
+	}
+
+	if len(opts.FilterRarities) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintUtilityWhere.Tier.IN(opts.FilterRarities))
+	}
+
+	if len(opts.FilterEquippedStatuses) > 0 {
+		showEquipped := false
+		showUnequipped := false
+		for _, s := range opts.FilterEquippedStatuses {
+			if s == "equipped" {
+				showEquipped = true
+			} else if s == "unequipped" {
+				showUnequipped = true
+			}
+			if showEquipped && showUnequipped {
+				break
+			}
+		}
+
+		if showEquipped && !showUnequipped {
+			queryMods = append(queryMods, boiler.UtilityWhere.EquippedOn.IsNotNull())
+		} else if showUnequipped && !showEquipped {
+			queryMods = append(queryMods, boiler.UtilityWhere.EquippedOn.IsNull())
+		}
+	}
+
+	if len(opts.FilterTypes) > 0 {
+		queryMods = append(queryMods, boiler.BlueprintUtilityWhere.Type.IN(opts.FilterTypes))
+	}
+
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label),
+				),
+					xSearch,
+				))
+		}
+	}
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Limit/Offset
+	if opts.PageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	// Build query
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.LockedToMarketplace),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.AssetHidden),
+			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+	)
+
+	if opts.SortBy != "" && opts.SortDir.IsValid() {
+		if opts.SortBy == "alphabetical" {
+			queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label), opts.SortDir)))
+		} else if opts.SortBy == "rarity" {
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Tier), opts.SortDir))
+		}
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.Label))))
+	}
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var utilities []*server.Utility
+	for rows.Next() {
+		pc := &server.Utility{
+			CollectionItem: &server.CollectionItem{},
+		}
+
+		scanArgs := []interface{}{
+			&pc.CollectionItem.CollectionSlug,
+			&pc.CollectionItem.Hash,
+			&pc.CollectionItem.TokenID,
+			&pc.CollectionItem.OwnerID,
+			&pc.CollectionItem.Tier,
+			&pc.CollectionItem.ItemType,
+			&pc.CollectionItem.MarketLocked,
+			&pc.CollectionItem.XsynLocked,
+			&pc.CollectionItem.LockedToMarketplace,
+			&pc.CollectionItem.AssetHidden,
+			&pc.ID,
+			&pc.Label,
+		}
+
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return total, utilities, err
+		}
+		utilities = append(utilities, pc)
+	}
+
+	return total, utilities, nil
+}
+
 func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
 	newUtility := boiler.Utility{
 		BrandID:               utility.BrandID,
@@ -119,7 +328,7 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 	default:
 		return nil, fmt.Errorf("invalid utility type")
 	}
-	
+
 	return Utility(tx, newUtility.ID)
 }
 
