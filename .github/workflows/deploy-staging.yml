@@ -191,9 +191,7 @@ jobs:
       - name: "DB: sync migrations"
         if: ${{ !env.ACT }} # if running in local test environment
         run: |
-          ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && \
-          source ./init/gameserver.env && \
-          sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?x-migrations-table=static_migrations&host=/var/run/postgresql/" -path ./static-migrations up
+          ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?x-migrations-table=static_migrations&host=/var/run/postgresql/" -path ./static-migrations up'
 
       - name: "DB: sync static data"
         if: ${{ !env.ACT }} # if running in local test environment
@@ -202,9 +200,7 @@ jobs:
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment
         run: |
-          ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && \
-          source ./init/gameserver.env && \ 
-          sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?host=/var/run/postgresql/" -path ./static-migrations up
+          ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?host=/var/run/postgresql/" -path ./static-migrations up'
 
       - name: restart api-server
         if: ${{ !env.ACT }} # if running in local test environment
