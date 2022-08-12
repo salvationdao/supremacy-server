@@ -125,9 +125,9 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 		}
 
 		if showEquipped && !showUnequipped {
-			queryMods = append(queryMods, boiler.WeaponWhere.EquippedOn.IsNotNull())
+			queryMods = append(queryMods, boiler.PowerCoreWhere.EquippedOn.IsNotNull())
 		} else if showUnequipped && !showEquipped {
-			queryMods = append(queryMods, boiler.WeaponWhere.EquippedOn.IsNull())
+			queryMods = append(queryMods, boiler.PowerCoreWhere.EquippedOn.IsNull())
 		}
 	}
 
