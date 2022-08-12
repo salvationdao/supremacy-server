@@ -12,6 +12,7 @@ import (
 
 type PowerCore struct {
 	*CollectionItem
+	*Images
 	ID                    string          `json:"id"`
 	Label                 string          `json:"label"`
 	Size                  string          `json:"size"`
@@ -103,13 +104,15 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			MarketLocked:     collection.MarketLocked,
 			XsynLocked:       collection.XsynLocked,
 			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+		},
+		Images: &Images{
+			ImageURL:         skin.R.Blueprint.ImageURL,
+			CardAnimationURL: skin.R.Blueprint.CardAnimationURL,
+			AvatarURL:        skin.R.Blueprint.AvatarURL,
+			LargeImageURL:    skin.R.Blueprint.LargeImageURL,
+			BackgroundColor:  skin.R.Blueprint.BackgroundColor,
+			AnimationURL:     skin.R.Blueprint.AnimationURL,
+			YoutubeURL:       skin.R.Blueprint.YoutubeURL,
 		},
 		ID:           skin.ID,
 		Label:        skin.Label,

@@ -13,7 +13,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -25,7 +24,7 @@ import (
 func NewSyndicateController(api *API) {
 
 	// NOTE: syndicate is ONLY available on development at the moment
-	if os.Getenv("GAMESERVER_ENVIRONMENT") != "development" {
+	if !server.IsDevelopmentEnv() {
 		return
 	}
 

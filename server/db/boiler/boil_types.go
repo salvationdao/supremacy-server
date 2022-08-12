@@ -96,13 +96,6 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
-
-// Enum values for MechType
-const (
-	MechTypeHUMANOID = "HUMANOID"
-	MechTypePLATFORM = "PLATFORM"
-)
-
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for LocationSelectTypeEnum
@@ -181,6 +174,16 @@ const (
 	AbilityLevelPLAYER  = "PLAYER"
 )
 
+// Enum values for AvatarLayer
+const (
+	AvatarLayerHAIR      = "HAIR"
+	AvatarLayerFACE      = "FACE"
+	AvatarLayerBODY      = "BODY"
+	AvatarLayerACCESSORY = "ACCESSORY"
+	AvatarLayerEYEWEAR   = "EYEWEAR"
+	AvatarLayerHELMET    = "HELMET"
+)
+
 // Enum values for MarketplaceEvent
 const (
 	MarketplaceEventBid       = "bid"
@@ -189,6 +192,12 @@ const (
 	MarketplaceEventCreated   = "created"
 	MarketplaceEventSold      = "sold"
 	MarketplaceEventCancelled = "cancelled"
+)
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
 )
 
 // Enum values for MultiplierTypeEnum

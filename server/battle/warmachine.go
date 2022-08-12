@@ -189,8 +189,8 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo.Int,
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
-		//Model:               	weapon.Model, // TODO: weapon models
-		//Skin:              	weapon.Skin, // TODO: weapon skins
+		Model:               weapon.WeaponModelID,
+		Skin:                weapon.EquippedWeaponSkinID,  // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
 	}
 }
 

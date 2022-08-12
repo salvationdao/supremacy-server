@@ -34,6 +34,7 @@ type MysteryCrate struct {
 	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Description string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	BlueprintID string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 
 	R *mysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +52,7 @@ var MysteryCrateColumns = struct {
 	UpdatedAt   string
 	CreatedAt   string
 	Description string
+	BlueprintID string
 }{
 	ID:          "id",
 	Type:        "type",
@@ -63,6 +65,7 @@ var MysteryCrateColumns = struct {
 	UpdatedAt:   "updated_at",
 	CreatedAt:   "created_at",
 	Description: "description",
+	BlueprintID: "blueprint_id",
 }
 
 var MysteryCrateTableColumns = struct {
@@ -77,6 +80,7 @@ var MysteryCrateTableColumns = struct {
 	UpdatedAt   string
 	CreatedAt   string
 	Description string
+	BlueprintID string
 }{
 	ID:          "mystery_crate.id",
 	Type:        "mystery_crate.type",
@@ -89,6 +93,7 @@ var MysteryCrateTableColumns = struct {
 	UpdatedAt:   "mystery_crate.updated_at",
 	CreatedAt:   "mystery_crate.created_at",
 	Description: "mystery_crate.description",
+	BlueprintID: "mystery_crate.blueprint_id",
 }
 
 // Generated where
@@ -105,6 +110,7 @@ var MysteryCrateWhere = struct {
 	UpdatedAt   whereHelpertime_Time
 	CreatedAt   whereHelpertime_Time
 	Description whereHelperstring
+	BlueprintID whereHelperstring
 }{
 	ID:          whereHelperstring{field: "\"mystery_crate\".\"id\""},
 	Type:        whereHelperstring{field: "\"mystery_crate\".\"type\""},
@@ -117,19 +123,23 @@ var MysteryCrateWhere = struct {
 	UpdatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"updated_at\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"created_at\""},
 	Description: whereHelperstring{field: "\"mystery_crate\".\"description\""},
+	BlueprintID: whereHelperstring{field: "\"mystery_crate\".\"blueprint_id\""},
 }
 
 // MysteryCrateRels is where relationship names are stored.
 var MysteryCrateRels = struct {
+	Blueprint              string
 	Faction                string
 	MysteryCrateBlueprints string
 }{
+	Blueprint:              "Blueprint",
 	Faction:                "Faction",
 	MysteryCrateBlueprints: "MysteryCrateBlueprints",
 }
 
 // mysteryCrateR is where relationships are stored.
 type mysteryCrateR struct {
+	Blueprint              *StorefrontMysteryCrate    `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	Faction                *Faction                   `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	MysteryCrateBlueprints MysteryCrateBlueprintSlice `boiler:"MysteryCrateBlueprints" boil:"MysteryCrateBlueprints" json:"MysteryCrateBlueprints" toml:"MysteryCrateBlueprints" yaml:"MysteryCrateBlueprints"`
 }
@@ -143,8 +153,8 @@ func (*mysteryCrateR) NewStruct() *mysteryCrateR {
 type mysteryCrateL struct{}
 
 var (
-	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at", "description"}
-	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label"}
+	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at", "description", "blueprint_id"}
+	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label", "blueprint_id"}
 	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at", "description"}
 	mysteryCratePrimaryKeyColumns     = []string{"id"}
 	mysteryCrateGeneratedColumns      = []string{}
@@ -392,6 +402,21 @@ func (q mysteryCrateQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Blueprint pointed to by the foreign key.
+func (o *MysteryCrate) Blueprint(mods ...qm.QueryMod) storefrontMysteryCrateQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BlueprintID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := StorefrontMysteryCrates(queryMods...)
+	queries.SetFrom(query.Query, "\"storefront_mystery_crates\"")
+
+	return query
+}
+
 // Faction pointed to by the foreign key.
 func (o *MysteryCrate) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
@@ -427,6 +452,111 @@ func (o *MysteryCrate) MysteryCrateBlueprints(mods ...qm.QueryMod) mysteryCrateB
 	}
 
 	return query
+}
+
+// LoadBlueprint allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mysteryCrateL) LoadBlueprint(e boil.Executor, singular bool, maybeMysteryCrate interface{}, mods queries.Applicator) error {
+	var slice []*MysteryCrate
+	var object *MysteryCrate
+
+	if singular {
+		object = maybeMysteryCrate.(*MysteryCrate)
+	} else {
+		slice = *maybeMysteryCrate.(*[]*MysteryCrate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mysteryCrateR{}
+		}
+		args = append(args, object.BlueprintID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mysteryCrateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BlueprintID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BlueprintID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`storefront_mystery_crates`),
+		qm.WhereIn(`storefront_mystery_crates.id in ?`, args...),
+		qmhelper.WhereIsNull(`storefront_mystery_crates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load StorefrontMysteryCrate")
+	}
+
+	var resultSlice []*StorefrontMysteryCrate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice StorefrontMysteryCrate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for storefront_mystery_crates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for storefront_mystery_crates")
+	}
+
+	if len(mysteryCrateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Blueprint = foreign
+		if foreign.R == nil {
+			foreign.R = &storefrontMysteryCrateR{}
+		}
+		foreign.R.BlueprintMysteryCrates = append(foreign.R.BlueprintMysteryCrates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BlueprintID == foreign.ID {
+				local.R.Blueprint = foreign
+				if foreign.R == nil {
+					foreign.R = &storefrontMysteryCrateR{}
+				}
+				foreign.R.BlueprintMysteryCrates = append(foreign.R.BlueprintMysteryCrates, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadFaction allows an eager lookup of values, cached into the
@@ -628,6 +758,52 @@ func (mysteryCrateL) LoadMysteryCrateBlueprints(e boil.Executor, singular bool, 
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetBlueprint of the mysteryCrate to the related item.
+// Sets o.R.Blueprint to related.
+// Adds o to related.R.BlueprintMysteryCrates.
+func (o *MysteryCrate) SetBlueprint(exec boil.Executor, insert bool, related *StorefrontMysteryCrate) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mystery_crate\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+		strmangle.WhereClause("\"", "\"", 2, mysteryCratePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BlueprintID = related.ID
+	if o.R == nil {
+		o.R = &mysteryCrateR{
+			Blueprint: related,
+		}
+	} else {
+		o.R.Blueprint = related
+	}
+
+	if related.R == nil {
+		related.R = &storefrontMysteryCrateR{
+			BlueprintMysteryCrates: MysteryCrateSlice{o},
+		}
+	} else {
+		related.R.BlueprintMysteryCrates = append(related.R.BlueprintMysteryCrates, o)
 	}
 
 	return nil

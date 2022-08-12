@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
-	"golang.org/x/exp/slices"
 	"html"
 	"server"
 	"server/db"
@@ -15,6 +13,9 @@ import (
 	"server/gamelog"
 	"sort"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
+	"golang.org/x/exp/slices"
 
 	"github.com/gofrs/uuid"
 

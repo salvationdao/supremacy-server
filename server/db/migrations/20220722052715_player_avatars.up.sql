@@ -83,24 +83,6 @@ $$
 	END;
 $$;
 
--- insert avatars based on blueprint mech skins
-with inserted_avatars AS (
-	WITH bms AS (SELECT avatar_url, tier FROM blueprint_mech_skin)
-	INSERT INTO profile_avatars(avatar_url, tier) 
-	SELECT coalesce(bms.avatar_url, ''), bms.tier FROM blueprint_mech_skin bms 
-	RETURNING id, avatar_url)
-UPDATE blueprint_mech_skin 
-SET profile_avatar_id = inserted_avatars.id 
-FROM inserted_avatars
-WHERE blueprint_mech_skin.avatar_url = inserted_avatars.avatar_url;
-
--- insert mech avatars for owners
-INSERT INTO players_profile_avatars (player_id, profile_avatar_id)
-SELECT DISTINCT p.id, bms.profile_avatar_id  FROM players p 
-INNER JOIN collection_items ci ON ci.owner_id =  p.id 
-INNER JOIN mech_skin ms ON ms.id = ci.item_id 
-INNER JOIN blueprint_mech_skin bms ON bms.id = ms.blueprint_id;
-
 -- remove PUBLIC_PROFILE feature flag
 DELETE FROM players_features 
 WHERE feature_name = 'PUBLIC_PROFILE';
