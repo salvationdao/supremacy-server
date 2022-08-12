@@ -1890,8 +1890,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
 		}
 
-		// check player obtain ability kill quest
-		if killedByUser != nil && destroyedWarMachine.OwnedByID != killedByUser.ID.String() {
+		// check player obtain ability kill quest, if it is not a team kill
+		if killedByUser != nil && destroyedWarMachine.FactionID != killedByUser.FactionID {
 			// check player quest reward
 			btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
 		}
