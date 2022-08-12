@@ -49,6 +49,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
+	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateList, pac.PlayerAssetMysteryCrateListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMysteryCrateGet, pac.PlayerAssetMysteryCrateGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
@@ -377,7 +378,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	mechSkin, err := boiler.MechModelSkinCompatibilities(
 		boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ModelID),
 		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(mech.R.ChassisSkin.BlueprintID),
-		).One(gamedb.StdConn)
+	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load mech info")
 	}
@@ -914,7 +915,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		weaponSkinBlueprints, err := db.BlueprintWeaponSkins(blueprintWeaponSkins)
 		if err != nil {
 			crateRollback()
- 			gamelog.L.Error().Err(err).Msg("failed BlueprintWeaponSkins")
+			gamelog.L.Error().Err(err).Msg("failed BlueprintWeaponSkins")
 			return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
 		}
 
@@ -1155,11 +1156,11 @@ type PlayerAssetWeaponListRequest struct {
 }
 
 type PlayerAssetWeaponListResp struct {
-	Total   int64                `json:"total"`
-	Weapons []*PlayerAssetWeapon `json:"weapons"`
+	Total   int64          `json:"total"`
+	Weapons []*PlayerAsset `json:"weapons"`
 }
 
-type PlayerAssetWeapon struct {
+type PlayerAsset struct {
 	CollectionSlug      string `json:"collection_slug"`
 	Hash                string `json:"hash"`
 	TokenID             int64  `json:"token_id"`
@@ -1223,10 +1224,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssWeapons := []*PlayerAssetWeapon{}
+	playerAssWeapons := []*PlayerAsset{}
 
 	for _, m := range weapons {
-		playerAssWeapons = append(playerAssWeapons, &PlayerAssetWeapon{
+		playerAssWeapons = append(playerAssWeapons, &PlayerAsset{
 			ID:                  m.ID,
 			Label:               m.Label,
 			UpdatedAt:           m.UpdatedAt,
@@ -1263,4 +1264,101 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 	decimal.MarshalJSONWithoutQuotes = false
 
 	return status, resp
+}
+
+type PlayerAssetPowerCoreListRequest struct {
+	Payload struct {
+		Search                 string                       `json:"search"`
+		Filter                 *db.ListFilterRequest        `json:"filter"`
+		Sort                   *db.ListSortRequest          `json:"sort"`
+		SortBy                 string                       `json:"sort_by"`
+		SortDir                db.SortByDir                 `json:"sort_dir"`
+		PageSize               int                          `json:"page_size"`
+		Page                   int                          `json:"page"`
+		DisplayXsynLocked      bool                         `json:"display_xsyn_locked"`
+		ExcludeMarketLocked    bool                         `json:"exclude_market_locked"`
+		IncludeMarketListed    bool                         `json:"include_market_listed"`
+		FilterRarities         []string                     `json:"rarities"`
+		FilterSizes            []string                     `json:"sizes"`
+		FilterEquippedStatuses []string                     `json:"equipped_statuses"`
+		FilterStatCapacity     *db.PowerCoreStatFilterRange `json:"stat_capacity"`
+		FilterStatMaxDrawRate  *db.PowerCoreStatFilterRange `json:"stat_max_draw_rate"`
+		FilterStatRechargeRate *db.PowerCoreStatFilterRange `json:"stat_recharge_rate"`
+		FilterStatArmour       *db.PowerCoreStatFilterRange `json:"stat_armour"`
+		FilterStatMaxHitpoints *db.PowerCoreStatFilterRange `json:"stat_max_hitpoints"`
+	} `json:"payload"`
+}
+
+type PlayerAssetPowerCoreListResp struct {
+	Total      int64          `json:"total"`
+	PowerCores []*PlayerAsset `json:"power_cores"`
+}
+
+const HubKeyPlayerAssetPowerCoreList = "PLAYER:ASSET:POWER_CORE:LIST"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetPowerCoreListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.PowerCoreListOpts{
+		Search:                 req.Payload.Search,
+		Filter:                 req.Payload.Filter,
+		Sort:                   req.Payload.Sort,
+		PageSize:               req.Payload.PageSize,
+		Page:                   req.Payload.Page,
+		OwnerID:                user.ID,
+		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
+		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		FilterRarities:         req.Payload.FilterRarities,
+		FilterSizes:            req.Payload.FilterSizes,
+		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
+		FilterStatCapacity:     req.Payload.FilterStatCapacity,
+		FilterStatMaxDrawRate:  req.Payload.FilterStatMaxDrawRate,
+		FilterStatRechargeRate: req.Payload.FilterStatRechargeRate,
+		FilterStatArmour:       req.Payload.FilterStatArmour,
+		FilterStatMaxHitpoints: req.Payload.FilterStatMaxHitpoints,
+	}
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, powerCores, err := db.PowerCoreList(listOpts)
+	if err != nil {
+		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
+		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
+	}
+
+	playerAssets := []*PlayerAsset{}
+
+	for _, m := range powerCores {
+		playerAssets = append(playerAssets, &PlayerAsset{
+			ID:                  m.ID,
+			Label:               m.Label,
+			UpdatedAt:           m.CreatedAt,
+			CreatedAt:           m.CreatedAt,
+			CollectionSlug:      m.CollectionItem.CollectionSlug,
+			Hash:                m.CollectionItem.Hash,
+			TokenID:             m.CollectionItem.TokenID,
+			Tier:                m.CollectionItem.Tier,
+			OwnerID:             m.CollectionItem.OwnerID,
+			XsynLocked:          m.CollectionItem.XsynLocked,
+			MarketLocked:        m.CollectionItem.MarketLocked,
+			LockedToMarketplace: m.CollectionItem.LockedToMarketplace,
+		})
+	}
+
+	reply(&PlayerAssetPowerCoreListResp{
+		Total:      total,
+		PowerCores: playerAssets,
+	})
+	return nil
 }
