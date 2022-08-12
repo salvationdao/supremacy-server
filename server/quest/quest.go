@@ -1,9 +1,7 @@
 package quest
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
@@ -64,6 +62,10 @@ func (q *System) Run() {
 			pqs, err := boiler.Quests(
 				boiler.QuestWhere.Key.EQ(pqc.questKey),
 				boiler.QuestWhere.ExpiresAt.GT(time.Now()), // impact by quest regen
+				qm.Load(
+					boiler.QuestRels.PlayersQuests,
+					boiler.PlayersQuestWhere.PlayerID.EQ(pqc.playerID),
+				),
 			).All(gamedb.StdConn)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get quest")
@@ -71,16 +73,9 @@ func (q *System) Run() {
 			}
 
 			for _, pq := range pqs {
-				playerQuest, err := pq.PlayersQuests(
-					boiler.PlayersQuestWhere.PlayerID.EQ(pqc.playerID),
-				).One(gamedb.StdConn)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					l.Error().Err(err).Msg("Failed to check player quest")
-					return
-				}
 
 				// skip, if player has already done the quest
-				if playerQuest != nil {
+				if pq.R != nil && pq.R.PlayersQuests != nil && len(pq.R.PlayersQuests) > 0 {
 					continue
 				}
 
