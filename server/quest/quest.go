@@ -104,7 +104,7 @@ func regenExpiredQuest() error {
 	// get expired rounds
 	rounds, err := boiler.Rounds(
 		boiler.RoundWhere.Repeatable.EQ(true),
-		boiler.RoundWhere.Endat.LTE(now),
+		boiler.RoundWhere.EndAt.LTE(now),
 		boiler.RoundWhere.NextRoundID.IsNull(),
 		qm.Load(boiler.RoundRels.Quests),
 	).All(gamedb.StdConn)
@@ -117,7 +117,7 @@ func regenExpiredQuest() error {
 		newRound := &boiler.Round{
 			Name:        r.Name,
 			StartedAt:   now,
-			Endat:       now.AddDate(0, 0, r.LastForDays),
+			EndAt:       now.AddDate(0, 0, r.LastForDays),
 			LastForDays: r.LastForDays,
 			Repeatable:  r.Repeatable,
 			RoundNumber: r.RoundNumber + 1, // increment round number by one
@@ -155,7 +155,7 @@ func regenExpiredQuest() error {
 						Key:           q.Key,
 						Description:   q.Description,
 						RequestAmount: q.RequestAmount,
-						ExpiresAt:     newRound.Endat,
+						ExpiresAt:     newRound.EndAt,
 						CreatedAt:     newRound.StartedAt,
 					}
 

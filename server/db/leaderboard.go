@@ -29,7 +29,7 @@ func GetPlayerMechSurvives(roundID null.String) ([]*PlayerMechSurvives, error) {
 		}
 
 		whereClause = "WHERE created_at BETWEEN $1 AND $2"
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
@@ -179,7 +179,7 @@ func TopBattleViewers(roundID null.String) ([]*PlayerBattlesSpectated, error) {
 			INNER JOIN battles b ON b.id = bv.battle_id 
 			WHERE b.started_at BETWEEN $1 AND $2
 		`
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
@@ -237,7 +237,7 @@ func TopMechKillPlayers(roundID null.String) ([]*PlayerMechKills, error) {
 		}
 
 		whereClause = "AND bh.created_at BETWEEN $1 AND $2"
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
@@ -294,7 +294,7 @@ func TopAbilityKillPlayers(roundID null.String) ([]*PlayerAbilityKills, error) {
 		}
 
 		whereClause = "WHERE pkg.created_at BETWEEN $1 AND $2"
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
@@ -362,7 +362,7 @@ func TopAbilityTriggerPlayers(roundID null.String) ([]*PlayerAbilityTriggers, er
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 		whereClause = "WHERE triggered_at BETWEEN $1 AND $2"
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
@@ -417,7 +417,7 @@ func TopRepairBlockPlayers(roundID null.String) ([]*PlayerRepairBlocks, error) {
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 		whereClause = "AND finished_at BETWEEN $1 AND $2"
-		args = append(args, r.StartedAt, r.Endat)
+		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`

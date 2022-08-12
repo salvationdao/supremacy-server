@@ -26,7 +26,7 @@ type Round struct {
 	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Name        string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	StartedAt   time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	Endat       time.Time   `boiler:"endat" boil:"endat" json:"endat" toml:"endat" yaml:"endat"`
+	EndAt       time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	LastForDays int         `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
 	Repeatable  bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
 	NextRoundID null.String `boiler:"next_round_id" boil:"next_round_id" json:"next_round_id,omitempty" toml:"next_round_id" yaml:"next_round_id,omitempty"`
@@ -44,7 +44,7 @@ var RoundColumns = struct {
 	ID          string
 	Name        string
 	StartedAt   string
-	Endat       string
+	EndAt       string
 	LastForDays string
 	Repeatable  string
 	NextRoundID string
@@ -57,7 +57,7 @@ var RoundColumns = struct {
 	ID:          "id",
 	Name:        "name",
 	StartedAt:   "started_at",
-	Endat:       "endat",
+	EndAt:       "end_at",
 	LastForDays: "last_for_days",
 	Repeatable:  "repeatable",
 	NextRoundID: "next_round_id",
@@ -72,7 +72,7 @@ var RoundTableColumns = struct {
 	ID          string
 	Name        string
 	StartedAt   string
-	Endat       string
+	EndAt       string
 	LastForDays string
 	Repeatable  string
 	NextRoundID string
@@ -85,7 +85,7 @@ var RoundTableColumns = struct {
 	ID:          "rounds.id",
 	Name:        "rounds.name",
 	StartedAt:   "rounds.started_at",
-	Endat:       "rounds.endat",
+	EndAt:       "rounds.end_at",
 	LastForDays: "rounds.last_for_days",
 	Repeatable:  "rounds.repeatable",
 	NextRoundID: "rounds.next_round_id",
@@ -102,7 +102,7 @@ var RoundWhere = struct {
 	ID          whereHelperstring
 	Name        whereHelperstring
 	StartedAt   whereHelpertime_Time
-	Endat       whereHelpertime_Time
+	EndAt       whereHelpertime_Time
 	LastForDays whereHelperint
 	Repeatable  whereHelperbool
 	NextRoundID whereHelpernull_String
@@ -115,7 +115,7 @@ var RoundWhere = struct {
 	ID:          whereHelperstring{field: "\"rounds\".\"id\""},
 	Name:        whereHelperstring{field: "\"rounds\".\"name\""},
 	StartedAt:   whereHelpertime_Time{field: "\"rounds\".\"started_at\""},
-	Endat:       whereHelpertime_Time{field: "\"rounds\".\"endat\""},
+	EndAt:       whereHelpertime_Time{field: "\"rounds\".\"end_at\""},
 	LastForDays: whereHelperint{field: "\"rounds\".\"last_for_days\""},
 	Repeatable:  whereHelperbool{field: "\"rounds\".\"repeatable\""},
 	NextRoundID: whereHelpernull_String{field: "\"rounds\".\"next_round_id\""},
@@ -153,8 +153,8 @@ func (*roundR) NewStruct() *roundR {
 type roundL struct{}
 
 var (
-	roundAllColumns            = []string{"id", "name", "started_at", "endat", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
-	roundColumnsWithoutDefault = []string{"name", "started_at", "endat", "last_for_days"}
+	roundAllColumns            = []string{"id", "name", "started_at", "end_at", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundColumnsWithoutDefault = []string{"name", "started_at", "end_at", "last_for_days"}
 	roundColumnsWithDefault    = []string{"id", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundPrimaryKeyColumns     = []string{"id"}
 	roundGeneratedColumns      = []string{}

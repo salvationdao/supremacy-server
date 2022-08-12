@@ -3,7 +3,7 @@ CREATE TABLE rounds(
     id uuid primary key default gen_random_uuid(),
     name text not null,
     started_at timestamptz not null,
-    endAt timestamptz not null,
+    end_at timestamptz not null,
 
     -- regen method
     last_for_days int not null,
@@ -17,7 +17,8 @@ CREATE TABLE rounds(
     deleted_at timestamptz
 );
 
-INSERT INTO rounds (id, name, started_at, endAt, last_for_days, repeatable, is_init)
+-- insert an init round
+INSERT INTO rounds (id, name, started_at, end_at, last_for_days, repeatable, is_init)
 VALUES ('21e1c095-3864-499a-a38c-6f7c3e08b4ea', 'QUEST', now(), now(), 3, true, true);
 
 DROP TYPE IF EXISTS QUEST_KEY;
