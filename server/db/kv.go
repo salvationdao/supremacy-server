@@ -58,6 +58,7 @@ const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
 const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
 const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
 const KeyCanDeployDamagedRatio KVKey = "can_deploy_damaged_ratio"
+const KeyDefaultRepairBlocks KVKey = "default_repair_blocks"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"

@@ -228,7 +228,6 @@ type MechBattleBrief struct {
 	FactionWon bool      `boiler:"faction_won" json:"faction_won"`
 	Kills      int       `boiler:"kills" json:"kills"`
 	Killed     null.Time `boiler:"killed" json:"killed,omitempty"`
-	Label      string    `boiler:"label" json:"label"`
 	Name       string    `boiler:"name" json:"name"`
 }
 
@@ -240,7 +239,6 @@ func BroadcastMechBattleCompleteMessage(queue []*boiler.BattleQueue, battleID st
 		bm.faction_won,
 		bm.kills,
 		bm.killed,
-		m."label",
 		m."name"
 	from battle_mechs bm 
 	inner join mechs m on m.id = bm.mech_id
