@@ -1271,7 +1271,6 @@ type PlayerAssetPowerCoreListRequest struct {
 	Payload struct {
 		Search                 string                       `json:"search"`
 		Filter                 *db.ListFilterRequest        `json:"filter"`
-		Sort                   *db.ListSortRequest          `json:"sort"`
 		SortBy                 string                       `json:"sort_by"`
 		SortDir                db.SortByDir                 `json:"sort_dir"`
 		PageSize               int                          `json:"page_size"`
@@ -1311,7 +1310,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 	listOpts := &db.PowerCoreListOpts{
 		Search:                 req.Payload.Search,
 		Filter:                 req.Payload.Filter,
-		Sort:                   req.Payload.Sort,
 		PageSize:               req.Payload.PageSize,
 		Page:                   req.Payload.Page,
 		OwnerID:                user.ID,
@@ -1361,6 +1359,42 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 		Total:      total,
 		PowerCores: playerAssets,
 	})
+	return nil
+}
+
+const HubKeyPlayerAssetPowerCoreDetail = "PLAYER:ASSET:POWER_CORE:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	powerCoreID := cctx.URLParam("power_core_id")
+	if powerCoreID == "" {
+		return terror.Error(fmt.Errorf("missing power core id"), "Missing power core id.")
+	}
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore),
+		boiler.CollectionItemWhere.ItemID.EQ(powerCoreID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find power core from the collection")
+	}
+
+	// get power core
+	powerCore, err := db.PowerCore(gamedb.StdConn, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find power core from db")
+	}
+
+	reply(powerCore)
 	return nil
 }
 
