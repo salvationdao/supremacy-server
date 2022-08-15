@@ -393,6 +393,10 @@ func (q *System) MechJoinBattleQuestCheck(playerID string) {
 				return false
 			}
 
+			if mechCount > pq.RequestAmount {
+				mechCount = pq.RequestAmount
+			}
+
 			// broadcast changes
 			ws.PublishMessage(
 				fmt.Sprintf("/user/%s/quest_progression", playerID),
