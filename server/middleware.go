@@ -96,46 +96,55 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 }
 
 // Tracer is a ws middleware used to implement datadog for WS Handlers.
-func Tracer(fn ws.CommandFunc) ws.CommandFunc {
+func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-		span, augmentedCtx := tracer.StartSpanFromContext(
-			ctx,
-			"ws_handler",
-			tracer.ResourceName(key),
-			tracer.Tag("ws_key", key),
-		)
-		defer span.Finish()
-		ctx = augmentedCtx
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
 		return fn(ctx, key, payload, reply)
 	}
 }
 
 // SecureUserTracer is a ws middleware used to implement datadog for WS Handlers.
-func SecureUserTracer(fn SecureCommandFunc) SecureCommandFunc {
+func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-		span, augmentedCtx := tracer.StartSpanFromContext(
-			ctx,
-			"ws_handler",
-			tracer.ResourceName(key),
-			tracer.Tag("ws_key", key),
-		)
-		defer span.Finish()
-		ctx = augmentedCtx
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
 		return fn(ctx, user, key, payload, reply)
 	}
 }
 
 // SecureFactionTracer is a ws middleware used to implement datadog for WS Handlers (factions).
-func SecureFactionTracer(fn SecureFactionCommandFunc) SecureFactionCommandFunc {
+func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) SecureFactionCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-		span, augmentedCtx := tracer.StartSpanFromContext(
-			ctx,
-			"ws_handler",
-			tracer.ResourceName(key),
-			tracer.Tag("ws_key", key),
-		)
-		defer span.Finish()
-		ctx = augmentedCtx
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
 		return fn(ctx, user, user.FactionID.String, key, payload, reply)
 	}
 }
