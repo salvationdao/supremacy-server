@@ -194,6 +194,19 @@ func playerQuestGrant(playerID string, questID string) error {
 	return nil
 }
 
+func broadcastProgression(playerID string, questID string, currentProgress int, goal int) {
+	if currentProgress > goal {
+		currentProgress = goal
+	}
+
+	// broadcast changes
+	ws.PublishMessage(
+		fmt.Sprintf("/user/%s/quest_progression", playerID),
+		server.HubKeyPlayerQuestProgressions,
+		[]*PlayerQuestProgression{{questID, currentProgress, goal}},
+	)
+}
+
 // AbilityKillQuestCheck gain players ability kill quest if they are eligible.
 func (q *System) AbilityKillQuestCheck(playerID string) {
 	l := gamelog.L.With().Str("quest key", boiler.QuestKeyAbilityKill).Str("player id", playerID).Logger()
@@ -225,16 +238,7 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				totalKill = 0
 			}
 
-			if totalKill > pq.RequestAmount {
-				totalKill = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, totalKill, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, totalKill, pq.RequestAmount)
 
 			// return if not eligible
 			if totalKill < pq.RequestAmount {
@@ -260,16 +264,7 @@ func (q *System) MechKillQuestCheck(playerID string) {
 				return false
 			}
 
-			if mechKillCount > pq.RequestAmount {
-				mechKillCount = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, mechKillCount, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, mechKillCount, pq.RequestAmount)
 
 			if mechKillCount < pq.RequestAmount {
 				return false
@@ -294,16 +289,7 @@ func (q *System) MechCommanderQuestCheck(playerID string) {
 				return false
 			}
 
-			if battleCount > pq.RequestAmount {
-				battleCount = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, battleCount, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, battleCount, pq.RequestAmount)
 
 			if battleCount < pq.RequestAmount {
 				return false
@@ -327,16 +313,7 @@ func (q *System) RepairQuestCheck(playerID string) {
 				return false
 			}
 
-			if blockCount > pq.RequestAmount {
-				blockCount = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, blockCount, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, blockCount, pq.RequestAmount)
 
 			if blockCount < pq.RequestAmount {
 				return false
@@ -360,16 +337,7 @@ func (q *System) ChatMessageQuestCheck(playerID string) {
 				return false
 			}
 
-			if chatCount > pq.RequestAmount {
-				chatCount = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, chatCount, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, chatCount, pq.RequestAmount)
 
 			if chatCount < pq.RequestAmount {
 				return false
@@ -393,16 +361,7 @@ func (q *System) MechJoinBattleQuestCheck(playerID string) {
 				return false
 			}
 
-			if mechCount > pq.RequestAmount {
-				mechCount = pq.RequestAmount
-			}
-
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/user/%s/quest_progression", playerID),
-				server.HubKeyPlayerQuestProgressions,
-				[]*PlayerQuestProgression{{pq.ID, mechCount, pq.RequestAmount}},
-			)
+			broadcastProgression(playerID, pq.ID, mechCount, pq.RequestAmount)
 
 			if mechCount < pq.RequestAmount {
 				return false
