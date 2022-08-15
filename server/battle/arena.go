@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/pemistahl/lingua-go"
 	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/profanities"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -41,6 +43,25 @@ type NewBattleChan struct {
 	BattleNumber int
 }
 
+type ArenaManager struct {
+	server                   *http.Server
+	Addr                     string
+	timeout                  time.Duration
+	RPCClient                *xsyn_rpcclient.XsynXrpcClient
+	sms                      server.SMS
+	telegram                 server.Telegram
+	gameClientMinimumBuildNo uint64
+	languageDetector         lingua.LanguageDetector
+	profanityManager         *profanities.ProfanityManager
+	SystemBanManager         *SystemBanManager
+	NewBattleChan            chan *NewBattleChan
+	SystemMessagingManager   *system_messages.SystemMessagingManager
+	RepairOfferCloseChan     chan *RepairOfferClose
+
+	arenas       map[string]*Arena
+	sync.RWMutex // lock for arena
+}
+
 type Arena struct {
 	server                   *http.Server
 	opts                     *Opts
@@ -48,10 +69,8 @@ type Arena struct {
 	connected                *atomic.Bool
 	timeout                  time.Duration
 	_currentBattle           *Battle
-	syndicates               map[string]boiler.Faction
 	AIPlayers                map[string]db.PlayerWithFaction
 	RPCClient                *xsyn_rpcclient.XsynXrpcClient
-	gameClientLock           sync.Mutex
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
