@@ -475,8 +475,6 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 		return nil, terror.Error(err, "Failed to get player quests.")
 	}
 
-	fmt.Println(result)
-
 	return result, nil
 }
 
