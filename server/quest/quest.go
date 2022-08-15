@@ -225,6 +225,10 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				totalKill = 0
 			}
 
+			if totalKill > pq.RequestAmount {
+				totalKill = pq.RequestAmount
+			}
+
 			// broadcast changes
 			ws.PublishMessage(
 				fmt.Sprintf("/user/%s/quest_progression", playerID),
@@ -254,6 +258,10 @@ func (q *System) MechKillQuestCheck(playerID string) {
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get player mech kill count")
 				return false
+			}
+
+			if mechKillCount > pq.RequestAmount {
+				mechKillCount = pq.RequestAmount
 			}
 
 			// broadcast changes
@@ -286,6 +294,10 @@ func (q *System) MechCommanderQuestCheck(playerID string) {
 				return false
 			}
 
+			if battleCount > pq.RequestAmount {
+				battleCount = pq.RequestAmount
+			}
+
 			// broadcast changes
 			ws.PublishMessage(
 				fmt.Sprintf("/user/%s/quest_progression", playerID),
@@ -315,6 +327,10 @@ func (q *System) RepairQuestCheck(playerID string) {
 				return false
 			}
 
+			if blockCount > pq.RequestAmount {
+				blockCount = pq.RequestAmount
+			}
+
 			// broadcast changes
 			ws.PublishMessage(
 				fmt.Sprintf("/user/%s/quest_progression", playerID),
@@ -342,6 +358,10 @@ func (q *System) ChatMessageQuestCheck(playerID string) {
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to get total repair block")
 				return false
+			}
+
+			if chatCount > pq.RequestAmount {
+				chatCount = pq.RequestAmount
 			}
 
 			// broadcast changes
