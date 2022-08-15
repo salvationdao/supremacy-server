@@ -9,7 +9,7 @@ import (
 )
 
 func (api *API) Command(key string, fn ws.CommandFunc) {
-	api.Commander.Command(key, server.SecureTracer(fn))
+	api.Commander.Command(key, server.Tracer(fn))
 }
 
 func (api *API) SecureUserCommand(key string, fn server.SecureCommandFunc) {
@@ -69,9 +69,9 @@ func MustMatchSyndicate(ctx context.Context) bool {
 }
 
 func (api *API) SecureUserFeatureCheckCommand(featureType string, key string, fn server.SecureCommandFunc) {
-	api.SecureUserCommander.Command(string(key), server.MustSecureWithFeature(featureType, server.SecureUserTracer(fn)))
+	api.SecureUserCommander.Command(key, server.MustSecureWithFeature(featureType, server.SecureUserTracer(fn)))
 }
 
 func (api *API) SecureUserFactionFeatureCheckCommand(featureType string, key string, fn server.SecureFactionCommandFunc) {
-	api.SecureFactionCommander.Command(string(key), server.MustSecureFactionWithFeature(featureType, server.SecureFactionTracer(fn)))
+	api.SecureFactionCommander.Command(key, server.MustSecureFactionWithFeature(featureType, server.SecureFactionTracer(fn)))
 }
