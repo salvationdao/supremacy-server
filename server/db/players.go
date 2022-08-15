@@ -234,45 +234,6 @@ func UserStatCreate(playerID string) (*boiler.PlayerStat, error) {
 	return userStat, nil
 }
 
-func PlayerFactionContributionList(battleID string, factionID string, abilityOfferingID string) ([]uuid.UUID, error) {
-	playerList := []uuid.UUID{}
-	q := `
-		SELECT bc.player_id FROM battle_contributions bc 
-			WHERE bc.battle_id = $1 AND bc.faction_id = $2 AND bc.ability_offering_id = $3
-			GROUP BY player_id
-		ORDER BY SUM(amount) DESC 
-	`
-
-	result, err := gamedb.StdConn.Query(q, battleID, factionID, abilityOfferingID)
-	if err != nil {
-		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list from db")
-		return []uuid.UUID{}, err
-	}
-
-	defer result.Close()
-
-	for result.Next() {
-		var idStr string
-		err = result.Scan(
-			&idStr,
-		)
-		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to scan from result ")
-			return []uuid.UUID{}, err
-		}
-
-		playerID, err := uuid.FromString(idStr)
-		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to convert from result")
-			return []uuid.UUID{}, err
-		}
-
-		playerList = append(playerList, playerID)
-	}
-
-	return playerList, nil
-}
-
 // GetPositivePlayerAbilityKillByFactionID return player ability kill by given faction id
 func GetPositivePlayerAbilityKillByFactionID(factionID string) ([]*server.PlayerAbilityKills, error) {
 	abilityKills, err := boiler.PlayerKillLogs(
