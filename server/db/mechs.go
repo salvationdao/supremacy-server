@@ -299,59 +299,50 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Executor, mechID string) ([]string, error) {
 	// select
-	// bw.id,
-	// bw."label"
-	// from blueprint_weapons bw
-	// inner join weapon_models wm on wm.id = bw.weapon_model_id
-	// inner join weapon_model_skin_compatibilities wmsc on wmsc.weapon_model_id = wm.id
-	// inner join blueprint_weapon_skin bws on bws.id = wmsc.blueprint_weapon_skin_id
-	// inner join blueprint_mech_skin bms on bms.blueprint_weapon_skin_id = bws.id
-	// inner join mech_skin ms on ms.blueprint_id = bms.id
-	// inner join mechs m on m.chassis_skin_id = ms.id
+	// bw.id
+	// from mechs m
+	// inner join mech_skin ms on ms.id = m.chassis_skin_id
+	// inner join blueprint_mech_skin bms on bms.id = ms.blueprint_id
+	// inner join weapon_model_skin_compatibilities wmsc on wmsc.blueprint_weapon_skin_id  = bms.blueprint_weapon_skin_id
+	// inner join weapon_models wm on wm.id = wmsc.weapon_model_id
+	// inner join blueprint_weapons bw on bw.weapon_model_id = wm.id
 	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
 
-	boil.DebugMode = true
 	var result []struct {
 		ID string `boil:"id"`
 	}
 	err := boiler.NewQuery(
 		qm.Select(fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID))),
-		qm.From(boiler.TableNames.BlueprintWeapons),
+		qm.From(boiler.TableNames.Mechs),
 		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
-			boiler.TableNames.WeaponModels,
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
-		)),
-		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
-			boiler.TableNames.WeaponModelSkinCompatibilities,
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-		)),
-		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
-			boiler.TableNames.BlueprintWeaponSkin,
-			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 		)),
 		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
 			boiler.TableNames.BlueprintMechSkin,
-			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
-			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
-		)),
-		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
-			boiler.TableNames.MechSkin,
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 		)),
 		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
-			boiler.TableNames.Mechs,
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
-			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
 		)),
 		qm.Where(fmt.Sprintf("%s = ?", qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 			mechID,
 		),
 	).Bind(nil, conn, &result)
-	boil.DebugMode = false
 	if err != nil {
 		return []string{}, err
 	}
