@@ -344,12 +344,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		mech.ChassisSkin.Images = mech.Images
 	}
 
-	compatibleWeapons, err := db.GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(gamedb.StdConn, mech.ID)
-	if err != nil {
-		return terror.Error(err, "Failed to get compatible skin weapon models from mech")
-	}
-	mech.BlueprintWeaponIDsWithSkinInheritance = compatibleWeapons
-
 	reply(mech)
 	return nil
 }

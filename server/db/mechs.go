@@ -454,6 +454,12 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
 	}
 
+	compatibleWeapons, err := GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(gamedb.StdConn, mc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find skin inherited weapon models for mech with id %s", mechID)
+	}
+	mc.BlueprintWeaponIDsWithSkinInheritance = compatibleWeapons
+
 	bm.End("db Mech")
 	return mc, err
 }
