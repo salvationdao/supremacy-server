@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
 	"server"
@@ -132,6 +133,25 @@ func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID
 	return ids
 }
 
+func (arena *Arena) CurrentBattleWarMachineOrAIByHash(hash string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	for _, wm := range arena._currentBattle.SpawnedAI {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
+}
+
 func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -167,6 +187,12 @@ func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	}
 
 	for _, wm := range arena._currentBattle.WarMachines {
+		if checkWarMachineByParticipantID(wm, participantID) {
+			return wm
+		}
+	}
+
+	for _, wm := range arena._currentBattle.SpawnedAI {
 		if checkWarMachineByParticipantID(wm, participantID) {
 			return wm
 		}
@@ -375,17 +401,19 @@ func (btl *Battle) GenerateDefaultQueueRequest(bqs []*boiler.BattleQueue) map[st
 		}
 	}
 
-	// get maximum queue number
-	maxNum := 0
-	for _, req := range reqMap {
-		if req.amount > maxNum {
-			maxNum = req.amount
+	if server.IsProductionEnv() {
+		// get maximum queue number
+		maxNum := 0
+		for _, req := range reqMap {
+			if req.amount > maxNum {
+				maxNum = req.amount
+			}
 		}
-	}
 
-	// set max amount default mech to all the factions
-	for _, req := range reqMap {
-		req.amount = maxNum
+		// set max amount default mech to all the factions
+		for _, req := range reqMap {
+			req.amount = maxNum
+		}
 	}
 
 	return reqMap
@@ -444,6 +472,60 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 		}
 
 		qr.amount -= 1
+
+		// pay queue fee from treasury when it is not in production
+		if !server.IsProductionEnv() {
+			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18))
+
+			bqf := &boiler.BattleQueueFee{
+				MechID:   mech.ID,
+				PaidByID: mech.OwnerID,
+				Amount:   amount,
+			}
+
+			err = bqf.Insert(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, "Failed to insert battle queue fee.")
+			}
+
+			paidTxID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           uuid.UUID(server.XsynTreasuryUserID), // paid from treasury fund
+				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+				Amount:               amount.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mech.ID, time.Now().UnixNano())),
+				Group:                string(server.TransactionGroupSupremacy),
+				SubGroup:             string(server.TransactionGroupBattle),
+				Description:          "queue mech to join the battle arena.",
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("faction_user_id", mech.OwnerID).
+					Str("mech id", mech.ID).
+					Str("amount", amount.StringFixed(0)).
+					Err(err).Msg("Failed to pay sups on queuing default mech.")
+				return terror.Error(err, "Failed to pay sups on queuing mech.")
+			}
+
+			refundFunc := func() {
+				_, err = btl.arena.RPCClient.RefundSupsMessage(paidTxID)
+				if err != nil {
+					gamelog.L.Error().
+						Str("player_id", server.XsynTreasuryUserID.String()).
+						Str("mech id", mech.ID).
+						Str("amount", amount.StringFixed(0)).
+						Err(err).Msg("Failed to refund sups on queuing default mech.")
+				}
+			}
+
+			bq.QueueFeeTXID = null.StringFrom(paidTxID)
+			bq.FeeID = null.StringFrom(bqf.ID)
+			_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID, boiler.BattleQueueColumns.FeeID))
+			if err != nil {
+				refundFunc() // refund player
+				gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
+				return terror.Error(err, "Failed to update battle queue")
+			}
+		}
 	}
 
 	err = tx.Commit()
@@ -875,7 +957,8 @@ type BattleWMDestroyedPayload struct {
 			SourceHash     string `json:"sourceHash"`
 			SourceName     string `json:"sourceName"`
 		} `json:"damageHistory"`
-		KilledBy string `json:"killedBy"`
+		KilledBy      string `json:"killedBy"`
+		ParticipantID int    `json:"participantID"`
 	} `json:"destroyedWarMachineEvent"`
 	BattleID string `json:"battleID"`
 }
@@ -885,8 +968,18 @@ type AISpawnedRequest struct {
 	SpawnedAIEvent *SpawnedAIEvent `json:"spawnedAIEvent"`
 }
 
+type AIType string
+
+const (
+	Reinforcement AIType = "Reinforcement"
+	MiniMech      AIType = "Mini Mech"
+	RobotDog      AIType = "Robot Dog"
+)
+
 type SpawnedAIEvent struct {
 	ParticipantID byte            `json:"participantID"`
+	Hash          string          `json:"hash"`
+	UserID        string          `json:"userID"`
 	Name          string          `json:"name"`
 	Model         string          `json:"model"`
 	Skin          string          `json:"skin"`
@@ -897,6 +990,7 @@ type SpawnedAIEvent struct {
 	FactionID     string          `json:"factionID"`
 	Position      *server.Vector3 `json:"position"`
 	Rotation      int             `json:"rotation"`
+	Type          AIType          `json:"type"`
 }
 
 type BattleWMPickupPayload struct {
@@ -1058,7 +1152,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
 				continue
 			}
-			err = btl.UpdateWarMachineMoveCommand(dataPayload)
+			err = btl.CompleteWarMachineMoveCommand(dataPayload)
 			if err != nil {
 				L.Error().Err(err).Msg("failed update war machine move command")
 			}
@@ -1208,6 +1302,19 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
+func (btl *Battle) IsMechOfType(participantID int, aiType AIType) bool {
+	btl.spawnedAIMux.RLock()
+	defer btl.spawnedAIMux.RUnlock()
+
+	for _, s := range btl.SpawnedAI {
+		if int(s.ParticipantID) != participantID {
+			continue
+		}
+		return *s.AIType == aiType
+	}
+	return false
+}
+
 func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// check battle id
 	if payload.BattleID != btl.BattleID {
@@ -1221,6 +1328,8 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// get spawned AI
 	spawnedAI := &WarMachine{
 		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
+		Hash:          payload.SpawnedAIEvent.Hash,
+		OwnedByID:     payload.SpawnedAIEvent.UserID,
 		Name:          payload.SpawnedAIEvent.Name,
 		Model:         payload.SpawnedAIEvent.Model,
 		Skin:          payload.SpawnedAIEvent.Skin,
@@ -1231,19 +1340,26 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		FactionID:     payload.SpawnedAIEvent.FactionID,
 		Position:      payload.SpawnedAIEvent.Position,
 		Rotation:      payload.SpawnedAIEvent.Rotation,
+		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		AIType:        &payload.SpawnedAIEvent.Type,
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
-	// cache record in battle, for future subscription
 	btl.spawnedAIMux.Lock()
+	defer btl.spawnedAIMux.Unlock()
+
+	// cache record in battle, for future subscription
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
-	btl.spawnedAIMux.Unlock()
+
+	// Broadcast spawn event
+	ws.PublishMessage("/public/minimap", HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }
 
-func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
 	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
 	defer gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 
@@ -1257,35 +1373,58 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	}
 
 	// get mech
-	wm := btl.arena.CurrentBattleWarMachineByHash(payload.WarMachineHash)
+	wm := btl.arena.CurrentBattleWarMachineOrAIByHash(payload.WarMachineHash)
 	if wm == nil {
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
-	// get the last move command of the mech
-	mmc, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
-		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to get mech move command from db.")
+	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+	if !isMiniMech {
+		// get the last move command of the mech
+		mmc, err := boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
+			qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get mech move command from db.")
+		}
+
+		// update completed_at
+		mmc.ReachedAt = null.TimeFrom(time.Now())
+		mmc.IsMoving = false
+		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+		if err != nil {
+			return terror.Error(err, "Failed to update mech move command")
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+			MechMoveCommandLog:    mmc,
+			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		})
+	} else {
+		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
+		if err == nil && mmmc != nil {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+				MechMoveCommandLog: &boiler.MechMoveCommandLog{
+					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
+					BattleID:      mmmc.BattleID,
+					MechID:        mmmc.MechHash,
+					TriggeredByID: mmmc.TriggeredByID,
+					CellX:         mmmc.CellX,
+					CellY:         mmmc.CellY,
+					CancelledAt:   mmmc.CancelledAt,
+					ReachedAt:     mmmc.ReachedAt,
+					CreatedAt:     mmmc.CreatedAt,
+					IsMoving:      mmmc.IsMoving,
+				},
+				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
+				IsMiniMech:            true,
+			})
+		}
 	}
 
-	// update completed_at
-	mmc.ReachedAt = null.TimeFrom(time.Now())
-
-	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
-	if err != nil {
-		return terror.Error(err, "Failed to update mech move command")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
-	})
-
-	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
+	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}

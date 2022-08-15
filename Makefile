@@ -258,20 +258,16 @@ dev-give-mech-crates:
 
 .PHONY: sync-data
 sync-data:
-	cd ./server/synctool
-	mkdir temp-sync
-	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
-	cd ../../../
+	mkdir -p ./server/synctool/temp-sync
+	rm -rf ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make sync
 
 .PHONY: dev-sync-data
 dev-sync-data:
-	cd ./server/synctool
-	mkdir temp-sync
-	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
-	cd ../../../
+	mkdir -p ./server/synctool/temp-sync
+	rm -rf ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make dev-sync
 
 .PHONY: mac-sync-data

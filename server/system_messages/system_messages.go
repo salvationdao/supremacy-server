@@ -169,13 +169,18 @@ func BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
 			}
 			defer tx.Rollback()
 
-			mech, err := q.Mech().One(tx)
+			mech, err := q.Mech(
+				qm.Load(boiler.MechRels.Blueprint),
+			).One(gamedb.StdConn)
 			if err != nil {
 				l.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 				return
 			}
 
-			label := mech.Label
+			label := ""
+			if mech.R != nil && mech.R.Blueprint != nil {
+				label = mech.R.Blueprint.Label
+			}
 			if mech.Name != "" {
 				label = mech.Name
 			}
@@ -223,7 +228,6 @@ type MechBattleBrief struct {
 	FactionWon bool      `boiler:"faction_won" json:"faction_won"`
 	Kills      int       `boiler:"kills" json:"kills"`
 	Killed     null.Time `boiler:"killed" json:"killed,omitempty"`
-	Label      string    `boiler:"label" json:"label"`
 	Name       string    `boiler:"name" json:"name"`
 }
 
@@ -235,7 +239,6 @@ func BroadcastMechBattleCompleteMessage(queue []*boiler.BattleQueue, battleID st
 		bm.faction_won,
 		bm.kills,
 		bm.killed,
-		m."label",
 		m."name"
 	from battle_mechs bm 
 	inner join mechs m on m.id = bm.mech_id
@@ -257,13 +260,18 @@ func BroadcastMechBattleCompleteMessage(queue []*boiler.BattleQueue, battleID st
 	}
 
 	for _, q := range queue {
-		mech, err := q.Mech().One(gamedb.StdConn)
+		mech, err := q.Mech(
+			qm.Load(boiler.MechRels.Blueprint),
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("battleQueue", q).Msg("failed to find a mech associated with battle queue")
 			continue
 		}
 
-		label := mech.Label
+		label := ""
+		if mech.R != nil && mech.R.Blueprint != nil {
+			label = mech.R.Blueprint.Label
+		}
 		if mech.Name != "" {
 			label = mech.Name
 		}

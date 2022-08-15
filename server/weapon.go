@@ -13,9 +13,9 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionItem
+	*Images
 	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
-	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
 	Slug                  string              `json:"slug"`
 	Damage                int                 `json:"damage"`
@@ -34,10 +34,10 @@ type Weapon struct {
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
-	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
+	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
-	WeaponModelID         null.String         `json:"weapon_model_id,omitempty"`
+	WeaponModelID         string              `json:"weapon_model_id,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails
@@ -56,7 +56,6 @@ func (b *Weapon) Scan(value interface{}) error {
 
 type BlueprintWeapon struct {
 	ID                  string              `json:"id"`
-	BrandID             null.String         `json:"brand_id,omitempty"`
 	Label               string              `json:"label"`
 	Slug                string              `json:"slug"`
 	Damage              int                 `json:"damage"`
@@ -107,7 +106,6 @@ func (b *WeaponSlice) Scan(value interface{}) error {
 func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon {
 	return &BlueprintWeapon{
 		ID:                  weapon.ID,
-		BrandID:             weapon.BrandID,
 		Label:               weapon.Label,
 		Slug:                weapon.Slug,
 		UpdatedAt:           weapon.UpdatedAt,
@@ -134,34 +132,35 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin, itemSaleID null.String) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
+		},
+		Images: &Images{
+			ImageURL:         weaponSkin.ImageURL,
+			CardAnimationURL: weaponSkin.CardAnimationURL,
+			AvatarURL:        weaponSkin.AvatarURL,
+			LargeImageURL:    weaponSkin.LargeImageURL,
+			BackgroundColor:  weaponSkin.BackgroundColor,
+			AnimationURL:     weaponSkin.AnimationURL,
+			YoutubeURL:       weaponSkin.YoutubeURL,
 		},
 		CollectionItemID:     collection.ID,
 		ID:                   weapon.ID,
-		BrandID:              weapon.BrandID,
-		Label:                weapon.Label,
+		Label:                weapon.R.Blueprint.Label,
 		Slug:                 weapon.Slug,
 		Damage:               weapon.Damage,
 		BlueprintID:          weapon.BlueprintID,
 		DefaultDamageType:    weapon.DefaultDamageType,
 		GenesisTokenID:       weapon.GenesisTokenID,
-		WeaponType:           weapon.WeaponType,
+		WeaponType:           weapon.R.Blueprint.WeaponType,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,

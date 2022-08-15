@@ -24,6 +24,8 @@ const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
+const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
+const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
 type KVKey string
@@ -58,6 +60,7 @@ const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
 const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
 const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
 const KeyCanDeployDamagedRatio KVKey = "can_deploy_damaged_ratio"
+const KeyDefaultRepairBlocks KVKey = "default_repair_blocks"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"

@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
+	"server/battle/player_abilities"
 	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
@@ -17,6 +15,11 @@ import (
 	"server/gamelog"
 	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -32,7 +35,7 @@ type AbilityRadius int
 
 const (
 	NukeRadius     AbilityRadius = 5200
-	BlackoutRadius AbilityRadius = 20000
+	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 
 type AbilitiesSystem struct {
@@ -202,17 +205,6 @@ func (ld *LocationDeciders) maxSelectorCount() int {
 	return len(ld.currentDeciders)
 }
 
-func (ld *LocationDeciders) store(factionID string, userID string) {
-	ld.Lock()
-	defer ld.Unlock()
-
-	if _, ok := ld.m[factionID]; !ok {
-		return
-	}
-
-	ld.m[factionID] = append(ld.m[factionID], userID)
-}
-
 func (ld *LocationDeciders) length(factionID string) int {
 	ld.RLock()
 	defer ld.RUnlock()
@@ -223,9 +215,14 @@ func (ld *LocationDeciders) length(factionID string) int {
 	return 0
 }
 
-func (ld *LocationDeciders) setSelector(playerID string) {
+func (ld *LocationDeciders) setSelector(factionID string, playerID string) {
 	ld.Lock()
 	defer ld.Unlock()
+
+	if _, ok := ld.m[factionID]; !ok {
+		return
+	}
+	ld.m[factionID] = append(ld.m[factionID], playerID)
 
 	ld.currentDeciders[playerID] = true
 }
@@ -798,41 +795,22 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 					continue
 				}
 
-				// check user is banned
-				isBanned := false
-				for _, pb := range pbs {
-					if pb.BannedPlayerID == ba.PlayerID {
-						isBanned = true
-						break
-					}
-				}
-
 				// skip, if player is banned
-				if isBanned {
+				if slices.IndexFunc(pbs, func(pb *boiler.PlayerBan) bool { return pb.BannedPlayerID == ba.PlayerID }) >= 0 {
 					continue
 				}
 
 				// check player is inactive (no mouse movement)
-				exist := false
-				for _, ap := range aps {
-					if ap.PlayerID == ba.PlayerID {
-						exist = true
-						break
-					}
-				}
-
-				// skip, if player is inactive
-				if !exist {
+				if slices.IndexFunc(aps, func(ap *boiler.PlayerActiveLog) bool { return ap.PlayerID == ba.PlayerID }) == -1 {
 					continue
 				}
 
 				// set location decider list
-				as.BattleAbilityPool.LocationDeciders.setSelector(ba.PlayerID)
+				as.BattleAbilityPool.LocationDeciders.setSelector(ba.FactionID, ba.PlayerID)
 
-				// check limit is reached
-				as.BattleAbilityPool.LocationDeciders.store(ba.FactionID, ba.PlayerID)
+				// exit, if maximum reached
 				if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) >= maximumCommanderCount {
-					continue
+					break
 				}
 			}
 

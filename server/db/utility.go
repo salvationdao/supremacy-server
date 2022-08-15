@@ -17,7 +17,6 @@ import (
 )
 
 func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
-	// first insert the energy core
 	newUtility := boiler.Utility{
 		BrandID:               utility.BrandID,
 		Label:                 utility.Label,
@@ -38,13 +37,6 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 		newUtility.ID,
 		utility.Tier,
 		ownerID.String(),
-		utility.ImageURL,
-		utility.CardAnimationURL,
-		utility.AvatarURL,
-		utility.LargeImageURL,
-		utility.BackgroundColor,
-		utility.AnimationURL,
-		utility.YoutubeURL,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -226,7 +218,7 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 	return utilities, nil
 }
 
-// AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
+// AttachUtilityToMech attaches a Utility to a mech
 // If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
 func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

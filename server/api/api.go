@@ -13,8 +13,8 @@ import (
 	"server/db"
 	"server/gamelog"
 	"server/marketplace"
-	"server/player_abilities"
 	"server/profanities"
+	"server/sale_player_abilities"
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
@@ -86,7 +86,7 @@ type API struct {
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
-	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -150,7 +150,7 @@ func NewAPI(
 		Zendesk:                  zendesk,
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
-		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -235,11 +235,6 @@ func NewAPI(
 			if config.Environment != "development" {
 				// TODO: Create new tracer not using HUB
 				r.Use(DatadogTracer.Middleware())
-
-			}
-
-			if config.Environment == "development" {
-				r.Get("/give_crates/{crate_type}/{public_address}", WithError(WithDev(api.DevGiveCrates)))
 			}
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
@@ -284,6 +279,7 @@ func NewAPI(
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
+				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
@@ -310,8 +306,8 @@ func NewAPI(
 				s.WS("/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet))
 				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
 				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
-				s.WS("/player_weapons", server.HubKeyPlayerWeaponsList, server.MustSecure(pasc.PlayerWeaponsListHandler))
 				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
+
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
 			}))
@@ -336,7 +332,7 @@ func NewAPI(
 				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 
-				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
+				s.WS("/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 

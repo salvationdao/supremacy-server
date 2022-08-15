@@ -171,14 +171,17 @@ var StorefrontMysteryCrateWhere = struct {
 
 // StorefrontMysteryCrateRels is where relationship names are stored.
 var StorefrontMysteryCrateRels = struct {
-	Faction string
+	Faction                string
+	BlueprintMysteryCrates string
 }{
-	Faction: "Faction",
+	Faction:                "Faction",
+	BlueprintMysteryCrates: "BlueprintMysteryCrates",
 }
 
 // storefrontMysteryCrateR is where relationships are stored.
 type storefrontMysteryCrateR struct {
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Faction                *Faction          `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	BlueprintMysteryCrates MysteryCrateSlice `boiler:"BlueprintMysteryCrates" boil:"BlueprintMysteryCrates" json:"BlueprintMysteryCrates" toml:"BlueprintMysteryCrates" yaml:"BlueprintMysteryCrates"`
 }
 
 // NewStruct creates a new relationship struct
@@ -454,6 +457,28 @@ func (o *StorefrontMysteryCrate) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
+// BlueprintMysteryCrates retrieves all the mystery_crate's MysteryCrates with an executor via blueprint_id column.
+func (o *StorefrontMysteryCrate) BlueprintMysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mystery_crate\".\"blueprint_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mystery_crate\".\"deleted_at\""),
+	)
+
+	query := MysteryCrates(queryMods...)
+	queries.SetFrom(query.Query, "\"mystery_crate\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mystery_crate\".*"})
+	}
+
+	return query
+}
+
 // LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (storefrontMysteryCrateL) LoadFaction(e boil.Executor, singular bool, maybeStorefrontMysteryCrate interface{}, mods queries.Applicator) error {
@@ -559,6 +584,105 @@ func (storefrontMysteryCrateL) LoadFaction(e boil.Executor, singular bool, maybe
 	return nil
 }
 
+// LoadBlueprintMysteryCrates allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (storefrontMysteryCrateL) LoadBlueprintMysteryCrates(e boil.Executor, singular bool, maybeStorefrontMysteryCrate interface{}, mods queries.Applicator) error {
+	var slice []*StorefrontMysteryCrate
+	var object *StorefrontMysteryCrate
+
+	if singular {
+		object = maybeStorefrontMysteryCrate.(*StorefrontMysteryCrate)
+	} else {
+		slice = *maybeStorefrontMysteryCrate.(*[]*StorefrontMysteryCrate)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &storefrontMysteryCrateR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &storefrontMysteryCrateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mystery_crate`),
+		qm.WhereIn(`mystery_crate.blueprint_id in ?`, args...),
+		qmhelper.WhereIsNull(`mystery_crate.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mystery_crate")
+	}
+
+	var resultSlice []*MysteryCrate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mystery_crate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mystery_crate")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mystery_crate")
+	}
+
+	if len(mysteryCrateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BlueprintMysteryCrates = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mysteryCrateR{}
+			}
+			foreign.R.Blueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BlueprintID {
+				local.R.BlueprintMysteryCrates = append(local.R.BlueprintMysteryCrates, foreign)
+				if foreign.R == nil {
+					foreign.R = &mysteryCrateR{}
+				}
+				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetFaction of the storefrontMysteryCrate to the related item.
 // Sets o.R.Faction to related.
 // Adds o to related.R.StorefrontMysteryCrates.
@@ -602,6 +726,58 @@ func (o *StorefrontMysteryCrate) SetFaction(exec boil.Executor, insert bool, rel
 		related.R.StorefrontMysteryCrates = append(related.R.StorefrontMysteryCrates, o)
 	}
 
+	return nil
+}
+
+// AddBlueprintMysteryCrates adds the given related objects to the existing relationships
+// of the storefront_mystery_crate, optionally inserting them as new records.
+// Appends related to o.R.BlueprintMysteryCrates.
+// Sets related.R.Blueprint appropriately.
+func (o *StorefrontMysteryCrate) AddBlueprintMysteryCrates(exec boil.Executor, insert bool, related ...*MysteryCrate) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BlueprintID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mystery_crate\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mysteryCratePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BlueprintID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &storefrontMysteryCrateR{
+			BlueprintMysteryCrates: related,
+		}
+	} else {
+		o.R.BlueprintMysteryCrates = append(o.R.BlueprintMysteryCrates, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mysteryCrateR{
+				Blueprint: o,
+			}
+		} else {
+			rel.R.Blueprint = o
+		}
+	}
 	return nil
 }
 

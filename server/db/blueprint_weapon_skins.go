@@ -8,7 +8,9 @@ import (
 
 func BlueprintWeaponSkins(ids []string) ([]*server.BlueprintWeaponSkin, error) {
 	var serverBlueprintWeaponSkins []*server.BlueprintWeaponSkin
-	blueprintWeaponSkins, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponWhere.ID.IN(ids)).All(gamedb.StdConn)
+	blueprintWeaponSkins, err := boiler.BlueprintWeaponSkins(
+		boiler.BlueprintWeaponSkinWhere.ID.IN(ids),
+		).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

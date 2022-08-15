@@ -80,7 +80,7 @@ WITH bm_templates_skins AS (SELECT bcs.id AS chassis_skin_id,
                                    t.id               AS template_id
                             FROM blueprint_chassis bc
                             INNER JOIN templates t ON bc.id = t.blueprint_chassis_id
-                            INNER JOIN blueprint_mech_skin bcs on bc.skin = bcs.label and bcs.mech_model = bc.model_id
+                            INNER JOIN blueprint_mech_skin bcs on bc.skin = bcs.label
                             )
 INSERT
 INTO template_blueprints(template_id, type, blueprint_id)

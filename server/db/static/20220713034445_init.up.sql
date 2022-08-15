@@ -48,7 +48,7 @@ DO
 $$
     BEGIN
         IF NOT EXISTS(SELECT 1 FROM pg_type WHERE typname = 'collection') THEN
-            CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
+            CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables','supremacy-achievements');
         END IF;
     END
 $$;

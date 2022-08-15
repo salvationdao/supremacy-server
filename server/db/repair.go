@@ -104,3 +104,20 @@ func IsRepairCaseOwner(caseID string, playerID string) (bool, error) {
 
 	return isOwner, nil
 }
+
+func TotalRepairBlocks(mechID string) int {
+	totalRepairBlocks := GetIntWithDefault(KeyDefaultRepairBlocks, 5)
+	q := `
+		SELECT mm.repair_blocks FROM mech_models mm
+		INNER JOIN blueprint_mechs bm ON bm.model_id = mm.id
+		INNER JOIN mechs m ON m.blueprint_id = bm.id AND m.id = $1; 
+	`
+
+	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&totalRepairBlocks)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load total repair blocks")
+		return totalRepairBlocks
+	}
+
+	return totalRepairBlocks
+}

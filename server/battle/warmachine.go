@@ -1,27 +1,29 @@
 package battle
 
 import (
-	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
 type WarMachine struct {
-	ID            string `json:"id"`
-	Hash          string `json:"hash"`
-	OwnedByID     string `json:"ownedByID"`
-	OwnerUsername string `json:"ownerUsername"`
-	Name          string `json:"name"`
-	Label         string `json:"label"`
-	ParticipantID byte   `json:"participantID"`
-	FactionID     string `json:"factionID"`
-	MaxHealth     uint32 `json:"maxHealth"`
-	MaxShield     uint32 `json:"maxShield"`
-	Health        uint32 `json:"health"`
+	ID            string  `json:"id"`
+	Hash          string  `json:"hash"`
+	OwnedByID     string  `json:"ownedByID"`
+	OwnerUsername string  `json:"ownerUsername"`
+	Name          string  `json:"name"`
+	Label         string  `json:"label"`
+	ParticipantID byte    `json:"participantID"`
+	FactionID     string  `json:"factionID"`
+	MaxHealth     uint32  `json:"maxHealth"`
+	MaxShield     uint32  `json:"maxShield"`
+	Health        uint32  `json:"health"`
+	AIType        *AIType `json:"aiType"`
 
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
@@ -189,8 +191,8 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo.Int,
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
-		//Model:               	weapon.Model, // TODO: weapon models
-		//Skin:              	weapon.Skin, // TODO: weapon skins
+		Model:               weapon.WeaponModelID,
+		Skin:                weapon.EquippedWeaponSkinID,  // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
 	}
 }
 
