@@ -16,6 +16,7 @@ type Zendesk struct {
 	Token string `json:"token"`
 	Key   string `json:"key"`
 	Url   string `json:"url"`
+	Send  bool   `json:"send"`
 }
 
 type Requester struct {
@@ -54,9 +55,11 @@ func NewZendesk(token, email, url, environment string) (*Zendesk, error) {
 		Token: token,
 		Key:   key,
 		Url:   url,
+		Send:  false,
 	}
 
 	if environment == "production" || environment == "staging" {
+		z.Send = true
 		if email == "" {
 			return nil, terror.Error(fmt.Errorf("missing zendesk email"))
 		}
@@ -67,12 +70,13 @@ func NewZendesk(token, email, url, environment string) (*Zendesk, error) {
 			return nil, terror.Error(fmt.Errorf("missing zendesk url"))
 		}
 	}
+
 	return z, nil
 }
 
-func (z *Zendesk) NewRequest(username, userID, subject, comment, service, environment string) (int, error) {
+func (z *Zendesk) NewRequest(username, userID, subject, comment, service string) (int, error) {
 	//if environemnt is dev, dont send to zendesk
-	if environment == "development" {
+	if !z.Send {
 		return http.StatusAccepted, nil
 	}
 
