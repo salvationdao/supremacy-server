@@ -75,6 +75,8 @@ type Mech struct {
 
 	ItemSaleID null.String `json:"item_sale_id"`
 
+	BlueprintWeaponIDsWithSkinInheritance []string `json:"blueprint_weapon_ids_with_skin_inheritance"`
+
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }

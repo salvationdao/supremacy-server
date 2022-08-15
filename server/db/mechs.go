@@ -3,17 +3,18 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/benchmark"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type MechColumns string
@@ -295,6 +296,73 @@ func DefaultMechs() ([]*server.Mech, error) {
 }
 
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
+
+func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Executor, mechID string) ([]string, error) {
+	// select
+	// bw.id,
+	// bw."label"
+	// from blueprint_weapons bw
+	// inner join weapon_models wm on wm.id = bw.weapon_model_id
+	// inner join weapon_model_skin_compatibilities wmsc on wmsc.weapon_model_id = wm.id
+	// inner join blueprint_weapon_skin bws on bws.id = wmsc.blueprint_weapon_skin_id
+	// inner join blueprint_mech_skin bms on bms.blueprint_weapon_skin_id = bws.id
+	// inner join mech_skin ms on ms.blueprint_id = bms.id
+	// inner join mechs m on m.chassis_skin_id = ms.id
+	// where m.id = 'cda9cff8-4c03-45f8-b59c-2cefd68e1386';
+
+	boil.DebugMode = true
+	var result []struct {
+		ID string `boil:"id"`
+	}
+	err := boiler.NewQuery(
+		qm.Select(fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID))),
+		qm.From(boiler.TableNames.BlueprintWeapons),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.WeaponModels,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintWeaponSkin,
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintMechSkin,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+		)),
+		qm.Where(fmt.Sprintf("%s = ?", qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
+			mechID,
+		),
+	).Bind(nil, conn, &result)
+	boil.DebugMode = false
+	if err != nil {
+		return []string{}, err
+	}
+
+	ids := []string{}
+	for _, i := range result {
+		ids = append(ids, i.ID)
+	}
+
+	return ids, nil
+}
 
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	bm := benchmark.New()
