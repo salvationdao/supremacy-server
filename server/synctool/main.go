@@ -7,10 +7,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"server/db/boiler"
 	"server/synctool/types"
 	"strconv"
 	"time"
@@ -153,6 +155,31 @@ func SyncTool(dt *StaticSyncTool) error {
 		return err
 	}
 	err = SyncStaticWeapon(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%squests.csv", dt.FilePath))
+	if err != nil {
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
+		return err
+	}
+	err = SyncStaticQuest(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -1265,6 +1292,64 @@ func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing weapon")
+
+	return nil
+}
+
+func SyncStaticQuest(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		blueprintQuest := &boiler.BlueprintQuest{
+			ID:          record[0],
+			RoundType:   record[1],
+			Key:         record[2],
+			Name:        record[3],
+			Description: record[4],
+		}
+
+		// convert request amount
+		blueprintQuest.RequestAmount, err = strconv.Atoi(record[5])
+		if err != nil {
+			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
+			continue
+		}
+
+		// upsert blueprint quest
+		err = blueprintQuest.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintQuestColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintQuestColumns.RoundType,
+				boiler.BlueprintQuestColumns.Key,
+				boiler.BlueprintQuestColumns.Name,
+				boiler.BlueprintQuestColumns.Description,
+				boiler.BlueprintQuestColumns.RequestAmount,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+blueprintQuest.ID, blueprintQuest.Name)
+
+	}
+
+	fmt.Println("Finish syncing static quest")
 
 	return nil
 }

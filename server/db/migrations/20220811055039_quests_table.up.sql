@@ -43,9 +43,10 @@ INSERT INTO blueprint_quests (id, round_type, key, name, description, request_am
 VALUES ('c145c789-063c-4131-9aac-5677039a2103', 'daily_quest', 'ability_kill', '3 ability kills', 'Kill three opponent mechs by triggering abilities.', 3),
        ('5f370ca0-ea08-4076-af25-9e91d1be39c6', 'daily_quest', 'mech_kill', '3 mech kills', 'Kill three opponent mechs by your mech.', 3),
        ('764575a3-a342-40b9-9dca-876d60c7288f', 'daily_quest', 'total_battle_used_mech_commander', '3 battles using mech commander', 'Use mech commander in three different battles.', 3),
-       ('08bd7912-a444-4e0c-9f76-3d0cae802179', 'daily_quest', 'repair_for_other', '3 blocks repaired for other players', 'Repair three blocks for other players', 3),
-       ('bab947a4-00dd-4789-876a-b50297a1fb34', 'daily_quest', 'chat_sent', '20 chat messages', 'Send 20 chat messages', 20),
-       ('02f642e0-1d16-45e4-86c4-b58ee4bde9ba', 'daily_quest', 'mech_join_battle', '30 mechs join battle', '30 mechs engaged in battle.', 30);
+       ('08bd7912-a444-4e0c-9f76-3d0cae802179', 'daily_quest', 'repair_for_other', '3 blocks repaired for other players', 'Repair three blocks for other players.', 3),
+       ('bab947a4-00dd-4789-876a-b50297a1fb34', 'daily_quest', 'chat_sent', '20 chat messages', 'Send 20 chat messages.', 20),
+       ('02f642e0-1d16-45e4-86c4-b58ee4bde9ba', 'daily_quest', 'mech_join_battle', '30 mechs join battle', '30 mechs engaged in battle.', 30)
+ON CONFLICT DO NOTHING;
 
 CREATE TABLE quests
 (
