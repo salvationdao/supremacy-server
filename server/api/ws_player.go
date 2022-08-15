@@ -142,6 +142,40 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to sync passport db")
 	}
 
+	if pc.API.Config.Environment == "staging" || pc.API.Config.Environment == "development" {
+		templateIDS := []string{}
+		templates, err := boiler.Templates(
+			boiler.TemplateWhere.Label.IN(
+				[]string{
+					"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
+					"Red Mountain Olympus Mons LY07 Villain Chassis",
+					"Zaibatsu Tenshi Mk1 White Neon Chassis",
+					"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
+					"Red Mountain Olympus Mons LY07 Evo Chassis",
+					"Zaibatsu Tenshi Mk1 Destroyer Chassis",
+					"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
+					"Zaibatsu Tenshi Mk1 Evangelica Chassis",
+					"Red Mountain Olympus Mons LY07 Red Blue Chassis",
+				},
+			),
+		).All(tx)
+		if err != nil {
+			return terror.Error(err, "Failed to sync passport db")
+		}
+
+		for _, tmpl := range templates {
+			templateIDS = append(templateIDS, tmpl.ID)
+		}
+
+		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{
+			TemplateIDs: templateIDS,
+			UserID:      user.ID,
+		})
+		if err != nil {
+			return terror.Error(err, "Failed to sync passport db")
+		}
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction")

@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/player_abilities"
+	"server/sale_player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -196,7 +196,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Claim <- &player_abilities.Claim{
+	pac.API.SalePlayerAbilityManager.Claim <- &sale_player_abilities.Claim{
 		SaleID: spa.ID,
 	}
 	return nil
@@ -366,7 +366,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Purchase <- &player_abilities.Purchase{
+	pac.API.SalePlayerAbilityManager.Purchase <- &sale_player_abilities.Purchase{
 		SaleID: spa.ID,
 	}
 	return nil
