@@ -217,3 +217,24 @@ func (pp *XsynXrpcClient) DeleteAssetXSYN(assetID string) error {
 
 	return nil
 }
+
+
+
+type AssignTemplateReq struct {
+	ApiKey     string `json:"api_key"`
+	TemplateIDs []string `json:"template_ids"`
+	UserID     string `json:"user_id"`
+}
+
+type AssignTemplateResp struct {
+}
+func (pp *XsynXrpcClient) AssignTemplateToUser(req *AssignTemplateReq) error {
+	resp := &AssignTemplateResp{}
+	req.ApiKey = pp.ApiKey
+	err := pp.XrpcClient.Call("S.AssignTemplateHandler", req, resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
