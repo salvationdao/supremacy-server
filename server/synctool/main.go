@@ -162,21 +162,6 @@ func SyncTool(dt *StaticSyncTool) error {
 
 	f, err = readFile(fmt.Sprintf("%squests.csv", dt.FilePath))
 	if err != nil {
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
-		fmt.Println("fkjflkdsjf;lasdjf;lkdsajf;a")
 		return err
 	}
 	err = SyncStaticQuest(f, dt.DB)
