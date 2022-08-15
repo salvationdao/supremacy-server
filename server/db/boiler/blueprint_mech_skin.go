@@ -24,81 +24,90 @@ import (
 
 // BlueprintMechSkin is an object representing the database table.
 type BlueprintMechSkin struct {
-	ID              string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection      string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label           string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier            string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt       time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	StatModifier    decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
-	ProfileAvatarID null.String         `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
+	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection            string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier                  string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	StatModifier          decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
+	BlueprintWeaponSkinID null.String         `boiler:"blueprint_weapon_skin_id" boil:"blueprint_weapon_skin_id" json:"blueprint_weapon_skin_id,omitempty" toml:"blueprint_weapon_skin_id" yaml:"blueprint_weapon_skin_id,omitempty"`
+	ProfileAvatarID       null.String         `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechSkinColumns = struct {
-	ID              string
-	Collection      string
-	Label           string
-	Tier            string
-	CreatedAt       string
-	StatModifier    string
-	ProfileAvatarID string
+	ID                    string
+	Collection            string
+	Label                 string
+	Tier                  string
+	CreatedAt             string
+	StatModifier          string
+	BlueprintWeaponSkinID string
+	ProfileAvatarID       string
 }{
-	ID:              "id",
-	Collection:      "collection",
-	Label:           "label",
-	Tier:            "tier",
-	CreatedAt:       "created_at",
-	StatModifier:    "stat_modifier",
-	ProfileAvatarID: "profile_avatar_id",
+	ID:                    "id",
+	Collection:            "collection",
+	Label:                 "label",
+	Tier:                  "tier",
+	CreatedAt:             "created_at",
+	StatModifier:          "stat_modifier",
+	BlueprintWeaponSkinID: "blueprint_weapon_skin_id",
+	ProfileAvatarID:       "profile_avatar_id",
 }
 
 var BlueprintMechSkinTableColumns = struct {
-	ID              string
-	Collection      string
-	Label           string
-	Tier            string
-	CreatedAt       string
-	StatModifier    string
-	ProfileAvatarID string
+	ID                    string
+	Collection            string
+	Label                 string
+	Tier                  string
+	CreatedAt             string
+	StatModifier          string
+	BlueprintWeaponSkinID string
+	ProfileAvatarID       string
 }{
-	ID:              "blueprint_mech_skin.id",
-	Collection:      "blueprint_mech_skin.collection",
-	Label:           "blueprint_mech_skin.label",
-	Tier:            "blueprint_mech_skin.tier",
-	CreatedAt:       "blueprint_mech_skin.created_at",
-	StatModifier:    "blueprint_mech_skin.stat_modifier",
-	ProfileAvatarID: "blueprint_mech_skin.profile_avatar_id",
+	ID:                    "blueprint_mech_skin.id",
+	Collection:            "blueprint_mech_skin.collection",
+	Label:                 "blueprint_mech_skin.label",
+	Tier:                  "blueprint_mech_skin.tier",
+	CreatedAt:             "blueprint_mech_skin.created_at",
+	StatModifier:          "blueprint_mech_skin.stat_modifier",
+	BlueprintWeaponSkinID: "blueprint_mech_skin.blueprint_weapon_skin_id",
+	ProfileAvatarID:       "blueprint_mech_skin.profile_avatar_id",
 }
 
 // Generated where
 
 var BlueprintMechSkinWhere = struct {
-	ID              whereHelperstring
-	Collection      whereHelperstring
-	Label           whereHelperstring
-	Tier            whereHelperstring
-	CreatedAt       whereHelpertime_Time
-	StatModifier    whereHelperdecimal_NullDecimal
-	ProfileAvatarID whereHelpernull_String
+	ID                    whereHelperstring
+	Collection            whereHelperstring
+	Label                 whereHelperstring
+	Tier                  whereHelperstring
+	CreatedAt             whereHelpertime_Time
+	StatModifier          whereHelperdecimal_NullDecimal
+	BlueprintWeaponSkinID whereHelpernull_String
+	ProfileAvatarID       whereHelpernull_String
 }{
-	ID:              whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
-	Collection:      whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
-	Label:           whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
-	Tier:            whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
-	StatModifier:    whereHelperdecimal_NullDecimal{field: "\"blueprint_mech_skin\".\"stat_modifier\""},
-	ProfileAvatarID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
+	ID:                    whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
+	Collection:            whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
+	Label:                 whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
+	Tier:                  whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
+	StatModifier:          whereHelperdecimal_NullDecimal{field: "\"blueprint_mech_skin\".\"stat_modifier\""},
+	BlueprintWeaponSkinID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"blueprint_weapon_skin_id\""},
+	ProfileAvatarID:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
 var BlueprintMechSkinRels = struct {
+	BlueprintWeaponSkin          string
 	ProfileAvatar                string
 	MechModelSkinCompatibilities string
 	DefaultChassisSkinMechModels string
 	BlueprintMechSkins           string
 }{
+	BlueprintWeaponSkin:          "BlueprintWeaponSkin",
 	ProfileAvatar:                "ProfileAvatar",
 	MechModelSkinCompatibilities: "MechModelSkinCompatibilities",
 	DefaultChassisSkinMechModels: "DefaultChassisSkinMechModels",
@@ -107,6 +116,7 @@ var BlueprintMechSkinRels = struct {
 
 // blueprintMechSkinR is where relationships are stored.
 type blueprintMechSkinR struct {
+	BlueprintWeaponSkin          *BlueprintWeaponSkin            `boiler:"BlueprintWeaponSkin" boil:"BlueprintWeaponSkin" json:"BlueprintWeaponSkin" toml:"BlueprintWeaponSkin" yaml:"BlueprintWeaponSkin"`
 	ProfileAvatar                *ProfileAvatar                  `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
 	MechModelSkinCompatibilities MechModelSkinCompatibilitySlice `boiler:"MechModelSkinCompatibilities" boil:"MechModelSkinCompatibilities" json:"MechModelSkinCompatibilities" toml:"MechModelSkinCompatibilities" yaml:"MechModelSkinCompatibilities"`
 	DefaultChassisSkinMechModels MechModelSlice                  `boiler:"DefaultChassisSkinMechModels" boil:"DefaultChassisSkinMechModels" json:"DefaultChassisSkinMechModels" toml:"DefaultChassisSkinMechModels" yaml:"DefaultChassisSkinMechModels"`
@@ -122,9 +132,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "stat_modifier", "profile_avatar_id"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "stat_modifier", "blueprint_weapon_skin_id", "profile_avatar_id"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "stat_modifier", "profile_avatar_id"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "stat_modifier", "blueprint_weapon_skin_id", "profile_avatar_id"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )
@@ -371,6 +381,20 @@ func (q blueprintMechSkinQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// BlueprintWeaponSkin pointed to by the foreign key.
+func (o *BlueprintMechSkin) BlueprintWeaponSkin(mods ...qm.QueryMod) blueprintWeaponSkinQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BlueprintWeaponSkinID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintWeaponSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_weapon_skin\"")
+
+	return query
+}
+
 // ProfileAvatar pointed to by the foreign key.
 func (o *BlueprintMechSkin) ProfileAvatar(mods ...qm.QueryMod) profileAvatarQuery {
 	queryMods := []qm.QueryMod{
@@ -448,6 +472,114 @@ func (o *BlueprintMechSkin) BlueprintMechSkins(mods ...qm.QueryMod) mechSkinQuer
 	}
 
 	return query
+}
+
+// LoadBlueprintWeaponSkin allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintMechSkinL) LoadBlueprintWeaponSkin(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMechSkin
+	var object *BlueprintMechSkin
+
+	if singular {
+		object = maybeBlueprintMechSkin.(*BlueprintMechSkin)
+	} else {
+		slice = *maybeBlueprintMechSkin.(*[]*BlueprintMechSkin)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechSkinR{}
+		}
+		if !queries.IsNil(object.BlueprintWeaponSkinID) {
+			args = append(args, object.BlueprintWeaponSkinID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechSkinR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BlueprintWeaponSkinID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BlueprintWeaponSkinID) {
+				args = append(args, obj.BlueprintWeaponSkinID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_weapon_skin`),
+		qm.WhereIn(`blueprint_weapon_skin.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintWeaponSkin")
+	}
+
+	var resultSlice []*BlueprintWeaponSkin
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintWeaponSkin")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_weapon_skin")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_weapon_skin")
+	}
+
+	if len(blueprintMechSkinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BlueprintWeaponSkin = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintWeaponSkinR{}
+		}
+		foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BlueprintWeaponSkinID, foreign.ID) {
+				local.R.BlueprintWeaponSkin = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintWeaponSkinR{}
+				}
+				foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadProfileAvatar allows an eager lookup of values, cached into the
@@ -851,6 +983,85 @@ func (blueprintMechSkinL) LoadBlueprintMechSkins(e boil.Executor, singular bool,
 		}
 	}
 
+	return nil
+}
+
+// SetBlueprintWeaponSkin of the blueprintMechSkin to the related item.
+// Sets o.R.BlueprintWeaponSkin to related.
+// Adds o to related.R.BlueprintMechSkins.
+func (o *BlueprintMechSkin) SetBlueprintWeaponSkin(exec boil.Executor, insert bool, related *BlueprintWeaponSkin) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_mech_skin\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_weapon_skin_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintMechSkinPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BlueprintWeaponSkinID, related.ID)
+	if o.R == nil {
+		o.R = &blueprintMechSkinR{
+			BlueprintWeaponSkin: related,
+		}
+	} else {
+		o.R.BlueprintWeaponSkin = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintWeaponSkinR{
+			BlueprintMechSkins: BlueprintMechSkinSlice{o},
+		}
+	} else {
+		related.R.BlueprintMechSkins = append(related.R.BlueprintMechSkins, o)
+	}
+
+	return nil
+}
+
+// RemoveBlueprintWeaponSkin relationship.
+// Sets o.R.BlueprintWeaponSkin to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintMechSkin) RemoveBlueprintWeaponSkin(exec boil.Executor, related *BlueprintWeaponSkin) error {
+	var err error
+
+	queries.SetScanner(&o.BlueprintWeaponSkinID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("blueprint_weapon_skin_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.BlueprintWeaponSkin = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintMechSkins {
+		if queries.Equal(o.BlueprintWeaponSkinID, ri.BlueprintWeaponSkinID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintMechSkins)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintMechSkins[i] = related.R.BlueprintMechSkins[ln-1]
+		}
+		related.R.BlueprintMechSkins = related.R.BlueprintMechSkins[:ln-1]
+		break
+	}
 	return nil
 }
 

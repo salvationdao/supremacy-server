@@ -47,6 +47,7 @@ type Weapon struct {
 	MaxAmmo               null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
 	LockedToMech          bool                `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 	EquippedWeaponSkinID  string              `boiler:"equipped_weapon_skin_id" boil:"equipped_weapon_skin_id" json:"equipped_weapon_skin_id" toml:"equipped_weapon_skin_id" yaml:"equipped_weapon_skin_id"`
+	IsSkinInherited       bool                `boiler:"is_skin_inherited" boil:"is_skin_inherited" json:"is_skin_inherited" toml:"is_skin_inherited" yaml:"is_skin_inherited"`
 
 	R *weaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -76,6 +77,7 @@ var WeaponColumns = struct {
 	MaxAmmo               string
 	LockedToMech          string
 	EquippedWeaponSkinID  string
+	IsSkinInherited       string
 }{
 	ID:                    "id",
 	Slug:                  "slug",
@@ -100,6 +102,7 @@ var WeaponColumns = struct {
 	MaxAmmo:               "max_ammo",
 	LockedToMech:          "locked_to_mech",
 	EquippedWeaponSkinID:  "equipped_weapon_skin_id",
+	IsSkinInherited:       "is_skin_inherited",
 }
 
 var WeaponTableColumns = struct {
@@ -126,6 +129,7 @@ var WeaponTableColumns = struct {
 	MaxAmmo               string
 	LockedToMech          string
 	EquippedWeaponSkinID  string
+	IsSkinInherited       string
 }{
 	ID:                    "weapons.id",
 	Slug:                  "weapons.slug",
@@ -150,6 +154,7 @@ var WeaponTableColumns = struct {
 	MaxAmmo:               "weapons.max_ammo",
 	LockedToMech:          "weapons.locked_to_mech",
 	EquippedWeaponSkinID:  "weapons.equipped_weapon_skin_id",
+	IsSkinInherited:       "weapons.is_skin_inherited",
 }
 
 // Generated where
@@ -178,6 +183,7 @@ var WeaponWhere = struct {
 	MaxAmmo               whereHelpernull_Int
 	LockedToMech          whereHelperbool
 	EquippedWeaponSkinID  whereHelperstring
+	IsSkinInherited       whereHelperbool
 }{
 	ID:                    whereHelperstring{field: "\"weapons\".\"id\""},
 	Slug:                  whereHelperstring{field: "\"weapons\".\"slug\""},
@@ -202,6 +208,7 @@ var WeaponWhere = struct {
 	MaxAmmo:               whereHelpernull_Int{field: "\"weapons\".\"max_ammo\""},
 	LockedToMech:          whereHelperbool{field: "\"weapons\".\"locked_to_mech\""},
 	EquippedWeaponSkinID:  whereHelperstring{field: "\"weapons\".\"equipped_weapon_skin_id\""},
+	IsSkinInherited:       whereHelperbool{field: "\"weapons\".\"is_skin_inherited\""},
 }
 
 // WeaponRels is where relationship names are stored.
@@ -240,9 +247,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "equipped_weapon_skin_id"}
+	weaponAllColumns            = []string{"id", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "equipped_weapon_skin_id", "is_skin_inherited"}
 	weaponColumnsWithoutDefault = []string{"slug", "damage", "blueprint_id", "equipped_weapon_skin_id"}
-	weaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech"}
+	weaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "equipped_on", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech", "is_skin_inherited"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )
