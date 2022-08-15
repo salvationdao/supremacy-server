@@ -2,6 +2,7 @@
 CREATE TABLE rounds
 (
     id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    type          ROUND_TYPE  NOT NULL,
     name          TEXT        NOT NULL,
     started_at    TIMESTAMPTZ NOT NULL,
     end_at        TIMESTAMPTZ NOT NULL,
@@ -19,54 +20,51 @@ CREATE TABLE rounds
 );
 
 -- insert an init round
-INSERT INTO rounds (id, name, started_at, end_at, last_for_days, repeatable, is_init)
-VALUES ('21e1c095-3864-499a-a38c-6f7c3e08b4ea', 'QUEST', NOW(), NOW(), 3, TRUE, TRUE);
+INSERT INTO rounds (id, type, name, started_at, end_at, repeatable, is_init, last_for_days)
+VALUES ('21e1c095-3864-499a-a38c-6f7c3e08b4ea', 'daily_quest', 'Daily Quests', NOW(), NOW(), TRUE, TRUE, 3);
 
-DROP TYPE IF EXISTS QUEST_KEY;
-CREATE TYPE QUEST_KEY AS ENUM (
-    'ability_kill',
-    'mech_kill',
-    'total_battle_used_mech_commander',
-    'repair_for_other',
-    'chat_sent',
-    'mech_join_battle'
-    );
-
-CREATE TABLE quests
+CREATE TABLE IF NOT EXISTS blueprint_quests
 (
     id             UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    round_id       UUID        NOT NULL REFERENCES rounds (id),
-    name           TEXT        NOT NULL,
+    round_type     ROUND_TYPE  NOT NULL,
     key            QUEST_KEY   NOT NULL,
+    name           TEXT        NOT NULL,
     description    TEXT        NOT NULL,
-    -- requirement
     request_amount INT         NOT NULL,
-    expires_at     TIMESTAMPTZ NOT NULL,
 
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at     TIMESTAMPTZ
 );
 
-CREATE INDEX idx_quest_expired_check ON quests (expires_at);
-CREATE INDEX idx_quest_available_check ON quests (key, expires_at DESC);
+CREATE INDEX idx_blueprint_quest_round_type ON blueprint_quests (round_type);
 
--- insert the very first quests
-INSERT INTO quests (name, key, description, request_amount, expires_at, round_id)
-VALUES
-    ('3 ability kills', 'ability_kill', 'Kill three opponent mechs by triggering abilities.', 3, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea'),
-    ('3 mech kills', 'mech_kill', 'Kill three opponent mechs by your mech.', 3, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea'),
-    ('3 battles using mech commander', 'total_battle_used_mech_commander', 'Use mech commander in three different battles.', 3, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea'),
-    ('3 blocks repaired for other players', 'repair_for_other', 'Repair three blocks for other players', 3, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea'),
-    ('20 chat messages', 'chat_sent', 'Send 20 chat messages', 20, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea'),
-    ('30 mechs join battle', 'mech_join_battle', '30 mechs engaged in battle.', 30, NOW(), '21e1c095-3864-499a-a38c-6f7c3e08b4ea');
+INSERT INTO blueprint_quests (id, round_type, key, name, description, request_amount)
+VALUES ('c145c789-063c-4131-9aac-5677039a2103', 'daily_quest', 'ability_kill', '3 ability kills', 'Kill three opponent mechs by triggering abilities.', 3),
+       ('5f370ca0-ea08-4076-af25-9e91d1be39c6', 'daily_quest', 'mech_kill', '3 mech kills', 'Kill three opponent mechs by your mech.', 3),
+       ('764575a3-a342-40b9-9dca-876d60c7288f', 'daily_quest', 'total_battle_used_mech_commander', '3 battles using mech commander', 'Use mech commander in three different battles.', 3),
+       ('08bd7912-a444-4e0c-9f76-3d0cae802179', 'daily_quest', 'repair_for_other', '3 blocks repaired for other players', 'Repair three blocks for other players', 3),
+       ('bab947a4-00dd-4789-876a-b50297a1fb34', 'daily_quest', 'chat_sent', '20 chat messages', 'Send 20 chat messages', 20),
+       ('02f642e0-1d16-45e4-86c4-b58ee4bde9ba', 'daily_quest', 'mech_join_battle', '30 mechs join battle', '30 mechs engaged in battle.', 30);
 
-CREATE TABLE players_quests
+CREATE TABLE quests
 (
-    player_id  UUID        NOT NULL REFERENCES players (id),
-    quest_id   UUID        NOT NULL REFERENCES quests (id),
-    PRIMARY KEY (player_id, quest_id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    id           UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    round_id     UUID        NOT NULL REFERENCES rounds (id),
+    blueprint_id UUID        NOT NULL REFERENCES blueprint_quests (id),
+    expires_at   TIMESTAMPTZ,
+
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at   TIMESTAMPTZ
+);
+
+CREATE INDEX idx_quest_expired_check ON quests (expires_at);
+
+CREATE TABLE players_obtained_quests
+(
+    player_id         UUID        NOT NULL REFERENCES players (id),
+    obtained_quest_id UUID        NOT NULL REFERENCES quests (id),
+    PRIMARY KEY (player_id, obtained_quest_id),
+    obtained_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

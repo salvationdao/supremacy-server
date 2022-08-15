@@ -28,25 +28,37 @@ func GetPlayerMechSurvives(roundID null.String) ([]*PlayerMechSurvives, error) {
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
-		whereClause = "WHERE created_at BETWEEN $1 AND $2"
+		whereClause = fmt.Sprintf("WHERE %s BETWEEN $1 AND $2", boiler.BattleWinColumns.CreatedAt)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
 		SELECT TO_JSON(p.*), bw.mech_survive_count
 		FROM (
-			SELECT owner_id, COUNT(mech_id) AS mech_survive_count 
-        	FROM battle_wins 
-			%s
-        	GROUP BY owner_id 
-        	ORDER BY COUNT(mech_id) DESC 
+			SELECT %[1]s, COUNT(%[2]s) AS mech_survive_count 
+        	FROM %[3]s
+			%[4]s
+        	GROUP BY %[1]s 
+        	ORDER BY COUNT(%[2]s) DESC 
         	LIMIT 100
 		) bw
 		INNER JOIN (
-			SELECT id, username, faction_id, gid, rank FROM players 
-		) p ON p.id = bw.owner_id
+			SELECT %[5]s, %[6]s, %[7]s, %[8]s, %[9]s FROM %[10]s
+		) p ON p.%[5]s = bw.%[1]s
         ORDER BY bw.mech_survive_count DESC;
-    `, whereClause)
+    `,
+		boiler.BattleWinColumns.OwnerID, // 1
+		boiler.BattleWinColumns.MechID,  // 2
+		boiler.TableNames.BattleWins,    // 3
+		whereClause,                     // 4
+
+		boiler.PlayerColumns.ID,        // 5
+		boiler.PlayerColumns.Username,  // 6
+		boiler.PlayerColumns.FactionID, // 7
+		boiler.PlayerColumns.Gid,       // 8
+		boiler.PlayerColumns.Rank,      // 9
+		boiler.TableNames.Players,      // 10
+	)
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player mech survives.")
@@ -79,21 +91,33 @@ type PlayerMechsOwned struct {
 }
 
 func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
-	q := `
+	q := fmt.Sprintf(`
 		SELECT TO_JSON(p.*), ci.mechs_owned
 		FROM (
-		    SELECT owner_id, COUNT(id) AS mechs_owned 
-		    FROM collection_items
-			WHERE item_type = 'mech'
-			GROUP BY owner_id
-			ORDER BY COUNT(id) DESC
+		    SELECT %[1]s, COUNT(%[2]s) AS mechs_owned 
+		    FROM %[3]s
+			WHERE %[4]s = 'mech'
+			GROUP BY %[1]s
+			ORDER BY COUNT(%[2]s) DESC
 			LIMIT 100
 		) ci
 		INNER JOIN (
-		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = ci.owner_id
+		    SELECT %[5]s, %[6]s, %[7]s, %[8]s, %[9]s FROM %[10]s
+		) p ON p.%[5]s = ci.%[1]s
 		ORDER BY ci.mechs_owned DESC;
-    `
+    `,
+		boiler.CollectionItemColumns.OwnerID,  // 1
+		boiler.CollectionItemColumns.ID,       // 2
+		boiler.TableNames.CollectionItems,     // 3
+		boiler.CollectionItemColumns.ItemType, // 4
+
+		boiler.PlayerColumns.ID,        // 5
+		boiler.PlayerColumns.Username,  // 6
+		boiler.PlayerColumns.FactionID, // 7
+		boiler.PlayerColumns.Gid,       // 8
+		boiler.PlayerColumns.Rank,      // 9
+		boiler.TableNames.Players,      // 10
+	)
 	rows, err := gamedb.StdConn.Query(q)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player mechs owned.")
@@ -122,21 +146,31 @@ func GetPlayerMechsOwned() ([]*PlayerMechsOwned, error) {
 
 func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) {
 	players := []*boiler.Player{}
-	q := `
-		SELECT p.id, p.username, p.faction_id
+	q := fmt.Sprintf(`
+		SELECT p.*
 		FROM (
-		    SELECT player_id, count(id) as ability_trigger_count
-		    FROM battle_ability_triggers
-		    WHERE battle_id = $1
-		    GROUP BY player_id
-		    ORDER BY COUNT(id) DESC
+		    SELECT %[1]s, COUNT(%[2]s) AS ability_trigger_count
+		    FROM %[3]s
+		    WHERE %[4]s = $1
+		    GROUP BY %[1]s
+		    ORDER BY COUNT(%[2]s) DESC
 		    LIMIT 2
 		) bat
 		INNER JOIN (
-		    SELECT id, username, faction_id  FROM players
-		) p ON p.id = bat.player_id
+		    SELECT %[5]s, %[6]s, %[7]s FROM %[8]s
+		) p ON p.%[5]s = bat.%[1]s
 		ORDER BY bat.ability_trigger_count DESC;
-	`
+	`,
+		boiler.BattleAbilityTriggerColumns.PlayerID, // 1
+		boiler.BattleAbilityTriggerColumns.ID,       // 2
+		boiler.TableNames.BattleAbilityTriggers,     // 3
+		boiler.BattleAbilityTriggerColumns.BattleID, // 4
+
+		boiler.PlayerColumns.ID,        // 5
+		boiler.PlayerColumns.Username,  // 6
+		boiler.PlayerColumns.FactionID, // 7
+		boiler.TableNames.Players,      // 8
+	)
 
 	rows, err := gamedb.StdConn.Query(q, battleID)
 	if err != nil {
@@ -175,10 +209,14 @@ func TopBattleViewers(roundID null.String) ([]*PlayerBattlesSpectated, error) {
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
-		whereClause = `
-			INNER JOIN battles b ON b.id = bv.battle_id 
-			WHERE b.started_at BETWEEN $1 AND $2
-		`
+		whereClause = fmt.Sprintf(`
+			INNER JOIN %[1]s b ON b.%[2]s = bv.battle_id 
+			WHERE b.%[3]s BETWEEN $1 AND $2
+		`,
+			boiler.TableNames.Battles,
+			boiler.BattleColumns.ID,
+			boiler.BattleColumns.StartedAt,
+		)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
@@ -188,17 +226,26 @@ func TopBattleViewers(roundID null.String) ([]*PlayerBattlesSpectated, error) {
  	   		bv.battle_count as view_battle_count
 		from (
 			select player_id, count(battle_id) as battle_count
-			from battle_viewers bv
+			from %s bv
 			%s
     		group by bv.player_id
     		order by count(bv.battle_id) DESC
     		limit 100
 		)bv
 		INNER JOIN (
-			select id, username, faction_id, gid, rank from players
+			select %s, %s, %s, %s, %s from %s
 		) p ON p.id = bv.player_id
 		ORDER BY bv.battle_count DESC;
-	`, whereClause)
+	`,
+		boiler.TableNames.BattleViewers,
+		whereClause,
+		boiler.PlayerColumns.ID,
+		boiler.PlayerColumns.Username,
+		boiler.PlayerColumns.FactionID,
+		boiler.PlayerColumns.Gid,
+		boiler.PlayerColumns.Rank,
+		boiler.TableNames.Players,
+	)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {
@@ -236,26 +283,43 @@ func TopMechKillPlayers(roundID null.String) ([]*PlayerMechKills, error) {
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
-		whereClause = "AND bh.created_at BETWEEN $1 AND $2"
+		whereClause = fmt.Sprintf("AND bh.%s BETWEEN $1 AND $2", boiler.BattleHistoryColumns.CreatedAt)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
 		SELECT to_json(p.*), mkc.mech_kill_count
 		FROM (
-		    SELECT bm.owner_id, count(bm.mech_id) AS mech_kill_count
-		    FROM battle_history bh
-		    INNER JOIN battle_mechs bm ON bh.battle_id = bm.battle_id AND bm.mech_id = bh.war_machine_two_id
-		    WHERE bh.event_type = 'killed' %s
-		    GROUP BY bm.owner_id
-		    ORDER BY count(bm.mech_id) DESC
+		    SELECT bm.%[1]s, count(bm.%[2]s) AS mech_kill_count
+		    FROM %[3]s bh
+		    INNER JOIN %[4]s bm ON bh.%[5]s = bm.%[6]s AND bm.%[2]s = bh.%[7]s
+		    WHERE bh.%[8]s = 'killed' %[9]s
+		    GROUP BY bm.%[1]s
+		    ORDER BY count(bm.%[2]s) DESC
 		    LIMIT 100
 		) mkc
 		INNER JOIN (
-		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = mkc.owner_id
+		    select %[10]s, %[11]s, %[12]s, %[13]s, %[14]s from %[15]s
+		) p ON p.%[10]s = mkc.%[1]s
 		ORDER BY mkc.mech_kill_count DESC;
-	`, whereClause)
+	`,
+		boiler.BattleMechColumns.OwnerID,            // 1
+		boiler.BattleMechColumns.MechID,             // 2
+		boiler.TableNames.BattleHistory,             // 3
+		boiler.TableNames.BattleMechs,               // 4
+		boiler.BattleHistoryColumns.BattleID,        // 5
+		boiler.BattleMechColumns.BattleID,           // 6
+		boiler.BattleHistoryColumns.WarMachineTwoID, // 7
+		boiler.BattleHistoryColumns.EventType,       // 8
+		whereClause,                                 // 9
+
+		boiler.PlayerColumns.ID,        // 10
+		boiler.PlayerColumns.Username,  // 11
+		boiler.PlayerColumns.FactionID, // 12
+		boiler.PlayerColumns.Gid,       // 13
+		boiler.PlayerColumns.Rank,      // 14
+		boiler.TableNames.Players,      // 15
+	)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {
@@ -293,38 +357,51 @@ func TopAbilityKillPlayers(roundID null.String) ([]*PlayerAbilityKills, error) {
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
-		whereClause = "WHERE pkg.created_at BETWEEN $1 AND $2"
+		whereClause = fmt.Sprintf("WHERE pkg.%s BETWEEN $1 AND $2", boiler.PlayerKillLogColumns.CreatedAt)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
 		SELECT to_json(p.*), pak.ability_kill_count
 		FROM (
-			SELECT pk.player_id, sum(pk.ability_kill_count) as ability_kill_count
+			SELECT pk.%[1]s, sum(pk.ability_kill_count) as ability_kill_count
 			FROM (
 				SELECT
-					pkg.player_id,
+					pkg.%[1]s,
 					(
 						CASE
 							WHEN pkg.is_team_kill = FALSE THEN 
-								count(pkg.id)
+								count(pkg.%[2]s)
 							ELSE 
-								-count(pkg.id)
+								-count(pkg.%[2]s)
 						END
 					) AS ability_kill_count
-				FROM player_kill_log pkg
-				%s
-				GROUP BY pkg.player_id, is_team_kill
+				FROM %[3]s pkg
+				%[5]s
+				GROUP BY pkg.%[1]s, pkg.%[4]s
 			) pk
-			GROUP BY pk.player_id
+			GROUP BY pk.%[1]s
 			ORDER BY sum(pk.ability_kill_count) DESC
 			LIMIT 100
 		) pak
 		INNER JOIN (
-		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = pak.player_id
+		    select %[6]s, %[7]s, %[8]s, %[9]s, %[10]s from %[11]s
+		) p ON p.%[6]s = pak.%[1]s
 		ORDER BY pak.ability_kill_count DESC;
-	`, whereClause)
+	`,
+		boiler.PlayerKillLogColumns.PlayerID,   // 1
+		boiler.PlayerKillLogColumns.ID,         // 2
+		boiler.TableNames.PlayerKillLog,        // 3
+		boiler.PlayerKillLogColumns.IsTeamKill, // 4
+		whereClause,                            // 5
+
+		boiler.PlayerColumns.ID,        // 6
+		boiler.PlayerColumns.Username,  // 7
+		boiler.PlayerColumns.FactionID, // 8
+		boiler.PlayerColumns.Gid,       // 9
+		boiler.PlayerColumns.Rank,      // 10
+		boiler.TableNames.Players,      // 11
+	)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {
@@ -361,25 +438,37 @@ func TopAbilityTriggerPlayers(roundID null.String) ([]*PlayerAbilityTriggers, er
 			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
-		whereClause = "WHERE triggered_at BETWEEN $1 AND $2"
+		whereClause = fmt.Sprintf("WHERE %s BETWEEN $1 AND $2", boiler.BattleAbilityTriggerColumns.TriggeredAt)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
 		SELECT TO_JSON(p.*), bat.ability_trigger_count AS total_ability_triggered
 		FROM (
-		    SELECT player_id, COUNT(id) as ability_trigger_count
-		    FROM battle_ability_triggers
-		    %s
-		    GROUP BY player_id
-		    ORDER BY COUNT(id) DESC
+		    SELECT %[1]s, COUNT(%[2]s) as ability_trigger_count
+		    FROM %[3]s
+		    %[4]s
+		    GROUP BY %[1]s
+		    ORDER BY COUNT(%[2]s) DESC
 		    LIMIT 100
 		) bat
 		INNER JOIN (
-		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = bat.player_id
+			SELECT %[5]s, %[6]s, %[7]s, %[8]s, %[9]s FROM %[10]s
+		) p ON p.%[5]s = bat.%[1]s
 		ORDER BY bat.ability_trigger_count DESC;
-	`, whereClause)
+	`,
+		boiler.BattleAbilityTriggerColumns.PlayerID, // 1
+		boiler.BattleAbilityTriggerColumns.ID,       // 2
+		boiler.TableNames.BattleAbilityTriggers,     // 3
+		whereClause,                                 // 4
+
+		boiler.PlayerColumns.ID,        // 5
+		boiler.PlayerColumns.Username,  // 6
+		boiler.PlayerColumns.FactionID, // 7
+		boiler.PlayerColumns.Gid,       // 8
+		boiler.PlayerColumns.Rank,      // 9
+		boiler.TableNames.Players,      // 10
+	)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {
@@ -416,25 +505,39 @@ func TopRepairBlockPlayers(roundID null.String) ([]*PlayerRepairBlocks, error) {
 			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
-		whereClause = "AND finished_at BETWEEN $1 AND $2"
+		whereClause = fmt.Sprintf("AND %s BETWEEN $1 AND $2", boiler.RepairAgentColumns.FinishedAt)
 		args = append(args, r.StartedAt, r.EndAt)
 	}
 
 	q := fmt.Sprintf(`
 		SELECT TO_JSON(p.*), ra.total_block_repaired
 		FROM (
-		    SELECT player_id, COUNT(id) as total_block_repaired
-		    FROM repair_agents
-		    WHERE finished_reason = 'SUCCEEDED' AND finished_at NOTNULL %s
-		    GROUP BY player_id
-		    ORDER BY COUNT(id) DESC
+		    SELECT %[1]s, COUNT(%[2]s) as total_block_repaired
+		    FROM %[3]s
+		    WHERE %[4]s = 'SUCCEEDED' AND %[5]s NOTNULL %[6]s
+		    GROUP BY %[1]s
+		    ORDER BY COUNT(%[2]s) DESC
 		    LIMIT 100
 		) ra
 		INNER JOIN (
-		    SELECT id, username, faction_id, gid, rank FROM players
-		) p ON p.id = ra.player_id
+		    SELECT %[7]s, %[8]s, %[9]s, %[10]s, %[11]s FROM %[12]s
+		) p ON p.%[7]s = ra.%[1]s
 		ORDER BY ra.total_block_repaired DESC;
-	`, whereClause)
+	`,
+		boiler.RepairAgentColumns.PlayerID,       // 1
+		boiler.RepairAgentColumns.ID,             // 2
+		boiler.TableNames.RepairAgents,           // 3
+		boiler.RepairAgentColumns.FinishedReason, // 4
+		boiler.RepairAgentColumns.FinishedAt,     // 5
+		whereClause,                              // 6
+
+		boiler.PlayerColumns.ID,        // 7
+		boiler.PlayerColumns.Username,  // 8
+		boiler.PlayerColumns.FactionID, // 9
+		boiler.PlayerColumns.Gid,       // 10
+		boiler.PlayerColumns.Rank,      // 11
+		boiler.TableNames.Players,      // 12
+	)
 
 	rows, err := gamedb.StdConn.Query(q, args...)
 	if err != nil {

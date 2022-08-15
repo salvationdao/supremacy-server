@@ -24,6 +24,7 @@ import (
 // Round is an object representing the database table.
 type Round struct {
 	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type        string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 	Name        string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	StartedAt   time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
 	EndAt       time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
@@ -42,6 +43,7 @@ type Round struct {
 
 var RoundColumns = struct {
 	ID          string
+	Type        string
 	Name        string
 	StartedAt   string
 	EndAt       string
@@ -55,6 +57,7 @@ var RoundColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "id",
+	Type:        "type",
 	Name:        "name",
 	StartedAt:   "started_at",
 	EndAt:       "end_at",
@@ -70,6 +73,7 @@ var RoundColumns = struct {
 
 var RoundTableColumns = struct {
 	ID          string
+	Type        string
 	Name        string
 	StartedAt   string
 	EndAt       string
@@ -83,6 +87,7 @@ var RoundTableColumns = struct {
 	DeletedAt   string
 }{
 	ID:          "rounds.id",
+	Type:        "rounds.type",
 	Name:        "rounds.name",
 	StartedAt:   "rounds.started_at",
 	EndAt:       "rounds.end_at",
@@ -100,6 +105,7 @@ var RoundTableColumns = struct {
 
 var RoundWhere = struct {
 	ID          whereHelperstring
+	Type        whereHelperstring
 	Name        whereHelperstring
 	StartedAt   whereHelpertime_Time
 	EndAt       whereHelpertime_Time
@@ -113,6 +119,7 @@ var RoundWhere = struct {
 	DeletedAt   whereHelpernull_Time
 }{
 	ID:          whereHelperstring{field: "\"rounds\".\"id\""},
+	Type:        whereHelperstring{field: "\"rounds\".\"type\""},
 	Name:        whereHelperstring{field: "\"rounds\".\"name\""},
 	StartedAt:   whereHelpertime_Time{field: "\"rounds\".\"started_at\""},
 	EndAt:       whereHelpertime_Time{field: "\"rounds\".\"end_at\""},
@@ -153,8 +160,8 @@ func (*roundR) NewStruct() *roundR {
 type roundL struct{}
 
 var (
-	roundAllColumns            = []string{"id", "name", "started_at", "end_at", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
-	roundColumnsWithoutDefault = []string{"name", "started_at", "end_at", "last_for_days"}
+	roundAllColumns            = []string{"id", "type", "name", "started_at", "end_at", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundColumnsWithoutDefault = []string{"type", "name", "started_at", "end_at", "last_for_days"}
 	roundColumnsWithDefault    = []string{"id", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundPrimaryKeyColumns     = []string{"id"}
 	roundGeneratedColumns      = []string{}

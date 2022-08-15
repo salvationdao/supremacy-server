@@ -37,6 +37,7 @@ var TableNames = struct {
 	BlueprintMechs                                     string
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
+	BlueprintQuests                                    string
 	BlueprintUtility                                   string
 	BlueprintUtilityAccelerator                        string
 	BlueprintUtilityAntiMissile                        string
@@ -98,9 +99,9 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersFeatures                                    string
+	PlayersObtainedQuests                              string
 	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
-	PlayersQuests                                      string
 	PowerCores                                         string
 	Profanities                                        string
 	ProfileAvatars                                     string
@@ -186,6 +187,7 @@ var TableNames = struct {
 	BlueprintMechs:                 "blueprint_mechs",
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
+	BlueprintQuests:                "blueprint_quests",
 	BlueprintUtility:               "blueprint_utility",
 	BlueprintUtilityAccelerator:    "blueprint_utility_accelerator",
 	BlueprintUtilityAntiMissile:    "blueprint_utility_anti_missile",
@@ -247,9 +249,9 @@ var TableNames = struct {
 	PlayerStats:                    "player_stats",
 	Players:                        "players",
 	PlayersFeatures:                "players_features",
+	PlayersObtainedQuests:          "players_obtained_quests",
 	PlayersProfileAvatars:          "players_profile_avatars",
 	PlayersPunishVotes:             "players_punish_votes",
-	PlayersQuests:                  "players_quests",
 	PowerCores:                     "power_cores",
 	Profanities:                    "profanities",
 	ProfileAvatars:                 "profile_avatars",

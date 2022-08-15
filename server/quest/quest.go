@@ -22,7 +22,7 @@ type System struct {
 type playerQuestCheck struct {
 	questKey  string
 	playerID  string
-	checkFunc func(playerID string, quest *boiler.Quest) bool
+	checkFunc func(playerID string, quest *boiler.Quest, blueprintQuest *boiler.BlueprintQuest) bool
 }
 
 type PlayerQuestProgression struct {
@@ -60,11 +60,23 @@ func (q *System) Run() {
 			l := gamelog.L.With().Str("quest key", pqc.questKey).Str("player id", pqc.playerID).Logger()
 			// get all the ability related quests
 			pqs, err := boiler.Quests(
-				boiler.QuestWhere.Key.EQ(pqc.questKey),
-				boiler.QuestWhere.ExpiresAt.GT(time.Now()), // impact by quest regen
+				boiler.QuestWhere.ExpiresAt.IsNull(),
+				qm.InnerJoin(
+					fmt.Sprintf(
+						"%s ON %s = %s AND %s = ?",
+						boiler.TableNames.BlueprintQuests,
+						qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.ID),
+						qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.BlueprintID),
+						qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Key),
+					),
+					pqc.questKey,
+				),
 				qm.Load(
-					boiler.QuestRels.PlayersQuests,
-					boiler.PlayersQuestWhere.PlayerID.EQ(pqc.playerID),
+					boiler.QuestRels.ObtainedQuestPlayersObtainedQuests,
+					boiler.PlayersObtainedQuestWhere.PlayerID.EQ(pqc.playerID),
+				),
+				qm.Load(
+					boiler.QuestRels.Blueprint,
 				),
 			).All(gamedb.StdConn)
 			if err != nil {
@@ -75,11 +87,11 @@ func (q *System) Run() {
 			for _, pq := range pqs {
 
 				// skip, if player has already done the quest
-				if pq.R != nil && pq.R.PlayersQuests != nil && len(pq.R.PlayersQuests) > 0 {
+				if pq.R != nil && pq.R.ObtainedQuestPlayersObtainedQuests != nil && len(pq.R.ObtainedQuestPlayersObtainedQuests) > 0 {
 					continue
 				}
 
-				if pqc.checkFunc(pqc.playerID, pq) {
+				if pqc.checkFunc(pqc.playerID, pq, pq.R.Blueprint) {
 					err = playerQuestGrant(pqc.playerID, pq.ID)
 					if err != nil {
 						l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
@@ -109,15 +121,6 @@ func regenExpiredQuest() error {
 	}
 
 	for _, r := range rounds {
-		newRound := &boiler.Round{
-			Name:        r.Name,
-			StartedAt:   now,
-			EndAt:       now.AddDate(0, 0, r.LastForDays),
-			LastForDays: r.LastForDays,
-			Repeatable:  r.Repeatable,
-			RoundNumber: r.RoundNumber + 1, // increment round number by one
-		}
-
 		err = func() error {
 			tx, err := gamedb.StdConn.Begin()
 			if err != nil {
@@ -126,6 +129,26 @@ func regenExpiredQuest() error {
 			}
 
 			defer tx.Rollback()
+
+			// update old quests' expiry
+			if r.R != nil && r.R.Quests != nil {
+				_, err = r.R.Quests.UpdateAll(tx, boiler.M{boiler.QuestColumns.ExpiresAt: null.TimeFrom(now)})
+				if err != nil {
+					l.Error().Err(err).Interface("quests", r.R.Quests).Msg("Failed to update quests expiry.")
+					return terror.Error(err, "Failed to update quests expiry.")
+				}
+			}
+
+			// regen new quests
+			newRound := &boiler.Round{
+				Type:        r.Type,
+				Name:        r.Name,
+				StartedAt:   now,
+				EndAt:       now.AddDate(0, 0, r.LastForDays),
+				LastForDays: r.LastForDays,
+				Repeatable:  r.Repeatable,
+				RoundNumber: r.RoundNumber + 1, // increment round number by one
+			}
 
 			err = newRound.Insert(tx, boil.Infer())
 			if err != nil {
@@ -141,23 +164,23 @@ func regenExpiredQuest() error {
 			}
 
 			// regenerate new quest
-			if r.R != nil {
-				for _, q := range r.R.Quests {
-					// regenerate new quest
-					newQuest := &boiler.Quest{
-						RoundID:       newRound.ID,
-						Name:          q.Name,
-						Key:           q.Key,
-						Description:   q.Description,
-						RequestAmount: q.RequestAmount,
-						ExpiresAt:     newRound.EndAt,
-						CreatedAt:     newRound.StartedAt,
-					}
+			bqs, err := boiler.BlueprintQuests(
+				boiler.BlueprintQuestWhere.RoundType.EQ(r.Type),
+			).All(tx)
+			if err != nil {
+				l.Error().Err(err).Str("round type", r.Type).Msg("Failed to get blueprint quests.")
+				return terror.Error(err, "Failed to get blueprint quests.")
+			}
 
-					err = newQuest.Insert(tx, boil.Infer())
-					if err != nil {
-						return terror.Error(err, "Failed to generate new quest")
-					}
+			for _, bq := range bqs {
+				q := boiler.Quest{
+					RoundID:     newRound.ID,
+					BlueprintID: bq.ID,
+				}
+				err = q.Insert(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Interface("quest", q).Msg("Failed to insert new quest.")
+					return terror.Error(err, "Failed to insert new quest.")
 				}
 			}
 
@@ -178,7 +201,12 @@ func regenExpiredQuest() error {
 }
 
 func playerQuestGrant(playerID string, questID string) error {
-	err := db.PlayerQuestUpsert(playerID, questID)
+	poq := boiler.PlayersObtainedQuest{
+		PlayerID:        playerID,
+		ObtainedQuestID: questID,
+	}
+
+	err := poq.Upsert(gamedb.StdConn, false, nil, boil.Columns{}, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to upsert player")
 	}
@@ -214,7 +242,7 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyAbilityKill,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player ability kill match the amount
 			playerKillLogs, err := boiler.PlayerKillLogs(
 				boiler.PlayerKillLogWhere.PlayerID.EQ(playerID),
@@ -238,10 +266,10 @@ func (q *System) AbilityKillQuestCheck(playerID string) {
 				totalKill = 0
 			}
 
-			broadcastProgression(playerID, pq.ID, totalKill, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, totalKill, bq.RequestAmount)
 
 			// return if not eligible
-			if totalKill < pq.RequestAmount {
+			if totalKill < bq.RequestAmount {
 				return false
 			}
 
@@ -256,7 +284,7 @@ func (q *System) MechKillQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyMechKill,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player eligible to claim
 			mechKillCount, err := db.PlayerMechKillCount(playerID, pq.CreatedAt)
 			if err != nil {
@@ -264,9 +292,9 @@ func (q *System) MechKillQuestCheck(playerID string) {
 				return false
 			}
 
-			broadcastProgression(playerID, pq.ID, mechKillCount, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, mechKillCount, bq.RequestAmount)
 
-			if mechKillCount < pq.RequestAmount {
+			if mechKillCount < bq.RequestAmount {
 				return false
 			}
 
@@ -281,7 +309,7 @@ func (q *System) MechCommanderQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyTotalBattleUsedMechCommander,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player eligible to claim
 			battleCount, err := db.PlayerTotalBattleMechCommanderUsed(playerID, pq.CreatedAt)
 			if err != nil {
@@ -289,9 +317,9 @@ func (q *System) MechCommanderQuestCheck(playerID string) {
 				return false
 			}
 
-			broadcastProgression(playerID, pq.ID, battleCount, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, battleCount, bq.RequestAmount)
 
-			if battleCount < pq.RequestAmount {
+			if battleCount < bq.RequestAmount {
 				return false
 			}
 
@@ -305,7 +333,7 @@ func (q *System) RepairQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyRepairForOther,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player eligible to claim
 			blockCount, err := db.PlayerRepairForOthersCount(playerID, pq.CreatedAt)
 			if err != nil {
@@ -313,9 +341,9 @@ func (q *System) RepairQuestCheck(playerID string) {
 				return false
 			}
 
-			broadcastProgression(playerID, pq.ID, blockCount, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, blockCount, bq.RequestAmount)
 
-			if blockCount < pq.RequestAmount {
+			if blockCount < bq.RequestAmount {
 				return false
 			}
 
@@ -329,7 +357,7 @@ func (q *System) ChatMessageQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyChatSent,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player eligible to claim
 			chatCount, err := db.PlayerChatSendCount(playerID, pq.CreatedAt)
 			if err != nil {
@@ -337,9 +365,9 @@ func (q *System) ChatMessageQuestCheck(playerID string) {
 				return false
 			}
 
-			broadcastProgression(playerID, pq.ID, chatCount, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, chatCount, bq.RequestAmount)
 
-			if chatCount < pq.RequestAmount {
+			if chatCount < bq.RequestAmount {
 				return false
 			}
 
@@ -353,7 +381,7 @@ func (q *System) MechJoinBattleQuestCheck(playerID string) {
 	q.playerQuestChan <- &playerQuestCheck{
 		questKey: boiler.QuestKeyMechJoinBattle,
 		playerID: playerID,
-		checkFunc: func(playerID string, pq *boiler.Quest) bool {
+		checkFunc: func(playerID string, pq *boiler.Quest, bq *boiler.BlueprintQuest) bool {
 			// check player eligible to claim
 			mechCount, err := db.PlayerMechJoinBattleCount(playerID, pq.CreatedAt)
 			if err != nil {
@@ -361,9 +389,9 @@ func (q *System) MechJoinBattleQuestCheck(playerID string) {
 				return false
 			}
 
-			broadcastProgression(playerID, pq.ID, mechCount, pq.RequestAmount)
+			broadcastProgression(playerID, pq.ID, mechCount, bq.RequestAmount)
 
-			if mechCount < pq.RequestAmount {
+			if mechCount < bq.RequestAmount {
 				return false
 			}
 

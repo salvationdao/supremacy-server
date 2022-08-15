@@ -1398,15 +1398,14 @@ func (pc *PlayerController) PlayerQuestStat(ctx context.Context, user *boiler.Pl
 // PlayerQuestProgressions return current player quest progression
 func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "PlayerQuestProgressions").Logger()
-
-	now := time.Now()
 	// get all the available quests
 	quests, err := boiler.Quests(
-		boiler.QuestWhere.ExpiresAt.GT(now),
+		boiler.QuestWhere.ExpiresAt.IsNull(),
 		qm.Load(
-			boiler.QuestRels.PlayersQuests,
-			boiler.PlayersQuestWhere.PlayerID.EQ(user.ID),
+			boiler.QuestRels.ObtainedQuestPlayersObtainedQuests,
+			boiler.PlayersObtainedQuestWhere.PlayerID.EQ(user.ID),
 		),
+		qm.Load(boiler.QuestRels.Blueprint),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to query available quest")
@@ -1418,11 +1417,11 @@ func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *b
 		pqp := &quest.PlayerQuestProgression{
 			QuestID: q.ID,
 			Current: 0,
-			Goal:    q.RequestAmount,
+			Goal:    q.R.Blueprint.RequestAmount,
 		}
 
 		// if player already obtained the quest
-		if q.R != nil && q.R.PlayersQuests != nil && len(q.R.PlayersQuests) > 0 {
+		if q.R != nil && q.R.ObtainedQuestPlayersObtainedQuests != nil && len(q.R.ObtainedQuestPlayersObtainedQuests) > 0 {
 			// set current score to goal, and append to result
 			pqp.Current = pqp.Goal
 			result = append(result, pqp)
@@ -1433,7 +1432,7 @@ func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *b
 		l = l.With().Str("quest id", q.ID).Logger()
 
 		// otherwise, load current progression
-		switch q.Key {
+		switch q.R.Blueprint.Key {
 		case boiler.QuestKeyAbilityKill:
 			playerKillLogs, err := boiler.PlayerKillLogs(
 				boiler.PlayerKillLogWhere.PlayerID.EQ(user.ID),

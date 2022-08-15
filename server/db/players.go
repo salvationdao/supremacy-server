@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -423,66 +425,79 @@ func GetPublicPlayerByID(playerID string) (*server.PublicPlayer, error) {
 func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 	result := []*server.QuestStat{}
 
-	q := `
-		select
-    		q.id,
-    		q.name,
-    		q.key,
-    		q.description,
-    		COALESCE(
-    		    (SELECT true FROM players_quests pq WHERE pq.quest_id = q.id AND pq.player_id = $1),
-    		    false
-    		) as obtained
-    	from quests q where q.expires_at > now() and q.deleted_at isnull;
-	`
-	rows, err := gamedb.StdConn.Query(q, playerID)
+	err := boiler.NewQuery(
+		qm.Select(
+			fmt.Sprintf("%s AS id", qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ID)),
+			fmt.Sprintf("%s AS round_name", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.Name)),
+			fmt.Sprintf("%s AS name", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Name)),
+			fmt.Sprintf("%s AS key", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Key)),
+			fmt.Sprintf("%s AS description", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Description)),
+			fmt.Sprintf(
+				`COALESCE(
+    		    		(SELECT TRUE FROM %s WHERE %s = %s AND %s = '%s'),
+    		    		FALSE
+    				) AS obtained
+				`,
+				boiler.TableNames.PlayersObtainedQuests,
+				qm.Rels(boiler.TableNames.PlayersObtainedQuests, boiler.PlayersObtainedQuestColumns.ObtainedQuestID),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ID),
+				qm.Rels(boiler.TableNames.PlayersObtainedQuests, boiler.PlayersObtainedQuestColumns.PlayerID),
+				playerID,
+			),
+		),
+		qm.From(
+			fmt.Sprintf(
+				"(SELECT * FROM %[1]s WHERE %[2]s ISNULL AND %[3]s ISNULL) %[1]s",
+				boiler.TableNames.Quests,
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ExpiresAt),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.DeletedAt),
+			),
+		),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.BlueprintQuests,
+				qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.ID),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.BlueprintID),
+			),
+		),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s",
+				boiler.TableNames.Rounds,
+				qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.ID),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.RoundID),
+			),
+		),
+	).Bind(context.Background(), gamedb.StdConn, &result)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("query", q).Msg("Failed to get player quests.")
+		gamelog.L.Error().Err(err).Str("player id", playerID).Msg("Failed to get player quests.")
 		return nil, terror.Error(err, "Failed to get player quests.")
 	}
 
-	for rows.Next() {
-		pq := &server.QuestStat{
-			Quest: &boiler.Quest{},
-		}
-		err = rows.Scan(&pq.ID, &pq.Name, &pq.Key, &pq.Description, &pq.Obtained)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to scan player quests.")
-			return nil, terror.Error(err, "Failed to parse player quest.")
-		}
-
-		result = append(result, pq)
-	}
+	fmt.Println(result)
 
 	return result, nil
 }
 
-func PlayerQuestUpsert(playerID string, questID string) error {
-	q := `
-		INSERT INTO 
-		    players_quests (player_id, quest_id)
-		VALUES 
-			($1, $2)
-		ON CONFLICT 
-		    (player_id, quest_id)
-		DO NOTHING 
-	`
-
-	_, err := gamedb.StdConn.Exec(q, playerID, questID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("player id", playerID).Str("quest id", questID).Msg("Failed to upsert player quest")
-		return terror.Error(err, "Failed to upsert player quest.")
-	}
-
-	return nil
-}
-
 func PlayerMechKillCount(playerID string, afterTime time.Time) (int, error) {
-	q := `
-		SELECT count(bm.owner_id) FROM battle_history bh
-		INNER JOIN battle_mechs bm ON bh.battle_id = bm.battle_id AND bm.mech_id = bh.war_machine_two_id AND bm.owner_id = $1
-		where event_type = 'killed' AND bh.war_machine_two_id notnull AND bh.created_at >= $2;
-	`
+	q := fmt.Sprintf(`
+		SELECT COUNT(bh.id) 
+		FROM (
+		    SELECT * FROM %[1]s WHERE %[2]s = 'killed' AND %[3]s NOTNULL AND %[4]s >= $2
+		) bh
+		INNER JOIN %[5]s bm ON bh.%[6]s = bm.%[7]s AND bm.%[8]s = bh.%[3]s AND bm.%[9]s = $1;
+	`,
+		boiler.TableNames.BattleHistory,             // 1
+		boiler.BattleHistoryColumns.EventType,       // 2
+		boiler.BattleHistoryColumns.WarMachineTwoID, // 3
+		boiler.BattleHistoryColumns.CreatedAt,       // 4
+		boiler.TableNames.BattleMechs,               // 5
+		boiler.BattleHistoryColumns.BattleID,        // 6
+		boiler.BattleMechColumns.BattleID,           // 7
+		boiler.BattleMechColumns.MechID,             // 8
+		boiler.BattleMechColumns.OwnerID,            // 9
+	)
 
 	mechKillCount := 0
 	err := gamedb.StdConn.QueryRow(q, playerID, afterTime).Scan(&mechKillCount)
@@ -495,10 +510,13 @@ func PlayerMechKillCount(playerID string, afterTime time.Time) (int, error) {
 }
 
 func PlayerTotalBattleMechCommanderUsed(playerID string, startFromTime time.Time) (int, error) {
-	q := `
-		select count(distinct battle_id) from mech_move_command_logs
-		where triggered_by_id = $1 AND created_at >= $2;
-	`
+	q := fmt.Sprintf(
+		"SELECT COUNT(DISTINCT %s) FROM %s WHERE %s = $1 AND %s >= $2;",
+		boiler.MechMoveCommandLogColumns.BattleID,
+		boiler.TableNames.MechMoveCommandLogs,
+		boiler.MechMoveCommandLogColumns.TriggeredByID,
+		boiler.MechMoveCommandLogColumns.CreatedAt,
+	)
 
 	battleCount := 0
 	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&battleCount)
@@ -510,11 +528,23 @@ func PlayerTotalBattleMechCommanderUsed(playerID string, startFromTime time.Time
 }
 
 func PlayerRepairForOthersCount(playerID string, startFromTime time.Time) (int, error) {
-	q := `
-		select count(ra.id) from repair_agents ra
-		inner join repair_offers ro on ra.repair_offer_id = ro.id and ro.offered_by_id notnull and ro.offered_by_id != ra.player_id
-		where ra.finished_reason = 'SUCCEEDED' AND ra.player_id = $1 AND ra.finished_at >= $2;
-	`
+	q := fmt.Sprintf(`
+		SELECT COUNT(ra.id) 
+		FROM (
+		    SELECT * FROM %[1]s WHERE %[2]s = 'SUCCEEDED' AND %[3]s = $1 AND %[4]s >= $2
+		) ra
+		INNER JOIN %[5]s ro ON ra.%[6]s = ro.%[7]s AND ro.%[8]s NOTNULL AND ro.%[8]s != ra.%[3]s;
+	`,
+		boiler.TableNames.RepairAgents,           // 1
+		boiler.RepairAgentColumns.FinishedReason, // 2
+		boiler.RepairAgentColumns.PlayerID,       // 3
+		boiler.RepairAgentColumns.FinishedAt,     // 4
+
+		boiler.TableNames.RepairOffers,          // 5
+		boiler.RepairAgentColumns.RepairOfferID, // 6
+		boiler.RepairOfferColumns.ID,            // 7
+		boiler.RepairOfferColumns.OfferedByID,   // 8
+	)
 
 	blockCount := 0
 	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&blockCount)
@@ -526,10 +556,12 @@ func PlayerRepairForOthersCount(playerID string, startFromTime time.Time) (int, 
 }
 
 func PlayerMechJoinBattleCount(playerID string, startFromTime time.Time) (int, error) {
-	q := `
-		select count(*) from battle_mechs
-		where owner_id = $1 AND created_at >= $2;
-	`
+	q := fmt.Sprintf(
+		"SELECT COUNT(*) FROM %s WHERE %s = $1 AND %s >= $2;",
+		boiler.TableNames.BattleMechs,
+		boiler.BattleMechColumns.OwnerID,
+		boiler.BattleMechColumns.CreatedAt,
+	)
 
 	mechCount := 0
 	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&mechCount)
@@ -541,10 +573,12 @@ func PlayerMechJoinBattleCount(playerID string, startFromTime time.Time) (int, e
 }
 
 func PlayerChatSendCount(playerID string, startFromTime time.Time) (int, error) {
-	q := `
-		SELECT count(id) from chat_history
-		WHERE player_id = $1 AND created_at >= $2;
-	`
+	q := fmt.Sprintf(
+		"SELECT COUNT(*) FROM %s WHERE %s = $1 AND %s >= $2;",
+		boiler.TableNames.ChatHistory,
+		boiler.ChatHistoryColumns.PlayerID,
+		boiler.ChatHistoryColumns.CreatedAt,
+	)
 
 	chatCount := 0
 	err := gamedb.StdConn.QueryRow(q, playerID, startFromTime).Scan(&chatCount)

@@ -110,6 +110,11 @@ func (p *Player) Brief() *Player {
 }
 
 type QuestStat struct {
-	*boiler.Quest
-	Obtained bool `db:"obtained" json:"obtained"`
+	ID            string `db:"id" json:"id"`
+	RoundName     string `db:"round_name" json:"round_name"`
+	Key           string `db:"key" json:"key"`
+	Name          string `db:"name" json:"name"`
+	Description   string `db:"description" json:"description"`
+	RequestAmount int    `db:"request_amount" json:"request_amount"`
+	Obtained      bool   `db:"obtained" json:"obtained"`
 }

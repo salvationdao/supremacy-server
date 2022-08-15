@@ -23,108 +23,90 @@ import (
 
 // Quest is an object representing the database table.
 type Quest struct {
-	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	RoundID       string    `boiler:"round_id" boil:"round_id" json:"round_id" toml:"round_id" yaml:"round_id"`
-	Name          string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	Key           string    `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	Description   string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	RequestAmount int       `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
-	ExpiresAt     time.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at" toml:"expires_at" yaml:"expires_at"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	RoundID     string    `boiler:"round_id" boil:"round_id" json:"round_id" toml:"round_id" yaml:"round_id"`
+	BlueprintID string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	ExpiresAt   null.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
+	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *questR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L questL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var QuestColumns = struct {
-	ID            string
-	RoundID       string
-	Name          string
-	Key           string
-	Description   string
-	RequestAmount string
-	ExpiresAt     string
-	CreatedAt     string
-	UpdatedAt     string
-	DeletedAt     string
+	ID          string
+	RoundID     string
+	BlueprintID string
+	ExpiresAt   string
+	CreatedAt   string
+	UpdatedAt   string
+	DeletedAt   string
 }{
-	ID:            "id",
-	RoundID:       "round_id",
-	Name:          "name",
-	Key:           "key",
-	Description:   "description",
-	RequestAmount: "request_amount",
-	ExpiresAt:     "expires_at",
-	CreatedAt:     "created_at",
-	UpdatedAt:     "updated_at",
-	DeletedAt:     "deleted_at",
+	ID:          "id",
+	RoundID:     "round_id",
+	BlueprintID: "blueprint_id",
+	ExpiresAt:   "expires_at",
+	CreatedAt:   "created_at",
+	UpdatedAt:   "updated_at",
+	DeletedAt:   "deleted_at",
 }
 
 var QuestTableColumns = struct {
-	ID            string
-	RoundID       string
-	Name          string
-	Key           string
-	Description   string
-	RequestAmount string
-	ExpiresAt     string
-	CreatedAt     string
-	UpdatedAt     string
-	DeletedAt     string
+	ID          string
+	RoundID     string
+	BlueprintID string
+	ExpiresAt   string
+	CreatedAt   string
+	UpdatedAt   string
+	DeletedAt   string
 }{
-	ID:            "quests.id",
-	RoundID:       "quests.round_id",
-	Name:          "quests.name",
-	Key:           "quests.key",
-	Description:   "quests.description",
-	RequestAmount: "quests.request_amount",
-	ExpiresAt:     "quests.expires_at",
-	CreatedAt:     "quests.created_at",
-	UpdatedAt:     "quests.updated_at",
-	DeletedAt:     "quests.deleted_at",
+	ID:          "quests.id",
+	RoundID:     "quests.round_id",
+	BlueprintID: "quests.blueprint_id",
+	ExpiresAt:   "quests.expires_at",
+	CreatedAt:   "quests.created_at",
+	UpdatedAt:   "quests.updated_at",
+	DeletedAt:   "quests.deleted_at",
 }
 
 // Generated where
 
 var QuestWhere = struct {
-	ID            whereHelperstring
-	RoundID       whereHelperstring
-	Name          whereHelperstring
-	Key           whereHelperstring
-	Description   whereHelperstring
-	RequestAmount whereHelperint
-	ExpiresAt     whereHelpertime_Time
-	CreatedAt     whereHelpertime_Time
-	UpdatedAt     whereHelpertime_Time
-	DeletedAt     whereHelpernull_Time
+	ID          whereHelperstring
+	RoundID     whereHelperstring
+	BlueprintID whereHelperstring
+	ExpiresAt   whereHelpernull_Time
+	CreatedAt   whereHelpertime_Time
+	UpdatedAt   whereHelpertime_Time
+	DeletedAt   whereHelpernull_Time
 }{
-	ID:            whereHelperstring{field: "\"quests\".\"id\""},
-	RoundID:       whereHelperstring{field: "\"quests\".\"round_id\""},
-	Name:          whereHelperstring{field: "\"quests\".\"name\""},
-	Key:           whereHelperstring{field: "\"quests\".\"key\""},
-	Description:   whereHelperstring{field: "\"quests\".\"description\""},
-	RequestAmount: whereHelperint{field: "\"quests\".\"request_amount\""},
-	ExpiresAt:     whereHelpertime_Time{field: "\"quests\".\"expires_at\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"quests\".\"created_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"quests\".\"updated_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"quests\".\"deleted_at\""},
+	ID:          whereHelperstring{field: "\"quests\".\"id\""},
+	RoundID:     whereHelperstring{field: "\"quests\".\"round_id\""},
+	BlueprintID: whereHelperstring{field: "\"quests\".\"blueprint_id\""},
+	ExpiresAt:   whereHelpernull_Time{field: "\"quests\".\"expires_at\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"quests\".\"created_at\""},
+	UpdatedAt:   whereHelpertime_Time{field: "\"quests\".\"updated_at\""},
+	DeletedAt:   whereHelpernull_Time{field: "\"quests\".\"deleted_at\""},
 }
 
 // QuestRels is where relationship names are stored.
 var QuestRels = struct {
-	Round         string
-	PlayersQuests string
+	Blueprint                          string
+	Round                              string
+	ObtainedQuestPlayersObtainedQuests string
 }{
-	Round:         "Round",
-	PlayersQuests: "PlayersQuests",
+	Blueprint:                          "Blueprint",
+	Round:                              "Round",
+	ObtainedQuestPlayersObtainedQuests: "ObtainedQuestPlayersObtainedQuests",
 }
 
 // questR is where relationships are stored.
 type questR struct {
-	Round         *Round            `boiler:"Round" boil:"Round" json:"Round" toml:"Round" yaml:"Round"`
-	PlayersQuests PlayersQuestSlice `boiler:"PlayersQuests" boil:"PlayersQuests" json:"PlayersQuests" toml:"PlayersQuests" yaml:"PlayersQuests"`
+	Blueprint                          *BlueprintQuest           `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	Round                              *Round                    `boiler:"Round" boil:"Round" json:"Round" toml:"Round" yaml:"Round"`
+	ObtainedQuestPlayersObtainedQuests PlayersObtainedQuestSlice `boiler:"ObtainedQuestPlayersObtainedQuests" boil:"ObtainedQuestPlayersObtainedQuests" json:"ObtainedQuestPlayersObtainedQuests" toml:"ObtainedQuestPlayersObtainedQuests" yaml:"ObtainedQuestPlayersObtainedQuests"`
 }
 
 // NewStruct creates a new relationship struct
@@ -136,9 +118,9 @@ func (*questR) NewStruct() *questR {
 type questL struct{}
 
 var (
-	questAllColumns            = []string{"id", "round_id", "name", "key", "description", "request_amount", "expires_at", "created_at", "updated_at", "deleted_at"}
-	questColumnsWithoutDefault = []string{"round_id", "name", "key", "description", "request_amount", "expires_at"}
-	questColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	questAllColumns            = []string{"id", "round_id", "blueprint_id", "expires_at", "created_at", "updated_at", "deleted_at"}
+	questColumnsWithoutDefault = []string{"round_id", "blueprint_id"}
+	questColumnsWithDefault    = []string{"id", "expires_at", "created_at", "updated_at", "deleted_at"}
 	questPrimaryKeyColumns     = []string{"id"}
 	questGeneratedColumns      = []string{}
 )
@@ -385,6 +367,21 @@ func (q questQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Blueprint pointed to by the foreign key.
+func (o *Quest) Blueprint(mods ...qm.QueryMod) blueprintQuestQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BlueprintID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintQuests(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_quests\"")
+
+	return query
+}
+
 // Round pointed to by the foreign key.
 func (o *Quest) Round(mods ...qm.QueryMod) roundQuery {
 	queryMods := []qm.QueryMod{
@@ -400,26 +397,130 @@ func (o *Quest) Round(mods ...qm.QueryMod) roundQuery {
 	return query
 }
 
-// PlayersQuests retrieves all the players_quest's PlayersQuests with an executor.
-func (o *Quest) PlayersQuests(mods ...qm.QueryMod) playersQuestQuery {
+// ObtainedQuestPlayersObtainedQuests retrieves all the players_obtained_quest's PlayersObtainedQuests with an executor via obtained_quest_id column.
+func (o *Quest) ObtainedQuestPlayersObtainedQuests(mods ...qm.QueryMod) playersObtainedQuestQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"players_quests\".\"quest_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"players_quests\".\"deleted_at\""),
+		qm.Where("\"players_obtained_quests\".\"obtained_quest_id\"=?", o.ID),
 	)
 
-	query := PlayersQuests(queryMods...)
-	queries.SetFrom(query.Query, "\"players_quests\"")
+	query := PlayersObtainedQuests(queryMods...)
+	queries.SetFrom(query.Query, "\"players_obtained_quests\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"players_quests\".*"})
+		queries.SetSelect(query.Query, []string{"\"players_obtained_quests\".*"})
 	}
 
 	return query
+}
+
+// LoadBlueprint allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (questL) LoadBlueprint(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
+	var slice []*Quest
+	var object *Quest
+
+	if singular {
+		object = maybeQuest.(*Quest)
+	} else {
+		slice = *maybeQuest.(*[]*Quest)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &questR{}
+		}
+		args = append(args, object.BlueprintID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &questR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BlueprintID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BlueprintID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_quests`),
+		qm.WhereIn(`blueprint_quests.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_quests.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintQuest")
+	}
+
+	var resultSlice []*BlueprintQuest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintQuest")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_quests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_quests")
+	}
+
+	if len(questAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Blueprint = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintQuestR{}
+		}
+		foreign.R.BlueprintQuests = append(foreign.R.BlueprintQuests, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BlueprintID == foreign.ID {
+				local.R.Blueprint = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintQuestR{}
+				}
+				foreign.R.BlueprintQuests = append(foreign.R.BlueprintQuests, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadRound allows an eager lookup of values, cached into the
@@ -527,9 +628,9 @@ func (questL) LoadRound(e boil.Executor, singular bool, maybeQuest interface{}, 
 	return nil
 }
 
-// LoadPlayersQuests allows an eager lookup of values, cached into the
+// LoadObtainedQuestPlayersObtainedQuests allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (questL) LoadPlayersQuests(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
+func (questL) LoadObtainedQuestPlayersObtainedQuests(e boil.Executor, singular bool, maybeQuest interface{}, mods queries.Applicator) error {
 	var slice []*Quest
 	var object *Quest
 
@@ -567,9 +668,8 @@ func (questL) LoadPlayersQuests(e boil.Executor, singular bool, maybeQuest inter
 	}
 
 	query := NewQuery(
-		qm.From(`players_quests`),
-		qm.WhereIn(`players_quests.quest_id in ?`, args...),
-		qmhelper.WhereIsNull(`players_quests.deleted_at`),
+		qm.From(`players_obtained_quests`),
+		qm.WhereIn(`players_obtained_quests.obtained_quest_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -577,22 +677,22 @@ func (questL) LoadPlayersQuests(e boil.Executor, singular bool, maybeQuest inter
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load players_quests")
+		return errors.Wrap(err, "failed to eager load players_obtained_quests")
 	}
 
-	var resultSlice []*PlayersQuest
+	var resultSlice []*PlayersObtainedQuest
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice players_quests")
+		return errors.Wrap(err, "failed to bind eager loaded slice players_obtained_quests")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on players_quests")
+		return errors.Wrap(err, "failed to close results in eager load on players_obtained_quests")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_quests")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_obtained_quests")
 	}
 
-	if len(playersQuestAfterSelectHooks) != 0 {
+	if len(playersObtainedQuestAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -600,27 +700,73 @@ func (questL) LoadPlayersQuests(e boil.Executor, singular bool, maybeQuest inter
 		}
 	}
 	if singular {
-		object.R.PlayersQuests = resultSlice
+		object.R.ObtainedQuestPlayersObtainedQuests = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &playersQuestR{}
+				foreign.R = &playersObtainedQuestR{}
 			}
-			foreign.R.Quest = object
+			foreign.R.ObtainedQuest = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.QuestID {
-				local.R.PlayersQuests = append(local.R.PlayersQuests, foreign)
+			if local.ID == foreign.ObtainedQuestID {
+				local.R.ObtainedQuestPlayersObtainedQuests = append(local.R.ObtainedQuestPlayersObtainedQuests, foreign)
 				if foreign.R == nil {
-					foreign.R = &playersQuestR{}
+					foreign.R = &playersObtainedQuestR{}
 				}
-				foreign.R.Quest = local
+				foreign.R.ObtainedQuest = local
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetBlueprint of the quest to the related item.
+// Sets o.R.Blueprint to related.
+// Adds o to related.R.BlueprintQuests.
+func (o *Quest) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintQuest) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"quests\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+		strmangle.WhereClause("\"", "\"", 2, questPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BlueprintID = related.ID
+	if o.R == nil {
+		o.R = &questR{
+			Blueprint: related,
+		}
+	} else {
+		o.R.Blueprint = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintQuestR{
+			BlueprintQuests: QuestSlice{o},
+		}
+	} else {
+		related.R.BlueprintQuests = append(related.R.BlueprintQuests, o)
 	}
 
 	return nil
@@ -672,25 +818,25 @@ func (o *Quest) SetRound(exec boil.Executor, insert bool, related *Round) error 
 	return nil
 }
 
-// AddPlayersQuests adds the given related objects to the existing relationships
+// AddObtainedQuestPlayersObtainedQuests adds the given related objects to the existing relationships
 // of the quest, optionally inserting them as new records.
-// Appends related to o.R.PlayersQuests.
-// Sets related.R.Quest appropriately.
-func (o *Quest) AddPlayersQuests(exec boil.Executor, insert bool, related ...*PlayersQuest) error {
+// Appends related to o.R.ObtainedQuestPlayersObtainedQuests.
+// Sets related.R.ObtainedQuest appropriately.
+func (o *Quest) AddObtainedQuestPlayersObtainedQuests(exec boil.Executor, insert bool, related ...*PlayersObtainedQuest) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.QuestID = o.ID
+			rel.ObtainedQuestID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"players_quests\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"quest_id"}),
-				strmangle.WhereClause("\"", "\"", 2, playersQuestPrimaryKeyColumns),
+				"UPDATE \"players_obtained_quests\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"obtained_quest_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playersObtainedQuestPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.PlayerID, rel.QuestID}
+			values := []interface{}{o.ID, rel.PlayerID, rel.ObtainedQuestID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -700,25 +846,25 @@ func (o *Quest) AddPlayersQuests(exec boil.Executor, insert bool, related ...*Pl
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.QuestID = o.ID
+			rel.ObtainedQuestID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &questR{
-			PlayersQuests: related,
+			ObtainedQuestPlayersObtainedQuests: related,
 		}
 	} else {
-		o.R.PlayersQuests = append(o.R.PlayersQuests, related...)
+		o.R.ObtainedQuestPlayersObtainedQuests = append(o.R.ObtainedQuestPlayersObtainedQuests, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &playersQuestR{
-				Quest: o,
+			rel.R = &playersObtainedQuestR{
+				ObtainedQuest: o,
 			}
 		} else {
-			rel.R.Quest = o
+			rel.R.ObtainedQuest = o
 		}
 	}
 	return nil

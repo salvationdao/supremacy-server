@@ -215,9 +215,9 @@ var PlayerRels = struct {
 	PlayerPreferences                        string
 	PlayerSpoilsOfWars                       string
 	PlayersFeatures                          string
+	PlayersObtainedQuests                    string
 	PlayersProfileAvatars                    string
 	PlayersPunishVotes                       string
-	PlayersQuests                            string
 	ProfileCustomAvatars                     string
 	VoteByPlayerPunishVoteInstantPassRecords string
 	InstantPassByPunishVotes                 string
@@ -285,9 +285,9 @@ var PlayerRels = struct {
 	PlayerPreferences:                        "PlayerPreferences",
 	PlayerSpoilsOfWars:                       "PlayerSpoilsOfWars",
 	PlayersFeatures:                          "PlayersFeatures",
+	PlayersObtainedQuests:                    "PlayersObtainedQuests",
 	PlayersProfileAvatars:                    "PlayersProfileAvatars",
 	PlayersPunishVotes:                       "PlayersPunishVotes",
-	PlayersQuests:                            "PlayersQuests",
 	ProfileCustomAvatars:                     "ProfileCustomAvatars",
 	VoteByPlayerPunishVoteInstantPassRecords: "VoteByPlayerPunishVoteInstantPassRecords",
 	InstantPassByPunishVotes:                 "InstantPassByPunishVotes",
@@ -358,9 +358,9 @@ type playerR struct {
 	PlayerPreferences                        PlayerPreferenceSlice            `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayerSpoilsOfWars                       PlayerSpoilsOfWarSlice           `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 	PlayersFeatures                          PlayersFeatureSlice              `boiler:"PlayersFeatures" boil:"PlayersFeatures" json:"PlayersFeatures" toml:"PlayersFeatures" yaml:"PlayersFeatures"`
+	PlayersObtainedQuests                    PlayersObtainedQuestSlice        `boiler:"PlayersObtainedQuests" boil:"PlayersObtainedQuests" json:"PlayersObtainedQuests" toml:"PlayersObtainedQuests" yaml:"PlayersObtainedQuests"`
 	PlayersProfileAvatars                    PlayersProfileAvatarSlice        `boiler:"PlayersProfileAvatars" boil:"PlayersProfileAvatars" json:"PlayersProfileAvatars" toml:"PlayersProfileAvatars" yaml:"PlayersProfileAvatars"`
 	PlayersPunishVotes                       PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
-	PlayersQuests                            PlayersQuestSlice                `boiler:"PlayersQuests" boil:"PlayersQuests" json:"PlayersQuests" toml:"PlayersQuests" yaml:"PlayersQuests"`
 	ProfileCustomAvatars                     ProfileCustomAvatarSlice         `boiler:"ProfileCustomAvatars" boil:"ProfileCustomAvatars" json:"ProfileCustomAvatars" toml:"ProfileCustomAvatars" yaml:"ProfileCustomAvatars"`
 	VoteByPlayerPunishVoteInstantPassRecords PunishVoteInstantPassRecordSlice `boiler:"VoteByPlayerPunishVoteInstantPassRecords" boil:"VoteByPlayerPunishVoteInstantPassRecords" json:"VoteByPlayerPunishVoteInstantPassRecords" toml:"VoteByPlayerPunishVoteInstantPassRecords" yaml:"VoteByPlayerPunishVoteInstantPassRecords"`
 	InstantPassByPunishVotes                 PunishVoteSlice                  `boiler:"InstantPassByPunishVotes" boil:"InstantPassByPunishVotes" json:"InstantPassByPunishVotes" toml:"InstantPassByPunishVotes" yaml:"InstantPassByPunishVotes"`
@@ -1546,6 +1546,27 @@ func (o *Player) PlayersFeatures(mods ...qm.QueryMod) playersFeatureQuery {
 	return query
 }
 
+// PlayersObtainedQuests retrieves all the players_obtained_quest's PlayersObtainedQuests with an executor.
+func (o *Player) PlayersObtainedQuests(mods ...qm.QueryMod) playersObtainedQuestQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"players_obtained_quests\".\"player_id\"=?", o.ID),
+	)
+
+	query := PlayersObtainedQuests(queryMods...)
+	queries.SetFrom(query.Query, "\"players_obtained_quests\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"players_obtained_quests\".*"})
+	}
+
+	return query
+}
+
 // PlayersProfileAvatars retrieves all the players_profile_avatar's PlayersProfileAvatars with an executor.
 func (o *Player) PlayersProfileAvatars(mods ...qm.QueryMod) playersProfileAvatarQuery {
 	var queryMods []qm.QueryMod
@@ -1585,28 +1606,6 @@ func (o *Player) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"players_punish_votes\".*"})
-	}
-
-	return query
-}
-
-// PlayersQuests retrieves all the players_quest's PlayersQuests with an executor.
-func (o *Player) PlayersQuests(mods ...qm.QueryMod) playersQuestQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"players_quests\".\"player_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"players_quests\".\"deleted_at\""),
-	)
-
-	query := PlayersQuests(queryMods...)
-	queries.SetFrom(query.Query, "\"players_quests\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"players_quests\".*"})
 	}
 
 	return query
@@ -6487,6 +6486,104 @@ func (playerL) LoadPlayersFeatures(e boil.Executor, singular bool, maybePlayer i
 	return nil
 }
 
+// LoadPlayersObtainedQuests allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayersObtainedQuests(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players_obtained_quests`),
+		qm.WhereIn(`players_obtained_quests.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load players_obtained_quests")
+	}
+
+	var resultSlice []*PlayersObtainedQuest
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice players_obtained_quests")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on players_obtained_quests")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_obtained_quests")
+	}
+
+	if len(playersObtainedQuestAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayersObtainedQuests = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playersObtainedQuestR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayersObtainedQuests = append(local.R.PlayersObtainedQuests, foreign)
+				if foreign.R == nil {
+					foreign.R = &playersObtainedQuestR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayersProfileAvatars allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadPlayersProfileAvatars(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -6675,105 +6772,6 @@ func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlaye
 				local.R.PlayersPunishVotes = append(local.R.PlayersPunishVotes, foreign)
 				if foreign.R == nil {
 					foreign.R = &playersPunishVoteR{}
-				}
-				foreign.R.Player = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadPlayersQuests allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadPlayersQuests(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
-	var slice []*Player
-	var object *Player
-
-	if singular {
-		object = maybePlayer.(*Player)
-	} else {
-		slice = *maybePlayer.(*[]*Player)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &playerR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &playerR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players_quests`),
-		qm.WhereIn(`players_quests.player_id in ?`, args...),
-		qmhelper.WhereIsNull(`players_quests.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load players_quests")
-	}
-
-	var resultSlice []*PlayersQuest
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice players_quests")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on players_quests")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_quests")
-	}
-
-	if len(playersQuestAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.PlayersQuests = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &playersQuestR{}
-			}
-			foreign.R.Player = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.PlayerID {
-				local.R.PlayersQuests = append(local.R.PlayersQuests, foreign)
-				if foreign.R == nil {
-					foreign.R = &playersQuestR{}
 				}
 				foreign.R.Player = local
 				break
@@ -11731,6 +11729,58 @@ func (o *Player) AddPlayersFeatures(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
+// AddPlayersObtainedQuests adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayersObtainedQuests.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayersObtainedQuests(exec boil.Executor, insert bool, related ...*PlayersObtainedQuest) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"players_obtained_quests\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playersObtainedQuestPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.PlayerID, rel.ObtainedQuestID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayersObtainedQuests: related,
+		}
+	} else {
+		o.R.PlayersObtainedQuests = append(o.R.PlayersObtainedQuests, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playersObtainedQuestR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
 // AddPlayersProfileAvatars adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
 // Appends related to o.R.PlayersProfileAvatars.
@@ -11826,58 +11876,6 @@ func (o *Player) AddPlayersPunishVotes(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playersPunishVoteR{
-				Player: o,
-			}
-		} else {
-			rel.R.Player = o
-		}
-	}
-	return nil
-}
-
-// AddPlayersQuests adds the given related objects to the existing relationships
-// of the player, optionally inserting them as new records.
-// Appends related to o.R.PlayersQuests.
-// Sets related.R.Player appropriately.
-func (o *Player) AddPlayersQuests(exec boil.Executor, insert bool, related ...*PlayersQuest) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.PlayerID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"players_quests\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-				strmangle.WhereClause("\"", "\"", 2, playersQuestPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.PlayerID, rel.QuestID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.PlayerID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &playerR{
-			PlayersQuests: related,
-		}
-	} else {
-		o.R.PlayersQuests = append(o.R.PlayersQuests, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &playersQuestR{
 				Player: o,
 			}
 		} else {
