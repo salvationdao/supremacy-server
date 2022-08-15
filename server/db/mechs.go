@@ -1035,15 +1035,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 				)))
 	}
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 	defer rows.Close()
 
 	for rows.Next() {
