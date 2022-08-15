@@ -2,13 +2,14 @@ package api
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
 	"net/http"
 	"server/gamedb"
 	"server/helpers"
 	"server/synctool"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
 )
 
 func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -39,6 +40,16 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
 
+	url = fmt.Sprintf("%s/%s/weapon_skins.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
+	}
+	err = synctool.SyncWeaponSkins(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
+	}
+
 	url = fmt.Sprintf("%s/%s/mech_skins.csv", api.SyncConfig.FilePath, branch)
 	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {
@@ -55,16 +66,6 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
 	err = synctool.SyncMechModels(f, gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
-	}
-
-	url = fmt.Sprintf("%s/%s/weapon_skins.csv", api.SyncConfig.FilePath, branch)
-	f, err = synctool.DownloadFile(api.ctx, url, timeout)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
-	}
-	err = synctool.SyncWeaponSkins(f, gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}

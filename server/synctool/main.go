@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"server/synctool/types"
 	"strconv"
 	"time"
+
+	"github.com/volatiletech/null/v8"
 )
 
 type StaticSyncTool struct {
@@ -38,6 +39,16 @@ func SyncTool(dt *StaticSyncTool) error {
 		return err
 	}
 	err = SyncBrands(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncWeaponSkins(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -77,16 +88,6 @@ func SyncTool(dt *StaticSyncTool) error {
 	//if err != nil {
 	//	return err
 	//}
-
-	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncWeaponSkins(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
 
 	f, err = readFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath))
 	if err != nil {
@@ -417,16 +418,18 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                collection,
 			                                label,
 			                                tier,
-			                                stat_modifier
+			                                stat_modifier,
+											blueprint_weapon_skin_id
 			                                )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,(SELECT id FROM blueprint_weapon_skin bws WHERE $3 = bws.label))
 			ON CONFLICT (id)
 			DO
 			    UPDATE SET id=$1,
 			               collection=$2,
 			               label=$3,
 			               tier=$4,
-			               stat_modifier=$5;
+			               stat_modifier=$5,
+						   blueprint_weapon_skin_id=(SELECT bws.id FROM blueprint_weapon_skin bws WHERE label = bws.label);
 		`,
 			mechSkin.ID,
 			mechSkin.Collection,

@@ -36,11 +36,12 @@ type Faction struct {
 }
 
 type MechSkin struct {
-	ID           string `json:"id"`
-	Collection   string `json:"collection"`
-	Label        string `json:"label"`
-	Tier         string `json:"tier"`
-	StatModifier string `json:"stat_modifier"`
+	ID                    string  `json:"id"`
+	Collection            string  `json:"collection"`
+	Label                 string  `json:"label"`
+	Tier                  string  `json:"tier"`
+	StatModifier          string  `json:"stat_modifier"`
+	BlueprintWeaponSkinID *string `json:"blueprint_weapon_skin_id"`
 }
 
 type MechModelSkinCompatibility struct {
