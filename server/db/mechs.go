@@ -1022,7 +1022,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					fmt.Sprintf("(CASE WHEN %[1]s IS NOT NULL AND %[1]s != '' THEN %[1]s ELSE %[2]s END) %[3]s",
 						qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 						qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
-						boiler.BlueprintMechColumns.Label,
 						opts.SortDir,
 					)))
 		} else if opts.SortBy == "rarity" {
@@ -1036,12 +1035,15 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 				)))
 	}
+	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
 		return 0, nil, err
 	}
+	boil.DebugMode = false
 	defer rows.Close()
 
 	for rows.Next() {
