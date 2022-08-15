@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/pemistahl/lingua-go"
 	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/profanities"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -51,8 +49,6 @@ type ArenaManager struct {
 	sms                      server.SMS
 	telegram                 server.Telegram
 	gameClientMinimumBuildNo uint64
-	languageDetector         lingua.LanguageDetector
-	profanityManager         *profanities.ProfanityManager
 	SystemBanManager         *SystemBanManager
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
@@ -62,9 +58,242 @@ type ArenaManager struct {
 	sync.RWMutex // lock for arena
 }
 
+func NewArenaManager(opts *Opts) *ArenaManager {
+	am := &ArenaManager{
+		Addr:                     opts.Addr,
+		timeout:                  opts.Timeout,
+		RPCClient:                opts.RPCClient,
+		sms:                      opts.SMS,
+		telegram:                 opts.Telegram,
+		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
+		SystemBanManager:         NewSystemBanManager(),
+		NewBattleChan:            make(chan *NewBattleChan, 10),
+		SystemMessagingManager:   opts.SystemMessagingManager,
+		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
+
+		arenas: make(map[string]*Arena),
+	}
+
+	am.server = &http.Server{
+		Handler:      am,
+		ReadTimeout:  am.timeout,
+		WriteTimeout: am.timeout,
+	}
+
+	return am
+}
+
+func (am *ArenaManager) Serve() {
+	l, err := net.Listen("tcp", am.Addr)
+	if err != nil {
+		gamelog.L.Fatal().Str("Addr", am.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+	}
+	go func() {
+		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", am.Addr)
+
+		err := am.server.Serve(l)
+		if err != nil {
+			gamelog.L.Fatal().Str("Addr", am.Addr).Err(err).Msg("unable to start Battle Arena server")
+		}
+	}()
+}
+
+func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		ip := r.Header.Get("X-Forwarded-For")
+		if ip == "" {
+			ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+			userIP := net.ParseIP(ipaddr)
+			if userIP == nil {
+				ip = ipaddr
+			} else {
+				ip = userIP.String()
+			}
+		}
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
+		return
+	}
+
+	// create new arena
+	arena, err := am.NewArena(wsConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to add arena onto arena manager")
+		return
+	}
+
+	// broadcast a new arena list to frontend
+	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
+
+	defer func() {
+		if wsConn != nil {
+			arena.connected.Store(false)
+
+			// tell frontend the arena is closed
+			ws.PublishMessage(fmt.Sprintf("/battle_arena/%s/public/arena_closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
+
+			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
+			err = wsConn.Close(websocket.StatusInternalError, "game client has disconnected")
+			if err != nil {
+				gamelog.L.Error().Str("arena id", arena.ID).Err(err).Msg("Failed to close ws connection")
+			}
+
+			btl := arena.CurrentBattle()
+			if btl != nil {
+				btl.endAbilities()
+				btl.endSpoils()
+			}
+
+			// delete arena from the map
+			am.DeleteArena(arena.ID)
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
+		}
+	}()
+
+	arena.Start()
+}
+
+func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
+	am.Lock()
+	defer am.Unlock()
+
+	var ba *boiler.BattleArena
+	var err error
+	existingArenaID := []string{}
+	storyArenaExist := false
+	for key, a := range am.arenas {
+		// clean up any disconnected arena from the map
+		if !a.connected.Load() {
+			delete(am.arenas, key)
+			continue
+		}
+
+		existingArenaID = append(existingArenaID, a.ID)
+		if a.Type == boiler.ArenaTypeEnumSTORY {
+			storyArenaExist = true
+		}
+	}
+
+	// if story mode not exist, assign story mode arena
+	if !storyArenaExist {
+		ba, err = boiler.BattleArenas(
+			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
+			return nil, terror.Error(err, "Failed to get story mode battle arena from db")
+		}
+	} else {
+		// assign an expedition arena instead
+		ba, err = boiler.BattleArenas(
+			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumEXPEDITION),
+			boiler.BattleArenaWhere.ID.NIN(existingArenaID),
+			qm.OrderBy(boiler.BattleArenaColumns.Gid),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Msg("Failed to get expedition mode battle arena from db")
+			return nil, terror.Error(err, "Failed to get expedition mode battle arena from db")
+		}
+
+		// insert a new expedition battle arena if not exist
+		if ba == nil {
+			gamelog.L.Debug().Msg("inserting a new arena to db")
+			ba = &boiler.BattleArena{
+				Type: boiler.ArenaTypeEnumEXPEDITION,
+			}
+
+			err = ba.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to insert new expedition battle arena into db")
+				return nil, terror.Error(err, "Failed to insert new expedition battle arena into db")
+			}
+
+			// seed new abilities
+			gamelog.L.Debug().Msg("Inserting default game abilities for the new arena")
+
+			// get ability list from story arena
+			gas, err := boiler.GameAbilities(
+				boiler.GameAbilityWhere.ArenaID.EQ(server.DefaultStoryArenaID),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to get game abilities")
+				return nil, terror.Error(err, "Failed to assign game abilities to the arena.")
+			}
+
+			// default
+
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to start db transaction")
+				return nil, terror.Error(err, "Failed to assign game abilities to the arena.")
+			}
+
+			defer tx.Rollback()
+
+			for _, ga := range gas {
+				newGameAbility := boiler.GameAbility{
+					GameClientAbilityID: ga.GameClientAbilityID,
+					FactionID:           ga.FactionID,
+					BattleAbilityID:     ga.BattleAbilityID,
+					Label:               ga.Label,
+					Colour:              ga.Colour,
+					ImageURL:            ga.ImageURL,
+					Description:         ga.Description,
+					TextColour:          ga.TextColour,
+					CurrentSups:         decimal.Zero.String(),
+					Level:               ga.Level,
+					ArenaID:             ba.ID,
+				}
+
+				err = newGameAbility.Insert(tx, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("arena id", ba.ID).Interface("ability", ga).Err(err).Msg("Failed to insert game ability to the arena")
+					return nil, terror.Error(err, "Failed to assign game abilities to the arena")
+				}
+
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to commit db transaction")
+				return nil, terror.Error(err, "Failed to assign game abilities to the arena")
+			}
+		}
+	}
+
+	arena := &Arena{
+		ID:                       ba.ID,
+		Type:                     ba.Type,
+		connected:                atomic.NewBool(true),
+		RPCClient:                am.RPCClient,
+		sms:                      am.sms,
+		gameClientMinimumBuildNo: am.gameClientMinimumBuildNo,
+		telegram:                 am.telegram,
+		socket:                   wsConn,
+	}
+
+	arena.AIPlayers, err = db.DefaultFactionPlayers()
+	if err != nil {
+		gamelog.L.Fatal().Err(err).Msg("no faction users found")
+	}
+
+	if arena.timeout == 0 {
+		arena.timeout = 15 * time.Hour * 24
+	}
+
+	// start player rank updater
+	arena.PlayerRankUpdater()
+
+	am.arenas[arena.ID] = arena
+
+	return arena, nil
+}
+
 type Arena struct {
-	server                   *http.Server
-	opts                     *Opts
+	ID                       string `json:"id"`
+	Type                     string `json:"type"`
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
