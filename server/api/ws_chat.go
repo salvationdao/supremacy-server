@@ -1108,9 +1108,8 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 		l.Error().Err(err).Msg("json unmarshal error")
 		return terror.Error(err, "Invalid request received.")
 	}
-	l = l.With().Interface("payload", req).Logger()
 
-	l = l.With().Interface("ChatHistoryID", req.Payload.MessageID).Logger()
+	l = l.With().Interface("payload", req).Interface("ChatHistoryID", req.Payload.MessageID).Logger()
 	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.MessageID)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
@@ -1128,7 +1127,6 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	//check if user has already reported, if so return error
 	i := slices.Index(metadata.Reports, user.ID)
 	if i != -1 {
-		l.Error().Err(err).Msg("user reported message more than once")
 		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
 	}
 
@@ -1180,8 +1178,8 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 
 	//send through to zendesk
 	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
-	statusCode, err := fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
-	if err != nil || statusCode != 200 {
+	_, err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+	if err != nil {
 		l.Error().Err(err).Msg("unable send zendesk request.")
 		return terror.Error(err, genericErrorMessage)
 	}

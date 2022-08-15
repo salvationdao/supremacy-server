@@ -166,6 +166,7 @@ func main() {
 
 					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -191,6 +192,7 @@ func main() {
 
 					zendeskToken := c.String("zendesk_token")
 					zendeskEmail := c.String("zendesk_email")
+					zendeskUrl := c.String("zendesk_url")
 
 					telegramBotToken := c.String("telegram_bot_token")
 
@@ -386,7 +388,7 @@ func main() {
 
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
-					zendesk := zendesk.NewZendesk(zendeskToken, zendeskEmail)
+					zendesk := zendesk.NewZendesk(zendeskToken, zendeskEmail, zendeskUrl)
 
 					gamelog.L.Info().Msg("Setting up API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
