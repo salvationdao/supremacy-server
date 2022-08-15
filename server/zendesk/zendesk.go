@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"io"
 	"net/http"
+	"server/gamelog"
 )
 
 type Zendesk struct {
@@ -45,7 +47,7 @@ type RequestErrorResponse struct {
 	} `json:"details"`
 }
 
-func NewZendesk(token, email, url string) *Zendesk {
+func NewZendesk(token, email, url, environment string) (*Zendesk, error) {
 	key := base64.StdEncoding.EncodeToString([]byte(email + "/token:" + token))
 	z := &Zendesk{
 		Email: email,
@@ -54,7 +56,18 @@ func NewZendesk(token, email, url string) *Zendesk {
 		Url:   url,
 	}
 
-	return z
+	if environment == "production" || environment == "staging" {
+		if email == "" {
+			return nil, terror.Error(fmt.Errorf("missing zendesk email"))
+		}
+		if token == "" {
+			return nil, terror.Error(fmt.Errorf("missing zendesk token"))
+		}
+		if url == "" {
+			return nil, terror.Error(fmt.Errorf("missing zendesk url"))
+		}
+	}
+	return z, nil
 }
 
 func (z *Zendesk) NewRequest(username, userID, subject, comment, service string) (int, error) {
@@ -79,7 +92,7 @@ func (z *Zendesk) NewRequest(username, userID, subject, comment, service string)
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest(http.MethodPost, z.Url, body)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v2/requests.json", z.Url), body)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -103,6 +116,7 @@ func (z *Zendesk) NewRequest(username, userID, subject, comment, service string)
 		if err != nil {
 			return http.StatusBadRequest, err
 		}
+		gamelog.L.Error().Err(fmt.Errorf(errorBody.Error)).Interface("status", resp.Status).Msg("failed to send zendesk request")
 
 		return http.StatusBadRequest, fmt.Errorf(errorBody.Error)
 	}

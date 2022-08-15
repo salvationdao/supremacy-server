@@ -388,7 +388,12 @@ func main() {
 
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
-					zendesk := zendesk.NewZendesk(zendeskToken, zendeskEmail, zendeskUrl)
+					gamelog.L.Info().Msg("Setting up Zendesk")
+					zendesk, err := zendesk.NewZendesk(zendeskToken, zendeskEmail, zendeskUrl, environment)
+					if err != nil {
+						return terror.Error(err, "Zendesk init failed")
+					}
+					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
