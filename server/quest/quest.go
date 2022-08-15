@@ -7,11 +7,13 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sync"
 	"time"
 )
 
@@ -25,18 +27,12 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest, blueprintQuest *boiler.BlueprintQuest) bool
 }
 
-type PlayerQuestProgression struct {
-	QuestID string `json:"quest_id"`
-	Current int    `json:"current"`
-	Goal    int    `json:"goal"`
-}
-
 func New() (*System, error) {
 	q := &System{
 		playerQuestChan: make(chan *playerQuestCheck, 50),
 	}
 
-	err := regenExpiredQuest()
+	err := syncQuests()
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +48,7 @@ func (q *System) Run() {
 	for {
 		select {
 		case <-regenerateTicker.C:
-			err := regenExpiredQuest()
+			err := syncQuests()
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to regen new quest")
 			}
@@ -103,13 +99,121 @@ func (q *System) Run() {
 	}
 }
 
-// regenExpiredQuest check expired quest and regenerate new quest for it
-func regenExpiredQuest() error {
+// syncQuests check expired quest and regenerate new quest for it
+func syncQuests() error {
 	now := time.Now()
 	l := gamelog.L.With().Str("func name", "regenExpiredQuest()").Logger()
 
-	// get expired rounds
+	hasChanged := false
+
+	// handle quests sync for all the available quest
+
+	// get current available quest
 	rounds, err := boiler.Rounds(
+		boiler.RoundWhere.StartedAt.LTE(now),
+		boiler.RoundWhere.EndAt.GT(now),
+		boiler.RoundWhere.NextRoundID.IsNull(),
+		qm.Load(boiler.RoundRels.Quests),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to query available quests")
+		return terror.Error(err, "Failed to load current available quest")
+	}
+
+	if rounds != nil && len(rounds) > 0 {
+		roundTypes := []string{}
+		for _, r := range rounds {
+			roundTypes = append(roundTypes, r.Type)
+		}
+
+		bqs, err := boiler.BlueprintQuests(
+			boiler.BlueprintQuestWhere.RoundType.IN(roundTypes),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to load blueprint quest")
+		}
+
+		addedQuests := []*boiler.Quest{}
+		removedQuests := []*boiler.Quest{}
+		for _, r := range rounds {
+			roundType := r.Type
+			roundQuests := []*boiler.Quest{}
+			if r.R != nil && r.R.Quests != nil {
+				roundQuests = r.R.Quests
+			}
+
+			// get added quests
+			for _, bq := range bqs {
+				// skip, if different round type
+				if bq.RoundType != roundType {
+					continue
+				}
+
+				// add new quest, if the quest not exists
+				if slices.IndexFunc(roundQuests, func(rq *boiler.Quest) bool { return rq.BlueprintID == bq.ID }) == -1 {
+					addedQuests = append(addedQuests, &boiler.Quest{
+						RoundID:     r.ID,
+						BlueprintID: bq.ID,
+						CreatedAt:   r.StartedAt,
+					})
+
+					// track change flag
+					hasChanged = true
+				}
+			}
+
+			// get removed quests
+			for _, rq := range roundQuests {
+				index := slices.IndexFunc(bqs, func(bq *boiler.BlueprintQuest) bool {
+					return bq.RoundType == roundType && bq.ID == rq.BlueprintID
+				})
+
+				// remove, if quest no longer exists
+				if index == -1 {
+					removedQuests = append(removedQuests, rq)
+
+					// track change flag
+					hasChanged = true
+				}
+			}
+		}
+
+		if hasChanged {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to start db transaction")
+				return terror.Error(err, "Failed to start db transaction")
+			}
+
+			defer tx.Rollback()
+
+			for _, aq := range addedQuests {
+				err = aq.Insert(tx, boil.Infer())
+				if err != nil {
+					l.Error().Err(err).Interface("quest", aq).Msg("Failed to insert new quest.")
+					return terror.Error(err, "Failed to insert new quest.")
+				}
+			}
+
+			for _, rq := range removedQuests {
+				rq.DeletedAt = null.TimeFrom(now)
+				_, err := rq.Update(tx, boil.Whitelist(boiler.QuestColumns.DeletedAt))
+				if err != nil {
+					l.Error().Err(err).Interface("quest", rq).Msg("Failed to remove quest.")
+					return terror.Error(err, "Failed to remove quest.")
+				}
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to commit db transaction")
+				return terror.Error(err, "Failed to commit db transaction.")
+			}
+		}
+	}
+
+	// handle expired rounds
+	rounds, err = boiler.Rounds(
 		boiler.RoundWhere.Repeatable.EQ(true),
 		boiler.RoundWhere.EndAt.LTE(now),
 		boiler.RoundWhere.NextRoundID.IsNull(),
@@ -121,6 +225,10 @@ func regenExpiredQuest() error {
 	}
 
 	for _, r := range rounds {
+
+		// track change flag
+		hasChanged = true
+
 		err = func() error {
 			tx, err := gamedb.StdConn.Begin()
 			if err != nil {
@@ -197,6 +305,35 @@ func regenExpiredQuest() error {
 		}
 	}
 
+	// broadcast changes to all the connected players
+	if hasChanged {
+		wg := sync.WaitGroup{}
+		for _, playerID := range ws.TrackedIdents() {
+			wg.Add(1)
+			go func(playerID string) {
+				defer wg.Done()
+
+				// broadcast player quest stat
+				playerQuestStat, err := db.PlayerQuestStatGet(playerID)
+				if err != nil {
+					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player quest status")
+					return
+				}
+				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+
+				// broadcast progressions
+				progressions, err := db.PlayerQuestProgressions(playerID)
+				if err != nil {
+					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player progressions")
+					return
+				}
+				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_progression", playerID), server.HubKeyPlayerQuestProgressions, progressions)
+
+			}(playerID)
+		}
+		wg.Wait()
+	}
+
 	return nil
 }
 
@@ -231,7 +368,7 @@ func broadcastProgression(playerID string, questID string, currentProgress int, 
 	ws.PublishMessage(
 		fmt.Sprintf("/user/%s/quest_progression", playerID),
 		server.HubKeyPlayerQuestProgressions,
-		[]*PlayerQuestProgression{{questID, currentProgress, goal}},
+		[]*db.PlayerQuestProgression{{questID, currentProgress, goal}},
 	)
 }
 
