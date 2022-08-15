@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 )
 
 func NewLeaderboardController(api *API) {
@@ -27,8 +28,10 @@ func NewLeaderboardController(api *API) {
 const HubKeyLeaderboardRounds = "LEADERBOARD:ROUNDS"
 
 func (api *API) GetLeaderboardRoundsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	now := time.Now()
 	rs, err := boiler.Rounds(
-		boiler.RoundWhere.IsInit.EQ(false),
+		boiler.RoundWhere.StartedAt.LTE(now),
+		boiler.RoundWhere.EndAt.GT(now),
 		qm.OrderBy(boiler.RoundColumns.CreatedAt+" DESC"),
 		qm.Limit(10),
 	).All(gamedb.StdConn)

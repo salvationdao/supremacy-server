@@ -23,114 +23,128 @@ import (
 
 // Round is an object representing the database table.
 type Round struct {
-	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type        string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	Name        string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	StartedAt   time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	EndAt       time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
-	LastForDays int         `boiler:"last_for_days" boil:"last_for_days" json:"last_for_days" toml:"last_for_days" yaml:"last_for_days"`
-	Repeatable  bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
-	NextRoundID null.String `boiler:"next_round_id" boil:"next_round_id" json:"next_round_id,omitempty" toml:"next_round_id" yaml:"next_round_id,omitempty"`
-	IsInit      bool        `boiler:"is_init" boil:"is_init" json:"is_init" toml:"is_init" yaml:"is_init"`
-	RoundNumber int         `boiler:"round_number" boil:"round_number" json:"round_number" toml:"round_number" yaml:"round_number"`
-	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt   time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt   null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type               string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Name               string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	StartedAt          time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	EndAt              time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
+	IsDaily            bool        `boiler:"is_daily" boil:"is_daily" json:"is_daily" toml:"is_daily" yaml:"is_daily"`
+	IsWeekly           bool        `boiler:"is_weekly" boil:"is_weekly" json:"is_weekly" toml:"is_weekly" yaml:"is_weekly"`
+	IsMonthly          bool        `boiler:"is_monthly" boil:"is_monthly" json:"is_monthly" toml:"is_monthly" yaml:"is_monthly"`
+	CustomDurationDays null.Int    `boiler:"custom_duration_days" boil:"custom_duration_days" json:"custom_duration_days,omitempty" toml:"custom_duration_days" yaml:"custom_duration_days,omitempty"`
+	Repeatable         bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
+	NextRoundID        null.String `boiler:"next_round_id" boil:"next_round_id" json:"next_round_id,omitempty" toml:"next_round_id" yaml:"next_round_id,omitempty"`
+	RoundNumber        int         `boiler:"round_number" boil:"round_number" json:"round_number" toml:"round_number" yaml:"round_number"`
+	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *roundR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L roundL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var RoundColumns = struct {
-	ID          string
-	Type        string
-	Name        string
-	StartedAt   string
-	EndAt       string
-	LastForDays string
-	Repeatable  string
-	NextRoundID string
-	IsInit      string
-	RoundNumber string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID                 string
+	Type               string
+	Name               string
+	StartedAt          string
+	EndAt              string
+	IsDaily            string
+	IsWeekly           string
+	IsMonthly          string
+	CustomDurationDays string
+	Repeatable         string
+	NextRoundID        string
+	RoundNumber        string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	ID:          "id",
-	Type:        "type",
-	Name:        "name",
-	StartedAt:   "started_at",
-	EndAt:       "end_at",
-	LastForDays: "last_for_days",
-	Repeatable:  "repeatable",
-	NextRoundID: "next_round_id",
-	IsInit:      "is_init",
-	RoundNumber: "round_number",
-	CreatedAt:   "created_at",
-	UpdatedAt:   "updated_at",
-	DeletedAt:   "deleted_at",
+	ID:                 "id",
+	Type:               "type",
+	Name:               "name",
+	StartedAt:          "started_at",
+	EndAt:              "end_at",
+	IsDaily:            "is_daily",
+	IsWeekly:           "is_weekly",
+	IsMonthly:          "is_monthly",
+	CustomDurationDays: "custom_duration_days",
+	Repeatable:         "repeatable",
+	NextRoundID:        "next_round_id",
+	RoundNumber:        "round_number",
+	CreatedAt:          "created_at",
+	UpdatedAt:          "updated_at",
+	DeletedAt:          "deleted_at",
 }
 
 var RoundTableColumns = struct {
-	ID          string
-	Type        string
-	Name        string
-	StartedAt   string
-	EndAt       string
-	LastForDays string
-	Repeatable  string
-	NextRoundID string
-	IsInit      string
-	RoundNumber string
-	CreatedAt   string
-	UpdatedAt   string
-	DeletedAt   string
+	ID                 string
+	Type               string
+	Name               string
+	StartedAt          string
+	EndAt              string
+	IsDaily            string
+	IsWeekly           string
+	IsMonthly          string
+	CustomDurationDays string
+	Repeatable         string
+	NextRoundID        string
+	RoundNumber        string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	ID:          "rounds.id",
-	Type:        "rounds.type",
-	Name:        "rounds.name",
-	StartedAt:   "rounds.started_at",
-	EndAt:       "rounds.end_at",
-	LastForDays: "rounds.last_for_days",
-	Repeatable:  "rounds.repeatable",
-	NextRoundID: "rounds.next_round_id",
-	IsInit:      "rounds.is_init",
-	RoundNumber: "rounds.round_number",
-	CreatedAt:   "rounds.created_at",
-	UpdatedAt:   "rounds.updated_at",
-	DeletedAt:   "rounds.deleted_at",
+	ID:                 "rounds.id",
+	Type:               "rounds.type",
+	Name:               "rounds.name",
+	StartedAt:          "rounds.started_at",
+	EndAt:              "rounds.end_at",
+	IsDaily:            "rounds.is_daily",
+	IsWeekly:           "rounds.is_weekly",
+	IsMonthly:          "rounds.is_monthly",
+	CustomDurationDays: "rounds.custom_duration_days",
+	Repeatable:         "rounds.repeatable",
+	NextRoundID:        "rounds.next_round_id",
+	RoundNumber:        "rounds.round_number",
+	CreatedAt:          "rounds.created_at",
+	UpdatedAt:          "rounds.updated_at",
+	DeletedAt:          "rounds.deleted_at",
 }
 
 // Generated where
 
 var RoundWhere = struct {
-	ID          whereHelperstring
-	Type        whereHelperstring
-	Name        whereHelperstring
-	StartedAt   whereHelpertime_Time
-	EndAt       whereHelpertime_Time
-	LastForDays whereHelperint
-	Repeatable  whereHelperbool
-	NextRoundID whereHelpernull_String
-	IsInit      whereHelperbool
-	RoundNumber whereHelperint
-	CreatedAt   whereHelpertime_Time
-	UpdatedAt   whereHelpertime_Time
-	DeletedAt   whereHelpernull_Time
+	ID                 whereHelperstring
+	Type               whereHelperstring
+	Name               whereHelperstring
+	StartedAt          whereHelpertime_Time
+	EndAt              whereHelpertime_Time
+	IsDaily            whereHelperbool
+	IsWeekly           whereHelperbool
+	IsMonthly          whereHelperbool
+	CustomDurationDays whereHelpernull_Int
+	Repeatable         whereHelperbool
+	NextRoundID        whereHelpernull_String
+	RoundNumber        whereHelperint
+	CreatedAt          whereHelpertime_Time
+	UpdatedAt          whereHelpertime_Time
+	DeletedAt          whereHelpernull_Time
 }{
-	ID:          whereHelperstring{field: "\"rounds\".\"id\""},
-	Type:        whereHelperstring{field: "\"rounds\".\"type\""},
-	Name:        whereHelperstring{field: "\"rounds\".\"name\""},
-	StartedAt:   whereHelpertime_Time{field: "\"rounds\".\"started_at\""},
-	EndAt:       whereHelpertime_Time{field: "\"rounds\".\"end_at\""},
-	LastForDays: whereHelperint{field: "\"rounds\".\"last_for_days\""},
-	Repeatable:  whereHelperbool{field: "\"rounds\".\"repeatable\""},
-	NextRoundID: whereHelpernull_String{field: "\"rounds\".\"next_round_id\""},
-	IsInit:      whereHelperbool{field: "\"rounds\".\"is_init\""},
-	RoundNumber: whereHelperint{field: "\"rounds\".\"round_number\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"rounds\".\"created_at\""},
-	UpdatedAt:   whereHelpertime_Time{field: "\"rounds\".\"updated_at\""},
-	DeletedAt:   whereHelpernull_Time{field: "\"rounds\".\"deleted_at\""},
+	ID:                 whereHelperstring{field: "\"rounds\".\"id\""},
+	Type:               whereHelperstring{field: "\"rounds\".\"type\""},
+	Name:               whereHelperstring{field: "\"rounds\".\"name\""},
+	StartedAt:          whereHelpertime_Time{field: "\"rounds\".\"started_at\""},
+	EndAt:              whereHelpertime_Time{field: "\"rounds\".\"end_at\""},
+	IsDaily:            whereHelperbool{field: "\"rounds\".\"is_daily\""},
+	IsWeekly:           whereHelperbool{field: "\"rounds\".\"is_weekly\""},
+	IsMonthly:          whereHelperbool{field: "\"rounds\".\"is_monthly\""},
+	CustomDurationDays: whereHelpernull_Int{field: "\"rounds\".\"custom_duration_days\""},
+	Repeatable:         whereHelperbool{field: "\"rounds\".\"repeatable\""},
+	NextRoundID:        whereHelpernull_String{field: "\"rounds\".\"next_round_id\""},
+	RoundNumber:        whereHelperint{field: "\"rounds\".\"round_number\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"rounds\".\"created_at\""},
+	UpdatedAt:          whereHelpertime_Time{field: "\"rounds\".\"updated_at\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"rounds\".\"deleted_at\""},
 }
 
 // RoundRels is where relationship names are stored.
@@ -160,9 +174,9 @@ func (*roundR) NewStruct() *roundR {
 type roundL struct{}
 
 var (
-	roundAllColumns            = []string{"id", "type", "name", "started_at", "end_at", "last_for_days", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
-	roundColumnsWithoutDefault = []string{"type", "name", "started_at", "end_at", "last_for_days"}
-	roundColumnsWithDefault    = []string{"id", "repeatable", "next_round_id", "is_init", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundAllColumns            = []string{"id", "type", "name", "started_at", "end_at", "is_daily", "is_weekly", "is_monthly", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundColumnsWithoutDefault = []string{"type", "name", "started_at", "end_at"}
+	roundColumnsWithDefault    = []string{"id", "is_daily", "is_weekly", "is_monthly", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundPrimaryKeyColumns     = []string{"id"}
 	roundGeneratedColumns      = []string{}
 )

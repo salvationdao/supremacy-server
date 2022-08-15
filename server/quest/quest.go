@@ -1,7 +1,9 @@
 package quest
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/null/v8"
@@ -27,9 +29,39 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest, blueprintQuest *boiler.BlueprintQuest) bool
 }
 
+const StagingQuestName = "Staging Quests"
+
 func New() (*System, error) {
 	q := &System{
 		playerQuestChan: make(chan *playerQuestCheck, 50),
+	}
+
+	// insert test quest if it is not prod env
+	if !server.IsProductionEnv() {
+		// check test quests exists
+		r, err := boiler.Rounds(
+			boiler.RoundWhere.Name.EQ(StagingQuestName),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Failed to load staging quest")
+		}
+
+		if r == nil {
+			now := time.Now()
+			r = &boiler.Round{
+				Type:               boiler.RoundTypeDailyQuest,
+				Name:               StagingQuestName,
+				StartedAt:          now,
+				EndAt:              now.AddDate(0, 0, 3), // default value
+				CustomDurationDays: null.IntFrom(3),
+				Repeatable:         true,
+				RoundNumber:        1,
+			}
+			err = r.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return nil, terror.Error(err, "Failed to insert staging quests.")
+			}
+		}
 	}
 
 	err := syncQuests()
@@ -225,7 +257,6 @@ func syncQuests() error {
 	}
 
 	for _, r := range rounds {
-
 		// track change flag
 		hasChanged = true
 
@@ -249,13 +280,26 @@ func syncQuests() error {
 
 			// regen new quests
 			newRound := &boiler.Round{
-				Type:        r.Type,
-				Name:        r.Name,
-				StartedAt:   now,
-				EndAt:       now.AddDate(0, 0, r.LastForDays),
-				LastForDays: r.LastForDays,
-				Repeatable:  r.Repeatable,
-				RoundNumber: r.RoundNumber + 1, // increment round number by one
+				Type:               r.Type,
+				Name:               r.Name,
+				StartedAt:          now,
+				EndAt:              now.AddDate(0, 0, 1), // default value
+				IsDaily:            r.IsDaily,
+				IsWeekly:           r.IsWeekly,
+				IsMonthly:          r.IsMonthly,
+				CustomDurationDays: r.CustomDurationDays,
+				Repeatable:         r.Repeatable,
+				RoundNumber:        r.RoundNumber + 1, // increment round number by one
+			}
+
+			if newRound.CustomDurationDays.Valid {
+				newRound.EndAt = now.AddDate(0, 0, newRound.CustomDurationDays.Int)
+			} else if newRound.IsDaily {
+				newRound.EndAt = now.AddDate(0, 0, 1)
+			} else if newRound.IsWeekly {
+				newRound.EndAt = now.AddDate(0, 0, 7)
+			} else if newRound.IsMonthly {
+				newRound.EndAt = now.AddDate(0, 1, 0)
 			}
 
 			err = newRound.Insert(tx, boil.Infer())
