@@ -1177,13 +1177,12 @@ func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Pl
 	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
 
 	//send through to zendesk
-	if fc.API.Config.Environment != "development" {
-		l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
-		_, err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
-		if err != nil {
-			l.Error().Err(err).Msg("unable send zendesk request.")
-			return terror.Error(err, genericErrorMessage)
-		}
+
+	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
+	_, err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report", fc.API.Config.Environment)
+	if err != nil {
+		l.Error().Err(err).Msg("unable send zendesk request.")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	//add user id to report metadata (cant report again)

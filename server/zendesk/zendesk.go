@@ -70,7 +70,12 @@ func NewZendesk(token, email, url, environment string) (*Zendesk, error) {
 	return z, nil
 }
 
-func (z *Zendesk) NewRequest(username, userID, subject, comment, service string) (int, error) {
+func (z *Zendesk) NewRequest(username, userID, subject, comment, service, environment string) (int, error) {
+	//if environemnt is dev, dont send to zendesk
+	if environment == "development" {
+		return http.StatusAccepted, nil
+	}
+
 	//organize data
 	request := &RequestObj{
 		Requester: Requester{
