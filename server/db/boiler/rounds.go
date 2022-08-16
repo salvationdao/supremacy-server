@@ -28,9 +28,7 @@ type Round struct {
 	Name               string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	StartedAt          time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
 	EndAt              time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
-	IsDaily            bool        `boiler:"is_daily" boil:"is_daily" json:"is_daily" toml:"is_daily" yaml:"is_daily"`
-	IsWeekly           bool        `boiler:"is_weekly" boil:"is_weekly" json:"is_weekly" toml:"is_weekly" yaml:"is_weekly"`
-	IsMonthly          bool        `boiler:"is_monthly" boil:"is_monthly" json:"is_monthly" toml:"is_monthly" yaml:"is_monthly"`
+	DurationType       string      `boiler:"duration_type" boil:"duration_type" json:"duration_type" toml:"duration_type" yaml:"duration_type"`
 	CustomDurationDays null.Int    `boiler:"custom_duration_days" boil:"custom_duration_days" json:"custom_duration_days,omitempty" toml:"custom_duration_days" yaml:"custom_duration_days,omitempty"`
 	Repeatable         bool        `boiler:"repeatable" boil:"repeatable" json:"repeatable" toml:"repeatable" yaml:"repeatable"`
 	NextRoundID        null.String `boiler:"next_round_id" boil:"next_round_id" json:"next_round_id,omitempty" toml:"next_round_id" yaml:"next_round_id,omitempty"`
@@ -49,9 +47,7 @@ var RoundColumns = struct {
 	Name               string
 	StartedAt          string
 	EndAt              string
-	IsDaily            string
-	IsWeekly           string
-	IsMonthly          string
+	DurationType       string
 	CustomDurationDays string
 	Repeatable         string
 	NextRoundID        string
@@ -65,9 +61,7 @@ var RoundColumns = struct {
 	Name:               "name",
 	StartedAt:          "started_at",
 	EndAt:              "end_at",
-	IsDaily:            "is_daily",
-	IsWeekly:           "is_weekly",
-	IsMonthly:          "is_monthly",
+	DurationType:       "duration_type",
 	CustomDurationDays: "custom_duration_days",
 	Repeatable:         "repeatable",
 	NextRoundID:        "next_round_id",
@@ -83,9 +77,7 @@ var RoundTableColumns = struct {
 	Name               string
 	StartedAt          string
 	EndAt              string
-	IsDaily            string
-	IsWeekly           string
-	IsMonthly          string
+	DurationType       string
 	CustomDurationDays string
 	Repeatable         string
 	NextRoundID        string
@@ -99,9 +91,7 @@ var RoundTableColumns = struct {
 	Name:               "rounds.name",
 	StartedAt:          "rounds.started_at",
 	EndAt:              "rounds.end_at",
-	IsDaily:            "rounds.is_daily",
-	IsWeekly:           "rounds.is_weekly",
-	IsMonthly:          "rounds.is_monthly",
+	DurationType:       "rounds.duration_type",
 	CustomDurationDays: "rounds.custom_duration_days",
 	Repeatable:         "rounds.repeatable",
 	NextRoundID:        "rounds.next_round_id",
@@ -119,9 +109,7 @@ var RoundWhere = struct {
 	Name               whereHelperstring
 	StartedAt          whereHelpertime_Time
 	EndAt              whereHelpertime_Time
-	IsDaily            whereHelperbool
-	IsWeekly           whereHelperbool
-	IsMonthly          whereHelperbool
+	DurationType       whereHelperstring
 	CustomDurationDays whereHelpernull_Int
 	Repeatable         whereHelperbool
 	NextRoundID        whereHelpernull_String
@@ -135,9 +123,7 @@ var RoundWhere = struct {
 	Name:               whereHelperstring{field: "\"rounds\".\"name\""},
 	StartedAt:          whereHelpertime_Time{field: "\"rounds\".\"started_at\""},
 	EndAt:              whereHelpertime_Time{field: "\"rounds\".\"end_at\""},
-	IsDaily:            whereHelperbool{field: "\"rounds\".\"is_daily\""},
-	IsWeekly:           whereHelperbool{field: "\"rounds\".\"is_weekly\""},
-	IsMonthly:          whereHelperbool{field: "\"rounds\".\"is_monthly\""},
+	DurationType:       whereHelperstring{field: "\"rounds\".\"duration_type\""},
 	CustomDurationDays: whereHelpernull_Int{field: "\"rounds\".\"custom_duration_days\""},
 	Repeatable:         whereHelperbool{field: "\"rounds\".\"repeatable\""},
 	NextRoundID:        whereHelpernull_String{field: "\"rounds\".\"next_round_id\""},
@@ -174,9 +160,9 @@ func (*roundR) NewStruct() *roundR {
 type roundL struct{}
 
 var (
-	roundAllColumns            = []string{"id", "type", "name", "started_at", "end_at", "is_daily", "is_weekly", "is_monthly", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
-	roundColumnsWithoutDefault = []string{"type", "name", "started_at", "end_at"}
-	roundColumnsWithDefault    = []string{"id", "is_daily", "is_weekly", "is_monthly", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundAllColumns            = []string{"id", "type", "name", "started_at", "end_at", "duration_type", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
+	roundColumnsWithoutDefault = []string{"type", "name", "started_at", "end_at", "duration_type"}
+	roundColumnsWithDefault    = []string{"id", "custom_duration_days", "repeatable", "next_round_id", "round_number", "created_at", "updated_at", "deleted_at"}
 	roundPrimaryKeyColumns     = []string{"id"}
 	roundGeneratedColumns      = []string{}
 )

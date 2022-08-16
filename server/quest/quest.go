@@ -53,6 +53,7 @@ func New() (*System, error) {
 				Name:               StagingQuestName,
 				StartedAt:          now,
 				EndAt:              now.AddDate(0, 0, 3), // default value
+				DurationType:       boiler.RoundDurationTypeCustom,
 				CustomDurationDays: null.IntFrom(3),
 				Repeatable:         true,
 				RoundNumber:        1,
@@ -88,7 +89,7 @@ func (q *System) Run() {
 			l := gamelog.L.With().Str("quest key", pqc.questKey).Str("player id", pqc.playerID).Logger()
 			// get all the ability related quests
 			pqs, err := boiler.Quests(
-				boiler.QuestWhere.ExpiresAt.IsNull(),
+				boiler.QuestWhere.ExpiredAt.IsNull(),
 				qm.InnerJoin(
 					fmt.Sprintf(
 						"%s ON %s = %s AND %s = ?",
@@ -271,7 +272,7 @@ func syncQuests() error {
 
 			// update old quests' expiry
 			if r.R != nil && r.R.Quests != nil {
-				_, err = r.R.Quests.UpdateAll(tx, boiler.M{boiler.QuestColumns.ExpiresAt: null.TimeFrom(now)})
+				_, err = r.R.Quests.UpdateAll(tx, boiler.M{boiler.QuestColumns.ExpiredAt: null.TimeFrom(now)})
 				if err != nil {
 					l.Error().Err(err).Interface("quests", r.R.Quests).Msg("Failed to update quests expiry.")
 					return terror.Error(err, "Failed to update quests expiry.")
@@ -284,22 +285,28 @@ func syncQuests() error {
 				Name:               r.Name,
 				StartedAt:          now,
 				EndAt:              now.AddDate(0, 0, 1), // default value
-				IsDaily:            r.IsDaily,
-				IsWeekly:           r.IsWeekly,
-				IsMonthly:          r.IsMonthly,
+				DurationType:       r.DurationType,
 				CustomDurationDays: r.CustomDurationDays,
 				Repeatable:         r.Repeatable,
 				RoundNumber:        r.RoundNumber + 1, // increment round number by one
 			}
 
-			if newRound.CustomDurationDays.Valid {
-				newRound.EndAt = now.AddDate(0, 0, newRound.CustomDurationDays.Int)
-			} else if newRound.IsDaily {
+			switch newRound.DurationType {
+			case boiler.RoundDurationTypeDaily:
 				newRound.EndAt = now.AddDate(0, 0, 1)
-			} else if newRound.IsWeekly {
+
+			case boiler.RoundDurationTypeWeekly:
 				newRound.EndAt = now.AddDate(0, 0, 7)
-			} else if newRound.IsMonthly {
+
+			case boiler.RoundDurationTypeMonthly:
 				newRound.EndAt = now.AddDate(0, 1, 0)
+
+			case boiler.RoundDurationTypeCustom:
+				if newRound.CustomDurationDays.Valid {
+					newRound.EndAt = now.AddDate(0, 0, newRound.CustomDurationDays.Int)
+				} else {
+					l.Warn().Interface("round", newRound).Msg("Missing custom duration days field.")
+				}
 			}
 
 			err = newRound.Insert(tx, boil.Infer())

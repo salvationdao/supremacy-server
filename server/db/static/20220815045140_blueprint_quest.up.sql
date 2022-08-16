@@ -17,3 +17,5 @@ CREATE TABLE IF NOT EXISTS blueprint_quests
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at     TIMESTAMPTZ
 );
+
+CREATE INDEX idx_blueprint_quest_round_type ON blueprint_quests (round_type);

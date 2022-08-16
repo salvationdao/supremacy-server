@@ -26,7 +26,7 @@ type Quest struct {
 	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	RoundID     string    `boiler:"round_id" boil:"round_id" json:"round_id" toml:"round_id" yaml:"round_id"`
 	BlueprintID string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	ExpiresAt   null.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
+	ExpiredAt   null.Time `boiler:"expired_at" boil:"expired_at" json:"expired_at,omitempty" toml:"expired_at" yaml:"expired_at,omitempty"`
 	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -39,7 +39,7 @@ var QuestColumns = struct {
 	ID          string
 	RoundID     string
 	BlueprintID string
-	ExpiresAt   string
+	ExpiredAt   string
 	CreatedAt   string
 	UpdatedAt   string
 	DeletedAt   string
@@ -47,7 +47,7 @@ var QuestColumns = struct {
 	ID:          "id",
 	RoundID:     "round_id",
 	BlueprintID: "blueprint_id",
-	ExpiresAt:   "expires_at",
+	ExpiredAt:   "expired_at",
 	CreatedAt:   "created_at",
 	UpdatedAt:   "updated_at",
 	DeletedAt:   "deleted_at",
@@ -57,7 +57,7 @@ var QuestTableColumns = struct {
 	ID          string
 	RoundID     string
 	BlueprintID string
-	ExpiresAt   string
+	ExpiredAt   string
 	CreatedAt   string
 	UpdatedAt   string
 	DeletedAt   string
@@ -65,7 +65,7 @@ var QuestTableColumns = struct {
 	ID:          "quests.id",
 	RoundID:     "quests.round_id",
 	BlueprintID: "quests.blueprint_id",
-	ExpiresAt:   "quests.expires_at",
+	ExpiredAt:   "quests.expired_at",
 	CreatedAt:   "quests.created_at",
 	UpdatedAt:   "quests.updated_at",
 	DeletedAt:   "quests.deleted_at",
@@ -77,7 +77,7 @@ var QuestWhere = struct {
 	ID          whereHelperstring
 	RoundID     whereHelperstring
 	BlueprintID whereHelperstring
-	ExpiresAt   whereHelpernull_Time
+	ExpiredAt   whereHelpernull_Time
 	CreatedAt   whereHelpertime_Time
 	UpdatedAt   whereHelpertime_Time
 	DeletedAt   whereHelpernull_Time
@@ -85,7 +85,7 @@ var QuestWhere = struct {
 	ID:          whereHelperstring{field: "\"quests\".\"id\""},
 	RoundID:     whereHelperstring{field: "\"quests\".\"round_id\""},
 	BlueprintID: whereHelperstring{field: "\"quests\".\"blueprint_id\""},
-	ExpiresAt:   whereHelpernull_Time{field: "\"quests\".\"expires_at\""},
+	ExpiredAt:   whereHelpernull_Time{field: "\"quests\".\"expired_at\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"quests\".\"created_at\""},
 	UpdatedAt:   whereHelpertime_Time{field: "\"quests\".\"updated_at\""},
 	DeletedAt:   whereHelpernull_Time{field: "\"quests\".\"deleted_at\""},
@@ -118,9 +118,9 @@ func (*questR) NewStruct() *questR {
 type questL struct{}
 
 var (
-	questAllColumns            = []string{"id", "round_id", "blueprint_id", "expires_at", "created_at", "updated_at", "deleted_at"}
+	questAllColumns            = []string{"id", "round_id", "blueprint_id", "expired_at", "created_at", "updated_at", "deleted_at"}
 	questColumnsWithoutDefault = []string{"round_id", "blueprint_id"}
-	questColumnsWithDefault    = []string{"id", "expires_at", "created_at", "updated_at", "deleted_at"}
+	questColumnsWithDefault    = []string{"id", "expired_at", "created_at", "updated_at", "deleted_at"}
 	questPrimaryKeyColumns     = []string{"id"}
 	questGeneratedColumns      = []string{}
 )

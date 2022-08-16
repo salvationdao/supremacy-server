@@ -413,7 +413,7 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 			fmt.Sprintf(
 				"(SELECT * FROM %[1]s WHERE %[2]s ISNULL AND %[3]s ISNULL) %[1]s",
 				boiler.TableNames.Quests,
-				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ExpiresAt),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ExpiredAt),
 				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.DeletedAt),
 			),
 		),
@@ -478,7 +478,7 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 	l := gamelog.L.With().Str("player id", playerID).Str("func name", "PlayerQuestProgressions").Logger()
 	// get all the available quests
 	quests, err := boiler.Quests(
-		boiler.QuestWhere.ExpiresAt.IsNull(),
+		boiler.QuestWhere.ExpiredAt.IsNull(),
 		qm.Load(
 			boiler.QuestRels.ObtainedQuestPlayersObtainedQuests,
 			boiler.PlayersObtainedQuestWhere.PlayerID.EQ(playerID),

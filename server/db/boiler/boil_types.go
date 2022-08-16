@@ -285,6 +285,14 @@ const (
 	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
 )
 
+// Enum values for RoundDurationType
+const (
+	RoundDurationTypeDaily   = "daily"
+	RoundDurationTypeWeekly  = "weekly"
+	RoundDurationTypeMonthly = "monthly"
+	RoundDurationTypeCustom  = "custom"
+)
+
 // Enum values for SyndicateElectionType
 const (
 	SyndicateElectionTypeADMIN = "ADMIN"
