@@ -41,7 +41,6 @@ const (
 )
 
 type Battle struct {
-	arenaID                string
 	arena                  *Arena
 	stage                  *atomic.Int32
 	BattleID               string        `json:"battleID"`
@@ -1364,7 +1363,7 @@ const HubKeyBattleAISpawned = "BATTLE:AI:SPAWNED:SUBSCRIBE"
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
-	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/game_settings", btl.arenaID), HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/game_settings", btl.ArenaID), HubKeyGameSettingsUpdated, GameSettingsPayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -1537,7 +1536,7 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
-		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.arenaID), HubKeyMinimapUpdatesSubscribe, minimapUpdates)
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
 }
 

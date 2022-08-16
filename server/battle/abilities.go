@@ -286,7 +286,7 @@ type AbilityConfig struct {
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// initialise new gabs ability pool
 	as := &AbilitiesSystem{
-		arenaID:   battle.arenaID,
+		arenaID:   battle.ArenaID,
 		_battle:   battle,
 		startedAt: time.Now(),
 		BattleAbilityPool: &AbilityPool{

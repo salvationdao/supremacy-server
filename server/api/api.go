@@ -711,7 +711,7 @@ func (api *API) debounceSendingViewerCount() {
 		select {
 		case <-api.ViewerUpdateChan:
 			timer.Reset(interval)
-		case <-ws.ClientOfflineChan:
+		case <-ws.ClientDisconnectedChan:
 			timer.Reset(interval)
 		case <-timer.C:
 			// get user ids from ws connection

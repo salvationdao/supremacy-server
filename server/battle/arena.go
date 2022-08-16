@@ -303,6 +303,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		SystemBanManager:         am.SystemBanManager,
 		SystemMessagingManager:   am.SystemMessagingManager,
 		NewBattleChan:            am.NewBattleChan,
+		QuestManager:             am.QuestManager,
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -1312,7 +1313,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			err = btl.setBattleQueue()
 			if err != nil {
-				L.Error().Msg("battle start load out has failed")
+				L.Error().Err(err).Msg("battle start load out has failed")
 				return
 			}
 
@@ -1440,6 +1441,7 @@ func (arena *Arena) beginBattle() {
 
 	// query last battle
 	lastBattle, err := boiler.Battles(
+		boiler.BattleWhere.ArenaID.EQ(arena.ID),
 		qm.OrderBy("battle_number DESC"), qm.Limit(1),
 		qm.Load(
 			boiler.BattleRels.GameMap,
@@ -1451,13 +1453,14 @@ func (arena *Arena) beginBattle() {
 	}
 
 	// if last battle is ended or does not exist, create a new battle
-	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) || lastBattle.EndedAt.Valid {
+	if lastBattle == nil || lastBattle.EndedAt.Valid {
 
 		battleID = uuid.Must(uuid.NewV4()).String()
 		battle = &boiler.Battle{
 			ID:        battleID,
 			GameMapID: gameMap.ID.String(),
 			StartedAt: time.Now(),
+			ArenaID:   arena.ID,
 		}
 
 		if lastBattle != nil {
@@ -1477,7 +1480,6 @@ func (arena *Arena) beginBattle() {
 	}
 
 	btl := &Battle{
-		arenaID:                arena.ID,
 		arena:                  arena,
 		MapName:                gameMap.Name,
 		gameMap:                gameMap,
@@ -1617,14 +1619,14 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 			return terror.Error(err, "Failed to update mech move command")
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.arenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 		})
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
 		if err == nil && mmmc != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.arenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 				MechMoveCommandLog: &boiler.MechMoveCommandLog{
 					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 					BattleID:      mmmc.BattleID,
