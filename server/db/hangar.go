@@ -38,7 +38,6 @@ type SiloSkin struct {
 }
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
-	boil.DebugMode = true
 	q := []qm.QueryMod{
 		qm.Select(fmt.Sprintf(`
 				distinct on (%[1]s) %[1]s as skin_id,
@@ -83,7 +82,6 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		}
 		return nil, terror.Error(err, "failed to query for finding silos")
 	}
-	boil.DebugMode = false
 
 	mechSiloType := make([]*SiloType, 0)
 	defer rows.Close()
