@@ -147,7 +147,6 @@ func (q *System) Run() {
 					err = playerQuestGrant(pqc.playerID, pq.ID)
 					if err != nil {
 						l.Error().Err(err).Str("quest id", pq.ID).Msg("Failed to grant player quest.")
-						return
 					}
 				}
 			}
@@ -417,9 +416,57 @@ func playerQuestGrant(playerID string, questID string) error {
 		ObtainedQuestID: questID,
 	}
 
-	err := poq.Upsert(gamedb.StdConn, false, nil, boil.Columns{}, boil.Infer())
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed complete quest")
+	}
+	defer tx.Rollback()
+
+	err = poq.Upsert(tx, false, nil, boil.Columns{}, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to upsert player")
+	}
+
+	// reward mini mech for quest completion
+	miniMechBlueprint, err := boiler.BlueprintPlayerAbilities(
+		boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(18), // TODO: when player abilities are in static data, use ID instead
+		).One(tx)
+	if err != nil {
+		return terror.Error(err, "Failed to get mini mech reward player")
+	}
+	// Update player ability count
+	pa, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(miniMechBlueprint.ID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(playerID),
+	).One(tx)
+	if errors.Is(err, sql.ErrNoRows) {
+		pa = &boiler.PlayerAbility{
+			OwnerID:         playerID,
+			BlueprintID:     miniMechBlueprint.ID,
+			LastPurchasedAt: time.Now(),
+		}
+
+		err = pa.Insert(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to get mini mech reward player")
+		}
+	} else if err != nil {
+		return terror.Error(err, "Failed to get mini mech reward player")
+	}
+
+	pa.Count = pa.Count + 1
+
+	inventoryLimit := miniMechBlueprint.InventoryLimit
+	if pa.Count <= inventoryLimit {
+		_, err = pa.Update(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to get mini mech reward player")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed complete quest")
 	}
 
 	playerQuestStat, err := db.PlayerQuestStatGet(playerID)
