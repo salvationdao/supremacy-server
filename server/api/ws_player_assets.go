@@ -377,7 +377,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	mechSkin, err := boiler.MechModelSkinCompatibilities(
 		boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ModelID),
 		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(mech.R.ChassisSkin.BlueprintID),
-		).One(gamedb.StdConn)
+	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load mech info")
 	}
@@ -395,6 +395,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 				ImageURL:  mechSkin.ImageURL,
 			},
 		},
+	}
+
+	if mech.R.Blueprint != nil && mech.R.Blueprint.R.Model != nil {
+		model := mech.R.Blueprint.R.Model
+		m.Model = &server.MechModel{
+			ID:           model.ID,
+			Label:        model.Label,
+			RepairBlocks: model.RepairBlocks,
+		}
 	}
 
 	reply(m)
@@ -914,7 +923,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 		weaponSkinBlueprints, err := db.BlueprintWeaponSkins(blueprintWeaponSkins)
 		if err != nil {
 			crateRollback()
- 			gamelog.L.Error().Err(err).Msg("failed BlueprintWeaponSkins")
+			gamelog.L.Error().Err(err).Msg("failed BlueprintWeaponSkins")
 			return terror.Error(err, "Could not get weapon blueprint during crate opening, try again or contact support.")
 		}
 

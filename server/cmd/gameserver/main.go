@@ -18,6 +18,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
+	"server/quest"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
@@ -372,6 +373,12 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					qm, err := quest.New()
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
@@ -381,6 +388,7 @@ func main() {
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						QuestManager:             qm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -396,7 +404,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL,qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -745,6 +753,7 @@ func SetupAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
+	questManager *quest.System,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -802,7 +811,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager)
 	if err != nil {
 		return nil, err
 	}

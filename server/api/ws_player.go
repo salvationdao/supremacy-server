@@ -1415,3 +1415,28 @@ func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Pl
 	reply(resp)
 	return nil
 }
+
+// PlayerQuestStat return current player quest progression
+func (pc *PlayerController) PlayerQuestStat(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pqs, err := db.PlayerQuestStatGet(user.ID)
+	if err != nil {
+		return err
+	}
+
+	reply(pqs)
+
+	return nil
+}
+
+// PlayerQuestProgressions return current player quest progression
+func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "PlayerQuestProgressions").Logger()
+	result, err := db.PlayerQuestProgressions(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load player quest progressions.")
+		return err
+	}
+	reply(result)
+
+	return nil
+}
