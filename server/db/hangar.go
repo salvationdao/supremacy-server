@@ -38,32 +38,52 @@ type SiloSkin struct {
 }
 
 func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
-	q := `
-	SELECT
-    distinct on ( ms.blueprint_id) ms.blueprint_id as skin_id,
-                                   ci.item_type    as type,
-                                   ci.id           as ownership_id,
-                                   m.model_id  	as static_id
-	FROM collection_items ci
-         INNER JOIN mechs m on
-        	m.id = ci.item_id
-         INNER JOIN mech_skin ms on
-        	ms.id = coalesce(
-            	m.chassis_skin_id,
-            	(select default_chassis_skin_id from mech_models mm where mm.id = m.model_id)
-        	)
-	WHERE ci.owner_id = $1
-  	AND ci.item_type = 'mech'
-  	AND ci.xsyn_locked=false
-	ORDER BY ms.blueprint_id, m.genesis_token_id NULLS FIRST, m.limited_release_token_id NULLS FIRST;
-	`
-	rows, err := boiler.NewQuery(qm.SQL(q, userID)).Query(gamedb.StdConn)
+	boil.DebugMode = true
+	q := []qm.QueryMod{
+		qm.Select(fmt.Sprintf(`
+				distinct on (%[1]s) %[1]s as skin_id,
+                                    %s    as type,
+                                    %s           as ownership_id,
+                                    %s      as static_id
+		`,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID)),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.MechSkin,
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+		)),
+		boiler.CollectionItemWhere.OwnerID.EQ(userID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.XsynLocked.EQ(false),
+		qm.OrderBy(fmt.Sprintf("%s, %s NULLS FIRST, %s NULLS FIRST",
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
+		)),
+	}
+	rows, err := boiler.NewQuery(q...).Query(gamedb.StdConn)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return []*SiloType{}, nil
 		}
 		return nil, terror.Error(err, "failed to query for finding silos")
 	}
+	boil.DebugMode = false
 
 	mechSiloType := make([]*SiloType, 0)
 	defer rows.Close()
