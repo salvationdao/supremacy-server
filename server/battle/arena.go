@@ -537,25 +537,6 @@ func (am *ArenaManager) WarMachineDestroyedDetail(mechID string) *WMDestroyedRec
 	return nil
 }
 
-// return a copy of current battle user list
-func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
-	arena.RLock()
-	defer arena.RUnlock()
-	if arena._currentBattle == nil {
-		return nil
-	}
-
-	// copy current user map to list
-	battleUsers := []*BattleUser{}
-	arena._currentBattle.users.RLock()
-	for _, bu := range arena._currentBattle.users.m {
-		battleUsers = append(battleUsers, bu)
-	}
-	arena._currentBattle.users.RUnlock()
-
-	return battleUsers
-}
-
 type MessageType byte
 
 // NetMessageTypes
@@ -1073,9 +1054,13 @@ type WarMachineStat struct {
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
 // WarMachineStatSubscribe subscribe on bribing stage change
-func (arena *Arena) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	slotNumber := cctx.URLParam("slotNumber")
+func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	slotNumber := chi.RouteContext(ctx).URLParam("slotNumber")
 	if slotNumber == "" {
 		return fmt.Errorf("slot number is required")
 	}
@@ -1492,19 +1477,15 @@ func (arena *Arena) beginBattle() {
 	}
 
 	btl := &Battle{
-		arenaID:  arena.ID,
-		arena:    arena,
-		MapName:  gameMap.Name,
-		gameMap:  gameMap,
-		BattleID: battleID,
-		Battle:   battle,
-		inserted: inserted,
-		stage:    atomic.NewInt32(BattleStageStart),
-		users: usersMap{
-			m: make(map[uuid.UUID]*BattleUser),
-		},
+		arenaID:                arena.ID,
+		arena:                  arena,
+		MapName:                gameMap.Name,
+		gameMap:                gameMap,
+		BattleID:               battleID,
+		Battle:                 battle,
+		inserted:               inserted,
+		stage:                  atomic.NewInt32(BattleStageStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
-		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
@@ -1515,11 +1496,6 @@ func (arena *Arena) beginBattle() {
 	}
 
 	// order the mechs by faction id
-
-	// set user online debounce
-	go btl.debounceSendingViewerCount(func(result ViewerLiveCount, btl *Battle) {
-		ws.PublishMessage("/public/live_data", HubKeyViewerLiveCountUpdated, result)
-	})
 
 	arena.storeCurrentBattle(btl)
 	arena.Message(BATTLEINIT, btl)

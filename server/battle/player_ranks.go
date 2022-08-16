@@ -71,7 +71,7 @@ func (am *ArenaManager) PlayerRankUpdater() {
 					defer wg.Done()
 
 					// broadcast stat
-					ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyPlayerRankGet, player.Rank)
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyPlayerRankGet, player.Rank)
 
 					// broadcast user stat (player_last_seven_days_kills)
 					us, err := db.UserStatsGet(player.ID)
@@ -80,7 +80,7 @@ func (am *ArenaManager) PlayerRankUpdater() {
 					}
 
 					if us != nil {
-						ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
+						ws.PublishMessage(fmt.Sprintf("/secure/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
 					}
 				}(player)
 			}

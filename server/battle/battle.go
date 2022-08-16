@@ -55,7 +55,6 @@ type Battle struct {
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
 	_abilities             *AbilitiesSystem
-	users                  usersMap
 	factions               map[uuid.UUID]*boiler.Faction
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
@@ -68,7 +67,6 @@ type Battle struct {
 
 	inserted bool
 
-	viewerCountInputChan chan *ViewerLiveCount
 	deadlock.RWMutex
 }
 
@@ -150,16 +148,6 @@ func (btl *Battle) setBattleQueue() error {
 
 	gamelog.L.Debug().Msg("Inserted battle into db")
 	btl.inserted = true
-
-	// insert current users to
-	btl.users.Range(func(user *BattleUser) bool {
-		err = db.BattleViewerUpsert(btl.ID, user.ID.String())
-		if err != nil {
-			l.Error().Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
-			return true
-		}
-		return true
-	})
 
 	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
 	if err != nil {
@@ -400,11 +388,6 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 		X: wm.X,
 		Y: wm.Y,
 	}
-}
-
-func (btl *Battle) isOnline(userID uuid.UUID) bool {
-	_, ok := btl.users.User(userID)
-	return ok
 }
 
 func (btl *Battle) endAbilities() {
@@ -970,7 +953,7 @@ func (btl *Battle) RewardPlayerAbility(playerIDs []string) []*PlayerReward {
 				gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
 				break
 			}
-			ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", pid), server.HubKeySystemMessageListUpdatedSubscribe, true)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", pid), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
 			continue
 		}
@@ -1264,7 +1247,7 @@ func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []
 			gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
 			break
 		}
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", prr.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", prr.PlayerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 
 	endInfo.MechRewards = mechRewardRecords
@@ -1331,91 +1314,6 @@ type GameSettingsResponse struct {
 	WarMachineLocation []byte             `json:"war_machine_location"`
 	BattleIdentifier   int                `json:"battle_identifier"`
 	AbilityDetails     []*AbilityDetail   `json:"ability_details"`
-}
-
-type ViewerLiveCount struct {
-	RedMountain int64 `json:"red_mountain"`
-	Boston      int64 `json:"boston"`
-	Zaibatsu    int64 `json:"zaibatsu"`
-	Other       int64 `json:"other"`
-}
-
-func (btl *Battle) UserOnline(user *BattleUser) *ViewerLiveCount {
-	_, ok := btl.users.User(user.ID)
-	if !ok {
-		btl.users.Add(user)
-	}
-
-	if btl.inserted {
-		err := db.BattleViewerUpsert(btl.ID, user.ID.String())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Str("battle_id", btl.ID).
-				Str("player_id", user.ID.String()).
-				Err(err).
-				Msg("could not upsert battle viewer")
-		}
-	}
-
-	resp := &ViewerLiveCount{
-		RedMountain: 0,
-		Boston:      0,
-		Zaibatsu:    0,
-		Other:       0,
-	}
-
-	// TODO: optimise at some point
-	btl.users.Range(func(user *BattleUser) bool {
-		if faction, ok := FactionNames[user.FactionID]; ok {
-			switch faction {
-			case "RedMountain":
-				resp.RedMountain++
-			case "Boston":
-				resp.Boston++
-			case "Zaibatsu":
-				resp.Zaibatsu++
-			default:
-				resp.Other++
-			}
-		} else {
-			resp.Other++
-		}
-		return true
-	})
-
-	btl.viewerCountInputChan <- resp
-
-	return resp
-}
-
-func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, btl *Battle)) {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the debounceSendingViewerCount!", r)
-		}
-	}()
-
-	var result *ViewerLiveCount
-	interval := 500 * time.Millisecond
-	timer := time.NewTimer(interval)
-	checker := time.NewTicker(1 * time.Second)
-	for {
-		select {
-		case result = <-btl.viewerCountInputChan:
-			timer.Reset(interval)
-		case <-timer.C:
-			if result != nil {
-				cb(*result, btl)
-			}
-		case <-checker.C:
-			if btl != btl.arena.CurrentBattle() {
-				timer.Stop()
-				checker.Stop()
-				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
-				return
-			}
-		}
-	}
 }
 
 func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
@@ -1724,26 +1622,26 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 						}
 
-					if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
-						// killed a war machine
-						msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-						err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
-						if err != nil {
-							gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+						if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
+							// killed a war machine
+							msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
+							err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+							}
 						}
 					}
+					break
 				}
-				break
 			}
-		}
-	} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-		// check related event id
-		var abl *boiler.BattleAbilityTrigger
-		var err error
-		retAbl := func() (*boiler.BattleAbilityTrigger, error) {
-			abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
-			return abl, err
-		}
+		} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+			// check related event id
+			var abl *boiler.BattleAbilityTrigger
+			var err error
+			retAbl := func() (*boiler.BattleAbilityTrigger, error) {
+				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
+				return abl, err
+			}
 
 			retries := 0
 			for abl == nil {
@@ -1833,7 +1731,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
 				}
 				if us != nil {
-					ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
 				}
 			}
 
@@ -1885,26 +1783,26 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
 			}
 
-		err = bh.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Warn().
-				Interface("event_data", bh).
-				Str("battle_id", btl.ID).
-				Err(err).
-				Msg("unable to store mech event data")
-		}
+			err = bh.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().
+					Interface("event_data", bh).
+					Str("battle_id", btl.ID).
+					Err(err).
+					Msg("unable to store mech event data")
+			}
 
-		// check player obtain mech kill quest
-		if killByWarMachine != nil {
-			btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
-		}
+			// check player obtain mech kill quest
+			if killByWarMachine != nil {
+				btl.arena.QuestManager.MechKillQuestCheck(killByWarMachine.OwnedByID)
+			}
 
-		// check player obtain ability kill quest, if it is not a team kill
-		if killedByUser != nil && destroyedWarMachine.FactionID != killedByUser.FactionID {
-			// check player quest reward
-			btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
+			// check player obtain ability kill quest, if it is not a team kill
+			if killedByUser != nil && destroyedWarMachine.FactionID != killedByUser.FactionID {
+				// check player quest reward
+				btl.arena.QuestManager.AbilityKillQuestCheck(killedByUser.ID.String())
+			}
 		}
-	}
 
 		_, err = db.UpdateKilledBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, killByWarMachineID)
 		if err != nil {

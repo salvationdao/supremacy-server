@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -180,7 +179,7 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to commit db transaction")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	reply(true)
 
@@ -973,6 +972,9 @@ func (pc *PlayerController) GlobalActivePlayersSubscribeHandler(ctx context.Cont
 }
 
 func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	// pass viewer update
+	pc.API.ViewerUpdateChan <- true
+
 	// broadcast player
 	features, err := db.GetPlayerFeaturesByID(user.ID)
 	if err != nil {
@@ -990,7 +992,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	if us != nil {
-		ws.PublishMessage(fmt.Sprintf("/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/stat", user.ID), server.HubKeyUserStatSubscribe, us)
 	}
 
 	// broadcast player punishment list
@@ -1023,7 +1025,7 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	}
 
 	// send to the player
-	ws.PublishMessage(fmt.Sprintf("/user/%s/punishment_list", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/punishment_list", user.ID), HubKeyPlayerPunishmentList, playerPunishments)
 
 	return nil
 }
@@ -1062,29 +1064,39 @@ func (pc *PlayerController) PlayerRankGet(ctx context.Context, user *boiler.Play
 
 const HubKeyGameUserOnline = "GAME:ONLINE"
 
+// TODO: update frontend
+type UserOnlineRequest struct {
+	Payload struct {
+		ArenaID string `json:"arena_id"`
+	} `json:"payload"`
+}
+
 func (pc *PlayerController) UserOnline(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	if pc.API.BattleArena.CurrentBattle() == nil {
+	req := &UserOnlineRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := pc.API.ArenaManager.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	btl := arena.CurrentBattle()
+	if btl == nil {
 		return nil
 	}
-	uID, err := uuid.FromString(user.ID)
-	if uID.IsNil() || err != nil {
-		gamelog.L.Error().Str("uuid", user.ID).Err(err).Msg("invalid input data")
-		return fmt.Errorf("unable to construct user uuid")
-	}
-	userID := server.UserID(uID)
 
-	// TODO: handle faction swap from non-faction to faction
-	if !user.FactionID.Valid {
-		return nil
+	err = db.BattleViewerUpsert(btl.ID, user.ID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("battle_id", btl.ID).
+			Str("player_id", user.ID).
+			Err(err).
+			Msg("could not upsert battle viewer")
+		return terror.Error(err, "Failed to record battle viewer.")
 	}
-
-	battleUser := &battle.BattleUser{
-		ID:        uuid.FromStringOrNil(userID.String()),
-		Username:  user.Username.String,
-		FactionID: user.FactionID.String,
-	}
-
-	reply(pc.API.BattleArena.CurrentBattle().UserOnline(battleUser))
 
 	return nil
 }

@@ -355,7 +355,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		}
 
 		for _, ba := range bao {
-			ws.PublishMessage(fmt.Sprintf("/user/%s/battle_ability/check_opt_in", ba.PlayerID), HubKeyBattleAbilityOptInCheck, false)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/battle_ability/check_opt_in", ba.PlayerID), HubKeyBattleAbilityOptInCheck, false)
 		}
 
 	}(offeringID)
@@ -559,7 +559,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// assign ability user
 				as.BattleAbilityPool.LocationDeciders.rangeSelectors(func(playerID string) {
-					ws.PublishMessage(fmt.Sprintf("/user/%s", playerID), HubKeyBribingWinnerSubscribe, struct {
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s", playerID), HubKeyBribingWinnerSubscribe, struct {
 						GameAbility *boiler.GameAbility `json:"game_ability"`
 						EndTime     time.Time           `json:"end_time"`
 					}{

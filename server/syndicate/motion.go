@@ -1427,7 +1427,7 @@ func (sm *Motion) removeMember() {
 		gamelog.L.Error().Str("player id", player.ID).Err(err).Msg("Failed to update player syndicate id in db")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyUserSubscribe, player)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, player)
 }
 
 func (sm *Motion) appointCommittee() {

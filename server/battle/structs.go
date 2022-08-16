@@ -8,63 +8,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type usersMap struct {
-	deadlock.RWMutex
-	m map[uuid.UUID]*BattleUser
-}
-
-func (u *usersMap) Add(bu *BattleUser) {
-	u.Lock()
-	u.m[bu.ID] = bu
-	u.Unlock()
-}
-
-func (u *usersMap) Range(fn func(user *BattleUser) bool) {
-	u.RLock()
-	for _, user := range u.m {
-		if !fn(user) {
-			break
-		}
-	}
-	u.RUnlock()
-}
-
-func (u *usersMap) OnlineUserIDs() []string {
-	userIDs := []string{}
-	u.RLock()
-	for uid := range u.m {
-		userIDs = append(userIDs, uid.String())
-	}
-	u.RUnlock()
-
-	return userIDs
-}
-
-func (u *usersMap) User(id uuid.UUID) (*BattleUser, bool) {
-	u.RLock()
-	b, ok := u.m[id]
-	u.RUnlock()
-	return b, ok
-}
-
-func (u *usersMap) Delete(id uuid.UUID) {
-	u.Lock()
-	delete(u.m, id)
-	u.Unlock()
-}
-
-func (u *usersMap) UsersByFactionID(factionID string) []BattleUser {
-	u.RLock()
-	users := []BattleUser{}
-	for _, bu := range u.m {
-		if bu.FactionID == factionID {
-			users = append(users, *bu)
-		}
-	}
-	u.RUnlock()
-	return users
-}
-
 type Started struct {
 	BattleID           string        `json:"battleID"`
 	WarMachines        []*WarMachine `json:"warMachines"`

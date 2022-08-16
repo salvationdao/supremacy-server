@@ -11,6 +11,8 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/profanities"
@@ -117,6 +119,8 @@ type API struct {
 	SyncConfig *synctool.StaticSyncTool
 
 	questManager *quest.System
+
+	ViewerUpdateChan chan bool
 }
 
 // NewAPI registers routes
@@ -178,7 +182,12 @@ func NewAPI(
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
 		questManager: questManager,
+
+		ViewerUpdateChan: make(chan bool),
 	}
+
+	// set user online debounce
+	go api.debounceSendingViewerCount()
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
@@ -286,9 +295,9 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 
-				// TODO: fix batch message handling
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
+				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
+
 				s.WS("/live_data", "", nil) // TODO: find a way to display total online players
 			}))
 
@@ -308,8 +317,8 @@ func NewAPI(
 				s.WS("/user/{user_id}/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList), MustMatchUserID)
 				s.WS("/user/{user_id}/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
-				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat),MustMatchUserID)
-				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions),MustMatchUserID)
+				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
+				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 
 				// battle related endpoint
 				s.WS("/user/{user_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
@@ -678,4 +687,60 @@ func (c *captcha) verify(token string) error {
 	}
 
 	return nil
+}
+
+type ViewerLiveCount struct {
+	RedMountain int64 `json:"red_mountain"`
+	Boston      int64 `json:"boston"`
+	Zaibatsu    int64 `json:"zaibatsu"`
+	Other       int64 `json:"other"`
+}
+
+const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
+
+func (api *API) debounceSendingViewerCount() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the debounceSendingViewerCount!", r)
+		}
+	}()
+
+	interval := 1 * time.Second
+	timer := time.NewTimer(interval)
+	for {
+		select {
+		case <-api.ViewerUpdateChan:
+			timer.Reset(interval)
+		case <-ws.ClientOfflineChan:
+			timer.Reset(interval)
+		case <-timer.C:
+			// get user ids from ws connection
+			playerIDs := ws.TrackedIdents()
+			// cal current online player
+			if len(playerIDs) > 0 {
+				ps, err := boiler.Players(
+					boiler.PlayerWhere.ID.IN(playerIDs),
+				).All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Debug().Strs("playerIDs", playerIDs).Msg("Failed to query players.")
+					continue
+				}
+
+				result := &ViewerLiveCount{}
+				for _, p := range ps {
+					switch p.FactionID.String {
+					case server.RedMountainFactionID:
+						result.RedMountain += 1
+					case server.BostonCyberneticsFactionID:
+						result.Boston += 1
+					case server.ZaibatsuFactionID:
+						result.Zaibatsu += 1
+					default:
+						result.Other += 1
+					}
+				}
+				ws.PublishMessage("public/live_data", HubKeyViewerLiveCountUpdated, result)
+			}
+		}
+	}
 }

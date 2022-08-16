@@ -498,7 +498,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		gamelog.L.Error().Str("log_name", "battle arena").Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	if bpa.GameClientAbilityID == BlackoutGameAbilityID {
 		cellCoords := req.Payload.StartCoords
@@ -581,7 +581,7 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 		})
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_commands", factionID), HubKeyMechCommandsSubscribe, result)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_commands", factionID, arena.ID), HubKeyMechCommandsSubscribe, result)
 
 	return nil
 }
@@ -839,10 +839,10 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	switch a.Label {
 	case "REPAIR":
 		// HACK: set cool down to 1 day, to implement once per battle
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, 86400)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, arena.ID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, 86400)
 	default:
 		// broadcast cool down seconds
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, arena.ID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
 
 	}
 
@@ -1000,7 +1000,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 		mmmc.Read(func(mmmc *player_abilities.MiniMechMoveCommand) {
 			// broadcast mech command log
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 				MechMoveCommandLog: &boiler.MechMoveCommandLog{
 					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 					BattleID:      mmmc.BattleID,
@@ -1122,7 +1122,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
 		})
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
 		})
@@ -1141,7 +1141,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
 		})
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog: &boiler.MechMoveCommandLog{
 				ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 				BattleID:      mmmc.BattleID,
@@ -1229,7 +1229,7 @@ func (am *ArenaManager) BattleAbilityOptIn(ctx context.Context, user *boiler.Pla
 		return terror.Error(err, "Failed to opt in battle ability")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s/battle_ability/check_opt_in", user.ID), HubKeyBattleAbilityOptInCheck, true)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/battle_ability/check_opt_in", user.ID), HubKeyBattleAbilityOptInCheck, true)
 
 	return nil
 }

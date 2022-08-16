@@ -173,7 +173,7 @@ func (smc *SystemMessagesController) SystemMessageDismissHandler(ctx context.Con
 		return terror.Error(err, "Failed to dismiss system message. Please try again later.")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", user.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", user.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 
 	return nil
 }

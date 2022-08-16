@@ -291,7 +291,7 @@ func (api *API) SyndicateCreate(player *server.Player, w http.ResponseWriter, r 
 	}
 
 	for _, ogm := range ogMembers {
-		ws.PublishMessage(fmt.Sprintf("/user/%s", ogm.ID), server.HubKeyUserSubscribe, ogm)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", ogm.ID), server.HubKeyUserSubscribe, ogm)
 	}
 
 	return helpers.EncodeJSON(w, true)
