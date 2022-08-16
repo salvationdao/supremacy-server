@@ -14,6 +14,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/quest"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -53,6 +54,7 @@ type ArenaManager struct {
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferCloseChan     chan *RepairOfferClose
+	QuestManager             *quest.System
 
 	arenas       map[string]*Arena
 	sync.RWMutex // lock for arena
@@ -66,6 +68,7 @@ type Opts struct {
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
+	QuestManager             *quest.System
 }
 
 func NewArenaManager(opts *Opts) *ArenaManager {
@@ -80,8 +83,8 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
-
-		arenas: make(map[string]*Arena),
+		QuestManager:             opts.QuestManager,
+		arenas:                   make(map[string]*Arena),
 	}
 
 	am.server = &http.Server{
@@ -334,6 +337,8 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
+
+	QuestManager *quest.System
 
 	gameClientJsonDataChan chan []byte
 	sync.RWMutex

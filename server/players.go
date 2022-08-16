@@ -108,3 +108,15 @@ func (p *Player) Brief() *Player {
 		Syndicate: p.Syndicate,
 	}
 }
+
+type QuestStat struct {
+	ID            string    `db:"id" json:"id"`
+	RoundName     string    `db:"round_name" json:"round_name"`
+	StartedAt     time.Time `db:"started_at" json:"started_at"`
+	EndAt         time.Time `db:"end_at" json:"end_at"`
+	Key           string    `db:"key" json:"key"`
+	Name          string    `db:"name" json:"name"`
+	Description   string    `db:"description" json:"description"`
+	RequestAmount int       `db:"request_amount" json:"request_amount"`
+	Obtained      bool      `db:"obtained" json:"obtained"`
+}

@@ -44,6 +44,9 @@ const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
 
+const HubKeyPlayerQuestStats = "PLAYER:QUEST:STAT"
+const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
+
 // battle arena
 
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"

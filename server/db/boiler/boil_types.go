@@ -114,6 +114,24 @@ const (
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
+// Enum values for QuestEventType
+const (
+	QuestEventTypeDailyQuest     = "daily_quest"
+	QuestEventTypeWeeklyQuest    = "weekly_quest"
+	QuestEventTypeMonthlyQuest   = "monthly_quest"
+	QuestEventTypeProvingGrounds = "proving_grounds"
+)
+
+// Enum values for QuestKey
+const (
+	QuestKeyAbilityKill                  = "ability_kill"
+	QuestKeyMechKill                     = "mech_kill"
+	QuestKeyTotalBattleUsedMechCommander = "total_battle_used_mech_commander"
+	QuestKeyRepairForOther               = "repair_for_other"
+	QuestKeyChatSent                     = "chat_sent"
+	QuestKeyMechJoinBattle               = "mech_join_battle"
+)
+
 // Enum values for UtilityType
 const (
 	UtilityTypeSHIELD      = "SHIELD"
@@ -250,6 +268,14 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)
+
+// Enum values for QuestEventDurationType
+const (
+	QuestEventDurationTypeDaily   = "daily"
+	QuestEventDurationTypeWeekly  = "weekly"
+	QuestEventDurationTypeMonthly = "monthly"
+	QuestEventDurationTypeCustom  = "custom"
 )
 
 // Enum values for RepairTriggerWithType

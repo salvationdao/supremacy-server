@@ -983,6 +983,9 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			return terror.Error(err, "Failed to trigger mech move command.")
 		}
 
+		// check mech command quest
+		arena.QuestManager.MechCommanderQuestCheck(user.ID)
+
 		// broadcast mech command log
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,

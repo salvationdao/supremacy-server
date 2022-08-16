@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/marketplace"
 	"server/profanities"
+	"server/quest"
 	"server/sale_player_abilities"
 	"server/synctool"
 	"server/syndicate"
@@ -114,6 +115,8 @@ type API struct {
 	Config *server.Config
 
 	SyncConfig *synctool.StaticSyncTool
+
+	questManager *quest.System
 }
 
 // NewAPI registers routes
@@ -129,6 +132,7 @@ func NewAPI(
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
+	questManager *quest.System,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -173,6 +177,7 @@ func NewAPI(
 			siteKey:   config.CaptchaSiteKey,
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
+		questManager: questManager,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -202,7 +207,7 @@ func NewAPI(
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	NewSyndicateController(api)
-	_ = NewLeaderboardController(api)
+	NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
 
@@ -303,6 +308,8 @@ func NewAPI(
 				s.WS("/user/{user_id}/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList), MustMatchUserID)
 				s.WS("/user/{user_id}/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
+				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat),MustMatchUserID)
+				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions),MustMatchUserID)
 
 				// battle related endpoint
 				s.WS("/user/{user_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
