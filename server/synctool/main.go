@@ -824,15 +824,6 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 			null.NewString(weaponModelSkinCompat.YoutubeUrl, weaponModelSkinCompat.YoutubeUrl != ""),
 		)
 		if err != nil {
-			fmt.Println(weaponModelSkinCompat.WeaponSkinID)
-			fmt.Println(weaponModelSkinCompat.WeaponModelID)
-			fmt.Println(weaponModelSkinCompat.ImageUrl)
-			fmt.Println(weaponModelSkinCompat.AnimationUrl)
-			fmt.Println(weaponModelSkinCompat.CardAnimationUrl)
-			fmt.Println(weaponModelSkinCompat.LargeImageUrl)
-			fmt.Println(weaponModelSkinCompat.AvatarUrl)
-			fmt.Println(weaponModelSkinCompat.BackgroundColor)
-			fmt.Println(weaponModelSkinCompat.YoutubeUrl)
 			fmt.Println("ERROR: " + err.Error())
 			continue
 		}
