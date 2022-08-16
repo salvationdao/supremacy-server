@@ -23,79 +23,86 @@ import (
 
 // MechWeapon is an object representing the database table.
 type MechWeapon struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
-	WeaponID   string    `boiler:"weapon_id" boil:"weapon_id" json:"weapon_id" toml:"weapon_id" yaml:"weapon_id"`
-	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	AllowMelee bool      `boiler:"allow_melee" boil:"allow_melee" json:"allow_melee" toml:"allow_melee" yaml:"allow_melee"`
+	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ChassisID       string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	WeaponID        string    `boiler:"weapon_id" boil:"weapon_id" json:"weapon_id" toml:"weapon_id" yaml:"weapon_id"`
+	SlotNumber      int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	AllowMelee      bool      `boiler:"allow_melee" boil:"allow_melee" json:"allow_melee" toml:"allow_melee" yaml:"allow_melee"`
+	IsSkinInherited bool      `boiler:"is_skin_inherited" boil:"is_skin_inherited" json:"is_skin_inherited" toml:"is_skin_inherited" yaml:"is_skin_inherited"`
 
 	R *mechWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechWeaponColumns = struct {
-	ID         string
-	ChassisID  string
-	WeaponID   string
-	SlotNumber string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	AllowMelee string
+	ID              string
+	ChassisID       string
+	WeaponID        string
+	SlotNumber      string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	AllowMelee      string
+	IsSkinInherited string
 }{
-	ID:         "id",
-	ChassisID:  "chassis_id",
-	WeaponID:   "weapon_id",
-	SlotNumber: "slot_number",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
-	AllowMelee: "allow_melee",
+	ID:              "id",
+	ChassisID:       "chassis_id",
+	WeaponID:        "weapon_id",
+	SlotNumber:      "slot_number",
+	DeletedAt:       "deleted_at",
+	UpdatedAt:       "updated_at",
+	CreatedAt:       "created_at",
+	AllowMelee:      "allow_melee",
+	IsSkinInherited: "is_skin_inherited",
 }
 
 var MechWeaponTableColumns = struct {
-	ID         string
-	ChassisID  string
-	WeaponID   string
-	SlotNumber string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	AllowMelee string
+	ID              string
+	ChassisID       string
+	WeaponID        string
+	SlotNumber      string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	AllowMelee      string
+	IsSkinInherited string
 }{
-	ID:         "mech_weapons.id",
-	ChassisID:  "mech_weapons.chassis_id",
-	WeaponID:   "mech_weapons.weapon_id",
-	SlotNumber: "mech_weapons.slot_number",
-	DeletedAt:  "mech_weapons.deleted_at",
-	UpdatedAt:  "mech_weapons.updated_at",
-	CreatedAt:  "mech_weapons.created_at",
-	AllowMelee: "mech_weapons.allow_melee",
+	ID:              "mech_weapons.id",
+	ChassisID:       "mech_weapons.chassis_id",
+	WeaponID:        "mech_weapons.weapon_id",
+	SlotNumber:      "mech_weapons.slot_number",
+	DeletedAt:       "mech_weapons.deleted_at",
+	UpdatedAt:       "mech_weapons.updated_at",
+	CreatedAt:       "mech_weapons.created_at",
+	AllowMelee:      "mech_weapons.allow_melee",
+	IsSkinInherited: "mech_weapons.is_skin_inherited",
 }
 
 // Generated where
 
 var MechWeaponWhere = struct {
-	ID         whereHelperstring
-	ChassisID  whereHelperstring
-	WeaponID   whereHelperstring
-	SlotNumber whereHelperint
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
-	AllowMelee whereHelperbool
+	ID              whereHelperstring
+	ChassisID       whereHelperstring
+	WeaponID        whereHelperstring
+	SlotNumber      whereHelperint
+	DeletedAt       whereHelpernull_Time
+	UpdatedAt       whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
+	AllowMelee      whereHelperbool
+	IsSkinInherited whereHelperbool
 }{
-	ID:         whereHelperstring{field: "\"mech_weapons\".\"id\""},
-	ChassisID:  whereHelperstring{field: "\"mech_weapons\".\"chassis_id\""},
-	WeaponID:   whereHelperstring{field: "\"mech_weapons\".\"weapon_id\""},
-	SlotNumber: whereHelperint{field: "\"mech_weapons\".\"slot_number\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"mech_weapons\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"created_at\""},
-	AllowMelee: whereHelperbool{field: "\"mech_weapons\".\"allow_melee\""},
+	ID:              whereHelperstring{field: "\"mech_weapons\".\"id\""},
+	ChassisID:       whereHelperstring{field: "\"mech_weapons\".\"chassis_id\""},
+	WeaponID:        whereHelperstring{field: "\"mech_weapons\".\"weapon_id\""},
+	SlotNumber:      whereHelperint{field: "\"mech_weapons\".\"slot_number\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"mech_weapons\".\"deleted_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"mech_weapons\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"mech_weapons\".\"created_at\""},
+	AllowMelee:      whereHelperbool{field: "\"mech_weapons\".\"allow_melee\""},
+	IsSkinInherited: whereHelperbool{field: "\"mech_weapons\".\"is_skin_inherited\""},
 }
 
 // MechWeaponRels is where relationship names are stored.
@@ -122,9 +129,9 @@ func (*mechWeaponR) NewStruct() *mechWeaponR {
 type mechWeaponL struct{}
 
 var (
-	mechWeaponAllColumns            = []string{"id", "chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at", "allow_melee"}
+	mechWeaponAllColumns            = []string{"id", "chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at", "allow_melee", "is_skin_inherited"}
 	mechWeaponColumnsWithoutDefault = []string{"chassis_id", "weapon_id", "slot_number"}
-	mechWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "allow_melee"}
+	mechWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "allow_melee", "is_skin_inherited"}
 	mechWeaponPrimaryKeyColumns     = []string{"id"}
 	mechWeaponGeneratedColumns      = []string{}
 )
