@@ -375,7 +375,8 @@ func main() {
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
-					ba := battle.NewArena(&battle.Opts{
+
+					arenaManager := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
@@ -396,7 +397,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -737,7 +738,7 @@ func SetupAPI(
 	ctxCLI *cli.Context,
 	ctx context.Context,
 	log *zerolog.Logger,
-	battleArenaClient *battle.Arena,
+	arenaManager *battle.ArenaManager,
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
@@ -802,7 +803,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig)
 	if err != nil {
 		return nil, err
 	}

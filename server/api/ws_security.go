@@ -29,10 +29,16 @@ func MustHaveFaction(ctx context.Context) bool {
 	return u.FactionID.Valid
 }
 
-func MustLogin(ctx context.Context) bool {
+func MustMatchUserID(ctx context.Context) bool {
 	// get user from xsyn service
-	_, err := server.RetrieveUser(ctx)
+	user, err := server.RetrieveUser(ctx)
 	if err != nil {
+		return false
+	}
+
+	// check user id matched
+	userID := chi.RouteContext(ctx).URLParam("user_id")
+	if userID == "" || userID != user.ID {
 		return false
 	}
 

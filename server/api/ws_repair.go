@@ -238,10 +238,10 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	}
 
 	//  broadcast to repair offer market
-	ws.PublishMessage("/secure_public/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
-	ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-	ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
-	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+	ws.PublishMessage("/secure/repair_offer/new", server.HubKeyNewRepairOfferSubscribe, sro)
+	ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+	ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
 
 	reply(true)
 
@@ -428,8 +428,8 @@ func (api *API) broadcastRepairOffer(repairOfferID string) error {
 	}
 
 	if sro != nil {
-		ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
-		ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
+		ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", repairOfferID), server.HubKeyRepairOfferSubscribe, sro)
+		ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{sro})
 	}
 
 	return nil
@@ -606,9 +606,9 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 
 		// broadcast result if repair is not completed
 		if rc.BlocksRepaired < rc.BlocksRequiredRepair {
-			ws.PublishMessage(fmt.Sprintf("/secure_public/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
-			ws.PublishMessage("/secure_public/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
-			ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
+			ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, ro)
+			ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, []*server.RepairOffer{ro})
+			ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", ro.ID), server.HubKeyMechActiveRepairOffer, ro)
 		}
 	}
 
@@ -622,13 +622,13 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
 			go BroadcastMechQueueStat(rc.MechID)
 		}
-		ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+		ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 		reply(true)
 		return nil
 	}
 
 	// clean up repair case if repair is completed
-	ws.PublishMessage(fmt.Sprintf("/secure_public/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
 
 	// broadcast current mech stat
 	go BroadcastMechQueueStat(rc.MechID)

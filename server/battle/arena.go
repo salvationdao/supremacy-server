@@ -80,7 +80,52 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		WriteTimeout: am.timeout,
 	}
 
+	// start player rank updater
+	am.PlayerRankUpdater()
+
 	return am
+}
+
+func (am *ArenaManager) Range(fn func(arena *Arena)) {
+	am.RLock()
+	defer am.RUnlock()
+	for _, arena := range am.arenas {
+		fn(arena)
+	}
+}
+
+func (am *ArenaManager) DeleteArena(arenaID string) {
+	am.Lock()
+	defer am.Unlock()
+	delete(am.arenas, arenaID)
+}
+
+func (am *ArenaManager) GetArena(arenaID string) *Arena {
+	am.RLock()
+	defer am.RUnlock()
+	arena, ok := am.arenas[arenaID]
+	if !ok || !arena.connected.Load() {
+		return nil
+	}
+
+	return arena
+}
+
+func (am *ArenaManager) AvailableBattleArenas() []Arena {
+	am.RLock()
+	defer am.RUnlock()
+
+	resp := []Arena{}
+	for _, arena := range am.arenas {
+		if arena.connected.Load() {
+			resp = append(resp, Arena{
+				ID:   arena.ID,
+				Type: arena.Type,
+			})
+		}
+	}
+
+	return resp
 }
 
 func (am *ArenaManager) Serve() {
@@ -141,7 +186,6 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			btl := arena.CurrentBattle()
 			if btl != nil {
 				btl.endAbilities()
-				btl.endSpoils()
 			}
 
 			// delete arena from the map
@@ -209,57 +253,6 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 				gamelog.L.Error().Err(err).Msg("Failed to insert new expedition battle arena into db")
 				return nil, terror.Error(err, "Failed to insert new expedition battle arena into db")
 			}
-
-			// seed new abilities
-			gamelog.L.Debug().Msg("Inserting default game abilities for the new arena")
-
-			// get ability list from story arena
-			gas, err := boiler.GameAbilities(
-				boiler.GameAbilityWhere.ArenaID.EQ(server.DefaultStoryArenaID),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to get game abilities")
-				return nil, terror.Error(err, "Failed to assign game abilities to the arena.")
-			}
-
-			// default
-
-			tx, err := gamedb.StdConn.Begin()
-			if err != nil {
-				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to start db transaction")
-				return nil, terror.Error(err, "Failed to assign game abilities to the arena.")
-			}
-
-			defer tx.Rollback()
-
-			for _, ga := range gas {
-				newGameAbility := boiler.GameAbility{
-					GameClientAbilityID: ga.GameClientAbilityID,
-					FactionID:           ga.FactionID,
-					BattleAbilityID:     ga.BattleAbilityID,
-					Label:               ga.Label,
-					Colour:              ga.Colour,
-					ImageURL:            ga.ImageURL,
-					Description:         ga.Description,
-					TextColour:          ga.TextColour,
-					CurrentSups:         decimal.Zero.String(),
-					Level:               ga.Level,
-					ArenaID:             ba.ID,
-				}
-
-				err = newGameAbility.Insert(tx, boil.Infer())
-				if err != nil {
-					gamelog.L.Error().Str("arena id", ba.ID).Interface("ability", ga).Err(err).Msg("Failed to insert game ability to the arena")
-					return nil, terror.Error(err, "Failed to assign game abilities to the arena")
-				}
-
-			}
-
-			err = tx.Commit()
-			if err != nil {
-				gamelog.L.Error().Str("arena id", ba.ID).Err(err).Msg("Failed to commit db transaction")
-				return nil, terror.Error(err, "Failed to assign game abilities to the arena")
-			}
 		}
 	}
 
@@ -272,6 +265,12 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		gameClientMinimumBuildNo: am.gameClientMinimumBuildNo,
 		telegram:                 am.telegram,
 		socket:                   wsConn,
+		timeout:                  am.timeout,
+		SystemBanManager:         NewSystemBanManager(),
+		SystemMessagingManager:   am.SystemMessagingManager,
+		NewBattleChan:            make(chan *NewBattleChan, 10),
+		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
+		gameClientJsonDataChan:   make(chan []byte, 3),
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -283,8 +282,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		arena.timeout = 15 * time.Hour * 24
 	}
 
-	// start player rank updater
-	arena.PlayerRankUpdater()
+	// speed up mech stat broadcast by separate json data and binary data
+	go arena.GameClientJsonDataParser()
 
 	am.arenas[arena.ID] = arena
 
@@ -312,9 +311,14 @@ type Arena struct {
 	sync.RWMutex
 }
 
-func (arena *Arena) IsClientConnected() error {
-	connected := arena.connected.Load()
-	if !connected {
+func (am *ArenaManager) IsClientConnected() error {
+	count := 0
+	for _, arena := range am.arenas {
+		if arena.connected.Load() {
+			count += 1
+		}
+	}
+	if count == 0 {
 		return fmt.Errorf("no gameclient connected")
 	}
 	return nil
@@ -471,20 +475,33 @@ func checkWarMachineByParticipantID(wm *WarMachine, participantID int) bool {
 	return false
 }
 
-func (arena *Arena) WarMachineDestroyedDetail(mechID string) *WMDestroyedRecord {
-	arena.RLock()
-	defer arena.RUnlock()
+func (am *ArenaManager) WarMachineDestroyedDetail(mechID string) *WMDestroyedRecord {
+	am.RLock()
+	defer am.RUnlock()
 
-	if arena._currentBattle == nil {
-		return nil
+	for _, arena := range am.arenas {
+		dr := func(arena *Arena) *WMDestroyedRecord {
+			arena.RLock()
+			defer arena.RUnlock()
+
+			if arena._currentBattle == nil {
+				return nil
+			}
+
+			record, ok := arena._currentBattle.destroyedWarMachineMap[mechID]
+			if !ok {
+				return nil
+			}
+
+			return record
+		}(arena)
+
+		if dr != nil {
+			return dr
+		}
 	}
 
-	record, ok := arena._currentBattle.destroyedWarMachineMap[mechID]
-	if !ok {
-		return nil
-	}
-
-	return record
+	return nil
 }
 
 // return a copy of current battle user list
@@ -526,62 +543,6 @@ const (
 
 func (mt MessageType) String() string {
 	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick", "unknown", "unknown wtf"}[mt]
-}
-
-func NewArena(opts *Opts) *Arena {
-	arena := &Arena{
-		connected:                atomic.NewBool(false),
-		timeout:                  opts.Timeout,
-		RPCClient:                opts.RPCClient,
-		sms:                      opts.SMS,
-		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
-		telegram:                 opts.Telegram,
-		opts:                     opts,
-		SystemBanManager:         NewSystemBanManager(),
-		SystemMessagingManager:   opts.SystemMessagingManager,
-		NewBattleChan:            make(chan *NewBattleChan, 10),
-		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
-		gameClientJsonDataChan:   make(chan []byte, 3),
-	}
-
-	var err error
-	arena.AIPlayers, err = db.DefaultFactionPlayers()
-	if err != nil {
-		gamelog.L.Fatal().Str("log_name", "battle arena").Err(err).Msg("no faction users found")
-	}
-
-	if arena.timeout == 0 {
-		arena.timeout = 15 * time.Hour * 24
-	}
-
-	arena.server = &http.Server{
-		Handler:      arena,
-		ReadTimeout:  arena.timeout,
-		WriteTimeout: arena.timeout,
-	}
-
-	// start player rank updater
-	arena.PlayerRankUpdater()
-
-	// speed up mech stat broadcast by separate json data and binary data
-	go arena.GameClientJsonDataParser()
-
-	return arena
-}
-
-func (arena *Arena) Serve() {
-	l, err := net.Listen("tcp", arena.opts.Addr)
-	if err != nil {
-		gamelog.L.Fatal().Str("log_name", "battle arena").Str("Addr", arena.opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
-	}
-	go func() {
-		gamelog.L.Info().Msgf("Starting Battle Arena Server on: %v", arena.opts.Addr)
-
-		err := arena.server.Serve(l)
-		if err != nil {
-			gamelog.L.Fatal().Str("log_name", "battle arena").Str("Addr", arena.opts.Addr).Err(err).Msg("unable to start Battle Arena server")
-		}
-	}()
 }
 
 type AuthMiddleware func(required bool, userIDMustMatch bool) func(next http.Handler) http.Handler
@@ -784,37 +745,6 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 	}
 
 	return nil
-}
-
-func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		ip := r.Header.Get("X-Forwarded-For")
-		if ip == "" {
-			ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-			userIP := net.ParseIP(ipaddr)
-			if userIP == nil {
-				ip = ipaddr
-			} else {
-				ip = userIP.String()
-			}
-		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
-		return
-	}
-
-	arena.socket = c
-	arena.connected.Store(true)
-
-	defer func() {
-		if c != nil {
-			arena.connected.Store(false)
-			gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
-			c.Close(websocket.StatusInternalError, "game client has disconnected")
-		}
-	}()
-
-	arena.Start()
 }
 
 type LocationSelectRequest struct {
