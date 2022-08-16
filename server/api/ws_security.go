@@ -30,15 +30,15 @@ func MustHaveFaction(ctx context.Context) bool {
 }
 
 func MustMatchUserID(ctx context.Context) bool {
-	// get user from xsyn service
-	user, err := server.RetrieveUser(ctx)
-	if err != nil {
+	// get auth user id from context
+	authUserID, ok := ctx.Value("auth_user_id").(string)
+	if !ok || authUserID == "" {
 		return false
 	}
 
 	// check user id matched the user id on url
 	userID := chi.RouteContext(ctx).URLParam("user_id")
-	if userID == "" || userID != user.ID {
+	if userID == "" || userID != authUserID {
 		return false
 	}
 
