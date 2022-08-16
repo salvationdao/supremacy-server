@@ -18,4 +18,4 @@ CREATE TABLE IF NOT EXISTS blueprint_quests
     deleted_at       TIMESTAMPTZ
 );
 
-CREATE INDEX idx_blueprint_quest_round_type ON blueprint_quests (quest_event_type);
+CREATE INDEX idx_blueprint_quest_event_type ON blueprint_quests (quest_event_type);

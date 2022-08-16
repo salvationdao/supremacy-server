@@ -32,6 +32,7 @@ func (api *API) GetLeaderboardRoundsHandler(ctx context.Context, key string, pay
 	rs, err := boiler.QuestEvents(
 		boiler.QuestEventWhere.StartedAt.LTE(now),
 		boiler.QuestEventWhere.EndAt.GT(now),
+		boiler.QuestEventWhere.Type.NIN([]string{boiler.QuestEventTypeDailyQuest, boiler.QuestEventTypeWeeklyQuest, boiler.QuestEventTypeMonthlyQuest}),
 		qm.OrderBy(boiler.QuestEventColumns.CreatedAt+" DESC"),
 		qm.Limit(10),
 	).All(gamedb.StdConn)

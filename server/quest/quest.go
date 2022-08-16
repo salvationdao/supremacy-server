@@ -29,43 +29,66 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest, blueprintQuest *boiler.BlueprintQuest) bool
 }
 
-const DevQuestName = "Proving Grounds"
+const QuestEventNameProvingGround = "Proving Grounds"
+const QuestEventNameDaily = "Daily Quest"
 
 func New() (*System, error) {
 	q := &System{
 		playerQuestChan: make(chan *playerQuestCheck, 50),
 	}
 
-	// insert test quest if it is not prod env
-	if !server.IsProductionEnv() {
-		// check test quests exists
-		r, err := boiler.QuestEvents(
-			boiler.QuestEventWhere.Name.EQ(DevQuestName),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, terror.Error(err, "Failed to load staging quest")
-		}
+	// insert quest events
+	r, err := boiler.QuestEvents(
+		boiler.QuestEventWhere.Name.EQ(QuestEventNameProvingGround),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to load staging quest")
+	}
 
-		if r == nil {
-			now := time.Now()
-			r = &boiler.QuestEvent{
-				Type:               boiler.RoundTypeDailyQuest,
-				Name:               DevQuestName,
-				StartedAt:          now,
-				EndAt:              now.AddDate(0, 0, 3), // default value
-				DurationType:       boiler.QuestEventDurationTypeCustom,
-				CustomDurationDays: null.IntFrom(3),
-				Repeatable:         true,
-				QuestEventNumber:   1,
-			}
-			err = r.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return nil, terror.Error(err, "Failed to insert staging quests.")
-			}
+	if r == nil {
+		now := time.Now()
+		r = &boiler.QuestEvent{
+			Type:               boiler.QuestEventTypeProvingGrounds,
+			Name:               QuestEventNameProvingGround,
+			StartedAt:          now,
+			EndAt:              now.AddDate(0, 0, 10), // default value
+			DurationType:       boiler.QuestEventDurationTypeCustom,
+			CustomDurationDays: null.IntFrom(10),
+			Repeatable:         true,
+			QuestEventNumber:   1,
+		}
+		err = r.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, terror.Error(err, "Failed to insert staging quests.")
 		}
 	}
 
-	err := syncQuests()
+	// check test quests exists
+	r, err = boiler.QuestEvents(
+		boiler.QuestEventWhere.Name.EQ(QuestEventNameDaily),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Failed to load staging quest")
+	}
+
+	if r == nil {
+		now := time.Now()
+		r = &boiler.QuestEvent{
+			Type:             boiler.QuestEventTypeDailyQuest,
+			Name:             QuestEventNameDaily,
+			StartedAt:        now,
+			EndAt:            now.AddDate(0, 0, 1), // default value
+			DurationType:     boiler.QuestEventDurationTypeDaily,
+			Repeatable:       true,
+			QuestEventNumber: 1,
+		}
+		err = r.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, terror.Error(err, "Failed to insert staging quests.")
+		}
+	}
+
+	err = syncQuests()
 	if err != nil {
 		return nil, err
 	}

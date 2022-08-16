@@ -525,6 +525,7 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 			// fill data, if already query once
 			if abilityKillCount.Valid {
 				pqp.Current = abilityKillCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -550,11 +551,17 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				pqp.Current = 0
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			abilityKillCount = null.IntFrom(pqp.Current)
 
 		case boiler.QuestKeyMechKill:
 			if mechKillCount.Valid {
 				pqp.Current = mechKillCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -564,11 +571,17 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				return nil, err
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			mechKillCount = null.IntFrom(pqp.Current)
 
 		case boiler.QuestKeyMechJoinBattle:
 			if mechJoinBattleCount.Valid {
 				pqp.Current = mechJoinBattleCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -578,11 +591,17 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				return nil, err
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			mechJoinBattleCount = null.IntFrom(pqp.Current)
 
 		case boiler.QuestKeyChatSent:
 			if chatSentCount.Valid {
 				pqp.Current = chatSentCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -592,11 +611,17 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				return nil, err
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			chatSentCount = null.IntFrom(pqp.Current)
 
 		case boiler.QuestKeyRepairForOther:
 			if repairOtherCount.Valid {
 				pqp.Current = repairOtherCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -606,11 +631,17 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				return nil, err
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			repairOtherCount = null.IntFrom(pqp.Current)
 
 		case boiler.QuestKeyTotalBattleUsedMechCommander:
 			if mechCommandBattleCount.Valid {
 				pqp.Current = mechCommandBattleCount.Int
+				result = append(result, pqp)
 				continue
 			}
 
@@ -620,13 +651,14 @@ func PlayerQuestProgressions(playerID string) ([]*PlayerQuestProgression, error)
 				return nil, err
 			}
 
+			// cap current score with the quest goal
+			if pqp.Current > pqp.Goal {
+				pqp.Current = pqp.Goal
+			}
+
 			mechCommandBattleCount = null.IntFrom(pqp.Current)
 		}
 
-		// cap current score with the quest goal
-		if pqp.Current > pqp.Goal {
-			pqp.Current = pqp.Goal
-		}
 		result = append(result, pqp)
 	}
 

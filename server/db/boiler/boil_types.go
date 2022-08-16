@@ -110,9 +110,10 @@ const (
 
 // Enum values for QuestEventType
 const (
-	QuestEventTypeDailyQuest   = "daily_quest"
-	QuestEventTypeWeeklyQuest  = "weekly_quest"
-	QuestEventTypeMonthlyQuest = "monthly_quest"
+	QuestEventTypeDailyQuest     = "daily_quest"
+	QuestEventTypeWeeklyQuest    = "weekly_quest"
+	QuestEventTypeMonthlyQuest   = "monthly_quest"
+	QuestEventTypeProvingGrounds = "proving_grounds"
 )
 
 // Enum values for QuestKey
@@ -261,13 +262,6 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
-)
-
-// Enum values for RoundType
-const (
-	RoundTypeDailyQuest   = "daily_quest"
-	RoundTypeWeeklyQuest  = "weekly_quest"
-	RoundTypeMonthlyQuest = "monthly_quest"
 )
 
 // Enum values for QuestEventDurationType

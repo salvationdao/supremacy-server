@@ -5,7 +5,7 @@ CREATE TYPE QUEST_EVENT_DURATION_TYPE AS ENUM ( 'daily', 'weekly', 'monthly', 'c
 CREATE TABLE quest_events
 (
     id                   UUID PRIMARY KEY                   DEFAULT gen_random_uuid(),
-    type                 ROUND_TYPE                NOT NULL,
+    type                 QUEST_EVENT_TYPE          NOT NULL,
     name                 TEXT                      NOT NULL,
     started_at           TIMESTAMPTZ               NOT NULL,
     end_at               TIMESTAMPTZ               NOT NULL,
