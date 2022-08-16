@@ -1,4 +1,4 @@
-package player_abilities
+package sale_player_abilities
 
 import (
 	"fmt"

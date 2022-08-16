@@ -6,6 +6,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"server/db/boiler"
 	"server/gamedb"
 )
@@ -91,5 +92,59 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 		}
 		return terror.Error(fmt.Errorf("player: %s does not have necessary feature", user.ID), "You do not have the necessary feature to perform this action, try again or contact support.")
 
+	}
+}
+
+// Tracer is a ws middleware used to implement datadog for WS Handlers.
+func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
+	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, key, payload, reply)
+	}
+}
+
+// SecureUserTracer is a ws middleware used to implement datadog for WS Handlers.
+func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFunc {
+	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, user, key, payload, reply)
+	}
+}
+
+// SecureFactionTracer is a ws middleware used to implement datadog for WS Handlers (factions).
+func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) SecureFactionCommandFunc {
+	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, user, user.FactionID.String, key, payload, reply)
 	}
 }

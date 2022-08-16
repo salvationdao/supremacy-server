@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
 	"server/db"
@@ -21,6 +19,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -1453,6 +1454,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 	}
 }
 
+const HubKeyBattleAISpawned = "BATTLE:AI:SPAWNED:SUBSCRIBE"
 const HubKeyGameSettingsUpdated = "GAME:SETTINGS:UPDATED"
 
 func (btl *Battle) BroadcastUpdate() {
@@ -1600,7 +1602,8 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 
-		if participantID < 100 {
+		// If Mech is a regular type OR is a mini mech
+		if participantID < 100 || btl.IsMechOfType(int(participantID), MiniMech) {
 			wsMessages = append(wsMessages, ws.Message{
 				URI:     fmt.Sprintf("/public/mech/%d", participantID),
 				Key:     HubKeyWarMachineStatUpdated,
@@ -1662,247 +1665,272 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			break
 		}
 	}
+	for _, aiwm := range btl.SpawnedAI {
+		if aiwm.Hash == dHash {
+			destroyedWarMachine = aiwm
+		}
+	}
 	if destroyedWarMachine == nil {
 		gamelog.L.Warn().Str("hash", dHash).Msg("can't match destroyed mech with battle state")
 		return
 	}
 
-	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
-
-	}
-
-	if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
-		// killed a war machine
-		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
-		err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+	isAI := destroyedWarMachine.AIType != nil
+	if !isAI {
+		prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
 		}
-	}
 
-	var killedByUser *UserBrief
-	var killByWarMachine *WarMachine
-	if dp.DestroyedWarMachineEvent.KillByWarMachineHash != "" {
-		for _, wm := range btl.WarMachines {
-			if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
-				killByWarMachine = wm
-				// update user kill
-				if wm.OwnedByID != "" {
-					_, err := db.UserStatAddMechKill(wm.OwnedByID)
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user mech kill count")
-					}
+		if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
+			// killed a war machine
+			msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
+			err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+			}
+		}
 
-					// add faction kill count
-					err = db.FactionAddMechKillCount(killByWarMachine.FactionID)
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
-					}
-
-					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(wm.OwnedByID)).One(gamedb.StdConn)
-					if err != nil && !errors.Is(err, sql.ErrNoRows) {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("wm.ID", wm.ID).Err(err).Msg("failed to get player preferences")
-
-					}
-
-					if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
-						// killed a war machine
-						msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-						err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+		var killedByUser *UserBrief
+		var killByWarMachine *WarMachine
+		if dp.DestroyedWarMachineEvent.KillByWarMachineHash != "" {
+			for _, wm := range btl.WarMachines {
+				if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
+					killByWarMachine = wm
+					// update user kill
+					if wm.OwnedByID != "" {
+						_, err := db.UserStatAddMechKill(wm.OwnedByID)
 						if err != nil {
-							gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+							gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user mech kill count")
+						}
+
+						// add faction kill count
+						err = db.FactionAddMechKillCount(killByWarMachine.FactionID)
+						if err != nil {
+							gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
+						}
+
+						prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(wm.OwnedByID)).One(gamedb.StdConn)
+						if err != nil && !errors.Is(err, sql.ErrNoRows) {
+							gamelog.L.Error().Str("log_name", "battle arena").Str("wm.ID", wm.ID).Err(err).Msg("failed to get player preferences")
+
+						}
+
+						if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
+							// killed a war machine
+							msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
+							err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
+							}
 						}
 					}
 				}
 			}
-		}
-		if destroyedWarMachine == nil {
-			gamelog.L.Warn().Str("killed_by_hash", dp.DestroyedWarMachineEvent.KillByWarMachineHash).Msg("can't match killer mech with battle state")
-			return
-		}
-	} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-		// check related event id
-		var abl *boiler.BattleAbilityTrigger
-		var err error
-		retAbl := func() (*boiler.BattleAbilityTrigger, error) {
-			abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
-			return abl, err
-		}
+			if destroyedWarMachine == nil {
+				gamelog.L.Warn().Str("killed_by_hash", dp.DestroyedWarMachineEvent.KillByWarMachineHash).Msg("can't match killer mech with battle state")
+				return
+			}
+		} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+			// check related event id
+			var abl *boiler.BattleAbilityTrigger
+			var err error
+			retAbl := func() (*boiler.BattleAbilityTrigger, error) {
+				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
+				return abl, err
+			}
 
-		retries := 0
-		for abl == nil {
-			abl, err = retAbl()
-			if errors.Is(err, sql.ErrNoRows) {
-				if retries >= 5 {
+			retries := 0
+			for abl == nil {
+				abl, err = retAbl()
+				if errors.Is(err, sql.ErrNoRows) {
+					if retries >= 5 {
+						break
+					}
+					retries++
+					time.Sleep(1 * time.Second)
+					continue
+				} else if err != nil {
 					break
 				}
-				retries++
-				time.Sleep(1 * time.Second)
-				continue
-			} else if err != nil {
-				break
-			}
-		}
-
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
-		}
-		// get ability via offering id
-
-		if abl != nil && abl.PlayerID.Valid {
-			currentUser, err := BuildUserDetailWithFaction(uuid.FromStringOrNil(abl.PlayerID.String))
-			if err == nil {
-				// update kill by user and killed by information
-				killedByUser = currentUser
-				dp.DestroyedWarMachineEvent.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
 			}
 
-			// update player ability kills and faction kills
-			if strings.EqualFold(destroyedWarMachine.FactionID, abl.FactionID) {
-				// update user kill
-				_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
-				}
-
-				// insert a team kill record to last seven days kills
-				lastSevenDaysKill := boiler.PlayerKillLog{
-					PlayerID:   abl.PlayerID.String,
-					FactionID:  abl.FactionID,
-					BattleID:   btl.BattleID,
-					IsTeamKill: true,
-				}
-				err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
-				}
-
-				// subtract faction kill count
-				err = db.FactionSubtractAbilityKillCount(abl.FactionID)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
-				}
-
-				// sent instance to system ban manager
-				go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
-
-			} else {
-				// update user kill
-				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to add user ability kill count")
-				}
-
-				// insert a team kill record to last seven days kills
-				lastSevenDaysKill := boiler.PlayerKillLog{
-					PlayerID:  abl.PlayerID.String,
-					FactionID: abl.FactionID,
-					BattleID:  btl.BattleID,
-				}
-				err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (ABILITY KILL)")
-				}
-
-				// add faction kill count
-				err = db.FactionAddAbilityKillCount(abl.FactionID)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
-				}
-			}
-
-			// broadcast player stat to the player
-			us, err := db.UserStatsGet(currentUser.ID.String())
 			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
 			}
-			if us != nil {
-				ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
+			// get ability via offering id
+
+			if abl != nil && abl.PlayerID.Valid {
+				currentUser, err := BuildUserDetailWithFaction(uuid.FromStringOrNil(abl.PlayerID.String))
+				if err == nil {
+					// update kill by user and killed by information
+					killedByUser = currentUser
+					dp.DestroyedWarMachineEvent.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
+				}
+
+				// update player ability kills and faction kills
+				if strings.EqualFold(destroyedWarMachine.FactionID, abl.FactionID) {
+					// update user kill
+					_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+					}
+
+					// insert a team kill record to last seven days kills
+					lastSevenDaysKill := boiler.PlayerKillLog{
+						PlayerID:   abl.PlayerID.String,
+						FactionID:  abl.FactionID,
+						BattleID:   btl.BattleID,
+						IsTeamKill: true,
+					}
+					err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
+					}
+
+					// subtract faction kill count
+					err = db.FactionSubtractAbilityKillCount(abl.FactionID)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+					}
+
+					// sent instance to system ban manager
+					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
+
+				} else {
+					// update user kill
+					_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to add user ability kill count")
+					}
+
+					// insert a team kill record to last seven days kills
+					lastSevenDaysKill := boiler.PlayerKillLog{
+						PlayerID:  abl.PlayerID.String,
+						FactionID: abl.FactionID,
+						BattleID:  btl.BattleID,
+					}
+					err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (ABILITY KILL)")
+					}
+
+					// add faction kill count
+					err = db.FactionAddAbilityKillCount(abl.FactionID)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
+					}
+				}
+
+				// broadcast player stat to the player
+				us, err := db.UserStatsGet(currentUser.ID.String())
+				if err != nil {
+					gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to get player current stat")
+				}
+				if us != nil {
+					ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
+				}
 			}
+
 		}
 
-	}
+		gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
 
-	gamelog.L.Debug().Msgf("battle Update: %s - War Machine Destroyed: %s", btl.ID, dHash)
+		var warMachineID uuid.UUID
+		var killByWarMachineID uuid.UUID
+		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)
 
-	var warMachineID uuid.UUID
-	var killByWarMachineID uuid.UUID
-	ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)
-
-	if err != nil || len(ids) == 0 {
-		gamelog.L.Warn().
-			Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
-			Str("battle_id", btl.ID).
-			Err(err).
-			Msg("can't retrieve mech ids")
-
-	} else {
-		warMachineID = ids[0]
-		if len(ids) > 1 {
-			killByWarMachineID = ids[1]
-		}
-
-		//TODO: implement related id
-		if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-			relatedEventuuid, err := uuid.FromString(dp.DestroyedWarMachineEvent.RelatedEventIDString)
-			if err != nil {
-				gamelog.L.Warn().
-					Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
-					Str("battle_id", btl.ID).
-					Msg("can't create uuid from non-empty related event idf")
-			}
-			dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
-		}
-
-		bh := &boiler.BattleHistory{
-			BattleID:        btl.ID,
-			WarMachineOneID: warMachineID.String(),
-			EventType:       db.Btlevnt_Killed.String(),
-		}
-
-		// record killer war machine if exists
-		if !killByWarMachineID.IsNil() {
-			bh.WarMachineTwoID = null.StringFrom(killByWarMachineID.String())
-		}
-
-		if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-			bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
-		}
-
-		err = bh.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
+		if err != nil || len(ids) == 0 {
 			gamelog.L.Warn().
-				Interface("event_data", bh).
+				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
 				Str("battle_id", btl.ID).
 				Err(err).
-				Msg("unable to store mech event data")
+				Msg("can't retrieve mech ids")
+
+		} else {
+			warMachineID = ids[0]
+			if len(ids) > 1 {
+				killByWarMachineID = ids[1]
+			}
+
+			//TODO: implement related id
+			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+				relatedEventuuid, err := uuid.FromString(dp.DestroyedWarMachineEvent.RelatedEventIDString)
+				if err != nil {
+					gamelog.L.Warn().
+						Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
+						Str("battle_id", btl.ID).
+						Msg("can't create uuid from non-empty related event idf")
+				}
+				dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
+			}
+
+			bh := &boiler.BattleHistory{
+				BattleID:        btl.ID,
+				WarMachineOneID: warMachineID.String(),
+				EventType:       db.Btlevnt_Killed.String(),
+			}
+
+			// record killer war machine if exists
+			if !killByWarMachineID.IsNil() {
+				bh.WarMachineTwoID = null.StringFrom(killByWarMachineID.String())
+			}
+
+			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+				bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
+			}
+
+			err = bh.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().
+					Interface("event_data", bh).
+					Str("battle_id", btl.ID).
+					Err(err).
+					Msg("unable to store mech event data")
+			}
 		}
-	}
 
-	_, err = db.UpdateKilledBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, killByWarMachineID)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Err(err).
-			Str("battle_id", btl.ID).
-			Interface("mech_id", warMachineID).
-			Bool("killed", true).
-			Msg("can't update battle mech")
-		gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
-		return
-	}
+		_, err = db.UpdateKilledBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, killByWarMachineID)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").
+				Err(err).
+				Str("battle_id", btl.ID).
+				Interface("mech_id", warMachineID).
+				Bool("killed", true).
+				Msg("can't update battle mech")
+			gamelog.L.Trace().Str("func", "Destroyed").Msg("end")
+			return
+		}
 
-	// calc total damage and merge the duplicated damage source
-	totalDamage := 0
-	newDamageHistory := []*DamageHistory{}
-	for _, damage := range dp.DestroyedWarMachineEvent.DamageHistory {
-		totalDamage += damage.Amount
-		// check instigator token id exist in the list
-		if damage.InstigatorHash != "" {
+		// calc total damage and merge the duplicated damage source
+		totalDamage := 0
+		newDamageHistory := []*DamageHistory{}
+		for _, damage := range dp.DestroyedWarMachineEvent.DamageHistory {
+			totalDamage += damage.Amount
+			// check instigator token id exist in the list
+			if damage.InstigatorHash != "" {
+				exists := false
+				for _, hist := range newDamageHistory {
+					if hist.InstigatorHash == damage.InstigatorHash {
+						hist.Amount += damage.Amount
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					newDamageHistory = append(newDamageHistory, &DamageHistory{
+						Amount:         damage.Amount,
+						InstigatorHash: damage.InstigatorHash,
+						SourceName:     damage.SourceName,
+						SourceHash:     damage.SourceHash,
+					})
+				}
+				continue
+			}
+			// check source name
 			exists := false
 			for _, hist := range newDamageHistory {
-				if hist.InstigatorHash == damage.InstigatorHash {
+				if hist.SourceName == damage.SourceName {
 					hist.Amount += damage.Amount
 					exists = true
 					break
@@ -1916,109 +1944,94 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					SourceHash:     damage.SourceHash,
 				})
 			}
-			continue
 		}
-		// check source name
-		exists := false
-		for _, hist := range newDamageHistory {
-			if hist.SourceName == damage.SourceName {
-				hist.Amount += damage.Amount
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			newDamageHistory = append(newDamageHistory, &DamageHistory{
-				Amount:         damage.Amount,
-				InstigatorHash: damage.InstigatorHash,
-				SourceName:     damage.SourceName,
-				SourceHash:     damage.SourceHash,
-			})
-		}
-	}
 
-	wmd := &WMDestroyedRecord{
-		DestroyedWarMachine: &WarMachineBrief{
-			ParticipantID: destroyedWarMachine.ParticipantID,
-			ImageUrl:      destroyedWarMachine.Image,
-			ImageAvatar:   destroyedWarMachine.ImageAvatar,
-			Name:          destroyedWarMachine.Name,
-			Hash:          destroyedWarMachine.Hash,
-			FactionID:     destroyedWarMachine.FactionID,
-		},
-		KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
-	}
-	// get total damage amount for calculating percentage
-	for _, damage := range newDamageHistory {
-		damageRecord := &DamageRecord{
-			SourceName: damage.SourceName,
-			Amount:     (damage.Amount * 1000000 / totalDamage) / 100,
+		wmd := &WMDestroyedRecord{
+			DestroyedWarMachine: &WarMachineBrief{
+				ParticipantID: destroyedWarMachine.ParticipantID,
+				ImageUrl:      destroyedWarMachine.Image,
+				ImageAvatar:   destroyedWarMachine.ImageAvatar,
+				Name:          destroyedWarMachine.Name,
+				Hash:          destroyedWarMachine.Hash,
+				FactionID:     destroyedWarMachine.FactionID,
+			},
+			KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
 		}
-		if damage.InstigatorHash != "" {
-			for _, wm := range btl.WarMachines {
-				if wm.Hash == damage.InstigatorHash {
-					damageRecord.CausedByWarMachine = &WarMachineBrief{
-						ParticipantID: wm.ParticipantID,
-						ImageUrl:      wm.Image,
-						ImageAvatar:   wm.ImageAvatar,
-						Name:          wm.Name,
-						Hash:          wm.Hash,
-						FactionID:     wm.FactionID,
+		// get total damage amount for calculating percentage
+		for _, damage := range newDamageHistory {
+			damageRecord := &DamageRecord{
+				SourceName: damage.SourceName,
+				Amount:     (damage.Amount * 1000000 / totalDamage) / 100,
+			}
+			if damage.InstigatorHash != "" {
+				for _, wm := range btl.WarMachines {
+					if wm.Hash == damage.InstigatorHash {
+						damageRecord.CausedByWarMachine = &WarMachineBrief{
+							ParticipantID: wm.ParticipantID,
+							ImageUrl:      wm.Image,
+							ImageAvatar:   wm.ImageAvatar,
+							Name:          wm.Name,
+							Hash:          wm.Hash,
+							FactionID:     wm.FactionID,
+						}
 					}
 				}
 			}
+			wmd.DamageRecords = append(wmd.DamageRecords, damageRecord)
 		}
-		wmd.DamageRecords = append(wmd.DamageRecords, damageRecord)
-	}
 
-	if killByWarMachine != nil {
-		wmd.KilledByWarMachine = &WarMachineBrief{
-			ParticipantID: killByWarMachine.ParticipantID,
-			ImageUrl:      killByWarMachine.Image,
-			ImageAvatar:   killByWarMachine.ImageAvatar,
-			Name:          killByWarMachine.Name,
-			Hash:          killByWarMachine.Hash,
-			FactionID:     killByWarMachine.FactionID,
-		}
-	}
-
-	// cache destroyed war machine
-	btl.destroyedWarMachineMap[destroyedWarMachine.ID] = wmd
-
-	// check the "?" show up in killed by
-	if wmd.KilledBy == "?" {
-		// check whether there is a battle ability in the damage records
-		for _, dr := range wmd.DamageRecords {
-			if strings.ToLower(dr.SourceName) == "nuke" || strings.ToLower(dr.SourceName) == "airstrike" {
-				wmd.KilledBy = dr.SourceName
-				break
+		if killByWarMachine != nil {
+			wmd.KilledByWarMachine = &WarMachineBrief{
+				ParticipantID: killByWarMachine.ParticipantID,
+				ImageUrl:      killByWarMachine.Image,
+				ImageAvatar:   killByWarMachine.ImageAvatar,
+				Name:          killByWarMachine.Name,
+				Hash:          killByWarMachine.Hash,
+				FactionID:     killByWarMachine.FactionID,
 			}
 		}
+
+		// cache destroyed war machine
+		btl.destroyedWarMachineMap[destroyedWarMachine.ID] = wmd
+
+		// check the "?" show up in killed by
+		if wmd.KilledBy == "?" {
+			// check whether there is a battle ability in the damage records
+			for _, dr := range wmd.DamageRecords {
+				if strings.ToLower(dr.SourceName) == "nuke" || strings.ToLower(dr.SourceName) == "airstrike" {
+					wmd.KilledBy = dr.SourceName
+					break
+				}
+			}
+		}
+
+		// broadcast notification
+		btl.arena.BroadcastGameNotificationWarMachineDestroyed(&WarMachineDestroyedEventRecord{
+			DestroyedWarMachine: wmd.DestroyedWarMachine,
+			KilledByWarMachine:  wmd.KilledByWarMachine,
+			KilledByUser:        killedByUser,
+			KilledBy:            wmd.KilledBy,
+		})
+
+		// clear up unfinished mech move command of the destroyed mech
+		_, err = boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
+		).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
+		}
 	}
 
-	// broadcast notification
-	btl.arena.BroadcastGameNotificationWarMachineDestroyed(&WarMachineDestroyedEventRecord{
-		DestroyedWarMachine: wmd.DestroyedWarMachine,
-		KilledByWarMachine:  wmd.KilledByWarMachine,
-		KilledByUser:        killedByUser,
-		KilledBy:            wmd.KilledBy,
-	})
-
-	// clear up unfinished mech move command of the destroyed mech
-	_, err = boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(destroyedWarMachine.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.BattleID),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechMoveCommandLogColumns.CancelledAt: null.TimeFrom(time.Now())})
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Str("mech id", destroyedWarMachine.ID).Str("battle id", btl.BattleID).Err(err).Msg("Failed to clean up mech move command.")
+	if isAI && *destroyedWarMachine.AIType == MiniMech {
+		btl.arena._currentBattle.playerAbilityManager().DeleteMiniMechMove(destroyedWarMachine.Hash)
 	}
 
 	// broadcast changes
-	err = btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
+	err := btl.arena.BroadcastFactionMechCommands(destroyedWarMachine.FactionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}
-
 }
 
 func (btl *Battle) Load() error {

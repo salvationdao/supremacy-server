@@ -34,6 +34,7 @@ type MechMoveCommandLog struct {
 	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	IsMoving      bool      `boiler:"is_moving" boil:"is_moving" json:"is_moving" toml:"is_moving" yaml:"is_moving"`
 	ArenaID       string    `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
 
 	R *mechMoveCommandLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var MechMoveCommandLogColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	IsMoving      string
 	ArenaID       string
 }{
 	ID:            "id",
@@ -65,6 +67,7 @@ var MechMoveCommandLogColumns = struct {
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
+	IsMoving:      "is_moving",
 	ArenaID:       "arena_id",
 }
 
@@ -80,6 +83,7 @@ var MechMoveCommandLogTableColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	IsMoving      string
 	ArenaID       string
 }{
 	ID:            "mech_move_command_logs.id",
@@ -93,6 +97,7 @@ var MechMoveCommandLogTableColumns = struct {
 	CreatedAt:     "mech_move_command_logs.created_at",
 	UpdatedAt:     "mech_move_command_logs.updated_at",
 	DeletedAt:     "mech_move_command_logs.deleted_at",
+	IsMoving:      "mech_move_command_logs.is_moving",
 	ArenaID:       "mech_move_command_logs.arena_id",
 }
 
@@ -110,6 +115,7 @@ var MechMoveCommandLogWhere = struct {
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
+	IsMoving      whereHelperbool
 	ArenaID       whereHelperstring
 }{
 	ID:            whereHelperstring{field: "\"mech_move_command_logs\".\"id\""},
@@ -123,6 +129,7 @@ var MechMoveCommandLogWhere = struct {
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"deleted_at\""},
+	IsMoving:      whereHelperbool{field: "\"mech_move_command_logs\".\"is_moving\""},
 	ArenaID:       whereHelperstring{field: "\"mech_move_command_logs\".\"arena_id\""},
 }
 
@@ -156,9 +163,9 @@ func (*mechMoveCommandLogR) NewStruct() *mechMoveCommandLogR {
 type mechMoveCommandLogL struct{}
 
 var (
-	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at", "arena_id"}
+	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at", "is_moving", "arena_id"}
 	mechMoveCommandLogColumnsWithoutDefault = []string{"battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "arena_id"}
-	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at", "is_moving"}
 	mechMoveCommandLogPrimaryKeyColumns     = []string{"id"}
 	mechMoveCommandLogGeneratedColumns      = []string{}
 )
