@@ -18,13 +18,13 @@ type PlayerMechSurvives struct {
 	MechSurvives int            `db:"mech_survive_count" json:"mech_survive_count"`
 }
 
-func GetPlayerMechSurvives(roundID null.String) ([]*PlayerMechSurvives, error) {
+func GetPlayerMechSurvives(questEventID null.String) ([]*PlayerMechSurvives, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
@@ -199,13 +199,13 @@ type PlayerBattlesSpectated struct {
 	ViewBattleCount int            `db:"view_battle_count" json:"view_battle_count"`
 }
 
-func TopBattleViewers(roundID null.String) ([]*PlayerBattlesSpectated, error) {
+func TopBattleViewers(questEventID null.String) ([]*PlayerBattlesSpectated, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
@@ -273,13 +273,13 @@ type PlayerMechKills struct {
 	MechKillCount int            `db:"mech_kill_count" json:"mech_kill_count"`
 }
 
-func TopMechKillPlayers(roundID null.String) ([]*PlayerMechKills, error) {
+func TopMechKillPlayers(questEventID null.String) ([]*PlayerMechKills, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
@@ -347,13 +347,13 @@ type PlayerAbilityKills struct {
 	AbilityKillCount int            `db:"ability_kill_count" json:"ability_kill_count"`
 }
 
-func TopAbilityKillPlayers(roundID null.String) ([]*PlayerAbilityKills, error) {
+func TopAbilityKillPlayers(questEventID null.String) ([]*PlayerAbilityKills, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 
@@ -429,13 +429,13 @@ type PlayerAbilityTriggers struct {
 	TotalAbilityTriggered int            `db:"total_ability_triggered" json:"total_ability_triggered"`
 }
 
-func TopAbilityTriggerPlayers(roundID null.String) ([]*PlayerAbilityTriggers, error) {
+func TopAbilityTriggerPlayers(questEventID null.String) ([]*PlayerAbilityTriggers, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 		whereClause = fmt.Sprintf("WHERE %s BETWEEN $1 AND $2", boiler.BattleAbilityTriggerColumns.TriggeredAt)
@@ -496,13 +496,13 @@ type PlayerRepairBlocks struct {
 	TotalBlockRepaired int            `db:"total_block_repaired" json:"total_block_repaired"`
 }
 
-func TopRepairBlockPlayers(roundID null.String) ([]*PlayerRepairBlocks, error) {
+func TopRepairBlockPlayers(questEventID null.String) ([]*PlayerRepairBlocks, error) {
 	args := []interface{}{}
 	whereClause := ""
-	if roundID.Valid {
-		r, err := boiler.FindRound(gamedb.StdConn, roundID.String)
+	if questEventID.Valid {
+		r, err := boiler.FindQuestEvent(gamedb.StdConn, questEventID.String)
 		if err != nil {
-			gamelog.L.Error().Str("round id", roundID.String).Err(err).Msg("Failed to get round.")
+			gamelog.L.Error().Str("round id", questEventID.String).Err(err).Msg("Failed to get round.")
 			return nil, terror.Error(err, "Failed to query round.")
 		}
 		whereClause = fmt.Sprintf("AND %s BETWEEN $1 AND $2", boiler.RepairAgentColumns.FinishedAt)

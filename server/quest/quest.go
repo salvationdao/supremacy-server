@@ -39,8 +39,8 @@ func New() (*System, error) {
 	// insert test quest if it is not prod env
 	if !server.IsProductionEnv() {
 		// check test quests exists
-		r, err := boiler.Rounds(
-			boiler.RoundWhere.Name.EQ(DevQuestName),
+		r, err := boiler.QuestEvents(
+			boiler.QuestEventWhere.Name.EQ(DevQuestName),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Failed to load staging quest")
@@ -48,15 +48,15 @@ func New() (*System, error) {
 
 		if r == nil {
 			now := time.Now()
-			r = &boiler.Round{
+			r = &boiler.QuestEvent{
 				Type:               boiler.RoundTypeDailyQuest,
 				Name:               DevQuestName,
 				StartedAt:          now,
 				EndAt:              now.AddDate(0, 0, 3), // default value
-				DurationType:       boiler.RoundDurationTypeCustom,
+				DurationType:       boiler.QuestEventDurationTypeCustom,
 				CustomDurationDays: null.IntFrom(3),
 				Repeatable:         true,
-				RoundNumber:        1,
+				QuestEventNumber:   1,
 			}
 			err = r.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
@@ -142,11 +142,11 @@ func syncQuests() error {
 	// handle quests sync for all the available quest
 
 	// get current available quest
-	rounds, err := boiler.Rounds(
-		boiler.RoundWhere.StartedAt.LTE(now),
-		boiler.RoundWhere.EndAt.GT(now),
-		boiler.RoundWhere.NextRoundID.IsNull(),
-		qm.Load(boiler.RoundRels.Quests),
+	rounds, err := boiler.QuestEvents(
+		boiler.QuestEventWhere.StartedAt.LTE(now),
+		boiler.QuestEventWhere.EndAt.GT(now),
+		boiler.QuestEventWhere.NextQuestEventID.IsNull(),
+		qm.Load(boiler.QuestEventRels.Quests),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to query available quests")
@@ -160,7 +160,7 @@ func syncQuests() error {
 		}
 
 		bqs, err := boiler.BlueprintQuests(
-			boiler.BlueprintQuestWhere.RoundType.IN(roundTypes),
+			boiler.BlueprintQuestWhere.QuestEventType.IN(roundTypes),
 		).All(gamedb.StdConn)
 		if err != nil {
 			return terror.Error(err, "Failed to load blueprint quest")
@@ -178,16 +178,16 @@ func syncQuests() error {
 			// get added quests
 			for _, bq := range bqs {
 				// skip, if different round type
-				if bq.RoundType != roundType {
+				if bq.QuestEventType != roundType {
 					continue
 				}
 
 				// add new quest, if the quest not exists
 				if slices.IndexFunc(roundQuests, func(rq *boiler.Quest) bool { return rq.BlueprintID == bq.ID }) == -1 {
 					addedQuests = append(addedQuests, &boiler.Quest{
-						RoundID:     r.ID,
-						BlueprintID: bq.ID,
-						CreatedAt:   r.StartedAt,
+						QuestEventID: r.ID,
+						BlueprintID:  bq.ID,
+						CreatedAt:    r.StartedAt,
 					})
 
 					// track change flag
@@ -198,7 +198,7 @@ func syncQuests() error {
 			// get removed quests
 			for _, rq := range roundQuests {
 				index := slices.IndexFunc(bqs, func(bq *boiler.BlueprintQuest) bool {
-					return bq.RoundType == roundType && bq.ID == rq.BlueprintID
+					return bq.QuestEventType == roundType && bq.ID == rq.BlueprintID
 				})
 
 				// remove, if quest no longer exists
@@ -246,11 +246,11 @@ func syncQuests() error {
 	}
 
 	// handle expired rounds
-	rounds, err = boiler.Rounds(
-		boiler.RoundWhere.Repeatable.EQ(true),
-		boiler.RoundWhere.EndAt.LTE(now),
-		boiler.RoundWhere.NextRoundID.IsNull(),
-		qm.Load(boiler.RoundRels.Quests),
+	rounds, err = boiler.QuestEvents(
+		boiler.QuestEventWhere.Repeatable.EQ(true),
+		boiler.QuestEventWhere.EndAt.LTE(now),
+		boiler.QuestEventWhere.NextQuestEventID.IsNull(),
+		qm.Load(boiler.QuestEventRels.Quests),
 	).All(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("Failed to query expired quests")
@@ -280,7 +280,7 @@ func syncQuests() error {
 			}
 
 			// regen new quests
-			newRound := &boiler.Round{
+			newRound := &boiler.QuestEvent{
 				Type:               r.Type,
 				Name:               r.Name,
 				StartedAt:          now,
@@ -288,20 +288,20 @@ func syncQuests() error {
 				DurationType:       r.DurationType,
 				CustomDurationDays: r.CustomDurationDays,
 				Repeatable:         r.Repeatable,
-				RoundNumber:        r.RoundNumber + 1, // increment round number by one
+				QuestEventNumber:   r.QuestEventNumber + 1, // increment round number by one
 			}
 
 			switch newRound.DurationType {
-			case boiler.RoundDurationTypeDaily:
+			case boiler.QuestEventDurationTypeDaily:
 				newRound.EndAt = now.AddDate(0, 0, 1)
 
-			case boiler.RoundDurationTypeWeekly:
+			case boiler.QuestEventDurationTypeWeekly:
 				newRound.EndAt = now.AddDate(0, 0, 7)
 
-			case boiler.RoundDurationTypeMonthly:
+			case boiler.QuestEventDurationTypeMonthly:
 				newRound.EndAt = now.AddDate(0, 1, 0)
 
-			case boiler.RoundDurationTypeCustom:
+			case boiler.QuestEventDurationTypeCustom:
 				if newRound.CustomDurationDays.Valid {
 					newRound.EndAt = now.AddDate(0, 0, newRound.CustomDurationDays.Int)
 				} else {
@@ -315,8 +315,8 @@ func syncQuests() error {
 				return terror.Error(err, "Failed to insert new quest")
 			}
 
-			r.NextRoundID = null.StringFrom(newRound.ID)
-			_, err = r.Update(tx, boil.Whitelist(boiler.RoundColumns.NextRoundID))
+			r.NextQuestEventID = null.StringFrom(newRound.ID)
+			_, err = r.Update(tx, boil.Whitelist(boiler.QuestEventColumns.NextQuestEventID))
 			if err != nil {
 				l.Error().Err(err).Interface("involved round", r).Msg("Failed to update next quest id column")
 				return terror.Error(err, "Failed to update expired quest")
@@ -324,7 +324,7 @@ func syncQuests() error {
 
 			// regenerate new quest
 			bqs, err := boiler.BlueprintQuests(
-				boiler.BlueprintQuestWhere.RoundType.EQ(r.Type),
+				boiler.BlueprintQuestWhere.QuestEventType.EQ(r.Type),
 			).All(tx)
 			if err != nil {
 				l.Error().Err(err).Str("round type", r.Type).Msg("Failed to get blueprint quests.")
@@ -333,8 +333,8 @@ func syncQuests() error {
 
 			for _, bq := range bqs {
 				q := boiler.Quest{
-					RoundID:     newRound.ID,
-					BlueprintID: bq.ID,
+					QuestEventID: newRound.ID,
+					BlueprintID:  bq.ID,
 				}
 				err = q.Insert(tx, boil.Infer())
 				if err != nil {

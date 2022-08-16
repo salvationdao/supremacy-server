@@ -109,6 +109,7 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
+	QuestEvents                                        string
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
 	Quests                                             string
@@ -117,7 +118,6 @@ var TableNames = struct {
 	RepairBlocks                                       string
 	RepairCases                                        string
 	RepairOffers                                       string
-	Rounds                                             string
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -259,6 +259,7 @@ var TableNames = struct {
 	PunishOptions:                  "punish_options",
 	PunishVoteInstantPassRecords:   "punish_vote_instant_pass_records",
 	PunishVotes:                    "punish_votes",
+	QuestEvents:                    "quest_events",
 	QuestionnaireAnswer:            "questionnaire_answer",
 	QuestionnaireOptions:           "questionnaire_options",
 	Quests:                         "quests",
@@ -267,7 +268,6 @@ var TableNames = struct {
 	RepairBlocks:                   "repair_blocks",
 	RepairCases:                    "repair_cases",
 	RepairOffers:                   "repair_offers",
-	Rounds:                         "rounds",
 	SalePlayerAbilities:            "sale_player_abilities",
 	SchemaMigrations:               "schema_migrations",
 	SpoilsOfWar:                    "spoils_of_war",

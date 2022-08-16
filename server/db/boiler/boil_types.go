@@ -108,11 +108,11 @@ const (
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
-// Enum values for RoundType
+// Enum values for QuestEventType
 const (
-	RoundTypeDailyQuest   = "daily_quest"
-	RoundTypeWeeklyQuest  = "weekly_quest"
-	RoundTypeMonthlyQuest = "monthly_quest"
+	QuestEventTypeDailyQuest   = "daily_quest"
+	QuestEventTypeWeeklyQuest  = "weekly_quest"
+	QuestEventTypeMonthlyQuest = "monthly_quest"
 )
 
 // Enum values for QuestKey
@@ -263,6 +263,21 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+// Enum values for RoundType
+const (
+	RoundTypeDailyQuest   = "daily_quest"
+	RoundTypeWeeklyQuest  = "weekly_quest"
+	RoundTypeMonthlyQuest = "monthly_quest"
+)
+
+// Enum values for QuestEventDurationType
+const (
+	QuestEventDurationTypeDaily   = "daily"
+	QuestEventDurationTypeWeekly  = "weekly"
+	QuestEventDurationTypeMonthly = "monthly"
+	QuestEventDurationTypeCustom  = "custom"
+)
+
 // Enum values for RepairTriggerWithType
 const (
 	RepairTriggerWithTypeSPACE_BAR  = "SPACE_BAR"
@@ -283,14 +298,6 @@ const (
 	RepairFinishReasonEXPIRED   = "EXPIRED"
 	RepairFinishReasonSTOPPED   = "STOPPED"
 	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
-)
-
-// Enum values for RoundDurationType
-const (
-	RoundDurationTypeDaily   = "daily"
-	RoundDurationTypeWeekly  = "weekly"
-	RoundDurationTypeMonthly = "monthly"
-	RoundDurationTypeCustom  = "custom"
 )
 
 // Enum values for SyndicateElectionType

@@ -390,9 +390,9 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 	err := boiler.NewQuery(
 		qm.Select(
 			fmt.Sprintf("%s AS id", qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ID)),
-			fmt.Sprintf("%s AS round_name", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.Name)),
-			fmt.Sprintf("%s AS started_at", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.StartedAt)),
-			fmt.Sprintf("%s AS end_at", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.EndAt)),
+			fmt.Sprintf("%s AS round_name", qm.Rels(boiler.TableNames.QuestEvents, boiler.QuestEventColumns.Name)),
+			fmt.Sprintf("%s AS started_at", qm.Rels(boiler.TableNames.QuestEvents, boiler.QuestEventColumns.StartedAt)),
+			fmt.Sprintf("%s AS end_at", qm.Rels(boiler.TableNames.QuestEvents, boiler.QuestEventColumns.EndAt)),
 			fmt.Sprintf("%s AS name", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Name)),
 			fmt.Sprintf("%s AS key", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Key)),
 			fmt.Sprintf("%s AS description", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Description)),
@@ -428,9 +428,9 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s ON %s = %s",
-				boiler.TableNames.Rounds,
-				qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.ID),
-				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.RoundID),
+				boiler.TableNames.QuestEvents,
+				qm.Rels(boiler.TableNames.QuestEvents, boiler.QuestEventColumns.ID),
+				qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.QuestEventID),
 			),
 		),
 	).Bind(context.Background(), gamedb.StdConn, &result)

@@ -29,10 +29,10 @@ const HubKeyLeaderboardRounds = "LEADERBOARD:ROUNDS"
 
 func (api *API) GetLeaderboardRoundsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	now := time.Now()
-	rs, err := boiler.Rounds(
-		boiler.RoundWhere.StartedAt.LTE(now),
-		boiler.RoundWhere.EndAt.GT(now),
-		qm.OrderBy(boiler.RoundColumns.CreatedAt+" DESC"),
+	rs, err := boiler.QuestEvents(
+		boiler.QuestEventWhere.StartedAt.LTE(now),
+		boiler.QuestEventWhere.EndAt.GT(now),
+		qm.OrderBy(boiler.QuestEventColumns.CreatedAt+" DESC"),
 		qm.Limit(10),
 	).All(gamedb.StdConn)
 	if err != nil {

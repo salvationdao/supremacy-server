@@ -23,86 +23,86 @@ import (
 
 // BlueprintQuest is an object representing the database table.
 type BlueprintQuest struct {
-	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	RoundType     string    `boiler:"round_type" boil:"round_type" json:"round_type" toml:"round_type" yaml:"round_type"`
-	Key           string    `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	Name          string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	Description   string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	RequestAmount int       `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	QuestEventType string    `boiler:"quest_event_type" boil:"quest_event_type" json:"quest_event_type" toml:"quest_event_type" yaml:"quest_event_type"`
+	Key            string    `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	Name           string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	Description    string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	RequestAmount  int       `boiler:"request_amount" boil:"request_amount" json:"request_amount" toml:"request_amount" yaml:"request_amount"`
+	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *blueprintQuestR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintQuestL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintQuestColumns = struct {
-	ID            string
-	RoundType     string
-	Key           string
-	Name          string
-	Description   string
-	RequestAmount string
-	CreatedAt     string
-	UpdatedAt     string
-	DeletedAt     string
+	ID             string
+	QuestEventType string
+	Key            string
+	Name           string
+	Description    string
+	RequestAmount  string
+	CreatedAt      string
+	UpdatedAt      string
+	DeletedAt      string
 }{
-	ID:            "id",
-	RoundType:     "round_type",
-	Key:           "key",
-	Name:          "name",
-	Description:   "description",
-	RequestAmount: "request_amount",
-	CreatedAt:     "created_at",
-	UpdatedAt:     "updated_at",
-	DeletedAt:     "deleted_at",
+	ID:             "id",
+	QuestEventType: "quest_event_type",
+	Key:            "key",
+	Name:           "name",
+	Description:    "description",
+	RequestAmount:  "request_amount",
+	CreatedAt:      "created_at",
+	UpdatedAt:      "updated_at",
+	DeletedAt:      "deleted_at",
 }
 
 var BlueprintQuestTableColumns = struct {
-	ID            string
-	RoundType     string
-	Key           string
-	Name          string
-	Description   string
-	RequestAmount string
-	CreatedAt     string
-	UpdatedAt     string
-	DeletedAt     string
+	ID             string
+	QuestEventType string
+	Key            string
+	Name           string
+	Description    string
+	RequestAmount  string
+	CreatedAt      string
+	UpdatedAt      string
+	DeletedAt      string
 }{
-	ID:            "blueprint_quests.id",
-	RoundType:     "blueprint_quests.round_type",
-	Key:           "blueprint_quests.key",
-	Name:          "blueprint_quests.name",
-	Description:   "blueprint_quests.description",
-	RequestAmount: "blueprint_quests.request_amount",
-	CreatedAt:     "blueprint_quests.created_at",
-	UpdatedAt:     "blueprint_quests.updated_at",
-	DeletedAt:     "blueprint_quests.deleted_at",
+	ID:             "blueprint_quests.id",
+	QuestEventType: "blueprint_quests.quest_event_type",
+	Key:            "blueprint_quests.key",
+	Name:           "blueprint_quests.name",
+	Description:    "blueprint_quests.description",
+	RequestAmount:  "blueprint_quests.request_amount",
+	CreatedAt:      "blueprint_quests.created_at",
+	UpdatedAt:      "blueprint_quests.updated_at",
+	DeletedAt:      "blueprint_quests.deleted_at",
 }
 
 // Generated where
 
 var BlueprintQuestWhere = struct {
-	ID            whereHelperstring
-	RoundType     whereHelperstring
-	Key           whereHelperstring
-	Name          whereHelperstring
-	Description   whereHelperstring
-	RequestAmount whereHelperint
-	CreatedAt     whereHelpertime_Time
-	UpdatedAt     whereHelpertime_Time
-	DeletedAt     whereHelpernull_Time
+	ID             whereHelperstring
+	QuestEventType whereHelperstring
+	Key            whereHelperstring
+	Name           whereHelperstring
+	Description    whereHelperstring
+	RequestAmount  whereHelperint
+	CreatedAt      whereHelpertime_Time
+	UpdatedAt      whereHelpertime_Time
+	DeletedAt      whereHelpernull_Time
 }{
-	ID:            whereHelperstring{field: "\"blueprint_quests\".\"id\""},
-	RoundType:     whereHelperstring{field: "\"blueprint_quests\".\"round_type\""},
-	Key:           whereHelperstring{field: "\"blueprint_quests\".\"key\""},
-	Name:          whereHelperstring{field: "\"blueprint_quests\".\"name\""},
-	Description:   whereHelperstring{field: "\"blueprint_quests\".\"description\""},
-	RequestAmount: whereHelperint{field: "\"blueprint_quests\".\"request_amount\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"blueprint_quests\".\"created_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"blueprint_quests\".\"updated_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"blueprint_quests\".\"deleted_at\""},
+	ID:             whereHelperstring{field: "\"blueprint_quests\".\"id\""},
+	QuestEventType: whereHelperstring{field: "\"blueprint_quests\".\"quest_event_type\""},
+	Key:            whereHelperstring{field: "\"blueprint_quests\".\"key\""},
+	Name:           whereHelperstring{field: "\"blueprint_quests\".\"name\""},
+	Description:    whereHelperstring{field: "\"blueprint_quests\".\"description\""},
+	RequestAmount:  whereHelperint{field: "\"blueprint_quests\".\"request_amount\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"blueprint_quests\".\"created_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"blueprint_quests\".\"updated_at\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"blueprint_quests\".\"deleted_at\""},
 }
 
 // BlueprintQuestRels is where relationship names are stored.
@@ -126,8 +126,8 @@ func (*blueprintQuestR) NewStruct() *blueprintQuestR {
 type blueprintQuestL struct{}
 
 var (
-	blueprintQuestAllColumns            = []string{"id", "round_type", "key", "name", "description", "request_amount", "created_at", "updated_at", "deleted_at"}
-	blueprintQuestColumnsWithoutDefault = []string{"round_type", "key", "name", "description", "request_amount"}
+	blueprintQuestAllColumns            = []string{"id", "quest_event_type", "key", "name", "description", "request_amount", "created_at", "updated_at", "deleted_at"}
+	blueprintQuestColumnsWithoutDefault = []string{"quest_event_type", "key", "name", "description", "request_amount"}
 	blueprintQuestColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
 	blueprintQuestPrimaryKeyColumns     = []string{"id"}
 	blueprintQuestGeneratedColumns      = []string{}

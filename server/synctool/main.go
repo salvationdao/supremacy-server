@@ -1295,11 +1295,11 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 
 	for _, record := range records {
 		blueprintQuest := &boiler.BlueprintQuest{
-			ID:          record[0],
-			RoundType:   record[1],
-			Key:         record[2],
-			Name:        record[3],
-			Description: record[4],
+			ID:             record[0],
+			QuestEventType: record[1],
+			Key:            record[2],
+			Name:           record[3],
+			Description:    record[4],
 		}
 
 		// convert request amount
@@ -1317,7 +1317,7 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 				boiler.BlueprintQuestColumns.ID,
 			},
 			boil.Whitelist(
-				boiler.BlueprintQuestColumns.RoundType,
+				boiler.BlueprintQuestColumns.QuestEventType,
 				boiler.BlueprintQuestColumns.Key,
 				boiler.BlueprintQuestColumns.Name,
 				boiler.BlueprintQuestColumns.Description,
