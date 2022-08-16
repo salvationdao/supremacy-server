@@ -100,7 +100,7 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		// if environment != "development" {
+		if environment != "development" {
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -111,7 +111,7 @@ func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 			)
 			defer span.Finish()
 			ctx = augmentedCtx
-		//}
+		}
 		return fn(ctx, key, payload, reply)
 	}
 }
@@ -120,7 +120,7 @@ func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
 func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		// if environment != "development" {
+		if environment != "development" {
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -131,7 +131,7 @@ func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFun
 			)
 			defer span.Finish()
 			ctx = augmentedCtx
-		//}
+		}
 		return fn(ctx, user, key, payload, reply)
 	}
 }
@@ -140,7 +140,7 @@ func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFun
 func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) SecureFactionCommandFunc {
 	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 		requestUri, _ := ctx.Value("Origin").(string)
-		// if environment != "development" {
+		if environment != "development" {
 			span, augmentedCtx := tracer.StartSpanFromContext(
 				ctx,
 				"ws_handler",
@@ -151,7 +151,7 @@ func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) Secure
 			)
 			defer span.Finish()
 			ctx = augmentedCtx
-		//}
+		}
 		return fn(ctx, user, user.FactionID.String, key, payload, reply)
 	}
 }
@@ -159,7 +159,7 @@ func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) Secure
 func AddOriginToCtx() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext( context.WithValue(r.Context(), "Origin", r.Header.Get("Origin"))))
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "Origin", r.Header.Get("Origin"))))
 			return
 		}
 		return http.HandlerFunc(fn)
@@ -170,7 +170,7 @@ func RestDatadogTrace(environment string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			// if environment != "development" {
+			if environment != "development" {
 				span, augmentedCtx := tracer.StartSpanFromContext(
 					r.Context(),
 					"http_handler",
@@ -181,7 +181,7 @@ func RestDatadogTrace(environment string) func(http.Handler) http.Handler {
 				)
 				defer span.Finish()
 				r = r.WithContext(augmentedCtx)
-			//}
+			}
 			next.ServeHTTP(w, r)
 		})
 	}

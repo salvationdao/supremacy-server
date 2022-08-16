@@ -24,7 +24,6 @@ func FactionRouter(api *API) chi.Router {
 	}
 	r := chi.NewRouter()
 	r.Get("/all", WithError(c.FactionAll))
-	r.Get("/test", WithError(c.FactionAll))
 	r.Get("/stat", WithError(api.GetFactionData))
 
 	return r
