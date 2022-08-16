@@ -39,6 +39,8 @@ const (
 )
 
 type AbilitiesSystem struct {
+	arenaID string
+
 	// faction unique abilities
 	_battle           *Battle
 	startedAt         time.Time
@@ -284,6 +286,7 @@ type AbilityConfig struct {
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// initialise new gabs ability pool
 	as := &AbilitiesSystem{
+		arenaID:   battle.arenaID,
 		_battle:   battle,
 		startedAt: time.Now(),
 		BattleAbilityPool: &AbilityPool{
@@ -390,7 +393,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		return ba.CooldownDurationSecond, err
 	}
 
-	ws.PublishMessage("/public/battle_ability", HubKeyBattleAbilityUpdated, GameAbility{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_ability", as.arenaID), HubKeyBattleAbilityUpdated, GameAbility{
 		ID:                     ga.ID,
 		GameClientAbilityID:    byte(ga.GameClientAbilityID),
 		ImageUrl:               ga.ImageURL,
@@ -468,7 +471,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		}
 
 		as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSeconds) * time.Second))
-		ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	}
 
 	// initial a ticker for current battle
@@ -538,7 +541,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 					// broadcast stage to frontend
-					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+					ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 					continue
 				}
 
@@ -569,7 +572,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 				as.BattleAbilityPool.Stage.StoreEndTime(endTime)
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 			// at the end of location select phase
 			// pass the location select to next player
@@ -587,7 +590,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 				continue
 
 			// at the end of cooldown phase
@@ -598,7 +601,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageOptIn)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.BattleAbilityPool.config.BattleAbilityOptInDuration))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 				continue
 			default:
@@ -726,7 +729,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 				continue
 			}
 		}
@@ -865,7 +868,7 @@ func (as *AbilitiesSystem) End() {
 	as.BattleAbilityPool.Stage.Phase.Store(BribeStageHold)
 	as.BattleAbilityPool.Stage.StoreEndTime(time.Now().AddDate(1, 0, 0))
 	// broadcast stage to frontend
-	ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	as.isClosed.Store(true)
 
 	as.storeBattle(nil)

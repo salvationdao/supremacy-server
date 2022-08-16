@@ -304,7 +304,7 @@ const (
 func (api *API) MessageBroadcaster() {
 	for {
 		select {
-		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
+		case msg := <-api.ArenaManager.SystemBanManager.SystemBanMassageChan:
 			banMessage := &MessageSystemBan{
 				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
@@ -341,7 +341,7 @@ func (api *API) MessageBroadcaster() {
 				api.GlobalChat.AddMessage(cm)
 				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
 			}
-		case newBattleInfo := <-api.BattleArena.NewBattleChan:
+		case newBattleInfo := <-api.ArenaManager.NewBattleChan:
 			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo).Msg("failed to broadcast new battle info")

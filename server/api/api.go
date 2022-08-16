@@ -262,7 +262,7 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, "repair"))
+				s.Use(api.AuthWS(false, false, "repair"))
 
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
@@ -277,22 +277,25 @@ func NewAPI(
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
-				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
-				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
-				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
+				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
+				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
+
+				// TODO: fix batch message handling
 				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
-				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
-				s.WS("/live_data", "", nil)
+				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
+				s.WS("/live_data", "", nil) // TODO: find a way to display total online players
 			}))
 
 			r.Mount("/secure", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true))
+				s.Use(api.AuthWS(true, false))
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
 				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList)
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 
+				// user related
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
 				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
@@ -302,11 +305,12 @@ func NewAPI(
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
 
 				// battle related endpoint
-				s.WS("/user/{user_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
+				s.WS("/user/{user_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
 			}))
 
 			// secured user route ws
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 			}))
 
@@ -324,18 +328,16 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
-				// subscription from battle
-				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
-				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(battleArenaClient.PlayerAssetMechQueueSubscribeHandler))
-				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
+				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(api.QueueStatusSubscribeHandler))
+				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
 
-				s.WS("/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
-				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
-				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
-
-				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
-				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
+				// subscription from battle
+				s.WS("/arena/{arena_id}/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
+				s.WS("/arena/{arena_id}/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
+				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitiesUpdateSubscribeHandler))
+				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitySubscribe))
 
 				// syndicate related
 				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(api.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
@@ -386,7 +388,6 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
-	go api.BattleArena.RepairOfferCleaner()
 
 	return api, nil
 }
@@ -408,7 +409,7 @@ func (api *API) Run(ctx context.Context) error {
 		api.Close()
 	}()
 
-	api.BattleArena.Serve()
+	api.ArenaManager.Serve()
 
 	return api.server.ListenAndServe()
 }
@@ -495,7 +496,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 	}
 }
 
-func (api *API) AuthWS(required bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
+func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
@@ -548,6 +549,18 @@ func (api *API) AuthWS(required bool, onlyAuthPaths ...string) func(next http.Ha
 			if err != nil {
 				gamelog.L.Debug().Err(err).Msg("authentication error")
 				return
+			}
+
+			if userIDMustMatch {
+				userID := chi.URLParam(r, "user_id")
+				if userID == "" || userID != user.ID {
+					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
+					return
+				}
 			}
 
 			// get ip

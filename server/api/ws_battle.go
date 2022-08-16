@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
 	"server/battle"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -32,15 +35,16 @@ func NewBattleController(api *API) *BattleControllerWS {
 	// commands from battle
 
 	// faction queue
-	api.SecureUserFactionCommand(battle.WSQueueJoin, api.BattleArena.QueueJoinHandler)
-	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.BattleArena.AssetUpdateRequest)
+	api.SecureUserFactionCommand(battle.WSQueueJoin, api.ArenaManager.QueueJoinHandler)
+	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
 
-	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
 
 	// mech move command related
-	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.BattleArena.MechMoveCommandCancelHandler)
+	api.SecureUserFactionCommand(battle.HubKeyMechMoveCommandCancel, api.ArenaManager.MechMoveCommandCancelHandler)
 	// battle ability related (bribing)
-	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
+	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.ArenaManager.AbilityLocationSelect)
+
 	return bc
 }
 
@@ -196,11 +200,11 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	var minSurvives int
 	err = gamedb.StdConn.QueryRow(`
 	SELECT
-		count(mech_id),
-		max(total_kills),
-		min(total_kills),
-		max(total_wins),
-		min(total_wins)
+		COUNT(mech_id),
+		MAX(total_kills),
+		MIN(total_kills),
+		MAX(total_wins),
+		MIN(total_wins)
 	FROM
 		mech_stats
 `).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
@@ -232,5 +236,28 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 		},
 	})
 
+	return nil
+}
+
+func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
+		return err
+	}
+
+	reply(battle.CalcNextQueueStatus(result))
+	return nil
+}
+
+func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	mechID := chi.RouteContext(ctx).URLParam("mech_id")
+
+	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	reply(queueDetails)
 	return nil
 }

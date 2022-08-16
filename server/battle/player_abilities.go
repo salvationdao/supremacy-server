@@ -251,6 +251,9 @@ func (pam *PlayerAbilityManager) RemoveHiddenWarMachineHash(hash string) {
 
 type PlayerAbilityUseRequest struct {
 	Payload struct {
+		// TODO: update frontend
+		ArenaID string `json:"arena_id"`
+
 		BlueprintAbilityID string               `json:"blueprint_ability_id"`
 		LocationSelectType string               `json:"location_select_type"`
 		StartCoords        *server.CellLocation `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
@@ -263,16 +266,10 @@ const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
 var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
 
-func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	b := playerAbilityBucket.Add(user.ID, 2)
 	if b == 0 {
 		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
-	}
-
-	// skip, if current not battle
-	if arena.CurrentBattle() == nil {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
 	// check player is banned
@@ -296,6 +293,17 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, f
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := am.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	// skip, if current not battle
+	if arena.CurrentBattle() == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
 	// mech command handler
@@ -510,8 +518,13 @@ const MechMoveCommandCancelGameAbilityID = 9
 
 const HubKeyMechCommandsSubscribe = "MECH:COMMANDS:SUBSCRIBE"
 
-func (arena *Arena) MechCommandsSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	err := arena.BroadcastFactionMechCommands(factionID)
+func (am *ArenaManager) MechCommandsSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = arena.BroadcastFactionMechCommands(factionID)
 	if err != nil {
 		return terror.Error(err, "Failed to get mech command logs")
 	}
@@ -579,13 +592,17 @@ type MechMoveCommandResponse struct {
 	IsMiniMech            bool `json:"is_mini_mech"`
 }
 
-func (arena *Arena) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	hash := cctx.URLParam("hash")
+func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
 
 	if arena.currentBattleState() != BattleStageStart {
 		return terror.Error(terror.ErrForbidden, "There is no current battle")
 	}
+
+	hash := chi.RouteContext(ctx).URLParam("hash")
 
 	wm := arena.CurrentBattleWarMachineOrAIByHash(hash)
 	if wm == nil {
@@ -661,6 +678,9 @@ const HubKeyWarMachineAbilityTrigger = "WAR:MACHINE:ABILITY:TRIGGER"
 
 type MechAbilityTriggerRequest struct {
 	Payload struct {
+		// TODO: update frontend
+		ArenaID string `json:"arena_id"`
+
 		Hash          string `json:"mech_hash"`
 		GameAbilityID string `json:"game_ability_id"`
 	} `json:"payload"`
@@ -668,16 +688,21 @@ type MechAbilityTriggerRequest struct {
 
 var mechAbilityBucket = leakybucket.NewCollector(1, 1, true)
 
-func (arena *Arena) MechAbilityTriggerHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
-		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
-	}
-
+func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MechAbilityTriggerRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := am.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	// check battle stage
+	if arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
 	if mechAbilityBucket.Add(req.Payload.Hash, 1) == 0 {
@@ -959,7 +984,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		}
 
 		// broadcast mech command log
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", factionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 			MechMoveCommandLog:    mmc,
 			RemainCooldownSeconds: MechMoveCooldownSeconds,
 		})
@@ -1005,22 +1030,31 @@ const HubKeyMechMoveCommandCancel = "MECH:MOVE:COMMAND:CANCEL"
 
 type MechMoveCommandCancelRequest struct {
 	Payload struct {
+		// TODO: update frontend
+		ArenaID string `json:"arena_id"`
+
 		Hash          string `json:"hash"`
 		MoveCommandID string `json:"move_command_id"`
 	} `json:"payload"`
 }
 
 // MechMoveCommandCancelHandler send cancel mech move command to game client
-func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
-		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
-	}
+func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	req := &MechMoveCommandCancelRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	arena, err := am.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
+	}
+
+	// check battle stage
+	if arena.currentBattleState() == BattleStageEnd {
+		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
 	wm := arena.CurrentBattleWarMachineOrAIByHash(req.Payload.Hash)
@@ -1132,13 +1166,31 @@ func (arena *Arena) MechMoveCommandCancelHandler(ctx context.Context, user *boil
 	return nil
 }
 
+// TODO: update frontend
+type AbilityOptInRequest struct {
+	Payload struct {
+		ArenaID string `json:"arena_id"`
+	} `json:"payload"`
+}
+
 const HubKeyBattleAbilityOptIn = "BATTLE:ABILITY:OPT:IN"
 
 var optInBucket = leakybucket.NewCollector(1, 1, true)
 
-func (arena *Arena) BattleAbilityOptIn(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) BattleAbilityOptIn(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	if optInBucket.Add(user.ID, 1) == 0 {
 		return terror.Error(fmt.Errorf("too many requests"), "Too many Requests")
+	}
+
+	req := &AbilityOptInRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	arena, err := am.GetArena(req.Payload.ArenaID)
+	if err != nil {
+		return err
 	}
 
 	btl := arena.CurrentBattle()
@@ -1169,7 +1221,7 @@ func (arena *Arena) BattleAbilityOptIn(ctx context.Context, user *boiler.Player,
 		FactionID:               factionID,
 		BattleAbilityID:         ba.ID,
 	}
-	err := bao.Insert(gamedb.StdConn, boil.Infer())
+	err = bao.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, "Failed to opt in battle ability")
 	}

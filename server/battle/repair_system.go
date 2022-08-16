@@ -23,7 +23,7 @@ type RepairOfferClose struct {
 	AgentClosedReason string
 }
 
-func (arena *Arena) RepairOfferCleaner() {
+func (am *ArenaManager) RepairOfferCleaner() {
 	ticker := time.NewTicker(1 * time.Minute)
 
 	for {
@@ -51,13 +51,13 @@ func (arena *Arena) RepairOfferCleaner() {
 				continue
 			}
 
-			err = arena.closeRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
+			err = am.closeRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
 				continue
 			}
 
-		case roc := <-arena.RepairOfferCloseChan:
+		case roc := <-am.RepairOfferCloseChan:
 			ros, err := boiler.RepairOffers(
 				boiler.RepairOfferWhere.ID.IN(roc.OfferIDs),
 				boiler.RepairOfferWhere.ClosedAt.IsNull(), // double check it is not closed yet
@@ -78,7 +78,7 @@ func (arena *Arena) RepairOfferCleaner() {
 				continue
 			}
 
-			err = arena.closeRepairOffers(ros, roc.OfferClosedReason, roc.AgentClosedReason)
+			err = am.closeRepairOffers(ros, roc.OfferClosedReason, roc.AgentClosedReason)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to close repair offers.")
 				continue
@@ -87,7 +87,7 @@ func (arena *Arena) RepairOfferCleaner() {
 	}
 }
 
-func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
+func (am *ArenaManager) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
 	now := time.Now()
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -160,7 +160,7 @@ func (arena *Arena) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseRea
 			}
 
 			// refund reward
-			refundTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			refundTxID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
 				ToUserID:             uuid.Must(uuid.FromString(ro.OfferedByID.String)),
 				Amount:               amount.StringFixed(0),

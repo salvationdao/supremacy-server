@@ -36,7 +36,7 @@ func MustMatchUserID(ctx context.Context) bool {
 		return false
 	}
 
-	// check user id matched
+	// check user id matched the user id on url
 	userID := chi.RouteContext(ctx).URLParam("user_id")
 	if userID == "" || userID != user.ID {
 		return false

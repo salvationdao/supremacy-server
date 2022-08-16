@@ -283,7 +283,7 @@ func (api *API) RepairOfferClose(ctx context.Context, user *boiler.Player, key s
 	}
 
 	// close offer
-	api.BattleArena.RepairOfferCloseChan <- &battle.RepairOfferClose{
+	api.ArenaManager.RepairOfferCloseChan <- &battle.RepairOfferClose{
 		OfferIDs:          []string{ro.ID},
 		OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
 		AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
@@ -655,7 +655,7 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		ids = append(ids, ro.ID)
 	}
 
-	api.BattleArena.RepairOfferCloseChan <- &battle.RepairOfferClose{
+	api.ArenaManager.RepairOfferCloseChan <- &battle.RepairOfferClose{
 		OfferIDs:          ids,
 		OfferClosedReason: boiler.RepairAgentFinishReasonSUCCEEDED,
 		AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
