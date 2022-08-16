@@ -29,7 +29,7 @@ type playerQuestCheck struct {
 	checkFunc func(playerID string, quest *boiler.Quest, blueprintQuest *boiler.BlueprintQuest) bool
 }
 
-const StagingQuestName = "Staging Quests"
+const DevQuestName = "Proving Grounds"
 
 func New() (*System, error) {
 	q := &System{
@@ -40,7 +40,7 @@ func New() (*System, error) {
 	if !server.IsProductionEnv() {
 		// check test quests exists
 		r, err := boiler.Rounds(
-			boiler.RoundWhere.Name.EQ(StagingQuestName),
+			boiler.RoundWhere.Name.EQ(DevQuestName),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Failed to load staging quest")
@@ -50,7 +50,7 @@ func New() (*System, error) {
 			now := time.Now()
 			r = &boiler.Round{
 				Type:               boiler.RoundTypeDailyQuest,
-				Name:               StagingQuestName,
+				Name:               DevQuestName,
 				StartedAt:          now,
 				EndAt:              now.AddDate(0, 0, 3), // default value
 				DurationType:       boiler.RoundDurationTypeCustom,
