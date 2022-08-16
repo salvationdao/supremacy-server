@@ -29,6 +29,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
@@ -1126,8 +1127,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	return nil
 }
 
-const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
-
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
@@ -1178,6 +1177,8 @@ type PlayerAsset struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+const HubKeyPlayerAssetWeaponList = "PLAYER:ASSET:WEAPON:LIST"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerAssetWeaponListRequest{}
@@ -1248,6 +1249,57 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		Total:   total,
 		Weapons: playerAssWeapons,
 	})
+	return nil
+}
+
+type PlayerAssetMechEquipRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		MechID         string        `json:"mech_id"`
+		EquipPowerCore string        `json:"equip_power_core"`
+		EquipShield    string        `json:"equip_shield"`
+		EquipWeapons   []EquipWeapon `json:"equip_weapons"`
+		EquipMechSkin  string        `json:"equip_mech_skin"`
+	} `json:"payload"`
+}
+
+type EquipWeapon struct {
+	SlotNumber int    `json:"slot_number"`
+	WeaponID   string `json:"weapon_id"`
+}
+
+const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetMechEquipRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.MechID == "" {
+		return terror.Error(terror.ErrInvalidInput, "Mech ID was not provided")
+	}
+
+	mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, "Something happened while trying to save your changes. Please try again or contact support if this problem persists.")
+	}
+
+	if req.Payload.EquipPowerCore != "" {
+		//
+	}
+	if req.Payload.EquipShield != "" {
+		//
+	}
+	if len(req.Payload.EquipWeapons) != 0 {
+		//
+	}
+	if req.Payload.EquipMechSkin != "" {
+
+	}
+
+	reply(true)
 	return nil
 }
 
