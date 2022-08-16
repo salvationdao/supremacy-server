@@ -9,6 +9,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -390,6 +391,8 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 		qm.Select(
 			fmt.Sprintf("%s AS id", qm.Rels(boiler.TableNames.Quests, boiler.QuestColumns.ID)),
 			fmt.Sprintf("%s AS round_name", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.Name)),
+			fmt.Sprintf("%s AS started_at", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.StartedAt)),
+			fmt.Sprintf("%s AS end_at", qm.Rels(boiler.TableNames.Rounds, boiler.RoundColumns.EndAt)),
 			fmt.Sprintf("%s AS name", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Name)),
 			fmt.Sprintf("%s AS key", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Key)),
 			fmt.Sprintf("%s AS description", qm.Rels(boiler.TableNames.BlueprintQuests, boiler.BlueprintQuestColumns.Description)),
@@ -434,6 +437,32 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("player id", playerID).Msg("Failed to get player quests.")
 		return nil, terror.Error(err, "Failed to get player quests.")
+	}
+
+	// sort list
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].EndAt.Sub(result[i].StartedAt) < result[j].EndAt.Sub(result[j].StartedAt)
+	})
+
+	checkedRoundName := make(map[string]bool)
+	resp := []*server.QuestStat{}
+	for _, r := range result {
+		roundName := r.RoundName
+
+		// check round name is already done
+		if _, ok := checkedRoundName[roundName]; ok {
+			continue
+		}
+
+		// append quest to response
+		for _, q := range result {
+			if q.RoundName == roundName {
+				resp = append(resp, q)
+			}
+		}
+
+		// record round name
+		checkedRoundName[roundName] = true
 	}
 
 	return result, nil
