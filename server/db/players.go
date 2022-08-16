@@ -465,7 +465,7 @@ func PlayerQuestStatGet(playerID string) ([]*server.QuestStat, error) {
 		checkedRoundName[roundName] = true
 	}
 
-	return result, nil
+	return resp, nil
 }
 
 type PlayerQuestProgression struct {
