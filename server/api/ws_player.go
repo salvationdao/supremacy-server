@@ -1064,7 +1064,6 @@ func (pc *PlayerController) PlayerRankGet(ctx context.Context, user *boiler.Play
 
 const HubKeyGameUserOnline = "GAME:ONLINE"
 
-// TODO: update frontend
 type UserOnlineRequest struct {
 	Payload struct {
 		ArenaID string `json:"arena_id"`

@@ -22,7 +22,6 @@ import (
 	"server/syndicate"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
-	"strings"
 	"sync"
 	"time"
 
@@ -276,14 +275,14 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false, "repair"))
-
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
-				s.WS("/battle_end_result", battle.HubKeyBattleEndDetailUpdated, nil)
+
+				s.WS("/arena_list", server.HubKeyBattleArenaListSubscribe, api.ArenaListSubscribeHandler)
+				s.WS("/arena/{arena_id}/closed", server.HubKeyBattleArenaClosedSubscribe, api.ArenaClosedSubscribeHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
@@ -294,15 +293,16 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
+				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, nil)
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
 
-				s.WS("/live_data", "", nil) // TODO: find a way to display total online players
+				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
 			r.Mount("/secure", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, false))
+				s.Use(api.AuthWS(false))
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
 				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList)
@@ -321,12 +321,12 @@ func NewAPI(
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
 
 				// battle related endpoint
-				s.WS("/user/{user_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
+				s.WS("/user/{user_id}/arena/{arena_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
 			}))
 
-			// secured user route ws
+			// secured user commander
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, true))
+				s.Use(api.AuthWS(true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 			}))
 
@@ -502,7 +502,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 				}
 			}
 
-			ctxWithUserID := context.WithValue(r.Context(), "user_id", user.ID)
+			ctxWithUserID := context.WithValue(r.Context(), "auth_user_id", user.ID)
 			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
 			*r = *r.WithContext(ctx)
 			next.ServeHTTP(w, r)
@@ -512,7 +512,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 	}
 }
 
-func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
+func (api *API) AuthWS(userIDMustMatch bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
@@ -524,39 +524,14 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 				if token == "" {
 					token, ok = r.Context().Value("token").(string)
 					if !ok || token == "" {
-						if required {
-							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
-							http.Error(w, "Unauthorized", http.StatusUnauthorized)
-							return
-						}
-						next.ServeHTTP(w, r)
+						gamelog.L.Debug().Err(err).Msg("missing token and cookie")
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
 						return
 					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					if required {
-						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
-						return
-					}
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			if !required {
-				path := r.URL.Path
-
-				exists := false
-				for _, p := range onlyAuthPaths {
-					if strings.Contains(path, p) {
-						exists = true
-						break
-					}
-				}
-
-				if !exists {
-					next.ServeHTTP(w, r)
+					gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
 					return
 				}
 			}
@@ -598,7 +573,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), "user_id", user.ID)
+			ctx := context.WithValue(r.Context(), "auth_user_id", user.ID)
 			*r = *r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 			return
@@ -686,6 +661,12 @@ func (c *captcha) verify(token string) error {
 		return terror.Error(fmt.Errorf("verification failed"), "Failed to verify captcha token")
 	}
 
+	return nil
+}
+
+func (api *API) LiveViewerCount(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(&ViewerLiveCount{})
+	api.ViewerUpdateChan <- true
 	return nil
 }
 

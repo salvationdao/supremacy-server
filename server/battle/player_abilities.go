@@ -251,7 +251,6 @@ func (pam *PlayerAbilityManager) RemoveHiddenWarMachineHash(hash string) {
 
 type PlayerAbilityUseRequest struct {
 	Payload struct {
-		// TODO: update frontend
 		ArenaID string `json:"arena_id"`
 
 		BlueprintAbilityID string               `json:"blueprint_ability_id"`
@@ -678,7 +677,6 @@ const HubKeyWarMachineAbilityTrigger = "WAR:MACHINE:ABILITY:TRIGGER"
 
 type MechAbilityTriggerRequest struct {
 	Payload struct {
-		// TODO: update frontend
 		ArenaID string `json:"arena_id"`
 
 		Hash          string `json:"mech_hash"`
@@ -1033,7 +1031,6 @@ const HubKeyMechMoveCommandCancel = "MECH:MOVE:COMMAND:CANCEL"
 
 type MechMoveCommandCancelRequest struct {
 	Payload struct {
-		// TODO: update frontend
 		ArenaID string `json:"arena_id"`
 
 		Hash          string `json:"hash"`
@@ -1169,7 +1166,6 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 	return nil
 }
 
-// TODO: update frontend
 type AbilityOptInRequest struct {
 	Payload struct {
 		ArenaID string `json:"arena_id"`
@@ -1229,7 +1225,7 @@ func (am *ArenaManager) BattleAbilityOptIn(ctx context.Context, user *boiler.Pla
 		return terror.Error(err, "Failed to opt in battle ability")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/battle_ability/check_opt_in", user.ID), HubKeyBattleAbilityOptInCheck, true)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/battle_ability/check_opt_in", user.ID, arena.ID), HubKeyBattleAbilityOptInCheck, true)
 
 	return nil
 }

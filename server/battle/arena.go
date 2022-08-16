@@ -142,20 +142,16 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	return arena, nil
 }
 
-func (am *ArenaManager) AvailableBattleArenas() []Arena {
+func (am *ArenaManager) AvailableBattleArenas() []*boiler.BattleArena {
 	am.RLock()
 	defer am.RUnlock()
 
-	resp := []Arena{}
+	resp := []*boiler.BattleArena{}
 	for _, arena := range am.arenas {
 		if arena.connected.Load() {
-			resp = append(resp, Arena{
-				ID:   arena.ID,
-				Type: arena.Type,
-			})
+			resp = append(resp, arena.BattleArena)
 		}
 	}
-
 	return resp
 }
 
@@ -206,7 +202,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			arena.connected.Store(false)
 
 			// tell frontend the arena is closed
-			ws.PublishMessage(fmt.Sprintf("/battle_arena/%s/public/arena_closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
 
 			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			err = wsConn.Close(websocket.StatusInternalError, "game client has disconnected")
@@ -288,8 +284,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	}
 
 	arena := &Arena{
-		ID:                     ba.ID,
-		Type:                   ba.Type,
+		BattleArena:            ba,
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
 		gameClientJsonDataChan: make(chan []byte, 3),
@@ -324,8 +319,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 }
 
 type Arena struct {
-	ID                       string `json:"id"`
-	Type                     string `json:"type"`
+	*boiler.BattleArena
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -754,7 +748,6 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 
 type LocationSelectRequest struct {
 	Payload struct {
-		// TODO: update frontend
 		ArenaID string `json:"arena_id"`
 
 		StartCoords server.CellLocation  `json:"start_coords"`

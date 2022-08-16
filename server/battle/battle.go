@@ -1251,7 +1251,7 @@ func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []
 
 	endInfo.MechRewards = mechRewardRecords
 
-	ws.PublishMessage("/public/battle_end_result", HubKeyBattleEndDetailUpdated, endInfo)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_end_result", btl.ArenaID), HubKeyBattleEndDetailUpdated, endInfo)
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
@@ -1510,7 +1510,7 @@ func (btl *Battle) Tick(payload []byte) {
 		// If Mech is a regular type OR is a mini mech
 		if participantID < 100 || btl.IsMechOfType(int(participantID), MiniMech) {
 			wsMessages = append(wsMessages, ws.Message{
-				URI:     fmt.Sprintf("/public/mech/%d", participantID),
+				URI:     fmt.Sprintf("/public/arena/%s/mech/%d", btl.ArenaID, participantID),
 				Key:     HubKeyWarMachineStatUpdated,
 				Payload: wms,
 			})
@@ -1519,7 +1519,7 @@ func (btl *Battle) Tick(payload []byte) {
 
 	if len(wsMessages) > 0 {
 		gamelog.L.Trace().Str("func", "Tick").Msg("batch sending")
-		ws.PublishBatchMessages("/public/mech", wsMessages)
+		ws.PublishBatchMessages(fmt.Sprintf("/public/arena/%s/mech", btl.ArenaID), wsMessages)
 		gamelog.L.Trace().Str("func", "Tick").Msg("batch sent")
 	}
 

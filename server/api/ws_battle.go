@@ -261,3 +261,21 @@ func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *
 	reply(queueDetails)
 	return nil
 }
+
+func (api *API) ArenaListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(api.ArenaManager.AvailableBattleArenas())
+	return nil
+}
+
+func (api *API) ArenaClosedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	_, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		// send arena is closed
+		reply(true)
+		return nil
+	}
+
+	// send arena isn't close
+	reply(false)
+	return nil
+}

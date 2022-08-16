@@ -43,7 +43,7 @@ func MustSecureFaction(fn SecureFactionCommandFunc) ws.CommandFunc {
 }
 
 func RetrieveUser(ctx context.Context) (*boiler.Player, error) {
-	userID, ok := ctx.Value("user_id").(string)
+	userID, ok := ctx.Value("auth_user_id").(string)
 
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("can not retrieve user id")

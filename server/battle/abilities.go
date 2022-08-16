@@ -355,7 +355,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		}
 
 		for _, ba := range bao {
-			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/battle_ability/check_opt_in", ba.PlayerID), HubKeyBattleAbilityOptInCheck, false)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/battle_ability/check_opt_in", ba.PlayerID, as.arenaID), HubKeyBattleAbilityOptInCheck, false)
 		}
 
 	}(offeringID)
