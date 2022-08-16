@@ -697,6 +697,7 @@ func (api *API) debounceSendingViewerCount() {
 		case <-timer.C:
 			// get user ids from ws connection
 			playerIDs := ws.TrackedIdents()
+
 			// cal current online player
 			if len(playerIDs) > 0 {
 				ps, err := boiler.Players(
@@ -720,7 +721,7 @@ func (api *API) debounceSendingViewerCount() {
 						result.Other += 1
 					}
 				}
-				ws.PublishMessage("public/live_data", HubKeyViewerLiveCountUpdated, result)
+				ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, result)
 			}
 		}
 	}
