@@ -22,21 +22,6 @@ CREATE TABLE rounds
     deleted_at           TIMESTAMPTZ
 );
 
-
-CREATE TABLE IF NOT EXISTS blueprint_quests
-(
-    id             UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    round_type     ROUND_TYPE  NOT NULL,
-    key            QUEST_KEY   NOT NULL,
-    name           TEXT        NOT NULL,
-    description    TEXT        NOT NULL,
-    request_amount INT         NOT NULL,
-
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at     TIMESTAMPTZ
-);
-
 CREATE TABLE quests
 (
     id           UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
