@@ -118,7 +118,7 @@ const HubKeyGameNotification = "GAME:NOTIFICATION"
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
@@ -126,7 +126,7 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
@@ -134,7 +134,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
@@ -142,7 +142,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
@@ -150,7 +150,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
@@ -158,7 +158,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 
 // BroadcastGameNotificationBattleZoneChange broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEvent) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeBattleZoneChange,
 		Data: data,
 	})
