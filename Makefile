@@ -104,6 +104,12 @@ db-migrate:
 db-migrate-sync:
 	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static up
 
+
+.PHONY: db-migrate-sync-down-one
+db-migrate-sync-down-one:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static down 1
+
+
 .PHONY: db-migrate-down
 db-migrate-down:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down
