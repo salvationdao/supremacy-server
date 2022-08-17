@@ -114,8 +114,6 @@ type MechCommandNotification struct {
 	FiredByUser  *UserBrief `json:"fired_by_user,omitempty"`
 }
 
-const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
-
 const HubKeyGameNotification = "GAME:NOTIFICATION"
 
 // BroadcastGameNotificationText broadcast game notification to client
@@ -204,7 +202,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		warMachine, err := bq.Mech(
 			qm.Load(boiler.MechRels.BattleQueueNotifications),
 			qm.Load(boiler.MechRels.Blueprint),
-			).One(gamedb.StdConn)
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue

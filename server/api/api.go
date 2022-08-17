@@ -2,12 +2,9 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"server"
 	"server/battle"
 	"server/db"
@@ -20,13 +17,7 @@ import (
 	"server/syndicate"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
-	"sync"
 	"time"
-
-	"github.com/ninja-software/terror/v2"
-
-	"github.com/pemistahl/lingua-go"
-	"github.com/volatiletech/null/v8"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -36,47 +27,17 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
+	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
-
-// WelcomePayload is the response sent when a client connects to the server
-type WelcomePayload struct {
-	Message string `json:"message"`
-}
-
-type LiveVotingData struct {
-	sync.Mutex
-	TotalVote server.BigInt
-}
-
-type VotePriceSystem struct {
-	VotePriceUpdater *tickle.Tickle
-
-	GlobalVotePerTick []int64 // store last 100 tick total vote
-	GlobalTotalVote   int64
-
-	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
-	FactionActivePlayers map[server.FactionID]*ActivePlayers
-}
-
-type FactionVotePrice struct {
-	// priority lock
-	OuterLock      sync.Mutex
-	NextAccessLock sync.Mutex
-	DataLock       sync.Mutex
-
-	// price
-	CurrentVotePriceSups server.BigInt
-	CurrentVotePerTick   int64
-}
 
 // API server
 type API struct {
 	ctx                      context.Context
 	server                   *http.Server
 	Routes                   chi.Router
-	BattleArena              *battle.Arena
+	ArenaManager             *battle.ArenaManager
 	HTMLSanitize             *bluemonday.Policy
 	SMS                      server.SMS
 	Passport                 *xsyn_rpcclient.XsynXrpcClient
@@ -115,12 +76,14 @@ type API struct {
 	SyncConfig *synctool.StaticSyncTool
 
 	questManager *quest.System
+
+	ViewerUpdateChan chan bool
 }
 
 // NewAPI registers routes
 func NewAPI(
 	ctx context.Context,
-	battleArenaClient *battle.Arena,
+	arenaManager *battle.ArenaManager,
 	pp *xsyn_rpcclient.XsynXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
 	config *server.Config,
@@ -145,7 +108,7 @@ func NewAPI(
 		ctx:                      ctx,
 		Routes:                   chi.NewRouter(),
 		HTMLSanitize:             HTMLSanitize,
-		BattleArena:              battleArenaClient,
+		ArenaManager:             arenaManager,
 		Passport:                 pp,
 		SMS:                      sms,
 		Telegram:                 telegram,
@@ -176,7 +139,12 @@ func NewAPI(
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
 		questManager: questManager,
+
+		ViewerUpdateChan: make(chan bool),
 	}
+
+	// set user online debounce
+	go api.debounceSendingViewerCount()
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
@@ -227,7 +195,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(battleArenaClient, telegram, battleArenaClient.IsClientConnected))
+		r.Mount("/check", CheckRouter(arenaManager, telegram, arenaManager.IsClientConnected))
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
@@ -243,7 +211,7 @@ func NewAPI(
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 			r.Mount("/system_messages", SystemMessagesRouter(api))
 
-			r.Mount("/battle", BattleRouter(battleArenaClient))
+			r.Mount("/battle", BattleRouter(arenaManager))
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
@@ -258,57 +226,59 @@ func NewAPI(
 
 			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(false, false, "repair"))
-
 				s.Mount("/commander", api.Commander)
 				s.WS("/online", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
-				s.WS("/battle_end_result", battle.HubKeyBattleEndDetailUpdated, nil)
 
-				// endpoint for demoing battle ability showcase to non-login player
-				s.WS("/battle_ability", battle.HubKeyBattleAbilityUpdated, api.BattleArena.PublicBattleAbilityUpdateSubscribeHandler)
-
-				s.WS("/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.BattleArena.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena_list", server.HubKeyBattleArenaListSubscribe, api.ArenaListSubscribeHandler)
+				s.WS("/arena/{arena_id}/closed", server.HubKeyBattleArenaClosedSubscribe, api.ArenaClosedSubscribeHandler)
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
-				s.WS("/game_settings", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
-				s.WSBatch("/mech/{slotNumber}", "/public/mech", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatSubscribe)
-				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
-				s.WS("/live_data", "", nil)
+				// battle related endpoint
+				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
+				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
+				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, nil)
 
+				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
+				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
+
+				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
-			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, false))
+			r.Mount("/secure", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(false))
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
 				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList)
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
+
+				// user related
+				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)
+				s.WS("/user/{user_id}/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler), MustMatchUserID)
+				s.WS("/user/{user_id}/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet), MustMatchUserID)
+				s.WS("/user/{user_id}/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler), MustMatchUserID)
+				s.WS("/user/{user_id}/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList), MustMatchUserID)
+				s.WS("/user/{user_id}/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil, MustMatchUserID)
+				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
+				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
+				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
+
+				// battle related endpoint
+				s.WS("/user/{user_id}/arena/{arena_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
 			}))
 
-			// secured user route ws
+			// secured user commander
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
-				s.Use(api.AuthWS(true, true))
+				s.Use(api.AuthWS(true))
 				s.Mount("/user_commander", api.SecureUserCommander)
-				s.WSTrack("/*", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/stat", server.HubKeyUserStatSubscribe, server.MustSecure(pc.PlayersStatSubscribeHandler))
-				s.WS("/rank", server.HubKeyPlayerRankGet, server.MustSecure(pc.PlayerRankGet))
-				s.WS("/player_abilities", server.HubKeyPlayerAbilitiesList, server.MustSecure(pac.PlayerAbilitiesListHandler))
-				s.WS("/punishment_list", HubKeyPlayerPunishmentList, server.MustSecure(pc.PlayerPunishmentList))
-				s.WS("/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(battleArenaClient.BattleAbilityOptInSubscribeHandler), MustHaveFaction)
-
-				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
-				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
-
-				s.WS("/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat))
-				s.WS("/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions))
 			}))
 
 			// secured faction route ws
@@ -325,18 +295,16 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/brief_info", HubKeyPlayerAssetMechDetail, server.MustSecureFaction(pasc.PlayerAssetMechBriefInfo))
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
-				// subscription from battle
-				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
-				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(battleArenaClient.PlayerAssetMechQueueSubscribeHandler))
-				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
+				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
+				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(api.QueueStatusSubscribeHandler))
+				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
 
-				s.WS("/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
-				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
-				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
-
-				s.WS("/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
-				s.WS("/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(battleArenaClient.WarMachineAbilitySubscribe))
+				// subscription from battle
+				s.WS("/arena/{arena_id}/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.ArenaManager.MechMoveCommandSubscriber))
+				s.WS("/arena/{arena_id}/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.ArenaManager.MechCommandsSubscriber))
+				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitiesUpdateSubscribeHandler))
+				s.WS("/arena/{arena_id}/mech/{slotNumber}/abilities/{mech_ability_id}/cool_down_seconds", battle.HubKeyWarMachineAbilitySubscribe, server.MustSecureFaction(api.ArenaManager.WarMachineAbilitySubscribe))
 
 				// syndicate related
 				s.WS("/syndicate/{syndicate_id}", server.HubKeySyndicateGeneralDetailSubscribe, server.MustSecureFaction(api.SyndicateGeneralDetailSubscribeHandler), MustMatchSyndicate)
@@ -387,7 +355,6 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
-	go api.BattleArena.RepairOfferCleaner()
 
 	return api, nil
 }
@@ -409,7 +376,7 @@ func (api *API) Run(ctx context.Context) error {
 		api.Close()
 	}()
 
-	api.BattleArena.Serve()
+	api.ArenaManager.Serve()
 
 	return api.server.ListenAndServe()
 }
@@ -422,158 +389,4 @@ func (api *API) Close() {
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
 	}
-}
-
-func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			var token string
-			var ok bool
-
-			cookie, err := r.Cookie("xsyn-token")
-			if err != nil {
-				token = r.URL.Query().Get("token")
-				if token == "" {
-					token, ok = r.Context().Value("token").(string)
-					if !ok || token == "" {
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
-					}
-				}
-			} else {
-				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					gamelog.L.Error().Err(err).Msg("decrypting cookie error")
-					return
-				}
-			}
-
-			user, err := api.TokenLogin(token)
-			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
-				return
-			}
-
-			// get ip
-			ip := r.Header.Get("X-Forwarded-For")
-			if ip == "" {
-				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-				userIP := net.ParseIP(ipaddr)
-				if userIP == nil {
-					ip = ipaddr
-				} else {
-					ip = userIP.String()
-				}
-			}
-
-			// upsert player ip logs
-			err = db.PlayerIPUpsert(user.ID, ip)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
-				fmt.Fprintf(w, "invalid ip address")
-				return
-			}
-
-			if !user.FactionID.Valid {
-				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
-				return
-			}
-
-			if factionIDMustMatch {
-				factionID := chi.URLParam(r, "faction_id")
-				if factionID == "" || factionID != user.FactionID.String {
-					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
-					return
-				}
-			}
-
-			ctxWithUserID := context.WithValue(r.Context(), "user_id", user.ID)
-			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
-			*r = *r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-		}
-
-		return http.HandlerFunc(fn)
-	}
-}
-
-// TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Player, error) {
-	ignoreError := len(ignoreErr) > 0 && ignoreErr[0] == true
-
-	userResp, err := api.Passport.TokenLogin(tokenBase64)
-	if err != nil {
-		if !ignoreError {
-			if err.Error() == "session is expired" {
-				gamelog.L.Debug().Err(err).Msg("Failed to login with token")
-			}
-			gamelog.L.Error().Err(err).Msg("Failed to login with token")
-		}
-		return nil, err
-	}
-
-	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to update player detail")
-		}
-		return nil, err
-	}
-
-	serverPlayer, err := db.GetPlayer(userResp.ID)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
-		}
-		return nil, err
-	}
-
-	return serverPlayer, nil
-}
-
-type captcha struct {
-	secret    string
-	siteKey   string
-	verifyUrl string
-}
-
-func (c *captcha) verify(token string) error {
-	if token == "" {
-		return terror.Error(fmt.Errorf("token is empty"), "Token is empty.")
-	}
-
-	resp, err := http.PostForm(c.verifyUrl, url.Values{
-		"secret":   {c.secret},
-		"response": {token},
-	})
-
-	if err != nil {
-		return terror.Error(err, "Failed to verify token")
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return terror.Error(err, "Read token")
-	}
-
-	type captchaResp struct {
-		Success   bool   `json:"success"`
-		ErrorCode string `json:"error-codes"`
-	}
-
-	cr := &captchaResp{}
-	err = json.Unmarshal(body, cr)
-	if err != nil {
-		return terror.Error(err, "Failed to read captcha response")
-	}
-
-	if cr.ErrorCode != "" {
-		gamelog.L.Debug().Msg(cr.ErrorCode)
-	}
-
-	if !cr.Success {
-		return terror.Error(fmt.Errorf("verification failed"), "Failed to verify captcha token")
-	}
-
-	return nil
 }

@@ -64,6 +64,12 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for ArenaTypeEnum
+const (
+	ArenaTypeEnumSTORY      = "STORY"
+	ArenaTypeEnumEXPEDITION = "EXPEDITION"
+)
+
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"

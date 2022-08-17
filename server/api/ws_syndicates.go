@@ -398,7 +398,7 @@ func (api *API) SyndicateLeaveHandler(ctx context.Context, user *boiler.Player, 
 	}
 
 	// broadcast updated user
-	ws.PublishMessage(fmt.Sprintf("/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
 
 	// broadcast latest syndicate detail
 	serverSyndicate, err := db.GetSyndicateDetail(syndicate.ID)

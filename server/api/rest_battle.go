@@ -9,12 +9,12 @@ import (
 
 // BattleController holds connection data for handlers
 type BattleController struct {
-	BattleArena *battle.Arena
+	ArenaManager *battle.ArenaManager
 }
 
-func BattleRouter(battleArena *battle.Arena) chi.Router {
+func BattleRouter(arenaManager *battle.ArenaManager) chi.Router {
 	c := &BattleController{
-		BattleArena: battleArena,
+		ArenaManager: arenaManager,
 	}
 	r := chi.NewRouter()
 	r.Get("/mech/{id}/destroyed_detail", WithError(c.MechDestroyedDetail))
@@ -26,7 +26,7 @@ func BattleRouter(battleArena *battle.Arena) chi.Router {
 func (bc *BattleController) MechDestroyedDetail(w http.ResponseWriter, r *http.Request) (int, error) {
 	mechID := chi.URLParam(r, "id")
 
-	if destroyedRecord := bc.BattleArena.WarMachineDestroyedDetail(mechID); destroyedRecord != nil {
+	if destroyedRecord := bc.ArenaManager.WarMachineDestroyedDetail(mechID); destroyedRecord != nil {
 		return helpers.EncodeJSON(w, destroyedRecord)
 	}
 

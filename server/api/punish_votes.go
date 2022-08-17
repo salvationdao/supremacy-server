@@ -775,6 +775,6 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		punishedPlayerID := uuid.FromStringOrNil(punishVote.ReportedPlayerID)
 
 		// send to the player
-		ws.PublishMessage(fmt.Sprintf("/user/%s/punishment_list", punishedPlayerID), HubKeyPlayerPunishmentList, playerPunishments)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/punishment_list", punishedPlayerID), HubKeyPlayerPunishmentList, playerPunishments)
 	}
 }

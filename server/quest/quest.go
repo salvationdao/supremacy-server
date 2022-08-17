@@ -392,7 +392,7 @@ func syncQuests() error {
 					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player quest status")
 					return
 				}
-				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
 
 				// broadcast progressions
 				progressions, err := db.PlayerQuestProgressions(playerID)
@@ -400,7 +400,7 @@ func syncQuests() error {
 					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player progressions")
 					return
 				}
-				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_progression", playerID), server.HubKeyPlayerQuestProgressions, progressions)
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_progression", playerID), server.HubKeyPlayerQuestProgressions, progressions)
 
 			}(playerID)
 		}
@@ -475,7 +475,7 @@ func playerQuestGrant(playerID string, questID string) error {
 	}
 
 	// broadcast player quest stat
-	ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
 
 	return nil
 }
@@ -487,7 +487,7 @@ func broadcastProgression(playerID string, questID string, currentProgress int, 
 
 	// broadcast changes
 	ws.PublishMessage(
-		fmt.Sprintf("/user/%s/quest_progression", playerID),
+		fmt.Sprintf("/secure/user/%s/quest_progression", playerID),
 		server.HubKeyPlayerQuestProgressions,
 		[]*db.PlayerQuestProgression{{questID, currentProgress, goal}},
 	)
