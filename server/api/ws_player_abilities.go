@@ -35,6 +35,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
+	api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityClaim, pac.SaleAbilityClaimHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
@@ -67,7 +68,20 @@ type SaleAbilitiesListResponse struct {
 	SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
+
+	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+	reply(&SaleAbilitiesListResponse{
+		NextRefreshTime:              &nextRefresh,
+		RefreshPeriodDurationSeconds: pac.API.SalePlayerAbilityManager.TimeBetweenRefreshSeconds,
+		SaleAbilities:                dpas,
+	})
+
+	return nil
+}
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
 	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
