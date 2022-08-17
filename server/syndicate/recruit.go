@@ -444,7 +444,7 @@ func (a *Application) Action() {
 
 	// TODO: send message to applicant
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", applicant.ID), server.HubKeyUserSubscribe, applicant)
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/syndicate/%s/join_applicant/%s", applicant.FactionID.String, a.SyndicateID, a.ID), server.HubKeySyndicateJoinApplicationUpdate, a)
 

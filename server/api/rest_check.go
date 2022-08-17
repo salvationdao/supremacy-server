@@ -20,14 +20,14 @@ import (
 
 // CheckController holds connection data for handlers
 type CheckController struct {
-	BattleArena       *battle.Arena
+	ArenaManager      *battle.ArenaManager
 	Telegram          server.Telegram
 	IsClientConnected func() error
 }
 
-func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, IsClientConnected func() error) chi.Router {
+func CheckRouter(arenaManager *battle.ArenaManager, telegram server.Telegram, IsClientConnected func() error) chi.Router {
 	c := &CheckController{
-		BattleArena:       battleArena,
+		ArenaManager:      arenaManager,
 		Telegram:          telegram,
 		IsClientConnected: IsClientConnected,
 	}

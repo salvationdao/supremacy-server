@@ -10,6 +10,7 @@ var TableNames = struct {
 	BattleAbilities                                    string
 	BattleAbilityOptInLogs                             string
 	BattleAbilityTriggers                              string
+	BattleArena                                        string
 	BattleContracts                                    string
 	BattleContributions                                string
 	BattleEvents                                       string
@@ -37,6 +38,7 @@ var TableNames = struct {
 	BlueprintMechs                                     string
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
+	BlueprintQuests                                    string
 	BlueprintUtility                                   string
 	BlueprintUtilityAccelerator                        string
 	BlueprintUtilityAntiMissile                        string
@@ -98,6 +100,7 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersFeatures                                    string
+	PlayersObtainedQuests                              string
 	PlayersProfileAvatars                              string
 	PlayersPunishVotes                                 string
 	PowerCores                                         string
@@ -107,8 +110,10 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVoteInstantPassRecords                       string
 	PunishVotes                                        string
+	QuestEvents                                        string
 	QuestionnaireAnswer                                string
 	QuestionnaireOptions                               string
+	Quests                                             string
 	RepairAgentLogs                                    string
 	RepairAgents                                       string
 	RepairBlocks                                       string
@@ -156,6 +161,7 @@ var TableNames = struct {
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityOptInLogs:          "battle_ability_opt_in_logs",
 	BattleAbilityTriggers:           "battle_ability_triggers",
+	BattleArena:                     "battle_arena",
 	BattleContracts:                 "battle_contracts",
 	BattleContributions:             "battle_contributions",
 	BattleEvents:                    "battle_events",
@@ -183,6 +189,7 @@ var TableNames = struct {
 	BlueprintMechs:                 "blueprint_mechs",
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
+	BlueprintQuests:                "blueprint_quests",
 	BlueprintUtility:               "blueprint_utility",
 	BlueprintUtilityAccelerator:    "blueprint_utility_accelerator",
 	BlueprintUtilityAntiMissile:    "blueprint_utility_anti_missile",
@@ -244,6 +251,7 @@ var TableNames = struct {
 	PlayerStats:                    "player_stats",
 	Players:                        "players",
 	PlayersFeatures:                "players_features",
+	PlayersObtainedQuests:          "players_obtained_quests",
 	PlayersProfileAvatars:          "players_profile_avatars",
 	PlayersPunishVotes:             "players_punish_votes",
 	PowerCores:                     "power_cores",
@@ -253,8 +261,10 @@ var TableNames = struct {
 	PunishOptions:                  "punish_options",
 	PunishVoteInstantPassRecords:   "punish_vote_instant_pass_records",
 	PunishVotes:                    "punish_votes",
+	QuestEvents:                    "quest_events",
 	QuestionnaireAnswer:            "questionnaire_answer",
 	QuestionnaireOptions:           "questionnaire_options",
+	Quests:                         "quests",
 	RepairAgentLogs:                "repair_agent_logs",
 	RepairAgents:                   "repair_agents",
 	RepairBlocks:                   "repair_blocks",

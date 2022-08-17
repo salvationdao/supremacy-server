@@ -202,6 +202,11 @@ jobs:
         run: |
           ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations up'
 
+      - name: "Update latest migration number"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: |
+          ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && sudo -u postgres ./migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations version 2> TEMP.txt && echo LatestMigration=`cat ./TEMP.txt` >> ./BuildInfo.txt && rm ./TEMP.txt'
+
       - name: restart api-server
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl daemon-reload && sudo systemctl start gameserver'

@@ -18,10 +18,12 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
+	"server/quest"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"server/zendesk"
 
 	"github.com/volatiletech/null/v8"
 
@@ -162,6 +164,10 @@ func main() {
 
 					&cli.StringFlag{Name: "captcha_site_key", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SITE_KEY", "CAPTCHA_SITE_KEY"}, Usage: "Captcha site key"},
 					&cli.StringFlag{Name: "captcha_secret", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SECRET", "CAPTCHA_SECRET"}, Usage: "Captcha secret"},
+
+					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -184,6 +190,10 @@ func main() {
 					twilioApiSecrete := c.String("twilio_api_secret")
 					smsFromNumber := c.String("sms_from_number")
 					githubToken := c.String("github_token")
+
+					zendeskToken := c.String("zendesk_token")
+					zendeskEmail := c.String("zendesk_email")
+					zendeskUrl := c.String("zendesk_url")
 
 					telegramBotToken := c.String("telegram_bot_token")
 
@@ -318,7 +328,7 @@ func main() {
 					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						ws.PublishMessage(fmt.Sprintf("/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
+						ws.PublishMessage(fmt.Sprintf("/secure/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
@@ -363,15 +373,23 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					qm, err := quest.New()
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
-					ba := battle.NewArena(&battle.Opts{
+
+					arenaManager := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						QuestManager:             qm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -379,8 +397,15 @@ func main() {
 
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
+					gamelog.L.Info().Msg("Setting up Zendesk")
+					zendesk, err := zendesk.NewZendesk(zendeskToken, zendeskEmail, zendeskUrl, environment)
+					if err != nil {
+						return terror.Error(err, "Zendesk init failed")
+					}
+					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
+
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -499,7 +524,7 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
+			SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
 			FROM templates_old tpo
 			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
 			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
@@ -721,13 +746,15 @@ func SetupAPI(
 	ctxCLI *cli.Context,
 	ctx context.Context,
 	log *zerolog.Logger,
-	battleArenaClient *battle.Arena,
+	arenaManager *battle.ArenaManager,
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
+	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
+	questManager *quest.System,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -785,7 +812,7 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager)
 	if err != nil {
 		return nil, err
 	}

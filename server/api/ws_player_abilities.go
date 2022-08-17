@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/player_abilities"
+	"server/sale_player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -38,8 +38,8 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	api.SecureUserCommand(server.HubKeySaleAbilityClaim, pac.SaleAbilityClaimHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
-	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.BattleArena.MechAbilityTriggerHandler)
-	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.BattleArena.BattleAbilityOptIn)
+	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.ArenaManager.MechAbilityTriggerHandler)
+	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.ArenaManager.BattleAbilityOptIn)
 
 	return pac
 }
@@ -193,10 +193,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 		l.Error().Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Claim <- &player_abilities.Claim{
+	pac.API.SalePlayerAbilityManager.Claim <- &sale_player_abilities.Claim{
 		SaleID: spa.ID,
 	}
 	return nil
@@ -363,10 +363,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		l.Error().Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Purchase <- &player_abilities.Purchase{
+	pac.API.SalePlayerAbilityManager.Purchase <- &sale_player_abilities.Purchase{
 		SaleID: spa.ID,
 	}
 	return nil

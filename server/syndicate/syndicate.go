@@ -110,7 +110,7 @@ func (s *Syndicate) liquidate(tx *sql.Tx) error {
 
 	for _, p := range ps {
 		p.SyndicateID = null.StringFromPtr(nil)
-		ws.PublishMessage(fmt.Sprintf("/user/%s", p.ID), server.HubKeyUserSubscribe, p)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s", p.ID), server.HubKeyUserSubscribe, p)
 	}
 
 	// archive syndicate

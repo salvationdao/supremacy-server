@@ -115,6 +115,7 @@ type Likes struct {
 type TextMessageMetadata struct {
 	TaggedUsersRead map[int]bool `json:"tagged_users_read"`
 	Likes           *Likes       `json:"likes"`
+	Reports         []string     `json:"reports"`
 }
 
 // Chatroom holds a specific chat room
@@ -285,6 +286,7 @@ func NewChatController(api *API) *ChatController {
 	api.SecureUserCommand(HubKeyReadTaggedMessage, chatHub.ReadTaggedMessageHandler)
 	api.SecureUserCommand(HubKeyChatBanPlayer, chatHub.ChatBanPlayerHandler)
 	api.SecureUserCommand(HubKeyReactToMessage, chatHub.ReactToMessageHandler)
+	api.SecureUserCommand(HubKeyChatReport, chatHub.ChatReportHandler)
 
 	go api.MessageBroadcaster()
 
@@ -302,7 +304,7 @@ const (
 func (api *API) MessageBroadcaster() {
 	for {
 		select {
-		case msg := <-api.BattleArena.SystemBanManager.SystemBanMassageChan:
+		case msg := <-api.ArenaManager.SystemBanManager.SystemBanMassageChan:
 			banMessage := &MessageSystemBan{
 				ID:             uuid.Must(uuid.NewV4()).String(),
 				BannedByUser:   msg.SystemPlayer,
@@ -339,7 +341,7 @@ func (api *API) MessageBroadcaster() {
 				api.GlobalChat.AddMessage(cm)
 				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
 			}
-		case newBattleInfo := <-api.BattleArena.NewBattleChan:
+		case newBattleInfo := <-api.ArenaManager.NewBattleChan:
 			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo).Msg("failed to broadcast new battle info")
@@ -445,7 +447,7 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(2, 2, true)
+var bucket = leakybucket.NewCollector(1, 2, true)
 var minuteBucket = leakybucket.NewCollector(0.5, 1, true)
 
 // ChatMessageHandler sends chat message from player
@@ -569,6 +571,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	textMsgMetadata := &TextMessageMetadata{
 		Likes:           &Likes{[]string{}, []string{}, 0},
 		TaggedUsersRead: taggedUsersGid,
+		Reports:         []string{},
 	}
 
 	var jsonTextMsgMeta null.JSON
@@ -608,6 +611,9 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 		}
 
+		// check player quest reward
+		fc.API.questManager.ChatMessageQuestCheck(user.ID)
+
 		chatMessage := &ChatMessage{
 			ID:     cm.ID,
 			Type:   boiler.ChatMSGTypeEnumTEXT,
@@ -624,7 +630,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 			},
 		}
 
-		// Ability kills
+		// add message to chatroom
 		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
 		// send message
@@ -655,6 +661,9 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 	}
+
+	// check player quest reward
+	fc.API.questManager.ChatMessageQuestCheck(user.ID)
 
 	chatMessage := &ChatMessage{
 		ID:     cm.ID,
@@ -1066,6 +1075,145 @@ func (fc *ChatController) ChatBanPlayerHandler(ctx context.Context, user *boiler
 	if err != nil {
 		l.Error().Err(err).Msg("failed to create new player_ban entry in db")
 		return terror.Error(err, "Something went wrong while trying to ban this player. Please try again or contact")
+	}
+
+	reply(true)
+
+	return nil
+}
+
+type ChatReportRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		MessageID        string `json:"message_id"`
+		Reason           string `json:"reason"`
+		OtherDescription string `json:"other_description,omitempty"`
+		Description      string `json:"description"`
+	} `json:"payload"`
+}
+
+const HubKeyChatReport = "CHAT:REPORT:MESSAGE"
+
+//leak 1 request per user per 30 sec
+var chatReportBucket = leakybucket.NewCollector(1, 30, true)
+
+func (fc *ChatController) ChatReportHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	reportBucket := chatReportBucket.Add(user.ID, 30)
+
+	//only allow request to go through if it has been 30 seconds since user's last report
+	if reportBucket < 30 {
+		return terror.Error(fmt.Errorf("too many reports"), "Too many report requests, your original request would have contained the context of the message.")
+	}
+
+	l := gamelog.L.With().Str("func", "ChatReportHandler").Str("user_id", user.ID).Logger()
+
+	genericErrorMessage := "Could not report message, try again or contact support."
+	req := &ChatReportRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	l = l.With().Interface("payload", req).Interface("ChatHistoryID", req.Payload.MessageID).Logger()
+	chatHistory, err := boiler.FindChatHistory(gamedb.StdConn, req.Payload.MessageID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve chat history message from ID.")
+		return terror.Error(err, genericErrorMessage)
+	}
+	metadata := &TextMessageMetadata{}
+
+	l = l.With().Interface("UnmarshalMetadata", chatHistory.Metadata).Logger()
+	err = chatHistory.Metadata.Unmarshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	//check if user has already reported, if so return error
+	i := slices.Index(metadata.Reports, user.ID)
+	if i != -1 {
+		return terror.Error(fmt.Errorf("user attempted to report message more than once"), "Cannot report message more than once, support will act on this ticket as soon as possible.")
+	}
+
+	//get user who sent offending msg
+	l = l.With().Interface("GetReportedPlayer", chatHistory.PlayerID).Logger()
+	reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, chatHistory.PlayerID)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to get reported player")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	//get 5 mins before and 5 mins after specific to chat stream
+	l = l.With().Interface("GetContext", chatHistory.ID).Logger()
+	msgs, err := boiler.ChatHistories(
+		boiler.ChatHistoryWhere.ChatStream.EQ(chatHistory.ChatStream),
+		boiler.ChatHistoryWhere.CreatedAt.GT(chatHistory.CreatedAt.Add(time.Minute*(-5))),
+		boiler.ChatHistoryWhere.CreatedAt.LT(chatHistory.CreatedAt.Add(time.Minute*5)),
+		qm.OrderBy("created_at"),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to unmarshal chat history metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("CreateContextString", chatHistory.ID).Logger()
+	reportContext := ""
+	for _, msg := range msgs {
+		p, err := boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
+		if err != nil {
+			l.Error().Err(err).Msg("unable to find player id.")
+			return terror.Error(err, genericErrorMessage)
+		}
+
+		if msg.ID == chatHistory.ID {
+			reportContext = reportContext + fmt.Sprintf(" \n ")
+		}
+		reportContext = reportContext + fmt.Sprintf("[%s] %s(%s): %s \n", msg.CreatedAt, p.Username.String, p.ID, msg.Text)
+		if msg.ID == chatHistory.ID {
+			reportContext = reportContext + fmt.Sprintf(" \n ")
+		}
+	}
+	reason := req.Payload.Reason
+	if reason == "Other" {
+		reason = req.Payload.Reason + "- " + req.Payload.OtherDescription
+	}
+
+	subject := fmt.Sprintf("Reported Player - %s(%s): %s", reportedPlayer.Username.String, reportedPlayer.ID, reason)
+	comment := fmt.Sprintf("Messager/Offender: %s(%s) \n Reported By: %s(%s) \n \n Message ID: %s \n Message: %s \n Reporter Comment: %s \n \n Context: \n %s", reportedPlayer.Username.String, reportedPlayer.ID, user.Username.String, user.ID, chatHistory.ID, chatHistory.Text, req.Payload.Description, reportContext)
+
+	//send through to zendesk
+
+	l = l.With().Interface("NewZendeskRequest", chatHistory.ID).Logger()
+	_, err = fc.API.Zendesk.NewRequest(user.Username.String, user.ID, subject, comment, "Chat Report")
+	if err != nil {
+		l.Error().Err(err).Msg("unable send zendesk request.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	//add user id to report metadata (cant report again)
+	metadata.Reports = append(metadata.Reports, user.ID)
+
+	l = l.With().Interface("MarshalMetadata", metadata).Logger()
+	var jsonTextMsgMeta null.JSON
+	err = jsonTextMsgMeta.Marshal(metadata)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to marshal updated metadata.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	l = l.With().Interface("UpdateMetadata", jsonTextMsgMeta).Logger()
+	chatHistory.Metadata = jsonTextMsgMeta
+	_, err = chatHistory.Update(gamedb.StdConn, boil.Whitelist(boiler.ChatHistoryColumns.Metadata))
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update chat history to update reported.")
+		return terror.Error(err, genericErrorMessage)
+	}
+
+	err = fc.API.updateMessageMetadata(chatHistory, jsonTextMsgMeta, l)
+	if err != nil {
+		l.Error().Err(err).Msg("unable to update and publish metadata")
+		return terror.Error(err, genericErrorMessage)
 	}
 
 	reply(true)

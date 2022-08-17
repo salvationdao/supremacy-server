@@ -34,6 +34,8 @@ type MechMoveCommandLog struct {
 	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	IsMoving      bool      `boiler:"is_moving" boil:"is_moving" json:"is_moving" toml:"is_moving" yaml:"is_moving"`
+	ArenaID       string    `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
 
 	R *mechMoveCommandLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechMoveCommandLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +53,8 @@ var MechMoveCommandLogColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	IsMoving      string
+	ArenaID       string
 }{
 	ID:            "id",
 	BattleID:      "battle_id",
@@ -63,6 +67,8 @@ var MechMoveCommandLogColumns = struct {
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
+	IsMoving:      "is_moving",
+	ArenaID:       "arena_id",
 }
 
 var MechMoveCommandLogTableColumns = struct {
@@ -77,6 +83,8 @@ var MechMoveCommandLogTableColumns = struct {
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
+	IsMoving      string
+	ArenaID       string
 }{
 	ID:            "mech_move_command_logs.id",
 	BattleID:      "mech_move_command_logs.battle_id",
@@ -89,6 +97,8 @@ var MechMoveCommandLogTableColumns = struct {
 	CreatedAt:     "mech_move_command_logs.created_at",
 	UpdatedAt:     "mech_move_command_logs.updated_at",
 	DeletedAt:     "mech_move_command_logs.deleted_at",
+	IsMoving:      "mech_move_command_logs.is_moving",
+	ArenaID:       "mech_move_command_logs.arena_id",
 }
 
 // Generated where
@@ -105,6 +115,8 @@ var MechMoveCommandLogWhere = struct {
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
+	IsMoving      whereHelperbool
+	ArenaID       whereHelperstring
 }{
 	ID:            whereHelperstring{field: "\"mech_move_command_logs\".\"id\""},
 	BattleID:      whereHelperstring{field: "\"mech_move_command_logs\".\"battle_id\""},
@@ -117,14 +129,18 @@ var MechMoveCommandLogWhere = struct {
 	CreatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"mech_move_command_logs\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"mech_move_command_logs\".\"deleted_at\""},
+	IsMoving:      whereHelperbool{field: "\"mech_move_command_logs\".\"is_moving\""},
+	ArenaID:       whereHelperstring{field: "\"mech_move_command_logs\".\"arena_id\""},
 }
 
 // MechMoveCommandLogRels is where relationship names are stored.
 var MechMoveCommandLogRels = struct {
+	Arena       string
 	Battle      string
 	Mech        string
 	TriggeredBy string
 }{
+	Arena:       "Arena",
 	Battle:      "Battle",
 	Mech:        "Mech",
 	TriggeredBy: "TriggeredBy",
@@ -132,9 +148,10 @@ var MechMoveCommandLogRels = struct {
 
 // mechMoveCommandLogR is where relationships are stored.
 type mechMoveCommandLogR struct {
-	Battle      *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Mech        *Mech   `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	TriggeredBy *Player `boiler:"TriggeredBy" boil:"TriggeredBy" json:"TriggeredBy" toml:"TriggeredBy" yaml:"TriggeredBy"`
+	Arena       *BattleArena `boiler:"Arena" boil:"Arena" json:"Arena" toml:"Arena" yaml:"Arena"`
+	Battle      *Battle      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Mech        *Mech        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	TriggeredBy *Player      `boiler:"TriggeredBy" boil:"TriggeredBy" json:"TriggeredBy" toml:"TriggeredBy" yaml:"TriggeredBy"`
 }
 
 // NewStruct creates a new relationship struct
@@ -146,9 +163,9 @@ func (*mechMoveCommandLogR) NewStruct() *mechMoveCommandLogR {
 type mechMoveCommandLogL struct{}
 
 var (
-	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
-	mechMoveCommandLogColumnsWithoutDefault = []string{"battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y"}
-	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at"}
+	mechMoveCommandLogAllColumns            = []string{"id", "battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at", "is_moving", "arena_id"}
+	mechMoveCommandLogColumnsWithoutDefault = []string{"battle_id", "mech_id", "triggered_by_id", "cell_x", "cell_y", "arena_id"}
+	mechMoveCommandLogColumnsWithDefault    = []string{"id", "cancelled_at", "reached_at", "created_at", "updated_at", "deleted_at", "is_moving"}
 	mechMoveCommandLogPrimaryKeyColumns     = []string{"id"}
 	mechMoveCommandLogGeneratedColumns      = []string{}
 )
@@ -395,6 +412,21 @@ func (q mechMoveCommandLogQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Arena pointed to by the foreign key.
+func (o *MechMoveCommandLog) Arena(mods ...qm.QueryMod) battleArenaQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ArenaID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BattleArenas(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_arena\"")
+
+	return query
+}
+
 // Battle pointed to by the foreign key.
 func (o *MechMoveCommandLog) Battle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
@@ -437,6 +469,111 @@ func (o *MechMoveCommandLog) TriggeredBy(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadArena allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mechMoveCommandLogL) LoadArena(e boil.Executor, singular bool, maybeMechMoveCommandLog interface{}, mods queries.Applicator) error {
+	var slice []*MechMoveCommandLog
+	var object *MechMoveCommandLog
+
+	if singular {
+		object = maybeMechMoveCommandLog.(*MechMoveCommandLog)
+	} else {
+		slice = *maybeMechMoveCommandLog.(*[]*MechMoveCommandLog)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechMoveCommandLogR{}
+		}
+		args = append(args, object.ArenaID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechMoveCommandLogR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ArenaID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ArenaID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_arena`),
+		qm.WhereIn(`battle_arena.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_arena.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BattleArena")
+	}
+
+	var resultSlice []*BattleArena
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleArena")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battle_arena")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_arena")
+	}
+
+	if len(mechMoveCommandLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Arena = foreign
+		if foreign.R == nil {
+			foreign.R = &battleArenaR{}
+		}
+		foreign.R.ArenaMechMoveCommandLogs = append(foreign.R.ArenaMechMoveCommandLogs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ArenaID == foreign.ID {
+				local.R.Arena = foreign
+				if foreign.R == nil {
+					foreign.R = &battleArenaR{}
+				}
+				foreign.R.ArenaMechMoveCommandLogs = append(foreign.R.ArenaMechMoveCommandLogs, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBattle allows an eager lookup of values, cached into the
@@ -748,6 +885,52 @@ func (mechMoveCommandLogL) LoadTriggeredBy(e boil.Executor, singular bool, maybe
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetArena of the mechMoveCommandLog to the related item.
+// Sets o.R.Arena to related.
+// Adds o to related.R.ArenaMechMoveCommandLogs.
+func (o *MechMoveCommandLog) SetArena(exec boil.Executor, insert bool, related *BattleArena) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mech_move_command_logs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"arena_id"}),
+		strmangle.WhereClause("\"", "\"", 2, mechMoveCommandLogPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ArenaID = related.ID
+	if o.R == nil {
+		o.R = &mechMoveCommandLogR{
+			Arena: related,
+		}
+	} else {
+		o.R.Arena = related
+	}
+
+	if related.R == nil {
+		related.R = &battleArenaR{
+			ArenaMechMoveCommandLogs: MechMoveCommandLogSlice{o},
+		}
+	} else {
+		related.R.ArenaMechMoveCommandLogs = append(related.R.ArenaMechMoveCommandLogs, o)
 	}
 
 	return nil
