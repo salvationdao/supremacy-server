@@ -11,9 +11,9 @@ DROP INDEX IF EXISTS
     mech_move_command_logs_record_search;
 
 
-create index mech_move_command_logs_mech_id ON gameserver.public.mech_move_command_logs (mech_id);
-create index mech_move_command_logs_available ON gameserver.public.mech_move_command_logs (cancelled_at, reached_at, deleted_at);
-create index mech_move_command_logs_record_search ON gameserver.public.mech_move_command_logs (mech_id, battle_id, cancelled_at, reached_at, deleted_at);
+create index mech_move_command_logs_mech_id ON mech_move_command_logs (mech_id);
+create index mech_move_command_logs_available ON mech_move_command_logs (cancelled_at, reached_at, deleted_at);
+create index mech_move_command_logs_record_search ON mech_move_command_logs (mech_id, battle_id, cancelled_at, reached_at, deleted_at);
 
 -- add arena id to battle table
 ALTER TABLE battles
