@@ -213,8 +213,8 @@ type battleL struct{}
 
 var (
 	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds", "arena_id"}
-	battleColumnsWithoutDefault = []string{"game_map_id", "arena_id"}
-	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
+	battleColumnsWithoutDefault = []string{"game_map_id", "battle_number", "arena_id"}
+	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "started_battle_seconds", "ended_battle_seconds"}
 	battlePrimaryKeyColumns     = []string{"id"}
 	battleGeneratedColumns      = []string{}
 )

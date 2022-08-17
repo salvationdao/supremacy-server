@@ -1,3 +1,27 @@
+-- drop spoil of battle number key
+ALTER TABLE spoils_of_war
+    DROP CONSTRAINT spoils_of_war_battle_number_key;
+
+ALTER TABLE player_bans
+    DROP CONSTRAINT player_bans_related_punish_vote_id_fkey;
+
+-- drop battle unique key to support multi arena
+-- DROP INDEX IF EXISTS battles_battle_number_key;
+ALTER TABLE battles
+    ALTER COLUMN battle_number DROP DEFAULT,
+    ALTER COLUMN battle_number TYPE INTEGER USING battle_number::INTEGER,
+    DROP CONSTRAINT IF EXISTS battles_battle_number_key,
+    DROP CONSTRAINT IF EXISTS battles_ended_battle_seconds_key,
+    DROP CONSTRAINT IF EXISTS battles_started_battle_seconds_key;
+
+DROP INDEX IF EXISTS battles_ended_battle_seconds_key;
+DROP INDEX IF EXISTS battles_started_battle_seconds_key;
+
+ALTER TABLE battles
+    ADD CONSTRAINT battles_arena_id_battle_number_key UNIQUE (arena_id, battle_number),
+    ADD CONSTRAINT battles_arena_id_ended_battle_seconds_key UNIQUE (arena_id, ended_battle_seconds),
+    ADD CONSTRAINT battles_arena_id_started_battle_seconds_key UNIQUE (arena_id, started_battle_seconds);
+
 CREATE TABLE battle_lobbies
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
