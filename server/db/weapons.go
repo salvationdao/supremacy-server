@@ -270,7 +270,7 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	}
 
 	// check weapon isn't already equipped to another war machine
-	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(weaponID)).Exists(tx)
+	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weaponID))).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to check if a mech and weapon join already exists")
 		return terror.Error(err)
@@ -291,7 +291,7 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 
 	weaponMechJoin := boiler.MechWeapon{
 		ChassisID:  mech.ID,
-		WeaponID:   weapon.ID,
+		WeaponID:   null.StringFrom(weapon.ID),
 		SlotNumber: len(mech.R.ChassisMechWeapons), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
 	}
 
@@ -324,7 +324,7 @@ func CheckWeaponAttached(weaponID string) (bool, error) {
 		boiler.WeaponWhere.ID.EQ(weaponID),
 		qm.Expr(
 			boiler.WeaponWhere.EquippedOn.IsNotNull(),
-			qm.Or(fmt.Sprintf(`%s IS NOT NULL`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.ID))),
+			qm.Or(fmt.Sprintf(`%s = ?`, qm.Rels(boiler.TableNames.MechWeapons, boiler.MechWeaponColumns.WeaponID)), weaponID),
 		),
 	).Exists(gamedb.StdConn)
 	if err != nil {
