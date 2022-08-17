@@ -471,7 +471,7 @@ func playerQuestGrant(playerID string, questID string) error {
 	if err != nil {
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	
+
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", playerID), server.HubKeyPlayerAbilitiesList, pas)
 
 	playerQuestStat, err := db.PlayerQuestStatGet(playerID)
