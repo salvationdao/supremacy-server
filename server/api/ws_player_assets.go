@@ -1273,13 +1273,15 @@ type PlayerAssetMechEquipRequest struct {
 }
 
 type EquipWeapon struct {
-	SlotNumber int    `json:"slot_number"`
-	WeaponID   string `json:"weapon_id"`
+	WeaponID        string `json:"weapon_id"`
+	SlotNumber      int    `json:"slot_number"`
+	IsSkinInherited bool   `json:"is_skin_inherited"`
 }
 
 const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errorMsg := "Something happened while trying to save your changes. Please try again or contact support if this problem persists."
 	req := &PlayerAssetMechEquipRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1287,13 +1289,23 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	}
 
 	if req.Payload.MechID == "" {
-		return terror.Error(terror.ErrInvalidInput, "Mech ID was not provided")
+		return terror.Error(terror.ErrInvalidInput, errorMsg)
 	}
 
-	// mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
-	// if err != nil {
-	// 	return terror.Error(err, "Something happened while trying to save your changes. Please try again or contact support if this problem persists.")
-	// }
+	mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	if mech.OwnerID != user.ID {
+		return terror.Error(terror.ErrUnauthorised, "You cannot modify a mech that does not belong to you.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+	defer tx.Rollback()
 
 	if req.Payload.EquipPowerCore != "" {
 		//
@@ -1302,13 +1314,130 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		//
 	}
 	if len(req.Payload.EquipWeapons) != 0 {
-		//
+		ids := []string{}
+		slots := []int{}
+		for _, ew := range req.Payload.EquipWeapons {
+			ids = append(ids, ew.WeaponID)
+			slots = append(slots, ew.SlotNumber)
+		}
+
+		// Check if specified weapons exist
+		weapons, err := boiler.Weapons(
+			boiler.WeaponWhere.ID.IN(ids),
+			qm.Load(boiler.WeaponRels.Blueprint),
+		).All(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+		if len(weapons) != len(req.Payload.EquipWeapons) {
+			return terror.Error(fmt.Errorf("could not find all specified weapons to equip"), errorMsg)
+		}
+
+		// Check if weapons can be equipped
+		equipped := []string{}
+		for _, w := range weapons {
+			if w.EquippedOn.Valid {
+				equipped = append(equipped, w.R.Blueprint.Label)
+			}
+		}
+		if len(equipped) > 0 {
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("One or more of the selected weapons is already equipped on a mech (%v). Please remove them from your selection and try again.", equipped))
+		}
+
+		// Check ownership of weapons
+		ownershipCount, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.IN(ids),
+			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		).Count(tx)
+		if ownershipCount != int64(len(req.Payload.EquipWeapons)) {
+			return terror.Error(terror.ErrUnauthorised, errorMsg)
+		}
+
+		// Check if equipped weapons can be unequipped, and if so, unequip them
+		for _, w := range mech.Weapons {
+			isSlotOccupied := false
+			for _, s := range slots {
+				if s == w.SlotNumber {
+					isSlotOccupied = true
+					break
+				}
+			}
+			if !isSlotOccupied {
+				continue
+			}
+			if w.LockedToMech {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot de-equip %s from this mech. Please update your selection and try again.", w.Label))
+			}
+		}
+
+		for _, ew := range req.Payload.EquipWeapons {
+			mw, err := boiler.FindMechWeapon(tx, mech.ID, ew.SlotNumber)
+			if errors.Is(err, sql.ErrNoRows) {
+				// Slot number specified does not exist on mech
+				if ew.SlotNumber > mech.WeaponHardpoints-1 {
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified weapons on the mech as it does not have enough weapon slots."))
+				}
+
+				// Create mech_weapon entry
+				mw = &boiler.MechWeapon{
+					ChassisID:  mech.ID,
+					SlotNumber: ew.SlotNumber,
+				}
+			} else if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			if mw.WeaponID.Valid {
+				weaponToReplace, err := boiler.FindWeapon(tx, mw.WeaponID.String)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+
+				weaponToReplace.EquippedOn = null.String{}
+				weaponToReplace.UpdatedAt = time.Now()
+				_, err = weaponToReplace.Update(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+			}
+
+			weapon, err := boiler.FindWeapon(tx, ew.WeaponID)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			weapon.EquippedOn = null.StringFrom(mech.ID)
+			weapon.UpdatedAt = time.Now()
+			_, err = weapon.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			mw.WeaponID = null.StringFrom(ew.WeaponID)
+			mw.IsSkinInherited = ew.IsSkinInherited
+			mw.AllowMelee = weapon.IsMelee
+			mw.UpdatedAt = time.Now()
+			_, err = mw.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+		}
 	}
 	if req.Payload.EquipMechSkin != "" {
 
 	}
 
-	reply(true)
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	updatedMech, err := db.Mech(tx, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	reply(updatedMech)
 	return nil
 }
 
