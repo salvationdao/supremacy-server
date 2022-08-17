@@ -967,6 +967,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 		// log mech move command
 		mmc := &boiler.MechMoveCommandLog{
+			ArenaID:       arena.ID,
 			MechID:        wm.ID,
 			TriggeredByID: user.ID,
 			CellX:         req.Payload.StartCoords.X,
@@ -1000,6 +1001,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			// broadcast mech command log
 			ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
 				MechMoveCommandLog: &boiler.MechMoveCommandLog{
+					ArenaID:       arena.ID,
 					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
 					BattleID:      mmmc.BattleID,
 					MechID:        mmmc.MechHash,
