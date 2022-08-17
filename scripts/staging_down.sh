@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PACKAGE="gameserver"
+PACKAGE="passport-api"
 read -p "Are you sure you want to rollback binary versions? (y/n)" -n 1 -r yn
 case "$yn" in
     [yY] )  echo ""
@@ -16,37 +16,37 @@ case "$yn" in
             ;;
 esac
 
-
+echo "Stopping nginx service"
 systemctl stop nginx
-read -t 3 -p "Stopping Nginx server"
-systemctl stop gameserver
-read -t 1 -p "Stopping gameserver server"
+sleep 3
+echo "Stopping passport service"
+systemctl stop passport
+sleep 1
 read -p "What version would you like to rollback to? (example: v3.16.10)" -r VERSION
 
-if [ ! -d "/usr/share/ninja_syndicate/gameserver_${VERSION}" ]
+if [ ! -d "/usr/share/ninja_syndicate/passport-api_${VERSION}" ]
 then
-    echo "Directory /usr/share/ninja_syndicate/gameserver_${VERSION} DOES NOT exists."
+    echo "Directory /usr/share/ninja_syndicate/passport-api_${VERSION} DOES NOT exists."
     exit 1
 fi
 
-
-CURVERSION=$(readlink -f ./gameserver-online)
+CURVERSION=$(readlink -f ./passport-online)
 
 echo "Rolling back binary version to $VERSION"
 
-ln -Tfsv /usr/share/ninja_syndicate/gameserver_$VERSION /usr/share/ninja_syndicate/gameserver-online
+ln -Tfsv /usr/share/ninja_syndicate/passport-api_$VERSION /usr/share/ninja_syndicate/passport-online
 
 date=$(date +'%Y-%m-%d-%H%M%S')
 mv $CURVERSION ${CURVERSION}_BAD_${date}
 
-LatestMigration = $(grep LatestMigration /usr/share/ninja_syndicate/gameserver-online/BuildInfo.txt | sed 's/LatestMigration=//g')
+LatestMigration=$(grep LatestMigration /usr/share/ninja_syndicate/passport-online/BuildInfo.txt | sed 's/LatestMigration=//g')
 
 echo "Running down migrations"
-source /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env
-sudo -u postgres ./gameserver-online/migrate -database "postgres:///$GAMESERVER_DATABASE_NAME?host=/var/run/postgresql/" -path ./migrations goto $LatestMigration
+source /usr/share/ninja_syndicate/passport-online/init/passport-staging.env
+sudo -u postgres ./passport-online/migrate -database "postgres:///$PASSPORT_DATABASE_NAME?host=/var/run/postgresql/" -path ${CURVERSION}_BAD_${date}/migrations goto $LatestMigration
 
 # Left commented out for now because both side will probably need to be rolledback
-# systemctl start gameserver
+# systemctl start passport
 # nginx -t && systemctl start nginx
 
-echo "Gameserver rollbacked to Version $VERSION"
+echo "Passport rollbacked to Version $VERSION"
