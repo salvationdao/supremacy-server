@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"server/battle"
@@ -198,17 +199,21 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	var minKills int
 	var maxSurvives int
 	var minSurvives int
-	err = gamedb.StdConn.QueryRow(`
-	SELECT
-		COUNT(mech_id),
-		MAX(total_kills),
-		MIN(total_kills),
-		MAX(total_wins),
-		MIN(total_wins)
-	FROM
-		mech_stats
-`).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
-	if err != nil {
+	err = gamedb.StdConn.QueryRow(fmt.Sprintf(`
+				SELECT
+					COUNT(%[1]s),
+					MAX(%[2]s),
+					MIN(%[2]s),
+					MAX(%[3]s),
+					MIN(%[3]s)
+				FROM %[4]s
+			`,
+			boiler.MechStatColumns.MechID,
+			boiler.MechStatColumns.TotalKills,
+			boiler.MechStatColumns.TotalWins,
+			boiler.TableNames.MechStats,
+			)).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
+		if err != nil {
 		gamelog.L.Error().
 			Str("db func", "QueryRow").Err(err).Msg("unable to get max, min value of total_kills")
 		return terror.Error(err, "Unable to retrieve ")
