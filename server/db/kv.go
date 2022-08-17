@@ -24,6 +24,8 @@ const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
+const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
+const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
 type KVKey string
@@ -53,6 +55,7 @@ const KeyRepairMiniGameFailedRate KVKey = "repair_mini_game_failed_rate"
 const KeyMechAbilityCoolDownSeconds KVKey = "mech_ability_cool_down_seconds"
 const KeyRequiredRepairStacks KVKey = "required_repair_stacks"
 const KeyBattleQueueFee KVKey = "battle_queue_fee"
+const KeyDefaultRepairBlocks KVKey = "default_repair_blocks"
 const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
 const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
 const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"

@@ -13,18 +13,18 @@ import (
 	"server/db"
 	"server/gamelog"
 	"server/marketplace"
-	"server/player_abilities"
 	"server/profanities"
+	"server/quest"
+	"server/sale_player_abilities"
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
-	"strings"
+	"server/zendesk"
 	"sync"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/pemistahl/lingua-go"
 	"github.com/volatiletech/null/v8"
 
@@ -81,10 +81,11 @@ type API struct {
 	SMS                      server.SMS
 	Passport                 *xsyn_rpcclient.XsynXrpcClient
 	Telegram                 server.Telegram
+	Zendesk                  *zendesk.Zendesk
 	LanguageDetector         lingua.LanguageDetector
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
-	SalePlayerAbilityManager *player_abilities.SalePlayerAbilityManager
+	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -112,6 +113,8 @@ type API struct {
 	Config *server.Config
 
 	SyncConfig *synctool.StaticSyncTool
+
+	questManager *quest.System
 }
 
 // NewAPI registers routes
@@ -123,9 +126,11 @@ func NewAPI(
 	config *server.Config,
 	sms server.SMS,
 	telegram server.Telegram,
+	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
+	questManager *quest.System,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -144,9 +149,10 @@ func NewAPI(
 		Passport:                 pp,
 		SMS:                      sms,
 		Telegram:                 telegram,
+		Zendesk:                  zendesk,
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
-		SalePlayerAbilityManager: player_abilities.NewSalePlayerAbilitiesSystem(),
+		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -169,6 +175,7 @@ func NewAPI(
 			siteKey:   config.CaptchaSiteKey,
 			verifyUrl: "https://hcaptcha.com/siteverify",
 		},
+		questManager: questManager,
 	}
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
@@ -198,12 +205,13 @@ func NewAPI(
 	_ = NewHangarController(api)
 	_ = NewCouponsController(api)
 	NewSyndicateController(api)
-	_ = NewLeaderboardController(api)
+	NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(server.AddOriginToCtx())
 	api.Routes.Use(gamelog.ChiLogger(zerolog.DebugLevel))
 	api.Routes.Use(cors.New(
 		cors.Options{
@@ -223,15 +231,8 @@ func NewAPI(
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
-		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
-		// See roothub.ServeHTTP for the setup of sentry on this route.
-		//TODO ALEX reimplement handlers
-
 		r.Group(func(r chi.Router) {
-			if config.Environment != "development" {
-				// TODO: Create new tracer not using HUB
-				r.Use(DatadogTracer.Middleware())
-			}
+			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
 			r.Mount("/battle_history", BattleHistoryRouter())
@@ -246,12 +247,11 @@ func NewAPI(
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
+			r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
+
+			r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
+			r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 		})
-
-		r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
-
-		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
-		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
@@ -306,6 +306,9 @@ func NewAPI(
 
 				s.WS("/system_messages", server.HubKeySystemMessageListUpdatedSubscribe, nil)
 				s.WS("/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil)
+
+				s.WS("/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat))
+				s.WS("/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions))
 			}))
 
 			// secured faction route ws
@@ -329,7 +332,7 @@ func NewAPI(
 				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 
-				s.WS("/mech_command/{hash}", battle.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
+				s.WS("/mech_command/{hash}", server.HubKeyMechMoveCommandSubscribe, server.MustSecureFaction(api.BattleArena.MechMoveCommandSubscriber))
 				s.WS("/mech_commands", battle.HubKeyMechCommandsSubscribe, server.MustSecureFaction(api.BattleArena.MechCommandsSubscriber))
 				s.WS("/mech_command_notification", battle.HubKeyGameNotification, nil)
 
@@ -490,101 +493,6 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			next.ServeHTTP(w, r)
 		}
 
-		return http.HandlerFunc(fn)
-	}
-}
-
-func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			var token string
-			var ok bool
-
-			cookie, err := r.Cookie("xsyn-token")
-			if err != nil {
-				token = r.URL.Query().Get("token")
-				if token == "" {
-					token, ok = r.Context().Value("token").(string)
-					if !ok || token == "" {
-						if required {
-							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
-							http.Error(w, "Unauthorized", http.StatusUnauthorized)
-							return
-						}
-						next.ServeHTTP(w, r)
-						return
-					}
-				}
-			} else {
-				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					if required {
-						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
-						return
-					}
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			if !required {
-				path := r.URL.Path
-
-				exists := false
-				for _, p := range onlyAuthPaths {
-					if strings.Contains(path, p) {
-						exists = true
-						break
-					}
-				}
-
-				if !exists {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			user, err := api.TokenLogin(token)
-			if err != nil {
-				gamelog.L.Debug().Err(err).Msg("authentication error")
-				return
-			}
-
-			// get ip
-			ip := r.Header.Get("X-Forwarded-For")
-			if ip == "" {
-				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-				userIP := net.ParseIP(ipaddr)
-				if userIP == nil {
-					ip = ipaddr
-				} else {
-					ip = userIP.String()
-				}
-			}
-
-			// upsert player ip logs
-			err = db.PlayerIPUpsert(user.ID, ip)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
-				return
-			}
-
-			if userIDMustMatch {
-				userID := chi.URLParam(r, "user_id")
-				if userID == "" || userID != user.ID {
-					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
-						Str("userID", userID).
-						Str("user.ID", user.ID).
-						Str("r.URL.Path", r.URL.Path).
-						Msg("user id check failed")
-					return
-				}
-			}
-
-			ctx := context.WithValue(r.Context(), "user_id", user.ID)
-			*r = *r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-			return
-		}
 		return http.HandlerFunc(fn)
 	}
 }

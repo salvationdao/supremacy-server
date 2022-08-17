@@ -1324,9 +1324,6 @@ INSERT INTO weapon_skin(blueprint_id, equipped_on)
 SELECT wps.default_skin_id, wps.id
 FROM wps;
 
--- update weapons equipped_weapon_skin_id
-UPDATE weapons w SET equipped_weapon_skin_id = (SELECT id FROM weapon_skin WHERE equipped_on = w.id) WHERE equipped_weapon_skin_id IS NULL;
-
 -- insert the collection_items or these weapons
 WITH wps_skin AS (
     SELECT 'weapon_skin' AS item_type, ws.id, bpws.tier, ci.owner_id
@@ -1334,6 +1331,7 @@ WITH wps_skin AS (
     INNER JOIN blueprint_weapon_skin bpws ON bpws.id = ws.blueprint_id
     INNER JOIN weapons w ON w.id = ws.equipped_on
     INNER JOIN collection_items ci ON ci.item_id = w.id
+    WHERE equipped_weapon_skin_id IS NULL
     )
 INSERT
 INTO collection_items (token_id, item_type, item_id, tier, owner_id)
@@ -1343,6 +1341,10 @@ SELECT NEXTVAL('collection_general'),
        wps_skin.tier,
        wps_skin.owner_id
 FROM wps_skin;
+
+-- update weapons equipped_weapon_skin_id
+UPDATE weapons w SET equipped_weapon_skin_id = (SELECT id FROM weapon_skin WHERE equipped_on = w.id) WHERE equipped_weapon_skin_id IS NULL;
+
 
 ALTER TABLE mechs
     ALTER COLUMN chassis_skin_id SET NOT NULL;

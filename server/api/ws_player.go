@@ -141,6 +141,40 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to sync passport db")
 	}
 
+	if pc.API.Config.Environment == "staging" || pc.API.Config.Environment == "development" {
+		templateIDS := []string{}
+		templates, err := boiler.Templates(
+			boiler.TemplateWhere.Label.IN(
+				[]string{
+					"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
+					"Red Mountain Olympus Mons LY07 Villain Chassis",
+					"Zaibatsu Tenshi Mk1 White Neon Chassis",
+					"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
+					"Red Mountain Olympus Mons LY07 Evo Chassis",
+					"Zaibatsu Tenshi Mk1 Destroyer Chassis",
+					"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
+					"Zaibatsu Tenshi Mk1 Evangelica Chassis",
+					"Red Mountain Olympus Mons LY07 Red Blue Chassis",
+				},
+			),
+		).All(tx)
+		if err != nil {
+			return terror.Error(err, "Failed to sync passport db")
+		}
+
+		for _, tmpl := range templates {
+			templateIDS = append(templateIDS, tmpl.ID)
+		}
+
+		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{
+			TemplateIDs: templateIDS,
+			UserID:      user.ID,
+		})
+		if err != nil {
+			return terror.Error(err, "Failed to sync passport db")
+		}
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction")
@@ -1379,5 +1413,30 @@ func (pc *PlayerController) GenOneTimeToken(ctx context.Context, user *boiler.Pl
 	}
 
 	reply(resp)
+	return nil
+}
+
+// PlayerQuestStat return current player quest progression
+func (pc *PlayerController) PlayerQuestStat(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	pqs, err := db.PlayerQuestStatGet(user.ID)
+	if err != nil {
+		return err
+	}
+
+	reply(pqs)
+
+	return nil
+}
+
+// PlayerQuestProgressions return current player quest progression
+func (pc *PlayerController) PlayerQuestProgressions(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "PlayerQuestProgressions").Logger()
+	result, err := db.PlayerQuestProgressions(user.ID)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load player quest progressions.")
+		return err
+	}
+	reply(result)
+
 	return nil
 }

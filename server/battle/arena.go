@@ -14,6 +14,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"server/quest"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -59,6 +60,8 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 	RepairOfferCloseChan     chan *RepairOfferClose
+
+	QuestManager *quest.System
 
 	gameClientJsonDataChan chan []byte
 	sync.RWMutex
@@ -133,6 +136,25 @@ func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID
 	return ids
 }
 
+func (arena *Arena) CurrentBattleWarMachineOrAIByHash(hash string) *WarMachine {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	for _, wm := range arena._currentBattle.WarMachines {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	for _, wm := range arena._currentBattle.SpawnedAI {
+		if wm.Hash == hash {
+			return wm
+		}
+	}
+
+	return nil
+}
+
 func (arena *Arena) CurrentBattleWarMachineByHash(hash string) *WarMachine {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -168,6 +190,12 @@ func (arena *Arena) CurrentBattleWarMachine(participantID int) *WarMachine {
 	}
 
 	for _, wm := range arena._currentBattle.WarMachines {
+		if checkWarMachineByParticipantID(wm, participantID) {
+			return wm
+		}
+	}
+
+	for _, wm := range arena._currentBattle.SpawnedAI {
 		if checkWarMachineByParticipantID(wm, participantID) {
 			return wm
 		}
@@ -241,6 +269,7 @@ type Opts struct {
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
+	QuestManager             *quest.System
 }
 
 type MessageType byte
@@ -269,6 +298,7 @@ func NewArena(opts *Opts) *Arena {
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
 		gameClientJsonDataChan:   make(chan []byte, 3),
+		QuestManager:             opts.QuestManager,
 	}
 
 	var err error
@@ -932,7 +962,8 @@ type BattleWMDestroyedPayload struct {
 			SourceHash     string `json:"sourceHash"`
 			SourceName     string `json:"sourceName"`
 		} `json:"damageHistory"`
-		KilledBy string `json:"killedBy"`
+		KilledBy      string `json:"killedBy"`
+		ParticipantID int    `json:"participantID"`
 	} `json:"destroyedWarMachineEvent"`
 	BattleID string `json:"battleID"`
 }
@@ -942,8 +973,18 @@ type AISpawnedRequest struct {
 	SpawnedAIEvent *SpawnedAIEvent `json:"spawnedAIEvent"`
 }
 
+type AIType string
+
+const (
+	Reinforcement AIType = "Reinforcement"
+	MiniMech      AIType = "Mini Mech"
+	RobotDog      AIType = "Robot Dog"
+)
+
 type SpawnedAIEvent struct {
 	ParticipantID byte            `json:"participantID"`
+	Hash          string          `json:"hash"`
+	UserID        string          `json:"userID"`
 	Name          string          `json:"name"`
 	Model         string          `json:"model"`
 	Skin          string          `json:"skin"`
@@ -954,6 +995,7 @@ type SpawnedAIEvent struct {
 	FactionID     string          `json:"factionID"`
 	Position      *server.Vector3 `json:"position"`
 	Rotation      int             `json:"rotation"`
+	Type          AIType          `json:"type"`
 }
 
 type BattleWMPickupPayload struct {
@@ -1115,7 +1157,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
 				continue
 			}
-			err = btl.UpdateWarMachineMoveCommand(dataPayload)
+			err = btl.CompleteWarMachineMoveCommand(dataPayload)
 			if err != nil {
 				L.Error().Err(err).Msg("failed update war machine move command")
 			}
@@ -1265,6 +1307,19 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *b
 	return nil
 }
 
+func (btl *Battle) IsMechOfType(participantID int, aiType AIType) bool {
+	btl.spawnedAIMux.RLock()
+	defer btl.spawnedAIMux.RUnlock()
+
+	for _, s := range btl.SpawnedAI {
+		if int(s.ParticipantID) != participantID {
+			continue
+		}
+		return *s.AIType == aiType
+	}
+	return false
+}
+
 func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// check battle id
 	if payload.BattleID != btl.BattleID {
@@ -1278,6 +1333,8 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// get spawned AI
 	spawnedAI := &WarMachine{
 		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
+		Hash:          payload.SpawnedAIEvent.Hash,
+		OwnedByID:     payload.SpawnedAIEvent.UserID,
 		Name:          payload.SpawnedAIEvent.Name,
 		Model:         payload.SpawnedAIEvent.Model,
 		Skin:          payload.SpawnedAIEvent.Skin,
@@ -1288,19 +1345,26 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		FactionID:     payload.SpawnedAIEvent.FactionID,
 		Position:      payload.SpawnedAIEvent.Position,
 		Rotation:      payload.SpawnedAIEvent.Rotation,
+		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
+		AIType:        &payload.SpawnedAIEvent.Type,
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
-	// cache record in battle, for future subscription
 	btl.spawnedAIMux.Lock()
+	defer btl.spawnedAIMux.Unlock()
+
+	// cache record in battle, for future subscription
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
-	btl.spawnedAIMux.Unlock()
+
+	// Broadcast spawn event
+	ws.PublishMessage("/public/minimap", HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }
 
-func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
+func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandCompletePayload) error {
 	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
 	defer gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 
@@ -1314,35 +1378,58 @@ func (btl *Battle) UpdateWarMachineMoveCommand(payload *AbilityMoveCommandComple
 	}
 
 	// get mech
-	wm := btl.arena.CurrentBattleWarMachineByHash(payload.WarMachineHash)
+	wm := btl.arena.CurrentBattleWarMachineOrAIByHash(payload.WarMachineHash)
 	if wm == nil {
 		return terror.Error(fmt.Errorf("war machine not exists"))
 	}
 
-	// get the last move command of the mech
-	mmc, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-		boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
-		qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to get mech move command from db.")
+	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+	if !isMiniMech {
+		// get the last move command of the mech
+		mmc, err := boiler.MechMoveCommandLogs(
+			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
+			boiler.MechMoveCommandLogWhere.BattleID.EQ(btl.ID),
+			qm.OrderBy(boiler.MechMoveCommandLogColumns.CreatedAt+" DESC"),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get mech move command from db.")
+		}
+
+		// update completed_at
+		mmc.ReachedAt = null.TimeFrom(time.Now())
+		mmc.IsMoving = false
+		_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
+		if err != nil {
+			return terror.Error(err, "Failed to update mech move command")
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+			MechMoveCommandLog:    mmc,
+			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+		})
+	} else {
+		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
+		if err == nil && mmmc != nil {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
+				MechMoveCommandLog: &boiler.MechMoveCommandLog{
+					ID:            fmt.Sprintf("%s_%s", mmmc.BattleID, mmmc.MechHash),
+					BattleID:      mmmc.BattleID,
+					MechID:        mmmc.MechHash,
+					TriggeredByID: mmmc.TriggeredByID,
+					CellX:         mmmc.CellX,
+					CellY:         mmmc.CellY,
+					CancelledAt:   mmmc.CancelledAt,
+					ReachedAt:     mmmc.ReachedAt,
+					CreatedAt:     mmmc.CreatedAt,
+					IsMoving:      mmmc.IsMoving,
+				},
+				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
+				IsMiniMech:            true,
+			})
+		}
 	}
 
-	// update completed_at
-	mmc.ReachedAt = null.TimeFrom(time.Now())
-
-	_, err = mmc.Update(gamedb.StdConn, boil.Whitelist(boiler.MechMoveCommandLogColumns.ReachedAt))
-	if err != nil {
-		return terror.Error(err, "Failed to update mech move command")
-	}
-
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/mech_command/%s", wm.FactionID, wm.Hash), HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-		MechMoveCommandLog:    mmc,
-		RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
-	})
-
-	err = btl.arena.BroadcastFactionMechCommands(wm.FactionID)
+	err := btl.arena.BroadcastFactionMechCommands(wm.FactionID)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to broadcast faction mech commands")
 	}

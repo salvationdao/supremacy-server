@@ -400,6 +400,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		},
 	}
 
+	if mech.R.Blueprint != nil && mech.R.Blueprint.R.Model != nil {
+		model := mech.R.Blueprint.R.Model
+		m.Model = &server.MechModel{
+			ID:           model.ID,
+			Label:        model.Label,
+			RepairBlocks: model.RepairBlocks,
+		}
+	}
+
 	reply(m)
 	return nil
 }

@@ -1286,7 +1286,7 @@ func MarketplaceEventList(
 	}
 	if len(mysteryCrateIDs) > 0 {
 		mysteryCrates := []*server.MarketplaceSaleItemMysteryCrate{}
-		boil.DebugMode = true
+
 		err = boiler.MysteryCrates(
 			qm.Select(
 				qm.Rels(boiler.TableNames.MysteryCrate, boiler.MysteryCrateColumns.ID),
@@ -1305,10 +1305,8 @@ func MarketplaceEventList(
 			boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
 		).Bind(nil, gamedb.StdConn, &mysteryCrates)
 		if err != nil {
-			boil.DebugMode = false
 			return 0, nil, terror.Error(err)
 		}
-		boil.DebugMode = false
 		for i := range output {
 			itemID, ok := collectionToMysteryCrateID[output[i].Item.CollectionItemID]
 			if output[i].Item.CollectionItemType != boiler.ItemTypeMysteryCrate || !ok {
