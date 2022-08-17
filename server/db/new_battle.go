@@ -389,11 +389,11 @@ func QueueFee(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
 	var queueCost decimal.Decimal
 
 	// Get latest queue contract
-	query := `select fee
-		from battle_contracts
-		where mech_id = $1 AND faction_id = $2
-		order by queued_at desc
-		limit 1
+	query := `SELECT fee
+		FROM battle_contracts
+		WHERE mech_id = $1 AND faction_id = $2
+		ORDER BY queued_at DESC
+		LIMIT 1
 	`
 
 	err := gamedb.StdConn.QueryRow(query, mechID.String(), factionID.String()).Scan(&queueCost)
@@ -449,7 +449,7 @@ type BattleViewer struct {
 func BattleViewerUpsert(battleID string, userID string) error {
 	test := &BattleViewer{}
 	q := `
-		select bv.player_id from battle_viewers bv where battle_id = $1 and player_id = $2
+		SELECT bv.player_id FROM battle_viewers bv WHERE battle_id = $1 AND player_id = $2
 	`
 	err := gamedb.StdConn.QueryRow(q, battleID, userID).Scan(&test.PlayerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -464,7 +464,7 @@ func BattleViewerUpsert(battleID string, userID string) error {
 
 	// insert battle viewers
 	q = `
-		insert into battle_viewers (battle_id, player_id) VALUES ($1, $2) on conflict (battle_id, player_id) do nothing; 
+		INSERT INTO battle_viewers (battle_id, player_id) VALUES ($1, $2) ON CONFLICT (battle_id, player_id) DO NOTHING; 
 	`
 	_, err = gamedb.StdConn.Exec(q, battleID, userID)
 	if err != nil {
