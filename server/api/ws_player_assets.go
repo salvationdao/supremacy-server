@@ -1290,10 +1290,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(terror.ErrInvalidInput, "Mech ID was not provided")
 	}
 
-	mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
-	if err != nil {
-		return terror.Error(err, "Something happened while trying to save your changes. Please try again or contact support if this problem persists.")
-	}
+	// mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
+	// if err != nil {
+	// 	return terror.Error(err, "Something happened while trying to save your changes. Please try again or contact support if this problem persists.")
+	// }
 
 	if req.Payload.EquipPowerCore != "" {
 		//
