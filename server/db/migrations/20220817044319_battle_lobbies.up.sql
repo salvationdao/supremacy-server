@@ -1,16 +1,9 @@
--- drop spoil of battle number key
-ALTER TABLE spoils_of_war
-    DROP CONSTRAINT spoils_of_war_battle_number_key;
-
-ALTER TABLE player_bans
-    DROP CONSTRAINT player_bans_related_punish_vote_id_fkey;
-
 -- drop battle unique key to support multi arena
 -- DROP INDEX IF EXISTS battles_battle_number_key;
 ALTER TABLE battles
     ALTER COLUMN battle_number DROP DEFAULT,
     ALTER COLUMN battle_number TYPE INTEGER USING battle_number::INTEGER,
-    DROP CONSTRAINT IF EXISTS battles_battle_number_key,
+    DROP CONSTRAINT IF EXISTS battles_battle_number_key CASCADE, -- drop constraint and any related foreign keys
     DROP CONSTRAINT IF EXISTS battles_ended_battle_seconds_key,
     DROP CONSTRAINT IF EXISTS battles_started_battle_seconds_key;
 

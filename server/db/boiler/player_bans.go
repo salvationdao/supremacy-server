@@ -177,23 +177,20 @@ var PlayerBanWhere = struct {
 
 // PlayerBanRels is where relationship names are stored.
 var PlayerBanRels = struct {
-	BannedBy           string
-	BannedPlayer       string
-	BattleNumberBattle string
-	RelatedPunishVote  string
+	BannedBy          string
+	BannedPlayer      string
+	RelatedPunishVote string
 }{
-	BannedBy:           "BannedBy",
-	BannedPlayer:       "BannedPlayer",
-	BattleNumberBattle: "BattleNumberBattle",
-	RelatedPunishVote:  "RelatedPunishVote",
+	BannedBy:          "BannedBy",
+	BannedPlayer:      "BannedPlayer",
+	RelatedPunishVote: "RelatedPunishVote",
 }
 
 // playerBanR is where relationships are stored.
 type playerBanR struct {
-	BannedBy           *Player     `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
-	BannedPlayer       *Player     `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
-	BattleNumberBattle *Battle     `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
-	RelatedPunishVote  *PunishVote `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
+	BannedBy          *Player     `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
+	BannedPlayer      *Player     `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
+	RelatedPunishVote *PunishVote `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
 }
 
 // NewStruct creates a new relationship struct
@@ -484,20 +481,6 @@ func (o *PlayerBan) BannedPlayer(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// BattleNumberBattle pointed to by the foreign key.
-func (o *PlayerBan) BattleNumberBattle(mods ...qm.QueryMod) battleQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"battle_number\" = ?", o.BattleNumber),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Battles(queryMods...)
-	queries.SetFrom(query.Query, "\"battles\"")
-
-	return query
-}
-
 // RelatedPunishVote pointed to by the foreign key.
 func (o *PlayerBan) RelatedPunishVote(mods ...qm.QueryMod) punishVoteQuery {
 	queryMods := []qm.QueryMod{
@@ -723,114 +706,6 @@ func (playerBanL) LoadBannedPlayer(e boil.Executor, singular bool, maybePlayerBa
 	return nil
 }
 
-// LoadBattleNumberBattle allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (playerBanL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
-	var slice []*PlayerBan
-	var object *PlayerBan
-
-	if singular {
-		object = maybePlayerBan.(*PlayerBan)
-	} else {
-		slice = *maybePlayerBan.(*[]*PlayerBan)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &playerBanR{}
-		}
-		if !queries.IsNil(object.BattleNumber) {
-			args = append(args, object.BattleNumber)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &playerBanR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.BattleNumber) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.BattleNumber) {
-				args = append(args, obj.BattleNumber)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battles`),
-		qm.WhereIn(`battles.battle_number in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Battle")
-	}
-
-	var resultSlice []*Battle
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battles")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
-	}
-
-	if len(playerBanAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.BattleNumberBattle = foreign
-		if foreign.R == nil {
-			foreign.R = &battleR{}
-		}
-		foreign.R.BattleNumberPlayerBans = append(foreign.R.BattleNumberPlayerBans, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.BattleNumber, foreign.BattleNumber) {
-				local.R.BattleNumberBattle = foreign
-				if foreign.R == nil {
-					foreign.R = &battleR{}
-				}
-				foreign.R.BattleNumberPlayerBans = append(foreign.R.BattleNumberPlayerBans, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadRelatedPunishVote allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (playerBanL) LoadRelatedPunishVote(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
@@ -1029,85 +904,6 @@ func (o *PlayerBan) SetBannedPlayer(exec boil.Executor, insert bool, related *Pl
 		related.R.BannedPlayerPlayerBans = append(related.R.BannedPlayerPlayerBans, o)
 	}
 
-	return nil
-}
-
-// SetBattleNumberBattle of the playerBan to the related item.
-// Sets o.R.BattleNumberBattle to related.
-// Adds o to related.R.BattleNumberPlayerBans.
-func (o *PlayerBan) SetBattleNumberBattle(exec boil.Executor, insert bool, related *Battle) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_bans\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_number"}),
-		strmangle.WhereClause("\"", "\"", 2, playerBanPrimaryKeyColumns),
-	)
-	values := []interface{}{related.BattleNumber, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.BattleNumber, related.BattleNumber)
-	if o.R == nil {
-		o.R = &playerBanR{
-			BattleNumberBattle: related,
-		}
-	} else {
-		o.R.BattleNumberBattle = related
-	}
-
-	if related.R == nil {
-		related.R = &battleR{
-			BattleNumberPlayerBans: PlayerBanSlice{o},
-		}
-	} else {
-		related.R.BattleNumberPlayerBans = append(related.R.BattleNumberPlayerBans, o)
-	}
-
-	return nil
-}
-
-// RemoveBattleNumberBattle relationship.
-// Sets o.R.BattleNumberBattle to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *PlayerBan) RemoveBattleNumberBattle(exec boil.Executor, related *Battle) error {
-	var err error
-
-	queries.SetScanner(&o.BattleNumber, nil)
-	if _, err = o.Update(exec, boil.Whitelist("battle_number")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.BattleNumberBattle = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.BattleNumberPlayerBans {
-		if queries.Equal(o.BattleNumber, ri.BattleNumber) {
-			continue
-		}
-
-		ln := len(related.R.BattleNumberPlayerBans)
-		if ln > 1 && i < ln-1 {
-			related.R.BattleNumberPlayerBans[i] = related.R.BattleNumberPlayerBans[ln-1]
-		}
-		related.R.BattleNumberPlayerBans = related.R.BattleNumberPlayerBans[:ln-1]
-		break
-	}
 	return nil
 }
 
