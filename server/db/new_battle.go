@@ -120,9 +120,11 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 				TotalKills: 1,
 			}
 			err := newMs.Insert(gamedb.StdConn, boil.Infer())
-			gamelog.L.Warn().Err(err).
-				Interface("boiler.MechStat", newMs).
-				Msg("unable to create killer mech stat")
+			if err != nil {
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", newMs).
+					Msg("unable to create killer mech stat")
+			}
 		} else if err != nil {
 			gamelog.L.Warn().Err(err).
 				Str("mechID", killedByID[0].String()).
