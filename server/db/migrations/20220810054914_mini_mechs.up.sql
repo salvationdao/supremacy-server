@@ -28,21 +28,21 @@ VALUES
         10
     );
 
-INSERT INTO
-    sale_player_abilities (blueprint_id, current_price, rarity_weight)
-VALUES
-    (
-        (
-            SELECT
-                id
-            FROM
-                blueprint_player_abilities
-            WHERE
-                game_client_ability_id = 18
-        ),
-        100000000000000000000,
-        2
-    );
+-- INSERT INTO
+--     sale_player_abilities (blueprint_id, current_price, rarity_weight)
+-- VALUES
+--     (
+--         (
+--             SELECT
+--                 id
+--             FROM
+--                 blueprint_player_abilities
+--             WHERE
+--                 game_client_ability_id = 18
+--         ),
+--         100000000000000000000,
+--         2
+--     );
 
 UPDATE
     blueprint_player_abilities

@@ -2,17 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"server"
 	"server/battle"
 	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/marketplace"
 	"server/profanities"
@@ -22,14 +17,7 @@ import (
 	"server/syndicate"
 	"server/xsyn_rpcclient"
 	"server/zendesk"
-	"sync"
 	"time"
-
-	"github.com/ninja-software/terror/v2"
-
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
-	"github.com/pemistahl/lingua-go"
-	"github.com/volatiletech/null/v8"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
@@ -39,40 +27,10 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
+	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
-
-// WelcomePayload is the response sent when a client connects to the server
-type WelcomePayload struct {
-	Message string `json:"message"`
-}
-
-type LiveVotingData struct {
-	sync.Mutex
-	TotalVote server.BigInt
-}
-
-type VotePriceSystem struct {
-	VotePriceUpdater *tickle.Tickle
-
-	GlobalVotePerTick []int64 // store last 100 tick total vote
-	GlobalTotalVote   int64
-
-	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
-	FactionActivePlayers map[server.FactionID]*ActivePlayers
-}
-
-type FactionVotePrice struct {
-	// priority lock
-	OuterLock      sync.Mutex
-	NextAccessLock sync.Mutex
-	DataLock       sync.Mutex
-
-	// price
-	CurrentVotePriceSups server.BigInt
-	CurrentVotePerTick   int64
-}
 
 // API server
 type API struct {
@@ -221,6 +179,7 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(server.AddOriginToCtx())
 	api.Routes.Use(gamelog.ChiLogger(zerolog.DebugLevel))
 	api.Routes.Use(cors.New(
 		cors.Options{
@@ -240,15 +199,8 @@ func NewAPI(
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
-		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
-		// See roothub.ServeHTTP for the setup of sentry on this route.
-		//TODO ALEX reimplement handlers
-
 		r.Group(func(r chi.Router) {
-			if config.Environment != "development" {
-				// TODO: Create new tracer not using HUB
-				r.Use(DatadogTracer.Middleware())
-			}
+			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
 			r.Mount("/battle_history", BattleHistoryRouter())
@@ -263,12 +215,11 @@ func NewAPI(
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
+			r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
+
+			r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
+			r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 		})
-
-		r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
-
-		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
-		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
@@ -437,292 +388,5 @@ func (api *API) Close() {
 	err := api.server.Shutdown(ctx)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
-	}
-}
-
-func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			var token string
-			var ok bool
-
-			cookie, err := r.Cookie("xsyn-token")
-			if err != nil {
-				token = r.URL.Query().Get("token")
-				if token == "" {
-					token, ok = r.Context().Value("token").(string)
-					if !ok || token == "" {
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
-					}
-				}
-			} else {
-				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					gamelog.L.Error().Err(err).Msg("decrypting cookie error")
-					return
-				}
-			}
-
-			user, err := api.TokenLogin(token)
-			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
-				return
-			}
-
-			// get ip
-			ip := r.Header.Get("X-Forwarded-For")
-			if ip == "" {
-				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-				userIP := net.ParseIP(ipaddr)
-				if userIP == nil {
-					ip = ipaddr
-				} else {
-					ip = userIP.String()
-				}
-			}
-
-			// upsert player ip logs
-			err = db.PlayerIPUpsert(user.ID, ip)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
-				fmt.Fprintf(w, "invalid ip address")
-				return
-			}
-
-			if !user.FactionID.Valid {
-				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
-				return
-			}
-
-			if factionIDMustMatch {
-				factionID := chi.URLParam(r, "faction_id")
-				if factionID == "" || factionID != user.FactionID.String {
-					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
-					return
-				}
-			}
-
-			ctxWithUserID := context.WithValue(r.Context(), "auth_user_id", user.ID)
-			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
-			*r = *r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-		}
-
-		return http.HandlerFunc(fn)
-	}
-}
-
-func (api *API) AuthWS(userIDMustMatch bool) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			var token string
-			var ok bool
-
-			cookie, err := r.Cookie("xsyn-token")
-			if err != nil {
-				token = r.URL.Query().Get("token")
-				if token == "" {
-					token, ok = r.Context().Value("token").(string)
-					if !ok || token == "" {
-						gamelog.L.Debug().Err(err).Msg("missing token and cookie")
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
-					}
-				}
-			} else {
-				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
-					return
-				}
-			}
-
-			user, err := api.TokenLogin(token)
-			if err != nil {
-				gamelog.L.Debug().Err(err).Msg("authentication error")
-				return
-			}
-
-			if userIDMustMatch {
-				userID := chi.URLParam(r, "user_id")
-				if userID == "" || userID != user.ID {
-					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
-						Str("userID", userID).
-						Str("user.ID", user.ID).
-						Str("r.URL.Path", r.URL.Path).
-						Msg("user id check failed")
-					return
-				}
-			}
-
-			// get ip
-			ip := r.Header.Get("X-Forwarded-For")
-			if ip == "" {
-				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-				userIP := net.ParseIP(ipaddr)
-				if userIP == nil {
-					ip = ipaddr
-				} else {
-					ip = userIP.String()
-				}
-			}
-
-			// upsert player ip logs
-			err = db.PlayerIPUpsert(user.ID, ip)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), "auth_user_id", user.ID)
-			*r = *r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-			return
-		}
-		return http.HandlerFunc(fn)
-	}
-}
-
-// TokenLogin gets a user from the token
-func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Player, error) {
-	ignoreError := len(ignoreErr) > 0 && ignoreErr[0] == true
-
-	userResp, err := api.Passport.TokenLogin(tokenBase64)
-	if err != nil {
-		if !ignoreError {
-			if err.Error() == "session is expired" {
-				gamelog.L.Debug().Err(err).Msg("Failed to login with token")
-			}
-			gamelog.L.Error().Err(err).Msg("Failed to login with token")
-		}
-		return nil, err
-	}
-
-	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to update player detail")
-		}
-		return nil, err
-	}
-
-	serverPlayer, err := db.GetPlayer(userResp.ID)
-	if err != nil {
-		if !ignoreError {
-			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
-		}
-		return nil, err
-	}
-
-	return serverPlayer, nil
-}
-
-type captcha struct {
-	secret    string
-	siteKey   string
-	verifyUrl string
-}
-
-func (c *captcha) verify(token string) error {
-	if token == "" {
-		return terror.Error(fmt.Errorf("token is empty"), "Token is empty.")
-	}
-
-	resp, err := http.PostForm(c.verifyUrl, url.Values{
-		"secret":   {c.secret},
-		"response": {token},
-	})
-
-	if err != nil {
-		return terror.Error(err, "Failed to verify token")
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return terror.Error(err, "Read token")
-	}
-
-	type captchaResp struct {
-		Success   bool   `json:"success"`
-		ErrorCode string `json:"error-codes"`
-	}
-
-	cr := &captchaResp{}
-	err = json.Unmarshal(body, cr)
-	if err != nil {
-		return terror.Error(err, "Failed to read captcha response")
-	}
-
-	if cr.ErrorCode != "" {
-		gamelog.L.Debug().Msg(cr.ErrorCode)
-	}
-
-	if !cr.Success {
-		return terror.Error(fmt.Errorf("verification failed"), "Failed to verify captcha token")
-	}
-
-	return nil
-}
-
-func (api *API) LiveViewerCount(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	reply(&ViewerLiveCount{})
-	api.ViewerUpdateChan <- true
-	return nil
-}
-
-type ViewerLiveCount struct {
-	RedMountain int64 `json:"red_mountain"`
-	Boston      int64 `json:"boston"`
-	Zaibatsu    int64 `json:"zaibatsu"`
-	Other       int64 `json:"other"`
-}
-
-const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
-
-func (api *API) debounceSendingViewerCount() {
-	defer func() {
-		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the debounceSendingViewerCount!", r)
-		}
-	}()
-
-	interval := 1 * time.Second
-	timer := time.NewTimer(interval)
-	for {
-		select {
-		case <-api.ViewerUpdateChan:
-			timer.Reset(interval)
-		case <-ws.ClientDisconnectedChan:
-			timer.Reset(interval)
-		case <-timer.C:
-			// get user ids from ws connection
-			playerIDs := ws.TrackedIdents()
-
-			// cal current online player
-			if len(playerIDs) > 0 {
-				ps, err := boiler.Players(
-					boiler.PlayerWhere.ID.IN(playerIDs),
-				).All(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Debug().Strs("playerIDs", playerIDs).Msg("Failed to query players.")
-					continue
-				}
-
-				result := &ViewerLiveCount{}
-				for _, p := range ps {
-					switch p.FactionID.String {
-					case server.RedMountainFactionID:
-						result.RedMountain += 1
-					case server.BostonCyberneticsFactionID:
-						result.Boston += 1
-					case server.ZaibatsuFactionID:
-						result.Zaibatsu += 1
-					default:
-						result.Other += 1
-					}
-				}
-				ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, result)
-			}
-		}
 	}
 }
