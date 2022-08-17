@@ -28,39 +28,9 @@ VALUES
         10
     );
 
--- INSERT INTO
---     sale_player_abilities (blueprint_id, current_price, rarity_weight)
--- VALUES
---     (
---         (
---             SELECT
---                 id
---             FROM
---                 blueprint_player_abilities
---             WHERE
---                 game_client_ability_id = 18
---         ),
---         100000000000000000000,
---         2
---     );
-
 UPDATE
     blueprint_player_abilities
 SET
     description = 'Deploy a drone onto the battlefield that hacks into the nearest enemy War Machine, overriding both targeting and movement systems and causing them to attack their allies when within range.'
 WHERE
     game_client_ability_id = 13;
-
-UPDATE
-    sale_player_abilities
-SET
-    deleted_at = now()
-WHERE
-    blueprint_id = (
-        SELECT
-            id
-        FROM
-            blueprint_player_abilities
-        WHERE
-            game_client_ability_id = 18
-    );
