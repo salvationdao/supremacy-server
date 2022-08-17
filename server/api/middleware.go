@@ -2,12 +2,17 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"server"
+	"server/db"
 	"server/gamelog"
+	"strings"
 
 	"github.com/ninja-software/terror/v2"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
@@ -92,4 +97,100 @@ func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.
 		next(w, r)
 	}
 	return fn
+}
+
+
+func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			var token string
+			var ok bool
+
+			cookie, err := r.Cookie("xsyn-token")
+			if err != nil {
+				token = r.URL.Query().Get("token")
+				if token == "" {
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						if required {
+							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
+							http.Error(w, "Unauthorized", http.StatusUnauthorized)
+							return
+						}
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			} else {
+				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+					if required {
+						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
+						return
+					}
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			if !required {
+				path := r.URL.Path
+
+				exists := false
+				for _, p := range onlyAuthPaths {
+					if strings.Contains(path, p) {
+						exists = true
+						break
+					}
+				}
+
+				if !exists {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			user, err := api.TokenLogin(token)
+			if err != nil {
+				gamelog.L.Debug().Err(err).Msg("authentication error")
+				return
+			}
+
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				return
+			}
+
+			if userIDMustMatch {
+				userID := chi.URLParam(r, "user_id")
+				if userID == "" || userID != user.ID {
+					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
+					return
+				}
+			}
+
+			ctx := context.WithValue(r.Context(), "user_id", user.ID)
+			*r = *r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+			return
+		}
+		return http.HandlerFunc(fn)
+	}
 }

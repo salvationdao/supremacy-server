@@ -19,14 +19,12 @@ import (
 	"server/synctool"
 	"server/syndicate"
 	"server/xsyn_rpcclient"
-	"strings"
 	"server/zendesk"
 	"sync"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/pemistahl/lingua-go"
 	"github.com/volatiletech/null/v8"
 
@@ -213,6 +211,7 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(server.AddOriginToCtx())
 	api.Routes.Use(gamelog.ChiLogger(zerolog.DebugLevel))
 	api.Routes.Use(cors.New(
 		cors.Options{
@@ -232,15 +231,8 @@ func NewAPI(
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
-		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
-		// See roothub.ServeHTTP for the setup of sentry on this route.
-		//TODO ALEX reimplement handlers
-
 		r.Group(func(r chi.Router) {
-			if config.Environment != "development" {
-				// TODO: Create new tracer not using HUB
-				r.Use(DatadogTracer.Middleware())
-			}
+			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
 			r.Mount("/battle_history", BattleHistoryRouter())
@@ -255,12 +247,11 @@ func NewAPI(
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
+			r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
+
+			r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
+			r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 		})
-
-		r.Mount("/", AdminRoutes(api, config.ServerStreamKey))
-
-		r.Post("/sync_data/{branch}", WithToken(config.ServerStreamKey, WithError(api.SyncStaticData)))
-		r.Post("/profanities/add", WithToken(config.ServerStreamKey, WithError(api.AddPhraseToProfanityDictionary)))
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
@@ -501,101 +492,6 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			next.ServeHTTP(w, r)
 		}
 
-		return http.HandlerFunc(fn)
-	}
-}
-
-func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			var token string
-			var ok bool
-
-			cookie, err := r.Cookie("xsyn-token")
-			if err != nil {
-				token = r.URL.Query().Get("token")
-				if token == "" {
-					token, ok = r.Context().Value("token").(string)
-					if !ok || token == "" {
-						if required {
-							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
-							http.Error(w, "Unauthorized", http.StatusUnauthorized)
-							return
-						}
-						next.ServeHTTP(w, r)
-						return
-					}
-				}
-			} else {
-				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					if required {
-						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
-						return
-					}
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			if !required {
-				path := r.URL.Path
-
-				exists := false
-				for _, p := range onlyAuthPaths {
-					if strings.Contains(path, p) {
-						exists = true
-						break
-					}
-				}
-
-				if !exists {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			user, err := api.TokenLogin(token)
-			if err != nil {
-				gamelog.L.Debug().Err(err).Msg("authentication error")
-				return
-			}
-
-			// get ip
-			ip := r.Header.Get("X-Forwarded-For")
-			if ip == "" {
-				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
-				userIP := net.ParseIP(ipaddr)
-				if userIP == nil {
-					ip = ipaddr
-				} else {
-					ip = userIP.String()
-				}
-			}
-
-			// upsert player ip logs
-			err = db.PlayerIPUpsert(user.ID, ip)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
-				return
-			}
-
-			if userIDMustMatch {
-				userID := chi.URLParam(r, "user_id")
-				if userID == "" || userID != user.ID {
-					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
-						Str("userID", userID).
-						Str("user.ID", user.ID).
-						Str("r.URL.Path", r.URL.Path).
-						Msg("user id check failed")
-					return
-				}
-			}
-
-			ctx := context.WithValue(r.Context(), "user_id", user.ID)
-			*r = *r.WithContext(ctx)
-			next.ServeHTTP(w, r)
-			return
-		}
 		return http.HandlerFunc(fn)
 	}
 }
