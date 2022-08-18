@@ -454,6 +454,7 @@ func playerQuestGrant(playerID string, questID string) error {
 		return terror.Error(err, "Failed to get mini mech reward player")
 	}
 
+	pa.Count = pa.Count + 1
 
 	_, err = pa.Update(tx, boil.Infer())
 	if err != nil {
