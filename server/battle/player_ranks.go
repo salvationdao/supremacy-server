@@ -9,6 +9,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/ws"
@@ -30,7 +31,7 @@ const (
 	PlayerRankGeneral    PlayerRank = "GENERAL"
 )
 
-func (arena *Arena) PlayerRankUpdater() {
+func (am *ArenaManager) PlayerRankUpdater() {
 	// create a tickle to constantly update player ability kill and ranks
 	updateTickle := tickle.New("Player rank and kill update", 30*60, func() (int, error) {
 		// calculate player rank of each syndicate
@@ -47,51 +48,43 @@ func (arena *Arena) PlayerRankUpdater() {
 			gamelog.L.Error().Str("log_name", "battle arena").Str("faction id", server.ZaibatsuFactionID).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
 
-		bus := arena.currentBattleUsersCopy()
-		if bus != nil && len(bus) > 0 {
-			// prepare user id list
-			userIDs := []string{}
-			for _, bu := range bus {
-				userIDs = append(userIDs, bu.ID.String())
-			}
-
+		connectedUserIDs := ws.TrackedIdents()
+		if len(connectedUserIDs) > 0 {
 			// query players' id and rank
 			players, err := boiler.Players(
 				qm.Select(
 					boiler.PlayerColumns.ID,
 					boiler.PlayerColumns.Rank,
 				),
-				boiler.PlayerWhere.ID.IN(userIDs),
+				boiler.PlayerWhere.ID.IN(connectedUserIDs),
 			).All(gamedb.StdConn)
 			if err != nil {
 				return http.StatusInternalServerError, terror.Error(err, "Failed to get player from db")
 			}
 
-			// start broadcast user rank to current online users
-			for _, bu := range bus {
-				// find player from the list
-				for _, player := range players {
-					if player.ID == bu.ID.String() {
-						// broadcast player rank to every player
-						go func(bu *BattleUser, player *boiler.Player) {
-							// broadcast stat
-							ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), server.HubKeyPlayerRankGet, player.Rank)
+			// find player from the list
+			wg := sync.WaitGroup{}
+			for _, player := range players {
+				wg.Add(1)
+				// broadcast player rank to every player
+				go func(player *boiler.Player) {
+					defer wg.Done()
 
-							// broadcast user stat (player_last_seven_days_kills)
-							us, err := db.UserStatsGet(player.ID)
-							if err != nil {
-								gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to get user stat")
-							}
+					// broadcast stat
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/rank", player.ID), server.HubKeyPlayerRankGet, player.Rank)
 
-							if us != nil {
-								ws.PublishMessage(fmt.Sprintf("/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
-							}
-						}(bu, player)
-
-						break
+					// broadcast user stat (player_last_seven_days_kills)
+					us, err := db.UserStatsGet(player.ID)
+					if err != nil {
+						gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("failed to get user stat")
 					}
-				}
+
+					if us != nil {
+						ws.PublishMessage(fmt.Sprintf("/secure/user/%s/stat", us.ID), server.HubKeyUserStatSubscribe, us)
+					}
+				}(player)
 			}
+			wg.Wait()
 		}
 
 		return http.StatusOK, nil

@@ -17,7 +17,6 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -48,7 +47,7 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
-func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	msg := &QueueJoinRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
@@ -179,7 +178,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// pay battle queue fee
-	paidTxID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+	paidTxID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 		Amount:               bqf.Amount.StringFixed(0),
@@ -198,7 +197,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	refundFunc := func() {
-		_, err = arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		_, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 			ToUserID:             uuid.Must(uuid.FromString(user.ID)),
 			Amount:               bqf.Amount.StringFixed(0),
@@ -234,7 +233,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 			}
 
 			select {
-			case arena.RepairOfferCloseChan <- &RepairOfferClose{
+			case am.RepairOfferCloseChan <- &RepairOfferClose{
 				OfferIDs:          ids,
 				OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
 				AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
@@ -252,13 +251,13 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 			Interface("mech id", mci.ItemID).
 			Err(err).Msg("unable to commit mech insertion into queue")
 		if bq.QueueFeeTXID.Valid {
-			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
 			}
 		}
 		if bq.QueueNotificationFeeTXID.Valid {
-			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+			_, err = am.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
 			}
@@ -302,7 +301,7 @@ type AssetUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (arena *Arena) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (am *ArenaManager) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 
 	msg := &AssetUpdateRequest{}
 	err := json.Unmarshal(payload, msg)
@@ -326,30 +325,5 @@ type QueueStatusResponse struct {
 }
 
 const WSQueueStatusSubscribe = "BATTLE:QUEUE:STATUS:SUBSCRIBE"
-
-func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
-		return err
-	}
-
-	reply(CalcNextQueueStatus(result))
-	return nil
-}
-
 const WSPlayerAssetMechQueueUpdateSubscribe = "PLAYER:ASSET:MECH:QUEUE:UPDATE"
 const WSPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
-
-func (arena *Arena) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	mechID := cctx.URLParam("mech_id")
-
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	reply(queueDetails)
-	return nil
-}

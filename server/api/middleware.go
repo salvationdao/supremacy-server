@@ -6,16 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"server"
 	"server/db"
 	"server/gamelog"
-	"strings"
-
-	"github.com/ninja-software/terror/v2"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 type ErrorMessage string
@@ -100,7 +98,7 @@ func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.
 }
 
 
-func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...string) func(next http.Handler) http.Handler {
+func (api *API) AuthWS(userIDMustMatch bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
@@ -112,39 +110,14 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 				if token == "" {
 					token, ok = r.Context().Value("token").(string)
 					if !ok || token == "" {
-						if required {
-							gamelog.L.Debug().Err(err).Msg("missing token and cookie")
-							http.Error(w, "Unauthorized", http.StatusUnauthorized)
-							return
-						}
-						next.ServeHTTP(w, r)
+						gamelog.L.Debug().Err(err).Msg("missing token and cookie")
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
 						return
 					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					if required {
-						gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
-						return
-					}
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			if !required {
-				path := r.URL.Path
-
-				exists := false
-				for _, p := range onlyAuthPaths {
-					if strings.Contains(path, p) {
-						exists = true
-						break
-					}
-				}
-
-				if !exists {
-					next.ServeHTTP(w, r)
+					gamelog.L.Debug().Err(err).Msg("decrypting cookie error")
 					return
 				}
 			}
@@ -153,6 +126,18 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 			if err != nil {
 				gamelog.L.Debug().Err(err).Msg("authentication error")
 				return
+			}
+
+			if userIDMustMatch {
+				userID := chi.URLParam(r, "user_id")
+				if userID == "" || userID != user.ID {
+					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
+					return
+				}
 			}
 
 			// get ip
@@ -174,23 +159,83 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool, onlyAuthPaths ...str
 				return
 			}
 
-			if userIDMustMatch {
-				userID := chi.URLParam(r, "user_id")
-				if userID == "" || userID != user.ID {
-					gamelog.L.Debug().Err(fmt.Errorf("user id check failed")).
-						Str("userID", userID).
-						Str("user.ID", user.ID).
-						Str("r.URL.Path", r.URL.Path).
-						Msg("user id check failed")
-					return
-				}
-			}
-
-			ctx := context.WithValue(r.Context(), "user_id", user.ID)
+			ctx := context.WithValue(r.Context(), "auth_user_id", user.ID)
 			*r = *r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 			return
 		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			var token string
+			var ok bool
+
+			cookie, err := r.Cookie("xsyn-token")
+			if err != nil {
+				token = r.URL.Query().Get("token")
+				if token == "" {
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
+				}
+			} else {
+				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+					gamelog.L.Error().Err(err).Msg("decrypting cookie error")
+					return
+				}
+			}
+
+			user, err := api.TokenLogin(token)
+			if err != nil {
+				fmt.Fprintf(w, "authentication error: %v", err)
+				return
+			}
+
+			// get ip
+			ip := r.Header.Get("X-Forwarded-For")
+			if ip == "" {
+				ipaddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+				userIP := net.ParseIP(ipaddr)
+				if userIP == nil {
+					ip = ipaddr
+				} else {
+					ip = userIP.String()
+				}
+			}
+
+			// upsert player ip logs
+			err = db.PlayerIPUpsert(user.ID, ip)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to log player ip")
+				fmt.Fprintf(w, "invalid ip address")
+				return
+			}
+
+			if !user.FactionID.Valid {
+				fmt.Fprintf(w, "authentication error: user has not enlisted in one of the factions")
+				return
+			}
+
+			if factionIDMustMatch {
+				factionID := chi.URLParam(r, "faction_id")
+				if factionID == "" || factionID != user.FactionID.String {
+					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
+					return
+				}
+			}
+
+			ctxWithUserID := context.WithValue(r.Context(), "auth_user_id", user.ID)
+			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
+			*r = *r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		}
+
 		return http.HandlerFunc(fn)
 	}
 }

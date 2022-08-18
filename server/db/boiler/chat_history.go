@@ -38,6 +38,7 @@ type ChatHistory struct {
 	Lang            string      `boiler:"lang" boil:"lang" json:"lang" toml:"lang" yaml:"lang"`
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Metadata        null.JSON   `boiler:"metadata" boil:"metadata" json:"metadata,omitempty" toml:"metadata" yaml:"metadata,omitempty"`
+	ArenaID         null.String `boiler:"arena_id" boil:"arena_id" json:"arena_id,omitempty" toml:"arena_id" yaml:"arena_id,omitempty"`
 
 	R *chatHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L chatHistoryL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -59,6 +60,7 @@ var ChatHistoryColumns = struct {
 	Lang            string
 	CreatedAt       string
 	Metadata        string
+	ArenaID         string
 }{
 	ID:              "id",
 	FactionID:       "faction_id",
@@ -75,6 +77,7 @@ var ChatHistoryColumns = struct {
 	Lang:            "lang",
 	CreatedAt:       "created_at",
 	Metadata:        "metadata",
+	ArenaID:         "arena_id",
 }
 
 var ChatHistoryTableColumns = struct {
@@ -93,6 +96,7 @@ var ChatHistoryTableColumns = struct {
 	Lang            string
 	CreatedAt       string
 	Metadata        string
+	ArenaID         string
 }{
 	ID:              "chat_history.id",
 	FactionID:       "chat_history.faction_id",
@@ -109,6 +113,7 @@ var ChatHistoryTableColumns = struct {
 	Lang:            "chat_history.lang",
 	CreatedAt:       "chat_history.created_at",
 	Metadata:        "chat_history.metadata",
+	ArenaID:         "chat_history.arena_id",
 }
 
 // Generated where
@@ -153,6 +158,7 @@ var ChatHistoryWhere = struct {
 	Lang            whereHelperstring
 	CreatedAt       whereHelpertime_Time
 	Metadata        whereHelpernull_JSON
+	ArenaID         whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"chat_history\".\"id\""},
 	FactionID:       whereHelperstring{field: "\"chat_history\".\"faction_id\""},
@@ -169,14 +175,17 @@ var ChatHistoryWhere = struct {
 	Lang:            whereHelperstring{field: "\"chat_history\".\"lang\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"chat_history\".\"created_at\""},
 	Metadata:        whereHelpernull_JSON{field: "\"chat_history\".\"metadata\""},
+	ArenaID:         whereHelpernull_String{field: "\"chat_history\".\"arena_id\""},
 }
 
 // ChatHistoryRels is where relationship names are stored.
 var ChatHistoryRels = struct {
+	Arena   string
 	Battle  string
 	Faction string
 	Player  string
 }{
+	Arena:   "Arena",
 	Battle:  "Battle",
 	Faction: "Faction",
 	Player:  "Player",
@@ -184,9 +193,10 @@ var ChatHistoryRels = struct {
 
 // chatHistoryR is where relationships are stored.
 type chatHistoryR struct {
-	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Arena   *BattleArena `boiler:"Arena" boil:"Arena" json:"Arena" toml:"Arena" yaml:"Arena"`
+	Battle  *Battle      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Faction *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Player  *Player      `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -198,9 +208,9 @@ func (*chatHistoryR) NewStruct() *chatHistoryR {
 type chatHistoryL struct{}
 
 var (
-	chatHistoryAllColumns            = []string{"id", "faction_id", "player_id", "message_color", "text", "battle_id", "msg_type", "chat_stream", "user_rank", "total_multiplier", "kill_count", "is_citizen", "lang", "created_at", "metadata"}
+	chatHistoryAllColumns            = []string{"id", "faction_id", "player_id", "message_color", "text", "battle_id", "msg_type", "chat_stream", "user_rank", "total_multiplier", "kill_count", "is_citizen", "lang", "created_at", "metadata", "arena_id"}
 	chatHistoryColumnsWithoutDefault = []string{"faction_id", "player_id", "message_color", "text", "user_rank", "total_multiplier", "kill_count"}
-	chatHistoryColumnsWithDefault    = []string{"id", "battle_id", "msg_type", "chat_stream", "is_citizen", "lang", "created_at", "metadata"}
+	chatHistoryColumnsWithDefault    = []string{"id", "battle_id", "msg_type", "chat_stream", "is_citizen", "lang", "created_at", "metadata", "arena_id"}
 	chatHistoryPrimaryKeyColumns     = []string{"id"}
 	chatHistoryGeneratedColumns      = []string{}
 )
@@ -447,6 +457,21 @@ func (q chatHistoryQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Arena pointed to by the foreign key.
+func (o *ChatHistory) Arena(mods ...qm.QueryMod) battleArenaQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ArenaID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BattleArenas(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_arena\"")
+
+	return query
+}
+
 // Battle pointed to by the foreign key.
 func (o *ChatHistory) Battle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
@@ -489,6 +514,115 @@ func (o *ChatHistory) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadArena allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (chatHistoryL) LoadArena(e boil.Executor, singular bool, maybeChatHistory interface{}, mods queries.Applicator) error {
+	var slice []*ChatHistory
+	var object *ChatHistory
+
+	if singular {
+		object = maybeChatHistory.(*ChatHistory)
+	} else {
+		slice = *maybeChatHistory.(*[]*ChatHistory)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &chatHistoryR{}
+		}
+		if !queries.IsNil(object.ArenaID) {
+			args = append(args, object.ArenaID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &chatHistoryR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ArenaID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.ArenaID) {
+				args = append(args, obj.ArenaID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_arena`),
+		qm.WhereIn(`battle_arena.id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_arena.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BattleArena")
+	}
+
+	var resultSlice []*BattleArena
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleArena")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battle_arena")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_arena")
+	}
+
+	if len(chatHistoryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Arena = foreign
+		if foreign.R == nil {
+			foreign.R = &battleArenaR{}
+		}
+		foreign.R.ArenaChatHistories = append(foreign.R.ArenaChatHistories, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ArenaID, foreign.ID) {
+				local.R.Arena = foreign
+				if foreign.R == nil {
+					foreign.R = &battleArenaR{}
+				}
+				foreign.R.ArenaChatHistories = append(foreign.R.ArenaChatHistories, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBattle allows an eager lookup of values, cached into the
@@ -806,6 +940,85 @@ func (chatHistoryL) LoadPlayer(e boil.Executor, singular bool, maybeChatHistory 
 		}
 	}
 
+	return nil
+}
+
+// SetArena of the chatHistory to the related item.
+// Sets o.R.Arena to related.
+// Adds o to related.R.ArenaChatHistories.
+func (o *ChatHistory) SetArena(exec boil.Executor, insert bool, related *BattleArena) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"chat_history\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"arena_id"}),
+		strmangle.WhereClause("\"", "\"", 2, chatHistoryPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ArenaID, related.ID)
+	if o.R == nil {
+		o.R = &chatHistoryR{
+			Arena: related,
+		}
+	} else {
+		o.R.Arena = related
+	}
+
+	if related.R == nil {
+		related.R = &battleArenaR{
+			ArenaChatHistories: ChatHistorySlice{o},
+		}
+	} else {
+		related.R.ArenaChatHistories = append(related.R.ArenaChatHistories, o)
+	}
+
+	return nil
+}
+
+// RemoveArena relationship.
+// Sets o.R.Arena to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *ChatHistory) RemoveArena(exec boil.Executor, related *BattleArena) error {
+	var err error
+
+	queries.SetScanner(&o.ArenaID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("arena_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Arena = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.ArenaChatHistories {
+		if queries.Equal(o.ArenaID, ri.ArenaID) {
+			continue
+		}
+
+		ln := len(related.R.ArenaChatHistories)
+		if ln > 1 && i < ln-1 {
+			related.R.ArenaChatHistories[i] = related.R.ArenaChatHistories[ln-1]
+		}
+		related.R.ArenaChatHistories = related.R.ArenaChatHistories[:ln-1]
+		break
+	}
 	return nil
 }
 

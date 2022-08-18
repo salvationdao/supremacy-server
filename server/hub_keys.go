@@ -5,7 +5,8 @@ const HubKeyPlayerAbilitiesList = "PLAYER:ABILITIES:LIST:SUBSCRIBE"
 const HubKeyMechMoveCommandSubscribe = "MECH:MOVE:COMMAND:SUBSCRIBE"
 
 const HubKeySaleAbilitiesPriceSubscribe = "SALE:ABILITIES:PRICE:SUBSCRIBE"
-const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST:SUBSCRIBE"
+const HubKeySaleAbilitiesListSubscribe = "SALE:ABILITIES:LIST:SUBSCRIBE"
+const HubKeySaleAbilitiesList = "SALE:ABILITIES:LIST"
 const HubKeySaleAbilityClaim = "SALE:ABILITY:CLAIM"
 const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
@@ -46,3 +47,8 @@ const HubKeySystemMessageSend = "SYSTEM:MESSAGE:SEND"
 
 const HubKeyPlayerQuestStats = "PLAYER:QUEST:STAT"
 const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
+
+// battle arena
+
+const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
+const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"

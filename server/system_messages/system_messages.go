@@ -79,7 +79,7 @@ func BroadcastGlobalSystemMessage(title string, message string, dataType SystemM
 			return err
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func BroadcastFactionSystemMessage(factionID string, title string, message strin
 			return err
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", p.ID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 
 	return nil
@@ -211,7 +211,7 @@ func BroadcastMechQueueMessage(queue []*boiler.BattleQueue) {
 				return
 			}
 
-			ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 		}()
 	}
 }
@@ -301,6 +301,6 @@ func BroadcastMechBattleCompleteMessage(queue []*boiler.BattleQueue, battleID st
 			continue
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", q.OwnerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
 	}
 }

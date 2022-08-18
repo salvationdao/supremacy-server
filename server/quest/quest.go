@@ -392,7 +392,7 @@ func syncQuests() error {
 					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player quest status")
 					return
 				}
-				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
 
 				// broadcast progressions
 				progressions, err := db.PlayerQuestProgressions(playerID)
@@ -400,7 +400,7 @@ func syncQuests() error {
 					l.Error().Err(err).Str("player id", playerID).Msg("Failed to load player progressions")
 					return
 				}
-				ws.PublishMessage(fmt.Sprintf("/user/%s/quest_progression", playerID), server.HubKeyPlayerQuestProgressions, progressions)
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_progression", playerID), server.HubKeyPlayerQuestProgressions, progressions)
 
 			}(playerID)
 		}
@@ -454,20 +454,25 @@ func playerQuestGrant(playerID string, questID string) error {
 		return terror.Error(err, "Failed to get mini mech reward player")
 	}
 
-	pa.Count = pa.Count + 1
 
-	inventoryLimit := miniMechBlueprint.InventoryLimit
-	if pa.Count <= inventoryLimit {
-		_, err = pa.Update(tx, boil.Infer())
-		if err != nil {
-			return terror.Error(err, "Failed to get mini mech reward player")
-		}
+	_, err = pa.Update(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to get mini mech reward player")
 	}
+
 
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, "Failed complete quest")
 	}
+
+	// Tell client to update their player abilities list
+	pas, err := db.PlayerAbilitiesList(playerID)
+	if err != nil {
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", playerID), server.HubKeyPlayerAbilitiesList, pas)
 
 	playerQuestStat, err := db.PlayerQuestStatGet(playerID)
 	if err != nil {
@@ -475,7 +480,7 @@ func playerQuestGrant(playerID string, questID string) error {
 	}
 
 	// broadcast player quest stat
-	ws.PublishMessage(fmt.Sprintf("/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/quest_stat", playerID), server.HubKeyPlayerQuestStats, playerQuestStat)
 
 	return nil
 }
@@ -487,7 +492,7 @@ func broadcastProgression(playerID string, questID string, currentProgress int, 
 
 	// broadcast changes
 	ws.PublishMessage(
-		fmt.Sprintf("/user/%s/quest_progression", playerID),
+		fmt.Sprintf("/secure/user/%s/quest_progression", playerID),
 		server.HubKeyPlayerQuestProgressions,
 		[]*db.PlayerQuestProgression{{questID, currentProgress, goal}},
 	)
