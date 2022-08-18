@@ -3,8 +3,6 @@ package api
 import (
 	"context"
 	"github.com/ninja-syndicate/ws"
-	"github.com/shopspring/decimal"
-	"server/db"
 	"server/gamelog"
 	"time"
 )
@@ -31,7 +29,7 @@ func (api *API) debounceSendingViewerCount() {
 		}
 	}()
 
-	interval := 1 * time.Second
+	interval := 500 * time.Millisecond
 	timer := time.NewTimer(interval)
 	for {
 		select {
@@ -40,19 +38,8 @@ func (api *API) debounceSendingViewerCount() {
 		case <-ws.ClientDisconnectedChan:
 			timer.Reset(interval)
 		case <-timer.C:
-			// get user ids from ws connection
-
-			viewerCount := int64(len(ws.TrackedIdents()))
-
-			// multiplier
-			if viewerCount > 0 {
-				viewerCount = decimal.NewFromInt(viewerCount).
-					Mul(db.GetDecimalWithDefault(db.KeyViewerCountMultiplierPercentage, decimal.NewFromInt(120))).
-					Div(decimal.NewFromInt(100)).
-					Ceil().IntPart()
-			}
-
-			ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, viewerCount)
+			// return total amount of tracked player
+			ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, int64(len(ws.TrackedIdents())))
 		}
 	}
 }

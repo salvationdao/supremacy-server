@@ -28,8 +28,6 @@ const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mec
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
 
-const KeyViewerCountMultiplierPercentage KVKey = "viewer_count_multiplier_percentage"
-
 type KVKey string
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
