@@ -1455,15 +1455,11 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
-
-		if lastBattle != nil {
-			battle.BattleNumber = lastBattle.BattleNumber + 1
-		}
-
 	} else {
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
+
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
