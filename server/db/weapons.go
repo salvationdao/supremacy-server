@@ -262,13 +262,6 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		return terror.Error(err)
 	}
 
-	// check current weapon count
-	if len(mech.R.ChassisMechWeapons)+1 > mech.WeaponHardpoints {
-		err := fmt.Errorf("weapon cannot fit")
-		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("adding this weapon brings mechs weapons over mechs weapon hardpoints")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d weapons equipped and is only has %d weapon hardpoints.", len(mech.R.ChassisMechWeapons), mech.WeaponHardpoints))
-	}
-
 	// check weapon isn't already equipped to another war machine
 	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weaponID))).Exists(tx)
 	if err != nil {
@@ -281,23 +274,31 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "This weapon is already equipped to another war machine, try again or contact support.")
 	}
 
-	weapon.EquippedOn = null.StringFrom(mech.ID)
+	// get next available slot
+	availableSlot, err := boiler.MechWeapons(
+		boiler.MechWeaponWhere.ChassisID.EQ(mech.ID),
+		boiler.MechWeaponWhere.WeaponID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s ASC", boiler.MechWeaponColumns.SlotNumber)),
+	).One(tx)
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("no available slots on mech to insert weapon")
+		return terror.Error(err, "There are no more slots on this mech to equip this weapon.")
+	} else if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available slots on mech")
+		return terror.Error(err)
+	}
 
+	weapon.EquippedOn = null.StringFrom(mech.ID)
 	_, err = weapon.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("weapon", weapon).Msg("failed to update weapon")
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
-	weaponMechJoin := boiler.MechWeapon{
-		ChassisID:  mech.ID,
-		WeaponID:   null.StringFrom(weapon.ID),
-		SlotNumber: len(mech.R.ChassisMechWeapons), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
-	}
-
-	err = weaponMechJoin.Insert(tx, boil.Infer())
+	availableSlot.WeaponID = null.StringFrom(weapon.ID)
+	_, err = availableSlot.Update(tx, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("weaponMechJoin", weaponMechJoin).Msg(" failed to equip weapon to war machine")
+		gamelog.L.Error().Err(err).Interface("weapon", weapon).Msg("failed to update mech_weapon entry")
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
