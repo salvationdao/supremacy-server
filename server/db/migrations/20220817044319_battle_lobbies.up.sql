@@ -46,6 +46,42 @@ CREATE TABLE battle_lobbies_mechs
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- repair block trigger
+CREATE OR REPLACE FUNCTION check_lobby_mech() RETURNS TRIGGER AS
+$check_lobby_mech$
+DECLARE
+    already_join_lobby BOOLEAN DEFAULT FALSE;
+    lobby_is_full BOOLEAN DEFAULT FALSE;
+BEGIN
+
+    SELECT (COALESCE((SELECT TRUE
+                      FROM battle_lobbies_mechs blm
+                      INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
+                      WHERE blm.mech_id = new.mech_id), FALSE)
+               )
+    INTO already_join_lobby;
+
+    SELECT (
+
+               ) INTO lobby_is_full;
+-- update blocks required in repair cases and continue the process
+    IF already_join_lobby THEN
+        RETURN new;
+    ELSE
+        RAISE EXCEPTION 'unable to join lobby';
+    END IF;
+END
+$check_lobby_mech$
+    LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_check_lobby_mech ON battle_lobbies_mechs;
+
+CREATE TRIGGER trigger_check_lobby_mech
+    BEFORE INSERT
+    ON battle_lobbies_mechs
+    FOR EACH ROW
+EXECUTE PROCEDURE check_lobby_mech();
+
 CREATE TABLE battle_lobby_bounties
 (
     battle_lobby_id UUID        NOT NULL REFERENCES battle_lobbies (id),
