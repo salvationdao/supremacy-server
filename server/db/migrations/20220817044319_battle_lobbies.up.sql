@@ -51,24 +51,30 @@ CREATE OR REPLACE FUNCTION check_lobby_mech() RETURNS TRIGGER AS
 $check_lobby_mech$
 DECLARE
     already_join_lobby BOOLEAN DEFAULT FALSE;
-    lobby_is_full BOOLEAN DEFAULT FALSE;
+    lobby_is_full      BOOLEAN DEFAULT FALSE;
 BEGIN
 
     SELECT (COALESCE((SELECT TRUE
                       FROM battle_lobbies_mechs blm
-                      INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
+                               INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
                       WHERE blm.mech_id = new.mech_id), FALSE)
                )
     INTO already_join_lobby;
 
-    SELECT (
-
-               ) INTO lobby_is_full;
+    SELECT (SELECT lb.each_faction_mech_amount = COALESCE((SELECT COUNT(*)
+                                                  FROM battle_lobbies_mechs blm
+                                                  WHERE blm.battle_lobby_id = new.battle_lobby_id
+                                                    AND blm.faction_id = new.faction_id), 0)
+            FROM battle_lobbies lb
+            WHERE lb.id = new.battle_lobby_id)
+    INTO lobby_is_full;
 -- update blocks required in repair cases and continue the process
     IF already_join_lobby THEN
-        RETURN new;
+        RAISE EXCEPTION 'already join another lobby';
+    ELSE IF lobby_is_full THEN
+        RAISE EXCEPTION 'lobby is full';
     ELSE
-        RAISE EXCEPTION 'unable to join lobby';
+        RETURN new;
     END IF;
 END
 $check_lobby_mech$
