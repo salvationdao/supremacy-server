@@ -1371,17 +1371,26 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		}
 
 		for _, ew := range req.Payload.EquipWeapons {
+			if ew.SlotNumber < 0 {
+				return terror.Error(terror.ErrInvalidInput, fmt.Sprintf("This mech does not have the weapon slot specified to equip the weapon on."))
+			}
+
+			// Slot number specified does not exist on mech
+			if ew.SlotNumber > mech.WeaponHardpoints-1 {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified weapons on the mech as it does not have enough weapon slots."))
+			}
+
 			mw, err := boiler.FindMechWeapon(tx, mech.ID, ew.SlotNumber)
 			if errors.Is(err, sql.ErrNoRows) {
-				// Slot number specified does not exist on mech
-				if ew.SlotNumber > mech.WeaponHardpoints-1 {
-					return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified weapons on the mech as it does not have enough weapon slots."))
-				}
-
 				// Create mech_weapon entry
 				mw = &boiler.MechWeapon{
 					ChassisID:  mech.ID,
 					SlotNumber: ew.SlotNumber,
+				}
+
+				err := mw.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
 				}
 			} else if err != nil {
 				return terror.Error(err, errorMsg)
@@ -1394,7 +1403,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				}
 
 				weaponToReplace.EquippedOn = null.String{}
-				weaponToReplace.UpdatedAt = time.Now()
 				_, err = weaponToReplace.Update(tx, boil.Infer())
 				if err != nil {
 					return terror.Error(err, errorMsg)
@@ -1407,7 +1415,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			}
 
 			weapon.EquippedOn = null.StringFrom(mech.ID)
-			weapon.UpdatedAt = time.Now()
 			_, err = weapon.Update(tx, boil.Infer())
 			if err != nil {
 				return terror.Error(err, errorMsg)
@@ -1416,7 +1423,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			mw.WeaponID = null.StringFrom(ew.WeaponID)
 			mw.IsSkinInherited = ew.IsSkinInherited
 			mw.AllowMelee = weapon.IsMelee
-			mw.UpdatedAt = time.Now()
 			_, err = mw.Update(tx, boil.Infer())
 			if err != nil {
 				return terror.Error(err, errorMsg)
