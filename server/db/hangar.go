@@ -42,13 +42,13 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		qm.Select(fmt.Sprintf(`
 				distinct on (%[1]s) %[1]s as skin_id,
                                     %s    as type,
-                                    %s           as ownership_id,
-                                    %s      as static_id
+                                    %s    as ownership_id,
+                                    %s    as static_id
 		`,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID)),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID)),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
@@ -321,7 +321,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 	mechSiloType := &SiloType{
 		Type:        "mech",
 		OwnershipID: mech.CollectionItemID,
-		StaticID:    &mech.Model.ID,
+		StaticID:    &mech.BlueprintID,
 	}
 
 	var mechAttributes []MechSiloAccessories

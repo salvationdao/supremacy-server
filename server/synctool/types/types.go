@@ -8,8 +8,16 @@ type MechModel struct {
 	ID                   string      `json:"id"`
 	Label                string      `json:"label"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	BrandID              null.String `json:"brand_id"`
+	BrandID              string      `json:"brand_id"`
 	MechType             string      `json:"mech_type"`
+	BoostStat            string      `json:"boost_stat"`
+	WeaponHardpoints     string      `json:"weapon_hardpoints"`
+	UtilitySlots         string      `json:"utility_slots"`
+	Speed                string      `json:"speed"`
+	MaxHitpoints         string      `json:"max_hitpoints"`
+	PowerCoreSize        string      `json:"power_core_size"`
+	Collection           string      `json:"collection"`
+	AvailabilityID       null.String `json:"availability_id"`
 }
 
 type Brands struct {
@@ -40,7 +48,7 @@ type MechSkin struct {
 	Collection   string `json:"collection"`
 	Label        string `json:"label"`
 	Tier         string `json:"tier"`
-	StatModifier string `json:"stat_modifier"`
+	DefaultLevel string `json:"default_level"`
 }
 
 type MechModelSkinCompatibility struct {

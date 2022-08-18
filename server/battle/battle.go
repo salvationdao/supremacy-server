@@ -2151,13 +2151,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		if mech.Model != nil {
-			model, ok := ModelMap[mech.Model.Label]
+		if mech.Blueprint != nil {
+			model, ok := ModelMap[mech.Blueprint.Label]
 			if !ok {
 				model = "WREX"
 			}
 			newWarMachine.Model = model
-			newWarMachine.ModelID = mech.ModelID
+			newWarMachine.ModelID = mech.BlueprintID
 		}
 
 		// check model skin

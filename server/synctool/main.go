@@ -140,15 +140,15 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncStaticMech(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
+	//f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
+	//if err != nil {
+	//	return err
+	//}
+	//err = SyncStaticMech(f, dt.DB)
+	//if err != nil {
+	//	return err
+	//}
+	//f.Close()
 
 	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
 	if err != nil {
@@ -279,8 +279,16 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ID:                   record[0],
 			Label:                record[1],
 			DefaultChassisSkinID: record[3],
-			BrandID:              null.StringFrom(record[4]),
+			BrandID:              record[4],
 			MechType:             record[5],
+			BoostStat:            record[6],
+			WeaponHardpoints:     record[7],
+			UtilitySlots:         record[8],
+			Speed:                record[9],
+			MaxHitpoints:         record[10],
+			PowerCoreSize:        record[11],
+			Collection:           record[12],
+			AvailabilityID:       null.NewString(record[13], record[13] != ""),
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -289,21 +297,57 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 	count := 0
 
 	for _, mechModel := range MechModels {
-		brandID := &mechModel.BrandID.String
-		if mechModel.BrandID.String == "" || !mechModel.BrandID.Valid {
-			brandID = nil
-		}
-
 		_, err = db.Exec(`
-			INSERT INTO mech_models (id, label, default_chassis_skin_id, brand_id, mech_type)
-			VALUES ($1,$2,$3,$4,$5)
+			INSERT INTO blueprint_mechs (
+			                                   id, 
+			                                   label, 
+			                                   default_chassis_skin_id, 
+			                                   brand_id, 
+			                                   mech_type,
+												boost_stat,
+												weapon_hardpoints,
+												utility_slots,
+												speed,
+												max_hitpoints,
+												power_core_size,
+			                             		collection,
+			                             		availability_id
+			                                   )
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 			ON CONFLICT (id)
 			DO
-				UPDATE SET id=$1, label=$2, default_chassis_skin_id=$3, brand_id=$4, mech_type=$5;
-		`, mechModel.ID, mechModel.Label, mechModel.DefaultChassisSkinID, brandID, mechModel.MechType)
+				UPDATE SET 
+				           id=$1, 
+				           label=$2, 
+				           default_chassis_skin_id=$3, 
+				           brand_id=$4, 
+				           mech_type=$5,
+							boost_stat=$6,
+							weapon_hardpoints=$7,
+							utility_slots=$8,
+							speed=$9,
+							max_hitpoints=$10,
+							power_core_size=$11,
+							collection=$12,
+							availability_id=$13;
+		`,
+			mechModel.ID,
+			mechModel.Label,
+			mechModel.DefaultChassisSkinID,
+			mechModel.BrandID,
+			mechModel.MechType,
+			mechModel.BoostStat,
+			mechModel.WeaponHardpoints,
+			mechModel.UtilitySlots,
+			mechModel.Speed,
+			mechModel.MaxHitpoints,
+			mechModel.PowerCoreSize,
+			mechModel.Collection,
+			mechModel.AvailabilityID,
+		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Println("UPDATED: " + mechModel.Label)
@@ -384,7 +428,7 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Printf("UPDATED: %s:%s \n", mechModelSkinCompat.MechSkinID, mechModelSkinCompat.MechModelID)
@@ -414,14 +458,14 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			Collection:   record[1],
 			Label:        record[2],
 			Tier:         record[3],
-			StatModifier: record[5],
+			DefaultLevel: record[5],
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
 	}
 
 	for _, mechSkin := range MechSkins {
-		statModifier := null.NewString(mechSkin.StatModifier, mechSkin.StatModifier != "")
+		defaultLevel := null.NewString(mechSkin.DefaultLevel, mechSkin.DefaultLevel != "")
 
 		_, err = db.Exec(`
 			INSERT INTO blueprint_mech_skin(
@@ -429,7 +473,7 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                collection,
 			                                label,
 			                                tier,
-			                                stat_modifier
+			                                default_level
 			                                )
 			VALUES ($1,$2,$3,$4,$5)
 			ON CONFLICT (id)
@@ -438,17 +482,17 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			               collection=$2,
 			               label=$3,
 			               tier=$4,
-			               stat_modifier=$5;
+			               default_level=$5;
 		`,
 			mechSkin.ID,
 			mechSkin.Collection,
 			mechSkin.Label,
 			mechSkin.Tier,
-			statModifier,
+			defaultLevel,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.Label)
@@ -508,10 +552,10 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 		`, faction.ID, faction.Label, guildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
 		if err != nil {
 			fmt.Println(err.Error()+faction.ID, faction.Label)
-			continue
+			return err
 		}
 
-		fmt.Println("UPDATED: "+faction.ID, faction.Label, faction.GuildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
+		fmt.Println("UPDATED: "+faction.ID, faction.Label)
 	}
 
 	fmt.Println("Finish syncing Factions")
@@ -552,7 +596,7 @@ func SyncBrands(f io.Reader, db *sql.DB) error {
 		`, brand.ID, brand.Label, brand.FactionID)
 		if err != nil {
 			fmt.Println(err.Error()+brand.ID, brand.Label, brand.FactionID)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+brand.ID, brand.Label, brand.FactionID)
@@ -634,7 +678,7 @@ func SyncMysteryCrates(f io.Reader, db *sql.DB) error {
 		`, mysteryCrate.ID, mysteryCrate.MysteryCrateType, mysteryCrate.FactionID, mysteryCrate.Label, mysteryCrate.Description, imageURL, cardAnimationURL, avatarURL, largeImageURL, mysteryCrate.BackgroundColor, animationURL, youtubeURL)
 		if err != nil {
 			fmt.Println(err.Error()+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
@@ -696,7 +740,7 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
@@ -758,7 +802,7 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
@@ -837,7 +881,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Printf("UPDATED: %s:%s \n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID)
@@ -882,7 +926,7 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		`, battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
 		if err != nil {
 			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
-			continue
+			return err
 		}
 	}
 
@@ -947,7 +991,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println(err.Error(), ga.ID, ga.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+ga.ID, ga.GameClientAbilityID, ga.Label)
@@ -1040,7 +1084,7 @@ func SyncPowerCores(f io.Reader, db *sql.DB) error {
 		`, powerCore.ID, powerCore.Collection, powerCore.Label, powerCore.Size, powerCore.Capacity, powerCore.MaxDrawRate, powerCore.RechargeRate, powerCore.Armour, powerCore.MaxHitpoints, powerCore.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL)
 		if err != nil {
 			fmt.Println(err.Error()+powerCore.ID, powerCore.Collection, powerCore.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+powerCore.ID, powerCore.Collection, powerCore.Label)
@@ -1142,7 +1186,7 @@ func SyncStaticMech(f io.Reader, db *sql.DB) error {
 			blueprintMech.Tier)
 		if err != nil {
 			fmt.Println(err.Error()+blueprintMech.ID, blueprintMech.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+blueprintMech.ID, blueprintMech.Label)
@@ -1261,7 +1305,7 @@ func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
 		`, blueprintWeapon.ID, blueprintWeapon.Label, blueprintWeapon.Slug, blueprintWeapon.Damage, deletedAt, blueprintWeapon.UpdatedAt, blueprintWeapon.CreatedAt, gameClientID, blueprintWeapon.WeaponType, blueprintWeapon.Collection, blueprintWeapon.DefaultDamageType, blueprintWeapon.DamageFalloff, blueprintWeapon.DamageFalloffRate, blueprintWeapon.Radius, blueprintWeapon.RadiusDamageFalloff, blueprintWeapon.Spread, blueprintWeapon.RateOfFire, blueprintWeapon.ProjectileSpeed, blueprintWeapon.MaxAmmo, blueprintWeapon.IsMelee, blueprintWeapon.Tier, blueprintWeapon.EnergyCost, blueprintWeapon.WeaponModelID)
 		if err != nil {
 			fmt.Println(err.Error()+blueprintWeapon.ID, blueprintWeapon.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+blueprintWeapon.ID, blueprintWeapon.Label)
@@ -1297,7 +1341,7 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 		blueprintQuest.RequestAmount, err = strconv.Atoi(record[5])
 		if err != nil {
 			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
-			continue
+			return err
 		}
 
 		// upsert blueprint quest
@@ -1318,7 +1362,7 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+blueprintQuest.ID, blueprintQuest.Name)

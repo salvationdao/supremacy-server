@@ -109,7 +109,6 @@ type PlayerAssetMech struct {
 	BlueprintID           string     `json:"blueprint_id"`
 	BrandID               string     `json:"brand_id"`
 	FactionID             string     `json:"faction_id"`
-	ModelID               string     `json:"model_id"`
 
 	// Connected objects
 	ChassisSkinID    string      `json:"chassis_skin_id"`
@@ -185,7 +184,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			BlueprintID:           m.BlueprintID,
 			BrandID:               m.BrandID,
 			FactionID:             m.FactionID.String,
-			ModelID:               m.ModelID,
 			ChassisSkinID:         m.ChassisSkinID,
 			IntroAnimationID:      m.IntroAnimationID,
 			OutroAnimationID:      m.OutroAnimationID,
@@ -279,7 +277,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 			BlueprintID:           m.BlueprintID,
 			BrandID:               m.BrandID,
 			FactionID:             m.FactionID.String,
-			ModelID:               m.ModelID,
 			ChassisSkinID:         m.ChassisSkinID,
 			IntroAnimationID:      m.IntroAnimationID,
 			OutroAnimationID:      m.OutroAnimationID,
@@ -368,14 +365,13 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		qm.Load(boiler.MechRels.ChassisSkin),
 		qm.Load(qm.Rels(boiler.MechRels.ChassisSkin, boiler.MechSkinRels.Blueprint)),
 		qm.Load(boiler.MechRels.Blueprint),
-		qm.Load(qm.Rels(boiler.MechRels.Blueprint, boiler.BlueprintMechRels.Model)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to load mech info")
 	}
 
 	mechSkin, err := boiler.MechModelSkinCompatibilities(
-		boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ModelID),
+		boiler.MechModelSkinCompatibilityWhere.MechModelID.EQ(mech.R.Blueprint.ID),
 		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(mech.R.ChassisSkin.BlueprintID),
 	).One(gamedb.StdConn)
 	if err != nil {
@@ -395,15 +391,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 				ImageURL:  mechSkin.ImageURL,
 			},
 		},
-	}
-
-	if mech.R.Blueprint != nil && mech.R.Blueprint.R.Model != nil {
-		model := mech.R.Blueprint.R.Model
-		m.Model = &server.MechModel{
-			ID:           model.ID,
-			Label:        model.Label,
-			RepairBlocks: model.RepairBlocks,
-		}
 	}
 
 	reply(m)
@@ -909,7 +896,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 
 		// insert the rest of the skins
 		for _, skin := range mechSkinBlueprints {
-			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), skin, &insertedMech.ModelID)
+			mechSkin, err := db.InsertNewMechSkin(tx, uuid.FromStringOrNil(user.ID), skin, &insertedMech.BlueprintID)
 			if err != nil {
 				crateRollback()
 				gamelog.L.Error().Err(err).Interface("crate", crate).Interface("skin", skin).Msg(fmt.Sprintf("failed to insert new mech skin from crate: %s, for user: %s, CRATE:OPEN", crate.ID, user.ID))

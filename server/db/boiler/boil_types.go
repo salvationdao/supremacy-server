@@ -102,6 +102,28 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
+)
+
+// Enum values for BoostStat
+const (
+	BoostStatMECH_HEALTH  = "MECH_HEALTH"
+	BoostStatMECH_SPEED   = "MECH_SPEED"
+	BoostStatSHIELD_REGEN = "SHIELD_REGEN"
+)
+
+// Enum values for PowercoreSize
+const (
+	PowercoreSizeSMALL  = "SMALL"
+	PowercoreSizeMEDIUM = "MEDIUM"
+	PowercoreSizeLARGE  = "LARGE"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for LocationSelectTypeEnum
@@ -216,12 +238,6 @@ const (
 	MarketplaceEventCreated   = "created"
 	MarketplaceEventSold      = "sold"
 	MarketplaceEventCancelled = "cancelled"
-)
-
-// Enum values for MechType
-const (
-	MechTypeHUMANOID = "HUMANOID"
-	MechTypePLATFORM = "PLATFORM"
 )
 
 // Enum values for MultiplierTypeEnum

@@ -106,7 +106,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 
 		if i.ChassisSkin == nil {
-			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.ModelID)
+			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.BlueprintID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
 				continue

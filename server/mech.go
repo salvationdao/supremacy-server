@@ -54,9 +54,6 @@ type Mech struct {
 	FactionID null.String `json:"faction_id"`
 	Faction   *Faction    `json:"faction,omitempty"`
 
-	ModelID string     `json:"model_id"`
-	Model   *MechModel `json:"model"`
-
 	// Connected objects
 	ChassisSkinID string    `json:"chassis_skin_id,omitempty"`
 	ChassisSkin   *MechSkin `json:"chassis_skin,omitempty"`
@@ -82,19 +79,15 @@ type Mech struct {
 type BlueprintMech struct {
 	ID                   string    `json:"id"`
 	Label                string    `json:"label"`
-	Slug                 string    `json:"slug"`
 	Skin                 string    `json:"skin"`
 	WeaponHardpoints     int       `json:"weapon_hardpoints"`
 	UtilitySlots         int       `json:"utility_slots"`
 	Speed                int       `json:"speed"`
 	MaxHitpoints         int       `json:"max_hitpoints"`
-	UpdatedAt            time.Time `json:"updated_at"`
 	CreatedAt            time.Time `json:"created_at"`
 	PowerCoreSize        string    `json:"power_core_size,omitempty"`
-	Tier                 string    `json:"tier,omitempty"`
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
 	Collection           string    `json:"collection"`
-	ModelID              string    `json:"model_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -113,17 +106,13 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
 		ID:               mech.ID,
 		Label:            mech.Label,
-		Slug:             mech.Slug,
 		WeaponHardpoints: mech.WeaponHardpoints,
 		UtilitySlots:     mech.UtilitySlots,
 		Speed:            mech.Speed,
 		MaxHitpoints:     mech.MaxHitpoints,
-		UpdatedAt:        mech.UpdatedAt,
 		CreatedAt:        mech.CreatedAt,
 		PowerCoreSize:    mech.PowerCoreSize,
-		Tier:             mech.Tier,
 		Collection:       mech.Collection,
-		ModelID:          mech.ModelID,
 	}
 }
 

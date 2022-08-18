@@ -263,10 +263,10 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	}
 
 	// check current weapon count
-	if len(mech.R.ChassisMechWeapons)+1 > mech.WeaponHardpoints {
+	if len(mech.R.ChassisMechWeapons)+1 > mech.R.Blueprint.WeaponHardpoints {
 		err := fmt.Errorf("weapon cannot fit")
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("adding this weapon brings mechs weapons over mechs weapon hardpoints")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d weapons equipped and is only has %d weapon hardpoints.", len(mech.R.ChassisMechWeapons), mech.WeaponHardpoints))
+		return terror.Error(err, fmt.Sprintf("War machine already has %d weapons equipped and is only has %d weapon hardpoints.", len(mech.R.ChassisMechWeapons), mech.R.Blueprint.WeaponHardpoints))
 	}
 
 	// check weapon isn't already equipped to another war machine

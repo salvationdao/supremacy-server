@@ -24,10 +24,6 @@ import (
 // Mech is an object representing the database table.
 type Mech struct {
 	ID                    string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	WeaponHardpoints      int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots          int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed                 int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints          int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
 	DeletedAt             null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt             time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -37,7 +33,6 @@ type Mech struct {
 	Name                  string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	GenesisTokenID        null.Int64  `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
 	ChassisSkinID         string      `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id" toml:"chassis_skin_id" yaml:"chassis_skin_id"`
 	PowerCoreID           null.String `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
 	IntroAnimationID      null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
@@ -49,10 +44,6 @@ type Mech struct {
 
 var MechColumns = struct {
 	ID                    string
-	WeaponHardpoints      string
-	UtilitySlots          string
-	Speed                 string
-	MaxHitpoints          string
 	DeletedAt             string
 	UpdatedAt             string
 	CreatedAt             string
@@ -62,17 +53,12 @@ var MechColumns = struct {
 	Name                  string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	PowerCoreSize         string
 	ChassisSkinID         string
 	PowerCoreID           string
 	IntroAnimationID      string
 	OutroAnimationID      string
 }{
 	ID:                    "id",
-	WeaponHardpoints:      "weapon_hardpoints",
-	UtilitySlots:          "utility_slots",
-	Speed:                 "speed",
-	MaxHitpoints:          "max_hitpoints",
 	DeletedAt:             "deleted_at",
 	UpdatedAt:             "updated_at",
 	CreatedAt:             "created_at",
@@ -82,7 +68,6 @@ var MechColumns = struct {
 	Name:                  "name",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
-	PowerCoreSize:         "power_core_size",
 	ChassisSkinID:         "chassis_skin_id",
 	PowerCoreID:           "power_core_id",
 	IntroAnimationID:      "intro_animation_id",
@@ -91,10 +76,6 @@ var MechColumns = struct {
 
 var MechTableColumns = struct {
 	ID                    string
-	WeaponHardpoints      string
-	UtilitySlots          string
-	Speed                 string
-	MaxHitpoints          string
 	DeletedAt             string
 	UpdatedAt             string
 	CreatedAt             string
@@ -104,17 +85,12 @@ var MechTableColumns = struct {
 	Name                  string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	PowerCoreSize         string
 	ChassisSkinID         string
 	PowerCoreID           string
 	IntroAnimationID      string
 	OutroAnimationID      string
 }{
 	ID:                    "mechs.id",
-	WeaponHardpoints:      "mechs.weapon_hardpoints",
-	UtilitySlots:          "mechs.utility_slots",
-	Speed:                 "mechs.speed",
-	MaxHitpoints:          "mechs.max_hitpoints",
 	DeletedAt:             "mechs.deleted_at",
 	UpdatedAt:             "mechs.updated_at",
 	CreatedAt:             "mechs.created_at",
@@ -124,7 +100,6 @@ var MechTableColumns = struct {
 	Name:                  "mechs.name",
 	GenesisTokenID:        "mechs.genesis_token_id",
 	LimitedReleaseTokenID: "mechs.limited_release_token_id",
-	PowerCoreSize:         "mechs.power_core_size",
 	ChassisSkinID:         "mechs.chassis_skin_id",
 	PowerCoreID:           "mechs.power_core_id",
 	IntroAnimationID:      "mechs.intro_animation_id",
@@ -135,10 +110,6 @@ var MechTableColumns = struct {
 
 var MechWhere = struct {
 	ID                    whereHelperstring
-	WeaponHardpoints      whereHelperint
-	UtilitySlots          whereHelperint
-	Speed                 whereHelperint
-	MaxHitpoints          whereHelperint
 	DeletedAt             whereHelpernull_Time
 	UpdatedAt             whereHelpertime_Time
 	CreatedAt             whereHelpertime_Time
@@ -148,17 +119,12 @@ var MechWhere = struct {
 	Name                  whereHelperstring
 	GenesisTokenID        whereHelpernull_Int64
 	LimitedReleaseTokenID whereHelpernull_Int64
-	PowerCoreSize         whereHelperstring
 	ChassisSkinID         whereHelperstring
 	PowerCoreID           whereHelpernull_String
 	IntroAnimationID      whereHelpernull_String
 	OutroAnimationID      whereHelpernull_String
 }{
 	ID:                    whereHelperstring{field: "\"mechs\".\"id\""},
-	WeaponHardpoints:      whereHelperint{field: "\"mechs\".\"weapon_hardpoints\""},
-	UtilitySlots:          whereHelperint{field: "\"mechs\".\"utility_slots\""},
-	Speed:                 whereHelperint{field: "\"mechs\".\"speed\""},
-	MaxHitpoints:          whereHelperint{field: "\"mechs\".\"max_hitpoints\""},
 	DeletedAt:             whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
 	UpdatedAt:             whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
@@ -168,7 +134,6 @@ var MechWhere = struct {
 	Name:                  whereHelperstring{field: "\"mechs\".\"name\""},
 	GenesisTokenID:        whereHelpernull_Int64{field: "\"mechs\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"mechs\".\"limited_release_token_id\""},
-	PowerCoreSize:         whereHelperstring{field: "\"mechs\".\"power_core_size\""},
 	ChassisSkinID:         whereHelperstring{field: "\"mechs\".\"chassis_skin_id\""},
 	PowerCoreID:           whereHelpernull_String{field: "\"mechs\".\"power_core_id\""},
 	IntroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
@@ -277,9 +242,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
-	mechColumnsWithoutDefault = []string{"weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "chassis_skin_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechAllColumns            = []string{"id", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechColumnsWithoutDefault = []string{"blueprint_id", "chassis_skin_id"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
@@ -530,7 +495,6 @@ func (q mechQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *Mech) Blueprint(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BlueprintID),
-		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -1112,7 +1076,6 @@ func (mechL) LoadBlueprint(e boil.Executor, singular bool, maybeMech interface{}
 	query := NewQuery(
 		qm.From(`blueprint_mechs`),
 		qm.WhereIn(`blueprint_mechs.id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

@@ -36,6 +36,7 @@ var TableNames = struct {
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
+	BlueprintMechsOld                                  string
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
 	BlueprintQuests                                    string
@@ -74,7 +75,6 @@ var TableNames = struct {
 	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
 	MechModelSkinCompatibilities                       string
-	MechModels                                         string
 	MechMoveCommandLogs                                string
 	MechSkin                                           string
 	MechStats                                          string
@@ -187,6 +187,7 @@ var TableNames = struct {
 	BlueprintMechAnimation:         "blueprint_mech_animation",
 	BlueprintMechSkin:              "blueprint_mech_skin",
 	BlueprintMechs:                 "blueprint_mechs",
+	BlueprintMechsOld:              "blueprint_mechs_old",
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
 	BlueprintQuests:                "blueprint_quests",
@@ -225,7 +226,6 @@ var TableNames = struct {
 	MechAbilityTriggerLogs:         "mech_ability_trigger_logs",
 	MechAnimation:                  "mech_animation",
 	MechModelSkinCompatibilities:   "mech_model_skin_compatibilities",
-	MechModels:                     "mech_models",
 	MechMoveCommandLogs:            "mech_move_command_logs",
 	MechSkin:                       "mech_skin",
 	MechStats:                      "mech_stats",

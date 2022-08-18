@@ -60,24 +60,22 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			fmt.Sprintf(`COALESCE(%s, 0)`, qm.Rels(boiler.TableNames.MechStats, boiler.MechStatColumns.TotalLosses)),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.Label),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.PowerCoreSize),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.BrandID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BrandID),
 			fmt.Sprintf("to_json(%s) as brand", boiler.TableNames.Brands),
 			fmt.Sprintf("to_json(%s) as owner", boiler.TableNames.Players),
 			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.FactionID),
 			fmt.Sprintf("to_json(%s) as faction", boiler.TableNames.Factions),
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
-			fmt.Sprintf("to_json(%s) as model", boiler.TableNames.MechModels),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
 			fmt.Sprintf("to_json(%s) as chassis_skin", boiler.TableNames.MechSkin),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
@@ -166,17 +164,11 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 		)),
-		// inner join mech model
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.MechModels,
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID),
-		)),
 		// inner join brand
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.Brands,
 			qm.Rels(boiler.TableNames.Brands, boiler.BrandColumns.ID),
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.BrandID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BrandID),
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
@@ -195,7 +187,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID),
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 		)),
 		// left join outro
 		qm.LeftOuterJoin(fmt.Sprintf("%s AS %s ON %s = %s",
@@ -370,8 +362,6 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			&mc.ModelID,
-			&mc.Model,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -474,8 +464,6 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.Owner,
 			&mc.FactionID,
 			&mc.Faction,
-			&mc.ModelID,
-			&mc.Model,
 			&mc.ChassisSkinID,
 			&mc.ChassisSkin,
 			&mc.IntroAnimationID,
@@ -583,7 +571,7 @@ func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *se
 	L := gamelog.L.With().Str("func", "InsertNewMech").Interface("mechBlueprint", mechBlueprint).Interface("mechSkinBlueprint", mechSkinBlueprint).Str("ownerID", ownerID.String()).Logger()
 
 	// first insert the new skin
-	mechSkin, err := InsertNewMechSkin(tx, ownerID, mechSkinBlueprint, &mechBlueprint.ModelID)
+	mechSkin, err := InsertNewMechSkin(tx, ownerID, mechSkinBlueprint, &mechBlueprint.ID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to insert new mech skin")
 		return nil, nil, terror.Error(err)
@@ -592,15 +580,10 @@ func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *se
 	// first insert the mech
 	newMech := boiler.Mech{
 		BlueprintID:           mechBlueprint.ID,
-		WeaponHardpoints:      mechBlueprint.WeaponHardpoints,
-		UtilitySlots:          mechBlueprint.UtilitySlots,
-		Speed:                 mechBlueprint.Speed,
-		MaxHitpoints:          mechBlueprint.MaxHitpoints,
 		ChassisSkinID:         mechSkin.ID,
 		IsDefault:             false,
 		IsInsured:             false,
 		Name:                  "",
-		PowerCoreSize:         mechBlueprint.PowerCoreSize,
 		GenesisTokenID:        mechBlueprint.GenesisTokenID,
 		LimitedReleaseTokenID: mechBlueprint.LimitedReleaseTokenID,
 	}
@@ -615,7 +598,7 @@ func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *se
 		mechBlueprint.Collection,
 		boiler.ItemTypeMech,
 		newMech.ID,
-		mechBlueprint.Tier,
+		"",
 		ownerID.String(),
 	)
 	if err != nil {
@@ -652,10 +635,6 @@ func InsertNewMechAndSkin(tx boil.Executor, ownerID uuid.UUID, mechBlueprint *se
 func IsMechColumn(col string) bool {
 	switch col {
 	case boiler.MechColumns.ID,
-		boiler.MechColumns.WeaponHardpoints,
-		boiler.MechColumns.UtilitySlots,
-		boiler.MechColumns.Speed,
-		boiler.MechColumns.MaxHitpoints,
 		boiler.MechColumns.DeletedAt,
 		boiler.MechColumns.UpdatedAt,
 		boiler.MechColumns.CreatedAt,
@@ -665,7 +644,6 @@ func IsMechColumn(col string) bool {
 		boiler.MechColumns.Name,
 		boiler.MechColumns.GenesisTokenID,
 		boiler.MechColumns.LimitedReleaseTokenID,
-		boiler.MechColumns.PowerCoreSize,
 		boiler.MechColumns.ChassisSkinID,
 		boiler.MechColumns.PowerCoreID,
 		boiler.MechColumns.IntroAnimationID,
@@ -742,12 +720,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			boiler.TableNames.BlueprintMechs,
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-		)),
-		// inner join mech model
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.MechModels,
-			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID),
 		)),
 	)
 
@@ -974,15 +946,15 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.PowerCoreSize),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),

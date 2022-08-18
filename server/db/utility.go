@@ -262,10 +262,10 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 	}
 
 	// check current utility count
-	if len(mech.R.ChassisMechUtilities)+1 > mech.UtilitySlots {
+	if len(mech.R.ChassisMechUtilities)+1 > mech.R.Blueprint.UtilitySlots {
 		err := fmt.Errorf("utility cannot fit")
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("adding this utility brings mechs utilities over mechs utility slots")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d utilities equipped and is only has %d utility slots.", len(mech.R.ChassisMechUtilities), mech.UtilitySlots))
+		return terror.Error(err, fmt.Sprintf("War machine already has %d utilities equipped and is only has %d utility slots.", len(mech.R.ChassisMechUtilities), mech.R.Blueprint.UtilitySlots))
 	}
 
 	// check utility isn't already equipped to another war machine

@@ -379,13 +379,13 @@ WHERE wsp.id = w.id;
 WITH wpns AS (
     SELECT w.id, w.label, w.equipped_on, mm.brand_id
     FROM weapons w
-    INNER JOIN chassis m ON m.id = w.equipped_on
-    INNER JOIN mech_models mm ON mm.id = m.model_id
+             INNER JOIN chassis m ON m.id = w.equipped_on
+             INNER JOIN blueprint_mechs mm ON mm.id = m.blueprint_id
 )
 UPDATE weapons w SET blueprint_id = (
     SELECT bw.id
     FROM blueprint_weapons bw
-    INNER JOIN weapon_models wm on bw.weapon_model_id = wm.id
+             INNER JOIN weapon_models wm on bw.weapon_model_id = wm.id
     WHERE wpns.label = bw.label and wpns.brand_id = wm.brand_id
 )
 FROM wpns
@@ -409,7 +409,7 @@ WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
 WITH bpc AS (
     SELECT _bpc.id, mm.brand_id
     FROM blueprint_chassis _bpc
-             INNER JOIN mech_models mm on _bpc.model_id = mm.id
+             INNER JOIN blueprint_mechs mm on _bpc.model_id = mm.id
 )
 INSERT
 INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)

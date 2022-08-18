@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db/boiler"
 	"server/gamelog"
@@ -64,7 +65,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 		collectionSlug,
 		itemType,
 		itemID,
-		tier,
+		null.NewString(tier, tier != ""),
 		ownerID,
 	).Scan(&item.ID,
 		&item.CollectionSlug,
