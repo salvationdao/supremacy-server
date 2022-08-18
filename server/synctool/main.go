@@ -55,7 +55,7 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	f, err = readFile(fmt.Sprintf("%smech_models.csv", dt.FilePath))
+	f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
