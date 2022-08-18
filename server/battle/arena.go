@@ -1455,15 +1455,11 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
-
-		if lastBattle != nil {
-			battle.BattleNumber = lastBattle.BattleNumber + 1
-		}
-
 	} else {
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
+
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
@@ -1568,7 +1564,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	btl.SpawnedAI = append(btl.SpawnedAI, spawnedAI)
 
 	// Broadcast spawn event
-	ws.PublishMessage("/public/minimap", HubKeyBattleAISpawned, btl.SpawnedAI)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyBattleAISpawned, btl.SpawnedAI)
 
 	return nil
 }

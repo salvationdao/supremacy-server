@@ -1076,9 +1076,11 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					BattlesSurvived: 1,
 				}
 				err := newMs.Insert(gamedb.StdConn, boil.Infer())
-				gamelog.L.Warn().Err(err).
-					Interface("boiler.MechStat", newMs).
-					Msg("unable to create mech stat")
+				if err != nil {
+					gamelog.L.Warn().Err(err).
+						Interface("boiler.MechStat", newMs).
+						Msg("unable to create mech stat")
+				}
 				continue
 			} else if err != nil {
 				gamelog.L.Warn().Err(err).
@@ -1149,9 +1151,11 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					TotalWins: 1,
 				}
 				err := newMs.Insert(gamedb.StdConn, boil.Infer())
-				gamelog.L.Warn().Err(err).
-					Interface("boiler.MechStat", newMs).
-					Msg("unable to create mech stat")
+				if err != nil {
+					gamelog.L.Warn().Err(err).
+						Interface("boiler.MechStat", newMs).
+						Msg("unable to create mech stat")
+				}
 				continue
 			} else if err != nil {
 				gamelog.L.Warn().Err(err).
@@ -1188,9 +1192,11 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					TotalLosses: 1,
 				}
 				err := newMs.Insert(gamedb.StdConn, boil.Infer())
-				gamelog.L.Warn().Err(err).
-					Interface("boiler.MechStat", newMs).
-					Msg("unable to create mech stat")
+				if err != nil {
+					gamelog.L.Warn().Err(err).
+						Interface("boiler.MechStat", newMs).
+						Msg("unable to create mech stat")
+				}
 				continue
 			} else if err != nil {
 				gamelog.L.Warn().Err(err).

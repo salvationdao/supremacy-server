@@ -254,7 +254,7 @@ func NewAPI(
 
 			r.Mount("/secure", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(false))
-				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesListSubscribe, pac.SaleAbilitiesListSubscribeHandler)
 				s.WS("/repair_offer/{offer_id}", server.HubKeyRepairOfferSubscribe, api.RepairOfferSubscribe)
 				s.WS("/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, api.RepairOfferList)
 				s.WS("/mech/{mech_id}/repair_case", server.HubKeyMechRepairCase, api.MechRepairCaseSubscribe)

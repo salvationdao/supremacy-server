@@ -456,18 +456,24 @@ func playerQuestGrant(playerID string, questID string) error {
 
 	pa.Count = pa.Count + 1
 
-	inventoryLimit := miniMechBlueprint.InventoryLimit
-	if pa.Count <= inventoryLimit {
-		_, err = pa.Update(tx, boil.Infer())
-		if err != nil {
-			return terror.Error(err, "Failed to get mini mech reward player")
-		}
+	_, err = pa.Update(tx, boil.Infer())
+	if err != nil {
+		return terror.Error(err, "Failed to get mini mech reward player")
 	}
+
 
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, "Failed complete quest")
 	}
+
+	// Tell client to update their player abilities list
+	pas, err := db.PlayerAbilitiesList(playerID)
+	if err != nil {
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", playerID), server.HubKeyPlayerAbilitiesList, pas)
 
 	playerQuestStat, err := db.PlayerQuestStatGet(playerID)
 	if err != nil {
