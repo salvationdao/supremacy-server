@@ -47,8 +47,8 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 		API: api,
 	}
 
+	api.SecureUserCommand(HubKeyPlayerAssetMechEquip, pac.PlayerAssetMechEquipHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
-
 	api.SecureUserCommand(HubKeyPlayerAssetWeaponList, pac.PlayerAssetWeaponListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetPowerCoreList, pac.PlayerAssetPowerCoreListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetUtilityList, pac.PlayerAssetUtilityListHandler)
@@ -1139,8 +1139,6 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 type PlayerAssetWeaponListRequest struct {
 	Payload struct {
 		Search                        string                    `json:"search"`
-		Filter                        *db.ListFilterRequest     `json:"filter"`
-		Sort                          *db.ListSortRequest       `json:"sort"`
 		SortBy                        string                    `json:"sort_by"`
 		SortDir                       db.SortByDir              `json:"sort_dir"`
 		PageSize                      int                       `json:"page_size"`
@@ -1148,6 +1146,7 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
 		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		ExcludeIDs                    []string                  `json:"exclude_ids"`
 		FilterRarities                []string                  `json:"rarities"`
 		FilterWeaponTypes             []string                  `json:"weapon_types"`
 		FilterEquippedStatuses        []string                  `json:"equipped_statuses"`
@@ -1202,14 +1201,13 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 
 	listOpts := &db.WeaponListOpts{
 		Search:                        req.Payload.Search,
-		Filter:                        req.Payload.Filter,
-		Sort:                          req.Payload.Sort,
 		PageSize:                      req.Payload.PageSize,
 		Page:                          req.Payload.Page,
 		OwnerID:                       user.ID,
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeIDs:                    req.Payload.ExcludeIDs,
 		FilterRarities:                req.Payload.FilterRarities,
 		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
 		FilterEquippedStatuses:        req.Payload.FilterEquippedStatuses,
@@ -1273,9 +1271,9 @@ type PlayerAssetMechEquipRequest struct {
 }
 
 type EquipWeapon struct {
-	WeaponID        string `json:"weapon_id"`
-	SlotNumber      int    `json:"slot_number"`
-	IsSkinInherited bool   `json:"is_skin_inherited"`
+	WeaponID    string `json:"weapon_id"`
+	SlotNumber  int    `json:"slot_number"`
+	InheritSkin bool   `json:"inherit_skin"`
 }
 
 const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
@@ -1357,7 +1355,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		for _, w := range mech.Weapons {
 			isSlotOccupied := false
 			for _, s := range slots {
-				if s == w.SlotNumber {
+				if w.SlotNumber != nil && s == *w.SlotNumber {
 					isSlotOccupied = true
 					break
 				}
@@ -1421,7 +1419,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			}
 
 			mw.WeaponID = null.StringFrom(ew.WeaponID)
-			mw.IsSkinInherited = ew.IsSkinInherited
+			mw.IsSkinInherited = ew.InheritSkin
 			mw.AllowMelee = weapon.IsMelee
 			_, err = mw.Update(tx, boil.Infer())
 			if err != nil {

@@ -39,7 +39,7 @@ type Weapon struct {
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
 	WeaponModelID         string              `json:"weapon_model_id,omitempty"`
 	LockedToMech          bool                `json:"locked_to_mech"`
-	SlotNumber            int                 `json:"slot_number"`
+	SlotNumber            *int                `json:"slot_number,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails

@@ -334,6 +334,38 @@ func CheckWeaponAttached(weaponID string) (bool, error) {
 	return exists, nil
 }
 
+func IsWeaponColumn(col string) bool {
+	switch col {
+	case
+		boiler.WeaponColumns.ID,
+		boiler.WeaponColumns.Slug,
+		boiler.WeaponColumns.Damage,
+		boiler.WeaponColumns.DeletedAt,
+		boiler.WeaponColumns.UpdatedAt,
+		boiler.WeaponColumns.CreatedAt,
+		boiler.WeaponColumns.BlueprintID,
+		boiler.WeaponColumns.EquippedOn,
+		boiler.WeaponColumns.DefaultDamageType,
+		boiler.WeaponColumns.GenesisTokenID,
+		boiler.WeaponColumns.LimitedReleaseTokenID,
+		boiler.WeaponColumns.DamageFalloff,
+		boiler.WeaponColumns.DamageFalloffRate,
+		boiler.WeaponColumns.Radius,
+		boiler.WeaponColumns.RadiusDamageFalloff,
+		boiler.WeaponColumns.Spread,
+		boiler.WeaponColumns.RateOfFire,
+		boiler.WeaponColumns.ProjectileSpeed,
+		boiler.WeaponColumns.EnergyCost,
+		boiler.WeaponColumns.IsMelee,
+		boiler.WeaponColumns.MaxAmmo,
+		boiler.WeaponColumns.LockedToMech,
+		boiler.WeaponColumns.EquippedWeaponSkinID:
+		return true
+	default:
+		return false
+	}
+}
+
 type WeaponListOpts struct {
 	Search                        string
 	Filter                        *ListFilterRequest
@@ -348,6 +380,7 @@ type WeaponListOpts struct {
 	DisplayHidden                 bool
 	ExcludeMarketLocked           bool
 	IncludeMarketListed           bool
+	ExcludeIDs                    []string
 	FilterRarities                []string               `json:"rarities"`
 	FilterWeaponTypes             []string               `json:"weapon_types"`
 	FilterEquippedStatuses        []string               `json:"equipped_statuses"`
@@ -412,10 +445,14 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		// if we have filter
 		for i, f := range opts.Filter.Items {
 			// validate it is the right table and valid column
-			if f.Table == boiler.TableNames.Weapons && IsMechColumn(f.Column) {
+			if f.Table == boiler.TableNames.Weapons && IsWeaponColumn(f.Column) {
 				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
 			}
 		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.WeaponWhere.ID.NIN(opts.ExcludeIDs))
 	}
 
 	if len(opts.FilterRarities) > 0 {
@@ -496,9 +533,11 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 				))
 		}
 	}
+	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}
