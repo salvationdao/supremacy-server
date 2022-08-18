@@ -29,3 +29,4 @@ CREATE TRIGGER "t_mech_insert"
     AFTER INSERT ON "mechs"
     FOR EACH ROW
     EXECUTE PROCEDURE create_mech_weapons ();
+
