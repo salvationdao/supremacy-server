@@ -26,7 +26,7 @@ const (
 	SystemMessageDataTypeMechQueue             SystemMessageDataType = "MECH_QUEUE"
 	SystemMessageDataTypeMechBattleComplete    SystemMessageDataType = "MECH_BATTLE_COMPLETE"
 	SystemMessageDataTypeMechOwnerBattleReward SystemMessageDataType = "MECH_OWNER_BATTLE_REWARD"
-	SystemMessageDataTypePlayerAbilityRefund   SystemMessageDataType = "PLAYER_ABILITY_REFUND"
+	SystemMessageDataTypePlayerAbilityReversed SystemMessageDataType = "PLAYER_ABILITY_REVERSED"
 	SystemMessageDataTypeGlobal                SystemMessageDataType = "GLOBAL"
 	SystemMessageDataTypeFaction               SystemMessageDataType = "FACTION"
 )

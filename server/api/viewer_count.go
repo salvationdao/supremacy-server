@@ -8,7 +8,7 @@ import (
 )
 
 func (api *API) LiveViewerCount(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	reply(&ViewerLiveCount{})
+	reply(0)
 	api.ViewerUpdateChan <- true
 	return nil
 }

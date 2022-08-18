@@ -1457,6 +1457,9 @@ func (arena *Arena) beginBattle() {
 			ArenaID:   arena.ID,
 		}
 	} else {
+		// refund abilities
+		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
+
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
@@ -1467,78 +1470,6 @@ func (arena *Arena) beginBattle() {
 
 		inserted = true
 
-		// refund abilities
-		go func() {
-			cas, err := boiler.ConsumedAbilities(
-				boiler.ConsumedAbilityWhere.BattleID.EQ(battleID),
-				qm.Load(boiler.ConsumedAbilityRels.Blueprint),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to query consumed abilities")
-				return
-			}
-			if cas != nil {
-				type refundBlueprintAbility struct {
-					Amount           int                            `json:"amount"`
-					BlueprintAbility *boiler.BlueprintPlayerAbility `json:"blueprint_ability"`
-				}
-				playerAbilityRefundMap := make(map[string][]*refundBlueprintAbility)
-				for _, ca := range cas {
-					err = db.PlayerAbilityAssign(ca.ConsumedBy, ca.BlueprintID)
-					if err != nil {
-						gamelog.L.Error().Err(err).Str("player id", ca.ConsumedBy).Str("ability blueprint id", ca.BlueprintID).Msg("Failed to refund ability to the player")
-						continue
-					}
-
-					pas, ok := playerAbilityRefundMap[ca.ConsumedBy]
-					if !ok {
-						pas = []*refundBlueprintAbility{}
-					}
-
-					index := slices.IndexFunc(pas, func(rba *refundBlueprintAbility) bool {
-						return rba.BlueprintAbility.ID == ca.BlueprintID
-					})
-
-					if index != -1 {
-						// increase amount if already exist
-						pas[index].Amount += 1
-					} else {
-						// otherwise append new ability to the list
-						pas = append(pas, &refundBlueprintAbility{
-							Amount:           1,
-							BlueprintAbility: ca.R.Blueprint,
-						})
-					}
-
-					// assign the list bach to the map
-					playerAbilityRefundMap[ca.ConsumedBy] = pas
-				}
-
-				// TODO: send system message
-				for playerID, par := range playerAbilityRefundMap {
-					// send battle reward system message
-					b, err := json.Marshal(par)
-					if err != nil {
-						gamelog.L.Error().Interface("player abilities", par).Err(err).Msg("Failed to marshal player reward data into json.")
-						break
-					}
-					sysMsg := boiler.SystemMessage{
-						PlayerID: playerID,
-						SenderID: server.SupremacyBattleUserID,
-						DataType: null.StringFrom(string(system_messages.SystemMessageDataTypePlayerAbilityRefund)),
-						Title:    "Reverse Player Ability",
-						Message:  fmt.Sprintf("Due to system error during battle #%d, your abilities during the battle is reversed.", lastBattle.BattleNumber),
-						Data:     null.JSONFrom(b),
-					}
-					err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
-						break
-					}
-					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
-				}
-			}
-		}()
 	}
 
 	btl := &Battle{
@@ -1742,4 +1673,106 @@ func (btl *Battle) ZoneChange(payload *ZoneChangePayload) error {
 	btl.arena.BroadcastGameNotificationBattleZoneChange(&event)
 
 	return nil
+}
+
+func ReversePlayerAbilities(battleID string, battleNumber int) {
+	cas, err := boiler.ConsumedAbilities(
+		boiler.ConsumedAbilityWhere.BattleID.EQ(battleID),
+		qm.Load(boiler.ConsumedAbilityRels.Blueprint),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to query consumed abilities")
+		return
+	}
+
+	if cas != nil {
+		type refundBlueprintAbility struct {
+			Amount        int                            `json:"amount"`
+			PlayerAbility *boiler.BlueprintPlayerAbility `json:"player_ability"`
+		}
+		playerAbilityRefundMap := make(map[string][]*refundBlueprintAbility)
+		for _, ca := range cas {
+			err = db.PlayerAbilityAssign(ca.ConsumedBy, ca.BlueprintID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("player id", ca.ConsumedBy).Str("ability blueprint id", ca.BlueprintID).Msg("Failed to refund ability to the player")
+				continue
+			}
+
+			pas, ok := playerAbilityRefundMap[ca.ConsumedBy]
+			if !ok {
+				pas = []*refundBlueprintAbility{}
+			}
+
+			index := slices.IndexFunc(pas, func(rba *refundBlueprintAbility) bool {
+				return rba.PlayerAbility.ID == ca.BlueprintID
+			})
+
+			if index != -1 {
+				// increase amount if already exist
+				pas[index].Amount += 1
+			} else {
+				// otherwise append new ability to the list
+				pas = append(pas, &refundBlueprintAbility{
+					Amount:        1,
+					PlayerAbility: ca.R.Blueprint,
+				})
+			}
+
+			// assign the list bach to the map
+			playerAbilityRefundMap[ca.ConsumedBy] = pas
+		}
+
+		_, err = cas.DeleteAll(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to delete consumed ability record.")
+		}
+
+		// send system message
+		for playerID, par := range playerAbilityRefundMap {
+			// get all the blueprint ability ids
+			bpIDs := []string{}
+			for _, pa := range par {
+				bpIDs = append(bpIDs, pa.PlayerAbility.ID)
+			}
+
+			// reverse ability cool down
+			_, err = boiler.PlayerAbilities(
+				boiler.PlayerAbilityWhere.BlueprintID.IN(bpIDs),
+				boiler.PlayerAbilityWhere.OwnerID.EQ(playerID),
+			).UpdateAll(gamedb.StdConn, boiler.M{boiler.PlayerAbilityColumns.CooldownExpiresOn: time.Now()})
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Strs("blueprint player ability IDs", bpIDs).Msg("failed to update player ability count")
+			}
+
+			// broadcast current player list
+			pas, err := db.PlayerAbilitiesList(playerID)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Str("boiler func", "PlayerAbilities").Str("ownerID", playerID).Err(err).Msg("unable to get player abilities")
+			}
+			if pas != nil {
+				ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", playerID), server.HubKeyPlayerAbilitiesList, pas)
+			}
+
+			// send battle reward system message
+			b, err := json.Marshal(par)
+			if err != nil {
+				gamelog.L.Error().Interface("player abilities", par).Err(err).Msg("Failed to marshal player reward data into json.")
+				break
+			}
+			sysMsg := boiler.SystemMessage{
+				PlayerID: playerID,
+				SenderID: server.SupremacyBattleUserID,
+				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypePlayerAbilityReversed)),
+				Title:    "Player Abilities Reversed",
+				Message:  fmt.Sprintf("Due to battle #%d is restarted, the consumed player abilities have been reversed.", battleNumber),
+				Data:     null.JSONFrom(b),
+			}
+			err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("newSystemMessage", sysMsg).Msg("failed to insert new system message into db")
+				break
+			}
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		}
+	}
 }
