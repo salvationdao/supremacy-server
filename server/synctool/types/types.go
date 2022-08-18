@@ -79,13 +79,25 @@ type MysteryCrate struct {
 }
 
 type WeaponModel struct {
-	ID            string `json:"id"`
-	BrandID       string `json:"brand_id"`
-	Label         string `json:"label"`
-	WeaponType    string `json:"weapon_type"`
-	DefaultSkinID string `json:"default_skin_id"`
-	DeletedAt     string `json:"deleted_at"`
-	UpdatedAt     string `json:"updated_at"`
+	ID                  string `json:"id"`
+	BrandID             string `json:"brand_id"`
+	Label               string `json:"label"`
+	WeaponType          string `json:"weapon_type"`
+	DefaultSkinID       string `json:"default_skin_id"`
+	Damage              string `json:"damage"`
+	DamageFallOff       string `json:"damage_falloff"`
+	DamageFalloffRate   string `json:"damage_falloff_rate"`
+	Radius              string `json:"radius"`
+	RadiusDamageFalloff string `json:"radius_damage_falloff"`
+	Spread              string `json:"spread"`
+	RateOfFire          string `json:"rate_of_fire"`
+	ProjectileSpeed     string `json:"projectile_speed"`
+	MaxAmmo             string `json:"max_ammo"`
+	IsMelee             string `json:"is_melee"`
+	EnergyCost          string `json:"energy_cost"`
+	GameClientWeaponID  null.String `json:"game_client_weapon_id"`
+	Collection          string `json:"collection"`
+	DefaultDamageType   string `json:"default_damage_type"`
 }
 
 type WeaponSkin struct {

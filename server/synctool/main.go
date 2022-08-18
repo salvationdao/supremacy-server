@@ -150,15 +150,15 @@ func SyncTool(dt *StaticSyncTool) error {
 	//}
 	//f.Close()
 
-	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncStaticWeapon(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
+	//f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
+	//if err != nil {
+	//	return err
+	//}
+	//err = SyncStaticWeapon(f, dt.DB)
+	//if err != nil {
+	//	return err
+	//}
+	//f.Close()
 
 	f, err = readFile(fmt.Sprintf("%squests.csv", dt.FilePath))
 	if err != nil {
@@ -703,41 +703,98 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 	var WeaponModels []types.WeaponModel
 	for _, record := range records {
 		weaponModel := &types.WeaponModel{
-			ID:            record[0],
-			BrandID:       record[1],
-			Label:         record[2],
-			WeaponType:    record[3],
-			DefaultSkinID: record[4],
-			DeletedAt:     record[5],
-			UpdatedAt:     record[6],
+			ID:                  record[0],
+			BrandID:             record[1],
+			Label:               record[2],
+			WeaponType:          record[3],
+			DefaultSkinID:       record[4],
+			Damage:              record[5],
+			DamageFallOff:       record[6],
+			DamageFalloffRate:   record[7],
+			Radius:              record[8],
+			RadiusDamageFalloff: record[9],
+			Spread:              record[10],
+			RateOfFire:          record[11],
+			ProjectileSpeed:     record[12],
+			MaxAmmo:             record[13],
+			IsMelee:             record[14],
+			EnergyCost:          record[15],
+			GameClientWeaponID:  null.NewString(record[16], record[16] != ""),
+			Collection:          record[17],
+			DefaultDamageType:   record[18],
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)
 	}
 
 	for _, weaponModel := range WeaponModels {
-		deletedAt := &weaponModel.DeletedAt
-		if weaponModel.DeletedAt == "" {
-			deletedAt = nil
-		}
-
-		brandID := &weaponModel.BrandID
-		if weaponModel.BrandID == "" {
-			brandID = nil
-		}
-
-		defaultSkinID := &weaponModel.DefaultSkinID
-		if weaponModel.DefaultSkinID == "" {
-			defaultSkinID = nil
-		}
 
 		_, err = db.Exec(`
-			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at)
-			VALUES ($1,$2,$3,$4,$5,$6)
+			INSERT INTO blueprint_weapons(
+			                          id, 
+			                          brand_id, 
+			                          label, 
+			                          weapon_type, 
+			                          default_skin_id, 
+										damage,
+										damage_falloff,
+										damage_falloff_rate,
+										radius,
+										radius_damage_falloff,
+										spread,
+										rate_of_fire,
+										projectile_speed,
+										max_ammo,
+										is_melee,
+										energy_cost,
+										game_client_weapon_id,
+										collection,
+										default_damage_type
+			                          )
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, brand_id=$2, label=$3, weapon_type=$4, default_skin_id=$5, deleted_at=$6;
-		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt)
+			    UPDATE SET 
+			               id=$1, 
+			               brand_id=$2, 
+			               label=$3, 
+			               weapon_type=$4, 
+			               default_skin_id=$5, 
+							damage=$6,
+							damage_falloff=$7,
+							damage_falloff_rate=$8,
+							radius=$9,
+							radius_damage_falloff=$10,
+							spread=$11,
+							rate_of_fire=$12,
+							projectile_speed=$13,
+							max_ammo=$14,
+							is_melee=$15,
+							energy_cost=$16,
+							game_client_weapon_id=$17,
+							collection=$18,
+							default_damage_type=$19;
+		`,
+			weaponModel.ID,
+			weaponModel.BrandID,
+			weaponModel.Label,
+			weaponModel.WeaponType,
+			weaponModel.DefaultSkinID,
+			weaponModel.Damage,
+			weaponModel.DamageFallOff,
+			weaponModel.DamageFalloffRate,
+			weaponModel.Radius,
+			weaponModel.RadiusDamageFalloff,
+			weaponModel.Spread,
+			weaponModel.RateOfFire,
+			weaponModel.ProjectileSpeed,
+			weaponModel.MaxAmmo,
+			weaponModel.IsMelee,
+			weaponModel.EnergyCost,
+			weaponModel.GameClientWeaponID,
+			weaponModel.Collection,
+			weaponModel.DefaultDamageType,
+		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
 			return err
