@@ -39,7 +39,7 @@ func (api *API) debounceSendingViewerCount() {
 			timer.Reset(interval)
 		case <-timer.C:
 			// return total amount of tracked player
-			ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, int64(len(ws.TrackedIdents())))
+			ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, len(ws.TrackedIdents()))
 		}
 	}
 }
