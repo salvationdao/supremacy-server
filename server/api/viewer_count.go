@@ -8,8 +8,7 @@ import (
 )
 
 func (api *API) LiveViewerCount(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	reply(0)
-	api.ViewerUpdateChan <- true
+	reply(len(ws.TrackedIdents()))
 	return nil
 }
 
