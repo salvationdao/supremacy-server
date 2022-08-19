@@ -34,12 +34,6 @@ func getDefaultWeaponQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 		)),
-		// join weapon model
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.WeaponModels,
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
-		)),
 		// join weapon skin
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
 			boiler.TableNames.WeaponSkin,
@@ -56,7 +50,7 @@ func getDefaultWeaponQueryMods() []qm.QueryMod {
 		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
 			boiler.TableNames.WeaponModelSkinCompatibilities,
 			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 		)),
@@ -107,28 +101,16 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 	L := gamelog.L.With().Str("func", "InsertNewWeapon").Interface("weaponBlueprint", weapon).Interface("weaponSkin", weaponSkin).Str("ownerID", ownerID.String()).Logger()
 
 	// first insert the new weapon skin
-	wpnSkin, err := InsertNewWeaponSkin(tx, ownerID, weaponSkin, &weapon.WeaponModelID)
+	wpnSkin, err := InsertNewWeaponSkin(tx, ownerID, weaponSkin, &weapon.ID)
 	if err != nil {
 		L.Error().Err(err).Msg("failed to insert new weapon skin")
 		return nil, nil, err
 	}
 
 	newWeapon := boiler.Weapon{
-		Slug:                  weapon.Slug,
-		Damage:                weapon.Damage,
 		BlueprintID:           weapon.ID,
-		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:        weapon.GenesisTokenID,
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
-		DamageFalloff:         weapon.DamageFalloff,
-		DamageFalloffRate:     weapon.DamageFalloffRate,
-		Spread:                weapon.Spread,
-		RateOfFire:            weapon.RateOfFire,
-		Radius:                weapon.Radius,
-		RadiusDamageFalloff:   weapon.RadiusDamageFalloff,
-		ProjectileSpeed:       weapon.ProjectileSpeed,
-		EnergyCost:            weapon.EnergyCost,
-		MaxAmmo:               weapon.MaxAmmo,
 		EquippedWeaponSkinID:  wpnSkin.ID,
 	}
 
@@ -142,7 +124,7 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		weapon.Collection,
 		boiler.ItemTypeWeapon,
 		newWeapon.ID,
-		weapon.Tier,
+		"",
 		ownerID.String(),
 	)
 	if err != nil {
@@ -189,7 +171,7 @@ func Weapon(tx boil.Executor, id string) (*server.Weapon, error) {
 		return nil, err
 	}
 
-	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID, &boilerWeapon.R.Blueprint.WeaponModelID)
+	weaponSkin, err := WeaponSkin(tx, boilerWeapon.EquippedWeaponSkinID, &boilerWeapon.R.Blueprint.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -373,10 +355,10 @@ func GenerateWeaponStatFilterQueryMods(column string, filter *WeaponStatFilterRa
 		return output
 	}
 	if filter.Min.Valid {
-		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" >= ?", filter.Min))
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.BlueprintWeapons, column)+" >= ?", filter.Min))
 	}
 	if filter.Max.Valid {
-		output = append(output, qm.Where(qm.Rels(boiler.TableNames.Weapons, column)+" <= ?", filter.Max))
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.BlueprintWeapons, column)+" <= ?", filter.Max))
 	}
 	return output
 }
@@ -448,34 +430,34 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 
 	// Filter - Weapon Stats
 	if opts.FilterStatAmmo != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, opts.FilterStatAmmo)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.MaxAmmo, opts.FilterStatAmmo)...)
 	}
 	if opts.FilterStatDamage != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, opts.FilterStatDamage)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Damage, opts.FilterStatDamage)...)
 	}
 	if opts.FilterStatDamageFalloff != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, opts.FilterStatDamageFalloff)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.DamageFalloff, opts.FilterStatDamageFalloff)...)
 	}
 	if opts.FilterStatDamageFalloffRate != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, opts.FilterStatDamageFalloffRate)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.DamageFalloffRate, opts.FilterStatDamageFalloffRate)...)
 	}
 	if opts.FilterStatRadius != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, opts.FilterStatRadius)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Radius, opts.FilterStatRadius)...)
 	}
 	if opts.FilterStatRadiusDamageFalloff != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, opts.FilterStatRadiusDamageFalloff)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RadiusDamageFalloff, opts.FilterStatRadiusDamageFalloff)...)
 	}
 	if opts.FilterStatRateOfFire != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, opts.FilterStatRateOfFire)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RateOfFire, opts.FilterStatRateOfFire)...)
 	}
 	if opts.FilterStatEnergyCosts != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, opts.FilterStatEnergyCosts)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.EnergyCost, opts.FilterStatEnergyCosts)...)
 	}
 	if opts.FilterStatProjectileSpeed != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, opts.FilterStatProjectileSpeed)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.ProjectileSpeed, opts.FilterStatProjectileSpeed)...)
 	}
 	if opts.FilterStatSpread != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, opts.FilterStatSpread)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Spread, opts.FilterStatSpread)...)
 	}
 
 	// Search
@@ -640,22 +622,28 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 	if userID != "" {
 		err := boiler.CollectionItems(
 			qm.Select(
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.MaxAmmo)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Damage)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloff)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.DamageFalloffRate)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Radius)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RadiusDamageFalloff)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.Spread)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.RateOfFire)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ProjectileSpeed)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.EnergyCost)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.MaxAmmo)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Damage)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DamageFalloffRate)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Radius)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.RadiusDamageFalloff)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Spread)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.RateOfFire)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ProjectileSpeed)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.EnergyCost)),
 			),
 			qm.InnerJoin(fmt.Sprintf(
 				"%s on %s = %s",
 				boiler.TableNames.Weapons,
 				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
 				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			)),
+			qm.InnerJoin(fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.BlueprintWeapons,
+				qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+				qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 			)),
 			boiler.CollectionItemWhere.OwnerID.EQ(userID),
 		).QueryRow(conn).Scan(
@@ -676,18 +664,18 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 		return output, nil
 	}
 
-	err := boiler.Weapons(
+	err := boiler.BlueprintWeapons(
 		qm.Select(
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.MaxAmmo),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Damage),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloff),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.DamageFalloffRate),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Radius),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RadiusDamageFalloff),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.Spread),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.RateOfFire),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.ProjectileSpeed),
-			fmt.Sprintf(`MAX(%s)`, boiler.WeaponColumns.EnergyCost),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.MaxAmmo),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.Damage),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.DamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.DamageFalloffRate),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.Radius),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.RadiusDamageFalloff),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.Spread),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.RateOfFire),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.ProjectileSpeed),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.EnergyCost),
 		),
 	).QueryRow(conn).Scan(
 		&output.MaxAmmo,

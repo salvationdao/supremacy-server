@@ -279,7 +279,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
 		// get default weapon skins
 		wpSkin, err := boiler.WeaponModelSkinCompatibilities(
-			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(weapon.WeaponModelID),
+			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(weapon.ID),
 			qm.Load(boiler.WeaponModelSkinCompatibilityRels.BlueprintWeaponSkin),
 			).One(tx)
 		if err != nil {

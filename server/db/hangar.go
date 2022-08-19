@@ -268,7 +268,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 			continue
 		}
 
-		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(gamedb.StdConn)
+		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
 		if err != nil {
 			continue
 		}
@@ -276,7 +276,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 		weaponSilo := &SiloType{
 			Type:        ownedWeapon.ItemType,
 			OwnershipID: ownedWeapon.ID,
-			StaticID:    &weaponBlueprint.R.WeaponModel.ID,
+			StaticID:    &weaponBlueprint.ID,
 		}
 
 		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(gamedb.StdConn)
@@ -433,7 +433,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 		return nil, terror.Error(fmt.Errorf("weapon not availiable in hangar"), "Weapon not available on hangar by itself")
 	}
 
-	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(trx)
+	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get blueprint weapon")
 	}
@@ -441,7 +441,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 	weaponSilo := &SiloType{
 		Type:        weapon.CollectionItem.ItemType,
 		OwnershipID: weapon.CollectionItemID,
-		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
+		StaticID:    &weaponBlueprint.ID,
 	}
 
 	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(trx)

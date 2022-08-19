@@ -92,11 +92,11 @@ const (
 
 func DamageTypeFromString(dt string) DamageType {
 	switch dt {
-	case boiler.DamageTypeKinetic:
+	case boiler.DamageTypeKINETIC:
 		return DamageTypeDefault
-	case boiler.DamageTypeEnergy:
+	case boiler.DamageTypeENERGY:
 		return DamageTypeEnergy
-	case boiler.DamageTypeExplosive:
+	case boiler.DamageTypeEXPLOSIVE:
 		return DamageTypeExplosive
 	}
 	return DamageTypeDefault

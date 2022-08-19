@@ -17,7 +17,6 @@ type Weapon struct {
 	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
 	Label                 string              `json:"label"`
-	Slug                  string              `json:"slug"`
 	Damage                int                 `json:"damage"`
 	BlueprintID           string              `json:"blueprint_id"`
 	EquippedOn            null.String         `json:"equipped_on,omitempty"`
@@ -57,7 +56,6 @@ func (b *Weapon) Scan(value interface{}) error {
 type BlueprintWeapon struct {
 	ID                  string              `json:"id"`
 	Label               string              `json:"label"`
-	Slug                string              `json:"slug"`
 	Damage              int                 `json:"damage"`
 	UpdatedAt           time.Time           `json:"updated_at"`
 	CreatedAt           time.Time           `json:"created_at"`
@@ -74,8 +72,6 @@ type BlueprintWeapon struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	Collection          string              `json:"collection"`
-	Tier                string              `json:"tier,omitempty"`
-	WeaponModelID       string              `json:"weapon_model_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -107,7 +103,6 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 	return &BlueprintWeapon{
 		ID:                  weapon.ID,
 		Label:               weapon.Label,
-		Slug:                weapon.Slug,
 		UpdatedAt:           weapon.UpdatedAt,
 		CreatedAt:           weapon.CreatedAt,
 		Damage:              weapon.Damage,
@@ -124,8 +119,6 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		MaxAmmo:             weapon.MaxAmmo,
 		EnergyCost:          weapon.EnergyCost,
 		Collection:          weapon.Collection,
-		Tier:                weapon.Tier,
-		WeaponModelID:       weapon.WeaponModelID,
 	}
 }
 
@@ -155,21 +148,20 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		CollectionItemID:     collection.ID,
 		ID:                   weapon.ID,
 		Label:                weapon.R.Blueprint.Label,
-		Slug:                 weapon.Slug,
-		Damage:               weapon.Damage,
+		Damage:               weapon.R.Blueprint.Damage,
 		BlueprintID:          weapon.BlueprintID,
-		DefaultDamageType:    weapon.DefaultDamageType,
+		DefaultDamageType:    weapon.R.Blueprint.DefaultDamageType,
 		GenesisTokenID:       weapon.GenesisTokenID,
 		WeaponType:           weapon.R.Blueprint.WeaponType,
-		DamageFalloff:        weapon.DamageFalloff,
-		DamageFalloffRate:    weapon.DamageFalloffRate,
-		Spread:               weapon.Spread,
-		RateOfFire:           weapon.RateOfFire,
-		Radius:               weapon.Radius,
-		RadiusDamageFalloff:  weapon.RadiusDamageFalloff,
-		ProjectileSpeed:      weapon.ProjectileSpeed,
-		EnergyCost:           weapon.EnergyCost,
-		MaxAmmo:              weapon.MaxAmmo,
+		DamageFalloff:        weapon.R.Blueprint.DamageFalloff,
+		DamageFalloffRate:    weapon.R.Blueprint.DamageFalloffRate,
+		Spread:               weapon.R.Blueprint.Spread,
+		RateOfFire:           weapon.R.Blueprint.RateOfFire,
+		Radius:               weapon.R.Blueprint.Radius,
+		RadiusDamageFalloff:  weapon.R.Blueprint.RadiusDamageFalloff,
+		ProjectileSpeed:      weapon.R.Blueprint.ProjectileSpeed,
+		EnergyCost:           weapon.R.Blueprint.EnergyCost,
+		MaxAmmo:              weapon.R.Blueprint.MaxAmmo,
 		UpdatedAt:            weapon.UpdatedAt,
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,
