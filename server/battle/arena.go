@@ -1764,7 +1764,7 @@ func ReversePlayerAbilities(battleID string, battleNumber int) {
 				SenderID: server.SupremacyBattleUserID,
 				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypePlayerAbilityReversed)),
 				Title:    "Player Abilities Reversed",
-				Message:  fmt.Sprintf("Due to battle #%d is restarted, the consumed player abilities have been reversed.", battleNumber),
+				Message:  fmt.Sprintf("Due to battle #%d being restarted, the consumed player abilities have been returned.", battleNumber),
 				Data:     null.JSONFrom(b),
 			}
 			err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
