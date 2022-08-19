@@ -1741,7 +1741,7 @@ func ReversePlayerAbilities(battleID string, battleNumber int) {
 				boiler.PlayerAbilityWhere.OwnerID.EQ(playerID),
 			).UpdateAll(gamedb.StdConn, boiler.M{boiler.PlayerAbilityColumns.CooldownExpiresOn: time.Now()})
 			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Strs("blueprint player ability IDs", bpIDs).Msg("failed to update player ability count")
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Strs("blueprint player ability IDs", bpIDs).Msg("failed to update player ability cool down expiry.")
 			}
 
 			// broadcast current player list
@@ -1756,14 +1756,14 @@ func ReversePlayerAbilities(battleID string, battleNumber int) {
 			// send battle reward system message
 			b, err := json.Marshal(par)
 			if err != nil {
-				gamelog.L.Error().Interface("player abilities", par).Err(err).Msg("Failed to marshal player reward data into json.")
+				gamelog.L.Error().Interface("player abilities", par).Err(err).Msg("Failed to marshal player refund data into json.")
 				break
 			}
 			sysMsg := boiler.SystemMessage{
 				PlayerID: playerID,
 				SenderID: server.SupremacyBattleUserID,
-				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypePlayerAbilityReversed)),
-				Title:    "Player Abilities Reversed",
+				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypePlayerAbilityRefunded)),
+				Title:    "Player Abilities Refunded",
 				Message:  fmt.Sprintf("Due to battle #%d being restarted, the consumed player abilities have been returned.", battleNumber),
 				Data:     null.JSONFrom(b),
 			}
