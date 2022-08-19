@@ -306,7 +306,6 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 	}
 
 	if arena.currentBattleState() != BattleStageStart {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("battle not started yet")
 		return terror.Error(terror.ErrForbidden, "You cannot execute an ability when the battle has not started yet.")
 	}
 
