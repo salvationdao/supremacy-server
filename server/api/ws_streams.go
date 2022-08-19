@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"server"
 	"server/db/boiler"
@@ -164,4 +166,32 @@ func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, key string,
 	}
 
 	return nil
+}
+
+// oven media
+
+func (api *API) OvenStreamsGet(w http.ResponseWriter, r *http.Request) (int, error) {
+	req, err := http.NewRequest("GET", "http://stream2.supremacy.game:8081/v1/vhosts/stream2.supremacy.game/apps/app", nil)
+	if err != nil {
+		// handle err
+	}
+	req.Header.Set("Authorization", "Basic bmluamEtc3VwcmVtYWN5LXN0cmVhbQ==")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		// handle err
+	}
+	// resp.Body
+
+	bytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// log.Fatal(err)
+	}
+
+	fmt.Println("this is resp")
+	fmt.Println(string(bytes))
+
+	defer resp.Body.Close()
+
+	return 200, nil
 }
