@@ -34,11 +34,16 @@ type QueueJoinRequest struct {
 	} `json:"payload"`
 }
 
-func CalcNextQueueStatus(length int64) QueueStatusResponse {
-	return QueueStatusResponse{
-		QueueLength: length, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+func CalcNextQueueStatus(factionID string) {
+	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return
 	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
+		QueueLength: queueLength, // return the current queue length
+		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+	})
 }
 
 const WSQueueJoin = "BATTLE:QUEUE:JOIN"
@@ -199,34 +204,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return terror.Error(err, "Failed to pay sups on queuing mech.")
 			}
 
-			refundFunc := func() {
-				_, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-					ToUserID:             uuid.Must(uuid.FromString(user.ID)),
-					Amount:               bqf.Amount.StringFixed(0),
-					TransactionReference: server.TransactionReference(fmt.Sprintf("refund_battle_queue_fee|%s|%d", mci.ItemID, time.Now().UnixNano())),
-					Group:                string(server.TransactionGroupSupremacy),
-					SubGroup:             string(server.TransactionGroupBattle),
-					Description:          "refund the mech queuing fee.",
-				})
-				if err != nil {
-					gamelog.L.Error().
-						Str("player_id", user.ID).
-						Str("mech id", mci.ItemID).
-						Str("amount", bqf.Amount.StringFixed(0)).
-						Err(err).Msg("Failed to refund sups on queuing mech.")
-				}
-			}
-
-			// do not return, if error occur.
-			bq.QueueFeeTXID = null.StringFrom(paidTxID)
-			_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID))
-			if err != nil {
-				refundFunc() // refund player
-				gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
-				return terror.Error(err, "Failed to update battle queue")
-			}
-
 			if index := slices.IndexFunc(rcs, func(rc *boiler.RepairCase) bool { return rc.MechID == mci.ItemID }); index != -1 {
 				rc := rcs[index]
 				// cancel all the existing offer
@@ -254,12 +231,13 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				gamelog.L.Error().Str("log_name", "battle arena").
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to commit mech insertion into queue")
-				if bq.QueueFeeTXID.Valid {
-					_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
-					}
+
+				// refund queue fee
+				_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
 				}
+
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
 
@@ -296,16 +274,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	}
 
 	// Send updated battle queue status to all subscribers
-	go func() {
-		// Get current queue length
-		queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-			return
-		}
-
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueLength+int64(len(deployedMechs))))
-	}()
+	go CalcNextQueueStatus(factionID)
 
 	if len(deployedMechs) != len(req.Payload.MechIDs) {
 		return terror.Error(fmt.Errorf("not all the mechs are deployed"), "Not all the mechs are deployed.")
