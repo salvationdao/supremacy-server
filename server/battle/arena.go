@@ -230,20 +230,20 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 	var ba *boiler.BattleArena
 	var err error
-	existingArenaID := []string{}
-	storyArenaExist := false
-	for key, a := range am.arenas {
-		// clean up any disconnected arena from the map
-		if !a.connected.Load() {
-			delete(am.arenas, key)
-			continue
-		}
-
-		existingArenaID = append(existingArenaID, a.ID)
-		if a.Type == boiler.ArenaTypeEnumSTORY {
-			storyArenaExist = true
-		}
-	}
+	//existingArenaID := []string{}
+	//storyArenaExist := false
+	//for key, a := range am.arenas {
+	//	// clean up any disconnected arena from the map
+	//	if !a.connected.Load() {
+	//		delete(am.arenas, key)
+	//		continue
+	//	}
+	//
+	//	existingArenaID = append(existingArenaID, a.ID)
+	//	if a.Type == boiler.ArenaTypeEnumSTORY {
+	//		storyArenaExist = true
+	//	}
+	//}
 
 	// assign arena to story
 	ba, err = boiler.BattleArenas(
