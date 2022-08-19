@@ -48,6 +48,7 @@ var TableNames = struct {
 	BlueprintUtilityShield                             string
 	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
+	BlueprintWeaponsOld                                string
 	Brands                                             string
 	ChatBannedFingerprints                             string
 	ChatHistory                                        string
@@ -151,7 +152,6 @@ var TableNames = struct {
 	UtilityShield                                      string
 	WeaponAmmo                                         string
 	WeaponModelSkinCompatibilities                     string
-	WeaponModels                                       string
 	WeaponSkin                                         string
 	Weapons                                            string
 }{
@@ -199,6 +199,7 @@ var TableNames = struct {
 	BlueprintUtilityShield:         "blueprint_utility_shield",
 	BlueprintWeaponSkin:            "blueprint_weapon_skin",
 	BlueprintWeapons:               "blueprint_weapons",
+	BlueprintWeaponsOld:            "blueprint_weapons_old",
 	Brands:                         "brands",
 	ChatBannedFingerprints:         "chat_banned_fingerprints",
 	ChatHistory:                    "chat_history",
@@ -302,7 +303,6 @@ var TableNames = struct {
 	UtilityShield:                  "utility_shield",
 	WeaponAmmo:                     "weapon_ammo",
 	WeaponModelSkinCompatibilities: "weapon_model_skin_compatibilities",
-	WeaponModels:                   "weapon_models",
 	WeaponSkin:                     "weapon_skin",
 	Weapons:                        "weapons",
 }

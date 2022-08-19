@@ -168,10 +168,12 @@ const (
 
 // Enum values for DamageType
 const (
-	DamageTypeKinetic   = "Kinetic"
-	DamageTypeEnergy    = "Energy"
-	DamageTypeExplosive = "Explosive"
+	DamageTypeKINETIC   = "KINETIC"
+	DamageTypeENERGY    = "ENERGY"
+	DamageTypeEXPLOSIVE = "EXPLOSIVE"
 )
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for ChatMSGTypeEnum
 const (

@@ -14,9 +14,6 @@ DROP TYPE IF EXISTS MECH_REPAIR_LOG_TYPE;
 ALTER TABLE blueprint_mechs
     ADD COLUMN IF NOT EXISTS repair_blocks INT NOT NULL DEFAULT 20;
 
-ALTER TABLE weapon_models
-    ADD COLUMN IF NOT EXISTS repair_blocks INT NOT NULL DEFAULT 20;
-
 CREATE TABLE repair_cases(
     id uuid primary key default gen_random_uuid(),
     mech_id uuid not null references mechs(id),

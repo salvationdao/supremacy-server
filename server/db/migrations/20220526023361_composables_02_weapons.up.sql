@@ -19,7 +19,7 @@ ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
-    ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
+    ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'KINETIC',
     ADD COLUMN genesis_token_id         BIGINT,
     ADD COLUMN limited_release_token_id BIGINT,
     ADD COLUMN weapon_type              WEAPON_TYPE,
@@ -168,7 +168,7 @@ SET damage                = 20,
     projectile_speed      = 48000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'Energy'
+    default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
@@ -182,7 +182,7 @@ SET damage                = 12,
     projectile_speed      = 36000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
@@ -196,7 +196,7 @@ SET damage                = 130,
     projectile_speed      = 80000,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
@@ -210,7 +210,7 @@ SET damage                = 70,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Explosive'
+    default_damage_type   = 'EXPLOSIVE'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
@@ -225,7 +225,7 @@ SET damage                = 80,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 
@@ -239,7 +239,7 @@ SET damage                = 120,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Energy'
+    default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 
@@ -255,7 +255,7 @@ SET damage                = 20,
     projectile_speed      = 48000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'Energy'
+    default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
@@ -269,7 +269,7 @@ SET damage                = 12,
     projectile_speed      = 36000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
@@ -283,7 +283,7 @@ SET damage                = 130,
     projectile_speed      = 80000,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
@@ -297,7 +297,7 @@ SET damage                = 70,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Explosive'
+    default_damage_type   = 'EXPLOSIVE'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
@@ -312,7 +312,7 @@ SET damage                = 80,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
+    default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 
@@ -327,7 +327,7 @@ SET damage                = 120,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'Energy'
+    default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 
@@ -385,8 +385,7 @@ WITH wpns AS (
 UPDATE weapons w SET blueprint_id = (
     SELECT bw.id
     FROM blueprint_weapons bw
-             INNER JOIN weapon_models wm on bw.weapon_model_id = wm.id
-    WHERE wpns.label = bw.label and wpns.brand_id = wm.brand_id
+    WHERE wpns.label = bw.label and wpns.brand_id = bw.brand_id
 )
 FROM wpns
 WHERE w.id = wpns.id;
@@ -416,8 +415,7 @@ INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_
 SELECT (
            SELECT bpw.id
            FROM blueprint_weapons bpw
-                    INNER JOIN weapon_models wm on bpw.weapon_model_id = wm.id
-           WHERE bpw.label ILIKE '%Rocket Pod%' and wm.brand_id = bpc.brand_id
+           WHERE bpw.label ILIKE '%Rocket Pod%' and bpw.brand_id = bpc.brand_id
        ),
        bpc.id,
        2,

@@ -34,7 +34,6 @@ CREATE TABLE mystery_crate_blueprints
 );
 
 ALTER TABLE weapons
-    ADD COLUMN weapon_model_id         UUID REFERENCES weapon_models (id),
     ADD COLUMN equipped_weapon_skin_id UUID REFERENCES weapon_skin (id);
 
 --
@@ -371,9 +370,8 @@ BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (crate_id, 'WEAPON', (SELECT bw.id
                                  FROM blueprint_weapons bw
-                                          INNER JOIN weapon_models wm ON wm.id = bw.weapon_model_id
-                                 WHERE wm.weapon_type = weapontype::WEAPON_TYPE
-                                   AND wm.brand_id =
+                                 WHERE bw.weapon_type = weapontype::WEAPON_TYPE
+                                   AND bw.brand_id =
                                        CASE
                                            WHEN faction.label = 'Boston Cybernetics'
                                                THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
