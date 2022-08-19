@@ -131,7 +131,11 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 	mrcs, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
 		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.ClosedAt.IsNull()),
+		qm.Load(
+			boiler.RepairCaseRels.RepairOffers,
+			boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
+			boiler.RepairOfferWhere.ClosedAt.IsNull(),
+		),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Strs("mech ids", req.Payload.MechIDs).Msg("Failed to query mech repair case.")
@@ -241,7 +245,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 				RepairOffer:          ro,
 				BlocksRequiredRepair: mrc.BlocksRequiredRepair,
 				BlocksRepaired:       mrc.BlocksRepaired,
-				SupsWorthPerBlock:    req.Payload.OfferedSupsPerBlock,
+				SupsWorthPerBlock:    req.Payload.OfferedSupsPerBlock.Mul(decimal.New(1, 18)),
 				WorkingAgentCount:    0,
 				JobOwner:             server.PublicPlayerFromBoiler(user),
 			}
