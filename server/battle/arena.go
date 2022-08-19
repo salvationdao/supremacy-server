@@ -122,12 +122,6 @@ func (am *ArenaManager) Range(fn func(arena *Arena)) {
 	}
 }
 
-func (am *ArenaManager) DeleteArena(arenaID string) {
-	am.Lock()
-	defer am.Unlock()
-	delete(am.arenas, arenaID)
-}
-
 func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	am.RLock()
 	defer am.RUnlock()
@@ -198,6 +192,9 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
 
 	defer func() {
+		am.Lock()
+		defer am.Unlock()
+
 		if wsConn != nil {
 			arena.connected.Store(false)
 
@@ -216,7 +213,8 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// delete arena from the map
-			am.DeleteArena(arena.ID)
+
+			delete(am.arenas, arena.ID)
 
 			// broadcast a new arena list to frontend
 			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
@@ -247,41 +245,49 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		}
 	}
 
-	// if story mode not exist, assign story mode arena
-	if !storyArenaExist {
-		ba, err = boiler.BattleArenas(
-			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
-			return nil, terror.Error(err, "Failed to get story mode battle arena from db")
-		}
-	} else {
-		// assign an expedition arena instead
-		ba, err = boiler.BattleArenas(
-			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumEXPEDITION),
-			boiler.BattleArenaWhere.ID.NIN(existingArenaID),
-			qm.OrderBy(boiler.BattleArenaColumns.Gid),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to get expedition mode battle arena from db")
-			return nil, terror.Error(err, "Failed to get expedition mode battle arena from db")
-		}
-
-		// insert a new expedition battle arena if not exist
-		if ba == nil {
-			gamelog.L.Debug().Msg("inserting a new arena to db")
-			ba = &boiler.BattleArena{
-				Type: boiler.ArenaTypeEnumEXPEDITION,
-			}
-
-			err = ba.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to insert new expedition battle arena into db")
-				return nil, terror.Error(err, "Failed to insert new expedition battle arena into db")
-			}
-		}
+	// assign arena to story
+	ba, err = boiler.BattleArenas(
+		boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
+		return nil, terror.Error(err, "Failed to get story mode battle arena from db")
 	}
+	//// if story mode not exist, assign story mode arena
+	//if !storyArenaExist {
+	//	ba, err = boiler.BattleArenas(
+	//		boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
+	//	).One(gamedb.StdConn)
+	//	if err != nil {
+	//		gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
+	//		return nil, terror.Error(err, "Failed to get story mode battle arena from db")
+	//	}
+	//} else {
+	//	// assign an expedition arena instead
+	//	ba, err = boiler.BattleArenas(
+	//		boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumEXPEDITION),
+	//		boiler.BattleArenaWhere.ID.NIN(existingArenaID),
+	//		qm.OrderBy(boiler.BattleArenaColumns.Gid),
+	//	).One(gamedb.StdConn)
+	//	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	//		gamelog.L.Error().Err(err).Msg("Failed to get expedition mode battle arena from db")
+	//		return nil, terror.Error(err, "Failed to get expedition mode battle arena from db")
+	//	}
+	//
+	//	// insert a new expedition battle arena if not exist
+	//	if ba == nil {
+	//		gamelog.L.Debug().Msg("inserting a new arena to db")
+	//		ba = &boiler.BattleArena{
+	//			Type: boiler.ArenaTypeEnumEXPEDITION,
+	//		}
+	//
+	//		err = ba.Insert(gamedb.StdConn, boil.Infer())
+	//		if err != nil {
+	//			gamelog.L.Error().Err(err).Msg("Failed to insert new expedition battle arena into db")
+	//			return nil, terror.Error(err, "Failed to insert new expedition battle arena into db")
+	//		}
+	//	}
+	//}
 
 	arena := &Arena{
 		BattleArena:            ba,
@@ -1459,7 +1465,6 @@ func (arena *Arena) beginBattle() {
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
-
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
