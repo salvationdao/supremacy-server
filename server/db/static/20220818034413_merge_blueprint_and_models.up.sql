@@ -66,4 +66,7 @@ ALTER TABLE blueprint_weapons
     RENAME TO blueprint_weapons_old;
 
 ALTER TABLE weapon_models
+    DROP COLUMN IF EXISTS repair_blocks;
+
+ALTER TABLE weapon_models
     RENAME TO blueprint_weapons;

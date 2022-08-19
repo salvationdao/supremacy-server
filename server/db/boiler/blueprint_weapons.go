@@ -32,7 +32,6 @@ type BlueprintWeapon struct {
 	DeletedAt           null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt           time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt           time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	RepairBlocks        int                 `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
 	GameClientWeaponID  null.String         `boiler:"game_client_weapon_id" boil:"game_client_weapon_id" json:"game_client_weapon_id,omitempty" toml:"game_client_weapon_id" yaml:"game_client_weapon_id,omitempty"`
 	Collection          string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	Damage              int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
@@ -61,7 +60,6 @@ var BlueprintWeaponColumns = struct {
 	DeletedAt           string
 	UpdatedAt           string
 	CreatedAt           string
-	RepairBlocks        string
 	GameClientWeaponID  string
 	Collection          string
 	Damage              string
@@ -85,7 +83,6 @@ var BlueprintWeaponColumns = struct {
 	DeletedAt:           "deleted_at",
 	UpdatedAt:           "updated_at",
 	CreatedAt:           "created_at",
-	RepairBlocks:        "repair_blocks",
 	GameClientWeaponID:  "game_client_weapon_id",
 	Collection:          "collection",
 	Damage:              "damage",
@@ -111,7 +108,6 @@ var BlueprintWeaponTableColumns = struct {
 	DeletedAt           string
 	UpdatedAt           string
 	CreatedAt           string
-	RepairBlocks        string
 	GameClientWeaponID  string
 	Collection          string
 	Damage              string
@@ -135,7 +131,6 @@ var BlueprintWeaponTableColumns = struct {
 	DeletedAt:           "blueprint_weapons.deleted_at",
 	UpdatedAt:           "blueprint_weapons.updated_at",
 	CreatedAt:           "blueprint_weapons.created_at",
-	RepairBlocks:        "blueprint_weapons.repair_blocks",
 	GameClientWeaponID:  "blueprint_weapons.game_client_weapon_id",
 	Collection:          "blueprint_weapons.collection",
 	Damage:              "blueprint_weapons.damage",
@@ -163,7 +158,6 @@ var BlueprintWeaponWhere = struct {
 	DeletedAt           whereHelpernull_Time
 	UpdatedAt           whereHelpertime_Time
 	CreatedAt           whereHelpertime_Time
-	RepairBlocks        whereHelperint
 	GameClientWeaponID  whereHelpernull_String
 	Collection          whereHelperstring
 	Damage              whereHelperint
@@ -187,7 +181,6 @@ var BlueprintWeaponWhere = struct {
 	DeletedAt:           whereHelpernull_Time{field: "\"blueprint_weapons\".\"deleted_at\""},
 	UpdatedAt:           whereHelpertime_Time{field: "\"blueprint_weapons\".\"updated_at\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_weapons\".\"created_at\""},
-	RepairBlocks:        whereHelperint{field: "\"blueprint_weapons\".\"repair_blocks\""},
 	GameClientWeaponID:  whereHelpernull_String{field: "\"blueprint_weapons\".\"game_client_weapon_id\""},
 	Collection:          whereHelperstring{field: "\"blueprint_weapons\".\"collection\""},
 	Damage:              whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
@@ -234,9 +227,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at", "repair_blocks", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "weapon_type", "default_skin_id"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "repair_blocks", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )
