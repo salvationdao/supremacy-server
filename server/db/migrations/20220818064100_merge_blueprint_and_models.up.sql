@@ -36,7 +36,6 @@ UPDATE template_blueprints SET blueprint_id = '0612fbda-3967-456b-86cb-1fb6eb038
 UPDATE template_blueprints SET blueprint_id = '41099781-8586-4783-9d1c-b515a386fe9f' WHERE blueprint_id = '17c32a72-0b7a-42bb-b144-7d7358509cde';
 UPDATE template_blueprints SET blueprint_id = 'e9fc2417-6a5b-489d-b82e-42942535af90' WHERE blueprint_id = 'bf114d6b-bb1c-4de3-8abd-d2367715db52';
 
-
 -- mechs
 UPDATE template_blueprints SET blueprint_id = '5d3a973b-c62b-4438-b746-d3de2699d42a' WHERE blueprint_id IN (
 '8dd45a32-c201-41d4-a134-4b5a50419a6e',
@@ -190,3 +189,29 @@ UPDATE mystery_crate_blueprints SET blueprint_id = 'ac27f3b9-753d-4ace-84a9-21c0
 UPDATE mystery_crate_blueprints SET blueprint_id = 'ac27f3b9-753d-4ace-84a9-21c041195344' WHERE blueprint_id = '30b40880-ffa3-4a17-883d-08de0bf1b479';
 UPDATE mystery_crate_blueprints SET blueprint_id = 'df1ac803-0a90-4631-b9e0-b62a44bdadff' WHERE blueprint_id = '5938ce12-6965-4977-8700-98b0909df1fe';
 UPDATE mystery_crate_blueprints SET blueprint_id = 'fc9546d0-9682-468e-af1f-24eb1735315b' WHERE blueprint_id = '6d2ecfdd-abd2-4147-abd8-67429ea0e37f';
+
+
+-- update existing mechs
+ALTER TABLE mechs
+    DROP CONSTRAINT IF EXISTS chassis_blueprint_id_fkey;
+
+UPDATE mechs SET blueprint_id = (
+    select bpmo.model_id
+    from blueprint_mechs_old bpmo
+    where bpmo.id = mechs.blueprint_id);
+
+ALTER TABLE mechs
+    ADD CONSTRAINT chassis_blueprint_id_fkey FOREIGN KEY (blueprint_id) REFERENCES blueprint_mechs (id);
+
+-- update existing weapons
+ALTER TABLE weapons
+    DROP CONSTRAINT IF EXISTS weapons_blueprint_id_fkey;
+
+
+UPDATE weapons SET blueprint_id = (
+    select bpwo.weapon_model_id
+    from blueprint_weapons_old bpwo
+    where bpwo.id = weapons.blueprint_id);
+
+ALTER TABLE weapons
+    ADD CONSTRAINT weapons_blueprint_id_fkey FOREIGN KEY (blueprint_id) REFERENCES blueprint_weapons (id);

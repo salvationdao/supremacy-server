@@ -231,6 +231,7 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 	mech, err := boiler.Mechs(
 		boiler.MechWhere.ID.EQ(mechID),
 		qm.Load(boiler.MechRels.ChassisMechWeapons),
+		qm.Load(boiler.MechRels.Blueprint),
 	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")

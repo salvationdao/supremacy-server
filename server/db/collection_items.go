@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db/boiler"
 	"server/gamelog"
@@ -39,6 +38,10 @@ func InsertNewCollectionItem(tx boil.Executor,
 		return nil, fmt.Errorf("invalid collection slug %s", collectionSlug)
 	}
 
+	if tier == "" {
+		tier = "MEGA"
+	}
+
 	query := fmt.Sprintf(`
 		INSERT INTO collection_items(
 			collection_slug, 
@@ -65,7 +68,7 @@ func InsertNewCollectionItem(tx boil.Executor,
 		collectionSlug,
 		itemType,
 		itemID,
-		null.NewString(tier, tier != ""),
+		tier,
 		ownerID,
 	).Scan(&item.ID,
 		&item.CollectionSlug,

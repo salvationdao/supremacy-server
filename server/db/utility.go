@@ -248,6 +248,7 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 	mech, err := boiler.Mechs(
 		boiler.MechWhere.ID.EQ(mechID),
 		qm.Load(boiler.MechRels.ChassisMechUtilities),
+		qm.Load(boiler.MechRels.Blueprint),
 	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")

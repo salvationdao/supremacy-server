@@ -221,7 +221,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 										FROM weapon_skin __ws
 										INNER JOIN collection_items _ci on _ci.item_id = __ws.id
 								) _ws ON _ws.equipped_on = _w.id
-								INNER JOIN weapon_model_skin_compatibilities _wmsc on _wmsc.blueprint_weapon_skin_id = _ws.blueprint_id and _wmsc.weapon_model_id = _bpw.weapon_model_id
+								INNER JOIN weapon_model_skin_compatibilities _wmsc on _wmsc.blueprint_weapon_skin_id = _ws.blueprint_id and _wmsc.weapon_model_id = _bpw.id
 							) w2 ON mw.weapon_id = w2.id
 						GROUP BY mw.chassis_id
 				) %s on %s = %s `,
