@@ -79,9 +79,9 @@ func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte,
 
 type RepairOfferIssueRequest struct {
 	Payload struct {
-		MechIDs        []string        `json:"mech_ids"`
-		LastForMinutes int             `json:"last_for_minutes"`
-		OfferedSups    decimal.Decimal `json:"offered_sups"` // the amount that excluded tax
+		MechIDs             []string        `json:"mech_ids"`
+		LastForMinutes      int             `json:"last_for_minutes"`
+		OfferedSupsPerBlock decimal.Decimal `json:"offered_sups_per_block"` // the amount that excluded tax
 	} `json:"payload"`
 }
 
@@ -169,12 +169,14 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 			defer tx.Rollback()
 
-			offeredSups := req.Payload.OfferedSups.Mul(decimal.New(1, 18)).Round(0)
+			blocksTotal := mrc.BlocksRequiredRepair - mrc.BlocksRepaired
+
+			offeredSups := req.Payload.OfferedSupsPerBlock.Mul(decimal.New(int64(blocksTotal), 18)).Round(0)
 
 			ro := &boiler.RepairOffer{
 				OfferedByID:       null.StringFrom(user.ID),
 				RepairCaseID:      mrc.ID,
-				BlocksTotal:       mrc.BlocksRequiredRepair - mrc.BlocksRepaired,
+				BlocksTotal:       blocksTotal,
 				OfferedSupsAmount: offeredSups,
 				ExpiresAt:         now.Add(time.Duration(req.Payload.LastForMinutes) * time.Minute),
 			}
@@ -239,7 +241,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 				RepairOffer:          ro,
 				BlocksRequiredRepair: mrc.BlocksRequiredRepair,
 				BlocksRepaired:       mrc.BlocksRepaired,
-				SupsWorthPerBlock:    offeredSups.Div(decimal.NewFromInt(int64(ro.BlocksTotal))),
+				SupsWorthPerBlock:    req.Payload.OfferedSupsPerBlock,
 				WorkingAgentCount:    0,
 				JobOwner:             server.PublicPlayerFromBoiler(user),
 			}
