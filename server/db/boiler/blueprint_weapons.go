@@ -43,9 +43,16 @@ type BlueprintWeapon struct {
 	Spread              decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
 	RateOfFire          decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
 	ProjectileSpeed     decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
-	EnergyCost          decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
+	PowerCost           decimal.NullDecimal `boiler:"power_cost" boil:"power_cost" json:"power_cost,omitempty" toml:"power_cost" yaml:"power_cost,omitempty"`
+	PowerInstantDrain   null.Bool           `boiler:"power_instant_drain" boil:"power_instant_drain" json:"power_instant_drain,omitempty" toml:"power_instant_drain" yaml:"power_instant_drain,omitempty"`
 	IsMelee             bool                `boiler:"is_melee" boil:"is_melee" json:"is_melee" toml:"is_melee" yaml:"is_melee"`
 	MaxAmmo             null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
+	ProjectileAmount    null.Int            `boiler:"projectile_amount" boil:"projectile_amount" json:"projectile_amount,omitempty" toml:"projectile_amount" yaml:"projectile_amount,omitempty"`
+	DotTickDamage       decimal.NullDecimal `boiler:"dot_tick_damage" boil:"dot_tick_damage" json:"dot_tick_damage,omitempty" toml:"dot_tick_damage" yaml:"dot_tick_damage,omitempty"`
+	DotMaxTicks         null.Int            `boiler:"dot_max_ticks" boil:"dot_max_ticks" json:"dot_max_ticks,omitempty" toml:"dot_max_ticks" yaml:"dot_max_ticks,omitempty"`
+	IsArced             null.Bool           `boiler:"is_arced" boil:"is_arced" json:"is_arced,omitempty" toml:"is_arced" yaml:"is_arced,omitempty"`
+	ChargeTimeSeconds   decimal.NullDecimal `boiler:"charge_time_seconds" boil:"charge_time_seconds" json:"charge_time_seconds,omitempty" toml:"charge_time_seconds" yaml:"charge_time_seconds,omitempty"`
+	BurstRateOfFire     decimal.NullDecimal `boiler:"burst_rate_of_fire" boil:"burst_rate_of_fire" json:"burst_rate_of_fire,omitempty" toml:"burst_rate_of_fire" yaml:"burst_rate_of_fire,omitempty"`
 
 	R *blueprintWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -71,9 +78,16 @@ var BlueprintWeaponColumns = struct {
 	Spread              string
 	RateOfFire          string
 	ProjectileSpeed     string
-	EnergyCost          string
+	PowerCost           string
+	PowerInstantDrain   string
 	IsMelee             string
 	MaxAmmo             string
+	ProjectileAmount    string
+	DotTickDamage       string
+	DotMaxTicks         string
+	IsArced             string
+	ChargeTimeSeconds   string
+	BurstRateOfFire     string
 }{
 	ID:                  "id",
 	BrandID:             "brand_id",
@@ -94,9 +108,16 @@ var BlueprintWeaponColumns = struct {
 	Spread:              "spread",
 	RateOfFire:          "rate_of_fire",
 	ProjectileSpeed:     "projectile_speed",
-	EnergyCost:          "energy_cost",
+	PowerCost:           "power_cost",
+	PowerInstantDrain:   "power_instant_drain",
 	IsMelee:             "is_melee",
 	MaxAmmo:             "max_ammo",
+	ProjectileAmount:    "projectile_amount",
+	DotTickDamage:       "dot_tick_damage",
+	DotMaxTicks:         "dot_max_ticks",
+	IsArced:             "is_arced",
+	ChargeTimeSeconds:   "charge_time_seconds",
+	BurstRateOfFire:     "burst_rate_of_fire",
 }
 
 var BlueprintWeaponTableColumns = struct {
@@ -119,9 +140,16 @@ var BlueprintWeaponTableColumns = struct {
 	Spread              string
 	RateOfFire          string
 	ProjectileSpeed     string
-	EnergyCost          string
+	PowerCost           string
+	PowerInstantDrain   string
 	IsMelee             string
 	MaxAmmo             string
+	ProjectileAmount    string
+	DotTickDamage       string
+	DotMaxTicks         string
+	IsArced             string
+	ChargeTimeSeconds   string
+	BurstRateOfFire     string
 }{
 	ID:                  "blueprint_weapons.id",
 	BrandID:             "blueprint_weapons.brand_id",
@@ -142,9 +170,16 @@ var BlueprintWeaponTableColumns = struct {
 	Spread:              "blueprint_weapons.spread",
 	RateOfFire:          "blueprint_weapons.rate_of_fire",
 	ProjectileSpeed:     "blueprint_weapons.projectile_speed",
-	EnergyCost:          "blueprint_weapons.energy_cost",
+	PowerCost:           "blueprint_weapons.power_cost",
+	PowerInstantDrain:   "blueprint_weapons.power_instant_drain",
 	IsMelee:             "blueprint_weapons.is_melee",
 	MaxAmmo:             "blueprint_weapons.max_ammo",
+	ProjectileAmount:    "blueprint_weapons.projectile_amount",
+	DotTickDamage:       "blueprint_weapons.dot_tick_damage",
+	DotMaxTicks:         "blueprint_weapons.dot_max_ticks",
+	IsArced:             "blueprint_weapons.is_arced",
+	ChargeTimeSeconds:   "blueprint_weapons.charge_time_seconds",
+	BurstRateOfFire:     "blueprint_weapons.burst_rate_of_fire",
 }
 
 // Generated where
@@ -169,9 +204,16 @@ var BlueprintWeaponWhere = struct {
 	Spread              whereHelperdecimal_NullDecimal
 	RateOfFire          whereHelperdecimal_NullDecimal
 	ProjectileSpeed     whereHelperdecimal_NullDecimal
-	EnergyCost          whereHelperdecimal_NullDecimal
+	PowerCost           whereHelperdecimal_NullDecimal
+	PowerInstantDrain   whereHelpernull_Bool
 	IsMelee             whereHelperbool
 	MaxAmmo             whereHelpernull_Int
+	ProjectileAmount    whereHelpernull_Int
+	DotTickDamage       whereHelperdecimal_NullDecimal
+	DotMaxTicks         whereHelpernull_Int
+	IsArced             whereHelpernull_Bool
+	ChargeTimeSeconds   whereHelperdecimal_NullDecimal
+	BurstRateOfFire     whereHelperdecimal_NullDecimal
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
 	BrandID:             whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
@@ -192,9 +234,16 @@ var BlueprintWeaponWhere = struct {
 	Spread:              whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"spread\""},
 	RateOfFire:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"rate_of_fire\""},
 	ProjectileSpeed:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"projectile_speed\""},
-	EnergyCost:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"energy_cost\""},
+	PowerCost:           whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"power_cost\""},
+	PowerInstantDrain:   whereHelpernull_Bool{field: "\"blueprint_weapons\".\"power_instant_drain\""},
 	IsMelee:             whereHelperbool{field: "\"blueprint_weapons\".\"is_melee\""},
 	MaxAmmo:             whereHelpernull_Int{field: "\"blueprint_weapons\".\"max_ammo\""},
+	ProjectileAmount:    whereHelpernull_Int{field: "\"blueprint_weapons\".\"projectile_amount\""},
+	DotTickDamage:       whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"dot_tick_damage\""},
+	DotMaxTicks:         whereHelpernull_Int{field: "\"blueprint_weapons\".\"dot_max_ticks\""},
+	IsArced:             whereHelpernull_Bool{field: "\"blueprint_weapons\".\"is_arced\""},
+	ChargeTimeSeconds:   whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"charge_time_seconds\""},
+	BurstRateOfFire:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"burst_rate_of_fire\""},
 }
 
 // BlueprintWeaponRels is where relationship names are stored.
@@ -227,9 +276,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "power_cost", "power_instant_drain", "is_melee", "max_ammo", "projectile_amount", "dot_tick_damage", "dot_max_ticks", "is_arced", "charge_time_seconds", "burst_rate_of_fire"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "weapon_type", "default_skin_id"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "damage", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "power_cost", "power_instant_drain", "is_melee", "max_ammo", "projectile_amount", "dot_tick_damage", "dot_max_ticks", "is_arced", "charge_time_seconds", "burst_rate_of_fire"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )

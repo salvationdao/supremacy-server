@@ -254,7 +254,7 @@ SET damage                = 20,
     radius                = 100,
     projectile_speed      = 48000,
     radius_damage_falloff = 0,
-    energy_cost           = 10,
+    power_cost           = 10,
     default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
@@ -268,7 +268,7 @@ SET damage                = 12,
     radius                = 100,
     projectile_speed      = 36000,
     radius_damage_falloff = 0,
-    energy_cost           = 10,
+    power_cost           = 10,
     default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
@@ -282,7 +282,7 @@ SET damage                = 130,
     radius                = 100,
     projectile_speed      = 80000,
     radius_damage_falloff = 0,
-    energy_cost           = 15,
+    power_cost           = 15,
     default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
@@ -296,7 +296,7 @@ SET damage                = 70,
     radius                = 850,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
-    energy_cost           = 15,
+    power_cost           = 15,
     default_damage_type   = 'EXPLOSIVE'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
@@ -311,7 +311,7 @@ SET damage                = 80,
     radius                = 0,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
-    energy_cost           = 15,
+    power_cost           = 15,
     default_damage_type   = 'KINETIC'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
@@ -326,7 +326,7 @@ SET damage                = 120,
     radius                = 0,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
-    energy_cost           = 15,
+    power_cost           = 15,
     default_damage_type   = 'ENERGY'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';

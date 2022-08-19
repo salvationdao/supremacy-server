@@ -118,6 +118,14 @@ type Weapon struct {
 	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
 	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
 	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
+	PowerCost           float64    `json:"powerCost"`
+	PowerInstantDrain   bool       `json:"powerInstantDrain"`
+	ProjectileAmount    int        `json:"projectileAmount"`
+	DotTickDamage       float64    `json:"dotTickDamage"`
+	DotMaxTicks         int        `json:"dotMaxTicks"`
+	IsArced             bool       `json:"isArced"`
+	ChargeTimeSeconds   float64    `json:"chargeTime"`
+	BurstRateOfFire     float64    `json:"burstRateOfFire"`
 }
 
 type Utility struct {
@@ -192,7 +200,7 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
 		Model:               weapon.WeaponModelID,
-		Skin:                weapon.EquippedWeaponSkinID,  // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
+		Skin:                weapon.EquippedWeaponSkinID, // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
 	}
 }
 

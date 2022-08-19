@@ -90,7 +90,7 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	f, err = readFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath))
+	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
@@ -700,9 +700,9 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
-	var WeaponModels []types.WeaponModel
+	var WeaponModels []types.Weapon
 	for _, record := range records {
-		weaponModel := &types.WeaponModel{
+		weaponModel := &types.Weapon{
 			ID:                  record[0],
 			BrandID:             record[1],
 			Label:               record[2],
@@ -718,10 +718,17 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 			ProjectileSpeed:     record[12],
 			MaxAmmo:             record[13],
 			IsMelee:             record[14],
-			EnergyCost:          record[15],
+			PowerCost:           record[15],
 			GameClientWeaponID:  null.NewString(record[16], record[16] != ""),
 			Collection:          record[17],
 			DefaultDamageType:   record[18],
+			ProjectileAmount:    record[19],
+			DotTickDamage:       record[20],
+			DotMaxTicks:         record[21],
+			IsArced:             record[22],
+			ChargeTimeSeconds:   record[23],
+			BurstRateOfFire:     record[24],
+			PowerInstantDrain:   record[25],
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)
@@ -746,12 +753,19 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 										projectile_speed,
 										max_ammo,
 										is_melee,
-										energy_cost,
+										power_cost,
 										game_client_weapon_id,
 										collection,
-										default_damage_type
+										default_damage_type,
+									    projectile_amount,
+			                            dot_tick_damage,
+			                            dot_max_ticks,
+			                            is_arced,
+			                            charge_time_seconds,
+			                            burst_rate_of_fire,
+									  	power_instant_drain
 			                          )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET 
@@ -770,10 +784,17 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 							projectile_speed=$13,
 							max_ammo=$14,
 							is_melee=$15,
-							energy_cost=$16,
+							power_cost=$16,
 							game_client_weapon_id=$17,
 							collection=$18,
-							default_damage_type=$19;
+							default_damage_type=$19,
+							projectile_amount=$20,
+							dot_tick_damage=$21,
+							dot_max_ticks=$22,
+							is_arced=$23,
+							charge_time_seconds=$24,
+							burst_rate_of_fire=$25,
+							power_instant_drain=$26;
 		`,
 			weaponModel.ID,
 			weaponModel.BrandID,
@@ -790,10 +811,17 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 			weaponModel.ProjectileSpeed,
 			weaponModel.MaxAmmo,
 			weaponModel.IsMelee,
-			weaponModel.EnergyCost,
+			weaponModel.PowerCost,
 			weaponModel.GameClientWeaponID,
 			weaponModel.Collection,
 			weaponModel.DefaultDamageType,
+			weaponModel.ProjectileAmount,
+			weaponModel.DotTickDamage,
+			weaponModel.DotMaxTicks,
+			weaponModel.IsArced,
+			weaponModel.ChargeTimeSeconds,
+			weaponModel.BurstRateOfFire,
+			weaponModel.PowerInstantDrain,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
@@ -1250,125 +1278,6 @@ func SyncStaticMech(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing static mech")
-
-	return nil
-}
-
-func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
-	r := csv.NewReader(f)
-
-	if _, err := r.Read(); err != nil {
-		return err
-	}
-
-	records, err := r.ReadAll()
-	if err != nil {
-		return err
-	}
-
-	var BlueprintWeapons []types.BlueprintWeapons
-	for _, record := range records {
-		blueprintWeapon := &types.BlueprintWeapons{
-			ID:                  record[0],
-			Label:               record[1],
-			Slug:                record[2],
-			Damage:              record[3],
-			DeletedAt:           record[4],
-			UpdatedAt:           record[5],
-			CreatedAt:           record[6],
-			GameClientWeaponID:  record[7],
-			WeaponType:          record[8],
-			Collection:          record[9],
-			DefaultDamageType:   record[10],
-			DamageFalloff:       record[11],
-			DamageFalloffRate:   record[12],
-			Radius:              record[13],
-			RadiusDamageFalloff: record[14],
-			Spread:              record[15],
-			RateOfFire:          record[16],
-			ProjectileSpeed:     record[17],
-			MaxAmmo:             record[18],
-			IsMelee:             record[19],
-			Tier:                record[20],
-			EnergyCost:          record[21],
-			WeaponModelID:       record[22],
-		}
-
-		BlueprintWeapons = append(BlueprintWeapons, *blueprintWeapon)
-	}
-
-	for _, blueprintWeapon := range BlueprintWeapons {
-		deletedAt := &blueprintWeapon.DeletedAt
-		if blueprintWeapon.DeletedAt == "" {
-			deletedAt = nil
-		}
-
-		gameClientID := &blueprintWeapon.GameClientWeaponID
-		if blueprintWeapon.GameClientWeaponID == "" {
-			gameClientID = nil
-		}
-
-		_, err = db.Exec(`
-			INSERT INTO blueprint_weapons(
-			                              id, 
-			                              label, 
-			                              slug, 
-			                              damage, 
-			                              deleted_at, 
-			                              updated_at, 
-			                              created_at, 
-			                              game_client_weapon_id, 
-			                              weapon_type, 
-			                              collection, 
-			                              default_damage_type, 
-			                              damage_falloff, 
-			                              damage_falloff_rate, 
-			                              radius, 
-			                              radius_damage_falloff, 
-			                              spread, 
-			                              rate_of_fire, 
-			                              projectile_speed, 
-			                              max_ammo, 
-			                              is_melee, 
-			                              tier, 
-			                              energy_cost, 
-			                              weapon_model_id)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
-			ON CONFLICT (id)
-			DO 
-			    UPDATE SET id=$1,
-			               label=$2,
-			               slug=$3,
-			               damage=$4,
-			               deleted_at=$5,
-			               updated_at=$6,
-			               created_at=$7,
-			               game_client_weapon_id=$8,
-			               weapon_type=$9,
-			               collection=$10,
-			               default_damage_type=$11,
-			               damage_falloff=$12,
-			               damage_falloff_rate=$13,
-			               radius=$14,
-			               radius_damage_falloff=$15,
-			               spread=$16,
-			               rate_of_fire=$17,
-			               projectile_speed=$18,
-			               max_ammo=$19,
-			               is_melee=$20,
-			               tier=$21,
-			               energy_cost=$22,
-			               weapon_model_id=$23;
-		`, blueprintWeapon.ID, blueprintWeapon.Label, blueprintWeapon.Slug, blueprintWeapon.Damage, deletedAt, blueprintWeapon.UpdatedAt, blueprintWeapon.CreatedAt, gameClientID, blueprintWeapon.WeaponType, blueprintWeapon.Collection, blueprintWeapon.DefaultDamageType, blueprintWeapon.DamageFalloff, blueprintWeapon.DamageFalloffRate, blueprintWeapon.Radius, blueprintWeapon.RadiusDamageFalloff, blueprintWeapon.Spread, blueprintWeapon.RateOfFire, blueprintWeapon.ProjectileSpeed, blueprintWeapon.MaxAmmo, blueprintWeapon.IsMelee, blueprintWeapon.Tier, blueprintWeapon.EnergyCost, blueprintWeapon.WeaponModelID)
-		if err != nil {
-			fmt.Println(err.Error()+blueprintWeapon.ID, blueprintWeapon.Label)
-			return err
-		}
-
-		fmt.Println("UPDATED: "+blueprintWeapon.ID, blueprintWeapon.Label)
-	}
-
-	fmt.Println("Finish syncing weapon")
 
 	return nil
 }

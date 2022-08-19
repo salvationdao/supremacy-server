@@ -34,10 +34,17 @@ type Weapon struct {
 	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
-	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
 	WeaponModelID         string              `json:"weapon_model_id,omitempty"`
+	IsMelee               bool                `json:"is_melee"`
+	ProjectileAmount      null.Int            `json:"projectile_amount,omitempty"`
+	DotTickDamage         decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
+	DotMaxTicks           null.Int            `json:"dot_max_ticks,omitempty"`
+	IsArced               null.Bool           `json:"is_arced,omitempty"`
+	ChargeTimeSeconds     decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
+	BurstRateOfFire       decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
 
+	WeaponSkin *WeaponSkin `json:"weapon_skin,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails
 
@@ -72,6 +79,15 @@ type BlueprintWeapon struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	Collection          string              `json:"collection"`
+	BrandID             null.String         `json:"brand_id,omitempty"`
+	DefaultSkinID       string              `json:"default_skin_id"`
+	IsMelee             bool                `json:"is_melee"`
+	ProjectileAmount    null.Int            `json:"projectile_amount,omitempty"`
+	DotTickDamage       decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
+	DotMaxTicks         null.Int            `json:"dot_max_ticks,omitempty"`
+	IsArced             null.Bool           `json:"is_arced,omitempty"`
+	ChargeTimeSeconds   decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
+	BurstRateOfFire     decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -119,6 +135,15 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		MaxAmmo:             weapon.MaxAmmo,
 		EnergyCost:          weapon.EnergyCost,
 		Collection:          weapon.Collection,
+		BrandID:             weapon.BrandID,
+		DefaultSkinID:       weapon.DefaultSkinID,
+		IsMelee:             weapon.IsMelee,
+		ProjectileAmount:    weapon.ProjectileAmount,
+		DotTickDamage:       weapon.DotTickDamage,
+		DotMaxTicks:         weapon.DotMaxTicks,
+		IsArced:             weapon.IsArced,
+		ChargeTimeSeconds:   weapon.ChargeTimeSeconds,
+		BurstRateOfFire:     weapon.BurstRateOfFire,
 	}
 }
 
@@ -145,23 +170,24 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 			AnimationURL:     weaponSkin.AnimationURL,
 			YoutubeURL:       weaponSkin.YoutubeURL,
 		},
-		CollectionItemID:     collection.ID,
-		ID:                   weapon.ID,
-		Label:                weapon.R.Blueprint.Label,
-		Damage:               weapon.R.Blueprint.Damage,
-		BlueprintID:          weapon.BlueprintID,
-		DefaultDamageType:    weapon.R.Blueprint.DefaultDamageType,
-		GenesisTokenID:       weapon.GenesisTokenID,
-		WeaponType:           weapon.R.Blueprint.WeaponType,
-		DamageFalloff:        weapon.R.Blueprint.DamageFalloff,
-		DamageFalloffRate:    weapon.R.Blueprint.DamageFalloffRate,
-		Spread:               weapon.R.Blueprint.Spread,
-		RateOfFire:           weapon.R.Blueprint.RateOfFire,
-		Radius:               weapon.R.Blueprint.Radius,
-		RadiusDamageFalloff:  weapon.R.Blueprint.RadiusDamageFalloff,
-		ProjectileSpeed:      weapon.R.Blueprint.ProjectileSpeed,
-		EnergyCost:           weapon.R.Blueprint.EnergyCost,
-		MaxAmmo:              weapon.R.Blueprint.MaxAmmo,
+		CollectionItemID:    collection.ID,
+		ID:                  weapon.ID,
+		Label:               weapon.R.Blueprint.Label,
+		Damage:              weapon.R.Blueprint.Damage,
+		BlueprintID:         weapon.BlueprintID,
+		DefaultDamageType:   weapon.R.Blueprint.DefaultDamageType,
+		GenesisTokenID:      weapon.GenesisTokenID,
+		WeaponType:          weapon.R.Blueprint.WeaponType,
+		DamageFalloff:       weapon.R.Blueprint.DamageFalloff,
+		DamageFalloffRate:   weapon.R.Blueprint.DamageFalloffRate,
+		Spread:              weapon.R.Blueprint.Spread,
+		RateOfFire:          weapon.R.Blueprint.RateOfFire,
+		Radius:              weapon.R.Blueprint.Radius,
+		RadiusDamageFalloff: weapon.R.Blueprint.RadiusDamageFalloff,
+		ProjectileSpeed:     weapon.R.Blueprint.ProjectileSpeed,
+		EnergyCost:          weapon.R.Blueprint.EnergyCost,
+		MaxAmmo:             weapon.R.Blueprint.MaxAmmo,
+
 		UpdatedAt:            weapon.UpdatedAt,
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,

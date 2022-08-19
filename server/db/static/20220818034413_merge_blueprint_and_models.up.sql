@@ -7,7 +7,8 @@ CREATE TABLE availabilities
 
 INSERT INTO availabilities (id, reason, available_at)
 VALUES ('518ffb3f-8595-4db0-b9ea-46285f6ccd2f', 'Nexus Release',
-        '2023-07-22 00:00:00'); -- TODO: move this to static data csv
+        '2023-07-22 00:00:00');
+-- TODO: move this to static data csv
 
 -- mechs
 
@@ -58,9 +59,16 @@ ALTER TABLE weapon_models
     ADD COLUMN spread                NUMERIC    DEFAULT 0,
     ADD COLUMN rate_of_fire          NUMERIC    DEFAULT 0,
     ADD COLUMN projectile_speed      NUMERIC    DEFAULT 0,
-    ADD COLUMN energy_cost           NUMERIC    DEFAULT 0,
+    ADD COLUMN power_cost            NUMERIC    DEFAULT 0,
+    ADD COLUMN power_instant_drain   bool       DEFAULT false,
     ADD COLUMN is_melee              BOOL                                   NOT NULL DEFAULT FALSE,
-    ADD COLUMN max_ammo              INT        DEFAULT 0;
+    ADD COLUMN max_ammo              INT        DEFAULT 0,
+    ADD COLUMN projectile_amount     INT        DEFAULT 0,
+    ADD COLUMN dot_tick_damage       NUMERIC    DEFAULT 0,
+    ADD COLUMN dot_max_ticks         INT        DEFAULT 0,
+    ADD COLUMN is_arced              bool       DEFAULT false,
+    ADD COLUMN charge_time_seconds   NUMERIC    DEFAULT 0,
+    ADD COLUMN burst_rate_of_fire    NUMERIC    DEFAULT 0;
 
 ALTER TABLE blueprint_weapons
     RENAME TO blueprint_weapons_old;
