@@ -1,4 +1,4 @@
-CREATE TABLE availabilities
+CREATE TABLE IF NOT EXISTS availabilities
 (
     id           UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     reason       TEXT             NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE availabilities
 
 INSERT INTO availabilities (id, reason, available_at)
 VALUES ('518ffb3f-8595-4db0-b9ea-46285f6ccd2f', 'Nexus Release',
-        '2023-07-22 00:00:00');
+        '2023-07-22 00:00:00') on conflict do nothing;
 -- TODO: move this to static data csv
 
 -- mechs
@@ -43,6 +43,9 @@ ALTER TABLE blueprint_mech_skin
 
 ALTER TABLE blueprint_weapons
     DROP COLUMN default_damage_type;
+
+ALTER TABLE weapons
+    DROP COLUMN IF EXISTS default_damage_type;
 
 DROP TYPE IF EXISTS DAMAGE_TYPE;
 CREATE TYPE DAMAGE_TYPE AS ENUM ('KINETIC', 'ENERGY', 'EXPLOSIVE');

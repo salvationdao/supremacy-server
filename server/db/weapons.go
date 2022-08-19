@@ -451,7 +451,7 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RateOfFire, opts.FilterStatRateOfFire)...)
 	}
 	if opts.FilterStatEnergyCosts != nil {
-		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.EnergyCost, opts.FilterStatEnergyCosts)...)
+		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.PowerCost, opts.FilterStatEnergyCosts)...)
 	}
 	if opts.FilterStatProjectileSpeed != nil {
 		queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.ProjectileSpeed, opts.FilterStatProjectileSpeed)...)
@@ -631,7 +631,7 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Spread)),
 				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.RateOfFire)),
 				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ProjectileSpeed)),
-				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.EnergyCost)),
+				fmt.Sprintf(`MAX(%s)`, qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.PowerCost)),
 			),
 			qm.InnerJoin(fmt.Sprintf(
 				"%s on %s = %s",
@@ -675,7 +675,7 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.Spread),
 			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.RateOfFire),
 			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.ProjectileSpeed),
-			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.EnergyCost),
+			fmt.Sprintf(`MAX(%s)`, boiler.BlueprintWeaponColumns.PowerCost),
 		),
 	).QueryRow(conn).Scan(
 		&output.MaxAmmo,

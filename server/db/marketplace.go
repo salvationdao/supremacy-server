@@ -614,7 +614,7 @@ func MarketplaceItemSaleList(
 			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RateOfFire, weaponStats.FilterStatRateOfFire)...)
 		}
 		if weaponStats.FilterStatEnergyCosts != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.EnergyCost, weaponStats.FilterStatEnergyCosts)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.PowerCost, weaponStats.FilterStatEnergyCosts)...)
 		}
 		if weaponStats.FilterStatProjectileSpeed != nil {
 			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.ProjectileSpeed, weaponStats.FilterStatProjectileSpeed)...)

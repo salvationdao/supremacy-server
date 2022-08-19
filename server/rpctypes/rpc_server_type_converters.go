@@ -450,11 +450,11 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.EnergyCost.Valid && !i.EnergyCost.Decimal.IsZero() {
+		if i.PowerCost.Valid && !i.PowerCost.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
-				Value:       i.EnergyCost.Decimal.InexactFloat64(),
+				Value:       i.PowerCost.Decimal.InexactFloat64(),
 			})
 		}
 

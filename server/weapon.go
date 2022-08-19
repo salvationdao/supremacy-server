@@ -31,7 +31,7 @@ type Weapon struct {
 	Radius                null.Int            `json:"radius,omitempty"`
 	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
-	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
+	PowerCost             decimal.NullDecimal `json:"power_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
@@ -77,7 +77,7 @@ type BlueprintWeapon struct {
 	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
 	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
-	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
+	PowerCost           decimal.NullDecimal `json:"power_cost,omitempty"`
 	Collection          string              `json:"collection"`
 	BrandID             null.String         `json:"brand_id,omitempty"`
 	DefaultSkinID       string              `json:"default_skin_id"`
@@ -133,7 +133,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff,
 		ProjectileSpeed:     weapon.ProjectileSpeed,
 		MaxAmmo:             weapon.MaxAmmo,
-		EnergyCost:          weapon.EnergyCost,
+		PowerCost:           weapon.PowerCost,
 		Collection:          weapon.Collection,
 		BrandID:             weapon.BrandID,
 		DefaultSkinID:       weapon.DefaultSkinID,
@@ -185,7 +185,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		Radius:              weapon.R.Blueprint.Radius,
 		RadiusDamageFalloff: weapon.R.Blueprint.RadiusDamageFalloff,
 		ProjectileSpeed:     weapon.R.Blueprint.ProjectileSpeed,
-		EnergyCost:          weapon.R.Blueprint.EnergyCost,
+		PowerCost:           weapon.R.Blueprint.PowerCost,
 		MaxAmmo:             weapon.R.Blueprint.MaxAmmo,
 
 		UpdatedAt:            weapon.UpdatedAt,
