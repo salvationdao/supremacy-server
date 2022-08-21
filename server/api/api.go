@@ -199,7 +199,7 @@ func NewAPI(
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
-		r.Get("/test_stream", WithError(api.OvenStreamsGet))
+		// r.Get("/test_stream", WithError(api.OvenStreamsGet))
 
 		r.Group(func(r chi.Router) {
 			r.Use(server.RestDatadogTrace(config.Environment))
