@@ -208,12 +208,12 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 					MIN(%[3]s)
 				FROM %[4]s
 			`,
-			boiler.MechStatColumns.MechID,
-			boiler.MechStatColumns.TotalKills,
-			boiler.MechStatColumns.TotalWins,
-			boiler.TableNames.MechStats,
-			)).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
-		if err != nil {
+		boiler.MechStatColumns.MechID,
+		boiler.MechStatColumns.TotalKills,
+		boiler.MechStatColumns.TotalWins,
+		boiler.TableNames.MechStats,
+	)).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
+	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "QueryRow").Err(err).Msg("unable to get max, min value of total_kills")
 		return terror.Error(err, "Unable to retrieve ")
@@ -282,5 +282,16 @@ func (api *API) ArenaClosedSubscribeHandler(ctx context.Context, key string, pay
 
 	// send arena isn't close
 	reply(false)
+	return nil
+}
+
+func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(nil)
+		return nil
+	}
+
+	reply(arena.LastBattleResult)
 	return nil
 }
