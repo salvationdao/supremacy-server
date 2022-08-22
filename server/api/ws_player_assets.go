@@ -18,6 +18,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kevinms/leakybucket-go"
@@ -1262,11 +1263,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 type PlayerAssetMechEquipRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		MechID         string        `json:"mech_id"`
-		EquipPowerCore string        `json:"equip_power_core"`
-		EquipShield    string        `json:"equip_shield"`
-		EquipWeapons   []EquipWeapon `json:"equip_weapons"`
-		EquipMechSkin  string        `json:"equip_mech_skin"`
+		MechID         string         `json:"mech_id"`
+		EquipPowerCore string         `json:"equip_power_core"`
+		EquipUtility   []EquipUtility `json:"equip_utility"`
+		EquipWeapons   []EquipWeapon  `json:"equip_weapons"`
+		EquipMechSkin  string         `json:"equip_mech_skin"`
 	} `json:"payload"`
 }
 
@@ -1274,6 +1275,11 @@ type EquipWeapon struct {
 	WeaponID    string `json:"weapon_id"`
 	SlotNumber  int    `json:"slot_number"`
 	InheritSkin bool   `json:"inherit_skin"`
+}
+
+type EquipUtility struct {
+	UtilityID  string `json:"utility_id"`
+	SlotNumber int    `json:"slot_number"`
 }
 
 const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
@@ -1299,6 +1305,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(terror.ErrUnauthorised, "You cannot modify a mech that does not belong to you.")
 	}
 
+	spew.Dump(req.Payload)
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return terror.Error(err, errorMsg)
@@ -1308,7 +1316,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	if req.Payload.EquipPowerCore != "" {
 		//
 	}
-	if req.Payload.EquipShield != "" {
+	if len(req.Payload.EquipUtility) != 0 {
 		//
 	}
 	if len(req.Payload.EquipWeapons) != 0 {

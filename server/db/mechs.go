@@ -255,26 +255,41 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			// TODO: make this boiler/typesafe
 			fmt.Sprintf(`
 				(
-					SELECT mw.chassis_id, json_agg(_u) as utility
-					FROM mech_utility mw
-					INNER JOIN (
-						SELECT
-							_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpu.image_url as image_url, _bpu.avatar_url as avatar_url, _bpu.card_animation_url as card_animation_url, _bpu.animation_url as animation_url,
-							to_json(_us) as shield
-						--	to_json(_ua) as accelerator,
-						--	to_json(_uam) as attack_drone,
-						--	to_json(_uad) as anti_missile,
-						--	to_json(_urd) as repair_drone
-						FROM utility _u
-						INNER JOIN collection_items _ci on _ci.item_id = _u.id
-						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
-						LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-						--LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-						--LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-						--LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-						--LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+					SELECT
+						mw.chassis_id,
+						json_agg(_u) AS utility
+					FROM
+						mech_utility mw
+						INNER JOIN (
+							SELECT
+								_u.*,
+								_ci.hash,
+								_ci.token_id,
+								_ci.tier,
+								_ci.owner_id,
+								_bpu.image_url AS image_url,
+								_bpu.avatar_url AS avatar_url,
+								_bpu.card_animation_url AS card_animation_url,
+								_bpu.animation_url AS animation_url,
+								to_json(_us) AS shield,
+								_mu.slot_number AS slot_number
+								--	to_json(_ua) as accelerator,
+								--	to_json(_uam) as attack_drone,
+								--	to_json(_uad) as anti_missile,
+								--	to_json(_urd) as repair_drone
+							FROM
+								utility _u
+								INNER JOIN collection_items _ci ON _ci.item_id = _u.id
+								INNER JOIN blueprint_utility _bpu ON _bpu.id = _u.blueprint_id
+								INNER JOIN mech_utility _mu ON _mu.utility_id = _u.id
+								LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+								--LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+								--LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+								--LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+								--LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
 					) _u ON mw.utility_id = _u.id
-					GROUP BY mw.chassis_id
+					GROUP BY
+						mw.chassis_id
 				) %s on %s = %s `,
 				utilityTableName,
 				qm.Rels(utilityTableName, boiler.MechUtilityColumns.ChassisID),

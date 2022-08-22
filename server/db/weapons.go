@@ -284,7 +284,7 @@ func AttachWeaponToMech(trx *sql.Tx, ownerID, mechID, weaponID string) error {
 		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("no available slots on mech to insert weapon")
 		return terror.Error(err, "There are no more slots on this mech to equip this weapon.")
 	} else if err != nil {
-		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available slots on mech")
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available weapon slots on mech")
 		return terror.Error(err)
 	}
 

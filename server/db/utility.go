@@ -1,12 +1,14 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -429,7 +431,18 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 
 // AttachUtilityToMech attaches a Utility to a mech
 // If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
-func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lockedToMech bool) error {
+func AttachUtilityToMech(trx *sql.Tx, ownerID, mechID, utilityID string, lockedToMech bool) error {
+	tx := trx
+	var err error
+	if trx == nil {
+		tx, err = gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech.ID", mechID).Str("utility ID", utilityID).Msg("failed to equip utility to mech, issue creating tx")
+			return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+		}
+		defer tx.Rollback()
+	}
+
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
 	mechCI, err := CollectionItemFromItemID(tx, mechID)
 	if err != nil {
@@ -470,15 +483,8 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 		return terror.Error(err)
 	}
 
-	// check current utility count
-	if len(mech.R.ChassisMechUtilities)+1 > mech.UtilitySlots {
-		err := fmt.Errorf("utility cannot fit")
-		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("adding this utility brings mechs utilities over mechs utility slots")
-		return terror.Error(err, fmt.Sprintf("War machine already has %d utilities equipped and is only has %d utility slots.", len(mech.R.ChassisMechUtilities), mech.UtilitySlots))
-	}
-
 	// check utility isn't already equipped to another war machine
-	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(tx)
+	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(null.StringFrom(utilityID))).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to check if a mech and utility join already exists")
 		return terror.Error(err)
@@ -489,25 +495,41 @@ func AttachUtilityToMech(tx boil.Executor, ownerID, mechID, utilityID string, lo
 		return terror.Error(err, "This utility is already equipped to another war machine, try again or contact support.")
 	}
 
+	// get next available slot
+	availableSlot, err := boiler.MechUtilities(
+		boiler.MechUtilityWhere.ChassisID.EQ(mech.ID),
+		boiler.MechUtilityWhere.UtilityID.IsNull(),
+		qm.OrderBy(fmt.Sprintf("%s ASC", boiler.MechWeaponColumns.SlotNumber)),
+	).One(tx)
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("no available slots on mech to insert utility")
+		return terror.Error(err, "There are no more slots on this mech to equip this utility.")
+	} else if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mech.ID).Msg("failed to check for available utility slots on mech")
+		return terror.Error(err)
+	}
+
 	utility.EquippedOn = null.StringFrom(mech.ID)
 	utility.LockedToMech = lockedToMech
-
 	_, err = utility.Update(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("utility", utility).Msg("failed to update utility")
 		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
 	}
 
-	utilityMechJoin := boiler.MechUtility{
-		ChassisID:  mech.ID,
-		UtilityID:  utility.ID,
-		SlotNumber: len(mech.R.ChassisMechUtilities), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
+	availableSlot.UtilityID = null.StringFrom(utility.ID)
+	_, err = availableSlot.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("utility", utility).Msg(" failed to equip utility to war machine")
+		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
 	}
 
-	err = utilityMechJoin.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Interface("utilityMechJoin", utilityMechJoin).Msg(" failed to equip utility to war machine")
-		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+	if trx == nil {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachUtilityToMech")
+			return terror.Error(err)
+		}
 	}
 
 	return nil
