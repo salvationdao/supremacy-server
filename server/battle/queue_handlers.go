@@ -148,10 +148,13 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	var tx *sql.Tx
+	paidTxID := ""
+
 	deployedMechs := []*boiler.CollectionItem{}
 	for _, mci := range mcis {
 		err = func() error {
-			tx, err := gamedb.StdConn.Begin()
+			tx, err = gamedb.StdConn.Begin()
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
 				return fmt.Errorf(terror.Echo(err))
@@ -186,7 +189,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			}
 
 			// pay battle queue fee
-			paidTxID, err := am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			paidTxID, err = am.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 				Amount:               bqf.Amount.StringFixed(0),
@@ -204,6 +207,23 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return terror.Error(err, "Failed to pay sups on queuing mech.")
 			}
 
+			refundFunc := func() {
+				// refund queue fee
+				_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+
+			bqf.PaidTXID = null.StringFrom(paidTxID)
+			_, err = bqf.Update(tx, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
+			if err != nil {
+				refundFunc()
+				gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
+				return terror.Error(err, "Failed to update queue fee transaction id")
+			}
+
+			// stop repair offers, if there is any
 			if index := slices.IndexFunc(rcs, func(rc *boiler.RepairCase) bool { return rc.MechID == mci.ItemID }); index != -1 {
 				rc := rcs[index]
 				// cancel all the existing offer
@@ -213,14 +233,17 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 						ids = append(ids, ro.ID)
 					}
 
-					select {
-					case am.RepairOfferCloseChan <- &RepairOfferClose{
-						OfferIDs:          ids,
-						OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
-						AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
-					}:
-					case <-time.After(5 * time.Second):
-						return terror.Error(fmt.Errorf("failed to terminate repair case"), "Failed to close the repair case of the mech.")
+					err = am.SendRepairFunc(func() error {
+						err = am.CloseRepairOffers(rc.R.RepairOffers, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+						if err != nil {
+							return err
+						}
+
+						return nil
+					})
+					if err != nil {
+						refundFunc()
+						return err
 					}
 				}
 			}
@@ -228,15 +251,10 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			// Commit transaction
 			err = tx.Commit()
 			if err != nil {
+				refundFunc()
 				gamelog.L.Error().Str("log_name", "battle arena").
 					Interface("mech id", mci.ItemID).
 					Err(err).Msg("unable to commit mech insertion into queue")
-
-				// refund queue fee
-				_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
-				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
-				}
 
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
@@ -253,12 +271,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			}()
 
 			deployedMechs = append(deployedMechs, mci)
-
-			bqf.PaidTXID = null.StringFrom(paidTxID)
-			_, err = bqf.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueFeeColumns.PaidTXID))
-			if err != nil {
-				gamelog.L.Error().Interface("battle queue fee", bqf).Err(err).Msg("Failed to update battle queue fee transaction id")
-			}
 
 			return nil
 		}()
@@ -277,7 +289,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	go CalcNextQueueStatus(factionID)
 
 	if len(deployedMechs) != len(req.Payload.MechIDs) {
-		return terror.Error(fmt.Errorf("not all the mechs are deployed"), "Not all the mechs are deployed.")
+		return terror.Error(fmt.Errorf("not all the mechs are deployed"), "Mechs are partially deployed.")
 	}
 
 	reply(QueueJoinHandlerResponse{

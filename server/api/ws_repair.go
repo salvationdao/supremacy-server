@@ -85,9 +85,6 @@ type RepairOfferIssueRequest struct {
 	} `json:"payload"`
 }
 
-// prevent owner issue multi repair offer on the same mech
-var mechRepairOfferBucket = leakybucket.NewCollector(1, 1, true)
-
 func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	now := time.Now()
 
@@ -101,177 +98,199 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(fmt.Errorf("missing mech id"), "Mech id is not provided.")
 	}
 
-	for _, mechID := range req.Payload.MechIDs {
-		if mechRepairOfferBucket.Add(mechID, 1) == 0 {
-			return terror.Error(fmt.Errorf("too many request"), "One of the mech has issue more than one repair offer.")
-		}
-	}
-
-	// validate ownership
-	cis, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
-		return terror.Error(err, "Failed to load war machine detail.")
-	}
-
-	if len(req.Payload.MechIDs) != len(cis) {
-		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
-	}
-
-	for _, ci := range cis {
-		if ci.OwnerID != user.ID {
-			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
-		}
-	}
-
-	// look for repair cases
-	mrcs, err := boiler.RepairCases(
-		boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
-		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		qm.Load(
-			boiler.RepairCaseRels.RepairOffers,
-			boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
-			boiler.RepairOfferWhere.ClosedAt.IsNull(),
-		),
-	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Strs("mech ids", req.Payload.MechIDs).Msg("Failed to query mech repair case.")
-		return terror.Error(err, "Failed to load mech repair case.")
-	}
-
-	if len(mrcs) != len(cis) {
-		return terror.Error(fmt.Errorf("not all the mech need to be repaired"), "List contains mech which doesn't need to be repaired.")
-	}
-
-	for _, mrc := range mrcs {
-		if mrc == nil {
-			return terror.Error(fmt.Errorf("mech does not have repair case"), "The mech does not need to be repaired.")
-		}
-
-		if mrc.BlocksRequiredRepair == mrc.BlocksRepaired {
-			return terror.Error(fmt.Errorf("mech already repaired"), "The mech has already repaired.")
-		}
-
-		if mrc.R != nil && mrc.R.RepairOffers != nil && len(mrc.R.RepairOffers) > 0 {
-			return terror.Error(fmt.Errorf("unclosed offer exists"), "Cannot offer a new repair contract if the previous offer has not ended yet.")
-		}
-	}
-
-	// remain hours
-	// register a new repair offer
-	sros := []*server.RepairOffer{}
-	for _, mrc := range mrcs {
-		err = func() error {
-			tx, err := gamedb.StdConn.Begin()
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
-				return terror.Error(err, "Failed to offer repair job.")
-			}
-
-			defer tx.Rollback()
-
-			blocksTotal := mrc.BlocksRequiredRepair - mrc.BlocksRepaired
-
-			offeredSups := req.Payload.OfferedSupsPerBlock.Mul(decimal.New(int64(blocksTotal), 18)).Round(0)
-
-			ro := &boiler.RepairOffer{
-				OfferedByID:       null.StringFrom(user.ID),
-				RepairCaseID:      mrc.ID,
-				BlocksTotal:       blocksTotal,
-				OfferedSupsAmount: offeredSups,
-				ExpiresAt:         now.Add(time.Duration(req.Payload.LastForMinutes) * time.Minute),
-			}
-			err = ro.Insert(tx, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to insert repair offer.")
-				return terror.Error(err, "Failed to offer repair job.")
-			}
-
-			// offering price plus 10%
-			tax := offeredSups.Mul(decimal.NewFromFloat(0.1)).Round(0)
-
-			// pay sups to offer repair job
-			offerTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-				ToUserID:             uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-				Amount:               offeredSups.Add(tax).String(),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("create_repair_offer|%s|%d", ro.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupRepair),
-				Description:          "create repair offer including 10% GST",
-			})
-			if err != nil {
-				gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", offeredSups.Add(tax).String()).Err(err).Msg("Failed to pay sups for offering repair job")
-				return terror.Error(err, "Failed to pay sups for offering repair job.")
-			}
-
-			ro.PaidTXID = null.StringFrom(offerTXID)
-
-			// pay tax to XSYN treasury
-			offerTaxTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-				ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
-				Amount:               tax.String(),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("repair_offer_tax|%s|%d", ro.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupRepair),
-				Description:          "repair offer tax",
-			})
-			if err != nil {
-				gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay tax for offering repair job")
-				return terror.Error(err, "Failed to pay sups for offering repair job.")
-			}
-
-			ro.TaxTXID = null.StringFrom(offerTaxTXID)
-
-			err = tx.Commit()
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
-				return terror.Error(err, "Failed to offer repair contract.")
-			}
-
-			_, err = ro.Update(gamedb.StdConn, boil.Whitelist(
-				boiler.RepairOfferColumns.PaidTXID,
-				boiler.RepairOfferColumns.TaxTXID,
-			))
-			if err != nil {
-				gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to update repair offer transaction id.")
-			}
-
-			sro := &server.RepairOffer{
-				RepairOffer:          ro,
-				BlocksRequiredRepair: mrc.BlocksRequiredRepair,
-				BlocksRepaired:       mrc.BlocksRepaired,
-				SupsWorthPerBlock:    req.Payload.OfferedSupsPerBlock.Mul(decimal.New(1, 18)),
-				WorkingAgentCount:    0,
-				JobOwner:             server.PublicPlayerFromBoiler(user),
-			}
-
-			ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
-			ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
-
-			sros = append(sros, sro)
-
-			return nil
-		}()
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		// validate ownership
+		cis, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+			boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
+		).All(gamedb.StdConn)
 		if err != nil {
-			if len(sros) == 0 {
-				return terror.Error(err, "Failed to offer repair job")
-			}
+			gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
+			return terror.Error(err, "Failed to load war machine detail.")
+		}
 
-			// if repair jobs are partially offered
-			if len(sros) > 0 {
-				//  broadcast to repair offer list update to market
-				ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, sros)
-				return terror.Error(err, "Failed to offer all the repair jobs.")
+		if len(req.Payload.MechIDs) != len(cis) {
+			return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
+		}
+
+		for _, ci := range cis {
+			if ci.OwnerID != user.ID {
+				return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
 			}
 		}
+
+		// look for repair cases
+		mrcs, err := boiler.RepairCases(
+			boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
+			boiler.RepairCaseWhere.CompletedAt.IsNull(),
+			qm.Load(
+				boiler.RepairCaseRels.RepairOffers,
+				boiler.RepairOfferWhere.OfferedByID.IsNotNull(),
+				boiler.RepairOfferWhere.ClosedAt.IsNull(),
+			),
+		).All(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Strs("mech ids", req.Payload.MechIDs).Msg("Failed to query mech repair case.")
+			return terror.Error(err, "Failed to load mech repair case.")
+		}
+
+		if len(mrcs) != len(cis) {
+			return terror.Error(fmt.Errorf("not all the mech need to be repaired"), "List contains mech which doesn't need to be repaired.")
+		}
+
+		for _, mrc := range mrcs {
+			if mrc == nil {
+				return terror.Error(fmt.Errorf("mech does not have repair case"), "The mech does not need to be repaired.")
+			}
+
+			if mrc.BlocksRequiredRepair == mrc.BlocksRepaired {
+				return terror.Error(fmt.Errorf("mech already repaired"), "The mech has already repaired.")
+			}
+
+			if mrc.R != nil && mrc.R.RepairOffers != nil && len(mrc.R.RepairOffers) > 0 {
+				return terror.Error(fmt.Errorf("unclosed offer exists"), "Cannot offer a new repair contract if the previous offer has not ended yet.")
+			}
+		}
+
+		// remain hours
+		// register a new repair offer
+		sros := []*server.RepairOffer{}
+		for _, mrc := range mrcs {
+			err = func() error {
+				tx, err := gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to begin db transaction.")
+					return terror.Error(err, "Failed to offer repair job.")
+				}
+
+				defer tx.Rollback()
+
+				blocksTotal := mrc.BlocksRequiredRepair - mrc.BlocksRepaired
+
+				offeredSups := req.Payload.OfferedSupsPerBlock.Mul(decimal.New(int64(blocksTotal), 18)).Round(0)
+
+				ro := &boiler.RepairOffer{
+					OfferedByID:       null.StringFrom(user.ID),
+					RepairCaseID:      mrc.ID,
+					BlocksTotal:       blocksTotal,
+					OfferedSupsAmount: offeredSups,
+					ExpiresAt:         now.Add(time.Duration(req.Payload.LastForMinutes) * time.Minute),
+				}
+				err = ro.Insert(tx, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to insert repair offer.")
+					return terror.Error(err, "Failed to offer repair job.")
+				}
+
+				// offering price plus 10%
+				tax := offeredSups.Mul(decimal.NewFromFloat(0.1)).Round(0)
+
+				// pay sups to offer repair job
+				offerTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+					ToUserID:             uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+					Amount:               offeredSups.Add(tax).String(),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("create_repair_offer|%s|%d", ro.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupRepair),
+					Description:          "create repair offer including 10% GST",
+				})
+				if err != nil {
+					gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", offeredSups.Add(tax).String()).Err(err).Msg("Failed to pay sups for offering repair job")
+					return terror.Error(err, "Failed to pay sups for offering repair job.")
+				}
+
+				refundOfferSupsFunc := func() {
+					_, err = api.Passport.RefundSupsMessage(offerTXID)
+					if err != nil {
+						gamelog.L.Error().Str("tx id", offerTXID).Err(err).Msg("Failed to refund sups for offering repair job")
+					}
+				}
+
+				ro.PaidTXID = null.StringFrom(offerTXID)
+
+				// pay tax to XSYN treasury
+				offerTaxTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+					ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+					Amount:               tax.String(),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("repair_offer_tax|%s|%d", ro.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupRepair),
+					Description:          "repair offer tax",
+				})
+				if err != nil {
+					refundOfferSupsFunc()
+					gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay tax for offering repair job")
+					return terror.Error(err, "Failed to pay sups for offering repair job.")
+				}
+
+				refundTaxFunc := func() {
+					_, err = api.Passport.RefundSupsMessage(offerTaxTXID)
+					if err != nil {
+						gamelog.L.Error().Str("tx id", offerTaxTXID).Err(err).Msg("Failed to refund tax")
+					}
+				}
+
+				ro.TaxTXID = null.StringFrom(offerTaxTXID)
+
+				_, err = ro.Update(tx, boil.Whitelist(
+					boiler.RepairOfferColumns.PaidTXID,
+					boiler.RepairOfferColumns.TaxTXID,
+				))
+				if err != nil {
+					refundTaxFunc()
+					refundOfferSupsFunc()
+					gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to update repair offer transaction id.")
+					return terror.Error(err, "Failed to update sups transaction id")
+				}
+
+				err = tx.Commit()
+				if err != nil {
+					refundTaxFunc()
+					refundOfferSupsFunc()
+					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+					return terror.Error(err, "Failed to offer repair contract.")
+				}
+
+				sro := &server.RepairOffer{
+					RepairOffer:          ro,
+					BlocksRequiredRepair: mrc.BlocksRequiredRepair,
+					BlocksRepaired:       mrc.BlocksRepaired,
+					SupsWorthPerBlock:    req.Payload.OfferedSupsPerBlock.Mul(decimal.New(1, 18)),
+					WorkingAgentCount:    0,
+					JobOwner:             server.PublicPlayerFromBoiler(user),
+				}
+
+				ws.PublishMessage(fmt.Sprintf("/secure/repair_offer/%s", ro.ID), server.HubKeyRepairOfferSubscribe, sro)
+				ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/active_repair_offer", mrc.MechID), server.HubKeyMechActiveRepairOffer, sro)
+
+				sros = append(sros, sro)
+
+				return nil
+			}()
+
+			if err != nil {
+				if len(sros) == 0 {
+					return terror.Error(err, "Failed to offer repair job")
+				}
+
+				// if repair jobs are partially offered
+				if len(sros) > 0 {
+					//  broadcast to repair offer list update to market
+					ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, sros)
+					return terror.Error(err, "Failed to offer all the repair jobs.")
+				}
+			}
+		}
+
+		ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, sros)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
-	ws.PublishMessage("/secure/repair_offer/update", server.HubKeyRepairOfferUpdateSubscribe, sros)
 	reply(true)
 
 	return nil
@@ -290,32 +309,34 @@ func (api *API) RepairOfferClose(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	if mechRepairOfferBucket.Add(user.ID+req.Payload.RepairOfferID, 1) == 0 {
-		return terror.Error(fmt.Errorf("too many request"), "Too many mech repair request.")
-	}
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		ro, err := boiler.FindRepairOffer(gamedb.StdConn, req.Payload.RepairOfferID)
+		if err != nil {
+			return terror.Error(err, "Failed to get repair offer id.")
+		}
 
-	ro, err := boiler.FindRepairOffer(gamedb.StdConn, req.Payload.RepairOfferID)
+		if ro.OfferedByID.String != user.ID {
+			return terror.Error(fmt.Errorf("cannot cancel others offer"), "Can only cancel the offer which is issued by yourself.")
+		}
+
+		if ro.ExpiresAt.Before(time.Now()) {
+			return terror.Error(fmt.Errorf("offer is expired"), "The offer is already expired.")
+		}
+
+		if ro.ClosedAt.Valid {
+			return terror.Error(fmt.Errorf("offer is closed"), "The offer is already closed.")
+		}
+
+		err = api.ArenaManager.CloseRepairOffers([]*boiler.RepairOffer{ro}, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to close repair offer.")
+			return terror.Error(err, "Failed to close repair offer.")
+		}
+
+		return nil
+	})
 	if err != nil {
-		return terror.Error(err, "Failed to get repair offer id.")
-	}
-
-	if ro.OfferedByID.String != user.ID {
-		return terror.Error(fmt.Errorf("cannot cancel others offer"), "Can only cancel the offer which is issued by yourself.")
-	}
-
-	if ro.ExpiresAt.Before(time.Now()) {
-		return terror.Error(fmt.Errorf("offer is expired"), "The offer is already expired.")
-	}
-
-	if ro.ClosedAt.Valid {
-		return terror.Error(fmt.Errorf("offer is closed"), "The offer is already closed.")
-	}
-
-	// close offer
-	api.ArenaManager.RepairOfferCloseChan <- &battle.RepairOfferClose{
-		OfferIDs:          []string{ro.ID},
-		OfferClosedReason: boiler.RepairFinishReasonSTOPPED,
-		AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
+		return err
 	}
 
 	reply(true)
@@ -685,15 +706,17 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to load incomplete repair offer")
 	}
 
-	ids := []string{}
-	for _, ro := range ros {
-		ids = append(ids, ro.ID)
-	}
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		err = api.ArenaManager.CloseRepairOffers(ros, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
+			return terror.Error(err, "Failed to close repair offer.")
+		}
 
-	api.ArenaManager.RepairOfferCloseChan <- &battle.RepairOfferClose{
-		OfferIDs:          ids,
-		OfferClosedReason: boiler.RepairAgentFinishReasonSUCCEEDED,
-		AgentClosedReason: boiler.RepairAgentFinishReasonEXPIRED,
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	reply(true)

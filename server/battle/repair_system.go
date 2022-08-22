@@ -14,13 +14,27 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/xsyn_rpcclient"
+	"sync"
 	"time"
 )
 
-type RepairOfferClose struct {
-	OfferIDs          []string
-	OfferClosedReason string
-	AgentClosedReason string
+func (am *ArenaManager) SendRepairFunc(fn func() error) error {
+	var err error
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	am.RepairOfferFuncChan <- func() {
+		err = fn()
+		wg.Done()
+	}
+
+	wg.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (am *ArenaManager) RepairOfferCleaner() {
@@ -51,43 +65,19 @@ func (am *ArenaManager) RepairOfferCleaner() {
 				continue
 			}
 
-			err = am.closeRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
+			err = am.CloseRepairOffers(ros, boiler.RepairFinishReasonEXPIRED, boiler.RepairAgentFinishReasonEXPIRED)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
 				continue
 			}
 
-		case roc := <-am.RepairOfferCloseChan:
-			ros, err := boiler.RepairOffers(
-				boiler.RepairOfferWhere.ID.IN(roc.OfferIDs),
-				boiler.RepairOfferWhere.ClosedAt.IsNull(), // double check it is not closed yet
-				qm.Load(boiler.RepairOfferRels.RepairCase),
-				qm.Load(boiler.RepairOfferRels.RepairBlocks),
-				qm.Load(
-					boiler.RepairOfferRels.RepairAgents,
-					boiler.RepairAgentWhere.FinishedAt.IsNull(),
-				),
-				qm.Load(boiler.RepairOfferRels.OfferedBy),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to get repair offers")
-				continue
-			}
-
-			if len(ros) == 0 {
-				continue
-			}
-
-			err = am.closeRepairOffers(ros, roc.OfferClosedReason, roc.AgentClosedReason)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to close repair offers.")
-				continue
-			}
+		case fn := <-am.RepairOfferFuncChan:
+			fn()
 		}
 	}
 }
 
-func (am *ArenaManager) closeRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
+func (am *ArenaManager) CloseRepairOffers(ros boiler.RepairOfferSlice, offerCloseReason string, agentCloseReason string) error {
 	now := time.Now()
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
