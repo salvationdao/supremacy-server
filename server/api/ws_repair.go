@@ -98,6 +98,7 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(fmt.Errorf("missing mech id"), "Mech id is not provided.")
 	}
 
+	// send repair offer func in channel
 	err = api.ArenaManager.SendRepairFunc(func() error {
 		// validate ownership
 		cis, err := boiler.CollectionItems(
@@ -152,7 +153,6 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 			}
 		}
 
-		// remain hours
 		// register a new repair offer
 		sros := []*server.RepairOffer{}
 		for _, mrc := range mrcs {
