@@ -57,28 +57,24 @@ BEGIN
     SELECT (COALESCE((SELECT TRUE
                       FROM battle_lobbies_mechs blm
                                INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
-                      WHERE blm.mech_id = new.mech_id), FALSE)
-               )
+                      WHERE blm.mech_id = new.mech_id), FALSE))
     INTO already_join_lobby;
 
     SELECT (SELECT lb.each_faction_mech_amount = COALESCE((SELECT COUNT(*)
-                                                  FROM battle_lobbies_mechs blm
-                                                  WHERE blm.battle_lobby_id = new.battle_lobby_id
-                                                    AND blm.faction_id = new.faction_id), 0)
+                                                           FROM battle_lobbies_mechs blm
+                                                           WHERE blm.battle_lobby_id = new.battle_lobby_id
+                                                             AND blm.faction_id = new.faction_id), 0)
             FROM battle_lobbies lb
             WHERE lb.id = new.battle_lobby_id)
     INTO lobby_is_full;
 -- update blocks required in repair cases and continue the process
-    IF already_join_lobby THEN
-        RAISE EXCEPTION 'already join another lobby';
-    ELSE IF lobby_is_full THEN
-        RAISE EXCEPTION 'lobby is full';
-    ELSE
-        RETURN new;
-    END IF;
-END
-$check_lobby_mech$
-    LANGUAGE plpgsql;
+    IF already_join_lobby THEN RAISE EXCEPTION 'already join another lobby'; END IF;
+
+    IF lobby_is_full THEN RAISE EXCEPTION 'lobby is full'; END IF;
+
+    RETURN new;
+END;
+$check_lobby_mech$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_check_lobby_mech ON battle_lobbies_mechs;
 
