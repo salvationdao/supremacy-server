@@ -220,7 +220,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 						FROM mech_weapons mw
 						INNER JOIN
 							(
-								SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin, _bpw.label, _wmsc.image_url as image_url, _wmsc.avatar_url as avatar_url, _wmsc.card_animation_url as card_animation_url, _wmsc.animation_url as animation_url
+								SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, to_json(_ws) as weapon_skin, _bpw.label, _bpw.weapon_model_id as weapon_model_id, _wmsc.image_url as image_url, _wmsc.avatar_url as avatar_url, _wmsc.card_animation_url as card_animation_url, _wmsc.animation_url as animation_url
 								FROM weapons _w
 								INNER JOIN collection_items _ci on _ci.item_id = _w.id
 								INNER JOIN blueprint_weapons _bpw on _bpw.id = _w.blueprint_id
