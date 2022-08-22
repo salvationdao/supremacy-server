@@ -3,16 +3,12 @@ package api
 import (
 	"context"
 	"github.com/ninja-syndicate/ws"
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"time"
 )
 
 func (api *API) LiveViewerCount(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	reply(&ViewerLiveCount{})
-	api.ViewerUpdateChan <- true
+	reply(len(ws.TrackedIdents()))
 	return nil
 }
 
@@ -32,7 +28,7 @@ func (api *API) debounceSendingViewerCount() {
 		}
 	}()
 
-	interval := 1 * time.Second
+	interval := 500 * time.Millisecond
 	timer := time.NewTimer(interval)
 	for {
 		select {
@@ -41,34 +37,8 @@ func (api *API) debounceSendingViewerCount() {
 		case <-ws.ClientDisconnectedChan:
 			timer.Reset(interval)
 		case <-timer.C:
-			// get user ids from ws connection
-			playerIDs := ws.TrackedIdents()
-
-			// cal current online player
-			if len(playerIDs) > 0 {
-				ps, err := boiler.Players(
-					boiler.PlayerWhere.ID.IN(playerIDs),
-				).All(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Debug().Strs("playerIDs", playerIDs).Msg("Failed to query players.")
-					continue
-				}
-
-				result := &ViewerLiveCount{}
-				for _, p := range ps {
-					switch p.FactionID.String {
-					case server.RedMountainFactionID:
-						result.RedMountain += 1
-					case server.BostonCyberneticsFactionID:
-						result.Boston += 1
-					case server.ZaibatsuFactionID:
-						result.Zaibatsu += 1
-					default:
-						result.Other += 1
-					}
-				}
-				ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, result)
-			}
+			// return total amount of tracked player
+			ws.PublishMessage("/public/live_viewer_count", HubKeyViewerLiveCountUpdated, len(ws.TrackedIdents()))
 		}
 	}
 }
