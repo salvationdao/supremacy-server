@@ -168,9 +168,9 @@ const (
 
 // Enum values for DamageType
 const (
-	DamageTypeKINETIC   = "KINETIC"
-	DamageTypeENERGY    = "ENERGY"
-	DamageTypeEXPLOSIVE = "EXPLOSIVE"
+	DamageTypeKinetic   = "Kinetic"
+	DamageTypeEnergy    = "Energy"
+	DamageTypeExplosive = "Explosive"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

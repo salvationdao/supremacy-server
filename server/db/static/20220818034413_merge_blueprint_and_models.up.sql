@@ -37,6 +37,10 @@ ALTER TABLE mech_models
     RENAME TO blueprint_mechs;
 
 ALTER TABLE blueprint_mech_skin
+    ALTER COLUMN stat_modifier SET DEFAULT 0,
+    ALTER COLUMN stat_modifier SET NOT NULL,
+    ALTER COLUMN stat_modifier TYPE INT;
+ALTER TABLE blueprint_mech_skin
     RENAME COLUMN stat_modifier TO default_level;
 
 -- weapons

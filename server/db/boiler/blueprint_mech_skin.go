@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,13 +23,13 @@ import (
 
 // BlueprintMechSkin is an object representing the database table.
 type BlueprintMechSkin struct {
-	ID              string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection      string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label           string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier            string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt       time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultLevel    decimal.NullDecimal `boiler:"default_level" boil:"default_level" json:"default_level,omitempty" toml:"default_level" yaml:"default_level,omitempty"`
-	ProfileAvatarID null.String         `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection      string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier            string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultLevel    int         `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
+	ProfileAvatarID null.String `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -80,7 +79,7 @@ var BlueprintMechSkinWhere = struct {
 	Label           whereHelperstring
 	Tier            whereHelperstring
 	CreatedAt       whereHelpertime_Time
-	DefaultLevel    whereHelperdecimal_NullDecimal
+	DefaultLevel    whereHelperint
 	ProfileAvatarID whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
@@ -88,7 +87,7 @@ var BlueprintMechSkinWhere = struct {
 	Label:           whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
 	Tier:            whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
-	DefaultLevel:    whereHelperdecimal_NullDecimal{field: "\"blueprint_mech_skin\".\"default_level\""},
+	DefaultLevel:    whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
 	ProfileAvatarID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 

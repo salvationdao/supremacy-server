@@ -92,11 +92,11 @@ const (
 
 func DamageTypeFromString(dt string) DamageType {
 	switch dt {
-	case boiler.DamageTypeKINETIC:
+	case boiler.DamageTypeKinetic:
 		return DamageTypeDefault
-	case boiler.DamageTypeENERGY:
+	case boiler.DamageTypeEnergy:
 		return DamageTypeEnergy
-	case boiler.DamageTypeEXPLOSIVE:
+	case boiler.DamageTypeExplosive:
 		return DamageTypeExplosive
 	}
 	return DamageTypeDefault
@@ -285,7 +285,7 @@ func UtilityShieldFromServer(util *server.UtilityShield) *UtilityShield {
 		UtilityID:          util.UtilityID,
 		Hitpoints:          util.Hitpoints,
 		RechargeRate:       util.RechargeRate,
-		RechargeEnergyCost: util.RechargeEnergyCost,
+		RechargeEnergyCost: util.BoostedRechargeRate,
 	}
 }
 

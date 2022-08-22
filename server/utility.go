@@ -76,10 +76,12 @@ func (b *UtilityAttackDrone) Scan(value interface{}) error {
 }
 
 type UtilityShield struct {
-	UtilityID          string `json:"utility_id"`
-	Hitpoints          int    `json:"hitpoints"`
-	RechargeRate       int    `json:"recharge_rate"`
-	RechargeEnergyCost int    `json:"recharge_energy_cost"`
+	UtilityID           string `json:"utility_id"`
+	Hitpoints           int    `json:"hitpoints"`
+	BoostedHitpoints    int    `json:"boosted_hitpoints"`
+	RechargeRate        int    `json:"recharge_rate"`
+	BoostedRechargeRate int    `json:"boosted_recharge_rate"`
+	RechargeEnergyCost  int    `json:"recharge_energy_cost"`
 }
 
 func (b *UtilityShield) Scan(value interface{}) error {
@@ -357,16 +359,16 @@ func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, ant
 func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -389,16 +391,16 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityAttackDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -423,16 +425,16 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityRepairDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -456,16 +458,16 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAntiMissile, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -487,16 +489,16 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAccelerator, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
