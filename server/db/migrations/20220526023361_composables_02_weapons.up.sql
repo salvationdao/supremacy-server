@@ -19,7 +19,7 @@ ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
-    ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'KINETIC',
+    ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN genesis_token_id         BIGINT,
     ADD COLUMN limited_release_token_id BIGINT,
     ADD COLUMN weapon_type              WEAPON_TYPE,
@@ -182,7 +182,7 @@ SET damage                = 12,
     projectile_speed      = 36000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
@@ -196,7 +196,7 @@ SET damage                = 130,
     projectile_speed      = 80000,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
@@ -225,7 +225,7 @@ SET damage                = 80,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 
@@ -269,7 +269,7 @@ SET damage                = 12,
     projectile_speed      = 36000,
     radius_damage_falloff = 0,
     power_cost           = 10,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
@@ -283,7 +283,7 @@ SET damage                = 130,
     projectile_speed      = 80000,
     radius_damage_falloff = 0,
     power_cost           = 15,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
@@ -312,7 +312,7 @@ SET damage                = 80,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     power_cost           = 15,
-    default_damage_type   = 'KINETIC'
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 

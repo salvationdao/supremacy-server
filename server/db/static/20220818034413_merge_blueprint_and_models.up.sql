@@ -45,14 +45,11 @@ ALTER TABLE blueprint_weapons
     DROP COLUMN default_damage_type;
 
 
-DROP TYPE IF EXISTS DAMAGE_TYPE;
-CREATE TYPE DAMAGE_TYPE AS ENUM ('KINETIC', 'ENERGY', 'EXPLOSIVE');
-
 ALTER TABLE weapon_models
     ADD COLUMN game_client_weapon_id TEXT,
     ADD COLUMN collection            COLLECTION DEFAULT 'supremacy-general' NOT NULL,
     ADD COLUMN damage                INTEGER                                NOT NULL default 0,
-    ADD COLUMN default_damage_type   DAMAGE_TYPE                            NOT NULL DEFAULT 'KINETIC',
+    ADD COLUMN default_damage_type   DAMAGE_TYPE                            NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN damage_falloff        INT        DEFAULT 0,
     ADD COLUMN damage_falloff_rate   INT        DEFAULT 0,
     ADD COLUMN radius                INT        DEFAULT 0,

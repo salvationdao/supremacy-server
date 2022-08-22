@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS blueprint_weapons
     game_client_weapon_id uuid,
     weapon_type           WEAPON_TYPE                                          NOT NULL,
     collection            COLLECTION               DEFAULT 'supremacy-general' NOT NULL,
-    default_damage_type   DAMAGE_TYPE              DEFAULT 'KINETIC'           NOT NULL,
+    default_damage_type   DAMAGE_TYPE              DEFAULT 'Kinetic'           NOT NULL,
     damage_falloff        integer                  DEFAULT 0,
     damage_falloff_rate   integer                  DEFAULT 0,
     radius                integer                  DEFAULT 0,
