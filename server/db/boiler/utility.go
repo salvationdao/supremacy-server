@@ -899,7 +899,7 @@ func (utilityL) LoadMechUtility(e boil.Executor, singular bool, maybeUtility int
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -961,7 +961,7 @@ func (utilityL) LoadMechUtility(e boil.Executor, singular bool, maybeUtility int
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ID == foreign.UtilityID {
+			if queries.Equal(local.ID, foreign.UtilityID) {
 				local.R.MechUtility = foreign
 				if foreign.R == nil {
 					foreign.R = &mechUtilityR{}
@@ -1691,7 +1691,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 	var err error
 
 	if insert {
-		related.UtilityID = o.ID
+		queries.Assign(&related.UtilityID, o.ID)
 
 		if err = related.Insert(exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
@@ -1702,7 +1702,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 			strmangle.SetParamNames("\"", "\"", 1, []string{"utility_id"}),
 			strmangle.WhereClause("\"", "\"", 2, mechUtilityPrimaryKeyColumns),
 		)
-		values := []interface{}{o.ID, related.ID}
+		values := []interface{}{o.ID, related.ChassisID, related.SlotNumber}
 
 		if boil.DebugMode {
 			fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1712,8 +1712,7 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 			return errors.Wrap(err, "failed to update foreign table")
 		}
 
-		related.UtilityID = o.ID
-
+		queries.Assign(&related.UtilityID, o.ID)
 	}
 
 	if o.R == nil {
@@ -1731,6 +1730,28 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 	} else {
 		related.R.Utility = o
 	}
+	return nil
+}
+
+// RemoveMechUtility relationship.
+// Sets o.R.MechUtility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Utility) RemoveMechUtility(exec boil.Executor, related *MechUtility) error {
+	var err error
+
+	queries.SetScanner(&related.UtilityID, nil)
+	if _, err = related.Update(exec, boil.Whitelist("utility_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MechUtility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.Utility = nil
 	return nil
 }
 
