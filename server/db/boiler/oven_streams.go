@@ -27,6 +27,7 @@ type OvenStream struct {
 	Name                 string            `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	BaseURL              string            `boiler:"base_url" boil:"base_url" json:"base_url" toml:"base_url" yaml:"base_url"`
 	AvailableResolutions types.StringArray `boiler:"available_resolutions" boil:"available_resolutions" json:"available_resolutions" toml:"available_resolutions" yaml:"available_resolutions"`
+	DefaultResolution    string            `boiler:"default_resolution" boil:"default_resolution" json:"default_resolution" toml:"default_resolution" yaml:"default_resolution"`
 	Active               bool              `boiler:"active" boil:"active" json:"active" toml:"active" yaml:"active"`
 
 	R *ovenStreamR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -38,12 +39,14 @@ var OvenStreamColumns = struct {
 	Name                 string
 	BaseURL              string
 	AvailableResolutions string
+	DefaultResolution    string
 	Active               string
 }{
 	ID:                   "id",
 	Name:                 "name",
 	BaseURL:              "base_url",
 	AvailableResolutions: "available_resolutions",
+	DefaultResolution:    "default_resolution",
 	Active:               "active",
 }
 
@@ -52,12 +55,14 @@ var OvenStreamTableColumns = struct {
 	Name                 string
 	BaseURL              string
 	AvailableResolutions string
+	DefaultResolution    string
 	Active               string
 }{
 	ID:                   "oven_streams.id",
 	Name:                 "oven_streams.name",
 	BaseURL:              "oven_streams.base_url",
 	AvailableResolutions: "oven_streams.available_resolutions",
+	DefaultResolution:    "oven_streams.default_resolution",
 	Active:               "oven_streams.active",
 }
 
@@ -89,12 +94,14 @@ var OvenStreamWhere = struct {
 	Name                 whereHelperstring
 	BaseURL              whereHelperstring
 	AvailableResolutions whereHelpertypes_StringArray
+	DefaultResolution    whereHelperstring
 	Active               whereHelperbool
 }{
 	ID:                   whereHelperstring{field: "\"oven_streams\".\"id\""},
 	Name:                 whereHelperstring{field: "\"oven_streams\".\"name\""},
 	BaseURL:              whereHelperstring{field: "\"oven_streams\".\"base_url\""},
 	AvailableResolutions: whereHelpertypes_StringArray{field: "\"oven_streams\".\"available_resolutions\""},
+	DefaultResolution:    whereHelperstring{field: "\"oven_streams\".\"default_resolution\""},
 	Active:               whereHelperbool{field: "\"oven_streams\".\"active\""},
 }
 
@@ -115,8 +122,8 @@ func (*ovenStreamR) NewStruct() *ovenStreamR {
 type ovenStreamL struct{}
 
 var (
-	ovenStreamAllColumns            = []string{"id", "name", "base_url", "available_resolutions", "active"}
-	ovenStreamColumnsWithoutDefault = []string{"name", "base_url", "available_resolutions", "active"}
+	ovenStreamAllColumns            = []string{"id", "name", "base_url", "available_resolutions", "default_resolution", "active"}
+	ovenStreamColumnsWithoutDefault = []string{"name", "base_url", "available_resolutions", "default_resolution", "active"}
 	ovenStreamColumnsWithDefault    = []string{"id"}
 	ovenStreamPrimaryKeyColumns     = []string{"id"}
 	ovenStreamGeneratedColumns      = []string{}
