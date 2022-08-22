@@ -12,5 +12,5 @@ CREATE TABLE oven_streams
 insert into oven_streams 
 (name, base_url, available_resolutions, default_resolution, active)
 values
-('Experimental', 'wss://stream2.supremacy.game:3334/app/staging1', '{480, 720, 1080, 1080_60}', '1080', true);
+('Stream 1', 'wss://stream2.supremacy.game:3334/app/staging1', '{480, 720, 1080, 1080_60}', '1080', true);
 
