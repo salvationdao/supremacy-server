@@ -1436,7 +1436,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(err, errorMsg)
 	}
 
-	updatedMech, err := db.Mech(tx, req.Payload.MechID)
+	updatedMech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
 	if err != nil {
 		return terror.Error(err, errorMsg)
 	}
