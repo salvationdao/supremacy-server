@@ -44,8 +44,6 @@ ALTER TABLE blueprint_mech_skin
 ALTER TABLE blueprint_weapons
     DROP COLUMN default_damage_type;
 
-ALTER TABLE weapons
-    DROP COLUMN IF EXISTS default_damage_type;
 
 DROP TYPE IF EXISTS DAMAGE_TYPE;
 CREATE TYPE DAMAGE_TYPE AS ENUM ('KINETIC', 'ENERGY', 'EXPLOSIVE');
