@@ -305,6 +305,10 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return terror.Error(fmt.Errorf("wrong battle state"), "There is no battle currently to use this ability on.")
 	}
 
+	if arena.currentBattleState() != BattleStageStart {
+		return terror.Error(terror.ErrForbidden, "You cannot execute an ability when the battle has not started yet.")
+	}
+
 	// mech command handler
 	if req.Payload.LocationSelectType == "MECH_COMMAND" {
 		err := arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)

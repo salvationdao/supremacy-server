@@ -30,7 +30,7 @@ type playerQuestCheck struct {
 }
 
 const QuestEventNameProvingGround = "Proving Grounds"
-const QuestEventNameDaily = "Daily Quest"
+const QuestEventNameDaily = "Daily Challenge"
 
 func New() (*System, error) {
 	q := &System{
@@ -430,7 +430,7 @@ func playerQuestGrant(playerID string, questID string) error {
 	// reward mini mech for quest completion
 	miniMechBlueprint, err := boiler.BlueprintPlayerAbilities(
 		boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(18), // TODO: when player abilities are in static data, use ID instead
-		).One(tx)
+	).One(tx)
 	if err != nil {
 		return terror.Error(err, "Failed to get mini mech reward player")
 	}
@@ -460,7 +460,6 @@ func playerQuestGrant(playerID string, questID string) error {
 	if err != nil {
 		return terror.Error(err, "Failed to get mini mech reward player")
 	}
-
 
 	err = tx.Commit()
 	if err != nil {
