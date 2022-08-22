@@ -71,21 +71,6 @@ CREATE TABLE templates
 --     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 -- );
 
-CREATE TABLE blueprint_modules
-(
-    id                UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    brand_id          UUID REFERENCES brands (id),
-
-    slug              TEXT UNIQUE      NOT NULL,
-    label             TEXT UNIQUE      NOT NULL,
-    hitpoint_modifier INTEGER          NOT NULL,
-    shield_modifier   INTEGER          NOT NULL,
-
-    deleted_at        TIMESTAMPTZ,
-    updated_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE blueprint_chassis_blueprint_weapons
 (
     id                   UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),

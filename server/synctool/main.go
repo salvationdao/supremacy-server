@@ -170,6 +170,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sutility_shields.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncStaticUtilityShields(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	return nil
 }
 
@@ -1336,6 +1346,90 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing static quest")
+
+	return nil
+}
+
+
+func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		blueprintUtil := &boiler.BlueprintUtility{
+			ID:                record[0],
+			Label:             record[4],
+			Collection:        record[5],
+			Type: boiler.UtilityTypeSHIELD,
+			AvatarURL:         null.NewString(record[6], record[6] != ""),
+		}
+		blueprintUtilShield := &boiler.BlueprintUtilityShield{
+			BlueprintUtilityID: record[0],
+		}
+		blueprintUtilShield.Hitpoints, err = strconv.Atoi(record[1])
+		if err != nil {
+			return err
+		}
+		blueprintUtilShield.RechargeRate, err = strconv.Atoi(record[2])
+		if err != nil {
+			return err
+		}
+		blueprintUtilShield.RechargeEnergyCost, err = strconv.Atoi(record[3])
+		if err != nil {
+			return err
+		}
+
+
+		// upsert blueprint quest
+		err = blueprintUtil.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintUtilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintUtilityColumns.Label,
+				boiler.BlueprintUtilityColumns.Collection,
+				boiler.BlueprintUtilityColumns.AvatarURL,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error(), blueprintUtil.ID, blueprintUtil.Label)
+			return err
+		}
+		// upsert blueprint quest
+		err = blueprintUtilShield.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintUtilityShieldColumns.BlueprintUtilityID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintUtilityShieldColumns.Hitpoints,
+				boiler.BlueprintUtilityShieldColumns.RechargeRate,
+				boiler.BlueprintUtilityShieldColumns.RechargeEnergyCost,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error(), blueprintUtilShield.ID)
+			return err
+		}
+
+		fmt.Println("UPDATED: "+blueprintUtil.ID, blueprintUtil.Label)
+
+	}
+
+	fmt.Println("Finish syncing static utilities")
 
 	return nil
 }

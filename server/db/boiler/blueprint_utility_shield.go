@@ -107,7 +107,7 @@ var (
 	blueprintUtilityShieldAllColumns            = []string{"id", "blueprint_utility_id", "hitpoints", "recharge_rate", "recharge_energy_cost", "created_at"}
 	blueprintUtilityShieldColumnsWithoutDefault = []string{"blueprint_utility_id"}
 	blueprintUtilityShieldColumnsWithDefault    = []string{"id", "hitpoints", "recharge_rate", "recharge_energy_cost", "created_at"}
-	blueprintUtilityShieldPrimaryKeyColumns     = []string{"id"}
+	blueprintUtilityShieldPrimaryKeyColumns     = []string{"blueprint_utility_id"}
 	blueprintUtilityShieldGeneratedColumns      = []string{}
 )
 
@@ -453,7 +453,7 @@ func (blueprintUtilityShieldL) LoadBlueprintUtility(e boil.Executor, singular bo
 		if foreign.R == nil {
 			foreign.R = &blueprintUtilityR{}
 		}
-		foreign.R.BlueprintUtilityShields = append(foreign.R.BlueprintUtilityShields, object)
+		foreign.R.BlueprintUtilityShield = object
 		return nil
 	}
 
@@ -464,7 +464,7 @@ func (blueprintUtilityShieldL) LoadBlueprintUtility(e boil.Executor, singular bo
 				if foreign.R == nil {
 					foreign.R = &blueprintUtilityR{}
 				}
-				foreign.R.BlueprintUtilityShields = append(foreign.R.BlueprintUtilityShields, local)
+				foreign.R.BlueprintUtilityShield = local
 				break
 			}
 		}
@@ -475,7 +475,7 @@ func (blueprintUtilityShieldL) LoadBlueprintUtility(e boil.Executor, singular bo
 
 // SetBlueprintUtility of the blueprintUtilityShield to the related item.
 // Sets o.R.BlueprintUtility to related.
-// Adds o to related.R.BlueprintUtilityShields.
+// Adds o to related.R.BlueprintUtilityShield.
 func (o *BlueprintUtilityShield) SetBlueprintUtility(exec boil.Executor, insert bool, related *BlueprintUtility) error {
 	var err error
 	if insert {
@@ -489,7 +489,7 @@ func (o *BlueprintUtilityShield) SetBlueprintUtility(exec boil.Executor, insert 
 		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
 		strmangle.WhereClause("\"", "\"", 2, blueprintUtilityShieldPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.BlueprintUtilityID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -510,10 +510,10 @@ func (o *BlueprintUtilityShield) SetBlueprintUtility(exec boil.Executor, insert 
 
 	if related.R == nil {
 		related.R = &blueprintUtilityR{
-			BlueprintUtilityShields: BlueprintUtilityShieldSlice{o},
+			BlueprintUtilityShield: o,
 		}
 	} else {
-		related.R.BlueprintUtilityShields = append(related.R.BlueprintUtilityShields, o)
+		related.R.BlueprintUtilityShield = o
 	}
 
 	return nil
@@ -527,7 +527,7 @@ func BlueprintUtilityShields(mods ...qm.QueryMod) blueprintUtilityShieldQuery {
 
 // FindBlueprintUtilityShield retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBlueprintUtilityShield(exec boil.Executor, iD string, selectCols ...string) (*BlueprintUtilityShield, error) {
+func FindBlueprintUtilityShield(exec boil.Executor, blueprintUtilityID string, selectCols ...string) (*BlueprintUtilityShield, error) {
 	blueprintUtilityShieldObj := &BlueprintUtilityShield{}
 
 	sel := "*"
@@ -535,10 +535,10 @@ func FindBlueprintUtilityShield(exec boil.Executor, iD string, selectCols ...str
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"blueprint_utility_shield\" where \"id\"=$1", sel,
+		"select %s from \"blueprint_utility_shield\" where \"blueprint_utility_id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, iD)
+	q := queries.Raw(query, blueprintUtilityID)
 
 	err := q.Bind(nil, exec, blueprintUtilityShieldObj)
 	if err != nil {
@@ -896,7 +896,7 @@ func (o *BlueprintUtilityShield) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintUtilityShieldPrimaryKeyMapping)
-	sql := "DELETE FROM \"blueprint_utility_shield\" WHERE \"id\"=$1"
+	sql := "DELETE FROM \"blueprint_utility_shield\" WHERE \"blueprint_utility_id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -991,7 +991,7 @@ func (o BlueprintUtilityShieldSlice) DeleteAll(exec boil.Executor) (int64, error
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *BlueprintUtilityShield) Reload(exec boil.Executor) error {
-	ret, err := FindBlueprintUtilityShield(exec, o.ID)
+	ret, err := FindBlueprintUtilityShield(exec, o.BlueprintUtilityID)
 	if err != nil {
 		return err
 	}
@@ -1030,15 +1030,15 @@ func (o *BlueprintUtilityShieldSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // BlueprintUtilityShieldExists checks if the BlueprintUtilityShield row exists.
-func BlueprintUtilityShieldExists(exec boil.Executor, iD string) (bool, error) {
+func BlueprintUtilityShieldExists(exec boil.Executor, blueprintUtilityID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"blueprint_utility_shield\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"blueprint_utility_shield\" where \"blueprint_utility_id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, iD)
+		fmt.Fprintln(boil.DebugWriter, blueprintUtilityID)
 	}
-	row := exec.QueryRow(sql, iD)
+	row := exec.QueryRow(sql, blueprintUtilityID)
 
 	err := row.Scan(&exists)
 	if err != nil {

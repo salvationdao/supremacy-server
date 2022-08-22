@@ -80,3 +80,23 @@ ALTER TABLE weapon_models
 
 ALTER TABLE weapon_models
     RENAME TO blueprint_weapons;
+
+-- utilities
+CREATE TABLE IF NOT EXISTS blueprint_modules
+(
+    id                UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    brand_id          UUID REFERENCES brands (id),
+
+    slug              TEXT UNIQUE      NOT NULL,
+    label             TEXT UNIQUE      NOT NULL,
+    hitpoint_modifier INTEGER          NOT NULL,
+    shield_modifier   INTEGER          NOT NULL,
+
+    deleted_at        TIMESTAMPTZ,
+    updated_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    created_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE blueprint_utility_shield
+    DROP CONSTRAINT IF EXISTS blueprint_utility_shield_pkey,
+    ADD CONSTRAINT blueprint_utility_shield_pkey PRIMARY KEY (blueprint_utility_id);

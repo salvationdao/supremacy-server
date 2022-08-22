@@ -168,7 +168,7 @@ SET damage                = 20,
     projectile_speed      = 48000,
     radius_damage_falloff = 0,
     energy_cost           = 10,
-    default_damage_type   = 'ENERGY'
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
@@ -210,7 +210,7 @@ SET damage                = 70,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'EXPLOSIVE'
+    default_damage_type   = 'Explosive'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
@@ -239,7 +239,7 @@ SET damage                = 120,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     energy_cost           = 15,
-    default_damage_type   = 'ENERGY'
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 
@@ -255,7 +255,7 @@ SET damage                = 20,
     projectile_speed      = 48000,
     radius_damage_falloff = 0,
     power_cost           = 10,
-    default_damage_type   = 'ENERGY'
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
@@ -297,7 +297,7 @@ SET damage                = 70,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     power_cost           = 15,
-    default_damage_type   = 'EXPLOSIVE'
+    default_damage_type   = 'Explosive'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
@@ -327,7 +327,7 @@ SET damage                = 120,
     projectile_speed      = 0,
     radius_damage_falloff = 0,
     power_cost           = 15,
-    default_damage_type   = 'ENERGY'
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 

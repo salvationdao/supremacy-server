@@ -37,14 +37,11 @@ var TableNames = struct {
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
 	BlueprintMechsOld                                  string
+	BlueprintModules                                   string
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
 	BlueprintQuests                                    string
 	BlueprintUtility                                   string
-	BlueprintUtilityAccelerator                        string
-	BlueprintUtilityAntiMissile                        string
-	BlueprintUtilityAttackDrone                        string
-	BlueprintUtilityRepairDrone                        string
 	BlueprintUtilityShield                             string
 	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
@@ -188,14 +185,11 @@ var TableNames = struct {
 	BlueprintMechSkin:              "blueprint_mech_skin",
 	BlueprintMechs:                 "blueprint_mechs",
 	BlueprintMechsOld:              "blueprint_mechs_old",
+	BlueprintModules:               "blueprint_modules",
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
 	BlueprintQuests:                "blueprint_quests",
 	BlueprintUtility:               "blueprint_utility",
-	BlueprintUtilityAccelerator:    "blueprint_utility_accelerator",
-	BlueprintUtilityAntiMissile:    "blueprint_utility_anti_missile",
-	BlueprintUtilityAttackDrone:    "blueprint_utility_attack_drone",
-	BlueprintUtilityRepairDrone:    "blueprint_utility_repair_drone",
 	BlueprintUtilityShield:         "blueprint_utility_shield",
 	BlueprintWeaponSkin:            "blueprint_weapon_skin",
 	BlueprintWeapons:               "blueprint_weapons",

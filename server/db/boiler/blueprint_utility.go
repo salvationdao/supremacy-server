@@ -156,32 +156,20 @@ var BlueprintUtilityWhere = struct {
 
 // BlueprintUtilityRels is where relationship names are stored.
 var BlueprintUtilityRels = struct {
-	Brand                        string
-	BlueprintUtilityAccelerators string
-	BlueprintUtilityAntiMissiles string
-	BlueprintUtilityAttackDrones string
-	BlueprintUtilityRepairDrones string
-	BlueprintUtilityShields      string
-	BlueprintUtilities           string
+	Brand                  string
+	BlueprintUtilityShield string
+	BlueprintUtilities     string
 }{
-	Brand:                        "Brand",
-	BlueprintUtilityAccelerators: "BlueprintUtilityAccelerators",
-	BlueprintUtilityAntiMissiles: "BlueprintUtilityAntiMissiles",
-	BlueprintUtilityAttackDrones: "BlueprintUtilityAttackDrones",
-	BlueprintUtilityRepairDrones: "BlueprintUtilityRepairDrones",
-	BlueprintUtilityShields:      "BlueprintUtilityShields",
-	BlueprintUtilities:           "BlueprintUtilities",
+	Brand:                  "Brand",
+	BlueprintUtilityShield: "BlueprintUtilityShield",
+	BlueprintUtilities:     "BlueprintUtilities",
 }
 
 // blueprintUtilityR is where relationships are stored.
 type blueprintUtilityR struct {
-	Brand                        *Brand                           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	BlueprintUtilityAccelerators BlueprintUtilityAcceleratorSlice `boiler:"BlueprintUtilityAccelerators" boil:"BlueprintUtilityAccelerators" json:"BlueprintUtilityAccelerators" toml:"BlueprintUtilityAccelerators" yaml:"BlueprintUtilityAccelerators"`
-	BlueprintUtilityAntiMissiles BlueprintUtilityAntiMissileSlice `boiler:"BlueprintUtilityAntiMissiles" boil:"BlueprintUtilityAntiMissiles" json:"BlueprintUtilityAntiMissiles" toml:"BlueprintUtilityAntiMissiles" yaml:"BlueprintUtilityAntiMissiles"`
-	BlueprintUtilityAttackDrones BlueprintUtilityAttackDroneSlice `boiler:"BlueprintUtilityAttackDrones" boil:"BlueprintUtilityAttackDrones" json:"BlueprintUtilityAttackDrones" toml:"BlueprintUtilityAttackDrones" yaml:"BlueprintUtilityAttackDrones"`
-	BlueprintUtilityRepairDrones BlueprintUtilityRepairDroneSlice `boiler:"BlueprintUtilityRepairDrones" boil:"BlueprintUtilityRepairDrones" json:"BlueprintUtilityRepairDrones" toml:"BlueprintUtilityRepairDrones" yaml:"BlueprintUtilityRepairDrones"`
-	BlueprintUtilityShields      BlueprintUtilityShieldSlice      `boiler:"BlueprintUtilityShields" boil:"BlueprintUtilityShields" json:"BlueprintUtilityShields" toml:"BlueprintUtilityShields" yaml:"BlueprintUtilityShields"`
-	BlueprintUtilities           UtilitySlice                     `boiler:"BlueprintUtilities" boil:"BlueprintUtilities" json:"BlueprintUtilities" toml:"BlueprintUtilities" yaml:"BlueprintUtilities"`
+	Brand                  *Brand                  `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	BlueprintUtilityShield *BlueprintUtilityShield `boiler:"BlueprintUtilityShield" boil:"BlueprintUtilityShield" json:"BlueprintUtilityShield" toml:"BlueprintUtilityShield" yaml:"BlueprintUtilityShield"`
+	BlueprintUtilities     UtilitySlice            `boiler:"BlueprintUtilities" boil:"BlueprintUtilities" json:"BlueprintUtilities" toml:"BlueprintUtilities" yaml:"BlueprintUtilities"`
 }
 
 // NewStruct creates a new relationship struct
@@ -457,107 +445,16 @@ func (o *BlueprintUtility) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// BlueprintUtilityAccelerators retrieves all the blueprint_utility_accelerator's BlueprintUtilityAccelerators with an executor.
-func (o *BlueprintUtility) BlueprintUtilityAccelerators(mods ...qm.QueryMod) blueprintUtilityAcceleratorQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+// BlueprintUtilityShield pointed to by the foreign key.
+func (o *BlueprintUtility) BlueprintUtilityShield(mods ...qm.QueryMod) blueprintUtilityShieldQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"blueprint_utility_id\" = ?", o.ID),
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_utility_accelerator\".\"blueprint_utility_id\"=?", o.ID),
-	)
-
-	query := BlueprintUtilityAccelerators(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_utility_accelerator\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_utility_accelerator\".*"})
-	}
-
-	return query
-}
-
-// BlueprintUtilityAntiMissiles retrieves all the blueprint_utility_anti_missile's BlueprintUtilityAntiMissiles with an executor.
-func (o *BlueprintUtility) BlueprintUtilityAntiMissiles(mods ...qm.QueryMod) blueprintUtilityAntiMissileQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_utility_anti_missile\".\"blueprint_utility_id\"=?", o.ID),
-	)
-
-	query := BlueprintUtilityAntiMissiles(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_utility_anti_missile\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_utility_anti_missile\".*"})
-	}
-
-	return query
-}
-
-// BlueprintUtilityAttackDrones retrieves all the blueprint_utility_attack_drone's BlueprintUtilityAttackDrones with an executor.
-func (o *BlueprintUtility) BlueprintUtilityAttackDrones(mods ...qm.QueryMod) blueprintUtilityAttackDroneQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_utility_attack_drone\".\"blueprint_utility_id\"=?", o.ID),
-	)
-
-	query := BlueprintUtilityAttackDrones(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_utility_attack_drone\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_utility_attack_drone\".*"})
-	}
-
-	return query
-}
-
-// BlueprintUtilityRepairDrones retrieves all the blueprint_utility_repair_drone's BlueprintUtilityRepairDrones with an executor.
-func (o *BlueprintUtility) BlueprintUtilityRepairDrones(mods ...qm.QueryMod) blueprintUtilityRepairDroneQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_utility_repair_drone\".\"blueprint_utility_id\"=?", o.ID),
-	)
-
-	query := BlueprintUtilityRepairDrones(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_utility_repair_drone\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_utility_repair_drone\".*"})
-	}
-
-	return query
-}
-
-// BlueprintUtilityShields retrieves all the blueprint_utility_shield's BlueprintUtilityShields with an executor.
-func (o *BlueprintUtility) BlueprintUtilityShields(mods ...qm.QueryMod) blueprintUtilityShieldQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_utility_shield\".\"blueprint_utility_id\"=?", o.ID),
-	)
+	queryMods = append(queryMods, mods...)
 
 	query := BlueprintUtilityShields(queryMods...)
 	queries.SetFrom(query.Query, "\"blueprint_utility_shield\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_utility_shield\".*"})
-	}
 
 	return query
 }
@@ -693,401 +590,9 @@ func (blueprintUtilityL) LoadBrand(e boil.Executor, singular bool, maybeBlueprin
 	return nil
 }
 
-// LoadBlueprintUtilityAccelerators allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityAccelerators(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintUtility
-	var object *BlueprintUtility
-
-	if singular {
-		object = maybeBlueprintUtility.(*BlueprintUtility)
-	} else {
-		slice = *maybeBlueprintUtility.(*[]*BlueprintUtility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintUtilityR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintUtilityR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_utility_accelerator`),
-		qm.WhereIn(`blueprint_utility_accelerator.blueprint_utility_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_utility_accelerator")
-	}
-
-	var resultSlice []*BlueprintUtilityAccelerator
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_utility_accelerator")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_utility_accelerator")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_accelerator")
-	}
-
-	if len(blueprintUtilityAcceleratorAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintUtilityAccelerators = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintUtilityAcceleratorR{}
-			}
-			foreign.R.BlueprintUtility = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityAccelerators = append(local.R.BlueprintUtilityAccelerators, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintUtilityAcceleratorR{}
-				}
-				foreign.R.BlueprintUtility = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintUtilityAntiMissiles allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityAntiMissiles(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintUtility
-	var object *BlueprintUtility
-
-	if singular {
-		object = maybeBlueprintUtility.(*BlueprintUtility)
-	} else {
-		slice = *maybeBlueprintUtility.(*[]*BlueprintUtility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintUtilityR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintUtilityR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_utility_anti_missile`),
-		qm.WhereIn(`blueprint_utility_anti_missile.blueprint_utility_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_utility_anti_missile")
-	}
-
-	var resultSlice []*BlueprintUtilityAntiMissile
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_utility_anti_missile")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_utility_anti_missile")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_anti_missile")
-	}
-
-	if len(blueprintUtilityAntiMissileAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintUtilityAntiMissiles = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintUtilityAntiMissileR{}
-			}
-			foreign.R.BlueprintUtility = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityAntiMissiles = append(local.R.BlueprintUtilityAntiMissiles, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintUtilityAntiMissileR{}
-				}
-				foreign.R.BlueprintUtility = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintUtilityAttackDrones allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityAttackDrones(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintUtility
-	var object *BlueprintUtility
-
-	if singular {
-		object = maybeBlueprintUtility.(*BlueprintUtility)
-	} else {
-		slice = *maybeBlueprintUtility.(*[]*BlueprintUtility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintUtilityR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintUtilityR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_utility_attack_drone`),
-		qm.WhereIn(`blueprint_utility_attack_drone.blueprint_utility_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_utility_attack_drone")
-	}
-
-	var resultSlice []*BlueprintUtilityAttackDrone
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_utility_attack_drone")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_utility_attack_drone")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_attack_drone")
-	}
-
-	if len(blueprintUtilityAttackDroneAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintUtilityAttackDrones = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintUtilityAttackDroneR{}
-			}
-			foreign.R.BlueprintUtility = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityAttackDrones = append(local.R.BlueprintUtilityAttackDrones, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintUtilityAttackDroneR{}
-				}
-				foreign.R.BlueprintUtility = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintUtilityRepairDrones allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityRepairDrones(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintUtility
-	var object *BlueprintUtility
-
-	if singular {
-		object = maybeBlueprintUtility.(*BlueprintUtility)
-	} else {
-		slice = *maybeBlueprintUtility.(*[]*BlueprintUtility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintUtilityR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintUtilityR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_utility_repair_drone`),
-		qm.WhereIn(`blueprint_utility_repair_drone.blueprint_utility_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_utility_repair_drone")
-	}
-
-	var resultSlice []*BlueprintUtilityRepairDrone
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_utility_repair_drone")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_utility_repair_drone")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_repair_drone")
-	}
-
-	if len(blueprintUtilityRepairDroneAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintUtilityRepairDrones = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintUtilityRepairDroneR{}
-			}
-			foreign.R.BlueprintUtility = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityRepairDrones = append(local.R.BlueprintUtilityRepairDrones, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintUtilityRepairDroneR{}
-				}
-				foreign.R.BlueprintUtility = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintUtilityShields allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintUtilityL) LoadBlueprintUtilityShields(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
+// LoadBlueprintUtilityShield allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (blueprintUtilityL) LoadBlueprintUtilityShield(e boil.Executor, singular bool, maybeBlueprintUtility interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintUtility
 	var object *BlueprintUtility
 
@@ -1134,43 +639,46 @@ func (blueprintUtilityL) LoadBlueprintUtilityShields(e boil.Executor, singular b
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_utility_shield")
+		return errors.Wrap(err, "failed to eager load BlueprintUtilityShield")
 	}
 
 	var resultSlice []*BlueprintUtilityShield
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_utility_shield")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintUtilityShield")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_utility_shield")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_utility_shield")
 	}
 	if err = results.Err(); err != nil {
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_utility_shield")
 	}
 
-	if len(blueprintUtilityShieldAfterSelectHooks) != 0 {
+	if len(blueprintUtilityAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-	if singular {
-		object.R.BlueprintUtilityShields = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintUtilityShieldR{}
-			}
-			foreign.R.BlueprintUtility = object
-		}
+
+	if len(resultSlice) == 0 {
 		return nil
 	}
 
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BlueprintUtilityShield = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintUtilityShieldR{}
+		}
+		foreign.R.BlueprintUtility = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
 			if local.ID == foreign.BlueprintUtilityID {
-				local.R.BlueprintUtilityShields = append(local.R.BlueprintUtilityShields, foreign)
+				local.R.BlueprintUtilityShield = foreign
 				if foreign.R == nil {
 					foreign.R = &blueprintUtilityShieldR{}
 				}
@@ -1361,262 +869,52 @@ func (o *BlueprintUtility) RemoveBrand(exec boil.Executor, related *Brand) error
 	return nil
 }
 
-// AddBlueprintUtilityAccelerators adds the given related objects to the existing relationships
-// of the blueprint_utility, optionally inserting them as new records.
-// Appends related to o.R.BlueprintUtilityAccelerators.
-// Sets related.R.BlueprintUtility appropriately.
-func (o *BlueprintUtility) AddBlueprintUtilityAccelerators(exec boil.Executor, insert bool, related ...*BlueprintUtilityAccelerator) error {
+// SetBlueprintUtilityShield of the blueprintUtility to the related item.
+// Sets o.R.BlueprintUtilityShield to related.
+// Adds o to related.R.BlueprintUtility.
+func (o *BlueprintUtility) SetBlueprintUtilityShield(exec boil.Executor, insert bool, related *BlueprintUtilityShield) error {
 	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintUtilityID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_utility_accelerator\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintUtilityAcceleratorPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
 
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
+	if insert {
+		related.BlueprintUtilityID = o.ID
 
-			rel.BlueprintUtilityID = o.ID
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
 		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"blueprint_utility_shield\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
+			strmangle.WhereClause("\"", "\"", 2, blueprintUtilityShieldPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.BlueprintUtilityID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.BlueprintUtilityID = o.ID
+
 	}
 
 	if o.R == nil {
 		o.R = &blueprintUtilityR{
-			BlueprintUtilityAccelerators: related,
+			BlueprintUtilityShield: related,
 		}
 	} else {
-		o.R.BlueprintUtilityAccelerators = append(o.R.BlueprintUtilityAccelerators, related...)
+		o.R.BlueprintUtilityShield = related
 	}
 
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintUtilityAcceleratorR{
-				BlueprintUtility: o,
-			}
-		} else {
-			rel.R.BlueprintUtility = o
-		}
-	}
-	return nil
-}
-
-// AddBlueprintUtilityAntiMissiles adds the given related objects to the existing relationships
-// of the blueprint_utility, optionally inserting them as new records.
-// Appends related to o.R.BlueprintUtilityAntiMissiles.
-// Sets related.R.BlueprintUtility appropriately.
-func (o *BlueprintUtility) AddBlueprintUtilityAntiMissiles(exec boil.Executor, insert bool, related ...*BlueprintUtilityAntiMissile) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintUtilityID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_utility_anti_missile\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintUtilityAntiMissilePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintUtilityID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintUtilityR{
-			BlueprintUtilityAntiMissiles: related,
+	if related.R == nil {
+		related.R = &blueprintUtilityShieldR{
+			BlueprintUtility: o,
 		}
 	} else {
-		o.R.BlueprintUtilityAntiMissiles = append(o.R.BlueprintUtilityAntiMissiles, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintUtilityAntiMissileR{
-				BlueprintUtility: o,
-			}
-		} else {
-			rel.R.BlueprintUtility = o
-		}
-	}
-	return nil
-}
-
-// AddBlueprintUtilityAttackDrones adds the given related objects to the existing relationships
-// of the blueprint_utility, optionally inserting them as new records.
-// Appends related to o.R.BlueprintUtilityAttackDrones.
-// Sets related.R.BlueprintUtility appropriately.
-func (o *BlueprintUtility) AddBlueprintUtilityAttackDrones(exec boil.Executor, insert bool, related ...*BlueprintUtilityAttackDrone) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintUtilityID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_utility_attack_drone\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintUtilityAttackDronePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintUtilityID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintUtilityR{
-			BlueprintUtilityAttackDrones: related,
-		}
-	} else {
-		o.R.BlueprintUtilityAttackDrones = append(o.R.BlueprintUtilityAttackDrones, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintUtilityAttackDroneR{
-				BlueprintUtility: o,
-			}
-		} else {
-			rel.R.BlueprintUtility = o
-		}
-	}
-	return nil
-}
-
-// AddBlueprintUtilityRepairDrones adds the given related objects to the existing relationships
-// of the blueprint_utility, optionally inserting them as new records.
-// Appends related to o.R.BlueprintUtilityRepairDrones.
-// Sets related.R.BlueprintUtility appropriately.
-func (o *BlueprintUtility) AddBlueprintUtilityRepairDrones(exec boil.Executor, insert bool, related ...*BlueprintUtilityRepairDrone) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintUtilityID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_utility_repair_drone\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintUtilityRepairDronePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintUtilityID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintUtilityR{
-			BlueprintUtilityRepairDrones: related,
-		}
-	} else {
-		o.R.BlueprintUtilityRepairDrones = append(o.R.BlueprintUtilityRepairDrones, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintUtilityRepairDroneR{
-				BlueprintUtility: o,
-			}
-		} else {
-			rel.R.BlueprintUtility = o
-		}
-	}
-	return nil
-}
-
-// AddBlueprintUtilityShields adds the given related objects to the existing relationships
-// of the blueprint_utility, optionally inserting them as new records.
-// Appends related to o.R.BlueprintUtilityShields.
-// Sets related.R.BlueprintUtility appropriately.
-func (o *BlueprintUtility) AddBlueprintUtilityShields(exec boil.Executor, insert bool, related ...*BlueprintUtilityShield) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintUtilityID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_utility_shield\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_utility_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintUtilityShieldPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintUtilityID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintUtilityR{
-			BlueprintUtilityShields: related,
-		}
-	} else {
-		o.R.BlueprintUtilityShields = append(o.R.BlueprintUtilityShields, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintUtilityShieldR{
-				BlueprintUtility: o,
-			}
-		} else {
-			rel.R.BlueprintUtility = o
-		}
+		related.R.BlueprintUtility = o
 	}
 	return nil
 }
