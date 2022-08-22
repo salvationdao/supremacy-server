@@ -3,7 +3,7 @@
 ALTER TABLE battles
     ALTER COLUMN battle_number DROP DEFAULT,
     ALTER COLUMN battle_number TYPE INTEGER USING battle_number::INTEGER,
-    DROP CONSTRAINT IF EXISTS battles_battle_number_key CASCADE, -- drop constraint and any related foreign keys
+    DROP CONSTRAINT IF EXISTS battles_battle_number_key CASCADE,
     DROP CONSTRAINT IF EXISTS battles_ended_battle_seconds_key,
     DROP CONSTRAINT IF EXISTS battles_started_battle_seconds_key;
 
@@ -46,31 +46,31 @@ CREATE TABLE battle_lobbies_mechs
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- repair block trigger
+-- lobby mech trigger
 CREATE OR REPLACE FUNCTION check_lobby_mech() RETURNS TRIGGER AS
 $check_lobby_mech$
 DECLARE
     already_join_lobby BOOLEAN DEFAULT FALSE;
-    lobby_is_full      BOOLEAN DEFAULT FALSE;
+    no_vacancy      BOOLEAN DEFAULT FALSE;
 BEGIN
 
+    -- check already join lobby
     SELECT (COALESCE((SELECT TRUE
                       FROM battle_lobbies_mechs blm
                                INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
                       WHERE blm.mech_id = new.mech_id), FALSE))
     INTO already_join_lobby;
+    IF already_join_lobby THEN RAISE EXCEPTION 'already join another lobby'; END IF;
 
+    -- check if there is vacancy left
     SELECT (SELECT lb.each_faction_mech_amount = COALESCE((SELECT COUNT(*)
                                                            FROM battle_lobbies_mechs blm
                                                            WHERE blm.battle_lobby_id = new.battle_lobby_id
                                                              AND blm.faction_id = new.faction_id), 0)
             FROM battle_lobbies lb
             WHERE lb.id = new.battle_lobby_id)
-    INTO lobby_is_full;
--- update blocks required in repair cases and continue the process
-    IF already_join_lobby THEN RAISE EXCEPTION 'already join another lobby'; END IF;
-
-    IF lobby_is_full THEN RAISE EXCEPTION 'lobby is full'; END IF;
+    INTO no_vacancy;
+    IF no_vacancy THEN RAISE EXCEPTION 'no vacancy'; END IF;
 
     RETURN new;
 END;
