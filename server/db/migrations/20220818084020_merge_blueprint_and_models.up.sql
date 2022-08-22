@@ -433,3 +433,8 @@ ALTER TABLE weapons
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS default_damage_type;
+
+-- set stats for 3 shields, to be the shields for each faction
+UPDATE blueprint_utility_shield SET recharge_rate = 100 where recharge_rate > 100;
+UPDATE utility_shield SET recharge_rate = 100 where recharge_rate > 100;
+
