@@ -485,3 +485,12 @@ DELETE FROM blueprint_utility WHERE id NOT IN (
                                                '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8',
                                                '0551d044-b8ff-47ac-917e-80c3fce37378'
     );
+
+DROP TABLE IF EXISTS blueprint_utility_accelerator;
+DROP TABLE IF EXISTS blueprint_utility_anti_missile;
+DROP TABLE IF EXISTS blueprint_utility_attack_drone;
+DROP TABLE IF EXISTS blueprint_utility_repair_drone;
+DROP TABLE IF EXISTS utility_accelerator;
+DROP TABLE IF EXISTS utility_anti_missile;
+DROP TABLE IF EXISTS utility_attack_drone;
+DROP TABLE IF EXISTS utility_repair_drone;
