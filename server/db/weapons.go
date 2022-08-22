@@ -533,11 +533,9 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 				))
 		}
 	}
-	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}

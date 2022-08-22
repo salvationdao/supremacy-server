@@ -207,7 +207,6 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s ASC", qm.Rels(boiler.TableNames.BlueprintPowerCores, boiler.BlueprintPowerCoreColumns.Label))))
 	}
 
-	boil.DebugMode = true
 	rows, err := boiler.NewQuery(
 		queryMods...,
 	).Query(gamedb.StdConn)
@@ -215,7 +214,6 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 		return 0, nil, err
 	}
 	defer rows.Close()
-	boil.DebugMode = false
 
 	var powerCores []*server.PowerCore
 	for rows.Next() {
