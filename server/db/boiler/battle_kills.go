@@ -23,9 +23,9 @@ import (
 // BattleKill is an object representing the database table.
 type BattleKill struct {
 	BattleID  string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	MechID    string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	KilledID  string    `boiler:"killed_id" boil:"killed_id" json:"killed_id" toml:"killed_id" yaml:"killed_id"`
+	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battleKillR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleKillL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -33,58 +33,58 @@ type BattleKill struct {
 
 var BattleKillColumns = struct {
 	BattleID  string
-	CreatedAt string
 	MechID    string
 	KilledID  string
+	CreatedAt string
 }{
 	BattleID:  "battle_id",
-	CreatedAt: "created_at",
 	MechID:    "mech_id",
 	KilledID:  "killed_id",
+	CreatedAt: "created_at",
 }
 
 var BattleKillTableColumns = struct {
 	BattleID  string
-	CreatedAt string
 	MechID    string
 	KilledID  string
+	CreatedAt string
 }{
 	BattleID:  "battle_kills.battle_id",
-	CreatedAt: "battle_kills.created_at",
 	MechID:    "battle_kills.mech_id",
 	KilledID:  "battle_kills.killed_id",
+	CreatedAt: "battle_kills.created_at",
 }
 
 // Generated where
 
 var BattleKillWhere = struct {
 	BattleID  whereHelperstring
-	CreatedAt whereHelpertime_Time
 	MechID    whereHelperstring
 	KilledID  whereHelperstring
+	CreatedAt whereHelpertime_Time
 }{
 	BattleID:  whereHelperstring{field: "\"battle_kills\".\"battle_id\""},
-	CreatedAt: whereHelpertime_Time{field: "\"battle_kills\".\"created_at\""},
 	MechID:    whereHelperstring{field: "\"battle_kills\".\"mech_id\""},
 	KilledID:  whereHelperstring{field: "\"battle_kills\".\"killed_id\""},
+	CreatedAt: whereHelpertime_Time{field: "\"battle_kills\".\"created_at\""},
 }
 
 // BattleKillRels is where relationship names are stored.
 var BattleKillRels = struct {
 	Battle string
-	Mech   string
 	Killed string
+	Mech   string
 }{
 	Battle: "Battle",
-	Mech:   "Mech",
 	Killed: "Killed",
+	Mech:   "Mech",
 }
 
 // battleKillR is where relationships are stored.
 type battleKillR struct {
 	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Mech   *Mech   `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Killed *Mech   `boiler:"Killed" boil:"Killed" json:"Killed" toml:"Killed" yaml:"Killed"`
+	Mech   *Mech   `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 }
 
 // NewStruct creates a new relationship struct
@@ -96,10 +96,10 @@ func (*battleKillR) NewStruct() *battleKillR {
 type battleKillL struct{}
 
 var (
-	battleKillAllColumns            = []string{"battle_id", "created_at", "mech_id", "killed_id"}
+	battleKillAllColumns            = []string{"battle_id", "mech_id", "killed_id", "created_at"}
 	battleKillColumnsWithoutDefault = []string{"battle_id", "mech_id", "killed_id"}
 	battleKillColumnsWithDefault    = []string{"created_at"}
-	battleKillPrimaryKeyColumns     = []string{"battle_id", "mech_id", "killed_id"}
+	battleKillPrimaryKeyColumns     = []string{"battle_id", "killed_id"}
 	battleKillGeneratedColumns      = []string{}
 )
 
@@ -359,10 +359,10 @@ func (o *BattleKill) Battle(mods ...qm.QueryMod) battleQuery {
 	return query
 }
 
-// Mech pointed to by the foreign key.
-func (o *BattleKill) Mech(mods ...qm.QueryMod) mechQuery {
+// Killed pointed to by the foreign key.
+func (o *BattleKill) Killed(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.MechID),
+		qm.Where("\"id\" = ?", o.KilledID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -374,10 +374,10 @@ func (o *BattleKill) Mech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
-// Killed pointed to by the foreign key.
-func (o *BattleKill) Killed(mods ...qm.QueryMod) mechQuery {
+// Mech pointed to by the foreign key.
+func (o *BattleKill) Mech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.KilledID),
+		qm.Where("\"id\" = ?", o.MechID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
@@ -493,111 +493,6 @@ func (battleKillL) LoadBattle(e boil.Executor, singular bool, maybeBattleKill in
 	return nil
 }
 
-// LoadMech allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (battleKillL) LoadMech(e boil.Executor, singular bool, maybeBattleKill interface{}, mods queries.Applicator) error {
-	var slice []*BattleKill
-	var object *BattleKill
-
-	if singular {
-		object = maybeBattleKill.(*BattleKill)
-	} else {
-		slice = *maybeBattleKill.(*[]*BattleKill)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleKillR{}
-		}
-		args = append(args, object.MechID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleKillR{}
-			}
-
-			for _, a := range args {
-				if a == obj.MechID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.MechID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mechs`),
-		qm.WhereIn(`mechs.id in ?`, args...),
-		qmhelper.WhereIsNull(`mechs.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Mech")
-	}
-
-	var resultSlice []*Mech
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mechs")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
-	}
-
-	if len(battleKillAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Mech = foreign
-		if foreign.R == nil {
-			foreign.R = &mechR{}
-		}
-		foreign.R.BattleKills = append(foreign.R.BattleKills, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.MechID == foreign.ID {
-				local.R.Mech = foreign
-				if foreign.R == nil {
-					foreign.R = &mechR{}
-				}
-				foreign.R.BattleKills = append(foreign.R.BattleKills, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadKilled allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (battleKillL) LoadKilled(e boil.Executor, singular bool, maybeBattleKill interface{}, mods queries.Applicator) error {
@@ -703,6 +598,111 @@ func (battleKillL) LoadKilled(e boil.Executor, singular bool, maybeBattleKill in
 	return nil
 }
 
+// LoadMech allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleKillL) LoadMech(e boil.Executor, singular bool, maybeBattleKill interface{}, mods queries.Applicator) error {
+	var slice []*BattleKill
+	var object *BattleKill
+
+	if singular {
+		object = maybeBattleKill.(*BattleKill)
+	} else {
+		slice = *maybeBattleKill.(*[]*BattleKill)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleKillR{}
+		}
+		args = append(args, object.MechID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleKillR{}
+			}
+
+			for _, a := range args {
+				if a == obj.MechID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.MechID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Mech")
+	}
+
+	var resultSlice []*Mech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
+	}
+
+	if len(battleKillAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Mech = foreign
+		if foreign.R == nil {
+			foreign.R = &mechR{}
+		}
+		foreign.R.BattleKills = append(foreign.R.BattleKills, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.MechID == foreign.ID {
+				local.R.Mech = foreign
+				if foreign.R == nil {
+					foreign.R = &mechR{}
+				}
+				foreign.R.BattleKills = append(foreign.R.BattleKills, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBattle of the battleKill to the related item.
 // Sets o.R.Battle to related.
 // Adds o to related.R.BattleKills.
@@ -719,7 +719,7 @@ func (o *BattleKill) SetBattle(exec boil.Executor, insert bool, related *Battle)
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleKillPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleID, o.MechID, o.KilledID}
+	values := []interface{}{related.ID, o.BattleID, o.KilledID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -749,52 +749,6 @@ func (o *BattleKill) SetBattle(exec boil.Executor, insert bool, related *Battle)
 	return nil
 }
 
-// SetMech of the battleKill to the related item.
-// Sets o.R.Mech to related.
-// Adds o to related.R.BattleKills.
-func (o *BattleKill) SetMech(exec boil.Executor, insert bool, related *Mech) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_kills\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleKillPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.BattleID, o.MechID, o.KilledID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.MechID = related.ID
-	if o.R == nil {
-		o.R = &battleKillR{
-			Mech: related,
-		}
-	} else {
-		o.R.Mech = related
-	}
-
-	if related.R == nil {
-		related.R = &mechR{
-			BattleKills: BattleKillSlice{o},
-		}
-	} else {
-		related.R.BattleKills = append(related.R.BattleKills, o)
-	}
-
-	return nil
-}
-
 // SetKilled of the battleKill to the related item.
 // Sets o.R.Killed to related.
 // Adds o to related.R.KilledBattleKills.
@@ -811,7 +765,7 @@ func (o *BattleKill) SetKilled(exec boil.Executor, insert bool, related *Mech) e
 		strmangle.SetParamNames("\"", "\"", 1, []string{"killed_id"}),
 		strmangle.WhereClause("\"", "\"", 2, battleKillPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleID, o.MechID, o.KilledID}
+	values := []interface{}{related.ID, o.BattleID, o.KilledID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -841,6 +795,52 @@ func (o *BattleKill) SetKilled(exec boil.Executor, insert bool, related *Mech) e
 	return nil
 }
 
+// SetMech of the battleKill to the related item.
+// Sets o.R.Mech to related.
+// Adds o to related.R.BattleKills.
+func (o *BattleKill) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_kills\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleKillPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.BattleID, o.KilledID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.MechID = related.ID
+	if o.R == nil {
+		o.R = &battleKillR{
+			Mech: related,
+		}
+	} else {
+		o.R.Mech = related
+	}
+
+	if related.R == nil {
+		related.R = &mechR{
+			BattleKills: BattleKillSlice{o},
+		}
+	} else {
+		related.R.BattleKills = append(related.R.BattleKills, o)
+	}
+
+	return nil
+}
+
 // BattleKills retrieves all the records using an executor.
 func BattleKills(mods ...qm.QueryMod) battleKillQuery {
 	mods = append(mods, qm.From("\"battle_kills\""))
@@ -849,7 +849,7 @@ func BattleKills(mods ...qm.QueryMod) battleKillQuery {
 
 // FindBattleKill retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleKill(exec boil.Executor, battleID string, mechID string, killedID string, selectCols ...string) (*BattleKill, error) {
+func FindBattleKill(exec boil.Executor, battleID string, killedID string, selectCols ...string) (*BattleKill, error) {
 	battleKillObj := &BattleKill{}
 
 	sel := "*"
@@ -857,10 +857,10 @@ func FindBattleKill(exec boil.Executor, battleID string, mechID string, killedID
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_kills\" where \"battle_id\"=$1 AND \"mech_id\"=$2 AND \"killed_id\"=$3", sel,
+		"select %s from \"battle_kills\" where \"battle_id\"=$1 AND \"killed_id\"=$2", sel,
 	)
 
-	q := queries.Raw(query, battleID, mechID, killedID)
+	q := queries.Raw(query, battleID, killedID)
 
 	err := q.Bind(nil, exec, battleKillObj)
 	if err != nil {
@@ -1218,7 +1218,7 @@ func (o *BattleKill) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleKillPrimaryKeyMapping)
-	sql := "DELETE FROM \"battle_kills\" WHERE \"battle_id\"=$1 AND \"mech_id\"=$2 AND \"killed_id\"=$3"
+	sql := "DELETE FROM \"battle_kills\" WHERE \"battle_id\"=$1 AND \"killed_id\"=$2"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1313,7 +1313,7 @@ func (o BattleKillSlice) DeleteAll(exec boil.Executor) (int64, error) {
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *BattleKill) Reload(exec boil.Executor) error {
-	ret, err := FindBattleKill(exec, o.BattleID, o.MechID, o.KilledID)
+	ret, err := FindBattleKill(exec, o.BattleID, o.KilledID)
 	if err != nil {
 		return err
 	}
@@ -1352,15 +1352,15 @@ func (o *BattleKillSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // BattleKillExists checks if the BattleKill row exists.
-func BattleKillExists(exec boil.Executor, battleID string, mechID string, killedID string) (bool, error) {
+func BattleKillExists(exec boil.Executor, battleID string, killedID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_kills\" where \"battle_id\"=$1 AND \"mech_id\"=$2 AND \"killed_id\"=$3 limit 1)"
+	sql := "select exists(select 1 from \"battle_kills\" where \"battle_id\"=$1 AND \"killed_id\"=$2 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, battleID, mechID, killedID)
+		fmt.Fprintln(boil.DebugWriter, battleID, killedID)
 	}
-	row := exec.QueryRow(sql, battleID, mechID, killedID)
+	row := exec.QueryRow(sql, battleID, killedID)
 
 	err := row.Scan(&exists)
 	if err != nil {

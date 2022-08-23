@@ -14,7 +14,6 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -37,7 +36,6 @@ type StreamList struct {
 	Status        string          `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
 	Latitude      decimal.Decimal `boiler:"latitude" boil:"latitude" json:"latitude" toml:"latitude" yaml:"latitude"`
 	Longitude     decimal.Decimal `boiler:"longitude" boil:"longitude" json:"longitude" toml:"longitude" yaml:"longitude"`
-	Service       null.String     `boiler:"service" boil:"service" json:"service,omitempty" toml:"service" yaml:"service,omitempty"`
 
 	R *streamListR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L streamListL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,7 +55,6 @@ var StreamListColumns = struct {
 	Status        string
 	Latitude      string
 	Longitude     string
-	Service       string
 }{
 	Host:          "host",
 	Name:          "name",
@@ -72,7 +69,6 @@ var StreamListColumns = struct {
 	Status:        "status",
 	Latitude:      "latitude",
 	Longitude:     "longitude",
-	Service:       "service",
 }
 
 var StreamListTableColumns = struct {
@@ -89,7 +85,6 @@ var StreamListTableColumns = struct {
 	Status        string
 	Latitude      string
 	Longitude     string
-	Service       string
 }{
 	Host:          "stream_list.host",
 	Name:          "stream_list.name",
@@ -104,7 +99,6 @@ var StreamListTableColumns = struct {
 	Status:        "stream_list.status",
 	Latitude:      "stream_list.latitude",
 	Longitude:     "stream_list.longitude",
-	Service:       "stream_list.service",
 }
 
 // Generated where
@@ -123,7 +117,6 @@ var StreamListWhere = struct {
 	Status        whereHelperstring
 	Latitude      whereHelperdecimal_Decimal
 	Longitude     whereHelperdecimal_Decimal
-	Service       whereHelpernull_String
 }{
 	Host:          whereHelperstring{field: "\"stream_list\".\"host\""},
 	Name:          whereHelperstring{field: "\"stream_list\".\"name\""},
@@ -138,7 +131,6 @@ var StreamListWhere = struct {
 	Status:        whereHelperstring{field: "\"stream_list\".\"status\""},
 	Latitude:      whereHelperdecimal_Decimal{field: "\"stream_list\".\"latitude\""},
 	Longitude:     whereHelperdecimal_Decimal{field: "\"stream_list\".\"longitude\""},
-	Service:       whereHelpernull_String{field: "\"stream_list\".\"service\""},
 }
 
 // StreamListRels is where relationship names are stored.
@@ -158,9 +150,9 @@ func (*streamListR) NewStruct() *streamListR {
 type streamListL struct{}
 
 var (
-	streamListAllColumns            = []string{"host", "name", "url", "stream_id", "region", "resolution", "bit_rates_k_bits", "user_max", "users_now", "active", "status", "latitude", "longitude", "service"}
+	streamListAllColumns            = []string{"host", "name", "url", "stream_id", "region", "resolution", "bit_rates_k_bits", "user_max", "users_now", "active", "status", "latitude", "longitude"}
 	streamListColumnsWithoutDefault = []string{"host", "name", "url", "stream_id", "region", "resolution", "bit_rates_k_bits", "user_max", "users_now", "active", "status", "latitude", "longitude"}
-	streamListColumnsWithDefault    = []string{"service"}
+	streamListColumnsWithDefault    = []string{}
 	streamListPrimaryKeyColumns     = []string{"host"}
 	streamListGeneratedColumns      = []string{}
 )

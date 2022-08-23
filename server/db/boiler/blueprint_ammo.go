@@ -14,7 +14,6 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -38,13 +37,6 @@ type BlueprintAmmo struct {
 	EnergyCostMultiplier        decimal.NullDecimal `boiler:"energy_cost_multiplier" boil:"energy_cost_multiplier" json:"energy_cost_multiplier,omitempty" toml:"energy_cost_multiplier" yaml:"energy_cost_multiplier,omitempty"`
 	MaxAmmoMultiplier           decimal.NullDecimal `boiler:"max_ammo_multiplier" boil:"max_ammo_multiplier" json:"max_ammo_multiplier,omitempty" toml:"max_ammo_multiplier" yaml:"max_ammo_multiplier,omitempty"`
 	CreatedAt                   time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ImageURL                    null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	CardAnimationURL            null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL                   null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL               null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	BackgroundColor             null.String         `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
-	AnimationURL                null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	YoutubeURL                  null.String         `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintAmmoR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintAmmoL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -65,13 +57,6 @@ var BlueprintAmmoColumns = struct {
 	EnergyCostMultiplier        string
 	MaxAmmoMultiplier           string
 	CreatedAt                   string
-	ImageURL                    string
-	CardAnimationURL            string
-	AvatarURL                   string
-	LargeImageURL               string
-	BackgroundColor             string
-	AnimationURL                string
-	YoutubeURL                  string
 }{
 	ID:                          "id",
 	Label:                       "label",
@@ -87,13 +72,6 @@ var BlueprintAmmoColumns = struct {
 	EnergyCostMultiplier:        "energy_cost_multiplier",
 	MaxAmmoMultiplier:           "max_ammo_multiplier",
 	CreatedAt:                   "created_at",
-	ImageURL:                    "image_url",
-	CardAnimationURL:            "card_animation_url",
-	AvatarURL:                   "avatar_url",
-	LargeImageURL:               "large_image_url",
-	BackgroundColor:             "background_color",
-	AnimationURL:                "animation_url",
-	YoutubeURL:                  "youtube_url",
 }
 
 var BlueprintAmmoTableColumns = struct {
@@ -111,13 +89,6 @@ var BlueprintAmmoTableColumns = struct {
 	EnergyCostMultiplier        string
 	MaxAmmoMultiplier           string
 	CreatedAt                   string
-	ImageURL                    string
-	CardAnimationURL            string
-	AvatarURL                   string
-	LargeImageURL               string
-	BackgroundColor             string
-	AnimationURL                string
-	YoutubeURL                  string
 }{
 	ID:                          "blueprint_ammo.id",
 	Label:                       "blueprint_ammo.label",
@@ -133,13 +104,6 @@ var BlueprintAmmoTableColumns = struct {
 	EnergyCostMultiplier:        "blueprint_ammo.energy_cost_multiplier",
 	MaxAmmoMultiplier:           "blueprint_ammo.max_ammo_multiplier",
 	CreatedAt:                   "blueprint_ammo.created_at",
-	ImageURL:                    "blueprint_ammo.image_url",
-	CardAnimationURL:            "blueprint_ammo.card_animation_url",
-	AvatarURL:                   "blueprint_ammo.avatar_url",
-	LargeImageURL:               "blueprint_ammo.large_image_url",
-	BackgroundColor:             "blueprint_ammo.background_color",
-	AnimationURL:                "blueprint_ammo.animation_url",
-	YoutubeURL:                  "blueprint_ammo.youtube_url",
 }
 
 // Generated where
@@ -159,13 +123,6 @@ var BlueprintAmmoWhere = struct {
 	EnergyCostMultiplier        whereHelperdecimal_NullDecimal
 	MaxAmmoMultiplier           whereHelperdecimal_NullDecimal
 	CreatedAt                   whereHelpertime_Time
-	ImageURL                    whereHelpernull_String
-	CardAnimationURL            whereHelpernull_String
-	AvatarURL                   whereHelpernull_String
-	LargeImageURL               whereHelpernull_String
-	BackgroundColor             whereHelpernull_String
-	AnimationURL                whereHelpernull_String
-	YoutubeURL                  whereHelpernull_String
 }{
 	ID:                          whereHelperstring{field: "\"blueprint_ammo\".\"id\""},
 	Label:                       whereHelperstring{field: "\"blueprint_ammo\".\"label\""},
@@ -181,13 +138,6 @@ var BlueprintAmmoWhere = struct {
 	EnergyCostMultiplier:        whereHelperdecimal_NullDecimal{field: "\"blueprint_ammo\".\"energy_cost_multiplier\""},
 	MaxAmmoMultiplier:           whereHelperdecimal_NullDecimal{field: "\"blueprint_ammo\".\"max_ammo_multiplier\""},
 	CreatedAt:                   whereHelpertime_Time{field: "\"blueprint_ammo\".\"created_at\""},
-	ImageURL:                    whereHelpernull_String{field: "\"blueprint_ammo\".\"image_url\""},
-	CardAnimationURL:            whereHelpernull_String{field: "\"blueprint_ammo\".\"card_animation_url\""},
-	AvatarURL:                   whereHelpernull_String{field: "\"blueprint_ammo\".\"avatar_url\""},
-	LargeImageURL:               whereHelpernull_String{field: "\"blueprint_ammo\".\"large_image_url\""},
-	BackgroundColor:             whereHelpernull_String{field: "\"blueprint_ammo\".\"background_color\""},
-	AnimationURL:                whereHelpernull_String{field: "\"blueprint_ammo\".\"animation_url\""},
-	YoutubeURL:                  whereHelpernull_String{field: "\"blueprint_ammo\".\"youtube_url\""},
 }
 
 // BlueprintAmmoRels is where relationship names are stored.
@@ -214,9 +164,9 @@ func (*blueprintAmmoR) NewStruct() *blueprintAmmoR {
 type blueprintAmmoL struct{}
 
 var (
-	blueprintAmmoAllColumns            = []string{"id", "label", "weapon_type", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintAmmoAllColumns            = []string{"id", "label", "weapon_type", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
 	blueprintAmmoColumnsWithoutDefault = []string{"label", "weapon_type"}
-	blueprintAmmoColumnsWithDefault    = []string{"id", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintAmmoColumnsWithDefault    = []string{"id", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
 	blueprintAmmoPrimaryKeyColumns     = []string{"id"}
 	blueprintAmmoGeneratedColumns      = []string{}
 )

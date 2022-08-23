@@ -61,13 +61,6 @@ const (
 	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
 	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
 	AbilityTypeEnumFIREWORKS      = "FIREWORKS"
-	AbilityTypeEnumLANDMINE       = "LANDMINE"
-)
-
-// Enum values for ArenaTypeEnum
-const (
-	ArenaTypeEnumSTORY      = "STORY"
-	ArenaTypeEnumEXPEDITION = "EXPEDITION"
 )
 
 // Enum values for BattleEvent
@@ -101,7 +94,6 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
-// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for MechType
 const (
@@ -125,15 +117,6 @@ const (
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
-
-// Enum values for LocationSelectTypeEnum
-const (
-	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
-	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
-	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
-	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
-)
-
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for QuestEventType
@@ -179,8 +162,6 @@ const (
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
 	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
-	ChatMSGTypeEnumSYSTEM_BAN  = "SYSTEM_BAN"
-	ChatMSGTypeEnumNEW_BATTLE  = "NEW_BATTLE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -193,26 +174,6 @@ const (
 	ItemTypeMechSkin      = "mech_skin"
 	ItemTypeMechAnimation = "mech_animation"
 	ItemTypePowerCore     = "power_core"
-	ItemTypeMysteryCrate  = "mystery_crate"
-	ItemTypeWeaponSkin    = "weapon_skin"
-)
-
-// Enum values for CouponItemType
-const (
-	CouponItemTypeSUPS         = "SUPS"
-	CouponItemTypeWEAPON_CRATE = "WEAPON_CRATE"
-	CouponItemTypeMECH_CRATE   = "MECH_CRATE"
-	CouponItemTypeGENESIS_MECH = "GENESIS_MECH"
-)
-
-// Enum values for FeatureName
-const (
-	FeatureNameMECH_MOVE       = "MECH_MOVE"
-	FeatureNamePLAYER_ABILITY  = "PLAYER_ABILITY"
-	FeatureNamePUBLIC_PROFILE  = "PUBLIC_PROFILE"
-	FeatureNameSYSTEM_MESSAGES = "SYSTEM_MESSAGES"
-	FeatureNameCHAT_BAN        = "CHAT_BAN"
-	FeatureNamePROFILE_AVATAR  = "PROFILE_AVATAR"
 )
 
 // Enum values for AbilityLevel
@@ -222,24 +183,12 @@ const (
 	AbilityLevelPLAYER  = "PLAYER"
 )
 
-// Enum values for AvatarLayer
+// Enum values for LocationSelectTypeEnum
 const (
-	AvatarLayerHAIR      = "HAIR"
-	AvatarLayerFACE      = "FACE"
-	AvatarLayerBODY      = "BODY"
-	AvatarLayerACCESSORY = "ACCESSORY"
-	AvatarLayerEYEWEAR   = "EYEWEAR"
-	AvatarLayerHELMET    = "HELMET"
-)
-
-// Enum values for MarketplaceEvent
-const (
-	MarketplaceEventBid       = "bid"
-	MarketplaceEventBidRefund = "bid_refund"
-	MarketplaceEventPurchase  = "purchase"
-	MarketplaceEventCreated   = "created"
-	MarketplaceEventSold      = "sold"
-	MarketplaceEventCancelled = "cancelled"
+	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
 )
 
 // Enum values for MultiplierTypeEnum
@@ -254,134 +203,10 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
-// Enum values for CrateType
-const (
-	CrateTypeMECH   = "MECH"
-	CrateTypeWEAPON = "WEAPON"
-)
-
-// Enum values for TemplateItemType
-const (
-	TemplateItemTypeMECH           = "MECH"
-	TemplateItemTypeMECH_ANIMATION = "MECH_ANIMATION"
-	TemplateItemTypeMECH_SKIN      = "MECH_SKIN"
-	TemplateItemTypeUTILITY        = "UTILITY"
-	TemplateItemTypeWEAPON         = "WEAPON"
-	TemplateItemTypeAMMO           = "AMMO"
-	TemplateItemTypePOWER_CORE     = "POWER_CORE"
-	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
-	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
-)
-
-// Enum values for BanFromType
-const (
-	BanFromTypeSYSTEM = "SYSTEM"
-	BanFromTypeADMIN  = "ADMIN"
-	BanFromTypePLAYER = "PLAYER"
-)
-
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
-)
-
-// Enum values for QuestEventDurationType
-const (
-	QuestEventDurationTypeDaily   = "daily"
-	QuestEventDurationTypeWeekly  = "weekly"
-	QuestEventDurationTypeMonthly = "monthly"
-	QuestEventDurationTypeCustom  = "custom"
-)
-
-// Enum values for RepairTriggerWithType
-const (
-	RepairTriggerWithTypeSPACE_BAR  = "SPACE_BAR"
-	RepairTriggerWithTypeLEFT_CLICK = "LEFT_CLICK"
-	RepairTriggerWithTypeTOUCH      = "TOUCH"
-	RepairTriggerWithTypeNONE       = "NONE"
-)
-
-// Enum values for RepairAgentFinishReason
-const (
-	RepairAgentFinishReasonABANDONED = "ABANDONED"
-	RepairAgentFinishReasonEXPIRED   = "EXPIRED"
-	RepairAgentFinishReasonSUCCEEDED = "SUCCEEDED"
-)
-
-// Enum values for RepairFinishReason
-const (
-	RepairFinishReasonEXPIRED   = "EXPIRED"
-	RepairFinishReasonSTOPPED   = "STOPPED"
-	RepairFinishReasonSUCCEEDED = "SUCCEEDED"
-)
-
-// Enum values for SyndicateElectionType
-const (
-	SyndicateElectionTypeADMIN = "ADMIN"
-	SyndicateElectionTypeCEO   = "CEO"
-)
-
-// Enum values for SyndicateElectionResult
-const (
-	SyndicateElectionResultWINNER_APPEAR   = "WINNER_APPEAR"
-	SyndicateElectionResultTIE             = "TIE"
-	SyndicateElectionResultTIE_SECOND_TIME = "TIE_SECOND_TIME"
-	SyndicateElectionResultNO_VOTE         = "NO_VOTE"
-	SyndicateElectionResultNO_CANDIDATE    = "NO_CANDIDATE"
-	SyndicateElectionResultTERMINATED      = "TERMINATED"
-)
-
-// Enum values for SyndicateJoinApplicationResult
-const (
-	SyndicateJoinApplicationResultACCEPTED   = "ACCEPTED"
-	SyndicateJoinApplicationResultREJECTED   = "REJECTED"
-	SyndicateJoinApplicationResultTERMINATED = "TERMINATED"
-)
-
-// Enum values for SyndicateMotionType
-const (
-	SyndicateMotionTypeCHANGE_GENERAL_DETAIL = "CHANGE_GENERAL_DETAIL"
-	SyndicateMotionTypeCHANGE_ENTRY_FEE      = "CHANGE_ENTRY_FEE"
-	SyndicateMotionTypeCHANGE_MONTHLY_DUES   = "CHANGE_MONTHLY_DUES"
-	SyndicateMotionTypeCHANGE_BATTLE_WIN_CUT = "CHANGE_BATTLE_WIN_CUT"
-	SyndicateMotionTypeADD_RULE              = "ADD_RULE"
-	SyndicateMotionTypeREMOVE_RULE           = "REMOVE_RULE"
-	SyndicateMotionTypeCHANGE_RULE           = "CHANGE_RULE"
-	SyndicateMotionTypeREMOVE_MEMBER         = "REMOVE_MEMBER"
-	SyndicateMotionTypeAPPOINT_COMMITTEE     = "APPOINT_COMMITTEE"
-	SyndicateMotionTypeREMOVE_COMMITTEE      = "REMOVE_COMMITTEE"
-	SyndicateMotionTypeDEPOSE_ADMIN          = "DEPOSE_ADMIN"
-	SyndicateMotionTypeAPPOINT_DIRECTOR      = "APPOINT_DIRECTOR"
-	SyndicateMotionTypeREMOVE_DIRECTOR       = "REMOVE_DIRECTOR"
-	SyndicateMotionTypeDEPOSE_CEO            = "DEPOSE_CEO"
-)
-
-// Enum values for SyndicateMotionResult
-const (
-	SyndicateMotionResultPASSED          = "PASSED"
-	SyndicateMotionResultFAILED          = "FAILED"
-	SyndicateMotionResultTERMINATED      = "TERMINATED"
-	SyndicateMotionResultLEADER_ACCEPTED = "LEADER_ACCEPTED"
-	SyndicateMotionResultLEADER_REJECTED = "LEADER_REJECTED"
-)
-
-// Enum values for QuestionnaireUsage
-const (
-	QuestionnaireUsageJOIN_REQUEST = "JOIN_REQUEST"
-)
-
-// Enum values for QuestionnaireType
-const (
-	QuestionnaireTypeTEXT          = "TEXT"
-	QuestionnaireTypeSINGLE_SELECT = "SINGLE_SELECT"
-	QuestionnaireTypeMULTI_SELECT  = "MULTI_SELECT"
-)
-
-// Enum values for SyndicateType
-const (
-	SyndicateTypeCORPORATION   = "CORPORATION"
-	SyndicateTypeDECENTRALISED = "DECENTRALISED"
 )

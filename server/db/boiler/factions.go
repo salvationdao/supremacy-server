@@ -37,7 +37,6 @@ type Faction struct {
 	LogoURL         string      `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
 	BackgroundURL   string      `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
 	Description     string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	WallpaperURL    null.String `boiler:"wallpaper_url" boil:"wallpaper_url" json:"wallpaper_url,omitempty" toml:"wallpaper_url" yaml:"wallpaper_url,omitempty"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -58,7 +57,6 @@ var FactionColumns = struct {
 	LogoURL         string
 	BackgroundURL   string
 	Description     string
-	WallpaperURL    string
 }{
 	ID:              "id",
 	VotePrice:       "vote_price",
@@ -74,7 +72,6 @@ var FactionColumns = struct {
 	LogoURL:         "logo_url",
 	BackgroundURL:   "background_url",
 	Description:     "description",
-	WallpaperURL:    "wallpaper_url",
 }
 
 var FactionTableColumns = struct {
@@ -92,7 +89,6 @@ var FactionTableColumns = struct {
 	LogoURL         string
 	BackgroundURL   string
 	Description     string
-	WallpaperURL    string
 }{
 	ID:              "factions.id",
 	VotePrice:       "factions.vote_price",
@@ -108,7 +104,6 @@ var FactionTableColumns = struct {
 	LogoURL:         "factions.logo_url",
 	BackgroundURL:   "factions.background_url",
 	Description:     "factions.description",
-	WallpaperURL:    "factions.wallpaper_url",
 }
 
 // Generated where
@@ -128,7 +123,6 @@ var FactionWhere = struct {
 	LogoURL         whereHelperstring
 	BackgroundURL   whereHelperstring
 	Description     whereHelperstring
-	WallpaperURL    whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"factions\".\"id\""},
 	VotePrice:       whereHelperstring{field: "\"factions\".\"vote_price\""},
@@ -144,82 +138,63 @@ var FactionWhere = struct {
 	LogoURL:         whereHelperstring{field: "\"factions\".\"logo_url\""},
 	BackgroundURL:   whereHelperstring{field: "\"factions\".\"background_url\""},
 	Description:     whereHelperstring{field: "\"factions\".\"description\""},
-	WallpaperURL:    whereHelpernull_String{field: "\"factions\".\"wallpaper_url\""},
 }
 
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
-	IDFactionStat           string
-	BattleAbilityOptInLogs  string
-	BattleAbilityTriggers   string
-	BattleContracts         string
-	BattleContributions     string
-	BattleMechs             string
-	BattleQueues            string
-	BattleWins              string
-	Brands                  string
-	ChatHistories           string
-	GameAbilities           string
-	ItemKeycardSales        string
-	ItemSales               string
-	MysteryCrates           string
-	PlayerActiveLogs        string
-	PlayerKillLogs          string
-	PlayerLanguages         string
-	Players                 string
-	PunishVotes             string
-	StorefrontMysteryCrates string
-	Syndicates              string
-	TemplatesOlds           string
+	IDFactionStat         string
+	BattleAbilityTriggers string
+	BattleContracts       string
+	BattleContributions   string
+	BattleMechs           string
+	BattleQueues          string
+	BattleWins            string
+	Brands                string
+	ChatHistories         string
+	GameAbilities         string
+	PlayerActiveLogs      string
+	PlayerKillLogs        string
+	PlayerLanguages       string
+	Players               string
+	PunishVotes           string
+	Templates             string
 }{
-	IDFactionStat:           "IDFactionStat",
-	BattleAbilityOptInLogs:  "BattleAbilityOptInLogs",
-	BattleAbilityTriggers:   "BattleAbilityTriggers",
-	BattleContracts:         "BattleContracts",
-	BattleContributions:     "BattleContributions",
-	BattleMechs:             "BattleMechs",
-	BattleQueues:            "BattleQueues",
-	BattleWins:              "BattleWins",
-	Brands:                  "Brands",
-	ChatHistories:           "ChatHistories",
-	GameAbilities:           "GameAbilities",
-	ItemKeycardSales:        "ItemKeycardSales",
-	ItemSales:               "ItemSales",
-	MysteryCrates:           "MysteryCrates",
-	PlayerActiveLogs:        "PlayerActiveLogs",
-	PlayerKillLogs:          "PlayerKillLogs",
-	PlayerLanguages:         "PlayerLanguages",
-	Players:                 "Players",
-	PunishVotes:             "PunishVotes",
-	StorefrontMysteryCrates: "StorefrontMysteryCrates",
-	Syndicates:              "Syndicates",
-	TemplatesOlds:           "TemplatesOlds",
+	IDFactionStat:         "IDFactionStat",
+	BattleAbilityTriggers: "BattleAbilityTriggers",
+	BattleContracts:       "BattleContracts",
+	BattleContributions:   "BattleContributions",
+	BattleMechs:           "BattleMechs",
+	BattleQueues:          "BattleQueues",
+	BattleWins:            "BattleWins",
+	Brands:                "Brands",
+	ChatHistories:         "ChatHistories",
+	GameAbilities:         "GameAbilities",
+	PlayerActiveLogs:      "PlayerActiveLogs",
+	PlayerKillLogs:        "PlayerKillLogs",
+	PlayerLanguages:       "PlayerLanguages",
+	Players:               "Players",
+	PunishVotes:           "PunishVotes",
+	Templates:             "Templates",
 }
 
 // factionR is where relationships are stored.
 type factionR struct {
-	IDFactionStat           *FactionStat                `boiler:"IDFactionStat" boil:"IDFactionStat" json:"IDFactionStat" toml:"IDFactionStat" yaml:"IDFactionStat"`
-	BattleAbilityOptInLogs  BattleAbilityOptInLogSlice  `boiler:"BattleAbilityOptInLogs" boil:"BattleAbilityOptInLogs" json:"BattleAbilityOptInLogs" toml:"BattleAbilityOptInLogs" yaml:"BattleAbilityOptInLogs"`
-	BattleAbilityTriggers   BattleAbilityTriggerSlice   `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
-	BattleContracts         BattleContractSlice         `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	BattleContributions     BattleContributionSlice     `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
-	BattleMechs             BattleMechSlice             `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	BattleQueues            BattleQueueSlice            `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
-	BattleWins              BattleWinSlice              `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
-	Brands                  BrandSlice                  `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
-	ChatHistories           ChatHistorySlice            `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
-	GameAbilities           GameAbilitySlice            `boiler:"GameAbilities" boil:"GameAbilities" json:"GameAbilities" toml:"GameAbilities" yaml:"GameAbilities"`
-	ItemKeycardSales        ItemKeycardSaleSlice        `boiler:"ItemKeycardSales" boil:"ItemKeycardSales" json:"ItemKeycardSales" toml:"ItemKeycardSales" yaml:"ItemKeycardSales"`
-	ItemSales               ItemSaleSlice               `boiler:"ItemSales" boil:"ItemSales" json:"ItemSales" toml:"ItemSales" yaml:"ItemSales"`
-	MysteryCrates           MysteryCrateSlice           `boiler:"MysteryCrates" boil:"MysteryCrates" json:"MysteryCrates" toml:"MysteryCrates" yaml:"MysteryCrates"`
-	PlayerActiveLogs        PlayerActiveLogSlice        `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
-	PlayerKillLogs          PlayerKillLogSlice          `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
-	PlayerLanguages         PlayerLanguageSlice         `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
-	Players                 PlayerSlice                 `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
-	PunishVotes             PunishVoteSlice             `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
-	StorefrontMysteryCrates StorefrontMysteryCrateSlice `boiler:"StorefrontMysteryCrates" boil:"StorefrontMysteryCrates" json:"StorefrontMysteryCrates" toml:"StorefrontMysteryCrates" yaml:"StorefrontMysteryCrates"`
-	Syndicates              SyndicateSlice              `boiler:"Syndicates" boil:"Syndicates" json:"Syndicates" toml:"Syndicates" yaml:"Syndicates"`
-	TemplatesOlds           TemplatesOldSlice           `boiler:"TemplatesOlds" boil:"TemplatesOlds" json:"TemplatesOlds" toml:"TemplatesOlds" yaml:"TemplatesOlds"`
+	IDFactionStat         *FactionStat              `boiler:"IDFactionStat" boil:"IDFactionStat" json:"IDFactionStat" toml:"IDFactionStat" yaml:"IDFactionStat"`
+	BattleAbilityTriggers BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
+	BattleContracts       BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	BattleContributions   BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
+	BattleMechs           BattleMechSlice           `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	BattleQueues          BattleQueueSlice          `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
+	BattleWins            BattleWinSlice            `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
+	ChatHistories         ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
+	GameAbilities         GameAbilitySlice          `boiler:"GameAbilities" boil:"GameAbilities" json:"GameAbilities" toml:"GameAbilities" yaml:"GameAbilities"`
+	PlayerActiveLogs      PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerKillLogs        PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
+	PlayerLanguages       PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
+	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
+	Templates             TemplateSlice             `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
 }
 
 // NewStruct creates a new relationship struct
@@ -231,9 +206,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
+	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
 	factionColumnsWithoutDefault = []string{"label"}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description", "wallpaper_url"}
+	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
 	factionPrimaryKeyColumns     = []string{"id"}
 	factionGeneratedColumns      = []string{}
 )
@@ -494,28 +469,6 @@ func (o *Faction) IDFactionStat(mods ...qm.QueryMod) factionStatQuery {
 	return query
 }
 
-// BattleAbilityOptInLogs retrieves all the battle_ability_opt_in_log's BattleAbilityOptInLogs with an executor.
-func (o *Faction) BattleAbilityOptInLogs(mods ...qm.QueryMod) battleAbilityOptInLogQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"battle_ability_opt_in_logs\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_ability_opt_in_logs\".\"deleted_at\""),
-	)
-
-	query := BattleAbilityOptInLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_ability_opt_in_logs\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_ability_opt_in_logs\".*"})
-	}
-
-	return query
-}
-
 // BattleAbilityTriggers retrieves all the battle_ability_trigger's BattleAbilityTriggers with an executor.
 func (o *Faction) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTriggerQuery {
 	var queryMods []qm.QueryMod
@@ -694,7 +647,6 @@ func (o *Faction) GameAbilities(mods ...qm.QueryMod) gameAbilityQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"game_abilities\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"game_abilities\".\"deleted_at\""),
 	)
 
 	query := GameAbilities(queryMods...)
@@ -702,72 +654,6 @@ func (o *Faction) GameAbilities(mods ...qm.QueryMod) gameAbilityQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"game_abilities\".*"})
-	}
-
-	return query
-}
-
-// ItemKeycardSales retrieves all the item_keycard_sale's ItemKeycardSales with an executor.
-func (o *Faction) ItemKeycardSales(mods ...qm.QueryMod) itemKeycardSaleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_keycard_sales\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"item_keycard_sales\".\"deleted_at\""),
-	)
-
-	query := ItemKeycardSales(queryMods...)
-	queries.SetFrom(query.Query, "\"item_keycard_sales\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_keycard_sales\".*"})
-	}
-
-	return query
-}
-
-// ItemSales retrieves all the item_sale's ItemSales with an executor.
-func (o *Faction) ItemSales(mods ...qm.QueryMod) itemSaleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_sales\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"item_sales\".\"deleted_at\""),
-	)
-
-	query := ItemSales(queryMods...)
-	queries.SetFrom(query.Query, "\"item_sales\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_sales\".*"})
-	}
-
-	return query
-}
-
-// MysteryCrates retrieves all the mystery_crate's MysteryCrates with an executor.
-func (o *Faction) MysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"mystery_crate\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mystery_crate\".\"deleted_at\""),
-	)
-
-	query := MysteryCrates(queryMods...)
-	queries.SetFrom(query.Query, "\"mystery_crate\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mystery_crate\".*"})
 	}
 
 	return query
@@ -880,67 +766,23 @@ func (o *Faction) PunishVotes(mods ...qm.QueryMod) punishVoteQuery {
 	return query
 }
 
-// StorefrontMysteryCrates retrieves all the storefront_mystery_crate's StorefrontMysteryCrates with an executor.
-func (o *Faction) StorefrontMysteryCrates(mods ...qm.QueryMod) storefrontMysteryCrateQuery {
+// Templates retrieves all the template's Templates with an executor.
+func (o *Faction) Templates(mods ...qm.QueryMod) templateQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"storefront_mystery_crates\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"storefront_mystery_crates\".\"deleted_at\""),
+		qm.Where("\"templates\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"templates\".\"deleted_at\""),
 	)
 
-	query := StorefrontMysteryCrates(queryMods...)
-	queries.SetFrom(query.Query, "\"storefront_mystery_crates\"")
+	query := Templates(queryMods...)
+	queries.SetFrom(query.Query, "\"templates\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"storefront_mystery_crates\".*"})
-	}
-
-	return query
-}
-
-// Syndicates retrieves all the syndicate's Syndicates with an executor.
-func (o *Faction) Syndicates(mods ...qm.QueryMod) syndicateQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"syndicates\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"syndicates\".\"deleted_at\""),
-	)
-
-	query := Syndicates(queryMods...)
-	queries.SetFrom(query.Query, "\"syndicates\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"syndicates\".*"})
-	}
-
-	return query
-}
-
-// TemplatesOlds retrieves all the templates_old's TemplatesOlds with an executor.
-func (o *Faction) TemplatesOlds(mods ...qm.QueryMod) templatesOldQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"templates_old\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"templates_old\".\"deleted_at\""),
-	)
-
-	query := TemplatesOlds(queryMods...)
-	queries.SetFrom(query.Query, "\"templates_old\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"templates_old\".*"})
+		queries.SetSelect(query.Query, []string{"\"templates\".*"})
 	}
 
 	return query
@@ -1039,105 +881,6 @@ func (factionL) LoadIDFactionStat(e boil.Executor, singular bool, maybeFaction i
 					foreign.R = &factionStatR{}
 				}
 				foreign.R.IDFaction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBattleAbilityOptInLogs allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadBattleAbilityOptInLogs(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_ability_opt_in_logs`),
-		qm.WhereIn(`battle_ability_opt_in_logs.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_ability_opt_in_logs.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_ability_opt_in_logs")
-	}
-
-	var resultSlice []*BattleAbilityOptInLog
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_ability_opt_in_logs")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_ability_opt_in_logs")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_ability_opt_in_logs")
-	}
-
-	if len(battleAbilityOptInLogAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BattleAbilityOptInLogs = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &battleAbilityOptInLogR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.BattleAbilityOptInLogs = append(local.R.BattleAbilityOptInLogs, foreign)
-				if foreign.R == nil {
-					foreign.R = &battleAbilityOptInLogR{}
-				}
-				foreign.R.Faction = local
 				break
 			}
 		}
@@ -1973,7 +1716,6 @@ func (factionL) LoadGameAbilities(e boil.Executor, singular bool, maybeFaction i
 	query := NewQuery(
 		qm.From(`game_abilities`),
 		qm.WhereIn(`game_abilities.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`game_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2020,303 +1762,6 @@ func (factionL) LoadGameAbilities(e boil.Executor, singular bool, maybeFaction i
 				local.R.GameAbilities = append(local.R.GameAbilities, foreign)
 				if foreign.R == nil {
 					foreign.R = &gameAbilityR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadItemKeycardSales allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadItemKeycardSales(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_keycard_sales`),
-		qm.WhereIn(`item_keycard_sales.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`item_keycard_sales.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_keycard_sales")
-	}
-
-	var resultSlice []*ItemKeycardSale
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_keycard_sales")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_keycard_sales")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_keycard_sales")
-	}
-
-	if len(itemKeycardSaleAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemKeycardSales = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemKeycardSaleR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.ItemKeycardSales = append(local.R.ItemKeycardSales, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemKeycardSaleR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadItemSales allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadItemSales(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_sales`),
-		qm.WhereIn(`item_sales.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`item_sales.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_sales")
-	}
-
-	var resultSlice []*ItemSale
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_sales")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_sales")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales")
-	}
-
-	if len(itemSaleAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemSales = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemSaleR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.ItemSales = append(local.R.ItemSales, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemSaleR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadMysteryCrates allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadMysteryCrates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mystery_crate`),
-		qm.WhereIn(`mystery_crate.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`mystery_crate.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load mystery_crate")
-	}
-
-	var resultSlice []*MysteryCrate
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mystery_crate")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mystery_crate")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mystery_crate")
-	}
-
-	if len(mysteryCrateAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.MysteryCrates = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &mysteryCrateR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.MysteryCrates = append(local.R.MysteryCrates, foreign)
-				if foreign.R == nil {
-					foreign.R = &mysteryCrateR{}
 				}
 				foreign.R.Faction = local
 				break
@@ -2819,9 +2264,9 @@ func (factionL) LoadPunishVotes(e boil.Executor, singular bool, maybeFaction int
 	return nil
 }
 
-// LoadStorefrontMysteryCrates allows an eager lookup of values, cached into the
+// LoadTemplates allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
 	var slice []*Faction
 	var object *Faction
 
@@ -2859,9 +2304,9 @@ func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, mayb
 	}
 
 	query := NewQuery(
-		qm.From(`storefront_mystery_crates`),
-		qm.WhereIn(`storefront_mystery_crates.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`storefront_mystery_crates.deleted_at`),
+		qm.From(`templates`),
+		qm.WhereIn(`templates.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`templates.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2869,22 +2314,22 @@ func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, mayb
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load storefront_mystery_crates")
+		return errors.Wrap(err, "failed to eager load templates")
 	}
 
-	var resultSlice []*StorefrontMysteryCrate
+	var resultSlice []*Template
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice storefront_mystery_crates")
+		return errors.Wrap(err, "failed to bind eager loaded slice templates")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on storefront_mystery_crates")
+		return errors.Wrap(err, "failed to close results in eager load on templates")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for storefront_mystery_crates")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates")
 	}
 
-	if len(storefrontMysteryCrateAfterSelectHooks) != 0 {
+	if len(templateAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2892,10 +2337,10 @@ func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, mayb
 		}
 	}
 	if singular {
-		object.R.StorefrontMysteryCrates = resultSlice
+		object.R.Templates = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &storefrontMysteryCrateR{}
+				foreign.R = &templateR{}
 			}
 			foreign.R.Faction = object
 		}
@@ -2905,207 +2350,9 @@ func (factionL) LoadStorefrontMysteryCrates(e boil.Executor, singular bool, mayb
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.FactionID {
-				local.R.StorefrontMysteryCrates = append(local.R.StorefrontMysteryCrates, foreign)
+				local.R.Templates = append(local.R.Templates, foreign)
 				if foreign.R == nil {
-					foreign.R = &storefrontMysteryCrateR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadSyndicates allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadSyndicates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`syndicates`),
-		qm.WhereIn(`syndicates.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`syndicates.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load syndicates")
-	}
-
-	var resultSlice []*Syndicate
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice syndicates")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on syndicates")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
-	}
-
-	if len(syndicateAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.Syndicates = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &syndicateR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.Syndicates = append(local.R.Syndicates, foreign)
-				if foreign.R == nil {
-					foreign.R = &syndicateR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadTemplatesOlds allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadTemplatesOlds(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`templates_old`),
-		qm.WhereIn(`templates_old.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`templates_old.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load templates_old")
-	}
-
-	var resultSlice []*TemplatesOld
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice templates_old")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on templates_old")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_old")
-	}
-
-	if len(templatesOldAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.TemplatesOlds = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &templatesOldR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.TemplatesOlds = append(local.R.TemplatesOlds, foreign)
-				if foreign.R == nil {
-					foreign.R = &templatesOldR{}
+					foreign.R = &templateR{}
 				}
 				foreign.R.Faction = local
 				break
@@ -3162,58 +2409,6 @@ func (o *Faction) SetIDFactionStat(exec boil.Executor, insert bool, related *Fac
 		}
 	} else {
 		related.R.IDFaction = o
-	}
-	return nil
-}
-
-// AddBattleAbilityOptInLogs adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.BattleAbilityOptInLogs.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddBattleAbilityOptInLogs(exec boil.Executor, insert bool, related ...*BattleAbilityOptInLog) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_ability_opt_in_logs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleAbilityOptInLogPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			BattleAbilityOptInLogs: related,
-		}
-	} else {
-		o.R.BattleAbilityOptInLogs = append(o.R.BattleAbilityOptInLogs, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &battleAbilityOptInLogR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
 	}
 	return nil
 }
@@ -3444,7 +2639,7 @@ func (o *Faction) AddBattleQueues(exec boil.Executor, insert bool, related ...*B
 				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.MechID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -3677,162 +2872,6 @@ func (o *Faction) AddGameAbilities(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &gameAbilityR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddItemKeycardSales adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.ItemKeycardSales.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddItemKeycardSales(exec boil.Executor, insert bool, related ...*ItemKeycardSale) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_keycard_sales\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemKeycardSalePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			ItemKeycardSales: related,
-		}
-	} else {
-		o.R.ItemKeycardSales = append(o.R.ItemKeycardSales, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemKeycardSaleR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddItemSales adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.ItemSales.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddItemSales(exec boil.Executor, insert bool, related ...*ItemSale) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_sales\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			ItemSales: related,
-		}
-	} else {
-		o.R.ItemSales = append(o.R.ItemSales, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemSaleR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddMysteryCrates adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.MysteryCrates.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddMysteryCrates(exec boil.Executor, insert bool, related ...*MysteryCrate) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"mystery_crate\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mysteryCratePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			MysteryCrates: related,
-		}
-	} else {
-		o.R.MysteryCrates = append(o.R.MysteryCrates, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &mysteryCrateR{
 				Faction: o,
 			}
 		} else {
@@ -4248,11 +3287,11 @@ func (o *Faction) AddPunishVotes(exec boil.Executor, insert bool, related ...*Pu
 	return nil
 }
 
-// AddStorefrontMysteryCrates adds the given related objects to the existing relationships
+// AddTemplates adds the given related objects to the existing relationships
 // of the faction, optionally inserting them as new records.
-// Appends related to o.R.StorefrontMysteryCrates.
+// Appends related to o.R.Templates.
 // Sets related.R.Faction appropriately.
-func (o *Faction) AddStorefrontMysteryCrates(exec boil.Executor, insert bool, related ...*StorefrontMysteryCrate) error {
+func (o *Faction) AddTemplates(exec boil.Executor, insert bool, related ...*Template) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -4262,9 +3301,9 @@ func (o *Faction) AddStorefrontMysteryCrates(exec boil.Executor, insert bool, re
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"storefront_mystery_crates\" SET %s WHERE %s",
+				"UPDATE \"templates\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, storefrontMysteryCratePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -4282,119 +3321,15 @@ func (o *Faction) AddStorefrontMysteryCrates(exec boil.Executor, insert bool, re
 
 	if o.R == nil {
 		o.R = &factionR{
-			StorefrontMysteryCrates: related,
+			Templates: related,
 		}
 	} else {
-		o.R.StorefrontMysteryCrates = append(o.R.StorefrontMysteryCrates, related...)
+		o.R.Templates = append(o.R.Templates, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &storefrontMysteryCrateR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddSyndicates adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.Syndicates.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddSyndicates(exec boil.Executor, insert bool, related ...*Syndicate) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"syndicates\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, syndicatePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			Syndicates: related,
-		}
-	} else {
-		o.R.Syndicates = append(o.R.Syndicates, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &syndicateR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// AddTemplatesOlds adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.TemplatesOlds.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddTemplatesOlds(exec boil.Executor, insert bool, related ...*TemplatesOld) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"templates_old\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, templatesOldPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			TemplatesOlds: related,
-		}
-	} else {
-		o.R.TemplatesOlds = append(o.R.TemplatesOlds, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &templatesOldR{
+			rel.R = &templateR{
 				Faction: o,
 			}
 		} else {

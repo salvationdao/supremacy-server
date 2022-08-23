@@ -78,6 +78,30 @@ var BattleEventsGameAbilityTableColumns = struct {
 
 // Generated where
 
+type whereHelpernull_Int struct{ field string }
+
+func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var BattleEventsGameAbilityWhere = struct {
 	ID                whereHelperstring
 	EventID           whereHelperstring
@@ -389,7 +413,6 @@ func (o *BattleEventsGameAbility) Event(mods ...qm.QueryMod) battleEventQuery {
 func (o *BattleEventsGameAbility) GameAbility(mods ...qm.QueryMod) gameAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.GameAbilityID),
-		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -552,7 +575,6 @@ func (battleEventsGameAbilityL) LoadGameAbility(e boil.Executor, singular bool, 
 	query := NewQuery(
 		qm.From(`game_abilities`),
 		qm.WhereIn(`game_abilities.id in ?`, args...),
-		qmhelper.WhereIsNull(`game_abilities.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

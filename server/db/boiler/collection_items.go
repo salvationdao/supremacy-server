@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,122 +22,105 @@ import (
 
 // CollectionItem is an object representing the database table.
 type CollectionItem struct {
-	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionSlug      string      `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug" toml:"collection_slug" yaml:"collection_slug"`
-	Hash                string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	TokenID             int64       `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	ItemType            string      `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
-	ItemID              string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
-	Tier                string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	OwnerID             string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	MarketLocked        bool        `boiler:"market_locked" boil:"market_locked" json:"market_locked" toml:"market_locked" yaml:"market_locked"`
-	XsynLocked          bool        `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked" toml:"xsyn_locked" yaml:"xsyn_locked"`
-	LockedToMarketplace bool        `boiler:"locked_to_marketplace" boil:"locked_to_marketplace" json:"locked_to_marketplace" toml:"locked_to_marketplace" yaml:"locked_to_marketplace"`
-	AssetHidden         null.String `boiler:"asset_hidden" boil:"asset_hidden" json:"asset_hidden,omitempty" toml:"asset_hidden" yaml:"asset_hidden,omitempty"`
+	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionSlug string `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug" toml:"collection_slug" yaml:"collection_slug"`
+	Hash           string `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	TokenID        int64  `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
+	ItemType       string `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
+	ItemID         string `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
+	Tier           string `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	OwnerID        string `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	MarketLocked   bool   `boiler:"market_locked" boil:"market_locked" json:"market_locked" toml:"market_locked" yaml:"market_locked"`
+	XsynLocked     bool   `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked" toml:"xsyn_locked" yaml:"xsyn_locked"`
 
 	R *collectionItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var CollectionItemColumns = struct {
-	ID                  string
-	CollectionSlug      string
-	Hash                string
-	TokenID             string
-	ItemType            string
-	ItemID              string
-	Tier                string
-	OwnerID             string
-	MarketLocked        string
-	XsynLocked          string
-	LockedToMarketplace string
-	AssetHidden         string
+	ID             string
+	CollectionSlug string
+	Hash           string
+	TokenID        string
+	ItemType       string
+	ItemID         string
+	Tier           string
+	OwnerID        string
+	MarketLocked   string
+	XsynLocked     string
 }{
-	ID:                  "id",
-	CollectionSlug:      "collection_slug",
-	Hash:                "hash",
-	TokenID:             "token_id",
-	ItemType:            "item_type",
-	ItemID:              "item_id",
-	Tier:                "tier",
-	OwnerID:             "owner_id",
-	MarketLocked:        "market_locked",
-	XsynLocked:          "xsyn_locked",
-	LockedToMarketplace: "locked_to_marketplace",
-	AssetHidden:         "asset_hidden",
+	ID:             "id",
+	CollectionSlug: "collection_slug",
+	Hash:           "hash",
+	TokenID:        "token_id",
+	ItemType:       "item_type",
+	ItemID:         "item_id",
+	Tier:           "tier",
+	OwnerID:        "owner_id",
+	MarketLocked:   "market_locked",
+	XsynLocked:     "xsyn_locked",
 }
 
 var CollectionItemTableColumns = struct {
-	ID                  string
-	CollectionSlug      string
-	Hash                string
-	TokenID             string
-	ItemType            string
-	ItemID              string
-	Tier                string
-	OwnerID             string
-	MarketLocked        string
-	XsynLocked          string
-	LockedToMarketplace string
-	AssetHidden         string
+	ID             string
+	CollectionSlug string
+	Hash           string
+	TokenID        string
+	ItemType       string
+	ItemID         string
+	Tier           string
+	OwnerID        string
+	MarketLocked   string
+	XsynLocked     string
 }{
-	ID:                  "collection_items.id",
-	CollectionSlug:      "collection_items.collection_slug",
-	Hash:                "collection_items.hash",
-	TokenID:             "collection_items.token_id",
-	ItemType:            "collection_items.item_type",
-	ItemID:              "collection_items.item_id",
-	Tier:                "collection_items.tier",
-	OwnerID:             "collection_items.owner_id",
-	MarketLocked:        "collection_items.market_locked",
-	XsynLocked:          "collection_items.xsyn_locked",
-	LockedToMarketplace: "collection_items.locked_to_marketplace",
-	AssetHidden:         "collection_items.asset_hidden",
+	ID:             "collection_items.id",
+	CollectionSlug: "collection_items.collection_slug",
+	Hash:           "collection_items.hash",
+	TokenID:        "collection_items.token_id",
+	ItemType:       "collection_items.item_type",
+	ItemID:         "collection_items.item_id",
+	Tier:           "collection_items.tier",
+	OwnerID:        "collection_items.owner_id",
+	MarketLocked:   "collection_items.market_locked",
+	XsynLocked:     "collection_items.xsyn_locked",
 }
 
 // Generated where
 
 var CollectionItemWhere = struct {
-	ID                  whereHelperstring
-	CollectionSlug      whereHelperstring
-	Hash                whereHelperstring
-	TokenID             whereHelperint64
-	ItemType            whereHelperstring
-	ItemID              whereHelperstring
-	Tier                whereHelperstring
-	OwnerID             whereHelperstring
-	MarketLocked        whereHelperbool
-	XsynLocked          whereHelperbool
-	LockedToMarketplace whereHelperbool
-	AssetHidden         whereHelpernull_String
+	ID             whereHelperstring
+	CollectionSlug whereHelperstring
+	Hash           whereHelperstring
+	TokenID        whereHelperint64
+	ItemType       whereHelperstring
+	ItemID         whereHelperstring
+	Tier           whereHelperstring
+	OwnerID        whereHelperstring
+	MarketLocked   whereHelperbool
+	XsynLocked     whereHelperbool
 }{
-	ID:                  whereHelperstring{field: "\"collection_items\".\"id\""},
-	CollectionSlug:      whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
-	Hash:                whereHelperstring{field: "\"collection_items\".\"hash\""},
-	TokenID:             whereHelperint64{field: "\"collection_items\".\"token_id\""},
-	ItemType:            whereHelperstring{field: "\"collection_items\".\"item_type\""},
-	ItemID:              whereHelperstring{field: "\"collection_items\".\"item_id\""},
-	Tier:                whereHelperstring{field: "\"collection_items\".\"tier\""},
-	OwnerID:             whereHelperstring{field: "\"collection_items\".\"owner_id\""},
-	MarketLocked:        whereHelperbool{field: "\"collection_items\".\"market_locked\""},
-	XsynLocked:          whereHelperbool{field: "\"collection_items\".\"xsyn_locked\""},
-	LockedToMarketplace: whereHelperbool{field: "\"collection_items\".\"locked_to_marketplace\""},
-	AssetHidden:         whereHelpernull_String{field: "\"collection_items\".\"asset_hidden\""},
+	ID:             whereHelperstring{field: "\"collection_items\".\"id\""},
+	CollectionSlug: whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
+	Hash:           whereHelperstring{field: "\"collection_items\".\"hash\""},
+	TokenID:        whereHelperint64{field: "\"collection_items\".\"token_id\""},
+	ItemType:       whereHelperstring{field: "\"collection_items\".\"item_type\""},
+	ItemID:         whereHelperstring{field: "\"collection_items\".\"item_id\""},
+	Tier:           whereHelperstring{field: "\"collection_items\".\"tier\""},
+	OwnerID:        whereHelperstring{field: "\"collection_items\".\"owner_id\""},
+	MarketLocked:   whereHelperbool{field: "\"collection_items\".\"market_locked\""},
+	XsynLocked:     whereHelperbool{field: "\"collection_items\".\"xsyn_locked\""},
 }
 
 // CollectionItemRels is where relationship names are stored.
 var CollectionItemRels = struct {
-	Owner     string
-	ItemSales string
+	Owner string
 }{
-	Owner:     "Owner",
-	ItemSales: "ItemSales",
+	Owner: "Owner",
 }
 
 // collectionItemR is where relationships are stored.
 type collectionItemR struct {
-	Owner     *Player       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	ItemSales ItemSaleSlice `boiler:"ItemSales" boil:"ItemSales" json:"ItemSales" toml:"ItemSales" yaml:"ItemSales"`
+	Owner *Player `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 }
 
 // NewStruct creates a new relationship struct
@@ -150,9 +132,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "locked_to_marketplace", "asset_hidden"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )
@@ -414,28 +396,6 @@ func (o *CollectionItem) Owner(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// ItemSales retrieves all the item_sale's ItemSales with an executor.
-func (o *CollectionItem) ItemSales(mods ...qm.QueryMod) itemSaleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_sales\".\"collection_item_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"item_sales\".\"deleted_at\""),
-	)
-
-	query := ItemSales(queryMods...)
-	queries.SetFrom(query.Query, "\"item_sales\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_sales\".*"})
-	}
-
-	return query
-}
-
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
@@ -541,105 +501,6 @@ func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollection
 	return nil
 }
 
-// LoadItemSales allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (collectionItemL) LoadItemSales(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
-	var slice []*CollectionItem
-	var object *CollectionItem
-
-	if singular {
-		object = maybeCollectionItem.(*CollectionItem)
-	} else {
-		slice = *maybeCollectionItem.(*[]*CollectionItem)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &collectionItemR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &collectionItemR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_sales`),
-		qm.WhereIn(`item_sales.collection_item_id in ?`, args...),
-		qmhelper.WhereIsNull(`item_sales.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_sales")
-	}
-
-	var resultSlice []*ItemSale
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_sales")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_sales")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales")
-	}
-
-	if len(itemSaleAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemSales = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemSaleR{}
-			}
-			foreign.R.CollectionItem = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.CollectionItemID {
-				local.R.ItemSales = append(local.R.ItemSales, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemSaleR{}
-				}
-				foreign.R.CollectionItem = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetOwner of the collectionItem to the related item.
 // Sets o.R.Owner to related.
 // Adds o to related.R.OwnerCollectionItems.
@@ -683,58 +544,6 @@ func (o *CollectionItem) SetOwner(exec boil.Executor, insert bool, related *Play
 		related.R.OwnerCollectionItems = append(related.R.OwnerCollectionItems, o)
 	}
 
-	return nil
-}
-
-// AddItemSales adds the given related objects to the existing relationships
-// of the collection_item, optionally inserting them as new records.
-// Appends related to o.R.ItemSales.
-// Sets related.R.CollectionItem appropriately.
-func (o *CollectionItem) AddItemSales(exec boil.Executor, insert bool, related ...*ItemSale) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.CollectionItemID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_sales\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.CollectionItemID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &collectionItemR{
-			ItemSales: related,
-		}
-	} else {
-		o.R.ItemSales = append(o.R.ItemSales, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemSaleR{
-				CollectionItem: o,
-			}
-		} else {
-			rel.R.CollectionItem = o
-		}
-	}
 	return nil
 }
 
