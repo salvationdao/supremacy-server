@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"server"
 	"server/battle/player_abilities"
-	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -49,7 +48,15 @@ type AbilitiesSystem struct {
 
 	locationSelectChan chan *locationSelect
 
+	AdvanceAbilityCountdownList []*AdvanceAbilityCountdown
+
 	deadlock.RWMutex
+}
+
+type AdvanceAbilityCountdown struct {
+	Ability     *boiler.GameAbility
+	FiredByUser *boiler.Player
+	FireAt      time.Time
 }
 
 type locationSelect struct {
@@ -278,8 +285,7 @@ func (ld *LocationDeciders) hasSelector() bool {
 type AbilityConfig struct {
 	BattleAbilityOptInDuration          time.Duration
 	BattleAbilityLocationSelectDuration time.Duration
-	AdvanceAbilityShowUpUntilSeconds    int
-	AdvanceAbilityLabel                 string
+	DeadlyAbilityShowUpUntilSeconds     int
 	FirstAbilityLabel                   string
 }
 
@@ -302,13 +308,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			config: &AbilityConfig{
 				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
 				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
-				AdvanceAbilityShowUpUntilSeconds:    db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
-				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
+				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
 		},
-		isClosed:           atomic.Bool{},
-		locationSelectChan: make(chan *locationSelect),
+		isClosed:                    atomic.Bool{},
+		locationSelectChan:          make(chan *locationSelect),
+		AdvanceAbilityCountdownList: []*AdvanceAbilityCountdown{},
 	}
 	as.isClosed.Store(false)
 
@@ -368,14 +374,14 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		firstAbilityLabel = ""
 	}
 
-	excludedAbility := as.BattleAbilityPool.config.AdvanceAbilityLabel
-	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.AdvanceAbilityShowUpUntilSeconds {
+	includeDeadlyAbilities := false
+	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.DeadlyAbilityShowUpUntilSeconds {
 		// bring in advance battle ability
-		excludedAbility = ""
+		includeDeadlyAbilities = true
 	}
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, excludedAbility)
+	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, includeDeadlyAbilities)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 30, err
@@ -524,11 +530,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				bm := benchmark.New()
-				bm.Start("location select deciders")
 				as.locationDecidersSet()
-				bm.End("location select deciders")
-				bm.Alert(100)
 
 				// get another ability if no one opt in
 				if as.BattleAbilityPool.LocationDeciders.maxSelectorCount() == 0 {
