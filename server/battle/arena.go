@@ -1603,8 +1603,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog:    mmc,
-			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+			MechMoveCommandLog: mmc,
 		})
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
@@ -1622,8 +1621,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 					CreatedAt:     mmmc.CreatedAt,
 					IsMoving:      mmmc.IsMoving,
 				},
-				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-				IsMiniMech:            true,
+				IsMiniMech: true,
 			})
 		}
 	}

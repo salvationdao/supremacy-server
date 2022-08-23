@@ -202,12 +202,12 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	var minSurvives int
 	err = gamedb.StdConn.QueryRow(fmt.Sprintf(`
 				SELECT
-					COUNT(%[1]s),
-					MAX(%[2]s),
-					MIN(%[2]s),
-					MAX(%[3]s),
-					MIN(%[3]s)
-				FROM %[4]s
+					COUNT(%[1]S),
+					MAX(%[2]S),
+					MIN(%[2]S),
+					MAX(%[3]S),
+					MIN(%[3]S)
+				FROM %[4]S
 			`,
 		boiler.MechStatColumns.MechID,
 		boiler.MechStatColumns.TotalKills,
@@ -297,5 +297,27 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	}
 
 	reply(arena.LastBattleResult)
+	return nil
+}
+
+func (api *API) DeadlyAbilityPendingList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(nil)
+		return nil
+	}
+
+	// if current battle still running
+	btl := arena.CurrentBattle()
+	if btl != nil {
+		// if ability system is available
+		as := btl.AbilitySystem()
+		if battle.AbilitySystemIsAvailable(as) {
+
+			// reply current ability pending list
+			reply(as.DeadlyAbilityPendingList.Get())
+		}
+	}
+
 	return nil
 }

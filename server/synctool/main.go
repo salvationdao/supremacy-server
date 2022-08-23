@@ -945,7 +945,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			gameAbility.BattleAbilityID = null.StringFrom(record[3])
 		}
 
-		gameAbility.TriggerCountdownSeconds, err = strconv.Atoi(record[13])
+		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -971,7 +971,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.CurrentSups,
 				boiler.GameAbilityColumns.Level,
 				boiler.GameAbilityColumns.LocationSelectType,
-				boiler.GameAbilityColumns.TriggerCountdownSeconds,
+				boiler.GameAbilityColumns.LaunchingDelaySeconds,
 			),
 			boil.Infer(),
 		)

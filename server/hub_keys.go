@@ -55,4 +55,4 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 
 // battle abilities
 
-const HubKeyAdvanceAbilityCountdown = "ADVANCE:ABILITY:COUNTDOWN"
+const HubKeyDeadlyAbilityCountdownList = "DEADLY:ABILITY:COUNTDOWN:LIST"

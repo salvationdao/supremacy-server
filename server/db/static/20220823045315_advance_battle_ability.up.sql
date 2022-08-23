@@ -8,4 +8,4 @@ ALTER TABLE battle_abilities
 
 ALTER TABLE game_abilities
     ADD COLUMN IF NOT EXISTS deleted_at timestamptz, -- fix dev data sync
-    ADD COLUMN IF NOT EXISTS trigger_countdown_seconds int not null DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS launching_delay_seconds int not null DEFAULT 0;
