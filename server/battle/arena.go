@@ -334,6 +334,8 @@ type Arena struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
 
+	LastBattleResult *BattleEndDetail
+
 	QuestManager *quest.System
 
 	gameClientJsonDataChan chan []byte
