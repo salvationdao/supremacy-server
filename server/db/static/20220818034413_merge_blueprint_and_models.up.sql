@@ -37,7 +37,11 @@ ALTER TABLE mech_models
     RENAME TO blueprint_mechs;
 
 ALTER TABLE blueprint_mech_skin
-    ALTER COLUMN stat_modifier SET DEFAULT 0,
+    ALTER COLUMN stat_modifier SET DEFAULT 0;
+
+UPDATE blueprint_mech_skin SET stat_modifier = 0 WHERE stat_modifier IS NULL;
+
+ALTER TABLE blueprint_mech_skin
     ALTER COLUMN stat_modifier SET NOT NULL,
     ALTER COLUMN stat_modifier TYPE INT;
 ALTER TABLE blueprint_mech_skin
