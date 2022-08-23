@@ -178,32 +178,35 @@ var PunishVoteWhere = struct {
 
 // PunishVoteRels is where relationship names are stored.
 var PunishVoteRels = struct {
-	Faction                          string
-	InstantPassBy                    string
-	IssuedBy                         string
-	PunishOption                     string
-	ReportedPlayer                   string
-	PlayersPunishVotes               string
-	RelatedPunishVotePunishedPlayers string
+	Faction                      string
+	InstantPassBy                string
+	IssuedBy                     string
+	PunishOption                 string
+	ReportedPlayer               string
+	RelatedPunishVotePlayerBans  string
+	PlayersPunishVotes           string
+	PunishVoteInstantPassRecords string
 }{
-	Faction:                          "Faction",
-	InstantPassBy:                    "InstantPassBy",
-	IssuedBy:                         "IssuedBy",
-	PunishOption:                     "PunishOption",
-	ReportedPlayer:                   "ReportedPlayer",
-	PlayersPunishVotes:               "PlayersPunishVotes",
-	RelatedPunishVotePunishedPlayers: "RelatedPunishVotePunishedPlayers",
+	Faction:                      "Faction",
+	InstantPassBy:                "InstantPassBy",
+	IssuedBy:                     "IssuedBy",
+	PunishOption:                 "PunishOption",
+	ReportedPlayer:               "ReportedPlayer",
+	RelatedPunishVotePlayerBans:  "RelatedPunishVotePlayerBans",
+	PlayersPunishVotes:           "PlayersPunishVotes",
+	PunishVoteInstantPassRecords: "PunishVoteInstantPassRecords",
 }
 
 // punishVoteR is where relationships are stored.
 type punishVoteR struct {
-	Faction                          *Faction               `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	InstantPassBy                    *Player                `boiler:"InstantPassBy" boil:"InstantPassBy" json:"InstantPassBy" toml:"InstantPassBy" yaml:"InstantPassBy"`
-	IssuedBy                         *Player                `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
-	PunishOption                     *PunishOption          `boiler:"PunishOption" boil:"PunishOption" json:"PunishOption" toml:"PunishOption" yaml:"PunishOption"`
-	ReportedPlayer                   *Player                `boiler:"ReportedPlayer" boil:"ReportedPlayer" json:"ReportedPlayer" toml:"ReportedPlayer" yaml:"ReportedPlayer"`
-	PlayersPunishVotes               PlayersPunishVoteSlice `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
-	RelatedPunishVotePunishedPlayers PunishedPlayerSlice    `boiler:"RelatedPunishVotePunishedPlayers" boil:"RelatedPunishVotePunishedPlayers" json:"RelatedPunishVotePunishedPlayers" toml:"RelatedPunishVotePunishedPlayers" yaml:"RelatedPunishVotePunishedPlayers"`
+	Faction                      *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	InstantPassBy                *Player                          `boiler:"InstantPassBy" boil:"InstantPassBy" json:"InstantPassBy" toml:"InstantPassBy" yaml:"InstantPassBy"`
+	IssuedBy                     *Player                          `boiler:"IssuedBy" boil:"IssuedBy" json:"IssuedBy" toml:"IssuedBy" yaml:"IssuedBy"`
+	PunishOption                 *PunishOption                    `boiler:"PunishOption" boil:"PunishOption" json:"PunishOption" toml:"PunishOption" yaml:"PunishOption"`
+	ReportedPlayer               *Player                          `boiler:"ReportedPlayer" boil:"ReportedPlayer" json:"ReportedPlayer" toml:"ReportedPlayer" yaml:"ReportedPlayer"`
+	RelatedPunishVotePlayerBans  PlayerBanSlice                   `boiler:"RelatedPunishVotePlayerBans" boil:"RelatedPunishVotePlayerBans" json:"RelatedPunishVotePlayerBans" toml:"RelatedPunishVotePlayerBans" yaml:"RelatedPunishVotePlayerBans"`
+	PlayersPunishVotes           PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	PunishVoteInstantPassRecords PunishVoteInstantPassRecordSlice `boiler:"PunishVoteInstantPassRecords" boil:"PunishVoteInstantPassRecords" json:"PunishVoteInstantPassRecords" toml:"PunishVoteInstantPassRecords" yaml:"PunishVoteInstantPassRecords"`
 }
 
 // NewStruct creates a new relationship struct
@@ -539,6 +542,28 @@ func (o *PunishVote) ReportedPlayer(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// RelatedPunishVotePlayerBans retrieves all the player_ban's PlayerBans with an executor via related_punish_vote_id column.
+func (o *PunishVote) RelatedPunishVotePlayerBans(mods ...qm.QueryMod) playerBanQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_bans\".\"related_punish_vote_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_bans\".\"deleted_at\""),
+	)
+
+	query := PlayerBans(queryMods...)
+	queries.SetFrom(query.Query, "\"player_bans\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_bans\".*"})
+	}
+
+	return query
+}
+
 // PlayersPunishVotes retrieves all the players_punish_vote's PlayersPunishVotes with an executor.
 func (o *PunishVote) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQuery {
 	var queryMods []qm.QueryMod
@@ -561,23 +586,23 @@ func (o *PunishVote) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQu
 	return query
 }
 
-// RelatedPunishVotePunishedPlayers retrieves all the punished_player's PunishedPlayers with an executor via related_punish_vote_id column.
-func (o *PunishVote) RelatedPunishVotePunishedPlayers(mods ...qm.QueryMod) punishedPlayerQuery {
+// PunishVoteInstantPassRecords retrieves all the punish_vote_instant_pass_record's PunishVoteInstantPassRecords with an executor.
+func (o *PunishVote) PunishVoteInstantPassRecords(mods ...qm.QueryMod) punishVoteInstantPassRecordQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"punished_players\".\"related_punish_vote_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"punished_players\".\"deleted_at\""),
+		qm.Where("\"punish_vote_instant_pass_records\".\"punish_vote_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"punish_vote_instant_pass_records\".\"deleted_at\""),
 	)
 
-	query := PunishedPlayers(queryMods...)
-	queries.SetFrom(query.Query, "\"punished_players\"")
+	query := PunishVoteInstantPassRecords(queryMods...)
+	queries.SetFrom(query.Query, "\"punish_vote_instant_pass_records\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"punished_players\".*"})
+		queries.SetSelect(query.Query, []string{"\"punish_vote_instant_pass_records\".*"})
 	}
 
 	return query
@@ -1112,6 +1137,105 @@ func (punishVoteL) LoadReportedPlayer(e boil.Executor, singular bool, maybePunis
 	return nil
 }
 
+// LoadRelatedPunishVotePlayerBans allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (punishVoteL) LoadRelatedPunishVotePlayerBans(e boil.Executor, singular bool, maybePunishVote interface{}, mods queries.Applicator) error {
+	var slice []*PunishVote
+	var object *PunishVote
+
+	if singular {
+		object = maybePunishVote.(*PunishVote)
+	} else {
+		slice = *maybePunishVote.(*[]*PunishVote)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &punishVoteR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &punishVoteR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_bans`),
+		qm.WhereIn(`player_bans.related_punish_vote_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_bans.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_bans")
+	}
+
+	var resultSlice []*PlayerBan
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_bans")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_bans")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_bans")
+	}
+
+	if len(playerBanAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RelatedPunishVotePlayerBans = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerBanR{}
+			}
+			foreign.R.RelatedPunishVote = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.RelatedPunishVoteID) {
+				local.R.RelatedPunishVotePlayerBans = append(local.R.RelatedPunishVotePlayerBans, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerBanR{}
+				}
+				foreign.R.RelatedPunishVote = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayersPunishVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (punishVoteL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePunishVote interface{}, mods queries.Applicator) error {
@@ -1211,9 +1335,9 @@ func (punishVoteL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybeP
 	return nil
 }
 
-// LoadRelatedPunishVotePunishedPlayers allows an eager lookup of values, cached into the
+// LoadPunishVoteInstantPassRecords allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (punishVoteL) LoadRelatedPunishVotePunishedPlayers(e boil.Executor, singular bool, maybePunishVote interface{}, mods queries.Applicator) error {
+func (punishVoteL) LoadPunishVoteInstantPassRecords(e boil.Executor, singular bool, maybePunishVote interface{}, mods queries.Applicator) error {
 	var slice []*PunishVote
 	var object *PunishVote
 
@@ -1237,7 +1361,7 @@ func (punishVoteL) LoadRelatedPunishVotePunishedPlayers(e boil.Executor, singula
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if a == obj.ID {
 					continue Outer
 				}
 			}
@@ -1251,9 +1375,9 @@ func (punishVoteL) LoadRelatedPunishVotePunishedPlayers(e boil.Executor, singula
 	}
 
 	query := NewQuery(
-		qm.From(`punished_players`),
-		qm.WhereIn(`punished_players.related_punish_vote_id in ?`, args...),
-		qmhelper.WhereIsNull(`punished_players.deleted_at`),
+		qm.From(`punish_vote_instant_pass_records`),
+		qm.WhereIn(`punish_vote_instant_pass_records.punish_vote_id in ?`, args...),
+		qmhelper.WhereIsNull(`punish_vote_instant_pass_records.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1261,22 +1385,22 @@ func (punishVoteL) LoadRelatedPunishVotePunishedPlayers(e boil.Executor, singula
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load punished_players")
+		return errors.Wrap(err, "failed to eager load punish_vote_instant_pass_records")
 	}
 
-	var resultSlice []*PunishedPlayer
+	var resultSlice []*PunishVoteInstantPassRecord
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice punished_players")
+		return errors.Wrap(err, "failed to bind eager loaded slice punish_vote_instant_pass_records")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on punished_players")
+		return errors.Wrap(err, "failed to close results in eager load on punish_vote_instant_pass_records")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punished_players")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punish_vote_instant_pass_records")
 	}
 
-	if len(punishedPlayerAfterSelectHooks) != 0 {
+	if len(punishVoteInstantPassRecordAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -1284,24 +1408,24 @@ func (punishVoteL) LoadRelatedPunishVotePunishedPlayers(e boil.Executor, singula
 		}
 	}
 	if singular {
-		object.R.RelatedPunishVotePunishedPlayers = resultSlice
+		object.R.PunishVoteInstantPassRecords = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &punishedPlayerR{}
+				foreign.R = &punishVoteInstantPassRecordR{}
 			}
-			foreign.R.RelatedPunishVote = object
+			foreign.R.PunishVote = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.RelatedPunishVoteID) {
-				local.R.RelatedPunishVotePunishedPlayers = append(local.R.RelatedPunishVotePunishedPlayers, foreign)
+			if local.ID == foreign.PunishVoteID {
+				local.R.PunishVoteInstantPassRecords = append(local.R.PunishVoteInstantPassRecords, foreign)
 				if foreign.R == nil {
-					foreign.R = &punishedPlayerR{}
+					foreign.R = &punishVoteInstantPassRecordR{}
 				}
-				foreign.R.RelatedPunishVote = local
+				foreign.R.PunishVote = local
 				break
 			}
 		}
@@ -1573,6 +1697,131 @@ func (o *PunishVote) SetReportedPlayer(exec boil.Executor, insert bool, related 
 	return nil
 }
 
+// AddRelatedPunishVotePlayerBans adds the given related objects to the existing relationships
+// of the punish_vote, optionally inserting them as new records.
+// Appends related to o.R.RelatedPunishVotePlayerBans.
+// Sets related.R.RelatedPunishVote appropriately.
+func (o *PunishVote) AddRelatedPunishVotePlayerBans(exec boil.Executor, insert bool, related ...*PlayerBan) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.RelatedPunishVoteID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_bans\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"related_punish_vote_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerBanPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.RelatedPunishVoteID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &punishVoteR{
+			RelatedPunishVotePlayerBans: related,
+		}
+	} else {
+		o.R.RelatedPunishVotePlayerBans = append(o.R.RelatedPunishVotePlayerBans, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerBanR{
+				RelatedPunishVote: o,
+			}
+		} else {
+			rel.R.RelatedPunishVote = o
+		}
+	}
+	return nil
+}
+
+// SetRelatedPunishVotePlayerBans removes all previously related items of the
+// punish_vote replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.RelatedPunishVote's RelatedPunishVotePlayerBans accordingly.
+// Replaces o.R.RelatedPunishVotePlayerBans with related.
+// Sets related.R.RelatedPunishVote's RelatedPunishVotePlayerBans accordingly.
+func (o *PunishVote) SetRelatedPunishVotePlayerBans(exec boil.Executor, insert bool, related ...*PlayerBan) error {
+	query := "update \"player_bans\" set \"related_punish_vote_id\" = null where \"related_punish_vote_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.RelatedPunishVotePlayerBans {
+			queries.SetScanner(&rel.RelatedPunishVoteID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.RelatedPunishVote = nil
+		}
+
+		o.R.RelatedPunishVotePlayerBans = nil
+	}
+	return o.AddRelatedPunishVotePlayerBans(exec, insert, related...)
+}
+
+// RemoveRelatedPunishVotePlayerBans relationships from objects passed in.
+// Removes related items from R.RelatedPunishVotePlayerBans (uses pointer comparison, removal does not keep order)
+// Sets related.R.RelatedPunishVote.
+func (o *PunishVote) RemoveRelatedPunishVotePlayerBans(exec boil.Executor, related ...*PlayerBan) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.RelatedPunishVoteID, nil)
+		if rel.R != nil {
+			rel.R.RelatedPunishVote = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("related_punish_vote_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.RelatedPunishVotePlayerBans {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.RelatedPunishVotePlayerBans)
+			if ln > 1 && i < ln-1 {
+				o.R.RelatedPunishVotePlayerBans[i] = o.R.RelatedPunishVotePlayerBans[ln-1]
+			}
+			o.R.RelatedPunishVotePlayerBans = o.R.RelatedPunishVotePlayerBans[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddPlayersPunishVotes adds the given related objects to the existing relationships
 // of the punish_vote, optionally inserting them as new records.
 // Appends related to o.R.PlayersPunishVotes.
@@ -1625,23 +1874,23 @@ func (o *PunishVote) AddPlayersPunishVotes(exec boil.Executor, insert bool, rela
 	return nil
 }
 
-// AddRelatedPunishVotePunishedPlayers adds the given related objects to the existing relationships
+// AddPunishVoteInstantPassRecords adds the given related objects to the existing relationships
 // of the punish_vote, optionally inserting them as new records.
-// Appends related to o.R.RelatedPunishVotePunishedPlayers.
-// Sets related.R.RelatedPunishVote appropriately.
-func (o *PunishVote) AddRelatedPunishVotePunishedPlayers(exec boil.Executor, insert bool, related ...*PunishedPlayer) error {
+// Appends related to o.R.PunishVoteInstantPassRecords.
+// Sets related.R.PunishVote appropriately.
+func (o *PunishVote) AddPunishVoteInstantPassRecords(exec boil.Executor, insert bool, related ...*PunishVoteInstantPassRecord) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.RelatedPunishVoteID, o.ID)
+			rel.PunishVoteID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"punished_players\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"related_punish_vote_id"}),
-				strmangle.WhereClause("\"", "\"", 2, punishedPlayerPrimaryKeyColumns),
+				"UPDATE \"punish_vote_instant_pass_records\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"punish_vote_id"}),
+				strmangle.WhereClause("\"", "\"", 2, punishVoteInstantPassRecordPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1653,100 +1902,27 @@ func (o *PunishVote) AddRelatedPunishVotePunishedPlayers(exec boil.Executor, ins
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.RelatedPunishVoteID, o.ID)
+			rel.PunishVoteID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &punishVoteR{
-			RelatedPunishVotePunishedPlayers: related,
+			PunishVoteInstantPassRecords: related,
 		}
 	} else {
-		o.R.RelatedPunishVotePunishedPlayers = append(o.R.RelatedPunishVotePunishedPlayers, related...)
+		o.R.PunishVoteInstantPassRecords = append(o.R.PunishVoteInstantPassRecords, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &punishedPlayerR{
-				RelatedPunishVote: o,
+			rel.R = &punishVoteInstantPassRecordR{
+				PunishVote: o,
 			}
 		} else {
-			rel.R.RelatedPunishVote = o
+			rel.R.PunishVote = o
 		}
 	}
-	return nil
-}
-
-// SetRelatedPunishVotePunishedPlayers removes all previously related items of the
-// punish_vote replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.RelatedPunishVote's RelatedPunishVotePunishedPlayers accordingly.
-// Replaces o.R.RelatedPunishVotePunishedPlayers with related.
-// Sets related.R.RelatedPunishVote's RelatedPunishVotePunishedPlayers accordingly.
-func (o *PunishVote) SetRelatedPunishVotePunishedPlayers(exec boil.Executor, insert bool, related ...*PunishedPlayer) error {
-	query := "update \"punished_players\" set \"related_punish_vote_id\" = null where \"related_punish_vote_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.RelatedPunishVotePunishedPlayers {
-			queries.SetScanner(&rel.RelatedPunishVoteID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.RelatedPunishVote = nil
-		}
-
-		o.R.RelatedPunishVotePunishedPlayers = nil
-	}
-	return o.AddRelatedPunishVotePunishedPlayers(exec, insert, related...)
-}
-
-// RemoveRelatedPunishVotePunishedPlayers relationships from objects passed in.
-// Removes related items from R.RelatedPunishVotePunishedPlayers (uses pointer comparison, removal does not keep order)
-// Sets related.R.RelatedPunishVote.
-func (o *PunishVote) RemoveRelatedPunishVotePunishedPlayers(exec boil.Executor, related ...*PunishedPlayer) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.RelatedPunishVoteID, nil)
-		if rel.R != nil {
-			rel.R.RelatedPunishVote = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("related_punish_vote_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.RelatedPunishVotePunishedPlayers {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.RelatedPunishVotePunishedPlayers)
-			if ln > 1 && i < ln-1 {
-				o.R.RelatedPunishVotePunishedPlayers[i] = o.R.RelatedPunishVotePunishedPlayers[ln-1]
-			}
-			o.R.RelatedPunishVotePunishedPlayers = o.R.RelatedPunishVotePunishedPlayers[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

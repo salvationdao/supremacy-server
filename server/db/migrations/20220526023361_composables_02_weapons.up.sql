@@ -17,7 +17,7 @@ CREATE TABLE weapon_skin
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons_old(id),
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons(id),
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
     ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN genesis_token_id         BIGINT,

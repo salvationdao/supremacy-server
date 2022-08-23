@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,86 +23,93 @@ import (
 
 // BlueprintMechSkin is an object representing the database table.
 type BlueprintMechSkin struct {
-	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection   string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label        string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier         string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt    time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultLevel int       `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection      string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier            string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultLevel    int         `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
+	ProfileAvatarID null.String `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechSkinColumns = struct {
-	ID           string
-	Collection   string
-	Label        string
-	Tier         string
-	CreatedAt    string
-	DefaultLevel string
+	ID              string
+	Collection      string
+	Label           string
+	Tier            string
+	CreatedAt       string
+	DefaultLevel    string
+	ProfileAvatarID string
 }{
-	ID:           "id",
-	Collection:   "collection",
-	Label:        "label",
-	Tier:         "tier",
-	CreatedAt:    "created_at",
-	DefaultLevel: "default_level",
+	ID:              "id",
+	Collection:      "collection",
+	Label:           "label",
+	Tier:            "tier",
+	CreatedAt:       "created_at",
+	DefaultLevel:    "default_level",
+	ProfileAvatarID: "profile_avatar_id",
 }
 
 var BlueprintMechSkinTableColumns = struct {
-	ID           string
-	Collection   string
-	Label        string
-	Tier         string
-	CreatedAt    string
-	DefaultLevel string
+	ID              string
+	Collection      string
+	Label           string
+	Tier            string
+	CreatedAt       string
+	DefaultLevel    string
+	ProfileAvatarID string
 }{
-	ID:           "blueprint_mech_skin.id",
-	Collection:   "blueprint_mech_skin.collection",
-	Label:        "blueprint_mech_skin.label",
-	Tier:         "blueprint_mech_skin.tier",
-	CreatedAt:    "blueprint_mech_skin.created_at",
-	DefaultLevel: "blueprint_mech_skin.default_level",
+	ID:              "blueprint_mech_skin.id",
+	Collection:      "blueprint_mech_skin.collection",
+	Label:           "blueprint_mech_skin.label",
+	Tier:            "blueprint_mech_skin.tier",
+	CreatedAt:       "blueprint_mech_skin.created_at",
+	DefaultLevel:    "blueprint_mech_skin.default_level",
+	ProfileAvatarID: "blueprint_mech_skin.profile_avatar_id",
 }
 
 // Generated where
 
 var BlueprintMechSkinWhere = struct {
-	ID           whereHelperstring
-	Collection   whereHelperstring
-	Label        whereHelperstring
-	Tier         whereHelperstring
-	CreatedAt    whereHelpertime_Time
-	DefaultLevel whereHelperint
+	ID              whereHelperstring
+	Collection      whereHelperstring
+	Label           whereHelperstring
+	Tier            whereHelperstring
+	CreatedAt       whereHelpertime_Time
+	DefaultLevel    whereHelperint
+	ProfileAvatarID whereHelpernull_String
 }{
-	ID:           whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
-	Collection:   whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
-	Label:        whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
-	Tier:         whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
-	DefaultLevel: whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
+	ID:              whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
+	Collection:      whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
+	Label:           whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
+	Tier:            whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
+	DefaultLevel:    whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
+	ProfileAvatarID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
 var BlueprintMechSkinRels = struct {
-	ChassisSkinBlueprintChasses      string
+	ProfileAvatar                    string
 	DefaultChassisSkinBlueprintMechs string
-	BlueprintChassisSkins            string
 	MechModelSkinCompatibilities     string
+	BlueprintMechSkins               string
 }{
-	ChassisSkinBlueprintChasses:      "ChassisSkinBlueprintChasses",
+	ProfileAvatar:                    "ProfileAvatar",
 	DefaultChassisSkinBlueprintMechs: "DefaultChassisSkinBlueprintMechs",
-	BlueprintChassisSkins:            "BlueprintChassisSkins",
 	MechModelSkinCompatibilities:     "MechModelSkinCompatibilities",
+	BlueprintMechSkins:               "BlueprintMechSkins",
 }
 
 // blueprintMechSkinR is where relationships are stored.
 type blueprintMechSkinR struct {
-	ChassisSkinBlueprintChasses      BlueprintChassisSlice           `boiler:"ChassisSkinBlueprintChasses" boil:"ChassisSkinBlueprintChasses" json:"ChassisSkinBlueprintChasses" toml:"ChassisSkinBlueprintChasses" yaml:"ChassisSkinBlueprintChasses"`
+	ProfileAvatar                    *ProfileAvatar                  `boiler:"ProfileAvatar" boil:"ProfileAvatar" json:"ProfileAvatar" toml:"ProfileAvatar" yaml:"ProfileAvatar"`
 	DefaultChassisSkinBlueprintMechs BlueprintMechSlice              `boiler:"DefaultChassisSkinBlueprintMechs" boil:"DefaultChassisSkinBlueprintMechs" json:"DefaultChassisSkinBlueprintMechs" toml:"DefaultChassisSkinBlueprintMechs" yaml:"DefaultChassisSkinBlueprintMechs"`
-	BlueprintChassisSkins            ChassisSkinSlice                `boiler:"BlueprintChassisSkins" boil:"BlueprintChassisSkins" json:"BlueprintChassisSkins" toml:"BlueprintChassisSkins" yaml:"BlueprintChassisSkins"`
 	MechModelSkinCompatibilities     MechModelSkinCompatibilitySlice `boiler:"MechModelSkinCompatibilities" boil:"MechModelSkinCompatibilities" json:"MechModelSkinCompatibilities" toml:"MechModelSkinCompatibilities" yaml:"MechModelSkinCompatibilities"`
+	BlueprintMechSkins               MechSkinSlice                   `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
 }
 
 // NewStruct creates a new relationship struct
@@ -113,9 +121,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level", "profile_avatar_id"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level", "profile_avatar_id"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )
@@ -362,24 +370,17 @@ func (q blueprintMechSkinQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// ChassisSkinBlueprintChasses retrieves all the blueprint_chassis's BlueprintChasses with an executor via chassis_skin_id column.
-func (o *BlueprintMechSkin) ChassisSkinBlueprintChasses(mods ...qm.QueryMod) blueprintChassisQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+// ProfileAvatar pointed to by the foreign key.
+func (o *BlueprintMechSkin) ProfileAvatar(mods ...qm.QueryMod) profileAvatarQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ProfileAvatarID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_chassis\".\"chassis_skin_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_chassis\".\"deleted_at\""),
-	)
+	queryMods = append(queryMods, mods...)
 
-	query := BlueprintChasses(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_chassis\".*"})
-	}
+	query := ProfileAvatars(queryMods...)
+	queries.SetFrom(query.Query, "\"profile_avatars\"")
 
 	return query
 }
@@ -400,27 +401,6 @@ func (o *BlueprintMechSkin) DefaultChassisSkinBlueprintMechs(mods ...qm.QueryMod
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"blueprint_mechs\".*"})
-	}
-
-	return query
-}
-
-// BlueprintChassisSkins retrieves all the chassis_skin's ChassisSkins with an executor via blueprint_id column.
-func (o *BlueprintMechSkin) BlueprintChassisSkins(mods ...qm.QueryMod) chassisSkinQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"chassis_skin\".\"blueprint_id\"=?", o.ID),
-	)
-
-	query := ChassisSkins(queryMods...)
-	queries.SetFrom(query.Query, "\"chassis_skin\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"chassis_skin\".*"})
 	}
 
 	return query
@@ -448,9 +428,30 @@ func (o *BlueprintMechSkin) MechModelSkinCompatibilities(mods ...qm.QueryMod) me
 	return query
 }
 
-// LoadChassisSkinBlueprintChasses allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintMechSkinL) LoadChassisSkinBlueprintChasses(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
+// BlueprintMechSkins retrieves all the mech_skin's MechSkins with an executor via blueprint_id column.
+func (o *BlueprintMechSkin) BlueprintMechSkins(mods ...qm.QueryMod) mechSkinQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mech_skin\".\"blueprint_id\"=?", o.ID),
+	)
+
+	query := MechSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_skin\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mech_skin\".*"})
+	}
+
+	return query
+}
+
+// LoadProfileAvatar allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintMechSkinL) LoadProfileAvatar(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintMechSkin
 	var object *BlueprintMechSkin
 
@@ -465,7 +466,10 @@ func (blueprintMechSkinL) LoadChassisSkinBlueprintChasses(e boil.Executor, singu
 		if object.R == nil {
 			object.R = &blueprintMechSkinR{}
 		}
-		args = append(args, object.ID)
+		if !queries.IsNil(object.ProfileAvatarID) {
+			args = append(args, object.ProfileAvatarID)
+		}
+
 	} else {
 	Outer:
 		for _, obj := range slice {
@@ -474,12 +478,15 @@ func (blueprintMechSkinL) LoadChassisSkinBlueprintChasses(e boil.Executor, singu
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
+				if queries.Equal(a, obj.ProfileAvatarID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.ID)
+			if !queries.IsNil(obj.ProfileAvatarID) {
+				args = append(args, obj.ProfileAvatarID)
+			}
+
 		}
 	}
 
@@ -488,9 +495,9 @@ func (blueprintMechSkinL) LoadChassisSkinBlueprintChasses(e boil.Executor, singu
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_chassis`),
-		qm.WhereIn(`blueprint_chassis.chassis_skin_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis.deleted_at`),
+		qm.From(`profile_avatars`),
+		qm.WhereIn(`profile_avatars.id in ?`, args...),
+		qmhelper.WhereIsNull(`profile_avatars.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -498,47 +505,51 @@ func (blueprintMechSkinL) LoadChassisSkinBlueprintChasses(e boil.Executor, singu
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_chassis")
+		return errors.Wrap(err, "failed to eager load ProfileAvatar")
 	}
 
-	var resultSlice []*BlueprintChassis
+	var resultSlice []*ProfileAvatar
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis")
+		return errors.Wrap(err, "failed to bind eager loaded slice ProfileAvatar")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis")
+		return errors.Wrap(err, "failed to close results of eager load for profile_avatars")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for profile_avatars")
 	}
 
-	if len(blueprintChassisAfterSelectHooks) != 0 {
+	if len(blueprintMechSkinAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-	if singular {
-		object.R.ChassisSkinBlueprintChasses = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintChassisR{}
-			}
-			foreign.R.ChassisSkin = object
-		}
+
+	if len(resultSlice) == 0 {
 		return nil
 	}
 
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.ChassisSkinID) {
-				local.R.ChassisSkinBlueprintChasses = append(local.R.ChassisSkinBlueprintChasses, foreign)
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ProfileAvatar = foreign
+		if foreign.R == nil {
+			foreign.R = &profileAvatarR{}
+		}
+		foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.ProfileAvatarID, foreign.ID) {
+				local.R.ProfileAvatar = foreign
 				if foreign.R == nil {
-					foreign.R = &blueprintChassisR{}
+					foreign.R = &profileAvatarR{}
 				}
-				foreign.R.ChassisSkin = local
+				foreign.R.BlueprintMechSkins = append(foreign.R.BlueprintMechSkins, local)
 				break
 			}
 		}
@@ -637,104 +648,6 @@ func (blueprintMechSkinL) LoadDefaultChassisSkinBlueprintMechs(e boil.Executor, 
 					foreign.R = &blueprintMechR{}
 				}
 				foreign.R.DefaultChassisSkin = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintChassisSkins allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintMechSkinL) LoadBlueprintChassisSkins(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintMechSkin
-	var object *BlueprintMechSkin
-
-	if singular {
-		object = maybeBlueprintMechSkin.(*BlueprintMechSkin)
-	} else {
-		slice = *maybeBlueprintMechSkin.(*[]*BlueprintMechSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintMechSkinR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintMechSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`chassis_skin`),
-		qm.WhereIn(`chassis_skin.blueprint_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load chassis_skin")
-	}
-
-	var resultSlice []*ChassisSkin
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice chassis_skin")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on chassis_skin")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis_skin")
-	}
-
-	if len(chassisSkinAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintChassisSkins = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &chassisSkinR{}
-			}
-			foreign.R.Blueprint = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintID {
-				local.R.BlueprintChassisSkins = append(local.R.BlueprintChassisSkins, foreign)
-				if foreign.R == nil {
-					foreign.R = &chassisSkinR{}
-				}
-				foreign.R.Blueprint = local
 				break
 			}
 		}
@@ -842,128 +755,180 @@ func (blueprintMechSkinL) LoadMechModelSkinCompatibilities(e boil.Executor, sing
 	return nil
 }
 
-// AddChassisSkinBlueprintChasses adds the given related objects to the existing relationships
-// of the blueprint_mech_skin, optionally inserting them as new records.
-// Appends related to o.R.ChassisSkinBlueprintChasses.
-// Sets related.R.ChassisSkin appropriately.
-func (o *BlueprintMechSkin) AddChassisSkinBlueprintChasses(exec boil.Executor, insert bool, related ...*BlueprintChassis) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.ChassisSkinID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_chassis\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_skin_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintChassisPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
+// LoadBlueprintMechSkins allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechSkinL) LoadBlueprintMechSkins(e boil.Executor, singular bool, maybeBlueprintMechSkin interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMechSkin
+	var object *BlueprintMechSkin
 
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.ChassisSkinID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintMechSkinR{
-			ChassisSkinBlueprintChasses: related,
-		}
+	if singular {
+		object = maybeBlueprintMechSkin.(*BlueprintMechSkin)
 	} else {
-		o.R.ChassisSkinBlueprintChasses = append(o.R.ChassisSkinBlueprintChasses, related...)
+		slice = *maybeBlueprintMechSkin.(*[]*BlueprintMechSkin)
 	}
 
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintChassisR{
-				ChassisSkin: o,
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechSkinR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechSkinR{}
 			}
-		} else {
-			rel.R.ChassisSkin = o
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
 		}
 	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_skin`),
+		qm.WhereIn(`mech_skin.blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mech_skin")
+	}
+
+	var resultSlice []*MechSkin
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_skin")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mech_skin")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_skin")
+	}
+
+	if len(mechSkinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BlueprintMechSkins = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechSkinR{}
+			}
+			foreign.R.Blueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BlueprintID {
+				local.R.BlueprintMechSkins = append(local.R.BlueprintMechSkins, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechSkinR{}
+				}
+				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
 	return nil
 }
 
-// SetChassisSkinBlueprintChasses removes all previously related items of the
-// blueprint_mech_skin replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.ChassisSkin's ChassisSkinBlueprintChasses accordingly.
-// Replaces o.R.ChassisSkinBlueprintChasses with related.
-// Sets related.R.ChassisSkin's ChassisSkinBlueprintChasses accordingly.
-func (o *BlueprintMechSkin) SetChassisSkinBlueprintChasses(exec boil.Executor, insert bool, related ...*BlueprintChassis) error {
-	query := "update \"blueprint_chassis\" set \"chassis_skin_id\" = null where \"chassis_skin_id\" = $1"
-	values := []interface{}{o.ID}
+// SetProfileAvatar of the blueprintMechSkin to the related item.
+// Sets o.R.ProfileAvatar to related.
+// Adds o to related.R.BlueprintMechSkins.
+func (o *BlueprintMechSkin) SetProfileAvatar(exec boil.Executor, insert bool, related *ProfileAvatar) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_mech_skin\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"profile_avatar_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintMechSkinPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
 	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
 		fmt.Fprintln(boil.DebugWriter, values)
 	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.ProfileAvatarID, related.ID)
+	if o.R == nil {
+		o.R = &blueprintMechSkinR{
+			ProfileAvatar: related,
+		}
+	} else {
+		o.R.ProfileAvatar = related
+	}
+
+	if related.R == nil {
+		related.R = &profileAvatarR{
+			BlueprintMechSkins: BlueprintMechSkinSlice{o},
+		}
+	} else {
+		related.R.BlueprintMechSkins = append(related.R.BlueprintMechSkins, o)
+	}
+
+	return nil
+}
+
+// RemoveProfileAvatar relationship.
+// Sets o.R.ProfileAvatar to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintMechSkin) RemoveProfileAvatar(exec boil.Executor, related *ProfileAvatar) error {
+	var err error
+
+	queries.SetScanner(&o.ProfileAvatarID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("profile_avatar_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.ChassisSkinBlueprintChasses {
-			queries.SetScanner(&rel.ChassisSkinID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.ChassisSkin = nil
-		}
-
-		o.R.ChassisSkinBlueprintChasses = nil
+		o.R.ProfileAvatar = nil
 	}
-	return o.AddChassisSkinBlueprintChasses(exec, insert, related...)
-}
-
-// RemoveChassisSkinBlueprintChasses relationships from objects passed in.
-// Removes related items from R.ChassisSkinBlueprintChasses (uses pointer comparison, removal does not keep order)
-// Sets related.R.ChassisSkin.
-func (o *BlueprintMechSkin) RemoveChassisSkinBlueprintChasses(exec boil.Executor, related ...*BlueprintChassis) error {
-	if len(related) == 0 {
+	if related == nil || related.R == nil {
 		return nil
 	}
 
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.ChassisSkinID, nil)
-		if rel.R != nil {
-			rel.R.ChassisSkin = nil
+	for i, ri := range related.R.BlueprintMechSkins {
+		if queries.Equal(o.ProfileAvatarID, ri.ProfileAvatarID) {
+			continue
 		}
-		if _, err = rel.Update(exec, boil.Whitelist("chassis_skin_id")); err != nil {
-			return err
+
+		ln := len(related.R.BlueprintMechSkins)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintMechSkins[i] = related.R.BlueprintMechSkins[ln-1]
 		}
+		related.R.BlueprintMechSkins = related.R.BlueprintMechSkins[:ln-1]
+		break
 	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.ChassisSkinBlueprintChasses {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.ChassisSkinBlueprintChasses)
-			if ln > 1 && i < ln-1 {
-				o.R.ChassisSkinBlueprintChasses[i] = o.R.ChassisSkinBlueprintChasses[ln-1]
-			}
-			o.R.ChassisSkinBlueprintChasses = o.R.ChassisSkinBlueprintChasses[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -1019,58 +984,6 @@ func (o *BlueprintMechSkin) AddDefaultChassisSkinBlueprintMechs(exec boil.Execut
 	return nil
 }
 
-// AddBlueprintChassisSkins adds the given related objects to the existing relationships
-// of the blueprint_mech_skin, optionally inserting them as new records.
-// Appends related to o.R.BlueprintChassisSkins.
-// Sets related.R.Blueprint appropriately.
-func (o *BlueprintMechSkin) AddBlueprintChassisSkins(exec boil.Executor, insert bool, related ...*ChassisSkin) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"chassis_skin\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
-				strmangle.WhereClause("\"", "\"", 2, chassisSkinPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintMechSkinR{
-			BlueprintChassisSkins: related,
-		}
-	} else {
-		o.R.BlueprintChassisSkins = append(o.R.BlueprintChassisSkins, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &chassisSkinR{
-				Blueprint: o,
-			}
-		} else {
-			rel.R.Blueprint = o
-		}
-	}
-	return nil
-}
-
 // AddMechModelSkinCompatibilities adds the given related objects to the existing relationships
 // of the blueprint_mech_skin, optionally inserting them as new records.
 // Appends related to o.R.MechModelSkinCompatibilities.
@@ -1118,6 +1031,58 @@ func (o *BlueprintMechSkin) AddMechModelSkinCompatibilities(exec boil.Executor, 
 			}
 		} else {
 			rel.R.BlueprintMechSkin = o
+		}
+	}
+	return nil
+}
+
+// AddBlueprintMechSkins adds the given related objects to the existing relationships
+// of the blueprint_mech_skin, optionally inserting them as new records.
+// Appends related to o.R.BlueprintMechSkins.
+// Sets related.R.Blueprint appropriately.
+func (o *BlueprintMechSkin) AddBlueprintMechSkins(exec boil.Executor, insert bool, related ...*MechSkin) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BlueprintID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mech_skin\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BlueprintID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechSkinR{
+			BlueprintMechSkins: related,
+		}
+	} else {
+		o.R.BlueprintMechSkins = append(o.R.BlueprintMechSkins, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechSkinR{
+				Blueprint: o,
+			}
+		} else {
+			rel.R.Blueprint = o
 		}
 	}
 	return nil

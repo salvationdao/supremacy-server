@@ -136,20 +136,20 @@ var PowerCoreWhere = struct {
 
 // PowerCoreRels is where relationship names are stored.
 var PowerCoreRels = struct {
-	Blueprint         string
-	EquippedOnChassis string
-	Chasses           string
+	Blueprint      string
+	EquippedOnMech string
+	Mechs          string
 }{
-	Blueprint:         "Blueprint",
-	EquippedOnChassis: "EquippedOnChassis",
-	Chasses:           "Chasses",
+	Blueprint:      "Blueprint",
+	EquippedOnMech: "EquippedOnMech",
+	Mechs:          "Mechs",
 }
 
 // powerCoreR is where relationships are stored.
 type powerCoreR struct {
-	Blueprint         *BlueprintPowerCore `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	EquippedOnChassis *Chassis            `boiler:"EquippedOnChassis" boil:"EquippedOnChassis" json:"EquippedOnChassis" toml:"EquippedOnChassis" yaml:"EquippedOnChassis"`
-	Chasses           ChassisSlice        `boiler:"Chasses" boil:"Chasses" json:"Chasses" toml:"Chasses" yaml:"Chasses"`
+	Blueprint      *BlueprintPowerCore `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	EquippedOnMech *Mech               `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	Mechs          MechSlice           `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -424,8 +424,8 @@ func (o *PowerCore) Blueprint(mods ...qm.QueryMod) blueprintPowerCoreQuery {
 	return query
 }
 
-// EquippedOnChassis pointed to by the foreign key.
-func (o *PowerCore) EquippedOnChassis(mods ...qm.QueryMod) chassisQuery {
+// EquippedOnMech pointed to by the foreign key.
+func (o *PowerCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.EquippedOn),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -433,29 +433,29 @@ func (o *PowerCore) EquippedOnChassis(mods ...qm.QueryMod) chassisQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := Chasses(queryMods...)
-	queries.SetFrom(query.Query, "\"chassis\"")
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
 
 	return query
 }
 
-// Chasses retrieves all the chassis's Chasses with an executor.
-func (o *PowerCore) Chasses(mods ...qm.QueryMod) chassisQuery {
+// Mechs retrieves all the mech's Mechs with an executor.
+func (o *PowerCore) Mechs(mods ...qm.QueryMod) mechQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"chassis\".\"power_core_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"chassis\".\"deleted_at\""),
+		qm.Where("\"mechs\".\"power_core_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mechs\".\"deleted_at\""),
 	)
 
-	query := Chasses(queryMods...)
-	queries.SetFrom(query.Query, "\"chassis\"")
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"chassis\".*"})
+		queries.SetSelect(query.Query, []string{"\"mechs\".*"})
 	}
 
 	return query
@@ -569,9 +569,9 @@ func (powerCoreL) LoadBlueprint(e boil.Executor, singular bool, maybePowerCore i
 	return nil
 }
 
-// LoadEquippedOnChassis allows an eager lookup of values, cached into the
+// LoadEquippedOnMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+func (powerCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
 	var slice []*PowerCore
 	var object *PowerCore
 
@@ -615,9 +615,9 @@ func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePow
 	}
 
 	query := NewQuery(
-		qm.From(`chassis`),
-		qm.WhereIn(`chassis.id in ?`, args...),
-		qmhelper.WhereIsNull(`chassis.deleted_at`),
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -625,19 +625,19 @@ func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePow
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Chassis")
+		return errors.Wrap(err, "failed to eager load Mech")
 	}
 
-	var resultSlice []*Chassis
+	var resultSlice []*Mech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Chassis")
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for chassis")
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
 	if len(powerCoreAfterSelectHooks) != 0 {
@@ -654,9 +654,9 @@ func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePow
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.EquippedOnChassis = foreign
+		object.R.EquippedOnMech = foreign
 		if foreign.R == nil {
-			foreign.R = &chassisR{}
+			foreign.R = &mechR{}
 		}
 		foreign.R.EquippedOnPowerCores = append(foreign.R.EquippedOnPowerCores, object)
 		return nil
@@ -665,9 +665,9 @@ func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePow
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if queries.Equal(local.EquippedOn, foreign.ID) {
-				local.R.EquippedOnChassis = foreign
+				local.R.EquippedOnMech = foreign
 				if foreign.R == nil {
-					foreign.R = &chassisR{}
+					foreign.R = &mechR{}
 				}
 				foreign.R.EquippedOnPowerCores = append(foreign.R.EquippedOnPowerCores, local)
 				break
@@ -678,9 +678,9 @@ func (powerCoreL) LoadEquippedOnChassis(e boil.Executor, singular bool, maybePow
 	return nil
 }
 
-// LoadChasses allows an eager lookup of values, cached into the
+// LoadMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (powerCoreL) LoadChasses(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+func (powerCoreL) LoadMechs(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
 	var slice []*PowerCore
 	var object *PowerCore
 
@@ -718,9 +718,9 @@ func (powerCoreL) LoadChasses(e boil.Executor, singular bool, maybePowerCore int
 	}
 
 	query := NewQuery(
-		qm.From(`chassis`),
-		qm.WhereIn(`chassis.power_core_id in ?`, args...),
-		qmhelper.WhereIsNull(`chassis.deleted_at`),
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.power_core_id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -728,22 +728,22 @@ func (powerCoreL) LoadChasses(e boil.Executor, singular bool, maybePowerCore int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load chassis")
+		return errors.Wrap(err, "failed to eager load mechs")
 	}
 
-	var resultSlice []*Chassis
+	var resultSlice []*Mech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice chassis")
+		return errors.Wrap(err, "failed to bind eager loaded slice mechs")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on chassis")
+		return errors.Wrap(err, "failed to close results in eager load on mechs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(chassisAfterSelectHooks) != 0 {
+	if len(mechAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -751,10 +751,10 @@ func (powerCoreL) LoadChasses(e boil.Executor, singular bool, maybePowerCore int
 		}
 	}
 	if singular {
-		object.R.Chasses = resultSlice
+		object.R.Mechs = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &chassisR{}
+				foreign.R = &mechR{}
 			}
 			foreign.R.PowerCore = object
 		}
@@ -764,9 +764,9 @@ func (powerCoreL) LoadChasses(e boil.Executor, singular bool, maybePowerCore int
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if queries.Equal(local.ID, foreign.PowerCoreID) {
-				local.R.Chasses = append(local.R.Chasses, foreign)
+				local.R.Mechs = append(local.R.Mechs, foreign)
 				if foreign.R == nil {
-					foreign.R = &chassisR{}
+					foreign.R = &mechR{}
 				}
 				foreign.R.PowerCore = local
 				break
@@ -856,10 +856,10 @@ func (o *PowerCore) RemoveBlueprint(exec boil.Executor, related *BlueprintPowerC
 	return nil
 }
 
-// SetEquippedOnChassis of the powerCore to the related item.
-// Sets o.R.EquippedOnChassis to related.
+// SetEquippedOnMech of the powerCore to the related item.
+// Sets o.R.EquippedOnMech to related.
 // Adds o to related.R.EquippedOnPowerCores.
-func (o *PowerCore) SetEquippedOnChassis(exec boil.Executor, insert bool, related *Chassis) error {
+func (o *PowerCore) SetEquippedOnMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -885,14 +885,14 @@ func (o *PowerCore) SetEquippedOnChassis(exec boil.Executor, insert bool, relate
 	queries.Assign(&o.EquippedOn, related.ID)
 	if o.R == nil {
 		o.R = &powerCoreR{
-			EquippedOnChassis: related,
+			EquippedOnMech: related,
 		}
 	} else {
-		o.R.EquippedOnChassis = related
+		o.R.EquippedOnMech = related
 	}
 
 	if related.R == nil {
-		related.R = &chassisR{
+		related.R = &mechR{
 			EquippedOnPowerCores: PowerCoreSlice{o},
 		}
 	} else {
@@ -902,10 +902,10 @@ func (o *PowerCore) SetEquippedOnChassis(exec boil.Executor, insert bool, relate
 	return nil
 }
 
-// RemoveEquippedOnChassis relationship.
-// Sets o.R.EquippedOnChassis to nil.
+// RemoveEquippedOnMech relationship.
+// Sets o.R.EquippedOnMech to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *PowerCore) RemoveEquippedOnChassis(exec boil.Executor, related *Chassis) error {
+func (o *PowerCore) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error {
 	var err error
 
 	queries.SetScanner(&o.EquippedOn, nil)
@@ -914,7 +914,7 @@ func (o *PowerCore) RemoveEquippedOnChassis(exec boil.Executor, related *Chassis
 	}
 
 	if o.R != nil {
-		o.R.EquippedOnChassis = nil
+		o.R.EquippedOnMech = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
@@ -935,11 +935,11 @@ func (o *PowerCore) RemoveEquippedOnChassis(exec boil.Executor, related *Chassis
 	return nil
 }
 
-// AddChasses adds the given related objects to the existing relationships
+// AddMechs adds the given related objects to the existing relationships
 // of the power_core, optionally inserting them as new records.
-// Appends related to o.R.Chasses.
+// Appends related to o.R.Mechs.
 // Sets related.R.PowerCore appropriately.
-func (o *PowerCore) AddChasses(exec boil.Executor, insert bool, related ...*Chassis) error {
+func (o *PowerCore) AddMechs(exec boil.Executor, insert bool, related ...*Mech) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -949,9 +949,9 @@ func (o *PowerCore) AddChasses(exec boil.Executor, insert bool, related ...*Chas
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"chassis\" SET %s WHERE %s",
+				"UPDATE \"mechs\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"power_core_id"}),
-				strmangle.WhereClause("\"", "\"", 2, chassisPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -969,15 +969,15 @@ func (o *PowerCore) AddChasses(exec boil.Executor, insert bool, related ...*Chas
 
 	if o.R == nil {
 		o.R = &powerCoreR{
-			Chasses: related,
+			Mechs: related,
 		}
 	} else {
-		o.R.Chasses = append(o.R.Chasses, related...)
+		o.R.Mechs = append(o.R.Mechs, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &chassisR{
+			rel.R = &mechR{
 				PowerCore: o,
 			}
 		} else {
@@ -987,14 +987,14 @@ func (o *PowerCore) AddChasses(exec boil.Executor, insert bool, related ...*Chas
 	return nil
 }
 
-// SetChasses removes all previously related items of the
+// SetMechs removes all previously related items of the
 // power_core replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.PowerCore's Chasses accordingly.
-// Replaces o.R.Chasses with related.
-// Sets related.R.PowerCore's Chasses accordingly.
-func (o *PowerCore) SetChasses(exec boil.Executor, insert bool, related ...*Chassis) error {
-	query := "update \"chassis\" set \"power_core_id\" = null where \"power_core_id\" = $1"
+// Sets o.R.PowerCore's Mechs accordingly.
+// Replaces o.R.Mechs with related.
+// Sets related.R.PowerCore's Mechs accordingly.
+func (o *PowerCore) SetMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+	query := "update \"mechs\" set \"power_core_id\" = null where \"power_core_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -1006,7 +1006,7 @@ func (o *PowerCore) SetChasses(exec boil.Executor, insert bool, related ...*Chas
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.Chasses {
+		for _, rel := range o.R.Mechs {
 			queries.SetScanner(&rel.PowerCoreID, nil)
 			if rel.R == nil {
 				continue
@@ -1015,15 +1015,15 @@ func (o *PowerCore) SetChasses(exec boil.Executor, insert bool, related ...*Chas
 			rel.R.PowerCore = nil
 		}
 
-		o.R.Chasses = nil
+		o.R.Mechs = nil
 	}
-	return o.AddChasses(exec, insert, related...)
+	return o.AddMechs(exec, insert, related...)
 }
 
-// RemoveChasses relationships from objects passed in.
-// Removes related items from R.Chasses (uses pointer comparison, removal does not keep order)
+// RemoveMechs relationships from objects passed in.
+// Removes related items from R.Mechs (uses pointer comparison, removal does not keep order)
 // Sets related.R.PowerCore.
-func (o *PowerCore) RemoveChasses(exec boil.Executor, related ...*Chassis) error {
+func (o *PowerCore) RemoveMechs(exec boil.Executor, related ...*Mech) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -1043,16 +1043,16 @@ func (o *PowerCore) RemoveChasses(exec boil.Executor, related ...*Chassis) error
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.Chasses {
+		for i, ri := range o.R.Mechs {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.Chasses)
+			ln := len(o.R.Mechs)
 			if ln > 1 && i < ln-1 {
-				o.R.Chasses[i] = o.R.Chasses[ln-1]
+				o.R.Mechs[i] = o.R.Mechs[ln-1]
 			}
-			o.R.Chasses = o.R.Chasses[:ln-1]
+			o.R.Mechs = o.R.Mechs[:ln-1]
 			break
 		}
 	}
