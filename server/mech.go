@@ -217,19 +217,18 @@ func (m *Mech) IsCompleteLimited() bool {
 	return true
 }
 
+// SetBoostedStats takes the attached skin level and sets the boosted stats depending on the mechs boosted stat
 func (m *Mech) SetBoostedStats() error {
 	if m.ChassisSkin == nil {
 		return fmt.Errorf("missing mech skin object")
 	}
-	boostPercent := float32(1)
-	if m.ChassisSkin.Level > 0 {
-		boostPercent = (float32(m.ChassisSkin.Level) / 100) + 1
-	}
+	// get the % increase
+	boostPercent := (float32(m.ChassisSkin.Level) / 100) + 1
 
 	if m.BoostedStat == boiler.BoostStatMECH_SPEED {
-		m.BoostedSpeed = int(boostPercent * float32(m.Speed))
+		m.BoostedSpeed = int(boostPercent * float32(m.Speed)) // set the boosted stat
 	} else {
-		m.BoostedSpeed = m.Speed
+		m.BoostedSpeed = m.Speed // set boosted speed to the speed, means we can always just use boosted stat instead of figuring out which one is better down the line
 	}
 	if m.BoostedStat == boiler.BoostStatMECH_HEALTH {
 		m.BoostedMaxHitpoints = int(boostPercent * float32(m.MaxHitpoints))
