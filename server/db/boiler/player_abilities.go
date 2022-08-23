@@ -22,65 +22,100 @@ import (
 
 // PlayerAbility is an object representing the database table.
 type PlayerAbility struct {
-	ID                string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID           string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	BlueprintID       string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	Count             int       `boiler:"count" boil:"count" json:"count" toml:"count" yaml:"count"`
-	LastPurchasedAt   time.Time `boiler:"last_purchased_at" boil:"last_purchased_at" json:"last_purchased_at" toml:"last_purchased_at" yaml:"last_purchased_at"`
-	CooldownExpiresOn time.Time `boiler:"cooldown_expires_on" boil:"cooldown_expires_on" json:"cooldown_expires_on" toml:"cooldown_expires_on" yaml:"cooldown_expires_on"`
+	ID                  string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	OwnerID             string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	BlueprintID         string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	GameClientAbilityID int       `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	Label               string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour              string    `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL            string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	Description         string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
+	PurchasedAt         time.Time `boiler:"purchased_at" boil:"purchased_at" json:"purchased_at" toml:"purchased_at" yaml:"purchased_at"`
 
 	R *playerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerAbilityColumns = struct {
-	ID                string
-	OwnerID           string
-	BlueprintID       string
-	Count             string
-	LastPurchasedAt   string
-	CooldownExpiresOn string
+	ID                  string
+	OwnerID             string
+	BlueprintID         string
+	GameClientAbilityID string
+	Label               string
+	Colour              string
+	ImageURL            string
+	Description         string
+	TextColour          string
+	LocationSelectType  string
+	PurchasedAt         string
 }{
-	ID:                "id",
-	OwnerID:           "owner_id",
-	BlueprintID:       "blueprint_id",
-	Count:             "count",
-	LastPurchasedAt:   "last_purchased_at",
-	CooldownExpiresOn: "cooldown_expires_on",
+	ID:                  "id",
+	OwnerID:             "owner_id",
+	BlueprintID:         "blueprint_id",
+	GameClientAbilityID: "game_client_ability_id",
+	Label:               "label",
+	Colour:              "colour",
+	ImageURL:            "image_url",
+	Description:         "description",
+	TextColour:          "text_colour",
+	LocationSelectType:  "location_select_type",
+	PurchasedAt:         "purchased_at",
 }
 
 var PlayerAbilityTableColumns = struct {
-	ID                string
-	OwnerID           string
-	BlueprintID       string
-	Count             string
-	LastPurchasedAt   string
-	CooldownExpiresOn string
+	ID                  string
+	OwnerID             string
+	BlueprintID         string
+	GameClientAbilityID string
+	Label               string
+	Colour              string
+	ImageURL            string
+	Description         string
+	TextColour          string
+	LocationSelectType  string
+	PurchasedAt         string
 }{
-	ID:                "player_abilities.id",
-	OwnerID:           "player_abilities.owner_id",
-	BlueprintID:       "player_abilities.blueprint_id",
-	Count:             "player_abilities.count",
-	LastPurchasedAt:   "player_abilities.last_purchased_at",
-	CooldownExpiresOn: "player_abilities.cooldown_expires_on",
+	ID:                  "player_abilities.id",
+	OwnerID:             "player_abilities.owner_id",
+	BlueprintID:         "player_abilities.blueprint_id",
+	GameClientAbilityID: "player_abilities.game_client_ability_id",
+	Label:               "player_abilities.label",
+	Colour:              "player_abilities.colour",
+	ImageURL:            "player_abilities.image_url",
+	Description:         "player_abilities.description",
+	TextColour:          "player_abilities.text_colour",
+	LocationSelectType:  "player_abilities.location_select_type",
+	PurchasedAt:         "player_abilities.purchased_at",
 }
 
 // Generated where
 
 var PlayerAbilityWhere = struct {
-	ID                whereHelperstring
-	OwnerID           whereHelperstring
-	BlueprintID       whereHelperstring
-	Count             whereHelperint
-	LastPurchasedAt   whereHelpertime_Time
-	CooldownExpiresOn whereHelpertime_Time
+	ID                  whereHelperstring
+	OwnerID             whereHelperstring
+	BlueprintID         whereHelperstring
+	GameClientAbilityID whereHelperint
+	Label               whereHelperstring
+	Colour              whereHelperstring
+	ImageURL            whereHelperstring
+	Description         whereHelperstring
+	TextColour          whereHelperstring
+	LocationSelectType  whereHelperstring
+	PurchasedAt         whereHelpertime_Time
 }{
-	ID:                whereHelperstring{field: "\"player_abilities\".\"id\""},
-	OwnerID:           whereHelperstring{field: "\"player_abilities\".\"owner_id\""},
-	BlueprintID:       whereHelperstring{field: "\"player_abilities\".\"blueprint_id\""},
-	Count:             whereHelperint{field: "\"player_abilities\".\"count\""},
-	LastPurchasedAt:   whereHelpertime_Time{field: "\"player_abilities\".\"last_purchased_at\""},
-	CooldownExpiresOn: whereHelpertime_Time{field: "\"player_abilities\".\"cooldown_expires_on\""},
+	ID:                  whereHelperstring{field: "\"player_abilities\".\"id\""},
+	OwnerID:             whereHelperstring{field: "\"player_abilities\".\"owner_id\""},
+	BlueprintID:         whereHelperstring{field: "\"player_abilities\".\"blueprint_id\""},
+	GameClientAbilityID: whereHelperint{field: "\"player_abilities\".\"game_client_ability_id\""},
+	Label:               whereHelperstring{field: "\"player_abilities\".\"label\""},
+	Colour:              whereHelperstring{field: "\"player_abilities\".\"colour\""},
+	ImageURL:            whereHelperstring{field: "\"player_abilities\".\"image_url\""},
+	Description:         whereHelperstring{field: "\"player_abilities\".\"description\""},
+	TextColour:          whereHelperstring{field: "\"player_abilities\".\"text_colour\""},
+	LocationSelectType:  whereHelperstring{field: "\"player_abilities\".\"location_select_type\""},
+	PurchasedAt:         whereHelpertime_Time{field: "\"player_abilities\".\"purchased_at\""},
 }
 
 // PlayerAbilityRels is where relationship names are stored.
@@ -107,9 +142,9 @@ func (*playerAbilityR) NewStruct() *playerAbilityR {
 type playerAbilityL struct{}
 
 var (
-	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "count", "last_purchased_at", "cooldown_expires_on"}
-	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id"}
-	playerAbilityColumnsWithDefault    = []string{"id", "count", "last_purchased_at", "cooldown_expires_on"}
+	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "purchased_at"}
+	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
+	playerAbilityColumnsWithDefault    = []string{"id", "purchased_at"}
 	playerAbilityPrimaryKeyColumns     = []string{"id"}
 	playerAbilityGeneratedColumns      = []string{}
 )

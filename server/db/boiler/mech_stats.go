@@ -22,65 +22,65 @@ import (
 
 // MechStat is an object representing the database table.
 type MechStat struct {
+	MechID          string `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	TotalWins       int    `boiler:"total_wins" boil:"total_wins" json:"total_wins" toml:"total_wins" yaml:"total_wins"`
 	TotalDeaths     int    `boiler:"total_deaths" boil:"total_deaths" json:"total_deaths" toml:"total_deaths" yaml:"total_deaths"`
 	TotalKills      int    `boiler:"total_kills" boil:"total_kills" json:"total_kills" toml:"total_kills" yaml:"total_kills"`
 	BattlesSurvived int    `boiler:"battles_survived" boil:"battles_survived" json:"battles_survived" toml:"battles_survived" yaml:"battles_survived"`
 	TotalLosses     int    `boiler:"total_losses" boil:"total_losses" json:"total_losses" toml:"total_losses" yaml:"total_losses"`
-	MechID          string `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 
 	R *mechStatR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechStatL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechStatColumns = struct {
+	MechID          string
 	TotalWins       string
 	TotalDeaths     string
 	TotalKills      string
 	BattlesSurvived string
 	TotalLosses     string
-	MechID          string
 }{
+	MechID:          "mech_id",
 	TotalWins:       "total_wins",
 	TotalDeaths:     "total_deaths",
 	TotalKills:      "total_kills",
 	BattlesSurvived: "battles_survived",
 	TotalLosses:     "total_losses",
-	MechID:          "mech_id",
 }
 
 var MechStatTableColumns = struct {
+	MechID          string
 	TotalWins       string
 	TotalDeaths     string
 	TotalKills      string
 	BattlesSurvived string
 	TotalLosses     string
-	MechID          string
 }{
+	MechID:          "mech_stats.mech_id",
 	TotalWins:       "mech_stats.total_wins",
 	TotalDeaths:     "mech_stats.total_deaths",
 	TotalKills:      "mech_stats.total_kills",
 	BattlesSurvived: "mech_stats.battles_survived",
 	TotalLosses:     "mech_stats.total_losses",
-	MechID:          "mech_stats.mech_id",
 }
 
 // Generated where
 
 var MechStatWhere = struct {
+	MechID          whereHelperstring
 	TotalWins       whereHelperint
 	TotalDeaths     whereHelperint
 	TotalKills      whereHelperint
 	BattlesSurvived whereHelperint
 	TotalLosses     whereHelperint
-	MechID          whereHelperstring
 }{
+	MechID:          whereHelperstring{field: "\"mech_stats\".\"mech_id\""},
 	TotalWins:       whereHelperint{field: "\"mech_stats\".\"total_wins\""},
 	TotalDeaths:     whereHelperint{field: "\"mech_stats\".\"total_deaths\""},
 	TotalKills:      whereHelperint{field: "\"mech_stats\".\"total_kills\""},
 	BattlesSurvived: whereHelperint{field: "\"mech_stats\".\"battles_survived\""},
 	TotalLosses:     whereHelperint{field: "\"mech_stats\".\"total_losses\""},
-	MechID:          whereHelperstring{field: "\"mech_stats\".\"mech_id\""},
 }
 
 // MechStatRels is where relationship names are stored.
@@ -104,7 +104,7 @@ func (*mechStatR) NewStruct() *mechStatR {
 type mechStatL struct{}
 
 var (
-	mechStatAllColumns            = []string{"total_wins", "total_deaths", "total_kills", "battles_survived", "total_losses", "mech_id"}
+	mechStatAllColumns            = []string{"mech_id", "total_wins", "total_deaths", "total_kills", "battles_survived", "total_losses"}
 	mechStatColumnsWithoutDefault = []string{"mech_id"}
 	mechStatColumnsWithDefault    = []string{"total_wins", "total_deaths", "total_kills", "battles_survived", "total_losses"}
 	mechStatPrimaryKeyColumns     = []string{"mech_id"}

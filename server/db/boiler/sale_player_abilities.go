@@ -24,65 +24,51 @@ import (
 
 // SalePlayerAbility is an object representing the database table.
 type SalePlayerAbility struct {
-	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID  string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	AmountSold   int             `boiler:"amount_sold" boil:"amount_sold" json:"amount_sold" toml:"amount_sold" yaml:"amount_sold"`
-	RarityWeight int             `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
-	DeletedAt    null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	CurrentPrice decimal.Decimal `boiler:"current_price" boil:"current_price" json:"current_price" toml:"current_price" yaml:"current_price"`
+	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintID    string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	CurrentPrice   decimal.Decimal `boiler:"current_price" boil:"current_price" json:"current_price" toml:"current_price" yaml:"current_price"`
+	AvailableUntil null.Time       `boiler:"available_until" boil:"available_until" json:"available_until,omitempty" toml:"available_until" yaml:"available_until,omitempty"`
 
 	R *salePlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L salePlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SalePlayerAbilityColumns = struct {
-	ID           string
-	BlueprintID  string
-	AmountSold   string
-	RarityWeight string
-	DeletedAt    string
-	CurrentPrice string
+	ID             string
+	BlueprintID    string
+	CurrentPrice   string
+	AvailableUntil string
 }{
-	ID:           "id",
-	BlueprintID:  "blueprint_id",
-	AmountSold:   "amount_sold",
-	RarityWeight: "rarity_weight",
-	DeletedAt:    "deleted_at",
-	CurrentPrice: "current_price",
+	ID:             "id",
+	BlueprintID:    "blueprint_id",
+	CurrentPrice:   "current_price",
+	AvailableUntil: "available_until",
 }
 
 var SalePlayerAbilityTableColumns = struct {
-	ID           string
-	BlueprintID  string
-	AmountSold   string
-	RarityWeight string
-	DeletedAt    string
-	CurrentPrice string
+	ID             string
+	BlueprintID    string
+	CurrentPrice   string
+	AvailableUntil string
 }{
-	ID:           "sale_player_abilities.id",
-	BlueprintID:  "sale_player_abilities.blueprint_id",
-	AmountSold:   "sale_player_abilities.amount_sold",
-	RarityWeight: "sale_player_abilities.rarity_weight",
-	DeletedAt:    "sale_player_abilities.deleted_at",
-	CurrentPrice: "sale_player_abilities.current_price",
+	ID:             "sale_player_abilities.id",
+	BlueprintID:    "sale_player_abilities.blueprint_id",
+	CurrentPrice:   "sale_player_abilities.current_price",
+	AvailableUntil: "sale_player_abilities.available_until",
 }
 
 // Generated where
 
 var SalePlayerAbilityWhere = struct {
-	ID           whereHelperstring
-	BlueprintID  whereHelperstring
-	AmountSold   whereHelperint
-	RarityWeight whereHelperint
-	DeletedAt    whereHelpernull_Time
-	CurrentPrice whereHelperdecimal_Decimal
+	ID             whereHelperstring
+	BlueprintID    whereHelperstring
+	CurrentPrice   whereHelperdecimal_Decimal
+	AvailableUntil whereHelpernull_Time
 }{
-	ID:           whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
-	BlueprintID:  whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
-	AmountSold:   whereHelperint{field: "\"sale_player_abilities\".\"amount_sold\""},
-	RarityWeight: whereHelperint{field: "\"sale_player_abilities\".\"rarity_weight\""},
-	DeletedAt:    whereHelpernull_Time{field: "\"sale_player_abilities\".\"deleted_at\""},
-	CurrentPrice: whereHelperdecimal_Decimal{field: "\"sale_player_abilities\".\"current_price\""},
+	ID:             whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
+	BlueprintID:    whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
+	CurrentPrice:   whereHelperdecimal_Decimal{field: "\"sale_player_abilities\".\"current_price\""},
+	AvailableUntil: whereHelpernull_Time{field: "\"sale_player_abilities\".\"available_until\""},
 }
 
 // SalePlayerAbilityRels is where relationship names are stored.
@@ -106,9 +92,9 @@ func (*salePlayerAbilityR) NewStruct() *salePlayerAbilityR {
 type salePlayerAbilityL struct{}
 
 var (
-	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "amount_sold", "rarity_weight", "deleted_at", "current_price"}
-	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id"}
-	salePlayerAbilityColumnsWithDefault    = []string{"id", "amount_sold", "rarity_weight", "deleted_at", "current_price"}
+	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until"}
+	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id", "current_price"}
+	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until"}
 	salePlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	salePlayerAbilityGeneratedColumns      = []string{}
 )
@@ -521,7 +507,7 @@ func (o *SalePlayerAbility) SetBlueprint(exec boil.Executor, insert bool, relate
 
 // SalePlayerAbilities retrieves all the records using an executor.
 func SalePlayerAbilities(mods ...qm.QueryMod) salePlayerAbilityQuery {
-	mods = append(mods, qm.From("\"sale_player_abilities\""), qmhelper.WhereIsNull("\"sale_player_abilities\".\"deleted_at\""))
+	mods = append(mods, qm.From("\"sale_player_abilities\""))
 	return salePlayerAbilityQuery{NewQuery(mods...)}
 }
 
@@ -535,7 +521,7 @@ func FindSalePlayerAbility(exec boil.Executor, iD string, selectCols ...string) 
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"sale_player_abilities\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"sale_player_abilities\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -876,7 +862,7 @@ func (o *SalePlayerAbility) Upsert(exec boil.Executor, updateOnConflict bool, co
 
 // Delete deletes a single SalePlayerAbility record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *SalePlayerAbility) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *SalePlayerAbility) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no SalePlayerAbility provided for delete")
 	}
@@ -885,26 +871,8 @@ func (o *SalePlayerAbility) Delete(exec boil.Executor, hardDelete bool) (int64, 
 		return 0, err
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), salePlayerAbilityPrimaryKeyMapping)
-		sql = "DELETE FROM \"sale_player_abilities\" WHERE \"id\"=$1"
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		o.DeletedAt = null.TimeFrom(currTime)
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"sale_player_abilities\" SET %s WHERE \"id\"=$2",
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		valueMapping, err := queries.BindMapping(salePlayerAbilityType, salePlayerAbilityMapping, append(wl, salePlayerAbilityPrimaryKeyColumns...))
-		if err != nil {
-			return 0, err
-		}
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
-	}
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), salePlayerAbilityPrimaryKeyMapping)
+	sql := "DELETE FROM \"sale_player_abilities\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -928,17 +896,12 @@ func (o *SalePlayerAbility) Delete(exec boil.Executor, hardDelete bool) (int64, 
 }
 
 // DeleteAll deletes all matching rows.
-func (q salePlayerAbilityQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q salePlayerAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no salePlayerAbilityQuery provided for delete all")
 	}
 
-	if hardDelete {
-		queries.SetDelete(q.Query)
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
-	}
+	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -954,7 +917,7 @@ func (q salePlayerAbilityQuery) DeleteAll(exec boil.Executor, hardDelete bool) (
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o SalePlayerAbilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o SalePlayerAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -967,31 +930,14 @@ func (o SalePlayerAbilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (
 		}
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), salePlayerAbilityPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-		}
-		sql = "DELETE FROM \"sale_player_abilities\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, salePlayerAbilityPrimaryKeyColumns, len(o))
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), salePlayerAbilityPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-			obj.DeletedAt = null.TimeFrom(currTime)
-		}
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"sale_player_abilities\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, salePlayerAbilityPrimaryKeyColumns, len(o)),
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		args = append([]interface{}{currTime}, args...)
+	var args []interface{}
+	for _, obj := range o {
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), salePlayerAbilityPrimaryKeyMapping)
+		args = append(args, pkeyArgs...)
 	}
+
+	sql := "DELETE FROM \"sale_player_abilities\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, salePlayerAbilityPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1045,8 +991,7 @@ func (o *SalePlayerAbilitySlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"sale_player_abilities\".* FROM \"sale_player_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, salePlayerAbilityPrimaryKeyColumns, len(*o)) +
-		"and \"deleted_at\" is null"
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, salePlayerAbilityPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
@@ -1063,7 +1008,7 @@ func (o *SalePlayerAbilitySlice) ReloadAll(exec boil.Executor) error {
 // SalePlayerAbilityExists checks if the SalePlayerAbility row exists.
 func SalePlayerAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"sale_player_abilities\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"sale_player_abilities\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

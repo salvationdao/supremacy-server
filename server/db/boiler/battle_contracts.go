@@ -25,6 +25,7 @@ import (
 // BattleContract is an object representing the database table.
 type BattleContract struct {
 	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID         string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	PlayerID       string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
 	FactionID      string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	BattleID       null.String     `boiler:"battle_id" boil:"battle_id" json:"battle_id,omitempty" toml:"battle_id" yaml:"battle_id,omitempty"`
@@ -35,7 +36,6 @@ type BattleContract struct {
 	QueuedAt       time.Time       `boiler:"queued_at" boil:"queued_at" json:"queued_at" toml:"queued_at" yaml:"queued_at"`
 	Cancelled      null.Bool       `boiler:"cancelled" boil:"cancelled" json:"cancelled,omitempty" toml:"cancelled" yaml:"cancelled,omitempty"`
 	TransactionID  null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
-	MechID         string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 
 	R *battleContractR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContractL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +43,7 @@ type BattleContract struct {
 
 var BattleContractColumns = struct {
 	ID             string
+	MechID         string
 	PlayerID       string
 	FactionID      string
 	BattleID       string
@@ -53,9 +54,9 @@ var BattleContractColumns = struct {
 	QueuedAt       string
 	Cancelled      string
 	TransactionID  string
-	MechID         string
 }{
 	ID:             "id",
+	MechID:         "mech_id",
 	PlayerID:       "player_id",
 	FactionID:      "faction_id",
 	BattleID:       "battle_id",
@@ -66,11 +67,11 @@ var BattleContractColumns = struct {
 	QueuedAt:       "queued_at",
 	Cancelled:      "cancelled",
 	TransactionID:  "transaction_id",
-	MechID:         "mech_id",
 }
 
 var BattleContractTableColumns = struct {
 	ID             string
+	MechID         string
 	PlayerID       string
 	FactionID      string
 	BattleID       string
@@ -81,9 +82,9 @@ var BattleContractTableColumns = struct {
 	QueuedAt       string
 	Cancelled      string
 	TransactionID  string
-	MechID         string
 }{
 	ID:             "battle_contracts.id",
+	MechID:         "battle_contracts.mech_id",
 	PlayerID:       "battle_contracts.player_id",
 	FactionID:      "battle_contracts.faction_id",
 	BattleID:       "battle_contracts.battle_id",
@@ -94,31 +95,9 @@ var BattleContractTableColumns = struct {
 	QueuedAt:       "battle_contracts.queued_at",
 	Cancelled:      "battle_contracts.cancelled",
 	TransactionID:  "battle_contracts.transaction_id",
-	MechID:         "battle_contracts.mech_id",
 }
 
 // Generated where
-
-type whereHelperdecimal_Decimal struct{ field string }
-
-func (w whereHelperdecimal_Decimal) EQ(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelperdecimal_Decimal) NEQ(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelperdecimal_Decimal) LT(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelperdecimal_Decimal) LTE(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelperdecimal_Decimal) GT(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelperdecimal_Decimal) GTE(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
 
 type whereHelpernull_Bool struct{ field string }
 
@@ -146,6 +125,7 @@ func (w whereHelpernull_Bool) IsNotNull() qm.QueryMod { return qmhelper.WhereIsN
 
 var BattleContractWhere = struct {
 	ID             whereHelperstring
+	MechID         whereHelperstring
 	PlayerID       whereHelperstring
 	FactionID      whereHelperstring
 	BattleID       whereHelpernull_String
@@ -156,9 +136,9 @@ var BattleContractWhere = struct {
 	QueuedAt       whereHelpertime_Time
 	Cancelled      whereHelpernull_Bool
 	TransactionID  whereHelpernull_String
-	MechID         whereHelperstring
 }{
 	ID:             whereHelperstring{field: "\"battle_contracts\".\"id\""},
+	MechID:         whereHelperstring{field: "\"battle_contracts\".\"mech_id\""},
 	PlayerID:       whereHelperstring{field: "\"battle_contracts\".\"player_id\""},
 	FactionID:      whereHelperstring{field: "\"battle_contracts\".\"faction_id\""},
 	BattleID:       whereHelpernull_String{field: "\"battle_contracts\".\"battle_id\""},
@@ -169,27 +149,26 @@ var BattleContractWhere = struct {
 	QueuedAt:       whereHelpertime_Time{field: "\"battle_contracts\".\"queued_at\""},
 	Cancelled:      whereHelpernull_Bool{field: "\"battle_contracts\".\"cancelled\""},
 	TransactionID:  whereHelpernull_String{field: "\"battle_contracts\".\"transaction_id\""},
-	MechID:         whereHelperstring{field: "\"battle_contracts\".\"mech_id\""},
 }
 
 // BattleContractRels is where relationship names are stored.
 var BattleContractRels = struct {
 	Battle  string
-	Mech    string
 	Faction string
+	Mech    string
 	Player  string
 }{
 	Battle:  "Battle",
-	Mech:    "Mech",
 	Faction: "Faction",
+	Mech:    "Mech",
 	Player:  "Player",
 }
 
 // battleContractR is where relationships are stored.
 type battleContractR struct {
 	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Mech    *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Mech    *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
@@ -202,8 +181,8 @@ func (*battleContractR) NewStruct() *battleContractR {
 type battleContractL struct{}
 
 var (
-	battleContractAllColumns            = []string{"id", "player_id", "faction_id", "battle_id", "contract_reward", "fee", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id", "mech_id"}
-	battleContractColumnsWithoutDefault = []string{"player_id", "faction_id", "contract_reward", "fee", "mech_id"}
+	battleContractAllColumns            = []string{"id", "mech_id", "player_id", "faction_id", "battle_id", "contract_reward", "fee", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id"}
+	battleContractColumnsWithoutDefault = []string{"mech_id", "player_id", "faction_id", "contract_reward", "fee"}
 	battleContractColumnsWithDefault    = []string{"id", "battle_id", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id"}
 	battleContractPrimaryKeyColumns     = []string{"id"}
 	battleContractGeneratedColumns      = []string{}
@@ -465,21 +444,6 @@ func (o *BattleContract) Battle(mods ...qm.QueryMod) battleQuery {
 	return query
 }
 
-// Mech pointed to by the foreign key.
-func (o *BattleContract) Mech(mods ...qm.QueryMod) mechQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.MechID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Mechs(queryMods...)
-	queries.SetFrom(query.Query, "\"mechs\"")
-
-	return query
-}
-
 // Faction pointed to by the foreign key.
 func (o *BattleContract) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
@@ -491,6 +455,21 @@ func (o *BattleContract) Faction(mods ...qm.QueryMod) factionQuery {
 
 	query := Factions(queryMods...)
 	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// Mech pointed to by the foreign key.
+func (o *BattleContract) Mech(mods ...qm.QueryMod) mechQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.MechID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
 
 	return query
 }
@@ -618,111 +597,6 @@ func (battleContractL) LoadBattle(e boil.Executor, singular bool, maybeBattleCon
 	return nil
 }
 
-// LoadMech allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (battleContractL) LoadMech(e boil.Executor, singular bool, maybeBattleContract interface{}, mods queries.Applicator) error {
-	var slice []*BattleContract
-	var object *BattleContract
-
-	if singular {
-		object = maybeBattleContract.(*BattleContract)
-	} else {
-		slice = *maybeBattleContract.(*[]*BattleContract)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleContractR{}
-		}
-		args = append(args, object.MechID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleContractR{}
-			}
-
-			for _, a := range args {
-				if a == obj.MechID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.MechID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mechs`),
-		qm.WhereIn(`mechs.id in ?`, args...),
-		qmhelper.WhereIsNull(`mechs.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Mech")
-	}
-
-	var resultSlice []*Mech
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mechs")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
-	}
-
-	if len(battleContractAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Mech = foreign
-		if foreign.R == nil {
-			foreign.R = &mechR{}
-		}
-		foreign.R.BattleContracts = append(foreign.R.BattleContracts, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.MechID == foreign.ID {
-				local.R.Mech = foreign
-				if foreign.R == nil {
-					foreign.R = &mechR{}
-				}
-				foreign.R.BattleContracts = append(foreign.R.BattleContracts, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (battleContractL) LoadFaction(e boil.Executor, singular bool, maybeBattleContract interface{}, mods queries.Applicator) error {
@@ -818,6 +692,111 @@ func (battleContractL) LoadFaction(e boil.Executor, singular bool, maybeBattleCo
 				local.R.Faction = foreign
 				if foreign.R == nil {
 					foreign.R = &factionR{}
+				}
+				foreign.R.BattleContracts = append(foreign.R.BattleContracts, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMech allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleContractL) LoadMech(e boil.Executor, singular bool, maybeBattleContract interface{}, mods queries.Applicator) error {
+	var slice []*BattleContract
+	var object *BattleContract
+
+	if singular {
+		object = maybeBattleContract.(*BattleContract)
+	} else {
+		slice = *maybeBattleContract.(*[]*BattleContract)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleContractR{}
+		}
+		args = append(args, object.MechID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleContractR{}
+			}
+
+			for _, a := range args {
+				if a == obj.MechID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.MechID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Mech")
+	}
+
+	var resultSlice []*Mech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
+	}
+
+	if len(battleContractAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Mech = foreign
+		if foreign.R == nil {
+			foreign.R = &mechR{}
+		}
+		foreign.R.BattleContracts = append(foreign.R.BattleContracts, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.MechID == foreign.ID {
+				local.R.Mech = foreign
+				if foreign.R == nil {
+					foreign.R = &mechR{}
 				}
 				foreign.R.BattleContracts = append(foreign.R.BattleContracts, local)
 				break
@@ -1012,52 +991,6 @@ func (o *BattleContract) RemoveBattle(exec boil.Executor, related *Battle) error
 	return nil
 }
 
-// SetMech of the battleContract to the related item.
-// Sets o.R.Mech to related.
-// Adds o to related.R.BattleContracts.
-func (o *BattleContract) SetMech(exec boil.Executor, insert bool, related *Mech) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_contracts\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleContractPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.MechID = related.ID
-	if o.R == nil {
-		o.R = &battleContractR{
-			Mech: related,
-		}
-	} else {
-		o.R.Mech = related
-	}
-
-	if related.R == nil {
-		related.R = &mechR{
-			BattleContracts: BattleContractSlice{o},
-		}
-	} else {
-		related.R.BattleContracts = append(related.R.BattleContracts, o)
-	}
-
-	return nil
-}
-
 // SetFaction of the battleContract to the related item.
 // Sets o.R.Faction to related.
 // Adds o to related.R.BattleContracts.
@@ -1095,6 +1028,52 @@ func (o *BattleContract) SetFaction(exec boil.Executor, insert bool, related *Fa
 
 	if related.R == nil {
 		related.R = &factionR{
+			BattleContracts: BattleContractSlice{o},
+		}
+	} else {
+		related.R.BattleContracts = append(related.R.BattleContracts, o)
+	}
+
+	return nil
+}
+
+// SetMech of the battleContract to the related item.
+// Sets o.R.Mech to related.
+// Adds o to related.R.BattleContracts.
+func (o *BattleContract) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_contracts\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleContractPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.MechID = related.ID
+	if o.R == nil {
+		o.R = &battleContractR{
+			Mech: related,
+		}
+	} else {
+		o.R.Mech = related
+	}
+
+	if related.R == nil {
+		related.R = &mechR{
 			BattleContracts: BattleContractSlice{o},
 		}
 	} else {
