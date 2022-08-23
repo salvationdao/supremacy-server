@@ -342,7 +342,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 		// join utility
 		for i := 0; i < mechs[0].UtilitySlots; i++ {
-			if utilities[i] != nil {
+			if len(utilities) > 0 && utilities[i] != nil {
 				err = AttachUtilityToMech(tx, ownerID.String(), mechs[0].ID, utilities[i].ID, lockedToMech)
 				if err != nil {
 					L.Error().Err(err).Msg("failed to join utility to mech")

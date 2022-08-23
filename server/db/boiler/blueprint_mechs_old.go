@@ -23,20 +23,21 @@ import (
 
 // BlueprintMechsOld is an object representing the database table.
 type BlueprintMechsOld struct {
-	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	WeaponHardpoints int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots     int       `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed            int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints     int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ModelID          string    `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	Collection       string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	PowerCoreSize    string    `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	Tier             string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	WeaponHardpoints int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	UtilitySlots     int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed            int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints     int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ModelID          string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
+	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	PowerCoreSize    string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	AvailabilityID   null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
 
 	R *blueprintMechsOldR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechsOldL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +58,7 @@ var BlueprintMechsOldColumns = struct {
 	Collection       string
 	PowerCoreSize    string
 	Tier             string
+	AvailabilityID   string
 }{
 	ID:               "id",
 	Label:            "label",
@@ -72,6 +74,7 @@ var BlueprintMechsOldColumns = struct {
 	Collection:       "collection",
 	PowerCoreSize:    "power_core_size",
 	Tier:             "tier",
+	AvailabilityID:   "availability_id",
 }
 
 var BlueprintMechsOldTableColumns = struct {
@@ -89,6 +92,7 @@ var BlueprintMechsOldTableColumns = struct {
 	Collection       string
 	PowerCoreSize    string
 	Tier             string
+	AvailabilityID   string
 }{
 	ID:               "blueprint_mechs_old.id",
 	Label:            "blueprint_mechs_old.label",
@@ -104,6 +108,7 @@ var BlueprintMechsOldTableColumns = struct {
 	Collection:       "blueprint_mechs_old.collection",
 	PowerCoreSize:    "blueprint_mechs_old.power_core_size",
 	Tier:             "blueprint_mechs_old.tier",
+	AvailabilityID:   "blueprint_mechs_old.availability_id",
 }
 
 // Generated where
@@ -123,6 +128,7 @@ var BlueprintMechsOldWhere = struct {
 	Collection       whereHelperstring
 	PowerCoreSize    whereHelperstring
 	Tier             whereHelperstring
+	AvailabilityID   whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mechs_old\".\"id\""},
 	Label:            whereHelperstring{field: "\"blueprint_mechs_old\".\"label\""},
@@ -138,18 +144,22 @@ var BlueprintMechsOldWhere = struct {
 	Collection:       whereHelperstring{field: "\"blueprint_mechs_old\".\"collection\""},
 	PowerCoreSize:    whereHelperstring{field: "\"blueprint_mechs_old\".\"power_core_size\""},
 	Tier:             whereHelperstring{field: "\"blueprint_mechs_old\".\"tier\""},
+	AvailabilityID:   whereHelpernull_String{field: "\"blueprint_mechs_old\".\"availability_id\""},
 }
 
 // BlueprintMechsOldRels is where relationship names are stored.
 var BlueprintMechsOldRels = struct {
-	Model string
+	Availability string
+	Model        string
 }{
-	Model: "Model",
+	Availability: "Availability",
+	Model:        "Model",
 }
 
 // blueprintMechsOldR is where relationships are stored.
 type blueprintMechsOldR struct {
-	Model *BlueprintMech `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	Availability *Availability  `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
+	Model        *BlueprintMech `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
 }
 
 // NewStruct creates a new relationship struct
@@ -161,9 +171,9 @@ func (*blueprintMechsOldR) NewStruct() *blueprintMechsOldR {
 type blueprintMechsOldL struct{}
 
 var (
-	blueprintMechsOldAllColumns            = []string{"id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier"}
+	blueprintMechsOldAllColumns            = []string{"id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier", "availability_id"}
 	blueprintMechsOldColumnsWithoutDefault = []string{"label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
-	blueprintMechsOldColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier"}
+	blueprintMechsOldColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier", "availability_id"}
 	blueprintMechsOldPrimaryKeyColumns     = []string{"id"}
 	blueprintMechsOldGeneratedColumns      = []string{}
 )
@@ -410,6 +420,20 @@ func (q blueprintMechsOldQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Availability pointed to by the foreign key.
+func (o *BlueprintMechsOld) Availability(mods ...qm.QueryMod) availabilityQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AvailabilityID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Availabilities(queryMods...)
+	queries.SetFrom(query.Query, "\"availabilities\"")
+
+	return query
+}
+
 // Model pointed to by the foreign key.
 func (o *BlueprintMechsOld) Model(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
@@ -422,6 +446,114 @@ func (o *BlueprintMechsOld) Model(mods ...qm.QueryMod) blueprintMechQuery {
 	queries.SetFrom(query.Query, "\"blueprint_mechs\"")
 
 	return query
+}
+
+// LoadAvailability allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintMechsOldL) LoadAvailability(e boil.Executor, singular bool, maybeBlueprintMechsOld interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMechsOld
+	var object *BlueprintMechsOld
+
+	if singular {
+		object = maybeBlueprintMechsOld.(*BlueprintMechsOld)
+	} else {
+		slice = *maybeBlueprintMechsOld.(*[]*BlueprintMechsOld)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechsOldR{}
+		}
+		if !queries.IsNil(object.AvailabilityID) {
+			args = append(args, object.AvailabilityID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechsOldR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.AvailabilityID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.AvailabilityID) {
+				args = append(args, obj.AvailabilityID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`availabilities`),
+		qm.WhereIn(`availabilities.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Availability")
+	}
+
+	var resultSlice []*Availability
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Availability")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for availabilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for availabilities")
+	}
+
+	if len(blueprintMechsOldAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Availability = foreign
+		if foreign.R == nil {
+			foreign.R = &availabilityR{}
+		}
+		foreign.R.BlueprintMechsOlds = append(foreign.R.BlueprintMechsOlds, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.AvailabilityID, foreign.ID) {
+				local.R.Availability = foreign
+				if foreign.R == nil {
+					foreign.R = &availabilityR{}
+				}
+				foreign.R.BlueprintMechsOlds = append(foreign.R.BlueprintMechsOlds, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadModel allows an eager lookup of values, cached into the
@@ -525,6 +657,85 @@ func (blueprintMechsOldL) LoadModel(e boil.Executor, singular bool, maybeBluepri
 		}
 	}
 
+	return nil
+}
+
+// SetAvailability of the blueprintMechsOld to the related item.
+// Sets o.R.Availability to related.
+// Adds o to related.R.BlueprintMechsOlds.
+func (o *BlueprintMechsOld) SetAvailability(exec boil.Executor, insert bool, related *Availability) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_mechs_old\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"availability_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintMechsOldPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.AvailabilityID, related.ID)
+	if o.R == nil {
+		o.R = &blueprintMechsOldR{
+			Availability: related,
+		}
+	} else {
+		o.R.Availability = related
+	}
+
+	if related.R == nil {
+		related.R = &availabilityR{
+			BlueprintMechsOlds: BlueprintMechsOldSlice{o},
+		}
+	} else {
+		related.R.BlueprintMechsOlds = append(related.R.BlueprintMechsOlds, o)
+	}
+
+	return nil
+}
+
+// RemoveAvailability relationship.
+// Sets o.R.Availability to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintMechsOld) RemoveAvailability(exec boil.Executor, related *Availability) error {
+	var err error
+
+	queries.SetScanner(&o.AvailabilityID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("availability_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Availability = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintMechsOlds {
+		if queries.Equal(o.AvailabilityID, ri.AvailabilityID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintMechsOlds)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintMechsOlds[i] = related.R.BlueprintMechsOlds[ln-1]
+		}
+		related.R.BlueprintMechsOlds = related.R.BlueprintMechsOlds[:ln-1]
+		break
+	}
 	return nil
 }
 

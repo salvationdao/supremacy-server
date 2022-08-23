@@ -436,7 +436,7 @@ ALTER TABLE weapons
 
 -- rm faction id 98bf7bb3-1a7c-4f21-8843-458d62884060
 -- RM 0551d044-b8ff-47ac-917e-80c3fce37378
-WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
+WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
                   FROM utility u
                            INNER JOIN mechs m ON m.id = u.equipped_on
                            INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
@@ -445,11 +445,12 @@ WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
 UPDATE utility u
 SET blueprint_id = '0551d044-b8ff-47ac-917e-80c3fce37378'
 FROM toupdate
-WHERE u.id = toupdate.u_id and toupdate.fac_id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
+WHERE u.id = toupdate.u_id
+  AND toupdate.fac_id = '98bf7bb3-1a7c-4f21-8843-458d62884060';
 
 -- ZAI 1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8
 -- zai faction id 880db344-e405-428d-84e5-6ebebab1fe6d
-WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
+WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
                   FROM utility u
                            INNER JOIN mechs m ON m.id = u.equipped_on
                            INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
@@ -458,11 +459,12 @@ WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
 UPDATE utility u
 SET blueprint_id = '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8'
 FROM toupdate
-WHERE u.id = toupdate.u_id and toupdate.fac_id = '880db344-e405-428d-84e5-6ebebab1fe6d';
+WHERE u.id = toupdate.u_id
+  AND toupdate.fac_id = '880db344-e405-428d-84e5-6ebebab1fe6d';
 
 -- BC d429be75-6f98-4231-8315-a86db8477d05
 -- bc faction id 7c6dde21-b067-46cf-9e56-155c88a520e2
-WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
+WITH toupdate AS (SELECT f.id AS fac_id, u.id AS u_id
                   FROM utility u
                            INNER JOIN mechs m ON m.id = u.equipped_on
                            INNER JOIN blueprint_mechs bm ON m.blueprint_id = bm.id
@@ -471,19 +473,24 @@ WITH toupdate AS (SELECT f.id as fac_id, u.id as u_id
 UPDATE utility u
 SET blueprint_id = 'd429be75-6f98-4231-8315-a86db8477d05'
 FROM toupdate
-WHERE u.id = toupdate.u_id and toupdate.fac_id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
+WHERE u.id = toupdate.u_id
+  AND toupdate.fac_id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
 
 
-DELETE FROM blueprint_utility_shield WHERE blueprint_utility_id NOT IN (
-                                                                        'd429be75-6f98-4231-8315-a86db8477d05',
-                                                                        '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8',
-                                                                        '0551d044-b8ff-47ac-917e-80c3fce37378'
+DELETE
+FROM blueprint_utility_shield
+WHERE blueprint_utility_id NOT IN (
+                                   'd429be75-6f98-4231-8315-a86db8477d05',
+                                   '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8',
+                                   '0551d044-b8ff-47ac-917e-80c3fce37378'
     );
 
-DELETE FROM blueprint_utility WHERE id NOT IN (
-                                               'd429be75-6f98-4231-8315-a86db8477d05',
-                                               '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8',
-                                               '0551d044-b8ff-47ac-917e-80c3fce37378'
+DELETE
+FROM blueprint_utility
+WHERE id NOT IN (
+                 'd429be75-6f98-4231-8315-a86db8477d05',
+                 '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8',
+                 '0551d044-b8ff-47ac-917e-80c3fce37378'
     );
 
 DROP TABLE IF EXISTS blueprint_utility_accelerator;
@@ -494,3 +501,33 @@ DROP TABLE IF EXISTS utility_accelerator;
 DROP TABLE IF EXISTS utility_anti_missile;
 DROP TABLE IF EXISTS utility_attack_drone;
 DROP TABLE IF EXISTS utility_repair_drone;
+
+WITH toupdate AS (SELECT tbp.id, t.label
+                  FROM templates t
+                           INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
+                  WHERE tbp.type = 'UTILITY'
+                    AND t.label ILIKE '%Boston%')
+UPDATE template_blueprints tbp
+SET blueprint_id = 'd429be75-6f98-4231-8315-a86db8477d05'
+FROM toupdate
+WHERE tbp.id = toupdate.id;
+
+WITH toupdate AS (SELECT tbp.id, t.label
+                  FROM templates t
+                           INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
+                  WHERE tbp.type = 'UTILITY'
+                    AND t.label ILIKE '%red%')
+UPDATE template_blueprints tbp
+SET blueprint_id = '0551d044-b8ff-47ac-917e-80c3fce37378'
+FROM toupdate
+WHERE tbp.id = toupdate.id;
+
+WITH toupdate AS (SELECT tbp.id, t.label
+                  FROM templates t
+                           INNER JOIN template_blueprints tbp ON tbp.template_id = t.id
+                  WHERE tbp.type = 'UTILITY'
+                    AND t.label ILIKE '%zai%')
+UPDATE template_blueprints tbp
+SET blueprint_id = '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8'
+FROM toupdate
+WHERE tbp.id = toupdate.id;
