@@ -140,26 +140,6 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	//f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
-	//if err != nil {
-	//	return err
-	//}
-	//err = SyncStaticMech(f, dt.DB)
-	//if err != nil {
-	//	return err
-	//}
-	//f.Close()
-
-	//f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
-	//if err != nil {
-	//	return err
-	//}
-	//err = SyncStaticWeapon(f, dt.DB)
-	//if err != nil {
-	//	return err
-	//}
-	//f.Close()
-
 	f, err = readFile(fmt.Sprintf("%squests.csv", dt.FilePath))
 	if err != nil {
 		return err
