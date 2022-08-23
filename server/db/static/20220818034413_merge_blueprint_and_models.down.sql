@@ -68,5 +68,3 @@ ALTER TABLE mech_models
     DROP COLUMN IF EXISTS availability_id,
     ALTER COLUMN mech_type DROP NOT NULL,
     ALTER COLUMN brand_id DROP NOT NULL;
-
-DROP TABLE IF EXISTS availabilities;
