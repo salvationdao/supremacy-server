@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -208,12 +209,12 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 					MIN(%[3]s)
 				FROM %[4]s
 			`,
-			boiler.MechStatColumns.MechID,
-			boiler.MechStatColumns.TotalKills,
-			boiler.MechStatColumns.TotalWins,
-			boiler.TableNames.MechStats,
-			)).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
-		if err != nil {
+		boiler.MechStatColumns.MechID,
+		boiler.MechStatColumns.TotalKills,
+		boiler.MechStatColumns.TotalWins,
+		boiler.TableNames.MechStats,
+	)).Scan(&total, &maxKills, &minKills, &maxSurvives, &minSurvives)
+	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "QueryRow").Err(err).Msg("unable to get max, min value of total_kills")
 		return terror.Error(err, "Unable to retrieve ")
@@ -245,13 +246,16 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
 		return err
 	}
 
-	reply(battle.CalcNextQueueStatus(result))
+	reply(battle.QueueStatusResponse{
+		QueueLength: queueLength, // return the current queue length
+		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+	})
 	return nil
 }
 
