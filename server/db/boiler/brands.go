@@ -91,14 +91,12 @@ var BrandRels = struct {
 	BlueprintModules   string
 	BlueprintUtilities string
 	BlueprintWeapons   string
-	Utilities          string
 }{
 	Faction:            "Faction",
 	BlueprintChasses:   "BlueprintChasses",
 	BlueprintModules:   "BlueprintModules",
 	BlueprintUtilities: "BlueprintUtilities",
 	BlueprintWeapons:   "BlueprintWeapons",
-	Utilities:          "Utilities",
 }
 
 // brandR is where relationships are stored.
@@ -108,7 +106,6 @@ type brandR struct {
 	BlueprintModules   BlueprintModuleSlice  `boiler:"BlueprintModules" boil:"BlueprintModules" json:"BlueprintModules" toml:"BlueprintModules" yaml:"BlueprintModules"`
 	BlueprintUtilities BlueprintUtilitySlice `boiler:"BlueprintUtilities" boil:"BlueprintUtilities" json:"BlueprintUtilities" toml:"BlueprintUtilities" yaml:"BlueprintUtilities"`
 	BlueprintWeapons   BlueprintWeaponSlice  `boiler:"BlueprintWeapons" boil:"BlueprintWeapons" json:"BlueprintWeapons" toml:"BlueprintWeapons" yaml:"BlueprintWeapons"`
-	Utilities          UtilitySlice          `boiler:"Utilities" boil:"Utilities" json:"Utilities" toml:"Utilities" yaml:"Utilities"`
 }
 
 // NewStruct creates a new relationship struct
@@ -467,28 +464,6 @@ func (o *Brand) BlueprintWeapons(mods ...qm.QueryMod) blueprintWeaponQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"blueprint_weapons\".*"})
-	}
-
-	return query
-}
-
-// Utilities retrieves all the utility's Utilities with an executor.
-func (o *Brand) Utilities(mods ...qm.QueryMod) utilityQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"utility\".\"brand_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"utility\".\"deleted_at\""),
-	)
-
-	query := Utilities(queryMods...)
-	queries.SetFrom(query.Query, "\"utility\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"utility\".*"})
 	}
 
 	return query
@@ -995,105 +970,6 @@ func (brandL) LoadBlueprintWeapons(e boil.Executor, singular bool, maybeBrand in
 	return nil
 }
 
-// LoadUtilities allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (brandL) LoadUtilities(e boil.Executor, singular bool, maybeBrand interface{}, mods queries.Applicator) error {
-	var slice []*Brand
-	var object *Brand
-
-	if singular {
-		object = maybeBrand.(*Brand)
-	} else {
-		slice = *maybeBrand.(*[]*Brand)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &brandR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &brandR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`utility`),
-		qm.WhereIn(`utility.brand_id in ?`, args...),
-		qmhelper.WhereIsNull(`utility.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load utility")
-	}
-
-	var resultSlice []*Utility
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice utility")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on utility")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for utility")
-	}
-
-	if len(utilityAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.Utilities = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &utilityR{}
-			}
-			foreign.R.Brand = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.BrandID) {
-				local.R.Utilities = append(local.R.Utilities, foreign)
-				if foreign.R == nil {
-					foreign.R = &utilityR{}
-				}
-				foreign.R.Brand = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetFaction of the brand to the related item.
 // Sets o.R.Faction to related.
 // Adds o to related.R.Brands.
@@ -1560,131 +1436,6 @@ func (o *Brand) RemoveBlueprintWeapons(exec boil.Executor, related ...*Blueprint
 				o.R.BlueprintWeapons[i] = o.R.BlueprintWeapons[ln-1]
 			}
 			o.R.BlueprintWeapons = o.R.BlueprintWeapons[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddUtilities adds the given related objects to the existing relationships
-// of the brand, optionally inserting them as new records.
-// Appends related to o.R.Utilities.
-// Sets related.R.Brand appropriately.
-func (o *Brand) AddUtilities(exec boil.Executor, insert bool, related ...*Utility) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.BrandID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"utility\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"brand_id"}),
-				strmangle.WhereClause("\"", "\"", 2, utilityPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.BrandID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &brandR{
-			Utilities: related,
-		}
-	} else {
-		o.R.Utilities = append(o.R.Utilities, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &utilityR{
-				Brand: o,
-			}
-		} else {
-			rel.R.Brand = o
-		}
-	}
-	return nil
-}
-
-// SetUtilities removes all previously related items of the
-// brand replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Brand's Utilities accordingly.
-// Replaces o.R.Utilities with related.
-// Sets related.R.Brand's Utilities accordingly.
-func (o *Brand) SetUtilities(exec boil.Executor, insert bool, related ...*Utility) error {
-	query := "update \"utility\" set \"brand_id\" = null where \"brand_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.Utilities {
-			queries.SetScanner(&rel.BrandID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Brand = nil
-		}
-
-		o.R.Utilities = nil
-	}
-	return o.AddUtilities(exec, insert, related...)
-}
-
-// RemoveUtilities relationships from objects passed in.
-// Removes related items from R.Utilities (uses pointer comparison, removal does not keep order)
-// Sets related.R.Brand.
-func (o *Brand) RemoveUtilities(exec boil.Executor, related ...*Utility) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.BrandID, nil)
-		if rel.R != nil {
-			rel.R.Brand = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.Utilities {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.Utilities)
-			if ln > 1 && i < ln-1 {
-				o.R.Utilities[i] = o.R.Utilities[ln-1]
-			}
-			o.R.Utilities = o.R.Utilities[:ln-1]
 			break
 		}
 	}

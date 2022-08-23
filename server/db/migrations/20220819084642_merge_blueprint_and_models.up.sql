@@ -531,3 +531,9 @@ UPDATE template_blueprints tbp
 SET blueprint_id = '1e9a8bd4-b6c3-4a46-86e9-4c68a95f09b8'
 FROM toupdate
 WHERE tbp.id = toupdate.id;
+
+DROP TABLE utility_shield;
+
+ALTER TABLE utility
+    DROP COLUMN IF EXISTS label,
+    DROP COLUMN IF EXISTS brand_id;

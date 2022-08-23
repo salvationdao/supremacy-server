@@ -250,7 +250,7 @@ func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *
 	}
 }
 
-func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
+func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.BlueprintUtilityShield, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -265,8 +265,8 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 			AssetHidden:    collection.AssetHidden,
 		},
 		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
+		BrandID:        utility.R.Blueprint.BrandID,
+		Label:          utility.R.Blueprint.Label,
 		UpdatedAt:      utility.UpdatedAt,
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
@@ -274,7 +274,7 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		Shield: &UtilityShield{
-			UtilityID:          shield.UtilityID,
+			UtilityID:          utility.ID,
 			Hitpoints:          shield.Hitpoints,
 			RechargeRate:       shield.RechargeRate,
 			RechargeEnergyCost: shield.RechargeEnergyCost,

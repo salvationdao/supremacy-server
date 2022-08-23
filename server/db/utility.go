@@ -18,8 +18,6 @@ import (
 
 func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.BlueprintUtility) (*server.Utility, error) {
 	newUtility := boiler.Utility{
-		BrandID:               utility.BrandID,
-		Label:                 utility.Label,
 		BlueprintID:           utility.ID,
 		GenesisTokenID:        utility.GenesisTokenID,
 		LimitedReleaseTokenID: utility.LimitedReleaseTokenID,
@@ -41,27 +39,6 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-
-	// insert the extra table depending on utility type
-	switch newUtility.Type {
-	case boiler.UtilityTypeSHIELD:
-		if utility.ShieldBlueprint == nil {
-			return nil, fmt.Errorf("utility type is shield but shield blueprint is nil")
-		}
-		newUtilityShield := boiler.UtilityShield{
-			UtilityID:          newUtility.ID,
-			Hitpoints:          utility.ShieldBlueprint.Hitpoints,
-			RechargeRate:       utility.ShieldBlueprint.RechargeRate,
-			RechargeEnergyCost: utility.ShieldBlueprint.RechargeEnergyCost,
-		}
-		err = newUtilityShield.Insert(tx, boil.Infer())
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-
-	default:
-		return nil, fmt.Errorf("invalid utility type")
-	}
 	
 	return Utility(tx, newUtility.ID)
 }
@@ -78,7 +55,7 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 
 	switch boilerUtility.Type {
 	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.UtilityShields(boiler.UtilityShieldWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
+		boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +80,7 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 
 		switch util.Type {
 		case boiler.UtilityTypeSHIELD:
-			boilerShield, err := boiler.UtilityShields(boiler.UtilityShieldWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(util.BlueprintID)).One(gamedb.StdConn)
 			if err != nil {
 				return nil, err
 			}
