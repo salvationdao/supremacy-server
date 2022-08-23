@@ -380,6 +380,7 @@ type WeaponListOpts struct {
 	DisplayHidden                 bool
 	ExcludeMarketLocked           bool
 	IncludeMarketListed           bool
+	ExcludeMechLocked             bool
 	ExcludeIDs                    []string
 	FilterRarities                []string               `json:"rarities"`
 	FilterWeaponTypes             []string               `json:"weapon_types"`
@@ -438,6 +439,11 @@ func WeaponList(opts *WeaponListOpts) (int64, []*server.Weapon, error) {
 	}
 	if !opts.DisplayHidden {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
+	}
+	if opts.ExcludeMechLocked {
+		queryMods = append(queryMods,
+			boiler.WeaponWhere.LockedToMech.EQ(false),
+		)
 	}
 
 	// Filters

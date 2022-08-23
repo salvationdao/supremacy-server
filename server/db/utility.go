@@ -32,7 +32,6 @@ func getDefaultUtilityQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.BlueprintUtility, boiler.BlueprintUtilityColumns.ID),
 			qm.Rels(boiler.TableNames.Utility, boiler.UtilityColumns.BlueprintID),
 		)),
-		boiler.UtilityWhere.LockedToMech.EQ(false),
 	}
 }
 
@@ -49,6 +48,8 @@ type UtilityListOpts struct {
 	DisplayHidden          bool
 	ExcludeMarketLocked    bool
 	IncludeMarketListed    bool
+	ExcludeMechLocked      bool
+	ExcludeIDs             []string
 	FilterRarities         []string `json:"rarities"`
 	FilterTypes            []string `json:"types"`
 	FilterEquippedStatuses []string `json:"equipped_statuses"`
@@ -91,6 +92,11 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 	if !opts.DisplayHidden {
 		queryMods = append(queryMods, boiler.CollectionItemWhere.AssetHidden.IsNull())
 	}
+	if opts.ExcludeMechLocked {
+		queryMods = append(queryMods,
+			boiler.UtilityWhere.LockedToMech.EQ(false),
+		)
+	}
 
 	// Filters
 	if opts.Filter != nil {
@@ -101,6 +107,10 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
 			}
 		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.UtilityWhere.ID.NIN(opts.ExcludeIDs))
 	}
 
 	if len(opts.FilterRarities) > 0 {
@@ -145,9 +155,11 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 				))
 		}
 	}
+	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}
@@ -335,7 +347,7 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 }
 
 func Utility(tx boil.Executor, id string) (*server.Utility, error) {
-	boilerUtility, err := boiler.FindUtility(tx, id)
+	boilerUtility, err := boiler.Utilities(boiler.UtilityWhere.ID.EQ(id), qm.Load(boiler.UtilityRels.Blueprint)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -350,31 +362,31 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 		if err != nil {
 			return nil, err
 		}
-		return server.UtilityShieldFromBoiler(boilerUtility, boilerShield, boilerMechCollectionDetails), nil
+		return server.UtilityShieldFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerShield, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeATTACKDRONE:
 		boilerAttackDrone, err := boiler.UtilityAttackDrones(boiler.UtilityAttackDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
-		return server.UtilityAttackDroneFromBoiler(boilerUtility, boilerAttackDrone, boilerMechCollectionDetails), nil
+		return server.UtilityAttackDroneFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerAttackDrone, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeREPAIRDRONE:
 		boilerRepairDrone, err := boiler.UtilityRepairDrones(boiler.UtilityRepairDroneWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
-		return server.UtilityRepairDroneFromBoiler(boilerUtility, boilerRepairDrone, boilerMechCollectionDetails), nil
+		return server.UtilityRepairDroneFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerRepairDrone, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeANTIMISSILE:
 		boilerAntiMissile, err := boiler.UtilityAntiMissiles(boiler.UtilityAntiMissileWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
-		return server.UtilityAntiMissileFromBoiler(boilerUtility, boilerAntiMissile, boilerMechCollectionDetails), nil
+		return server.UtilityAntiMissileFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerAntiMissile, boilerMechCollectionDetails), nil
 	case boiler.UtilityTypeACCELERATOR:
 		boilerAccelerator, err := boiler.UtilityAccelerators(boiler.UtilityAcceleratorWhere.UtilityID.EQ(boilerUtility.ID)).One(tx)
 		if err != nil {
 			return nil, err
 		}
-		return server.UtilityAcceleratorFromBoiler(boilerUtility, boilerAccelerator, boilerMechCollectionDetails), nil
+		return server.UtilityAcceleratorFromBoiler(boilerUtility, boilerUtility.R.Blueprint, boilerAccelerator, boilerMechCollectionDetails), nil
 	}
 
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
@@ -382,7 +394,7 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 
 func Utilities(id ...string) ([]*server.Utility, error) {
 	var utilities []*server.Utility
-	boilerUtilities, err := boiler.Utilities(boiler.UtilityWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerUtilities, err := boiler.Utilities(boiler.UtilityWhere.ID.IN(id), qm.Load(boiler.UtilityRels.Blueprint)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -399,31 +411,31 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 			if err != nil {
 				return nil, err
 			}
-			utilities = append(utilities, server.UtilityShieldFromBoiler(util, boilerShield, boilerMechCollectionDetails))
+			utilities = append(utilities, server.UtilityShieldFromBoiler(util, util.R.Blueprint, boilerShield, boilerMechCollectionDetails))
 		case boiler.UtilityTypeATTACKDRONE:
 			boilerAttackDrone, err := boiler.UtilityAttackDrones(boiler.UtilityAttackDroneWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
 			if err != nil {
 				return nil, err
 			}
-			utilities = append(utilities, server.UtilityAttackDroneFromBoiler(util, boilerAttackDrone, boilerMechCollectionDetails))
+			utilities = append(utilities, server.UtilityAttackDroneFromBoiler(util, util.R.Blueprint, boilerAttackDrone, boilerMechCollectionDetails))
 		case boiler.UtilityTypeREPAIRDRONE:
 			boilerRepairDrone, err := boiler.UtilityRepairDrones(boiler.UtilityRepairDroneWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
 			if err != nil {
 				return nil, err
 			}
-			utilities = append(utilities, server.UtilityRepairDroneFromBoiler(util, boilerRepairDrone, boilerMechCollectionDetails))
+			utilities = append(utilities, server.UtilityRepairDroneFromBoiler(util, util.R.Blueprint, boilerRepairDrone, boilerMechCollectionDetails))
 		case boiler.UtilityTypeANTIMISSILE:
 			boilerAntiMissile, err := boiler.UtilityAntiMissiles(boiler.UtilityAntiMissileWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
 			if err != nil {
 				return nil, err
 			}
-			utilities = append(utilities, server.UtilityAntiMissileFromBoiler(util, boilerAntiMissile, boilerMechCollectionDetails))
+			utilities = append(utilities, server.UtilityAntiMissileFromBoiler(util, util.R.Blueprint, boilerAntiMissile, boilerMechCollectionDetails))
 		case boiler.UtilityTypeACCELERATOR:
 			boilerAccelerator, err := boiler.UtilityAccelerators(boiler.UtilityAcceleratorWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
 			if err != nil {
 				return nil, err
 			}
-			utilities = append(utilities, server.UtilityAcceleratorFromBoiler(util, boilerAccelerator, boilerMechCollectionDetails))
+			utilities = append(utilities, server.UtilityAcceleratorFromBoiler(util, util.R.Blueprint, boilerAccelerator, boilerMechCollectionDetails))
 		}
 	}
 	return utilities, nil

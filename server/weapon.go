@@ -176,6 +176,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,
 		EquippedWeaponSkinID: weapon.EquippedWeaponSkinID,
+		LockedToMech:         weapon.LockedToMech,
 		WeaponSkin:           weaponSkin,
 		ItemSaleID:           itemSaleID,
 	}

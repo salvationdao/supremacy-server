@@ -356,7 +356,7 @@ func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, ant
 	}
 }
 
-func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
+func UtilityShieldFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -370,6 +370,15 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         blueprint.ImageURL,
+			CardAnimationURL: blueprint.CardAnimationURL,
+			AvatarURL:        blueprint.AvatarURL,
+			LargeImageURL:    blueprint.LargeImageURL,
+			BackgroundColor:  blueprint.BackgroundColor,
+			AnimationURL:     blueprint.AnimationURL,
+			YoutubeURL:       blueprint.YoutubeURL,
+		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
 		Label:          utility.Label,
@@ -379,6 +388,7 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 		GenesisTokenID: utility.GenesisTokenID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
+		LockedToMech:   utility.LockedToMech,
 		Shield: &UtilityShield{
 			UtilityID:          shield.UtilityID,
 			Hitpoints:          shield.Hitpoints,
@@ -388,7 +398,7 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 	}
 }
 
-func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityAttackDrone, collection *boiler.CollectionItem) *Utility {
+func UtilityAttackDroneFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, drone *boiler.UtilityAttackDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -402,6 +412,15 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         blueprint.ImageURL,
+			CardAnimationURL: blueprint.CardAnimationURL,
+			AvatarURL:        blueprint.AvatarURL,
+			LargeImageURL:    blueprint.LargeImageURL,
+			BackgroundColor:  blueprint.BackgroundColor,
+			AnimationURL:     blueprint.AnimationURL,
+			YoutubeURL:       blueprint.YoutubeURL,
+		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
 		Label:          utility.Label,
@@ -411,6 +430,7 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 		GenesisTokenID: utility.GenesisTokenID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
+		LockedToMech:   utility.LockedToMech,
 		AttackDrone: &UtilityAttackDrone{
 			UtilityID:        drone.UtilityID,
 			Damage:           drone.Damage,
@@ -422,7 +442,7 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 	}
 }
 
-func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityRepairDrone, collection *boiler.CollectionItem) *Utility {
+func UtilityRepairDroneFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, drone *boiler.UtilityRepairDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -436,6 +456,15 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         blueprint.ImageURL,
+			CardAnimationURL: blueprint.CardAnimationURL,
+			AvatarURL:        blueprint.AvatarURL,
+			LargeImageURL:    blueprint.LargeImageURL,
+			BackgroundColor:  blueprint.BackgroundColor,
+			AnimationURL:     blueprint.AnimationURL,
+			YoutubeURL:       blueprint.YoutubeURL,
+		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
 		Label:          utility.Label,
@@ -445,6 +474,7 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 		GenesisTokenID: utility.GenesisTokenID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
+		LockedToMech:   utility.LockedToMech,
 		RepairDrone: &UtilityRepairDrone{
 			UtilityID:        drone.UtilityID,
 			RepairType:       drone.RepairType,
@@ -455,7 +485,7 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 	}
 }
 
-func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAntiMissile, collection *boiler.CollectionItem) *Utility {
+func UtilityAntiMissileFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, anti *boiler.UtilityAntiMissile, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -469,6 +499,15 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         blueprint.ImageURL,
+			CardAnimationURL: blueprint.CardAnimationURL,
+			AvatarURL:        blueprint.AvatarURL,
+			LargeImageURL:    blueprint.LargeImageURL,
+			BackgroundColor:  blueprint.BackgroundColor,
+			AnimationURL:     blueprint.AnimationURL,
+			YoutubeURL:       blueprint.YoutubeURL,
+		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
 		Label:          utility.Label,
@@ -478,6 +517,7 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 		GenesisTokenID: utility.GenesisTokenID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
+		LockedToMech:   utility.LockedToMech,
 		AntiMissile: &UtilityAntiMissile{
 			UtilityID:      anti.UtilityID,
 			RateOfFire:     anti.RateOfFire,
@@ -486,7 +526,7 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 	}
 }
 
-func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAccelerator, collection *boiler.CollectionItem) *Utility {
+func UtilityAcceleratorFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, anti *boiler.UtilityAccelerator, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -500,6 +540,15 @@ func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 			XsynLocked:     collection.XsynLocked,
 			AssetHidden:    collection.AssetHidden,
 		},
+		Images: &Images{
+			ImageURL:         blueprint.ImageURL,
+			CardAnimationURL: blueprint.CardAnimationURL,
+			AvatarURL:        blueprint.AvatarURL,
+			LargeImageURL:    blueprint.LargeImageURL,
+			BackgroundColor:  blueprint.BackgroundColor,
+			AnimationURL:     blueprint.AnimationURL,
+			YoutubeURL:       blueprint.YoutubeURL,
+		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
 		Label:          utility.Label,
@@ -509,6 +558,7 @@ func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 		GenesisTokenID: utility.GenesisTokenID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
+		LockedToMech:   utility.LockedToMech,
 		Accelerator: &UtilityAccelerator{
 			UtilityID:    anti.UtilityID,
 			EnergyCost:   anti.EnergyCost,
