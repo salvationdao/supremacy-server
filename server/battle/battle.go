@@ -1258,6 +1258,9 @@ func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []
 	endInfo.MechRewards = mechRewardRecords
 
 	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_end_result", btl.ArenaID), HubKeyBattleEndDetailUpdated, endInfo)
+
+	// cache battle end detail
+	btl.arena.LastBattleResult = endInfo
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {

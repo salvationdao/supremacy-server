@@ -54,7 +54,7 @@ type ArenaManager struct {
 	SystemBanManager         *SystemBanManager
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
-	RepairOfferCloseChan     chan *RepairOfferClose
+	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
 
 	arenas       map[string]*Arena
@@ -83,7 +83,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		SystemBanManager:         NewSystemBanManager(),
 		NewBattleChan:            make(chan *NewBattleChan, 10),
 		SystemMessagingManager:   opts.SystemMessagingManager,
-		RepairOfferCloseChan:     make(chan *RepairOfferClose, 5),
+		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 	}
@@ -333,6 +333,8 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
+
+	LastBattleResult *BattleEndDetail
 
 	QuestManager *quest.System
 
