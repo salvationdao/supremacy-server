@@ -478,6 +478,42 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponDetail(ctx context.Context
 	return nil
 }
 
+const HubKeyPlayerAssetUtilityDetail = "PLAYER:ASSET:UTILITY:DETAIL"
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	utilityID := cctx.URLParam("utility_id")
+	if utilityID == "" {
+		return terror.Error(fmt.Errorf("missing utility id"), "Missing utility id.")
+	}
+	// get collection and check ownership
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility),
+		boiler.CollectionItemWhere.ItemID.EQ(utilityID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find utility from the collection")
+	}
+
+	// get utility
+	utility, err := db.Utility(gamedb.StdConn, collectionItem.ItemID)
+	if err != nil {
+		return terror.Error(err, "Failed to find utility from db")
+	}
+
+	reply(utility)
+	return nil
+}
+
 const HubKeyPlayerAssetMysteryCrateList = "PLAYER:ASSET:MYSTERY_CRATE:LIST"
 
 type PlayerAssetMysteryCrateListRequest struct {
@@ -1147,6 +1183,7 @@ type PlayerAssetWeaponListRequest struct {
 		DisplayXsynMechs              bool                      `json:"display_xsyn_mechs"`
 		ExcludeMarketLocked           bool                      `json:"exclude_market_locked"`
 		IncludeMarketListed           bool                      `json:"include_market_listed"`
+		ExcludeMechLocked             bool                      `json:"exclude_mech_locked"`
 		ExcludeIDs                    []string                  `json:"exclude_ids"`
 		FilterRarities                []string                  `json:"rarities"`
 		FilterWeaponTypes             []string                  `json:"weapon_types"`
@@ -1208,6 +1245,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetWeaponListHandler(ctx context.Co
 		DisplayXsynMechs:              req.Payload.DisplayXsynMechs,
 		ExcludeMarketLocked:           req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:           req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:             req.Payload.ExcludeMechLocked,
 		ExcludeIDs:                    req.Payload.ExcludeIDs,
 		FilterRarities:                req.Payload.FilterRarities,
 		FilterWeaponTypes:             req.Payload.FilterWeaponTypes,
@@ -1612,6 +1650,8 @@ type PlayerAssetUtilityListRequest struct {
 		DisplayXsynLocked      bool                  `json:"display_xsyn_locked"`
 		ExcludeMarketLocked    bool                  `json:"exclude_market_locked"`
 		IncludeMarketListed    bool                  `json:"include_market_listed"`
+		ExcludeMechLocked      bool                  `json:"exclude_mech_locked"`
+		ExcludeIDs             []string              `json:"exclude_ids"`
 		FilterRarities         []string              `json:"rarities"`
 		FilterTypes            []string              `json:"sizes"`
 		FilterEquippedStatuses []string              `json:"equipped_statuses"`
@@ -1646,6 +1686,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetUtilityListHandler(ctx context.C
 		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
 		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeMechLocked:      req.Payload.ExcludeMechLocked,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
 		FilterRarities:         req.Payload.FilterRarities,
 		FilterTypes:            req.Payload.FilterTypes,
 		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
