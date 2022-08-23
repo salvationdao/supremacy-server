@@ -107,17 +107,14 @@ var BlueprintModuleWhere = struct {
 
 // BlueprintModuleRels is where relationship names are stored.
 var BlueprintModuleRels = struct {
-	Brand                            string
-	BlueprintChassisBlueprintModules string
+	Brand string
 }{
-	Brand:                            "Brand",
-	BlueprintChassisBlueprintModules: "BlueprintChassisBlueprintModules",
+	Brand: "Brand",
 }
 
 // blueprintModuleR is where relationships are stored.
 type blueprintModuleR struct {
-	Brand                            *Brand                               `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	BlueprintChassisBlueprintModules BlueprintChassisBlueprintModuleSlice `boiler:"BlueprintChassisBlueprintModules" boil:"BlueprintChassisBlueprintModules" json:"BlueprintChassisBlueprintModules" toml:"BlueprintChassisBlueprintModules" yaml:"BlueprintChassisBlueprintModules"`
+	Brand *Brand `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 }
 
 // NewStruct creates a new relationship struct
@@ -393,28 +390,6 @@ func (o *BlueprintModule) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// BlueprintChassisBlueprintModules retrieves all the blueprint_chassis_blueprint_module's BlueprintChassisBlueprintModules with an executor.
-func (o *BlueprintModule) BlueprintChassisBlueprintModules(mods ...qm.QueryMod) blueprintChassisBlueprintModuleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_chassis_blueprint_modules\".\"blueprint_module_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_chassis_blueprint_modules\".\"deleted_at\""),
-	)
-
-	query := BlueprintChassisBlueprintModules(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis_blueprint_modules\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_chassis_blueprint_modules\".*"})
-	}
-
-	return query
-}
-
 // LoadBrand allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprintModule interface{}, mods queries.Applicator) error {
@@ -524,105 +499,6 @@ func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 	return nil
 }
 
-// LoadBlueprintChassisBlueprintModules allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintModuleL) LoadBlueprintChassisBlueprintModules(e boil.Executor, singular bool, maybeBlueprintModule interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintModule
-	var object *BlueprintModule
-
-	if singular {
-		object = maybeBlueprintModule.(*BlueprintModule)
-	} else {
-		slice = *maybeBlueprintModule.(*[]*BlueprintModule)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintModuleR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintModuleR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_chassis_blueprint_modules`),
-		qm.WhereIn(`blueprint_chassis_blueprint_modules.blueprint_module_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis_blueprint_modules.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_chassis_blueprint_modules")
-	}
-
-	var resultSlice []*BlueprintChassisBlueprintModule
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis_blueprint_modules")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis_blueprint_modules")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_blueprint_modules")
-	}
-
-	if len(blueprintChassisBlueprintModuleAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintChassisBlueprintModules = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintChassisBlueprintModuleR{}
-			}
-			foreign.R.BlueprintModule = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintModuleID {
-				local.R.BlueprintChassisBlueprintModules = append(local.R.BlueprintChassisBlueprintModules, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintChassisBlueprintModuleR{}
-				}
-				foreign.R.BlueprintModule = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetBrand of the blueprintModule to the related item.
 // Sets o.R.Brand to related.
 // Adds o to related.R.BlueprintModules.
@@ -698,58 +574,6 @@ func (o *BlueprintModule) RemoveBrand(exec boil.Executor, related *Brand) error 
 		}
 		related.R.BlueprintModules = related.R.BlueprintModules[:ln-1]
 		break
-	}
-	return nil
-}
-
-// AddBlueprintChassisBlueprintModules adds the given related objects to the existing relationships
-// of the blueprint_module, optionally inserting them as new records.
-// Appends related to o.R.BlueprintChassisBlueprintModules.
-// Sets related.R.BlueprintModule appropriately.
-func (o *BlueprintModule) AddBlueprintChassisBlueprintModules(exec boil.Executor, insert bool, related ...*BlueprintChassisBlueprintModule) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintModuleID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_chassis_blueprint_modules\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_module_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintChassisBlueprintModulePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintModuleID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintModuleR{
-			BlueprintChassisBlueprintModules: related,
-		}
-	} else {
-		o.R.BlueprintChassisBlueprintModules = append(o.R.BlueprintChassisBlueprintModules, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintChassisBlueprintModuleR{
-				BlueprintModule: o,
-			}
-		} else {
-			rel.R.BlueprintModule = o
-		}
 	}
 	return nil
 }

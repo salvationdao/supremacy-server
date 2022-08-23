@@ -23,183 +23,153 @@ import (
 
 // BlueprintChassis is an object representing the database table.
 type BlueprintChassis struct {
-	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID            string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	Label              string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug               string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Skin               string      `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
-	ShieldRechargeRate int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
-	WeaponHardpoints   int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots       int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed              int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints       int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	MaxShield          int         `boiler:"max_shield" boil:"max_shield" json:"max_shield" toml:"max_shield" yaml:"max_shield"`
-	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ModelID            string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	Collection         string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	PowerCoreSize      string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	Tier               string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	ChassisSkinID      null.String `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
+	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Skin             string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
+	WeaponHardpoints int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	UtilitySlots     int       `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed            int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints     int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ModelID          string    `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
+	Collection       string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	PowerCoreSize    string    `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	Tier             string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 
 	R *blueprintChassisR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintChassisL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintChassisColumns = struct {
-	ID                 string
-	BrandID            string
-	Label              string
-	Slug               string
-	Skin               string
-	ShieldRechargeRate string
-	WeaponHardpoints   string
-	UtilitySlots       string
-	Speed              string
-	MaxHitpoints       string
-	MaxShield          string
-	DeletedAt          string
-	UpdatedAt          string
-	CreatedAt          string
-	ModelID            string
-	Collection         string
-	PowerCoreSize      string
-	Tier               string
-	ChassisSkinID      string
+	ID               string
+	BrandID          string
+	Label            string
+	Slug             string
+	Skin             string
+	WeaponHardpoints string
+	UtilitySlots     string
+	Speed            string
+	MaxHitpoints     string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	ModelID          string
+	Collection       string
+	PowerCoreSize    string
+	Tier             string
 }{
-	ID:                 "id",
-	BrandID:            "brand_id",
-	Label:              "label",
-	Slug:               "slug",
-	Skin:               "skin",
-	ShieldRechargeRate: "shield_recharge_rate",
-	WeaponHardpoints:   "weapon_hardpoints",
-	UtilitySlots:       "utility_slots",
-	Speed:              "speed",
-	MaxHitpoints:       "max_hitpoints",
-	MaxShield:          "max_shield",
-	DeletedAt:          "deleted_at",
-	UpdatedAt:          "updated_at",
-	CreatedAt:          "created_at",
-	ModelID:            "model_id",
-	Collection:         "collection",
-	PowerCoreSize:      "power_core_size",
-	Tier:               "tier",
-	ChassisSkinID:      "chassis_skin_id",
+	ID:               "id",
+	BrandID:          "brand_id",
+	Label:            "label",
+	Slug:             "slug",
+	Skin:             "skin",
+	WeaponHardpoints: "weapon_hardpoints",
+	UtilitySlots:     "utility_slots",
+	Speed:            "speed",
+	MaxHitpoints:     "max_hitpoints",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
+	ModelID:          "model_id",
+	Collection:       "collection",
+	PowerCoreSize:    "power_core_size",
+	Tier:             "tier",
 }
 
 var BlueprintChassisTableColumns = struct {
-	ID                 string
-	BrandID            string
-	Label              string
-	Slug               string
-	Skin               string
-	ShieldRechargeRate string
-	WeaponHardpoints   string
-	UtilitySlots       string
-	Speed              string
-	MaxHitpoints       string
-	MaxShield          string
-	DeletedAt          string
-	UpdatedAt          string
-	CreatedAt          string
-	ModelID            string
-	Collection         string
-	PowerCoreSize      string
-	Tier               string
-	ChassisSkinID      string
+	ID               string
+	BrandID          string
+	Label            string
+	Slug             string
+	Skin             string
+	WeaponHardpoints string
+	UtilitySlots     string
+	Speed            string
+	MaxHitpoints     string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	ModelID          string
+	Collection       string
+	PowerCoreSize    string
+	Tier             string
 }{
-	ID:                 "blueprint_chassis.id",
-	BrandID:            "blueprint_chassis.brand_id",
-	Label:              "blueprint_chassis.label",
-	Slug:               "blueprint_chassis.slug",
-	Skin:               "blueprint_chassis.skin",
-	ShieldRechargeRate: "blueprint_chassis.shield_recharge_rate",
-	WeaponHardpoints:   "blueprint_chassis.weapon_hardpoints",
-	UtilitySlots:       "blueprint_chassis.utility_slots",
-	Speed:              "blueprint_chassis.speed",
-	MaxHitpoints:       "blueprint_chassis.max_hitpoints",
-	MaxShield:          "blueprint_chassis.max_shield",
-	DeletedAt:          "blueprint_chassis.deleted_at",
-	UpdatedAt:          "blueprint_chassis.updated_at",
-	CreatedAt:          "blueprint_chassis.created_at",
-	ModelID:            "blueprint_chassis.model_id",
-	Collection:         "blueprint_chassis.collection",
-	PowerCoreSize:      "blueprint_chassis.power_core_size",
-	Tier:               "blueprint_chassis.tier",
-	ChassisSkinID:      "blueprint_chassis.chassis_skin_id",
+	ID:               "blueprint_chassis.id",
+	BrandID:          "blueprint_chassis.brand_id",
+	Label:            "blueprint_chassis.label",
+	Slug:             "blueprint_chassis.slug",
+	Skin:             "blueprint_chassis.skin",
+	WeaponHardpoints: "blueprint_chassis.weapon_hardpoints",
+	UtilitySlots:     "blueprint_chassis.utility_slots",
+	Speed:            "blueprint_chassis.speed",
+	MaxHitpoints:     "blueprint_chassis.max_hitpoints",
+	DeletedAt:        "blueprint_chassis.deleted_at",
+	UpdatedAt:        "blueprint_chassis.updated_at",
+	CreatedAt:        "blueprint_chassis.created_at",
+	ModelID:          "blueprint_chassis.model_id",
+	Collection:       "blueprint_chassis.collection",
+	PowerCoreSize:    "blueprint_chassis.power_core_size",
+	Tier:             "blueprint_chassis.tier",
 }
 
 // Generated where
 
 var BlueprintChassisWhere = struct {
-	ID                 whereHelperstring
-	BrandID            whereHelperstring
-	Label              whereHelperstring
-	Slug               whereHelperstring
-	Skin               whereHelperstring
-	ShieldRechargeRate whereHelperint
-	WeaponHardpoints   whereHelperint
-	UtilitySlots       whereHelperint
-	Speed              whereHelperint
-	MaxHitpoints       whereHelperint
-	MaxShield          whereHelperint
-	DeletedAt          whereHelpernull_Time
-	UpdatedAt          whereHelpertime_Time
-	CreatedAt          whereHelpertime_Time
-	ModelID            whereHelperstring
-	Collection         whereHelperstring
-	PowerCoreSize      whereHelperstring
-	Tier               whereHelperstring
-	ChassisSkinID      whereHelpernull_String
+	ID               whereHelperstring
+	BrandID          whereHelperstring
+	Label            whereHelperstring
+	Slug             whereHelperstring
+	Skin             whereHelperstring
+	WeaponHardpoints whereHelperint
+	UtilitySlots     whereHelperint
+	Speed            whereHelperint
+	MaxHitpoints     whereHelperint
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
+	ModelID          whereHelperstring
+	Collection       whereHelperstring
+	PowerCoreSize    whereHelperstring
+	Tier             whereHelperstring
 }{
-	ID:                 whereHelperstring{field: "\"blueprint_chassis\".\"id\""},
-	BrandID:            whereHelperstring{field: "\"blueprint_chassis\".\"brand_id\""},
-	Label:              whereHelperstring{field: "\"blueprint_chassis\".\"label\""},
-	Slug:               whereHelperstring{field: "\"blueprint_chassis\".\"slug\""},
-	Skin:               whereHelperstring{field: "\"blueprint_chassis\".\"skin\""},
-	ShieldRechargeRate: whereHelperint{field: "\"blueprint_chassis\".\"shield_recharge_rate\""},
-	WeaponHardpoints:   whereHelperint{field: "\"blueprint_chassis\".\"weapon_hardpoints\""},
-	UtilitySlots:       whereHelperint{field: "\"blueprint_chassis\".\"utility_slots\""},
-	Speed:              whereHelperint{field: "\"blueprint_chassis\".\"speed\""},
-	MaxHitpoints:       whereHelperint{field: "\"blueprint_chassis\".\"max_hitpoints\""},
-	MaxShield:          whereHelperint{field: "\"blueprint_chassis\".\"max_shield\""},
-	DeletedAt:          whereHelpernull_Time{field: "\"blueprint_chassis\".\"deleted_at\""},
-	UpdatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis\".\"updated_at\""},
-	CreatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis\".\"created_at\""},
-	ModelID:            whereHelperstring{field: "\"blueprint_chassis\".\"model_id\""},
-	Collection:         whereHelperstring{field: "\"blueprint_chassis\".\"collection\""},
-	PowerCoreSize:      whereHelperstring{field: "\"blueprint_chassis\".\"power_core_size\""},
-	Tier:               whereHelperstring{field: "\"blueprint_chassis\".\"tier\""},
-	ChassisSkinID:      whereHelpernull_String{field: "\"blueprint_chassis\".\"chassis_skin_id\""},
+	ID:               whereHelperstring{field: "\"blueprint_chassis\".\"id\""},
+	BrandID:          whereHelperstring{field: "\"blueprint_chassis\".\"brand_id\""},
+	Label:            whereHelperstring{field: "\"blueprint_chassis\".\"label\""},
+	Slug:             whereHelperstring{field: "\"blueprint_chassis\".\"slug\""},
+	Skin:             whereHelperstring{field: "\"blueprint_chassis\".\"skin\""},
+	WeaponHardpoints: whereHelperint{field: "\"blueprint_chassis\".\"weapon_hardpoints\""},
+	UtilitySlots:     whereHelperint{field: "\"blueprint_chassis\".\"utility_slots\""},
+	Speed:            whereHelperint{field: "\"blueprint_chassis\".\"speed\""},
+	MaxHitpoints:     whereHelperint{field: "\"blueprint_chassis\".\"max_hitpoints\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"blueprint_chassis\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"blueprint_chassis\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_chassis\".\"created_at\""},
+	ModelID:          whereHelperstring{field: "\"blueprint_chassis\".\"model_id\""},
+	Collection:       whereHelperstring{field: "\"blueprint_chassis\".\"collection\""},
+	PowerCoreSize:    whereHelperstring{field: "\"blueprint_chassis\".\"power_core_size\""},
+	Tier:             whereHelperstring{field: "\"blueprint_chassis\".\"tier\""},
 }
 
 // BlueprintChassisRels is where relationship names are stored.
 var BlueprintChassisRels = struct {
-	Brand                            string
-	ChassisSkin                      string
-	Model                            string
-	Template                         string
-	BlueprintChassisBlueprintModules string
-	BlueprintChassisBlueprintWeapons string
+	Brand        string
+	Model        string
+	TemplatesOld string
 }{
-	Brand:                            "Brand",
-	ChassisSkin:                      "ChassisSkin",
-	Model:                            "Model",
-	Template:                         "Template",
-	BlueprintChassisBlueprintModules: "BlueprintChassisBlueprintModules",
-	BlueprintChassisBlueprintWeapons: "BlueprintChassisBlueprintWeapons",
+	Brand:        "Brand",
+	Model:        "Model",
+	TemplatesOld: "TemplatesOld",
 }
 
 // blueprintChassisR is where relationships are stored.
 type blueprintChassisR struct {
-	Brand                            *Brand                               `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	ChassisSkin                      *BlueprintMechSkin                   `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
-	Model                            *BlueprintMech                       `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
-	Template                         *Template                            `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
-	BlueprintChassisBlueprintModules BlueprintChassisBlueprintModuleSlice `boiler:"BlueprintChassisBlueprintModules" boil:"BlueprintChassisBlueprintModules" json:"BlueprintChassisBlueprintModules" toml:"BlueprintChassisBlueprintModules" yaml:"BlueprintChassisBlueprintModules"`
-	BlueprintChassisBlueprintWeapons BlueprintChassisBlueprintWeaponSlice `boiler:"BlueprintChassisBlueprintWeapons" boil:"BlueprintChassisBlueprintWeapons" json:"BlueprintChassisBlueprintWeapons" toml:"BlueprintChassisBlueprintWeapons" yaml:"BlueprintChassisBlueprintWeapons"`
+	Brand        *Brand         `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	Model        *BlueprintMech `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	TemplatesOld *TemplatesOld  `boiler:"TemplatesOld" boil:"TemplatesOld" json:"TemplatesOld" toml:"TemplatesOld" yaml:"TemplatesOld"`
 }
 
 // NewStruct creates a new relationship struct
@@ -211,9 +181,9 @@ func (*blueprintChassisR) NewStruct() *blueprintChassisR {
 type blueprintChassisL struct{}
 
 var (
-	blueprintChassisAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "shield_recharge_rate", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier", "chassis_skin_id"}
-	blueprintChassisColumnsWithoutDefault = []string{"brand_id", "label", "slug", "skin", "shield_recharge_rate", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "model_id"}
-	blueprintChassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier", "chassis_skin_id"}
+	blueprintChassisAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier"}
+	blueprintChassisColumnsWithoutDefault = []string{"brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
+	blueprintChassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier"}
 	blueprintChassisPrimaryKeyColumns     = []string{"id"}
 	blueprintChassisGeneratedColumns      = []string{}
 )
@@ -475,20 +445,6 @@ func (o *BlueprintChassis) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// ChassisSkin pointed to by the foreign key.
-func (o *BlueprintChassis) ChassisSkin(mods ...qm.QueryMod) blueprintMechSkinQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.ChassisSkinID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BlueprintMechSkins(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mech_skin\"")
-
-	return query
-}
-
 // Model pointed to by the foreign key.
 func (o *BlueprintChassis) Model(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
@@ -503,8 +459,8 @@ func (o *BlueprintChassis) Model(mods ...qm.QueryMod) blueprintMechQuery {
 	return query
 }
 
-// Template pointed to by the foreign key.
-func (o *BlueprintChassis) Template(mods ...qm.QueryMod) templateQuery {
+// TemplatesOld pointed to by the foreign key.
+func (o *BlueprintChassis) TemplatesOld(mods ...qm.QueryMod) templatesOldQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"blueprint_chassis_id\" = ?", o.ID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -512,52 +468,8 @@ func (o *BlueprintChassis) Template(mods ...qm.QueryMod) templateQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := Templates(queryMods...)
-	queries.SetFrom(query.Query, "\"templates\"")
-
-	return query
-}
-
-// BlueprintChassisBlueprintModules retrieves all the blueprint_chassis_blueprint_module's BlueprintChassisBlueprintModules with an executor.
-func (o *BlueprintChassis) BlueprintChassisBlueprintModules(mods ...qm.QueryMod) blueprintChassisBlueprintModuleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_chassis_blueprint_modules\".\"blueprint_chassis_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_chassis_blueprint_modules\".\"deleted_at\""),
-	)
-
-	query := BlueprintChassisBlueprintModules(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis_blueprint_modules\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_chassis_blueprint_modules\".*"})
-	}
-
-	return query
-}
-
-// BlueprintChassisBlueprintWeapons retrieves all the blueprint_chassis_blueprint_weapon's BlueprintChassisBlueprintWeapons with an executor.
-func (o *BlueprintChassis) BlueprintChassisBlueprintWeapons(mods ...qm.QueryMod) blueprintChassisBlueprintWeaponQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_chassis_blueprint_weapons\".\"blueprint_chassis_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_chassis_blueprint_weapons\".\"deleted_at\""),
-	)
-
-	query := BlueprintChassisBlueprintWeapons(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis_blueprint_weapons\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_chassis_blueprint_weapons\".*"})
-	}
+	query := TemplatesOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"templates_old\"")
 
 	return query
 }
@@ -659,114 +571,6 @@ func (blueprintChassisL) LoadBrand(e boil.Executor, singular bool, maybeBlueprin
 					foreign.R = &brandR{}
 				}
 				foreign.R.BlueprintChasses = append(foreign.R.BlueprintChasses, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadChassisSkin allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintChassisL) LoadChassisSkin(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintChassis
-	var object *BlueprintChassis
-
-	if singular {
-		object = maybeBlueprintChassis.(*BlueprintChassis)
-	} else {
-		slice = *maybeBlueprintChassis.(*[]*BlueprintChassis)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintChassisR{}
-		}
-		if !queries.IsNil(object.ChassisSkinID) {
-			args = append(args, object.ChassisSkinID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintChassisR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ChassisSkinID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.ChassisSkinID) {
-				args = append(args, obj.ChassisSkinID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_mech_skin`),
-		qm.WhereIn(`blueprint_mech_skin.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintMechSkin")
-	}
-
-	var resultSlice []*BlueprintMechSkin
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMechSkin")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_mech_skin")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_skin")
-	}
-
-	if len(blueprintChassisAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.ChassisSkin = foreign
-		if foreign.R == nil {
-			foreign.R = &blueprintMechSkinR{}
-		}
-		foreign.R.ChassisSkinBlueprintChasses = append(foreign.R.ChassisSkinBlueprintChasses, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.ChassisSkinID, foreign.ID) {
-				local.R.ChassisSkin = foreign
-				if foreign.R == nil {
-					foreign.R = &blueprintMechSkinR{}
-				}
-				foreign.R.ChassisSkinBlueprintChasses = append(foreign.R.ChassisSkinBlueprintChasses, local)
 				break
 			}
 		}
@@ -879,9 +683,9 @@ func (blueprintChassisL) LoadModel(e boil.Executor, singular bool, maybeBlueprin
 	return nil
 }
 
-// LoadTemplate allows an eager lookup of values, cached into the
+// LoadTemplatesOld allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (blueprintChassisL) LoadTemplate(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
+func (blueprintChassisL) LoadTemplatesOld(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintChassis
 	var object *BlueprintChassis
 
@@ -919,9 +723,9 @@ func (blueprintChassisL) LoadTemplate(e boil.Executor, singular bool, maybeBluep
 	}
 
 	query := NewQuery(
-		qm.From(`templates`),
-		qm.WhereIn(`templates.blueprint_chassis_id in ?`, args...),
-		qmhelper.WhereIsNull(`templates.deleted_at`),
+		qm.From(`templates_old`),
+		qm.WhereIn(`templates_old.blueprint_chassis_id in ?`, args...),
+		qmhelper.WhereIsNull(`templates_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -929,19 +733,19 @@ func (blueprintChassisL) LoadTemplate(e boil.Executor, singular bool, maybeBluep
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Template")
+		return errors.Wrap(err, "failed to eager load TemplatesOld")
 	}
 
-	var resultSlice []*Template
+	var resultSlice []*TemplatesOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Template")
+		return errors.Wrap(err, "failed to bind eager loaded slice TemplatesOld")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for templates")
+		return errors.Wrap(err, "failed to close results of eager load for templates_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_old")
 	}
 
 	if len(blueprintChassisAfterSelectHooks) != 0 {
@@ -958,9 +762,9 @@ func (blueprintChassisL) LoadTemplate(e boil.Executor, singular bool, maybeBluep
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Template = foreign
+		object.R.TemplatesOld = foreign
 		if foreign.R == nil {
-			foreign.R = &templateR{}
+			foreign.R = &templatesOldR{}
 		}
 		foreign.R.BlueprintChassis = object
 	}
@@ -968,207 +772,9 @@ func (blueprintChassisL) LoadTemplate(e boil.Executor, singular bool, maybeBluep
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.ID == foreign.BlueprintChassisID {
-				local.R.Template = foreign
+				local.R.TemplatesOld = foreign
 				if foreign.R == nil {
-					foreign.R = &templateR{}
-				}
-				foreign.R.BlueprintChassis = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintChassisBlueprintModules allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintChassisL) LoadBlueprintChassisBlueprintModules(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintChassis
-	var object *BlueprintChassis
-
-	if singular {
-		object = maybeBlueprintChassis.(*BlueprintChassis)
-	} else {
-		slice = *maybeBlueprintChassis.(*[]*BlueprintChassis)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintChassisR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintChassisR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_chassis_blueprint_modules`),
-		qm.WhereIn(`blueprint_chassis_blueprint_modules.blueprint_chassis_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis_blueprint_modules.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_chassis_blueprint_modules")
-	}
-
-	var resultSlice []*BlueprintChassisBlueprintModule
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis_blueprint_modules")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis_blueprint_modules")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_blueprint_modules")
-	}
-
-	if len(blueprintChassisBlueprintModuleAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintChassisBlueprintModules = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintChassisBlueprintModuleR{}
-			}
-			foreign.R.BlueprintChassis = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintChassisID {
-				local.R.BlueprintChassisBlueprintModules = append(local.R.BlueprintChassisBlueprintModules, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintChassisBlueprintModuleR{}
-				}
-				foreign.R.BlueprintChassis = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBlueprintChassisBlueprintWeapons allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintChassisL) LoadBlueprintChassisBlueprintWeapons(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintChassis
-	var object *BlueprintChassis
-
-	if singular {
-		object = maybeBlueprintChassis.(*BlueprintChassis)
-	} else {
-		slice = *maybeBlueprintChassis.(*[]*BlueprintChassis)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintChassisR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintChassisR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_chassis_blueprint_weapons`),
-		qm.WhereIn(`blueprint_chassis_blueprint_weapons.blueprint_chassis_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis_blueprint_weapons.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_chassis_blueprint_weapons")
-	}
-
-	var resultSlice []*BlueprintChassisBlueprintWeapon
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis_blueprint_weapons")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis_blueprint_weapons")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_blueprint_weapons")
-	}
-
-	if len(blueprintChassisBlueprintWeaponAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BlueprintChassisBlueprintWeapons = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintChassisBlueprintWeaponR{}
-			}
-			foreign.R.BlueprintChassis = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.BlueprintChassisID {
-				local.R.BlueprintChassisBlueprintWeapons = append(local.R.BlueprintChassisBlueprintWeapons, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintChassisBlueprintWeaponR{}
+					foreign.R = &templatesOldR{}
 				}
 				foreign.R.BlueprintChassis = local
 				break
@@ -1225,85 +831,6 @@ func (o *BlueprintChassis) SetBrand(exec boil.Executor, insert bool, related *Br
 	return nil
 }
 
-// SetChassisSkin of the blueprintChassis to the related item.
-// Sets o.R.ChassisSkin to related.
-// Adds o to related.R.ChassisSkinBlueprintChasses.
-func (o *BlueprintChassis) SetChassisSkin(exec boil.Executor, insert bool, related *BlueprintMechSkin) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_chassis\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_skin_id"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintChassisPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.ChassisSkinID, related.ID)
-	if o.R == nil {
-		o.R = &blueprintChassisR{
-			ChassisSkin: related,
-		}
-	} else {
-		o.R.ChassisSkin = related
-	}
-
-	if related.R == nil {
-		related.R = &blueprintMechSkinR{
-			ChassisSkinBlueprintChasses: BlueprintChassisSlice{o},
-		}
-	} else {
-		related.R.ChassisSkinBlueprintChasses = append(related.R.ChassisSkinBlueprintChasses, o)
-	}
-
-	return nil
-}
-
-// RemoveChassisSkin relationship.
-// Sets o.R.ChassisSkin to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BlueprintChassis) RemoveChassisSkin(exec boil.Executor, related *BlueprintMechSkin) error {
-	var err error
-
-	queries.SetScanner(&o.ChassisSkinID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("chassis_skin_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.ChassisSkin = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.ChassisSkinBlueprintChasses {
-		if queries.Equal(o.ChassisSkinID, ri.ChassisSkinID) {
-			continue
-		}
-
-		ln := len(related.R.ChassisSkinBlueprintChasses)
-		if ln > 1 && i < ln-1 {
-			related.R.ChassisSkinBlueprintChasses[i] = related.R.ChassisSkinBlueprintChasses[ln-1]
-		}
-		related.R.ChassisSkinBlueprintChasses = related.R.ChassisSkinBlueprintChasses[:ln-1]
-		break
-	}
-	return nil
-}
-
 // SetModel of the blueprintChassis to the related item.
 // Sets o.R.Model to related.
 // Adds o to related.R.ModelBlueprintChasses.
@@ -1350,10 +877,10 @@ func (o *BlueprintChassis) SetModel(exec boil.Executor, insert bool, related *Bl
 	return nil
 }
 
-// SetTemplate of the blueprintChassis to the related item.
-// Sets o.R.Template to related.
+// SetTemplatesOld of the blueprintChassis to the related item.
+// Sets o.R.TemplatesOld to related.
 // Adds o to related.R.BlueprintChassis.
-func (o *BlueprintChassis) SetTemplate(exec boil.Executor, insert bool, related *Template) error {
+func (o *BlueprintChassis) SetTemplatesOld(exec boil.Executor, insert bool, related *TemplatesOld) error {
 	var err error
 
 	if insert {
@@ -1364,9 +891,9 @@ func (o *BlueprintChassis) SetTemplate(exec boil.Executor, insert bool, related 
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"templates\" SET %s WHERE %s",
+			"UPDATE \"templates_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_chassis_id"}),
-			strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, templatesOldPrimaryKeyColumns),
 		)
 		values := []interface{}{o.ID, related.ID}
 
@@ -1384,122 +911,18 @@ func (o *BlueprintChassis) SetTemplate(exec boil.Executor, insert bool, related 
 
 	if o.R == nil {
 		o.R = &blueprintChassisR{
-			Template: related,
+			TemplatesOld: related,
 		}
 	} else {
-		o.R.Template = related
+		o.R.TemplatesOld = related
 	}
 
 	if related.R == nil {
-		related.R = &templateR{
+		related.R = &templatesOldR{
 			BlueprintChassis: o,
 		}
 	} else {
 		related.R.BlueprintChassis = o
-	}
-	return nil
-}
-
-// AddBlueprintChassisBlueprintModules adds the given related objects to the existing relationships
-// of the blueprint_chassis, optionally inserting them as new records.
-// Appends related to o.R.BlueprintChassisBlueprintModules.
-// Sets related.R.BlueprintChassis appropriately.
-func (o *BlueprintChassis) AddBlueprintChassisBlueprintModules(exec boil.Executor, insert bool, related ...*BlueprintChassisBlueprintModule) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintChassisID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_chassis_blueprint_modules\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_chassis_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintChassisBlueprintModulePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintChassisID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintChassisR{
-			BlueprintChassisBlueprintModules: related,
-		}
-	} else {
-		o.R.BlueprintChassisBlueprintModules = append(o.R.BlueprintChassisBlueprintModules, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintChassisBlueprintModuleR{
-				BlueprintChassis: o,
-			}
-		} else {
-			rel.R.BlueprintChassis = o
-		}
-	}
-	return nil
-}
-
-// AddBlueprintChassisBlueprintWeapons adds the given related objects to the existing relationships
-// of the blueprint_chassis, optionally inserting them as new records.
-// Appends related to o.R.BlueprintChassisBlueprintWeapons.
-// Sets related.R.BlueprintChassis appropriately.
-func (o *BlueprintChassis) AddBlueprintChassisBlueprintWeapons(exec boil.Executor, insert bool, related ...*BlueprintChassisBlueprintWeapon) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.BlueprintChassisID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_chassis_blueprint_weapons\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_chassis_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintChassisBlueprintWeaponPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.BlueprintChassisID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintChassisR{
-			BlueprintChassisBlueprintWeapons: related,
-		}
-	} else {
-		o.R.BlueprintChassisBlueprintWeapons = append(o.R.BlueprintChassisBlueprintWeapons, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintChassisBlueprintWeaponR{
-				BlueprintChassis: o,
-			}
-		} else {
-			rel.R.BlueprintChassis = o
-		}
 	}
 	return nil
 }
