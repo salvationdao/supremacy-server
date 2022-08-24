@@ -186,9 +186,12 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:                  weapon.ID,
-		Hash:                weapon.Hash,
-		Name:                weapon.Label,
+		ID:    weapon.ID,
+		Hash:  weapon.Hash,
+		Name:  weapon.Label,
+		Model: weapon.WeaponModelID,
+		Skin:  weapon.EquippedWeaponSkinID, // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
+		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
 		DamageFalloffRate:   weapon.DamageFalloffRate.Int,
@@ -199,8 +202,13 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo.Int,
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
-		Model:               weapon.WeaponModelID,
-		Skin:                weapon.EquippedWeaponSkinID, // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
+		PowerCost:           weapon.PowerCost.Decimal.InexactFloat64(),
+		ProjectileAmount:    weapon.ProjectileAmount.Int,
+		DotTickDamage:       weapon.DotTickDamage.Decimal.InexactFloat64(),
+		DotMaxTicks:         weapon.DotMaxTicks.Int,
+		IsArced:             weapon.IsArced.Bool,
+		ChargeTimeSeconds:   weapon.ChargeTimeSeconds.Decimal.InexactFloat64(),
+		BurstRateOfFire:     weapon.BurstRateOfFire.Decimal.InexactFloat64(),
 	}
 }
 
