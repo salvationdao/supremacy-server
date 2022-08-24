@@ -44,7 +44,10 @@ func InsertNewUtility(tx boil.Executor, ownerID uuid.UUID, utility *server.Bluep
 }
 
 func Utility(tx boil.Executor, id string) (*server.Utility, error) {
-	boilerUtility, err := boiler.FindUtility(tx, id)
+	boilerUtility, err := boiler.Utilities(
+		boiler.UtilityWhere.ID.EQ(id),
+		qm.Load(boiler.UtilityRels.Blueprint),
+		).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +58,10 @@ func Utility(tx boil.Executor, id string) (*server.Utility, error) {
 
 	switch boilerUtility.Type {
 	case boiler.UtilityTypeSHIELD:
-		boilerShield, err := boiler.BlueprintUtilityShields(boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID)).One(tx)
+		boilerShield, err := boiler.BlueprintUtilityShields(
+			boiler.BlueprintUtilityShieldWhere.BlueprintUtilityID.EQ(boilerUtility.BlueprintID),
+
+			).One(tx)
 		if err != nil {
 			return nil, err
 		}

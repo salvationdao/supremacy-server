@@ -91,3 +91,6 @@ CREATE TABLE IF NOT EXISTS blueprint_modules
 ALTER TABLE blueprint_utility_shield
     DROP CONSTRAINT IF EXISTS blueprint_utility_shield_pkey,
     ADD CONSTRAINT blueprint_utility_shield_pkey PRIMARY KEY (blueprint_utility_id);
+
+ALTER TABLE blueprint_utility_shield
+    ADD COLUMN deleted_at TIMESTAMPTZ;

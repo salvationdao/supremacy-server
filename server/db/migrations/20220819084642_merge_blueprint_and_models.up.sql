@@ -500,9 +500,6 @@ FROM toupdate
 WHERE u.id = toupdate.u_id
   AND toupdate.fac_id = '7c6dde21-b067-46cf-9e56-155c88a520e2';
 
-ALTER TABLE blueprint_utility_shield
-    ADD COLUMN deleted_at TIMESTAMPTZ;
-
 UPDATE blueprint_utility_shield
 SET deleted_at = NOW()
 WHERE blueprint_utility_id NOT IN (

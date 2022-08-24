@@ -1,4 +1,7 @@
 ALTER TABLE blueprint_utility_shield
+    DROP COLUMN deleted_at;
+
+ALTER TABLE blueprint_utility_shield
     DROP CONSTRAINT IF EXISTS blueprint_utility_shield_pkey,
     ADD CONSTRAINT blueprint_utility_shield_pkey PRIMARY KEY (id);
 

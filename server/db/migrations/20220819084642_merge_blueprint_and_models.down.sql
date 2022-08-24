@@ -24,9 +24,6 @@ WHERE blueprint_utility_id NOT IN (
                                    '0551d044-b8ff-47ac-917e-80c3fce37378'
     );
 
-ALTER TABLE blueprint_utility_shield
-    DROP COLUMN deleted_at;
-
 UPDATE utility SET blueprint_id = blueprint_id_old WHERE blueprint_id_old IS NOT NULL;
 
 ALTER TABLE utility
