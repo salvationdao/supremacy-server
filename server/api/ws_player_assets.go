@@ -1355,7 +1355,118 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		//
 	}
 	if len(req.Payload.EquipUtility) != 0 {
-		//
+		ids := []string{}
+		slots := []int{}
+		for _, eu := range req.Payload.EquipUtility {
+			ids = append(ids, eu.UtilityID)
+			slots = append(slots, eu.SlotNumber)
+		}
+
+		// Check if specified utilities exist
+		utilities, err := boiler.Utilities(
+			boiler.UtilityWhere.ID.IN(ids),
+			qm.Load(boiler.UtilityRels.Blueprint),
+		).All(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+		if len(utilities) != len(req.Payload.EquipUtility) {
+			return terror.Error(fmt.Errorf("could not find all specified utilities to equip"), errorMsg)
+		}
+
+		// Check if utilities can be equipped
+		equipped := []string{}
+		for _, u := range utilities {
+			if u.EquippedOn.Valid {
+				equipped = append(equipped, u.Label)
+			}
+		}
+		if len(equipped) > 0 {
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("One or more of the selected utilities is already equipped on a mech (%v). Please remove them from your selection and try again.", equipped))
+		}
+
+		// Check ownership of utilities
+		ownershipCount, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.IN(ids),
+			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		).Count(tx)
+		if ownershipCount != int64(len(req.Payload.EquipUtility)) {
+			return terror.Error(terror.ErrUnauthorised, errorMsg)
+		}
+
+		// Check if equipped utilities can be unequipped, and if so, unequip them
+		for _, u := range mech.Utility {
+			isSlotOccupied := false
+			for _, s := range slots {
+				if u.SlotNumber != nil && s == *u.SlotNumber {
+					isSlotOccupied = true
+					break
+				}
+			}
+			if !isSlotOccupied {
+				continue
+			}
+			if u.LockedToMech {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot de-equip %s from this mech. Please update your selection and try again.", u.Label))
+			}
+		}
+
+		for _, eu := range req.Payload.EquipUtility {
+			if eu.SlotNumber < 0 {
+				return terror.Error(terror.ErrInvalidInput, fmt.Sprintf("This mech does not have the utility slot specified to equip the utility on."))
+			}
+
+			// Slot number specified does not exist on mech
+			if eu.SlotNumber > mech.UtilitySlots-1 {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified utilities on the mech as it does not have enough utility slots."))
+			}
+
+			mu, err := boiler.FindMechUtility(tx, mech.ID, eu.SlotNumber)
+			if errors.Is(err, sql.ErrNoRows) {
+				// Create mech_utility entry
+				mu = &boiler.MechUtility{
+					ChassisID:  mech.ID,
+					SlotNumber: eu.SlotNumber,
+				}
+
+				err := mu.Insert(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+			} else if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			if mu.UtilityID.Valid {
+				utilityToReplace, err := boiler.FindUtility(tx, mu.UtilityID.String)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+
+				utilityToReplace.EquippedOn = null.String{}
+				_, err = utilityToReplace.Update(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+			}
+
+			utility, err := boiler.FindUtility(tx, eu.UtilityID)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			utility.EquippedOn = null.StringFrom(mech.ID)
+			_, err = utility.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			mu.UtilityID = null.StringFrom(eu.UtilityID)
+			_, err = mu.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+		}
 	}
 	if len(req.Payload.EquipWeapons) != 0 {
 		ids := []string{}
