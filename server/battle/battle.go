@@ -53,6 +53,7 @@ type Battle struct {
 	gameMap                *server.GameMap
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
+	nextMapID              null.String
 	_abilities             *AbilitiesSystem
 	factions               map[uuid.UUID]*boiler.Faction
 	rpcClient              *xsyn_rpcclient.XrpcClient

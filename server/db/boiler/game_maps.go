@@ -23,58 +23,72 @@ import (
 
 // GameMap is an object representing the database table.
 type GameMap struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Name       string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	MaxSpawns  int       `boiler:"max_spawns" boil:"max_spawns" json:"max_spawns" toml:"max_spawns" yaml:"max_spawns"`
-	Type       string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	DisabledAt null.Time `boiler:"disabled_at" boil:"disabled_at" json:"disabled_at,omitempty" toml:"disabled_at" yaml:"disabled_at,omitempty"`
+	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Name          string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	MaxSpawns     int       `boiler:"max_spawns" boil:"max_spawns" json:"max_spawns" toml:"max_spawns" yaml:"max_spawns"`
+	Type          string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	DisabledAt    null.Time `boiler:"disabled_at" boil:"disabled_at" json:"disabled_at,omitempty" toml:"disabled_at" yaml:"disabled_at,omitempty"`
+	BackgroundURL string    `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
+	LogoURL       string    `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
 
 	R *gameMapR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameMapL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var GameMapColumns = struct {
-	ID         string
-	Name       string
-	MaxSpawns  string
-	Type       string
-	DisabledAt string
+	ID            string
+	Name          string
+	MaxSpawns     string
+	Type          string
+	DisabledAt    string
+	BackgroundURL string
+	LogoURL       string
 }{
-	ID:         "id",
-	Name:       "name",
-	MaxSpawns:  "max_spawns",
-	Type:       "type",
-	DisabledAt: "disabled_at",
+	ID:            "id",
+	Name:          "name",
+	MaxSpawns:     "max_spawns",
+	Type:          "type",
+	DisabledAt:    "disabled_at",
+	BackgroundURL: "background_url",
+	LogoURL:       "logo_url",
 }
 
 var GameMapTableColumns = struct {
-	ID         string
-	Name       string
-	MaxSpawns  string
-	Type       string
-	DisabledAt string
+	ID            string
+	Name          string
+	MaxSpawns     string
+	Type          string
+	DisabledAt    string
+	BackgroundURL string
+	LogoURL       string
 }{
-	ID:         "game_maps.id",
-	Name:       "game_maps.name",
-	MaxSpawns:  "game_maps.max_spawns",
-	Type:       "game_maps.type",
-	DisabledAt: "game_maps.disabled_at",
+	ID:            "game_maps.id",
+	Name:          "game_maps.name",
+	MaxSpawns:     "game_maps.max_spawns",
+	Type:          "game_maps.type",
+	DisabledAt:    "game_maps.disabled_at",
+	BackgroundURL: "game_maps.background_url",
+	LogoURL:       "game_maps.logo_url",
 }
 
 // Generated where
 
 var GameMapWhere = struct {
-	ID         whereHelperstring
-	Name       whereHelperstring
-	MaxSpawns  whereHelperint
-	Type       whereHelperstring
-	DisabledAt whereHelpernull_Time
+	ID            whereHelperstring
+	Name          whereHelperstring
+	MaxSpawns     whereHelperint
+	Type          whereHelperstring
+	DisabledAt    whereHelpernull_Time
+	BackgroundURL whereHelperstring
+	LogoURL       whereHelperstring
 }{
-	ID:         whereHelperstring{field: "\"game_maps\".\"id\""},
-	Name:       whereHelperstring{field: "\"game_maps\".\"name\""},
-	MaxSpawns:  whereHelperint{field: "\"game_maps\".\"max_spawns\""},
-	Type:       whereHelperstring{field: "\"game_maps\".\"type\""},
-	DisabledAt: whereHelpernull_Time{field: "\"game_maps\".\"disabled_at\""},
+	ID:            whereHelperstring{field: "\"game_maps\".\"id\""},
+	Name:          whereHelperstring{field: "\"game_maps\".\"name\""},
+	MaxSpawns:     whereHelperint{field: "\"game_maps\".\"max_spawns\""},
+	Type:          whereHelperstring{field: "\"game_maps\".\"type\""},
+	DisabledAt:    whereHelpernull_Time{field: "\"game_maps\".\"disabled_at\""},
+	BackgroundURL: whereHelperstring{field: "\"game_maps\".\"background_url\""},
+	LogoURL:       whereHelperstring{field: "\"game_maps\".\"logo_url\""},
 }
 
 // GameMapRels is where relationship names are stored.
@@ -98,9 +112,9 @@ func (*gameMapR) NewStruct() *gameMapR {
 type gameMapL struct{}
 
 var (
-	gameMapAllColumns            = []string{"id", "name", "max_spawns", "type", "disabled_at"}
+	gameMapAllColumns            = []string{"id", "name", "max_spawns", "type", "disabled_at", "background_url", "logo_url"}
 	gameMapColumnsWithoutDefault = []string{"name"}
-	gameMapColumnsWithDefault    = []string{"id", "max_spawns", "type", "disabled_at"}
+	gameMapColumnsWithDefault    = []string{"id", "max_spawns", "type", "disabled_at", "background_url", "logo_url"}
 	gameMapPrimaryKeyColumns     = []string{"id"}
 	gameMapGeneratedColumns      = []string{}
 )
