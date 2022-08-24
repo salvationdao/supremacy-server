@@ -65,6 +65,8 @@ const KeyCanDeployDamagedRatio KVKey = "can_deploy_damaged_ratio"
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
 const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
+const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

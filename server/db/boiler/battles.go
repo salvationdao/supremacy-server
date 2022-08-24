@@ -32,6 +32,7 @@ type Battle struct {
 	StartedBattleSeconds decimal.NullDecimal `boiler:"started_battle_seconds" boil:"started_battle_seconds" json:"started_battle_seconds,omitempty" toml:"started_battle_seconds" yaml:"started_battle_seconds,omitempty"`
 	EndedBattleSeconds   decimal.NullDecimal `boiler:"ended_battle_seconds" boil:"ended_battle_seconds" json:"ended_battle_seconds,omitempty" toml:"ended_battle_seconds" yaml:"ended_battle_seconds,omitempty"`
 	ArenaID              string              `boiler:"arena_id" boil:"arena_id" json:"arena_id" toml:"arena_id" yaml:"arena_id"`
+	ReplayID             null.String         `boiler:"replay_id" boil:"replay_id" json:"replay_id,omitempty" toml:"replay_id" yaml:"replay_id,omitempty"`
 
 	R *battleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,6 +47,7 @@ var BattleColumns = struct {
 	StartedBattleSeconds string
 	EndedBattleSeconds   string
 	ArenaID              string
+	ReplayID             string
 }{
 	ID:                   "id",
 	GameMapID:            "game_map_id",
@@ -55,6 +57,7 @@ var BattleColumns = struct {
 	StartedBattleSeconds: "started_battle_seconds",
 	EndedBattleSeconds:   "ended_battle_seconds",
 	ArenaID:              "arena_id",
+	ReplayID:             "replay_id",
 }
 
 var BattleTableColumns = struct {
@@ -66,6 +69,7 @@ var BattleTableColumns = struct {
 	StartedBattleSeconds string
 	EndedBattleSeconds   string
 	ArenaID              string
+	ReplayID             string
 }{
 	ID:                   "battles.id",
 	GameMapID:            "battles.game_map_id",
@@ -75,6 +79,7 @@ var BattleTableColumns = struct {
 	StartedBattleSeconds: "battles.started_battle_seconds",
 	EndedBattleSeconds:   "battles.ended_battle_seconds",
 	ArenaID:              "battles.arena_id",
+	ReplayID:             "battles.replay_id",
 }
 
 // Generated where
@@ -114,6 +119,7 @@ var BattleWhere = struct {
 	StartedBattleSeconds whereHelperdecimal_NullDecimal
 	EndedBattleSeconds   whereHelperdecimal_NullDecimal
 	ArenaID              whereHelperstring
+	ReplayID             whereHelpernull_String
 }{
 	ID:                   whereHelperstring{field: "\"battles\".\"id\""},
 	GameMapID:            whereHelperstring{field: "\"battles\".\"game_map_id\""},
@@ -123,6 +129,7 @@ var BattleWhere = struct {
 	StartedBattleSeconds: whereHelperdecimal_NullDecimal{field: "\"battles\".\"started_battle_seconds\""},
 	EndedBattleSeconds:   whereHelperdecimal_NullDecimal{field: "\"battles\".\"ended_battle_seconds\""},
 	ArenaID:              whereHelperstring{field: "\"battles\".\"arena_id\""},
+	ReplayID:             whereHelpernull_String{field: "\"battles\".\"replay_id\""},
 }
 
 // BattleRels is where relationship names are stored.
@@ -209,9 +216,9 @@ func (*battleR) NewStruct() *battleR {
 type battleL struct{}
 
 var (
-	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds", "arena_id"}
+	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds", "arena_id", "replay_id"}
 	battleColumnsWithoutDefault = []string{"game_map_id", "arena_id"}
-	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
+	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds", "replay_id"}
 	battlePrimaryKeyColumns     = []string{"id"}
 	battleGeneratedColumns      = []string{}
 )
