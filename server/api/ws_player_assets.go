@@ -1365,7 +1365,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		// Check if specified utilities exist
 		utilities, err := boiler.Utilities(
 			boiler.UtilityWhere.ID.IN(ids),
-			qm.Load(boiler.UtilityRels.Blueprint),
 		).All(tx)
 		if err != nil {
 			return terror.Error(err, errorMsg)
