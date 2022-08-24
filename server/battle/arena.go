@@ -1421,6 +1421,7 @@ func (arena *Arena) beginBattle() {
 
 	var battleID string
 	var battle *boiler.Battle
+	var nextBattleNumber int
 	inserted := false
 
 	// query last battle
@@ -1434,6 +1435,9 @@ func (arena *Arena) beginBattle() {
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+	}
+	if lastBattle != nil {
+		nextBattleNumber = lastBattle.BattleNumber + 1
 	}
 
 	// if last battle is ended or does not exist, create a new battle
@@ -1483,7 +1487,19 @@ func (arena *Arena) beginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
-	arena.Message(BATTLEINIT, btl)
+
+
+	arena.Message(BATTLEINIT, &struct {
+		BattleID     string        `json:"battleID"`
+		MapName      string        `json:"mapName"`
+		BattleNumber int           `json:"battle_number"`
+		WarMachines  []*WarMachine `json:"warMachines"`
+	}{
+		BattleID:     btl.ID,
+		MapName:      btl.MapName,
+		WarMachines:  btl.WarMachines,
+		BattleNumber: nextBattleNumber,
+	})
 
 	go arena.NotifyUpcomingWarMachines()
 }
