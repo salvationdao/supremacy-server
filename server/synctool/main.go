@@ -924,6 +924,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		gameAbility := &boiler.GameAbility{
 			ID:                 record[0],
 			FactionID:          record[2],
+			BattleAbilityID:    null.NewString(record[3], record[3] != ""),
 			Label:              record[4],
 			Colour:             record[5],
 			ImageURL:           record[6],
@@ -939,10 +940,6 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
-		}
-
-		if record[3] != "" {
-			gameAbility.BattleAbilityID = null.StringFrom(record[3])
 		}
 
 		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
