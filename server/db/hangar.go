@@ -141,29 +141,18 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				weaponSkinBlueprintID := ""
 				var weaponSkinCollectionID *string
 
-				weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
-					boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-				).One(gamedb.StdConn)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				skinBP, err := boiler.FindWeaponSkin(gamedb.StdConn, weapon.EquippedWeaponSkinID)
+				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-					return nil, err
+					continue
 				}
-				if err == nil {
-					weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
-				} else {
-					skinBP, err := boiler.FindWeaponSkin(gamedb.StdConn, weapon.EquippedWeaponSkinID)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-						continue
-					}
-					weaponSkinBlueprintID = skinBP.BlueprintID
+				weaponSkinBlueprintID = skinBP.BlueprintID
 
-					weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
-					if err != nil {
-						continue
-					}
-					weaponSkinCollectionID = &weaponSkinCollection.ID
+				weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
+				if err != nil {
+					continue
 				}
+				weaponSkinCollectionID = &weaponSkinCollection.ID
 
 				weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
 				if err != nil {
@@ -364,29 +353,20 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			weaponSkinBlueprintID := ""
 			var weaponSkinCollectionID *string
 
-			weaponBlueprintFromMechSkin, err := boiler.BlueprintWeaponSkins(
-				boiler.BlueprintWeaponSkinWhere.Label.EQ(mech.ChassisSkin.Label),
-			).One(trx)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-				return nil, err
-			}
-			if err == nil {
-				weaponSkinBlueprintID = weaponBlueprintFromMechSkin.ID
-			} else {
-				skinBP, err := boiler.FindWeaponSkin(trx, weapon.EquippedWeaponSkinID)
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
-					continue
-				}
-				weaponSkinBlueprintID = skinBP.BlueprintID
 
-				weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
-				if err != nil {
-					continue
-				}
-				weaponSkinCollectionID = &weaponSkinCollection.ID
+			skinBP, err := boiler.FindWeaponSkin(trx, weapon.EquippedWeaponSkinID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to get default skin for weapon skin for hangar")
+				continue
 			}
+			weaponSkinBlueprintID = skinBP.BlueprintID
+
+			weaponSkinCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.EquippedWeaponSkinID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
+			if err != nil {
+				continue
+			}
+			weaponSkinCollectionID = &weaponSkinCollection.ID
+
 
 			weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(trx)
 			if err != nil {

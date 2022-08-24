@@ -209,9 +209,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 			refundFunc := func() {
 				// refund queue fee
-				_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				_, err = am.RPCClient.RefundSupsMessage(paidTxID)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
 				}
 			}
 
@@ -234,7 +234,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					}
 
 					err = am.SendRepairFunc(func() error {
-						err = am.CloseRepairOffers(rc.R.RepairOffers, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+						err = am.CloseRepairOffers(ids, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
 						if err != nil {
 							return err
 						}
