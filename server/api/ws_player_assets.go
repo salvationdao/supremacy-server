@@ -342,10 +342,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	if mech.ChassisSkin.Images == nil {
-		mech.ChassisSkin.Images = mech.Images
-	}
-
 	reply(mech)
 	return nil
 }
@@ -436,7 +432,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetailPublic(ctx context.Con
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from db")
 	}
-	mech.ChassisSkin.Images = mech.Images
 
 	reply(mech)
 	return nil

@@ -487,6 +487,10 @@ func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	}
 	mc.BlueprintWeaponIDsWithSkinInheritance = compatibleWeapons
 
+	if mc.ChassisSkin.Images == nil {
+		mc.ChassisSkin.Images = mc.Images
+	}
+
 	bm.End("db Mech")
 	return mc, err
 }
