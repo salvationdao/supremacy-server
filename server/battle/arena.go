@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"golang.org/x/exp/slices"
 	"net"
 	"net/http"
 	"server"
@@ -22,6 +20,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
@@ -800,8 +801,18 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
 	}
 
-	reply(nil)
+	minimapUpdates := []MinimapEvent{}
+	for id, b := range arena.CurrentBattle().playerAbilityManager().Blackouts() {
+		minimapUpdates = append(minimapUpdates, MinimapEvent{
+			ID:            id,
+			GameAbilityID: BlackoutGameAbilityID,
+			Duration:      BlackoutDurationSeconds,
+			Radius:        int(BlackoutRadius),
+			Coords:        b.CellCoords,
+		})
+	}
 
+	reply(minimapUpdates)
 	return nil
 }
 
@@ -1045,14 +1056,33 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 	// return data if, current battle is not null
 	wm := arena.CurrentBattleWarMachine(participantID)
 	if wm != nil {
-		reply(WarMachineStat{
+		wStat := &WarMachineStat{
 			ParticipantID: participantID,
+			Health:        wm.Health,
 			Position:      wm.Position,
 			Rotation:      wm.Rotation,
-			Health:        wm.Health,
-			Shield:        wm.Shield,
 			IsHidden:      wm.IsHidden,
-		})
+			Shield:        wm.Shield,
+		}
+
+		// Hidden/Incognito
+		if wStat.Position != nil {
+			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
+			hideMech = arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+				X: wStat.Position.X,
+				Y: wStat.Position.Y,
+			})
+			if hideMech {
+				wStat.IsHidden = true
+				wStat.Position = &server.Vector3{
+					X: -1,
+					Y: -1,
+					Z: -1,
+				}
+			}
+		}
+
+		reply(wStat)
 	}
 	return nil
 }
