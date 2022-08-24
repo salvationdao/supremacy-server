@@ -37,7 +37,7 @@ func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *ser
 	return WeaponSkin(tx, newWeaponSkin.ID, modelID)
 }
 
-func WeaponSkin(tx boil.Executor, id string, modelID *string) (*server.WeaponSkin, error) {
+func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.WeaponSkin, error) {
 	boilerWeaponSkin, err := boiler.WeaponSkins(
 		boiler.WeaponSkinWhere.ID.EQ(id),
 		qm.Load(boiler.WeaponSkinRels.Blueprint),
@@ -54,8 +54,8 @@ func WeaponSkin(tx boil.Executor, id string, modelID *string) (*server.WeaponSki
 		boiler.WeaponModelSkinCompatibilityWhere.BlueprintWeaponSkinID.EQ(boilerWeaponSkin.BlueprintID),
 	}
 
-	if modelID != nil && *modelID != "" {
-		queryMods = append(queryMods, boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(*modelID))
+	if blueprintID != nil && *blueprintID != "" {
+		queryMods = append(queryMods, boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(*blueprintID))
 	}
 
 	weaponSkinCompatMatrix, err := boiler.WeaponModelSkinCompatibilities(

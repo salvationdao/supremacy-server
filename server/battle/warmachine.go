@@ -189,8 +189,8 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		ID:    weapon.ID,
 		Hash:  weapon.Hash,
 		Name:  weapon.Label,
-		Model: weapon.WeaponModelID,
-		Skin:  weapon.EquippedWeaponSkinID, // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
+		Model: weapon.BlueprintID,
+		Skin:  weapon.WeaponSkin.BlueprintID,
 		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,

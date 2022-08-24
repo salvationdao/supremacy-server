@@ -35,7 +35,6 @@ type Weapon struct {
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
-	WeaponModelID         string              `json:"weapon_model_id,omitempty"`
 	IsMelee               bool                `json:"is_melee"`
 	ProjectileAmount      null.Int            `json:"projectile_amount,omitempty"`
 	DotTickDamage         decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
