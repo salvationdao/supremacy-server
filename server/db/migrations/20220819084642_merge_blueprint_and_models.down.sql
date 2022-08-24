@@ -5,7 +5,7 @@ ALTER TABLE utility
 
 ALTER TABLE utility_shield_dont_use RENAME TO utility_shield;
 
-UPDATE template_blueprints SET blueprint_id = blueprint_id_old;
+UPDATE template_blueprints SET blueprint_id = blueprint_id_old WHERE blueprint_id_old IS NOT NULL;
 
 UPDATE blueprint_utility
 SET deleted_at = NULL
