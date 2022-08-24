@@ -1499,7 +1499,9 @@ func (arena *Arena) beginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
-	battleInitPayload := &struct {
+
+
+	arena.Message(BATTLEINIT, &struct {
 		BattleID     string        `json:"battleID"`
 		MapName      string        `json:"mapName"`
 		BattleNumber int           `json:"battle_number"`
@@ -1509,9 +1511,7 @@ func (arena *Arena) beginBattle() {
 		MapName:      btl.MapName,
 		WarMachines:  btl.WarMachines,
 		BattleNumber: nextBattleNumber,
-	}
-
-	arena.Message(BATTLEINIT, battleInitPayload)
+	})
 
 	go arena.NotifyUpcomingWarMachines()
 }
