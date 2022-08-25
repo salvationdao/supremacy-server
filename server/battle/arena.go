@@ -41,6 +41,7 @@ import (
 )
 
 type NewBattleChan struct {
+	ID           string
 	BattleNumber int
 }
 
@@ -82,7 +83,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		telegram:                 opts.Telegram,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		SystemBanManager:         NewSystemBanManager(),
-		NewBattleChan:            make(chan *NewBattleChan, 10),
+		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
@@ -1352,7 +1353,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
-			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
+			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":
@@ -1517,7 +1518,6 @@ func (arena *Arena) beginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
-
 
 	arena.Message(BATTLEINIT, &struct {
 		BattleID     string        `json:"battleID"`
