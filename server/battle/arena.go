@@ -42,6 +42,7 @@ import (
 )
 
 type NewBattleChan struct {
+	ID           string
 	BattleNumber int
 }
 
@@ -83,7 +84,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		telegram:                 opts.Telegram,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		SystemBanManager:         NewSystemBanManager(),
-		NewBattleChan:            make(chan *NewBattleChan, 10),
+		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
@@ -1418,7 +1419,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
-			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
+			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
