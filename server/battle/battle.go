@@ -14,7 +14,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/replay"
 	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"sort"
@@ -164,13 +163,6 @@ func (btl *Battle) setBattleQueue() error {
 	if err != nil {
 		l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
 		return err
-	}
-
-	if btl.replaySession.ReplaySession != nil {
-		err = btl.replaySession.ReplaySession.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("failed to insert new battle replay")
-		}
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
@@ -2171,21 +2163,6 @@ func (btl *Battle) Load() error {
 		_, err = rcs.UpdateAll(gamedb.StdConn, boiler.M{boiler.RepairCaseColumns.CompletedAt: null.TimeFrom(time.Now())})
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to update mech repair cases.")
-		}
-	}
-
-	if btl.replaySession.ReplaySession != nil {
-		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
-		if err != nil {
-			if err != replay.ErrDontLogRecordingStatus {
-				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
-			}
-		}
-		btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
-		btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
-		_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 		}
 	}
 
