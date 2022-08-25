@@ -1454,7 +1454,7 @@ func (arena *Arena) beginBattle() {
 			return
 		}
 	} else {
-		gm, err = db.GameMapGetByID(mapInQueue.ID)
+		gm, err = db.GameMapGetByID(mapInQueue.MapID)
 		if err != nil {
 			gamelog.L.Err(err).Msg("unable to get random map")
 			return
