@@ -86,6 +86,13 @@ const (
 	BattleEventPickup           = "pickup"
 )
 
+// Enum values for RecordingStatus
+const (
+	RecordingStatusRECORDING = "RECORDING"
+	RecordingStatusSTOPPED   = "STOPPED"
+	RecordingStatusIDLE      = "IDLE"
+)
+
 // Enum values for WeaponType
 const (
 	WeaponTypeGrenadeLauncher = "Grenade Launcher"

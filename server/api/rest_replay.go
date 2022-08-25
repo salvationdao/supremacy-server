@@ -48,11 +48,23 @@ func (br *BattleReplayController) AddNewReplay(w http.ResponseWriter, r *http.Re
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find battle for adding new replay")
 	}
 
-	battle.ReplayID = null.StringFrom(req.CloudflareUID)
-	_, err = battle.Update(gamedb.StdConn, boil.Infer())
+	replay, err := boiler.BattleReplays(
+		boiler.BattleReplayWhere.BattleID.EQ(battle.ID),
+		boiler.BattleReplayWhere.ArenaID.EQ(battle.ArenaID),
+		boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+		boiler.BattleReplayWhere.StreamID.IsNull(),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("UID", req.CloudflareUID).Msg("Failed to add new battle replay")
-		return http.StatusInternalServerError, terror.Error(err, "Failed to add new battle replay")
+		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("StreamID", req.CloudflareUID).Msg("Failed to find replay")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to find replay")
+	}
+
+	replay.StreamID = null.StringFrom(req.CloudflareUID)
+
+	_, err = replay.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("StreamID", req.CloudflareUID).Msg("Failed to update replay with stream ID")
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update replay with stream ID")
 	}
 
 	return http.StatusOK, nil

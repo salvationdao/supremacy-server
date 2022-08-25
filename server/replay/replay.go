@@ -2,12 +2,16 @@ package replay
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/ninja-software/terror/v2"
 	"net/http"
+	"server"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
 	"strconv"
 )
 
@@ -26,14 +30,25 @@ type RecordController string
 const StartRecording RecordController = "startRecord"
 const StopRecording RecordController = "stopRecord"
 
-func RecordReplayRequest(battle boiler.Battle, environment string, action RecordController) error {
+// ErrDontLogRecordingStatus For development and staging environments where we wouldn't want to log recording status
+var ErrDontLogRecordingStatus = fmt.Errorf("can record is false and not logged")
+
+func RecordReplayRequest(battle *boiler.Battle, environment, replayID string, action RecordController) error {
+	canRecord := db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false)
+	if !canRecord {
+		if environment == "staging" || environment == "development" {
+			return ErrDontLogRecordingStatus
+		}
+		return fmt.Errorf("recording replay is turned off in kv. consider turning it on")
+	}
+
 	req := RecordingRequest{
 		ID: strconv.Itoa(battle.BattleNumber),
 		Stream: OvenmediaRecordingStream{
-			Name: battle.ArenaID,
+			Name: fmt.Sprintf("%s-%s", server.Env(), battle.ArenaID),
 		},
-		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s.mp4", environment, strconv.Itoa(battle.BattleNumber)),
-		InfoPath: fmt.Sprintf("/info/%s/${Stream}/%s.xml", environment, strconv.Itoa(battle.BattleNumber)),
+		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s-%s.mp4", environment, replayID, strconv.Itoa(battle.BattleNumber)),
+		InfoPath: fmt.Sprintf("/info/%s/${Stream}/%s-%s.xml", environment, replayID, strconv.Itoa(battle.BattleNumber)),
 	}
 
 	body, err := json.Marshal(req)
@@ -51,6 +66,34 @@ func RecordReplayRequest(battle boiler.Battle, environment string, action Record
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return terror.Error(fmt.Errorf("response for replay recording status not 200"))
+	}
+
+	return nil
+}
+
+func StopAllActiveRecording(environment string) error {
+	activeRecordings, err := boiler.BattleReplays(
+		boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
+	).All(gamedb.StdConn)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+
+		return terror.Error(err, "Failed to get all active recording while stopping recordings")
+	}
+
+	for _, recording := range activeRecordings {
+		battle, err := boiler.Battles(boiler.BattleWhere.ArenaID.EQ(recording.ArenaID), boiler.BattleWhere.ID.EQ(recording.BattleID)).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("recording_id", recording.ID).Msg("failed to get battle while stopping recording")
+			continue
+		}
+
+		err = RecordReplayRequest(battle, environment, recording.ID, StopRecording)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("recording_id", recording.ID).Msg("failed to stop battle recording")
+		}
 	}
 
 	return nil

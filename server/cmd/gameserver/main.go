@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os/signal"
 	"runtime"
 	"server"
 	"server/api"
@@ -19,6 +20,7 @@ import (
 	"server/gamelog"
 	"server/profanities"
 	"server/quest"
+	"server/replay"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
@@ -438,12 +440,24 @@ func main() {
 					asset.SyncAssetOwners(rpcClient)
 					gamelog.L.Info().Msgf("Asset transfers took %s", time.Since(start))
 
+					// stops all battle replay recordings when server goes down
+					go func() {
+						stop := make(chan os.Signal, 1)
+						signal.Notify(stop, os.Interrupt)
+						<-stop
+						err := replay.StopAllActiveRecording(server.Env())
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
+						}
+					}()
+
 					gamelog.L.Info().Msg("Running API")
 					err = api.Run(ctx)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
 					return nil
 				},
