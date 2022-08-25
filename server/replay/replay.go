@@ -45,7 +45,7 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 	}
 
 	req := RecordingRequest{
-		ID: strconv.Itoa(replayID),
+		ID: replayID,
 		Stream: OvenmediaRecordingStream{
 			Name: fmt.Sprintf("%s-%s", server.Env(), battle.ArenaID),
 		},
