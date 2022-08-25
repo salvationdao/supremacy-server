@@ -1274,6 +1274,8 @@ func (pc *PlayerController) PlayerUpdateUsernameHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 	reply(user.Username.String)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", user.ID), server.HubKeyUserSubscribe, user)
+
 	return nil
 }
 

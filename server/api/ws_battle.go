@@ -310,10 +310,14 @@ type BattleMap struct {
 	LogoURL       string `json:"logo_url,omitempty"`
 }
 type NextBattle struct {
-	Map        *BattleMap `json:"map,omitempty"`
-	BCMechIDs  []string   `json:"bc_mech_ids,omitempty"`
-	ZHIMechIDs []string   `json:"zhi_mech_ids,omitempty"`
-	RMMechIDs  []string   `json:"rm_mech_ids,omitempty"`
+	Map   *BattleMap `json:"map,omitempty"`
+	BcID  string     `json:"bc_id,omitempty"`
+	ZhiID string     `json:"zhi_id,omitempty"`
+	RmID  string     `json:"rm_id,omitempty"`
+
+	BCMechIDs  []string `json:"bc_mech_ids,omitempty"`
+	ZHIMechIDs []string `json:"zhi_mech_ids,omitempty"`
+	RMMechIDs  []string `json:"rm_mech_ids,omitempty"`
 }
 
 func (bc *BattleControllerWS) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -350,18 +354,37 @@ func (bc *BattleControllerWS) NextBattleDetails(ctx context.Context, key string,
 		}
 
 		if q.FactionID == zhi.ID {
-			zhiMechIDs = append(rmMechIDs, q.MechID)
+			zhiMechIDs = append(zhiMechIDs, q.MechID)
 		}
 
 		if q.FactionID == boc.ID {
-			bcMechIDs = append(rmMechIDs, q.MechID)
+			bcMechIDs = append(bcMechIDs, q.MechID)
 		}
+	}
+
+	// get map details
+
+	bMap := &BattleMap{}
+
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" DESC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "failed getting next map in queue")
+	}
+
+	if mapInQueue != nil && mapInQueue.R != nil {
+		bMap.LogoURL = mapInQueue.R.Map.LogoURL
+		bMap.BackgroundURL = mapInQueue.R.Map.BackgroundURL
+		bMap.Name = mapInQueue.R.Map.Name
 	}
 
 	resp := NextBattle{
 		BCMechIDs:  bcMechIDs,
 		ZHIMechIDs: zhiMechIDs,
 		RMMechIDs:  rmMechIDs,
+		BcID:       boc.ID,
+		ZhiID:      zhi.ID,
+		RmID:       rm.ID,
+		Map:        bMap,
 	}
 	reply(resp)
 

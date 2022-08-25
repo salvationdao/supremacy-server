@@ -1438,10 +1438,38 @@ func (arena *Arena) beginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
 	}
 
-	gm, err := db.GameMapGetRandom(false)
+	// get next map in battle queue
+	var gm *boiler.GameMap
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " DESC")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
+	}
+
+	// if no map get random
+	if mapInQueue == nil {
+		gm, err = db.GameMapGetRandom(false)
+		if err != nil {
+			gamelog.L.Err(err).Msg("unable to get random map")
+			return
+		}
+	} else {
+		gm, err = db.GameMapGetByID(mapInQueue.ID)
+		if err != nil {
+			gamelog.L.Err(err).Msg("unable to get random map")
+			return
+		}
+	}
+
+	// insert next battle map
+	nextMap, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
-		return
+	}
+
+	nbmq := boiler.BattleMapQueue{MapID: nextMap.ID, CreatedAt: time.Now()}
+	err = nbmq.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Err(err).Msg("unable to get random map")
 	}
 
 	gameMap := &server.GameMap{
@@ -1517,7 +1545,6 @@ func (arena *Arena) beginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
-
 
 	arena.Message(BATTLEINIT, &struct {
 		BattleID     string        `json:"battleID"`

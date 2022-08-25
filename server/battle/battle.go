@@ -1311,6 +1311,17 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
 
+	// get oldest map in the qeueu
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
+	}
+
+	_, err = mapInQueue.Delete(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+	}
+
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo, playerRewardRecords, mechRewardRecords)
 }
