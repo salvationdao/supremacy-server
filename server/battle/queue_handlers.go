@@ -152,6 +152,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	paidTxID := ""
 
 	deployedMechs := []*boiler.CollectionItem{}
+
 	for _, mci := range mcis {
 		err = func() error {
 			tx, err = gamedb.StdConn.Begin()
@@ -209,9 +210,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 			refundFunc := func() {
 				// refund queue fee
-				_, err = am.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				_, err = am.RPCClient.RefundSupsMessage(paidTxID)
 				if err != nil {
-					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+					gamelog.L.Error().Str("log_name", "battle arena").Str("txID", paidTxID).Err(err).Msg("failed to refund queue fee")
 				}
 			}
 
@@ -234,7 +235,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					}
 
 					err = am.SendRepairFunc(func() error {
-						err = am.CloseRepairOffers(rc.R.RepairOffers, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+						err = am.CloseRepairOffers(ids, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
 						if err != nil {
 							return err
 						}
@@ -258,19 +259,18 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
+			deployedMechs = append(deployedMechs, mci)
 
 			// broadcast queue detail
-			go func() {
-				queueDetails, err := db.MechArenaStatus(user.ID, mci.ItemID, factionID)
+			go func(mechID string) {
+				qs, err := db.MechArenaStatus(user.ID, mechID, factionID)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 					return
 				}
 
-				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mci.ItemID), WSPlayerAssetMechQueueSubscribe, queueDetails)
-			}()
-
-			deployedMechs = append(deployedMechs, mci)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, qs)
+			}(mci.ItemID)
 
 			return nil
 		}()

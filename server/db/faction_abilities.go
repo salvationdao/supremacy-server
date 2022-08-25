@@ -9,14 +9,14 @@ import (
 )
 
 // BattleAbilityGetRandom return three random abilities
-func BattleAbilityGetRandom(firstAbilityLabel, excludedAbility string) (*boiler.BattleAbility, error) {
+func BattleAbilityGetRandom(firstAbilityLabel string, includeDeadlyAbilities bool) (*boiler.BattleAbility, error) {
 	queries := []qm.QueryMod{}
 	if firstAbilityLabel != "" {
 		// only get first ability, if flag is set
 		queries = append(queries, boiler.BattleAbilityWhere.Label.EQ(firstAbilityLabel))
-	} else if excludedAbility != "" {
-		// exclude advance ability, if set
-		queries = append(queries, boiler.BattleAbilityWhere.Label.NEQ(excludedAbility))
+	} else if !includeDeadlyAbilities {
+		// exclude deadly abilities, if not set
+		queries = append(queries, boiler.BattleAbilityWhere.KillingPowerLevel.NEQ(boiler.AbilityKillingPowerLevelDEADLY))
 	}
 
 	battleAbilities, err := boiler.BattleAbilities(queries...).All(gamedb.StdConn)

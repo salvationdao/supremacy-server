@@ -1359,12 +1359,119 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		battleZone = &btl.battleZones[btl.currentBattleZoneIndex]
 	}
 
+	wms := []*WarMachine{}
+	for _, w := range btl.WarMachines {
+		wCopy := &WarMachine{
+			ID:                 w.ID,
+			Hash:               w.Hash,
+			OwnedByID:          w.OwnedByID,
+			OwnerUsername:      w.OwnerUsername,
+			Name:               w.Name,
+			Label:              w.Label,
+			ParticipantID:      w.ParticipantID,
+			FactionID:          w.FactionID,
+			MaxHealth:          w.MaxHealth,
+			MaxShield:          w.MaxShield,
+			Health:             w.Health,
+			AIType:             w.AIType,
+			ModelID:            w.ModelID,
+			Model:              w.Model,
+			Skin:               w.Skin,
+			Speed:              w.Speed,
+			Faction:            w.Faction,
+			Tier:               w.Tier,
+			PowerCore:          w.PowerCore,
+			Abilities:          w.Abilities,
+			Weapons:            w.Weapons,
+			Utility:            w.Utility,
+			Image:              w.Image,
+			ImageAvatar:        w.ImageAvatar,
+			Position:           w.Position,
+			Rotation:           w.Rotation,
+			IsHidden:           w.IsHidden,
+			Shield:             w.Shield,
+			ShieldRechargeRate: w.ShieldRechargeRate,
+			Stats:              w.Stats,
+		}
+		// Hidden/Incognito
+		if wCopy.Position != nil {
+			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
+			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+				X: wCopy.Position.X,
+				Y: wCopy.Position.Y,
+			})
+			if hideMech {
+				wCopy.IsHidden = true
+				wCopy.Position = &server.Vector3{
+					X: -1,
+					Y: -1,
+					Z: -1,
+				}
+			}
+		}
+		wms = append(wms, wCopy)
+	}
+
+	ais := []*WarMachine{}
+	for _, w := range btl.SpawnedAI {
+		wCopy := &WarMachine{
+			ID:                 w.ID,
+			Hash:               w.Hash,
+			OwnedByID:          w.OwnedByID,
+			OwnerUsername:      w.OwnerUsername,
+			Name:               w.Name,
+			Label:              w.Label,
+			ParticipantID:      w.ParticipantID,
+			FactionID:          w.FactionID,
+			MaxHealth:          w.MaxHealth,
+			MaxShield:          w.MaxShield,
+			Health:             w.Health,
+			AIType:             w.AIType,
+			ModelID:            w.ModelID,
+			Model:              w.Model,
+			Skin:               w.Skin,
+			Speed:              w.Speed,
+			Faction:            w.Faction,
+			Tier:               w.Tier,
+			PowerCore:          w.PowerCore,
+			Abilities:          w.Abilities,
+			Weapons:            w.Weapons,
+			Utility:            w.Utility,
+			Image:              w.Image,
+			ImageAvatar:        w.ImageAvatar,
+			Position:           w.Position,
+			Rotation:           w.Rotation,
+			IsHidden:           w.IsHidden,
+			Shield:             w.Shield,
+			ShieldRechargeRate: w.ShieldRechargeRate,
+			Stats:              w.Stats,
+		}
+
+		// Hidden/Incognito
+		if wCopy.Position != nil {
+			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
+			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+				X: wCopy.Position.X,
+				Y: wCopy.Position.Y,
+			})
+			if hideMech {
+				wCopy.IsHidden = true
+				wCopy.Position = &server.Vector3{
+					X: -1,
+					Y: -1,
+					Z: -1,
+				}
+			}
+		}
+		ais = append(ais, wCopy)
+	}
+
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		BattleZone:         battleZone,
-		WarMachines:        btl.WarMachines,
-		SpawnedAI:          btl.SpawnedAI,
+		WarMachines:        wms,
+		SpawnedAI:          ais,
 		WarMachineLocation: lt,
 		AbilityDetails:     abilityDetails,
 	}
