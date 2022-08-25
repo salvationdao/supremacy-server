@@ -276,9 +276,28 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 	// if previous arena is not closed properly.
 	if a, ok := am.arenas[ba.ID]; ok {
-
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
+		
+		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
+			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+			}
+
+			eventByte, err := json.Marshal(btl.replaySession.Events)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+			} else {
+				btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
+			}
+			btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+			_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+			}
+		}
+
 	}
 
 	arena := &Arena{
@@ -1266,26 +1285,7 @@ func (arena *Arena) start() {
 			btl := arena.CurrentBattle()
 			if btl != nil {
 				btl.endAbilities()
-				if btl.replaySession.ReplaySession != nil {
-					err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
-					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
-					}
-
-					eventByte, err := json.Marshal(btl.replaySession.Events)
-					if err != nil {
-						gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
-					} else {
-						btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
-					}
-					btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
-					_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
-					}
-				}
 				arena.storeCurrentBattle(nil)
-
 			}
 			// TODO: send shutdown command to the game client to prevent it from reconnecting again.
 			continue

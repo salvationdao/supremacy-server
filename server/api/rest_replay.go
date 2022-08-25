@@ -27,8 +27,7 @@ func BattleReplayRouter(api *API) chi.Router {
 }
 
 type NewReplayStruct struct {
-	BattleNumber  int    `json:"battle_number"`
-	ArenaID       string `json:"arena_id"`
+	ReplayID      string `json:"replay_id"`
 	CloudflareUID string `json:"cloudflare_uid"`
 }
 
@@ -39,23 +38,9 @@ func (br *BattleReplayController) AddNewReplay(w http.ResponseWriter, r *http.Re
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
 
-	battle, err := boiler.Battles(
-		boiler.BattleWhere.BattleNumber.EQ(req.BattleNumber),
-		boiler.BattleWhere.ArenaID.EQ(req.ArenaID),
-	).One(gamedb.StdConn)
+	replay, err := boiler.FindBattleReplay(gamedb.StdConn, req.ReplayID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("UID", req.CloudflareUID).Msg("Failed to find battle for adding new battle replay")
-		return http.StatusInternalServerError, terror.Error(err, "Failed to find battle for adding new replay")
-	}
-
-	replay, err := boiler.BattleReplays(
-		boiler.BattleReplayWhere.BattleID.EQ(battle.ID),
-		boiler.BattleReplayWhere.ArenaID.EQ(battle.ArenaID),
-		boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
-		boiler.BattleReplayWhere.StreamID.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("StreamID", req.CloudflareUID).Msg("Failed to find replay")
+		gamelog.L.Error().Err(err).Str("StreamID", req.CloudflareUID).Msg("Failed to find replay")
 		return http.StatusInternalServerError, terror.Error(err, "Failed to find replay")
 	}
 
@@ -63,7 +48,7 @@ func (br *BattleReplayController) AddNewReplay(w http.ResponseWriter, r *http.Re
 
 	_, err = replay.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Int("Battle Number", req.BattleNumber).Str("ArenaID", req.ArenaID).Str("StreamID", req.CloudflareUID).Msg("Failed to update replay with stream ID")
+		gamelog.L.Error().Err(err).Str("StreamID", req.CloudflareUID).Msg("Failed to update replay with stream ID")
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update replay with stream ID")
 	}
 

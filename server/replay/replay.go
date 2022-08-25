@@ -37,7 +37,7 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 	environment := server.Env()
 	canRecord := db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false)
 	if !canRecord {
-		if environment == "staging" || environment == "development" {
+		if !server.IsProductionEnv() {
 			return ErrDontLogRecordingStatus
 		}
 		gamelog.L.Info().Msg("recording replay is turned off in kv. consider turning it on")
