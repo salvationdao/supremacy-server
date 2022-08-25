@@ -14,3 +14,5 @@ CREATE TABLE battle_replays
     battle_events      JSONB,
     created_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
+
+UPDATE oven_streams SET base_url='wss://stream2.supremacy.game:3334/app/staging-95774a8a-6b9c-411c-a298-20824d0f00ba' WHERE name='Stream 1';

@@ -67,8 +67,10 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		gamelog.L.Error().Err(fmt.Errorf("response for replay recording status not 200")).Msg("ovenmedia returned a not 200 response while attempting recording")
 		return terror.Error(fmt.Errorf("response for replay recording status not 200"))
 	}
+	gamelog.L.Info().Msg(fmt.Sprintf("Ovenmedia Recording Status: %s", action))
 
 	return nil
 }
