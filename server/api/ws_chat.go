@@ -553,7 +553,8 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 	}()
 
-	msg = fc.API.ProfanityManager.Detector.Censor(msg)
+	// disabled for alex's request 25/08/2022
+	//msg = fc.API.ProfanityManager.Detector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
