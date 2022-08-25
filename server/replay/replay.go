@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,8 @@ type RecordingRequest struct {
 type OvenmediaRecordingStream struct {
 	Name string `json:"name"`
 }
+
+var OvenMediaAuthKey string
 
 type RecordController string
 
@@ -58,11 +61,23 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 		return terror.Error(err, "Failed to marshal stream recording json")
 	}
 
-	baseURL := db.GetStrWithDefault(db.KeyOvenmediaAPIBaseUrl, "https://stream2.supremacy.game")
+	baseURL := db.GetStrWithDefault(db.KeyOvenmediaAPIBaseUrl, "https://stream2.supremacy.game:8082")
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/vhosts/stream2.supremacy.game/apps/app:%s", baseURL, action), "application/json", bytes.NewBuffer(body))
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/vhosts/stream2.supremacy.game/apps/app:%s", baseURL, action), bytes.NewBuffer(body))
 	if err != nil {
 		return terror.Error(err, "Failed to start post recording")
+	}
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	request.Header.Set("Authorization", OvenMediaAuthKey)
+	request.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(request)
+	if err != nil {
+		return terror.Error(err, "Failed to start recording")
 	}
 
 	defer resp.Body.Close()
