@@ -236,7 +236,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
 			if btl.replaySession != nil {
-				err = replay.RecordReplayRequest(btl.Battle, server.Env(), btl.replaySession.ID, replay.StopRecording)
+				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ID, replay.StopRecording)
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 				}
@@ -1364,7 +1364,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession != nil {
-				err = replay.RecordReplayRequest(btl.Battle, server.Env(), btl.replaySession.ID, replay.StopRecording)
+				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ID, replay.StopRecording)
 				if err != nil {
 					if err != replay.ErrDontLogRecordingStatus {
 						gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ID).Msg("Failed to start recording")
@@ -1506,7 +1506,7 @@ func (arena *Arena) beginBattle() {
 			ArenaID:   arena.ID,
 		}
 
-		replaySession := boiler.BattleReplay{
+		replaySession = &boiler.BattleReplay{
 			ArenaID:         arena.ID,
 			BattleID:        battleID,
 			RecordingStatus: boiler.RecordingStatusIDLE,
@@ -1531,6 +1531,17 @@ func (arena *Arena) beginBattle() {
 
 		inserted = true
 
+		replaySession = &boiler.BattleReplay{
+			ArenaID:         arena.ID,
+			BattleID:        battleID,
+			RecordingStatus: boiler.RecordingStatusIDLE,
+		}
+
+		err := replaySession.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", battleID).Str("arena_id", arena.ID).Msg("failed to insert new replay session")
+		}
+
 	}
 
 	btl := &Battle{
@@ -1542,6 +1553,7 @@ func (arena *Arena) beginBattle() {
 		inserted:               inserted,
 		stage:                  atomic.NewInt32(BattleStageStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
+		replaySession:          replaySession,
 	}
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())

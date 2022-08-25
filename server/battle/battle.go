@@ -2158,7 +2158,7 @@ func (btl *Battle) Load() error {
 	}
 
 	if btl.replaySession != nil {
-		err = replay.RecordReplayRequest(btl.Battle, server.Env(), btl.replaySession.ID, replay.StartRecording)
+		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ID, replay.StartRecording)
 		if err != nil {
 			if err != replay.ErrDontLogRecordingStatus {
 				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ID).Msg("Failed to start recording")

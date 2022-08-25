@@ -33,7 +33,8 @@ const StopRecording RecordController = "stopRecord"
 // ErrDontLogRecordingStatus For development and staging environments where we wouldn't want to log recording status
 var ErrDontLogRecordingStatus = fmt.Errorf("can record is false and not logged")
 
-func RecordReplayRequest(battle *boiler.Battle, environment, replayID string, action RecordController) error {
+func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordController) error {
+	environment := server.Env()
 	canRecord := db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false)
 	if !canRecord {
 		if environment == "staging" || environment == "development" {
@@ -71,7 +72,7 @@ func RecordReplayRequest(battle *boiler.Battle, environment, replayID string, ac
 	return nil
 }
 
-func StopAllActiveRecording(environment string) error {
+func StopAllActiveRecording() error {
 	activeRecordings, err := boiler.BattleReplays(
 		boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
 	).All(gamedb.StdConn)
@@ -90,7 +91,7 @@ func StopAllActiveRecording(environment string) error {
 			continue
 		}
 
-		err = RecordReplayRequest(battle, environment, recording.ID, StopRecording)
+		err = RecordReplayRequest(battle, recording.ID, StopRecording)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("recording_id", recording.ID).Msg("failed to stop battle recording")
 		}
