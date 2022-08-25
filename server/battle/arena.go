@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/quest"
+	"server/replay"
 	"server/system_messages"
 	"server/telegram"
 	"server/xsyn_rpcclient"
@@ -226,6 +227,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if wsConn != nil {
 			// clean up
 			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
+
 			err = wsConn.Close(websocket.StatusInternalError, "game client has disconnected")
 			if err != nil {
 				gamelog.L.Error().Str("arena id", arena.ID).Err(err).Msg("Failed to close ws connection")
@@ -234,6 +236,25 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
+			if btl.replaySession.ReplaySession != nil {
+				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+				}
+
+				eventByte, err := json.Marshal(btl.replaySession.Events)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+				} else {
+					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
+				}
+				btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+				}
+			}
+
 			btl.endAbilities()
 		}
 	}()
@@ -256,9 +277,28 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 	// if previous arena is not closed properly.
 	if a, ok := am.arenas[ba.ID]; ok {
-
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
+		
+		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
+			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+			}
+
+			eventByte, err := json.Marshal(btl.replaySession.Events)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+			} else {
+				btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
+			}
+			btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+			_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+			}
+		}
+
 	}
 
 	arena := &Arena{
@@ -1332,6 +1372,32 @@ func (arena *Arena) GameClientJsonDataParser() {
 				return
 			}
 
+			if btl.replaySession.ReplaySession != nil {
+				func() {
+					err = btl.replaySession.ReplaySession.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("failed to insert new battle replay")
+						return
+					}
+
+					err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
+					if err != nil {
+						if err != replay.ErrDontLogRecordingStatus {
+							gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
+							return
+						}
+					}
+					btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
+					btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
+					_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+						return
+					}
+				}()
+
+			}
+
 		case "BATTLE:START":
 			var dataPayload *BattleStartPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1355,6 +1421,29 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
+			if btl.replaySession.ReplaySession != nil {
+				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
+				if err != nil {
+					if err != replay.ErrDontLogRecordingStatus {
+						gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
+					}
+				}
+
+				eventByte, err := json.Marshal(btl.replaySession.Events)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+				} else {
+					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
+				}
+
+				btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+				btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
+				btl.replaySession.ReplaySession.IsCompleteBattle = true
+				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+				}
+			}
 			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
@@ -1452,6 +1541,7 @@ func (arena *Arena) beginBattle() {
 
 	var battleID string
 	var battle *boiler.Battle
+
 	var nextBattleNumber int
 	inserted := false
 
@@ -1473,7 +1563,6 @@ func (arena *Arena) beginBattle() {
 
 	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
-
 		battleID = uuid.Must(uuid.NewV4()).String()
 		battle = &boiler.Battle{
 			ID:        battleID,
@@ -1481,6 +1570,7 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
+
 	} else {
 		// refund abilities
 		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
@@ -1497,6 +1587,17 @@ func (arena *Arena) beginBattle() {
 
 	}
 
+	events := []*RecordingEvents{}
+
+	recordSession := &RecordingSession{
+		ReplaySession: &boiler.BattleReplay{
+			ArenaID:         arena.ID,
+			BattleID:        battleID,
+			RecordingStatus: boiler.RecordingStatusIDLE,
+		},
+		Events: events,
+	}
+
 	btl := &Battle{
 		arena:                  arena,
 		MapName:                gameMap.Name,
@@ -1506,6 +1607,7 @@ func (arena *Arena) beginBattle() {
 		inserted:               inserted,
 		stage:                  atomic.NewInt32(BattleStageStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
+		replaySession:          recordSession,
 	}
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
