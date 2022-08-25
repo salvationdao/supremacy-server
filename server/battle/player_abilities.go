@@ -591,8 +591,7 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 
 type MechMoveCommandResponse struct {
 	*boiler.MechMoveCommandLog
-	RemainCooldownSeconds int  `json:"remain_cooldown_seconds"`
-	IsMiniMech            bool `json:"is_mini_mech"`
+	IsMiniMech bool `json:"is_mini_mech"`
 }
 
 func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -612,9 +611,7 @@ func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boi
 		return terror.Error(terror.ErrInvalidInput, "Current mech is not on the battlefield")
 	}
 
-	resp := &MechMoveCommandResponse{
-		RemainCooldownSeconds: 0,
-	}
+	resp := &MechMoveCommandResponse{}
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if !isMiniMech {
 		// query unfinished mech move command
@@ -632,10 +629,6 @@ func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boi
 
 		if mmc != nil {
 			resp.MechMoveCommandLog = mmc
-			resp.RemainCooldownSeconds = MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds())
-			if resp.RemainCooldownSeconds < 0 {
-				resp.RemainCooldownSeconds = 0
-			}
 		}
 	} else {
 		mmmc, _ := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
@@ -653,7 +646,6 @@ func (am *ArenaManager) MechMoveCommandSubscriber(ctx context.Context, user *boi
 					ReachedAt:     mmmc.ReachedAt,
 					IsMoving:      mmmc.IsMoving,
 				}
-				resp.RemainCooldownSeconds = int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds())
 				resp.IsMiniMech = true
 			})
 		}
@@ -858,8 +850,6 @@ type MechMoveCommandCreateRequest struct {
 	} `json:"payload"`
 }
 
-const MechMoveCooldownSeconds = 5
-
 // MechMoveCommandCreateHandler send mech move command to game client
 func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// check battle stage
@@ -904,22 +894,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	// Only perform mech move command db checks if war machine is not a mini mech
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
-	if !isMiniMech {
-		// check mech move command is triggered within 5 seconds
-		mmc, err := boiler.MechMoveCommandLogs(
-			boiler.MechMoveCommandLogWhere.MechID.EQ(wm.ID),
-			boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
-			boiler.MechMoveCommandLogWhere.CreatedAt.GT(time.Now().Add(-MechMoveCooldownSeconds*time.Second)),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech move command from db")
-			return terror.Error(err, "Failed to trigger mech move command")
-		}
-
-		if mmc != nil {
-			return terror.Error(fmt.Errorf("Command is still cooling down."))
-		}
-	} else {
+	if isMiniMech {
 		_, err := arena._currentBattle.playerAbilityManager().IssueMiniMechMoveCommand(
 			wm.Hash,
 			wm.FactionID,
@@ -991,8 +966,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 		// broadcast mech command log
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog:    mmc,
-			RemainCooldownSeconds: MechMoveCooldownSeconds,
+			MechMoveCommandLog: mmc,
 		})
 	} else {
 		mmmc, err := arena._currentBattle.playerAbilityManager().GetMiniMechMove(wm.Hash)
@@ -1017,8 +991,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 					CreatedAt:     mmmc.CreatedAt,
 					IsMoving:      mmmc.IsMoving,
 				},
-				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-				IsMiniMech:            true,
+				IsMiniMech: true,
 			})
 		})
 	}
@@ -1126,8 +1099,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 		})
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog:    mmc,
-			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+			MechMoveCommandLog: mmc,
 		})
 	} else {
 		mmmc, err := arena._currentBattle.playerAbilityManager().CancelMiniMechMove(wm.Hash)
@@ -1157,8 +1129,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 				CreatedAt:     mmmc.CreatedAt,
 				IsMoving:      mmmc.IsMoving,
 			},
-			RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-			IsMiniMech:            true,
+			IsMiniMech: true,
 		})
 	}
 

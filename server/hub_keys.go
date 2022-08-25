@@ -52,3 +52,7 @@ const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
 
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"
 const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
+
+// battle abilities
+
+const HubKeyDeadlyAbilityCountdownList = "DEADLY:ABILITY:COUNTDOWN:LIST"

@@ -51,6 +51,13 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for AbilityKillingPowerLevel
+const (
+	AbilityKillingPowerLevelDEADLY = "DEADLY"
+	AbilityKillingPowerLevelNORMAL = "NORMAL"
+	AbilityKillingPowerLevelNONE   = "NONE"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"

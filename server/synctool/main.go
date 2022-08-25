@@ -860,30 +860,47 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
-	var BattleAbilities []types.BattleAbility
 	for _, record := range records {
-		battleAbility := &types.BattleAbility{
-			ID:               record[0],
-			Label:            record[1],
-			CoolDownDuration: record[2],
-			Description:      record[3],
+		battleAbility := &boiler.BattleAbility{
+			ID:                record[0],
+			Label:             record[1],
+			Description:       record[3],
+			KillingPowerLevel: record[4],
 		}
 
-		BattleAbilities = append(BattleAbilities, *battleAbility)
-	}
-
-	for _, battleAbility := range BattleAbilities {
-		_, err = db.Exec(`
-			INSERT INTO battle_abilities(id, label, cooldown_duration_second, description)
-			VALUES ($1,$2,$3,$4)
-			ON CONFLICT (id)
-			DO 
-			    UPDATE SET id=$1, label=$2, cooldown_duration_second=$3, description=$4;
-		`, battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
+		battleAbility.CooldownDurationSecond, err = strconv.Atoi(record[2])
 		if err != nil {
-			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.CoolDownDuration, battleAbility.Description)
+			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.Description)
 			continue
 		}
+		battleAbility.MaximumCommanderCount, err = strconv.Atoi(record[5])
+		if err != nil {
+			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.Description)
+			continue
+		}
+
+		// upsert blueprint quest
+		err = battleAbility.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BattleAbilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BattleAbilityColumns.Label,
+				boiler.BattleAbilityColumns.Description,
+				boiler.BattleAbilityColumns.KillingPowerLevel,
+				boiler.BattleAbilityColumns.CooldownDurationSecond,
+				boiler.BattleAbilityColumns.MaximumCommanderCount,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.Description)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+battleAbility.ID, battleAbility.Label)
 	}
 
 	fmt.Println("Finish syncing battle abilities")
@@ -904,53 +921,63 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 	}
 
 	for _, record := range records {
-		ga := &types.GameAbility{
-			ID:          record[0],
-			FactionID:   record[2],
-			Label:       record[4],
-			Colour:      record[5],
-			ImageUrl:    record[6],
-			SupsCost:    record[7],
-			Description: record[8],
-			TextColour:  record[9],
-			CurrentSups: record[10],
-			Level:       record[11],
-		}
-		gcID, err := strconv.Atoi(record[1])
-		if err == nil {
-			ga.GameClientAbilityID = gcID
+		gameAbility := &boiler.GameAbility{
+			ID:                 record[0],
+			FactionID:          record[2],
+			BattleAbilityID:    null.NewString(record[3], record[3] != ""),
+			Label:              record[4],
+			Colour:             record[5],
+			ImageURL:           record[6],
+			SupsCost:           record[7],
+			Description:        record[8],
+			TextColour:         record[9],
+			CurrentSups:        record[10],
+			Level:              record[11],
+			LocationSelectType: record[12],
 		}
 
-		if record[3] != "" {
-			ga.BattleAbilityID = &record[3]
-		}
-
-		_, err = db.Exec(`
-			INSERT INTO game_abilities (id, game_client_ability_id, faction_id, battle_ability_id, label, colour, image_url, sups_cost, description, text_colour, current_sups, level)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-			ON CONFLICT (id)
-			DO 
-			    UPDATE SET id=$1, game_client_ability_id=$2, faction_id=$3, battle_ability_id=$4, label=$5, colour=$6, image_url=$7, sups_cost=$8, description=$9, text_colour=$10, current_sups=$11, level=$12;
-		`,
-			ga.ID,
-			ga.GameClientAbilityID,
-			ga.FactionID,
-			ga.BattleAbilityID,
-			ga.Label,
-			ga.Colour,
-			ga.ImageUrl,
-			ga.SupsCost,
-			ga.Description,
-			ga.TextColour,
-			ga.CurrentSups,
-			ga.Level,
-		)
+		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
 		if err != nil {
-			fmt.Println(err.Error(), ga.ID, ga.Label)
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
 		}
 
-		fmt.Println("UPDATED: "+ga.ID, ga.GameClientAbilityID, ga.Label)
+		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		// upsert game ability
+		err = gameAbility.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.GameAbilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.GameAbilityColumns.GameClientAbilityID,
+				boiler.GameAbilityColumns.FactionID,
+				boiler.GameAbilityColumns.BattleAbilityID,
+				boiler.GameAbilityColumns.Label,
+				boiler.GameAbilityColumns.Colour,
+				boiler.GameAbilityColumns.ImageURL,
+				boiler.GameAbilityColumns.SupsCost,
+				boiler.GameAbilityColumns.Description,
+				boiler.GameAbilityColumns.TextColour,
+				boiler.GameAbilityColumns.CurrentSups,
+				boiler.GameAbilityColumns.Level,
+				boiler.GameAbilityColumns.LocationSelectType,
+				boiler.GameAbilityColumns.LaunchingDelaySeconds,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		fmt.Println("UPDATED: "+gameAbility.ID, gameAbility.GameClientAbilityID, gameAbility.Label)
 	}
 
 	fmt.Println("Finish syncing battle abilities")

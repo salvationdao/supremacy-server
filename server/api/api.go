@@ -248,7 +248,7 @@ func NewAPI(
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
-
+				s.WS("/arena/{arena_id}/deadly_ability_countdown_list", server.HubKeyDeadlyAbilityCountdownList, api.DeadlyAbilityPendingList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
