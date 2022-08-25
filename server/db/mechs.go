@@ -217,34 +217,45 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			// TODO: make this boiler/typesafe
 			fmt.Sprintf(`
 					(
-						SELECT mw.chassis_id, json_agg(w2) as weapons
-						FROM mech_weapons mw
-								INNER JOIN
-							(SELECT _w.*,
+						SELECT
+							mw.chassis_id,
+							json_agg(w2) AS weapons
+						FROM
+							mech_weapons mw
+							INNER JOIN (
+								SELECT
+									_w.*,
 									_ci.hash,
 									_ci.token_id,
 									_ci.tier,
 									_ci.owner_id,
-									to_json(_ws)             as weapon_skin,
+									to_json(_ws) AS weapon_skin,
 									_bpw.label,
-									_wmsc.image_url          as image_url,
-									_wmsc.avatar_url         as avatar_url,
-									_wmsc.card_animation_url as card_animation_url,
-									_wmsc.animation_url      as animation_url,
-									_mw.slot_number          as slot_number,
-									true                     as inherit_skin
-							FROM weapons _w
-									INNER JOIN collection_items _ci on _ci.item_id = _w.id
-									INNER JOIN blueprint_weapons _bpw on _bpw.id = _w.blueprint_id
-									INNER JOIN mech_weapons _mw on _mw.weapon_id = _w.id
-									INNER JOIN (SELECT __ws.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-												FROM weapon_skin __ws
-															INNER JOIN collection_items _ci on _ci.item_id = __ws.id) _ws
-												ON _ws.equipped_on = _w.id
-									INNER JOIN weapon_model_skin_compatibilities _wmsc
-												on _wmsc.blueprint_weapon_skin_id = _ws.blueprint_id and
-													_wmsc.weapon_model_id = _bpw.weapon_model_id) w2 ON mw.weapon_id = w2.id
-						GROUP BY mw.chassis_id
+									_bpw.weapon_model_id AS weapon_model_id,
+									_wmsc.image_url AS image_url,
+									_wmsc.avatar_url AS avatar_url,
+									_wmsc.card_animation_url AS card_animation_url,
+									_wmsc.animation_url AS animation_url,
+									_mw.slot_number AS slot_number
+								FROM
+									weapons _w
+									INNER JOIN collection_items _ci ON _ci.item_id = _w.id
+									INNER JOIN blueprint_weapons _bpw ON _bpw.id = _w.blueprint_id
+									INNER JOIN mech_weapons _mw ON _mw.weapon_id = _w.id
+									INNER JOIN (
+										SELECT
+											__ws.*,
+											_ci.hash,
+											_ci.token_id,
+											_ci.tier,
+											_ci.owner_id
+										FROM
+											weapon_skin __ws
+											INNER JOIN collection_items _ci ON _ci.item_id = __ws.id) _ws ON _ws.equipped_on = _w.id
+										INNER JOIN weapon_model_skin_compatibilities _wmsc ON _wmsc.blueprint_weapon_skin_id = _ws.blueprint_id
+											AND _wmsc.weapon_model_id = _bpw.weapon_model_id) w2 ON mw.weapon_id = w2.id
+						GROUP BY
+							mw.chassis_id
 				) %s on %s = %s `,
 				weaponsTableName,
 				qm.Rels(weaponsTableName, boiler.MechWeaponColumns.ChassisID),

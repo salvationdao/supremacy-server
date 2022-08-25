@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"golang.org/x/exp/slices"
 	"net"
 	"net/http"
 	"server"
@@ -22,6 +20,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
@@ -123,12 +124,6 @@ func (am *ArenaManager) Range(fn func(arena *Arena)) {
 	}
 }
 
-func (am *ArenaManager) DeleteArena(arenaID string) {
-	am.Lock()
-	defer am.Unlock()
-	delete(am.arenas, arenaID)
-}
-
 func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	am.RLock()
 	defer am.RUnlock()
@@ -172,6 +167,8 @@ func (am *ArenaManager) Serve() {
 }
 
 func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: read arena id from the request
+
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		ip := r.Header.Get("X-Forwarded-For")
@@ -199,28 +196,44 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
 
 	defer func() {
-		if wsConn != nil {
+		am.Lock()
+		defer am.Unlock()
+
+		// remove arena from the map, if it is still connected
+		if arena.connected.Load() {
 			arena.connected.Store(false)
+			// delete arena from the map
+			delete(am.arenas, arena.ID)
 
 			// tell frontend the arena is closed
 			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/closed", arena.ID), server.HubKeyBattleArenaClosedSubscribe, true)
 
+			// broadcast a new arena list to frontend
+			arenaList := []*boiler.BattleArena{}
+			for _, a := range am.arenas {
+				if a.connected.Load() {
+					arenaList = append(arenaList, a.BattleArena)
+					fmt.Println(a.BattleArena.Type)
+				}
+			}
+
+			// broadcast a new arena list to frontend
+			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, arenaList)
+		}
+
+		// clean up ws, if connection still exists
+		if wsConn != nil {
+			// clean up
 			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			err = wsConn.Close(websocket.StatusInternalError, "game client has disconnected")
 			if err != nil {
 				gamelog.L.Error().Str("arena id", arena.ID).Err(err).Msg("Failed to close ws connection")
 			}
+		}
 
-			btl := arena.CurrentBattle()
-			if btl != nil {
-				btl.endAbilities()
-			}
-
-			// delete arena from the map
-			am.DeleteArena(arena.ID)
-
-			// broadcast a new arena list to frontend
-			ws.PublishMessage("/public/arena_list", server.HubKeyBattleArenaListSubscribe, am.AvailableBattleArenas())
+		// clean up current battle, if exists
+		if btl := arena.CurrentBattle(); btl != nil {
+			btl.endAbilities()
 		}
 	}()
 
@@ -231,57 +244,20 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	am.Lock()
 	defer am.Unlock()
 
-	var ba *boiler.BattleArena
-	var err error
-	existingArenaID := []string{}
-	storyArenaExist := false
-	for key, a := range am.arenas {
-		// clean up any disconnected arena from the map
-		if !a.connected.Load() {
-			delete(am.arenas, key)
-			continue
-		}
-
-		existingArenaID = append(existingArenaID, a.ID)
-		if a.Type == boiler.ArenaTypeEnumSTORY {
-			storyArenaExist = true
-		}
+	// assign arena to story
+	ba, err := boiler.BattleArenas(
+		boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
+		return nil, terror.Error(err, "Failed to get story mode battle arena from db")
 	}
 
-	// if story mode not exist, assign story mode arena
-	if !storyArenaExist {
-		ba, err = boiler.BattleArenas(
-			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumSTORY),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to get story mode battle arena from db")
-			return nil, terror.Error(err, "Failed to get story mode battle arena from db")
-		}
-	} else {
-		// assign an expedition arena instead
-		ba, err = boiler.BattleArenas(
-			boiler.BattleArenaWhere.Type.EQ(boiler.ArenaTypeEnumEXPEDITION),
-			boiler.BattleArenaWhere.ID.NIN(existingArenaID),
-			qm.OrderBy(boiler.BattleArenaColumns.Gid),
-		).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("Failed to get expedition mode battle arena from db")
-			return nil, terror.Error(err, "Failed to get expedition mode battle arena from db")
-		}
+	// if previous arena is not closed properly.
+	if a, ok := am.arenas[ba.ID]; ok {
 
-		// insert a new expedition battle arena if not exist
-		if ba == nil {
-			gamelog.L.Debug().Msg("inserting a new arena to db")
-			ba = &boiler.BattleArena{
-				Type: boiler.ArenaTypeEnumEXPEDITION,
-			}
-
-			err = ba.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to insert new expedition battle arena into db")
-				return nil, terror.Error(err, "Failed to insert new expedition battle arena into db")
-			}
-		}
+		// set connected flag of the prev arena to false
+		a.connected.Store(false)
 	}
 
 	arena := &Arena{
@@ -825,8 +801,18 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
 	}
 
-	reply(nil)
+	minimapUpdates := []MinimapEvent{}
+	for id, b := range arena.CurrentBattle().playerAbilityManager().Blackouts() {
+		minimapUpdates = append(minimapUpdates, MinimapEvent{
+			ID:            id,
+			GameAbilityID: BlackoutGameAbilityID,
+			Duration:      BlackoutDurationSeconds,
+			Radius:        int(BlackoutRadius),
+			Coords:        b.CellCoords,
+		})
+	}
 
+	reply(minimapUpdates)
 	return nil
 }
 
@@ -1070,14 +1056,33 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 	// return data if, current battle is not null
 	wm := arena.CurrentBattleWarMachine(participantID)
 	if wm != nil {
-		reply(WarMachineStat{
+		wStat := &WarMachineStat{
 			ParticipantID: participantID,
+			Health:        wm.Health,
 			Position:      wm.Position,
 			Rotation:      wm.Rotation,
-			Health:        wm.Health,
-			Shield:        wm.Shield,
 			IsHidden:      wm.IsHidden,
-		})
+			Shield:        wm.Shield,
+		}
+
+		// Hidden/Incognito
+		if wStat.Position != nil {
+			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
+			hideMech = arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+				X: wStat.Position.X,
+				Y: wStat.Position.Y,
+			})
+			if hideMech {
+				wStat.IsHidden = true
+				wStat.Position = &server.Vector3{
+					X: -1,
+					Y: -1,
+					Z: -1,
+				}
+			}
+		}
+
+		reply(wStat)
 	}
 	return nil
 }
@@ -1233,6 +1238,19 @@ func (arena *Arena) start() {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("empty game client disconnected")
 			break
 		}
+
+		// if connected flag is false, skip all the process
+		// NOTE: this only happen when there are multiple game clients spin up at the same time
+		if !arena.connected.Load() {
+			btl := arena.CurrentBattle()
+			if btl != nil {
+				btl.endAbilities()
+				arena.storeCurrentBattle(nil)
+			}
+			// TODO: send shutdown command to the game client to prevent it from reconnecting again.
+			continue
+		}
+
 		if len(payload) == 0 {
 			gamelog.L.Warn().Bytes("payload", payload).Err(err).Msg("empty game client payload")
 			continue
@@ -1631,8 +1649,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog:    mmc,
-			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+			MechMoveCommandLog: mmc,
 		})
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
@@ -1650,8 +1667,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 					CreatedAt:     mmmc.CreatedAt,
 					IsMoving:      mmmc.IsMoving,
 				},
-				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-				IsMiniMech:            true,
+				IsMiniMech: true,
 			})
 		}
 	}
