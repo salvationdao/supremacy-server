@@ -59,7 +59,7 @@ type Battle struct {
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
 	startedAt              time.Time
-	replaySession          *boiler.BattleReplay
+	replaySession          *RecordingSession
 
 	_playerAbilityManager *PlayerAbilityManager
 
@@ -69,6 +69,16 @@ type Battle struct {
 	inserted bool
 
 	deadlock.RWMutex
+}
+
+type RecordingSession struct {
+	ReplaySession *boiler.BattleReplay `json:"replay_session"`
+	Events        []*RecordingEvents   `json:"battle_events"`
+}
+
+type RecordingEvents struct {
+	Timestamp    time.Time        `json:"timestamp"`
+	Notification GameNotification `json:"notification"`
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
@@ -154,6 +164,13 @@ func (btl *Battle) setBattleQueue() error {
 	if err != nil {
 		l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
 		return err
+	}
+
+	if btl.replaySession.ReplaySession != nil {
+		err = btl.replaySession.ReplaySession.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to insert new battle replay")
+		}
 	}
 
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
@@ -2157,18 +2174,18 @@ func (btl *Battle) Load() error {
 		}
 	}
 
-	if btl.replaySession != nil {
-		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ID, replay.StartRecording)
+	if btl.replaySession.ReplaySession != nil {
+		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
 		if err != nil {
 			if err != replay.ErrDontLogRecordingStatus {
-				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ID).Msg("Failed to start recording")
+				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
 			}
 		}
-
-		btl.replaySession.RecordingStatus = boiler.RecordingStatusRECORDING
-		_, err = btl.replaySession.Update(gamedb.StdConn, boil.Infer())
+		btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
+		btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
+		_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+			gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 		}
 	}
 

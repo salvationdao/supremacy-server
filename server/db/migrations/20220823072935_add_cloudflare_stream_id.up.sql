@@ -9,5 +9,8 @@ CREATE TABLE battle_replays
     battle_id          UUID             NOT NULL REFERENCES battles (id),
     is_complete_battle BOOL             NOT NULL DEFAULT false,
     recording_status   RECORDING_STATUS NOT NULL DEFAULT 'IDLE',
+    started_at         TIMESTAMPTZ,
+    stopped_at         TIMESTAMPTZ,
+    battle_events      JSONB,
     created_at         TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );

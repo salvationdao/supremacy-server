@@ -29,6 +29,9 @@ type BattleReplay struct {
 	BattleID         string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
 	IsCompleteBattle bool        `boiler:"is_complete_battle" boil:"is_complete_battle" json:"is_complete_battle" toml:"is_complete_battle" yaml:"is_complete_battle"`
 	RecordingStatus  string      `boiler:"recording_status" boil:"recording_status" json:"recording_status" toml:"recording_status" yaml:"recording_status"`
+	StartedAt        null.Time   `boiler:"started_at" boil:"started_at" json:"started_at,omitempty" toml:"started_at" yaml:"started_at,omitempty"`
+	StoppedAt        null.Time   `boiler:"stopped_at" boil:"stopped_at" json:"stopped_at,omitempty" toml:"stopped_at" yaml:"stopped_at,omitempty"`
+	BattleEvents     null.JSON   `boiler:"battle_events" boil:"battle_events" json:"battle_events,omitempty" toml:"battle_events" yaml:"battle_events,omitempty"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battleReplayR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +45,9 @@ var BattleReplayColumns = struct {
 	BattleID         string
 	IsCompleteBattle string
 	RecordingStatus  string
+	StartedAt        string
+	StoppedAt        string
+	BattleEvents     string
 	CreatedAt        string
 }{
 	ID:               "id",
@@ -50,6 +56,9 @@ var BattleReplayColumns = struct {
 	BattleID:         "battle_id",
 	IsCompleteBattle: "is_complete_battle",
 	RecordingStatus:  "recording_status",
+	StartedAt:        "started_at",
+	StoppedAt:        "stopped_at",
+	BattleEvents:     "battle_events",
 	CreatedAt:        "created_at",
 }
 
@@ -60,6 +69,9 @@ var BattleReplayTableColumns = struct {
 	BattleID         string
 	IsCompleteBattle string
 	RecordingStatus  string
+	StartedAt        string
+	StoppedAt        string
+	BattleEvents     string
 	CreatedAt        string
 }{
 	ID:               "battle_replays.id",
@@ -68,10 +80,37 @@ var BattleReplayTableColumns = struct {
 	BattleID:         "battle_replays.battle_id",
 	IsCompleteBattle: "battle_replays.is_complete_battle",
 	RecordingStatus:  "battle_replays.recording_status",
+	StartedAt:        "battle_replays.started_at",
+	StoppedAt:        "battle_replays.stopped_at",
+	BattleEvents:     "battle_replays.battle_events",
 	CreatedAt:        "battle_replays.created_at",
 }
 
 // Generated where
+
+type whereHelpernull_JSON struct{ field string }
+
+func (w whereHelpernull_JSON) EQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_JSON) NEQ(x null.JSON) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_JSON) LT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_JSON) LTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_JSON) GT(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_JSON) GTE(x null.JSON) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var BattleReplayWhere = struct {
 	ID               whereHelperstring
@@ -80,6 +119,9 @@ var BattleReplayWhere = struct {
 	BattleID         whereHelperstring
 	IsCompleteBattle whereHelperbool
 	RecordingStatus  whereHelperstring
+	StartedAt        whereHelpernull_Time
+	StoppedAt        whereHelpernull_Time
+	BattleEvents     whereHelpernull_JSON
 	CreatedAt        whereHelpertime_Time
 }{
 	ID:               whereHelperstring{field: "\"battle_replays\".\"id\""},
@@ -88,6 +130,9 @@ var BattleReplayWhere = struct {
 	BattleID:         whereHelperstring{field: "\"battle_replays\".\"battle_id\""},
 	IsCompleteBattle: whereHelperbool{field: "\"battle_replays\".\"is_complete_battle\""},
 	RecordingStatus:  whereHelperstring{field: "\"battle_replays\".\"recording_status\""},
+	StartedAt:        whereHelpernull_Time{field: "\"battle_replays\".\"started_at\""},
+	StoppedAt:        whereHelpernull_Time{field: "\"battle_replays\".\"stopped_at\""},
+	BattleEvents:     whereHelpernull_JSON{field: "\"battle_replays\".\"battle_events\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"battle_replays\".\"created_at\""},
 }
 
@@ -115,9 +160,9 @@ func (*battleReplayR) NewStruct() *battleReplayR {
 type battleReplayL struct{}
 
 var (
-	battleReplayAllColumns            = []string{"id", "stream_id", "arena_id", "battle_id", "is_complete_battle", "recording_status", "created_at"}
+	battleReplayAllColumns            = []string{"id", "stream_id", "arena_id", "battle_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at"}
 	battleReplayColumnsWithoutDefault = []string{"arena_id", "battle_id"}
-	battleReplayColumnsWithDefault    = []string{"id", "stream_id", "is_complete_battle", "recording_status", "created_at"}
+	battleReplayColumnsWithDefault    = []string{"id", "stream_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at"}
 	battleReplayPrimaryKeyColumns     = []string{"id"}
 	battleReplayGeneratedColumns      = []string{}
 )
