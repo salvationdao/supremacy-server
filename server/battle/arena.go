@@ -41,6 +41,7 @@ import (
 )
 
 type NewBattleChan struct {
+	ID           string
 	BattleNumber int
 }
 
@@ -82,7 +83,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		telegram:                 opts.Telegram,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
 		SystemBanManager:         NewSystemBanManager(),
-		NewBattleChan:            make(chan *NewBattleChan, 10),
+		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
@@ -1352,7 +1353,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
-			arena.NewBattleChan <- &NewBattleChan{BattleNumber: btl.BattleNumber}
+			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":
@@ -1518,7 +1519,6 @@ func (arena *Arena) beginBattle() {
 
 	arena.storeCurrentBattle(btl)
 
-
 	arena.Message(BATTLEINIT, &struct {
 		BattleID     string        `json:"battleID"`
 		MapName      string        `json:"mapName"`
@@ -1649,8 +1649,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", wm.FactionID, btl.ArenaID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
-			MechMoveCommandLog:    mmc,
-			RemainCooldownSeconds: MechMoveCooldownSeconds - int(time.Now().Sub(mmc.CreatedAt).Seconds()),
+			MechMoveCommandLog: mmc,
 		})
 	} else {
 		mmmc, err := btl.arena._currentBattle.playerAbilityManager().CompleteMiniMechMove(wm.Hash)
@@ -1668,8 +1667,7 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 					CreatedAt:     mmmc.CreatedAt,
 					IsMoving:      mmmc.IsMoving,
 				},
-				RemainCooldownSeconds: int(mmmc.CooldownExpiry.Sub(time.Now()).Seconds()),
-				IsMiniMech:            true,
+				IsMiniMech: true,
 			})
 		}
 	}
