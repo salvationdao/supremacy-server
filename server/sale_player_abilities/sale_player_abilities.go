@@ -40,7 +40,7 @@ type SalePlayerAbilityManager struct {
 	salePlayerAbilitiesWithDupes []*db.SaleAbilityDetailed
 	salePlayerAbilitiesPool      []*boiler.SalePlayerAbility
 	totalSaleAbilities           int
-	nextRefresh                  time.Time      // timestamp of when the next sale period will begin
+	nextRefresh                  RefreshTime    // timestamp of when the next sale period will begin
 	userClaimLimits              map[string]int // map[player_id]claim count for the current sale period
 	userPurchaseLimits           map[string]int // map[player_id]purchase count for the current sale period
 
@@ -62,7 +62,13 @@ type SalePlayerAbilityManager struct {
 	deadlock.RWMutex
 }
 
+type RefreshTime struct {
+	Server time.Time
+	Client time.Time
+}
+
 func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {
+	priceTickerIntervalSeconds := db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5)
 	pas := &SalePlayerAbilityManager{
 		salePlayerAbilities:          map[string]*boiler.SalePlayerAbility{},
 		salePlayerAbilitiesWithDupes: []*db.SaleAbilityDetailed{},
@@ -70,18 +76,21 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {
 		totalSaleAbilities:           0,
 		userClaimLimits:              make(map[string]int),
 		userPurchaseLimits:           make(map[string]int),
-		nextRefresh:                  time.Now(),
-		UserClaimLimit:               db.GetIntWithDefault(db.KeySaleAbilityClaimLimit, 1),                                       // default 1 claim per user per sale period
-		UserPurchaseLimit:            db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),                                    // default 1 purchase per user per sale period
-		PriceTickerIntervalSeconds:   db.GetIntWithDefault(db.KeySaleAbilityPriceTickerIntervalSeconds, 5),                       // default 5 seconds
-		TimeBetweenRefreshSeconds:    db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),                      // default 10 minutes (600 seconds),
-		ReductionPercentage:          db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
-		InflationPercentage:          db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
-		FloorPrice:                   db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
-		DisplayLimit:                 db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3 abilities displayed per sale period
-		Claim:                        make(chan *Claim),
-		Purchase:                     make(chan *Purchase),
-		closed:                       atomic.NewBool(false),
+		nextRefresh: RefreshTime{
+			Server: time.Now(),
+			Client: time.Now().Add(time.Duration(priceTickerIntervalSeconds+1) * time.Second),
+		},
+		UserClaimLimit:             db.GetIntWithDefault(db.KeySaleAbilityClaimLimit, 1),                                       // default 1 claim per user per sale period
+		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),                                    // default 1 purchase per user per sale period
+		PriceTickerIntervalSeconds: priceTickerIntervalSeconds,                                                                 // default 5 seconds
+		TimeBetweenRefreshSeconds:  db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),                      // default 10 minutes (600 seconds),
+		ReductionPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
+		InflationPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
+		FloorPrice:                 db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
+		DisplayLimit:               db.GetIntWithDefault(db.KeySaleAbilityLimit, 3),                                            // default 3 abilities displayed per sale period
+		Claim:                      make(chan *Claim),
+		Purchase:                   make(chan *Purchase),
+		closed:                     atomic.NewBool(false),
 	}
 
 	pas.RehydratePool()
@@ -123,11 +132,18 @@ func (pas *SalePlayerAbilityManager) RehydratePool() {
 	gamelog.L.Debug().Msg(fmt.Sprintf("refreshed pool of sale abilities with %d entries", len(saPool)))
 }
 
-func (pas *SalePlayerAbilityManager) NextRefresh() time.Time {
+func (pas *SalePlayerAbilityManager) NextRefresh() RefreshTime {
 	pas.RLock()
 	defer pas.RUnlock()
 
 	return pas.nextRefresh
+}
+
+func (pas *SalePlayerAbilityManager) NextRefreshInSeconds() int {
+	pas.RLock()
+	defer pas.RUnlock()
+
+	return int(pas.nextRefresh.Client.Sub(time.Now()).Seconds())
 }
 
 func (pas *SalePlayerAbilityManager) Refresh() {
@@ -139,7 +155,10 @@ func (pas *SalePlayerAbilityManager) Refresh() {
 	pas.userPurchaseLimits = make(map[string]int)
 
 	// Update sale period
-	pas.nextRefresh = time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second)
+	pas.nextRefresh = RefreshTime{
+		Server: time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds) * time.Second),
+		Client: time.Now().Add(time.Duration(pas.TimeBetweenRefreshSeconds+pas.PriceTickerIntervalSeconds+1) * time.Second),
+	}
 }
 
 func (pas *SalePlayerAbilityManager) IsAbilityAvailable(saleID string) bool {
@@ -184,10 +203,10 @@ func (pas *SalePlayerAbilityManager) AddToUserClaimCount(userID string) error {
 	}
 
 	if count == pas.UserClaimLimit {
-		minutes := int(time.Until(pas.nextRefresh).Minutes())
+		minutes := int(time.Until(pas.nextRefresh.Client).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
-			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh).Seconds()))
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh.Client).Seconds()))
 		}
 		return fmt.Errorf("You have hit your claim limit of %d during this sale period. %s", pas.UserClaimLimit, msg)
 	}
@@ -207,10 +226,10 @@ func (pas *SalePlayerAbilityManager) AddToUserPurchaseCount(userID string) error
 	}
 
 	if count == pas.UserPurchaseLimit {
-		minutes := int(time.Until(pas.nextRefresh).Minutes())
+		minutes := int(time.Until(pas.nextRefresh.Client).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
-			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh).Seconds()))
+			msg = fmt.Sprintf("Please try again in %d seconds.", int(time.Until(pas.nextRefresh.Client).Seconds()))
 		}
 		return fmt.Errorf("You have hit your purchase limit of %d during this sale period. %s", pas.UserPurchaseLimit, msg)
 	}
@@ -238,7 +257,7 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 			}
 
 			// Update prices of abilities and refresh the sale ability list when period has ended
-			if time.Now().After(pas.NextRefresh()) {
+			if time.Now().After(pas.NextRefresh().Server) {
 				gamelog.L.Debug().Msg("refreshing sale abilities in db")
 				// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 				// Find 3 random weighted abilities
@@ -282,14 +301,15 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast trigger of sale abilities list update
+				nextRefresh := pas.NextRefresh().Client
 				ws.PublishMessage("/secure/sale_abilities", server.HubKeySaleAbilitiesListSubscribe, struct {
-					NextRefreshTime              *time.Time                `json:"next_refresh_time"`
-					RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
-					SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities,omitempty"`
+					NextRefreshTime *time.Time                `json:"next_refresh_time"`
+					TimeLeftSeconds int                       `json:"time_left_seconds"`
+					SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
 				}{
-					NextRefreshTime:              &pas.nextRefresh,
-					RefreshPeriodDurationSeconds: pas.TimeBetweenRefreshSeconds,
-					SaleAbilities:                detailedSalePlayerAbilities,
+					NextRefreshTime: &nextRefresh,
+					TimeLeftSeconds: pas.NextRefreshInSeconds(),
+					SaleAbilities:   detailedSalePlayerAbilities,
 				})
 
 				pas.salePlayerAbilitiesWithDupes = []*db.SaleAbilityDetailed{}
