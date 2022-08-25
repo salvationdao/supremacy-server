@@ -40,6 +40,7 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 		if environment == "staging" || environment == "development" {
 			return ErrDontLogRecordingStatus
 		}
+		gamelog.L.Info().Msg("recording replay is turned off in kv. consider turning it on")
 		return fmt.Errorf("recording replay is turned off in kv. consider turning it on")
 	}
 
