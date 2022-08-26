@@ -712,7 +712,6 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 			Colour:                   gameAbility.Colour,
 			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
 			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
-			clearByPickUp:            gameAbility.GameClientAbilityID == 0,
 		}
 
 		// if delay second is greater than zero
