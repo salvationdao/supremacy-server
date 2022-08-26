@@ -9,8 +9,8 @@ import (
 )
 
 // To get the location in game its
-//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
-//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + PixelLeft
+//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
 
 type GameMap struct {
 	ID            uuid.UUID `json:"id" db:"id"`

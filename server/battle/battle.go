@@ -186,8 +186,8 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.Height = gm.Height
 	btl.gameMap.CellsX = gm.CellsX
 	btl.gameMap.CellsY = gm.CellsY
-	btl.gameMap.LeftPixels = gm.LeftPixels
-	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.PixelLeft = gm.PixelLeft
+	btl.gameMap.PixelTop = gm.PixelTop
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
@@ -389,12 +389,12 @@ func (btl *Battle) start() {
 func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) *server.GameLocation {
 	gameMap := btl.gameMap
 	// To get the location in game its
-	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
-	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + PixelLeft
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
 
 	return &server.GameLocation{
-		X: int(cell.X.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.LeftPixels))).IntPart()),
-		Y: int(cell.Y.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.TopPixels))).IntPart()),
+		X: int(cell.X.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelLeft))).IntPart()),
+		Y: int(cell.Y.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelTop))).IntPart()),
 	}
 }
 
@@ -403,8 +403,8 @@ func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocati
 	gameMap := btl.gameMap
 
 	return &server.CellLocation{
-		X: decimal.NewFromInt(int64(location.X)).Sub(decimal.NewFromInt(int64(gameMap.LeftPixels))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
-		Y: decimal.NewFromInt(int64(location.Y)).Sub(decimal.NewFromInt(int64(gameMap.TopPixels))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
+		X: decimal.NewFromInt(int64(location.X)).Sub(decimal.NewFromInt(int64(gameMap.PixelLeft))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
+		Y: decimal.NewFromInt(int64(location.Y)).Sub(decimal.NewFromInt(int64(gameMap.PixelTop))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
 	}
 }
 

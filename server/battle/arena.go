@@ -583,7 +583,7 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 	defer cancel()
 
 	b, err := json.Marshal(struct {
-		Command string      `json:"battleCommand"`
+		Command string      `json:"battle_command"`
 		Payload interface{} `json:"payload"`
 	}{Payload: payload, Command: cmd})
 	if err != nil {
@@ -1171,49 +1171,50 @@ func (am *ArenaManager) SendSettings(ctx context.Context, key string, payload []
 }
 
 type BattleMsg struct {
-	BattleCommand string          `json:"battleCommand"`
+	BattleCommand string          `json:"battle_command"`
 	Payload       json.RawMessage `json:"payload"`
 }
 
 type BattleStartPayload struct {
 	WarMachines []struct {
 		Hash          string `json:"hash"`
-		ParticipantID byte   `json:"participantID"`
-	} `json:"warMachines"`
-	BattleID      string `json:"battleID"`
-	ClientBuildNo string `json:"clientBuildNo"`
+		ParticipantID byte   `json:"participant_id"`
+	} `json:"war_machines"`
+	BattleID      string `json:"battle_id"`
+	ClientBuildNo string `json:"client_build_no"`
+	MapName       string `json:"map_name"` // The name of the map actually loaded
 }
 
 type MapDetailsPayload struct {
 	Details     server.GameMap      `json:"details"`
-	BattleZones []server.BattleZone `json:"battleZones"`
-	BattleID    string              `json:"battleID"`
+	BattleZones []server.BattleZone `json:"battle_zones"`
+	BattleID    string              `json:"battle_id"`
 }
 
 type BattleEndPayload struct {
 	WinningWarMachines []struct {
 		Hash   string `json:"hash"`
 		Health int    `json:"health"`
-	} `json:"winningWarMachines"`
-	BattleID     string `json:"battleID"`
-	WinCondition string `json:"winCondition"`
+	} `json:"winning_war_machines"`
+	BattleID     string `json:"battle_id"`
+	WinCondition string `json:"win_condition"`
 }
 
 type AbilityMoveCommandCompletePayload struct {
-	BattleID       string `json:"battleID"`
-	WarMachineHash string `json:"warMachineHash"`
+	BattleID       string `json:"battle_id"`
+	WarMachineHash string `json:"war_machine_hash"`
 }
 
 type ZoneChangePayload struct {
-	BattleID  string `json:"battleID"`
-	ZoneIndex int    `json:"zoneIndex"`
-	WarnTime  int    `json:"warnTime"`
+	BattleID  string `json:"battle_id"`
+	ZoneIndex int    `json:"zone_index"`
+	WarnTime  int    `json:"warn_time"`
 }
 
 type ZoneChangeEvent struct {
 	Location   server.GameLocation `json:"location"`
 	Radius     int                 `json:"radius"`
-	ShrinkTime int                 `json:"shrinkTime"`
+	ShrinkTime int                 `json:"shrink_time"`
 	WarnTime   int                 `json:"warnTime"`
 }
 
@@ -1223,26 +1224,36 @@ type AbilityCompletePayload struct {
 }
 
 type BattleWMDestroyedPayload struct {
-	DestroyedWarMachineEvent struct {
-		DestroyedWarMachineHash string    `json:"destroyedWarMachineHash"`
-		KillByWarMachineHash    string    `json:"killByWarMachineHash"`
-		RelatedEventIDString    string    `json:"relatedEventIDString"`
-		RelatedEventID          uuid.UUID `json:"RelatedEventID"`
-		DamageHistory           []struct {
-			Amount         int    `json:"amount"`
-			InstigatorHash string `json:"instigatorHash"`
-			SourceHash     string `json:"sourceHash"`
-			SourceName     string `json:"sourceName"`
-		} `json:"damageHistory"`
-		KilledBy      string `json:"killedBy"`
-		ParticipantID int    `json:"participantID"`
-	} `json:"destroyedWarMachineEvent"`
-	BattleID string `json:"battleID"`
+	BattleID                string `json:"battle_id"`
+	DestroyedWarMachineHash string `json:"destroyed_war_machine_hash"`
+	KillByWarMachineHash    string `json:"killed_by_war_machine_hash"`
+	RelatedEventIDString    string `json:"related_event_id_string"`
+	DamageHistory           []struct {
+		Amount         int    `json:"amount"`
+		InstigatorHash string `json:"instigator_hash"`
+		SourceHash     string `json:"source_hash"`
+		SourceName     string `json:"source_name"`
+	} `json:"damage_history"`
+	KilledBy      string `json:"killed_by"`
+	ParticipantID int    `json:"participant_id"`
 }
 
 type AISpawnedRequest struct {
-	BattleID       string          `json:"battleID"`
-	SpawnedAIEvent *SpawnedAIEvent `json:"spawnedAIEvent"`
+	BattleID      string          `json:"battle_id"`
+	ParticipantID byte            `json:"participant_id"`
+	Hash          string          `json:"hash"`
+	UserID        string          `json:"user_id"`
+	Name          string          `json:"name"`
+	Model         string          `json:"model"`
+	Skin          string          `json:"skin"`
+	MaxHealth     uint32          `json:"health_max"`
+	Health        uint32          `json:"health"`
+	MaxShield     uint32          `json:"shield_max"`
+	Shield        uint32          `json:"shield"`
+	FactionID     string          `json:"faction_id"`
+	Position      *server.Vector3 `json:"position"`
+	Rotation      int             `json:"rotation"`
+	Type          AIType          `json:"type"`
 }
 
 type AIType string
@@ -1253,27 +1264,10 @@ const (
 	RobotDog      AIType = "Robot Dog"
 )
 
-type SpawnedAIEvent struct {
-	ParticipantID byte            `json:"participantID"`
-	Hash          string          `json:"hash"`
-	UserID        string          `json:"userID"`
-	Name          string          `json:"name"`
-	Model         string          `json:"model"`
-	Skin          string          `json:"skin"`
-	MaxHealth     uint32          `json:"maxHealth"`
-	Health        uint32          `json:"health"`
-	MaxShield     uint32          `json:"maxShield"`
-	Shield        uint32          `json:"shield"`
-	FactionID     string          `json:"factionID"`
-	Position      *server.Vector3 `json:"position"`
-	Rotation      int             `json:"rotation"`
-	Type          AIType          `json:"type"`
-}
-
 type BattleWMPickupPayload struct {
-	WarMachineHash string `json:"warMachineHash"`
-	EventID        string `json:"eventID"`
-	BattleID       string `json:"battleID"`
+	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	BattleID       string `json:"battle_id"`
 }
 
 func (arena *Arena) start() {
@@ -1709,14 +1703,14 @@ func (arena *Arena) beginBattle() {
 	arena.storeCurrentBattle(btl)
 
 	arena.Message(BATTLEINIT, &struct {
-		BattleID     string        `json:"battleID"`
-		MapName      string        `json:"mapName"`
-		BattleNumber int           `json:"battle_number"`
-		WarMachines  []*WarMachine `json:"warMachines"`
+		BattleID     string                  `json:"battle_id"`
+		MapName      string                  `json:"map_name"`
+		BattleNumber int                     `json:"battle_number"`
+		WarMachines  []*WarMachineGameClient `json:"war_machines"`
 	}{
 		BattleID:     btl.ID,
 		MapName:      btl.MapName,
-		WarMachines:  btl.WarMachines,
+		WarMachines:  WarMachinesToClient(btl.WarMachines),
 		BattleNumber: nextBattleNumber,
 	})
 
@@ -1760,28 +1754,24 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
 	}
 
-	if payload.SpawnedAIEvent == nil {
-		return terror.Error(fmt.Errorf("missing Spawned AI event"))
-	}
-
 	// get spawned AI
 	spawnedAI := &WarMachine{
-		ParticipantID: payload.SpawnedAIEvent.ParticipantID,
-		Hash:          payload.SpawnedAIEvent.Hash,
-		OwnedByID:     payload.SpawnedAIEvent.UserID,
-		Name:          payload.SpawnedAIEvent.Name,
-		Model:         payload.SpawnedAIEvent.Model,
-		Skin:          payload.SpawnedAIEvent.Skin,
-		MaxHealth:     payload.SpawnedAIEvent.MaxHealth,
-		Health:        payload.SpawnedAIEvent.MaxHealth,
-		MaxShield:     payload.SpawnedAIEvent.MaxShield,
-		Shield:        payload.SpawnedAIEvent.MaxShield,
-		FactionID:     payload.SpawnedAIEvent.FactionID,
-		Position:      payload.SpawnedAIEvent.Position,
-		Rotation:      payload.SpawnedAIEvent.Rotation,
+		ParticipantID: payload.ParticipantID,
+		Hash:          payload.Hash,
+		OwnedByID:     payload.UserID,
+		Name:          payload.Name,
+		Model:         payload.Model,
+		Skin:          payload.Skin,
+		MaxHealth:     payload.MaxHealth,
+		Health:        payload.MaxHealth,
+		MaxShield:     payload.MaxShield,
+		Shield:        payload.MaxShield,
+		FactionID:     payload.FactionID,
+		Position:      payload.Position,
+		Rotation:      payload.Rotation,
 		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
 		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
-		AIType:        &payload.SpawnedAIEvent.Type,
+		AIType:        &payload.Type,
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
