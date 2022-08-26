@@ -160,6 +160,8 @@ type MechModel struct {
 	Label                string      `json:"label"`
 	CreatedAt            time.Time   `json:"created_at"`
 	DefaultChassisSkinID null.String `json:"default_chassis_skin_id,omitempty"`
+	BrandID              null.String `json:"brand_id"`
+	MechType             null.String `json:"mech_type"`
 	RepairBlocks         int         `json:"repair_blocks"`
 }
 
@@ -249,4 +251,21 @@ func (m *Mech) IsCompleteLimited() bool {
 
 func MechToGenesisOrLimited() {
 
+}
+
+func MechModelsFromBoiler(mechModel []*boiler.MechModel) []*MechModel {
+	var smm []*MechModel
+
+	for _, mm := range mechModel {
+		smm = append(smm, &MechModel{
+			ID:                   mm.ID,
+			Label:                mm.Label,
+			CreatedAt:            mm.CreatedAt,
+			DefaultChassisSkinID: null.StringFrom(mm.DefaultChassisSkinID),
+			BrandID:              mm.BrandID,
+			MechType:             mm.MechType,
+			RepairBlocks:         mm.RepairBlocks,
+		})
+	}
+	return smm
 }

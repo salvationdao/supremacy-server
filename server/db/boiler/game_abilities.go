@@ -23,128 +23,156 @@ import (
 
 // GameAbility is an object representing the database table.
 type GameAbility struct {
-	ID                    string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameClientAbilityID   int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
-	FactionID             string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	BattleAbilityID       null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battle_ability_id,omitempty" toml:"battle_ability_id" yaml:"battle_ability_id,omitempty"`
-	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Colour                string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
-	ImageURL              string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	SupsCost              string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
-	Description           string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TextColour            string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	CurrentSups           string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
-	Level                 string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
-	LocationSelectType    string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
-	DeletedAt             null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	LaunchingDelaySeconds int         `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
+	ID                       string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameClientAbilityID      int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	FactionID                string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	BattleAbilityID          null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battle_ability_id,omitempty" toml:"battle_ability_id" yaml:"battle_ability_id,omitempty"`
+	Label                    string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour                   string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL                 string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	SupsCost                 string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
+	Description              string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour               string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	CurrentSups              string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
+	Level                    string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
+	LocationSelectType       string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
+	DeletedAt                null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	LaunchingDelaySeconds    int         `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
+	DisplayOnMiniMap         bool        `boiler:"display_on_mini_map" boil:"display_on_mini_map" json:"display_on_mini_map" toml:"display_on_mini_map" yaml:"display_on_mini_map"`
+	MiniMapDisplayEffectType string      `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
+	MechDisplayEffectType    string      `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
+	AnimationDurationSeconds int         `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var GameAbilityColumns = struct {
-	ID                    string
-	GameClientAbilityID   string
-	FactionID             string
-	BattleAbilityID       string
-	Label                 string
-	Colour                string
-	ImageURL              string
-	SupsCost              string
-	Description           string
-	TextColour            string
-	CurrentSups           string
-	Level                 string
-	LocationSelectType    string
-	DeletedAt             string
-	LaunchingDelaySeconds string
+	ID                       string
+	GameClientAbilityID      string
+	FactionID                string
+	BattleAbilityID          string
+	Label                    string
+	Colour                   string
+	ImageURL                 string
+	SupsCost                 string
+	Description              string
+	TextColour               string
+	CurrentSups              string
+	Level                    string
+	LocationSelectType       string
+	DeletedAt                string
+	LaunchingDelaySeconds    string
+	DisplayOnMiniMap         string
+	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
-	ID:                    "id",
-	GameClientAbilityID:   "game_client_ability_id",
-	FactionID:             "faction_id",
-	BattleAbilityID:       "battle_ability_id",
-	Label:                 "label",
-	Colour:                "colour",
-	ImageURL:              "image_url",
-	SupsCost:              "sups_cost",
-	Description:           "description",
-	TextColour:            "text_colour",
-	CurrentSups:           "current_sups",
-	Level:                 "level",
-	LocationSelectType:    "location_select_type",
-	DeletedAt:             "deleted_at",
-	LaunchingDelaySeconds: "launching_delay_seconds",
+	ID:                       "id",
+	GameClientAbilityID:      "game_client_ability_id",
+	FactionID:                "faction_id",
+	BattleAbilityID:          "battle_ability_id",
+	Label:                    "label",
+	Colour:                   "colour",
+	ImageURL:                 "image_url",
+	SupsCost:                 "sups_cost",
+	Description:              "description",
+	TextColour:               "text_colour",
+	CurrentSups:              "current_sups",
+	Level:                    "level",
+	LocationSelectType:       "location_select_type",
+	DeletedAt:                "deleted_at",
+	LaunchingDelaySeconds:    "launching_delay_seconds",
+	DisplayOnMiniMap:         "display_on_mini_map",
+	MiniMapDisplayEffectType: "mini_map_display_effect_type",
+	MechDisplayEffectType:    "mech_display_effect_type",
+	AnimationDurationSeconds: "animation_duration_seconds",
 }
 
 var GameAbilityTableColumns = struct {
-	ID                    string
-	GameClientAbilityID   string
-	FactionID             string
-	BattleAbilityID       string
-	Label                 string
-	Colour                string
-	ImageURL              string
-	SupsCost              string
-	Description           string
-	TextColour            string
-	CurrentSups           string
-	Level                 string
-	LocationSelectType    string
-	DeletedAt             string
-	LaunchingDelaySeconds string
+	ID                       string
+	GameClientAbilityID      string
+	FactionID                string
+	BattleAbilityID          string
+	Label                    string
+	Colour                   string
+	ImageURL                 string
+	SupsCost                 string
+	Description              string
+	TextColour               string
+	CurrentSups              string
+	Level                    string
+	LocationSelectType       string
+	DeletedAt                string
+	LaunchingDelaySeconds    string
+	DisplayOnMiniMap         string
+	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
-	ID:                    "game_abilities.id",
-	GameClientAbilityID:   "game_abilities.game_client_ability_id",
-	FactionID:             "game_abilities.faction_id",
-	BattleAbilityID:       "game_abilities.battle_ability_id",
-	Label:                 "game_abilities.label",
-	Colour:                "game_abilities.colour",
-	ImageURL:              "game_abilities.image_url",
-	SupsCost:              "game_abilities.sups_cost",
-	Description:           "game_abilities.description",
-	TextColour:            "game_abilities.text_colour",
-	CurrentSups:           "game_abilities.current_sups",
-	Level:                 "game_abilities.level",
-	LocationSelectType:    "game_abilities.location_select_type",
-	DeletedAt:             "game_abilities.deleted_at",
-	LaunchingDelaySeconds: "game_abilities.launching_delay_seconds",
+	ID:                       "game_abilities.id",
+	GameClientAbilityID:      "game_abilities.game_client_ability_id",
+	FactionID:                "game_abilities.faction_id",
+	BattleAbilityID:          "game_abilities.battle_ability_id",
+	Label:                    "game_abilities.label",
+	Colour:                   "game_abilities.colour",
+	ImageURL:                 "game_abilities.image_url",
+	SupsCost:                 "game_abilities.sups_cost",
+	Description:              "game_abilities.description",
+	TextColour:               "game_abilities.text_colour",
+	CurrentSups:              "game_abilities.current_sups",
+	Level:                    "game_abilities.level",
+	LocationSelectType:       "game_abilities.location_select_type",
+	DeletedAt:                "game_abilities.deleted_at",
+	LaunchingDelaySeconds:    "game_abilities.launching_delay_seconds",
+	DisplayOnMiniMap:         "game_abilities.display_on_mini_map",
+	MiniMapDisplayEffectType: "game_abilities.mini_map_display_effect_type",
+	MechDisplayEffectType:    "game_abilities.mech_display_effect_type",
+	AnimationDurationSeconds: "game_abilities.animation_duration_seconds",
 }
 
 // Generated where
 
 var GameAbilityWhere = struct {
-	ID                    whereHelperstring
-	GameClientAbilityID   whereHelperint
-	FactionID             whereHelperstring
-	BattleAbilityID       whereHelpernull_String
-	Label                 whereHelperstring
-	Colour                whereHelperstring
-	ImageURL              whereHelperstring
-	SupsCost              whereHelperstring
-	Description           whereHelperstring
-	TextColour            whereHelperstring
-	CurrentSups           whereHelperstring
-	Level                 whereHelperstring
-	LocationSelectType    whereHelperstring
-	DeletedAt             whereHelpernull_Time
-	LaunchingDelaySeconds whereHelperint
+	ID                       whereHelperstring
+	GameClientAbilityID      whereHelperint
+	FactionID                whereHelperstring
+	BattleAbilityID          whereHelpernull_String
+	Label                    whereHelperstring
+	Colour                   whereHelperstring
+	ImageURL                 whereHelperstring
+	SupsCost                 whereHelperstring
+	Description              whereHelperstring
+	TextColour               whereHelperstring
+	CurrentSups              whereHelperstring
+	Level                    whereHelperstring
+	LocationSelectType       whereHelperstring
+	DeletedAt                whereHelpernull_Time
+	LaunchingDelaySeconds    whereHelperint
+	DisplayOnMiniMap         whereHelperbool
+	MiniMapDisplayEffectType whereHelperstring
+	MechDisplayEffectType    whereHelperstring
+	AnimationDurationSeconds whereHelperint
 }{
-	ID:                    whereHelperstring{field: "\"game_abilities\".\"id\""},
-	GameClientAbilityID:   whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
-	FactionID:             whereHelperstring{field: "\"game_abilities\".\"faction_id\""},
-	BattleAbilityID:       whereHelpernull_String{field: "\"game_abilities\".\"battle_ability_id\""},
-	Label:                 whereHelperstring{field: "\"game_abilities\".\"label\""},
-	Colour:                whereHelperstring{field: "\"game_abilities\".\"colour\""},
-	ImageURL:              whereHelperstring{field: "\"game_abilities\".\"image_url\""},
-	SupsCost:              whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
-	Description:           whereHelperstring{field: "\"game_abilities\".\"description\""},
-	TextColour:            whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
-	CurrentSups:           whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
-	Level:                 whereHelperstring{field: "\"game_abilities\".\"level\""},
-	LocationSelectType:    whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
-	DeletedAt:             whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
-	LaunchingDelaySeconds: whereHelperint{field: "\"game_abilities\".\"launching_delay_seconds\""},
+	ID:                       whereHelperstring{field: "\"game_abilities\".\"id\""},
+	GameClientAbilityID:      whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
+	FactionID:                whereHelperstring{field: "\"game_abilities\".\"faction_id\""},
+	BattleAbilityID:          whereHelpernull_String{field: "\"game_abilities\".\"battle_ability_id\""},
+	Label:                    whereHelperstring{field: "\"game_abilities\".\"label\""},
+	Colour:                   whereHelperstring{field: "\"game_abilities\".\"colour\""},
+	ImageURL:                 whereHelperstring{field: "\"game_abilities\".\"image_url\""},
+	SupsCost:                 whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
+	Description:              whereHelperstring{field: "\"game_abilities\".\"description\""},
+	TextColour:               whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
+	CurrentSups:              whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
+	Level:                    whereHelperstring{field: "\"game_abilities\".\"level\""},
+	LocationSelectType:       whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
+	DeletedAt:                whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
+	LaunchingDelaySeconds:    whereHelperint{field: "\"game_abilities\".\"launching_delay_seconds\""},
+	DisplayOnMiniMap:         whereHelperbool{field: "\"game_abilities\".\"display_on_mini_map\""},
+	MiniMapDisplayEffectType: whereHelperstring{field: "\"game_abilities\".\"mini_map_display_effect_type\""},
+	MechDisplayEffectType:    whereHelperstring{field: "\"game_abilities\".\"mech_display_effect_type\""},
+	AnimationDurationSeconds: whereHelperint{field: "\"game_abilities\".\"animation_duration_seconds\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -180,9 +208,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )

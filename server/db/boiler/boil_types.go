@@ -120,10 +120,27 @@ const (
 
 // Enum values for LocationSelectTypeEnum
 const (
-	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
-	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
-	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
-	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
+	LocationSelectTypeEnumLINE_SELECT          = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
+	LocationSelectTypeEnumALLY_MECH_SELECT     = "ALLY_MECH_SELECT"
+	LocationSelectTypeEnumOPPONENT_MECH_SELECT = "OPPONENT_MECH_SELECT"
+	LocationSelectTypeEnumMECH_SELECT_ALLY     = "MECH_SELECT_ALLY"
+	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
+	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+)
+
+// Enum values for MiniMapDisplayEffectType
+const (
+	MiniMapDisplayEffectTypeNONE        = "NONE"
+	MiniMapDisplayEffectTypeRANGE       = "RANGE"
+	MiniMapDisplayEffectTypeMECH_PULSE  = "MECH_PULSE"
+	MiniMapDisplayEffectTypeMECH_BORDER = "MECH_BORDER"
+	MiniMapDisplayEffectTypePULSE       = "PULSE"
+	MiniMapDisplayEffectTypeBORDER      = "BORDER"
+	MiniMapDisplayEffectTypeDROP        = "DROP"
+	MiniMapDisplayEffectTypeSHAKE       = "SHAKE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

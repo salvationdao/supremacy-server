@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -362,6 +363,8 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		return nil
 	}
 
+	offeringID := uuid.Must(uuid.NewV4())
+
 	bpa := pa.R.Blueprint
 
 	userID := uuid.FromStringOrNil(user.ID)
@@ -372,7 +375,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
-		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
+		if req.Payload.StartCoords.X.IsNegative() || req.Payload.StartCoords.Y.IsNegative() || req.Payload.EndCoords.X.IsNegative() || req.Payload.EndCoords.Y.IsNegative() {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
@@ -381,7 +384,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
-			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			EventID:             offeringID,
 			FactionID:           &player.FactionID.String,
 			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 			GameLocationEnd:     arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords),
@@ -392,12 +395,71 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
 		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
 		event = &server.GameAbilityEvent{
 			IsTriggered:         true,
 			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
-			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			EventID:             offeringID,
+			FactionID:           &player.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+	case boiler.LocationSelectTypeEnumMECH_SELECT_ALLIED:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
+		// check the mech is an ally mech
+		if wm.FactionID != factionID {
+			return terror.Error(fmt.Errorf("not ally mech"), "Must select a ally mech.")
+		}
+
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             offeringID,
+			FactionID:           &player.FactionID.String,
+			WarMachineHash:      &req.Payload.MechHash,
+		}
+	case boiler.LocationSelectTypeEnumMECH_SELECT_OPPONENT:
+		if req.Payload.MechHash == "" {
+			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+
+		// check the mech is in the battlefield
+		wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash)
+		if wm == nil {
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
+		}
+
+		// check the mech is in the
+		if wm.FactionID == factionID {
+			return terror.Error(fmt.Errorf("not opponent mech"), "Must select an opponent mech.")
+		}
+
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(bpa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             offeringID,
 			FactionID:           &player.FactionID.String,
 			WarMachineHash:      &req.Payload.MechHash,
 		}
@@ -406,7 +468,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
-		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
+		if req.Payload.StartCoords.X.IsNegative() || req.Payload.StartCoords.Y.IsNegative() {
 			gamelog.L.Error().Str("log_name", "battle arena").Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
@@ -415,7 +477,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			GameClientAbilityID: byte(bpa.GameClientAbilityID),
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
-			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			EventID:             offeringID,
 			FactionID:           &player.FactionID.String,
 			GameLocation:        arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords),
 		}
@@ -491,9 +553,61 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 	}
 	reply(true)
 
-	if !isIncognito {
-		// Tell gameclient to execute ability
-		arena.CurrentBattle().arena.Message("BATTLE:ABILITY", event)
+	if btl := arena.CurrentBattle(); btl != nil && !isIncognito {
+		// record ability on display list if needed
+		if bpa.DisplayOnMiniMap {
+			mma := &MiniMapAbilityContent{
+				OfferingID:               offeringID.String(),
+				LocationSelectType:       bpa.LocationSelectType,
+				ImageUrl:                 bpa.ImageURL,
+				Colour:                   bpa.Colour,
+				MiniMapDisplayEffectType: bpa.MiniMapDisplayEffectType,
+				MechDisplayEffectType:    bpa.MechDisplayEffectType,
+			}
+
+			switch mma.LocationSelectType {
+			case boiler.LocationSelectTypeEnumLINE_SELECT, boiler.LocationSelectTypeEnumLOCATION_SELECT:
+				mma.Location = *req.Payload.StartCoords
+			case boiler.LocationSelectTypeEnumMECH_SELECT, boiler.LocationSelectTypeEnumMECH_SELECT_OPPONENT, boiler.LocationSelectTypeEnumMECH_SELECT_ALLIED:
+				if wm := arena.CurrentBattleWarMachineByHash(req.Payload.MechHash); wm != nil {
+					mma.MechID = wm.ID
+				}
+			}
+
+			// set radius
+			if ability := btl.abilityDetails[bpa.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+				mma.Radius = null.IntFrom(ability.Radius)
+			}
+
+			// set delay seconds
+			if bpa.LaunchingDelaySeconds > 0 {
+				mma.LaunchingAt = null.TimeFrom(time.Now().Add(time.Duration(bpa.LaunchingDelaySeconds) * time.Second))
+			}
+
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			if bpa.AnimationDurationSeconds > 0 {
+				go func(battle *Battle, bpa *boiler.BlueprintPlayerAbility) {
+					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
+					if battle != nil && battle.stage.Load() == BattleStageStart {
+						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+							ws.PublishMessage(
+								fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+								server.HubKeyMiniMapAbilityDisplayList,
+								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+							)
+						}
+					}
+				}(btl, bpa)
+			}
+		}
+
+		// Tell game client to execute ability
+		btl.arena.Message("BATTLE:ABILITY", event)
 	}
 
 	pas, err := db.PlayerAbilitiesList(user.ID)
@@ -738,7 +852,6 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
 			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
 			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
-			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -748,13 +861,11 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 			return terror.Error(fmt.Errorf("can only trigger once"), fmt.Sprintf("Repair can only be triggered once per battle."))
 		}
 	default:
-
 		// get ability from db
 		lastTrigger, err := boiler.MechAbilityTriggerLogs(
 			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
 			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
 			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
-			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -778,6 +889,43 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 
 	if ga.Level != boiler.AbilityLevelPLAYER {
 		return terror.Error(fmt.Errorf("non player ability ability"), "Targeted game ability is not a player level ability.")
+	}
+
+	if ga.DisplayOnMiniMap {
+		go func(arena *Arena, gameAbility *boiler.GameAbility, mechID string) {
+			btl := arena.CurrentBattle()
+			if btl == nil || btl.stage.Load() == BattleStageEnd {
+				return
+			}
+
+			offeringID := uuid.Must(uuid.NewV4())
+
+			mma := &MiniMapAbilityContent{
+				OfferingID:               offeringID.String(),
+				LocationSelectType:       ga.LocationSelectType,
+				ImageUrl:                 ga.ImageURL,
+				Colour:                   ga.Colour,
+				MiniMapDisplayEffectType: ga.MiniMapDisplayEffectType,
+				MechDisplayEffectType:    ga.MechDisplayEffectType,
+				MechID:                   wm.ID,
+			}
+
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			// cancel ability after animation end
+			if gameAbility.AnimationDurationSeconds > 0 {
+				time.Sleep(time.Duration(gameAbility.AnimationDurationSeconds) * time.Second)
+				ws.PublishMessage(
+					fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+					server.HubKeyMiniMapAbilityDisplayList,
+					btl.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+				)
+			}
+		}(arena, ga, wm.ID)
 	}
 
 	// trigger the ability
@@ -837,7 +985,6 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	default:
 		// broadcast cool down seconds
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech/%d/abilities/%s/cool_down_seconds", wm.FactionID, arena.ID, wm.ParticipantID, ga.ID), HubKeyWarMachineAbilitySubscribe, abilityCooldownSeconds)
-
 	}
 
 	return nil
@@ -885,7 +1032,7 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(fmt.Errorf("no disabeld cells provided"), "The selected cell is disabled.")
 	}
 
-	selectedCell := int64(req.Payload.StartCoords.X + req.Payload.StartCoords.Y*arena.CurrentBattle().gameMap.CellsX)
+	selectedCell := req.Payload.StartCoords.X.Add(req.Payload.StartCoords.Y.Mul(decimal.NewFromInt(int64(arena.CurrentBattle().gameMap.CellsX)))).IntPart()
 	for _, dc := range disableCells {
 		if dc == selectedCell {
 			return terror.Error(fmt.Errorf("cell disabled"), "The selected cell is disabled.")
@@ -899,8 +1046,8 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			wm.Hash,
 			wm.FactionID,
 			user.ID,
-			req.Payload.StartCoords.X,
-			req.Payload.StartCoords.Y,
+			int(req.Payload.StartCoords.X.IntPart()),
+			int(req.Payload.StartCoords.Y.IntPart()),
 			arena.CurrentBattle().ID,
 		)
 		if err != nil {
@@ -916,8 +1063,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		GameClientAbilityID: MechMoveCommandCreateGameAbilityID, // 8
 		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID, // trigger on war machine
-		TriggeredOnCellX:    &req.Payload.StartCoords.X,
-		TriggeredOnCellY:    &req.Payload.StartCoords.Y,
 		EventID:             uuid.Must(uuid.NewV4()),
 		GameLocation: arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
 			X: req.Payload.StartCoords.X,
@@ -949,8 +1094,8 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 			ArenaID:       arena.ID,
 			MechID:        wm.ID,
 			TriggeredByID: user.ID,
-			CellX:         req.Payload.StartCoords.X,
-			CellY:         req.Payload.StartCoords.Y,
+			CellX:         int(req.Payload.StartCoords.X.IntPart()),
+			CellY:         int(req.Payload.StartCoords.Y.IntPart()),
 			BattleID:      arena.CurrentBattle().ID,
 			CreatedAt:     now,
 			IsMoving:      true,
@@ -1054,6 +1199,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 	}
 
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+	offeringID := uuid.Must(uuid.NewV4())
 	if !isMiniMech {
 		// get mech move command
 		mmc, err := boiler.MechMoveCommandLogs(
@@ -1096,6 +1242,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 			GameClientAbilityID: MechMoveCommandCancelGameAbilityID,
 			WarMachineHash:      &wm.Hash,
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
+			EventID:             offeringID,
 		})
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{
@@ -1114,6 +1261,7 @@ func (am *ArenaManager) MechMoveCommandCancelHandler(ctx context.Context, user *
 			GameClientAbilityID: MechMoveCommandCancelGameAbilityID,
 			WarMachineHash:      &wm.Hash,
 			ParticipantID:       &wm.ParticipantID, // trigger on war machine
+			EventID:             offeringID,
 		})
 
 		ws.PublishMessage(fmt.Sprintf("/faction/%s/arena/%s/mech_command/%s", factionID, arena.ID, wm.Hash), server.HubKeyMechMoveCommandSubscribe, &MechMoveCommandResponse{

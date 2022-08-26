@@ -706,3 +706,42 @@ func GetWeaponMaxStats(conn boil.Executor, userID string) (*WeaponMaxStats, erro
 	}
 	return output, nil
 }
+
+func GetPlayerWeaponModels(userID string) ([]*server.WeaponModel, error) {
+
+	weaponModels, err := boiler.WeaponModels(
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.CollectionItems,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s.%s = '%s'",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.OwnerID,
+			userID,
+		)),
+		qm.GroupBy(fmt.Sprintf("%s.%s",
+			boiler.TableNames.WeaponModels,
+			boiler.WeaponModelColumns.ID,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		boil.DebugMode = false
+		gamelog.L.Error().Err(err).Msg("Could not get mech models.")
+		return nil, err
+	}
+
+	serverWeaponModels := server.WeaponModelsFromBoiler(weaponModels)
+
+	return serverWeaponModels, nil
+}

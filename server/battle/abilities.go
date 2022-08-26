@@ -48,64 +48,7 @@ type AbilitiesSystem struct {
 
 	locationSelectChan chan *locationSelect
 
-	DeadlyAbilityPendingList *DeadlyAbilityPendingList
-
 	deadlock.RWMutex
-}
-
-type DeadlyAbilityPendingList struct {
-	m map[string]*DeadlyAbilityCountdown // map [offeringID] *DeadlyAbilityCountdown
-	deadlock.RWMutex
-}
-
-type DeadlyAbilityCountdown struct {
-	OfferingID  string              `json:"offering_id"`
-	Location    server.CellLocation `json:"location"`
-	Ability     *boiler.GameAbility `json:"ability"`
-	LaunchingAt time.Time           `json:"launching_at"`
-}
-
-// Add new pending ability and return a copy of current list
-func (dap *DeadlyAbilityPendingList) Add(offeringID string, dac *DeadlyAbilityCountdown) []DeadlyAbilityCountdown {
-	dap.Lock()
-	defer dap.Unlock()
-
-	dap.m[offeringID] = dac
-
-	result := []DeadlyAbilityCountdown{}
-	for _, d := range dap.m {
-		result = append(result, *d)
-	}
-
-	return result
-}
-
-// Remove pending ability and return a copy of current list
-func (dap *DeadlyAbilityPendingList) Remove(offeringID string) []DeadlyAbilityCountdown {
-	dap.Lock()
-	defer dap.Unlock()
-
-	delete(dap.m, offeringID)
-
-	result := []DeadlyAbilityCountdown{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
-	}
-
-	return result
-}
-
-// Get a copy of current pending list
-func (dap *DeadlyAbilityPendingList) Get() []DeadlyAbilityCountdown {
-	dap.RLock()
-	defer dap.RUnlock()
-
-	result := []DeadlyAbilityCountdown{}
-	for _, dac := range dap.m {
-		result = append(result, *dac)
-	}
-
-	return result
 }
 
 type locationSelect struct {
@@ -363,9 +306,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		},
 		isClosed:           atomic.Bool{},
 		locationSelectChan: make(chan *locationSelect),
-		DeadlyAbilityPendingList: &DeadlyAbilityPendingList{
-			m: make(map[string]*DeadlyAbilityCountdown),
-		},
 	}
 	as.isClosed.Store(false)
 
@@ -755,43 +695,78 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 		}
 	}()
 
-	if gameAbility.LaunchingDelaySeconds > 0 {
-		duration := time.Duration(gameAbility.LaunchingDelaySeconds) * time.Second
-
-		// add ability onto pending list, and broadcast
-		ws.PublishMessage(
-			fmt.Sprintf("/public/arena/%s/deadly_ability_countdown_list", as.arenaID),
-			server.HubKeyDeadlyAbilityCountdownList,
-			as.DeadlyAbilityPendingList.Add(offeringID.String(), &DeadlyAbilityCountdown{
-				OfferingID: offeringID.String(),
-				Location: server.CellLocation{
-					X: ls.startPoint.X,
-					Y: ls.startPoint.Y,
-				},
-				Ability:     gameAbility,
-				LaunchingAt: time.Now().Add(duration),
-			}),
-		)
-
-		// sleep
-		time.Sleep(duration)
-
-		// check ability availability, after sleep
-		if !AbilitySystemIsAvailable(as) {
-			return
-		}
-
-		// remove ability from pending list, and broadcast
-		ws.PublishMessage(
-			fmt.Sprintf("/public/arena/%s/deadly_ability_countdown_list", as.arenaID),
-			server.HubKeyDeadlyAbilityCountdownList,
-			as.DeadlyAbilityPendingList.Remove(offeringID.String()),
-		)
-	}
-
 	btl, ok := as.battle()
 	if !ok {
 		return
+	}
+
+	if gameAbility.DisplayOnMiniMap {
+		mma := &MiniMapAbilityContent{
+			OfferingID: offeringID.String(),
+			Location: server.CellLocation{
+				X: ls.startPoint.X,
+				Y: ls.startPoint.Y,
+			},
+			LocationSelectType:       gameAbility.LocationSelectType,
+			ImageUrl:                 gameAbility.ImageURL,
+			Colour:                   gameAbility.Colour,
+			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
+			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
+			clearByPickUp:            gameAbility.GameClientAbilityID == 0,
+		}
+
+		// if delay second is greater than zero
+		if gameAbility.LaunchingDelaySeconds > 0 {
+			duration := time.Duration(gameAbility.LaunchingDelaySeconds) * time.Second
+
+			mma.LaunchingAt = null.TimeFrom(time.Now().Add(duration))
+
+			// add ability onto pending list, and broadcast
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			// time sleep
+			time.Sleep(duration)
+
+			// check ability system and battle are still available after time sleep
+			if !AbilitySystemIsAvailable(as) {
+				return
+			}
+			btl, ok = as.battle()
+			if !ok {
+				return
+			}
+		}
+
+		mma.LaunchingAt = null.TimeFromPtr(nil)
+		if ability := btl.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+			mma.Radius = null.IntFrom(ability.Radius)
+		}
+		// broadcast changes
+		ws.PublishMessage(
+			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			server.HubKeyMiniMapAbilityDisplayList,
+			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+		)
+
+		if gameAbility.AnimationDurationSeconds > 0 {
+			go func(battle *Battle, abilityContent *MiniMapAbilityContent, animationSeconds int) {
+				time.Sleep(time.Duration(animationSeconds) * time.Second)
+
+				if battle != nil && battle.stage.Load() == BattleStageStart {
+					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+						)
+					}
+				}
+			}(btl, mma, gameAbility.AnimationDurationSeconds)
+		}
 	}
 
 	userUUID := uuid.FromStringOrNil(ls.userID)
