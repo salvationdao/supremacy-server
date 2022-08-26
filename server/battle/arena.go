@@ -1177,39 +1177,39 @@ type BattleMsg struct {
 }
 
 type BattleStartPayload struct {
-	BattleID      string `json:"Battle_ID"`
-	ClientBuildNo string `json:"Client_Build_No"`
-	MapName       string `json:"Map_Name"`
-	WarMachines   []struct {
-		Hash          string `json:"Hash"`
-		ParticipantID byte   `json:"Participant_ID"`
-	} `json:"War_Machines"`
+	WarMachines []struct {
+		Hash          string `json:"hash"`
+		ParticipantID byte   `json:"participant_id"`
+	} `json:"war_machines"`
+	BattleID      string `json:"battle_id"`
+	ClientBuildNo string `json:"client_build_no"`
+	MapName       string `json:"map_name"` // The name of the map actually loaded
 }
 
 type MapDetailsPayload struct {
-	Details     server.GameMap      `json:"Details"`
-	BattleZones []server.BattleZone `json:"Battle_Zones"`
-	BattleID    string              `json:"Battle_ID"`
+	Details     server.GameMap      `json:"details"`
+	BattleZones []server.BattleZone `json:"battle_zones"`
+	BattleID    string              `json:"battle_id"`
 }
 
 type BattleEndPayload struct {
 	WinningWarMachines []struct {
-		Hash   string `json:"Hash"`
-		Health int    `json:"Health"`
-	} `json:"Winning_War_Machines"`
-	BattleID     string `json:"Battle_ID"`
-	WinCondition string `json:"Win_Condition"`
+		Hash   string `json:"hash"`
+		Health int    `json:"health"`
+	} `json:"winning_war_machines"`
+	BattleID     string `json:"battle_id"`
+	WinCondition string `json:"win_condition"`
 }
 
 type AbilityMoveCommandCompletePayload struct {
-	BattleID       string `json:"Battle_Id"`
-	WarMachineHash string `json:"War_Machine_Hash"`
+	BattleID       string `json:"battle_id"`
+	WarMachineHash string `json:"war_machine_hash"`
 }
 
 type ZoneChangePayload struct {
-	BattleID  string `json:"Battle_Id"`
-	ZoneIndex int    `json:"Zone_Index"`
-	WarnTime  int    `json:"Warn_Time"`
+	BattleID  string `json:"battle_id"`
+	ZoneIndex int    `json:"zone_index"`
+	WarnTime  int    `json:"warn_time"`
 }
 
 type ZoneChangeEvent struct {
@@ -1225,36 +1225,36 @@ type AbilityCompletePayload struct {
 }
 
 type BattleWMDestroyedPayload struct {
-	BattleID                string `json:"Battle_ID"`
-	DestroyedWarMachineHash string `json:"Destroyed_War_Machine_Hash"`
-	KilledByWarMachineHash  string `json:"Killed_By_War_Machine_Hash"`
-	RelatedEventIDString    string `json:"Related_Event_ID_String"`
-	KilledBy                string `json:"Killed_By"`
-	ParticipantID           int    `json:"Participant_ID"`
+	BattleID                string `json:"battle_id"`
+	DestroyedWarMachineHash string `json:"destroyed_war_machine_hash"`
+	KillByWarMachineHash    string `json:"killed_by_war_machine_hash"`
+	RelatedEventIDString    string `json:"related_event_id_string"`
 	DamageHistory           []struct {
-		Amount         int    `json:"Amount"`
-		InstigatorHash string `json:"Instigator_Hash"`
-		SourceHash     string `json:"Source_Hash"`
-		SourceName     string `json:"Source_Name"`
-	} `json:"Damage_History"`
+		Amount         int    `json:"amount"`
+		InstigatorHash string `json:"instigator_hash"`
+		SourceHash     string `json:"source_hash"`
+		SourceName     string `json:"source_name"`
+	} `json:"damage_history"`
+	KilledBy      string `json:"killed_by"`
+	ParticipantID int    `json:"participant_id"`
 }
 
 type AISpawnedRequest struct {
-	BattleID      string          `json:"Battle_ID"`
-	ParticipantID byte            `json:"Participant_ID"`
-	Hash          string          `json:"Hash"`
-	UserID        string          `json:"User_ID"`
-	Name          string          `json:"Name"`
-	Model         string          `json:"Model"`
-	Skin          string          `json:"Skin"`
-	MaxHealth     uint32          `json:"Health_Max"`
-	Health        uint32          `json:"Health"`
-	MaxShield     uint32          `json:"Shield_Max"`
-	Shield        uint32          `json:"Shield"`
-	FactionID     string          `json:"Faction_ID"`
-	Position      *server.Vector3 `json:"Position"`
-	Rotation      int             `json:"Rotation"`
-	Type          AIType          `json:"Type"`
+	BattleID      string          `json:"battle_id"`
+	ParticipantID byte            `json:"participant_id"`
+	Hash          string          `json:"hash"`
+	UserID        string          `json:"user_id"`
+	Name          string          `json:"name"`
+	Model         string          `json:"model"`
+	Skin          string          `json:"skin"`
+	MaxHealth     uint32          `json:"health_max"`
+	Health        uint32          `json:"health"`
+	MaxShield     uint32          `json:"shield_max"`
+	Shield        uint32          `json:"shield"`
+	FactionID     string          `json:"faction_id"`
+	Position      *server.Vector3 `json:"position"`
+	Rotation      int             `json:"rotation"`
+	Type          AIType          `json:"type"`
 }
 
 type AIType string
@@ -1266,19 +1266,19 @@ const (
 )
 
 type BattleWMPickupPayload struct {
-	WarMachineHash string `json:"War_Machine_Hash"`
-	EventID        string `json:"Event_Id"`
-	BattleID       string `json:"Battle_Id"`
+	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	BattleID       string `json:"battle_id"`
 }
 
 type WarMachineStatusPayload struct {
-	WarMachineHash string `json:"War_Machine_Hash"`
-	EventID        string `json:"Event_Id"`
-	BattleID       string `json:"Battle_Id"`
+	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	BattleID       string `json:"battle_id"`
 	Status         struct {
-		IsHacked  bool `json:"Is_Hacked"`
-		IsStunned bool `json:"Is_Stunned"`
-	} `json:"War_Machine_Status"`
+		IsHacked  bool `json:"is_hacked"`
+		IsStunned bool `json:"is_stunned"`
+	} `json:"war_machine_status"`
 }
 
 func (arena *Arena) start() {
@@ -1369,7 +1369,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
 		switch command {
-		case "BattleCommand_Map_Details":
+		case "BATTLE:MAP_DETAILS":
 			var dataPayload *MapDetailsPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1411,7 +1411,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			}
 
-		case "BattleCommand_Start":
+		case "BATTLE:START":
 			var dataPayload *BattleStartPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1433,7 +1433,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				return
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
-		case "BattleCommand_Outro_Finished":
+		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
@@ -1458,9 +1458,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 				}
 			}
 			arena.beginBattle()
-		case "BattleCommand_Intro_Finished":
+		case "BATTLE:INTRO_FINISHED":
 			btl.start()
-		case "BattleCommand_War_Machine_Destroyed":
+		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1472,14 +1472,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 			btl.Destroyed(&dataPayload)
-		case "BattleCommand_End":
+		case "BATTLE:END":
 			var dataPayload *BattleEndPayload
 			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 			btl.end(dataPayload)
-		case "BattleCommand_AI_Spawned":
+		case "BATTLE:AI_SPAWNED":
 			var dataPayload *AISpawnedRequest
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1489,7 +1489,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed to spawn ai")
 			}
-		case "BattleCommand_Ability_Move_Command_Complete":
+		case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
 			var dataPayload *AbilityMoveCommandCompletePayload
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
@@ -1499,7 +1499,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed update war machine move command")
 			}
-		case "BattleCommand_Zone_Change":
+		case "BATTLE:ZONE_CHANGE":
 			var dataPayload *ZoneChangePayload
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
@@ -1510,7 +1510,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed to zone change")
 			}
-		case "BattleCommand_War_Machine_Pickup":
+		case "BATTLE:WAR_MACHINE_PICKUP":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1536,7 +1536,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
-		case "BattleCommand_War_Machine_Status":
+		case "BATTLE:WAR_MACHINE_STATUS":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1608,7 +1608,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				}
 			}
 
-		case "BattleCommand_Ability_Complete":
+		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
