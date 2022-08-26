@@ -557,11 +557,12 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		// record ability on display list if needed
 		if bpa.DisplayOnMiniMap {
 			mma := &MiniMapAbilityContent{
-				OfferingID:         offeringID.String(),
-				LocationSelectType: bpa.LocationSelectType,
-				ImageUrl:           bpa.ImageURL,
-				Colour:             bpa.Colour,
-				DisplayEffectType:  bpa.MiniMapDisplayEffectType,
+				OfferingID:               offeringID.String(),
+				LocationSelectType:       bpa.LocationSelectType,
+				ImageUrl:                 bpa.ImageURL,
+				Colour:                   bpa.Colour,
+				MiniMapDisplayEffectType: bpa.MiniMapDisplayEffectType,
+				MechDisplayEffectType:    bpa.MechDisplayEffectType,
 			}
 
 			switch mma.LocationSelectType {
@@ -588,6 +589,21 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 				server.HubKeyMiniMapAbilityDisplayList,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
+
+			if bpa.AnimationDurationSeconds > 0 {
+				go func(battle *Battle, bpa *boiler.BlueprintPlayerAbility) {
+					time.Sleep(time.Duration(bpa.AnimationDurationSeconds) * time.Second)
+					if battle != nil && battle.stage.Load() == BattleStageStart {
+						if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+							ws.PublishMessage(
+								fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+								server.HubKeyMiniMapAbilityDisplayList,
+								battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+							)
+						}
+					}
+				}(btl, bpa)
+			}
 		}
 
 		// Tell game client to execute ability
@@ -885,12 +901,13 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 			offeringID := uuid.Must(uuid.NewV4())
 
 			mma := &MiniMapAbilityContent{
-				OfferingID:         offeringID.String(),
-				LocationSelectType: ga.LocationSelectType,
-				ImageUrl:           ga.ImageURL,
-				Colour:             ga.Colour,
-				DisplayEffectType:  ga.MiniMapDisplayEffectType,
-				MechID:             wm.ID,
+				OfferingID:               offeringID.String(),
+				LocationSelectType:       ga.LocationSelectType,
+				ImageUrl:                 ga.ImageURL,
+				Colour:                   ga.Colour,
+				MiniMapDisplayEffectType: ga.MiniMapDisplayEffectType,
+				MechDisplayEffectType:    ga.MechDisplayEffectType,
+				MechID:                   wm.ID,
 			}
 
 			ws.PublishMessage(
@@ -898,6 +915,16 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 				server.HubKeyMiniMapAbilityDisplayList,
 				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
 			)
+
+			// cancel ability after animation end
+			if gameAbility.AnimationDurationSeconds > 0 {
+				time.Sleep(time.Duration(gameAbility.AnimationDurationSeconds) * time.Second)
+				ws.PublishMessage(
+					fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", arena.ID),
+					server.HubKeyMiniMapAbilityDisplayList,
+					btl.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+				)
+			}
 		}(arena, ga, wm.ID)
 	}
 

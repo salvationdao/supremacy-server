@@ -895,6 +895,26 @@ func (am *ArenaManager) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Co
 	return nil
 }
 
+const HubKeyWarMachineStatusUpdated = "WAR:MACHINE:STATUS:UPDATED"
+
+func (am *ArenaManager) WarMachineStatusSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	mechID := chi.RouteContext(ctx).URLParam("mech_id")
+	if mechID == "" {
+		return fmt.Errorf("offer id is required")
+	}
+
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	if wm := arena.CurrentBattleWarMachineByID(mechID); wm != nil {
+		reply(wm.Status)
+	}
+
+	return nil
+}
+
 const HubKeyBattleAbilityOptInCheck = "BATTLE:ABILITY:OPT:IN:CHECK"
 
 // BattleAbilityOptInSubscribeHandler return battle ability for non login player
@@ -1270,6 +1290,13 @@ type BattleWMPickupPayload struct {
 	BattleID       string `json:"battle_id"`
 }
 
+type BattleWarMachineStatusPayload struct {
+	WarMachineStatus *Status `json:"war_machine_status"`
+	WarMachineHash   string  `json:"war_machine_hash"`
+	EventID          string  `json:"event_id"`
+	BattleID         string  `json:"battle_id"`
+}
+
 func (arena *Arena) start() {
 	ctx := context.Background()
 	arena.beginBattle()
@@ -1505,7 +1532,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMPickupPayload
-			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+			if err = json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message repair pick up payload")
 				continue
 			}
@@ -1524,6 +1551,29 @@ func (arena *Arena) GameClientJsonDataParser() {
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
+		case "BATTLE:WAR_MACHINE_STATUS":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload *BattleWarMachineStatusPayload
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
+				continue
+			}
+
+			wm := arena.CurrentBattleWarMachineByHash(dataPayload.WarMachineHash)
+			if wm == nil {
+				continue
+			}
+
+			wm.Status.IsStunned = dataPayload.WarMachineStatus.IsStunned
+			wm.Status.IsHacked = dataPayload.WarMachineStatus.IsHacked
+
+			// broadcast war machine status
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech/%s/status", arena.ID, wm.ID), HubKeyWarMachineStatusUpdated, wm.Status)
+
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
@@ -1531,7 +1581,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload *AbilityCompletePayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 				continue
 			}
@@ -1660,7 +1710,7 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
-		replaySession:          recordSession,
+		replaySession: recordSession,
 	}
 
 	al, err := db.AbilityLabelList()
@@ -1772,6 +1822,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
 		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
 		AIType:        &payload.Type,
+		Status:        &Status{},
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)

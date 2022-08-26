@@ -238,11 +238,11 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
-				s.WS("/mech/{mech_id}/status", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
+				s.WS("/arena/{arena_id}/mech/{mech_id}/status", battle.HubKeyWarMachineStatusUpdated, api.ArenaManager.WarMachineStatusSubscribeHandler)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)

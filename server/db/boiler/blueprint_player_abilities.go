@@ -37,6 +37,8 @@ type BlueprintPlayerAbility struct {
 	DisplayOnMiniMap         bool      `boiler:"display_on_mini_map" boil:"display_on_mini_map" json:"display_on_mini_map" toml:"display_on_mini_map" yaml:"display_on_mini_map"`
 	LaunchingDelaySeconds    int       `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
 	MiniMapDisplayEffectType string    `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
+	MechDisplayEffectType    string    `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
+	AnimationDurationSeconds int       `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -58,6 +60,8 @@ var BlueprintPlayerAbilityColumns = struct {
 	DisplayOnMiniMap         string
 	LaunchingDelaySeconds    string
 	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
 	ID:                       "id",
 	GameClientAbilityID:      "game_client_ability_id",
@@ -74,6 +78,8 @@ var BlueprintPlayerAbilityColumns = struct {
 	DisplayOnMiniMap:         "display_on_mini_map",
 	LaunchingDelaySeconds:    "launching_delay_seconds",
 	MiniMapDisplayEffectType: "mini_map_display_effect_type",
+	MechDisplayEffectType:    "mech_display_effect_type",
+	AnimationDurationSeconds: "animation_duration_seconds",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -92,6 +98,8 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	DisplayOnMiniMap         string
 	LaunchingDelaySeconds    string
 	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
 	ID:                       "blueprint_player_abilities.id",
 	GameClientAbilityID:      "blueprint_player_abilities.game_client_ability_id",
@@ -108,6 +116,8 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	DisplayOnMiniMap:         "blueprint_player_abilities.display_on_mini_map",
 	LaunchingDelaySeconds:    "blueprint_player_abilities.launching_delay_seconds",
 	MiniMapDisplayEffectType: "blueprint_player_abilities.mini_map_display_effect_type",
+	MechDisplayEffectType:    "blueprint_player_abilities.mech_display_effect_type",
+	AnimationDurationSeconds: "blueprint_player_abilities.animation_duration_seconds",
 }
 
 // Generated where
@@ -128,6 +138,8 @@ var BlueprintPlayerAbilityWhere = struct {
 	DisplayOnMiniMap         whereHelperbool
 	LaunchingDelaySeconds    whereHelperint
 	MiniMapDisplayEffectType whereHelperstring
+	MechDisplayEffectType    whereHelperstring
+	AnimationDurationSeconds whereHelperint
 }{
 	ID:                       whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID:      whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -144,6 +156,8 @@ var BlueprintPlayerAbilityWhere = struct {
 	DisplayOnMiniMap:         whereHelperbool{field: "\"blueprint_player_abilities\".\"display_on_mini_map\""},
 	LaunchingDelaySeconds:    whereHelperint{field: "\"blueprint_player_abilities\".\"launching_delay_seconds\""},
 	MiniMapDisplayEffectType: whereHelperstring{field: "\"blueprint_player_abilities\".\"mini_map_display_effect_type\""},
+	MechDisplayEffectType:    whereHelperstring{field: "\"blueprint_player_abilities\".\"mech_display_effect_type\""},
+	AnimationDurationSeconds: whereHelperint{field: "\"blueprint_player_abilities\".\"animation_duration_seconds\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -173,9 +187,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )

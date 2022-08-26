@@ -40,6 +40,8 @@ type GameAbility struct {
 	LaunchingDelaySeconds    int         `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
 	DisplayOnMiniMap         bool        `boiler:"display_on_mini_map" boil:"display_on_mini_map" json:"display_on_mini_map" toml:"display_on_mini_map" yaml:"display_on_mini_map"`
 	MiniMapDisplayEffectType string      `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
+	MechDisplayEffectType    string      `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
+	AnimationDurationSeconds int         `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -63,6 +65,8 @@ var GameAbilityColumns = struct {
 	LaunchingDelaySeconds    string
 	DisplayOnMiniMap         string
 	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
 	ID:                       "id",
 	GameClientAbilityID:      "game_client_ability_id",
@@ -81,6 +85,8 @@ var GameAbilityColumns = struct {
 	LaunchingDelaySeconds:    "launching_delay_seconds",
 	DisplayOnMiniMap:         "display_on_mini_map",
 	MiniMapDisplayEffectType: "mini_map_display_effect_type",
+	MechDisplayEffectType:    "mech_display_effect_type",
+	AnimationDurationSeconds: "animation_duration_seconds",
 }
 
 var GameAbilityTableColumns = struct {
@@ -101,6 +107,8 @@ var GameAbilityTableColumns = struct {
 	LaunchingDelaySeconds    string
 	DisplayOnMiniMap         string
 	MiniMapDisplayEffectType string
+	MechDisplayEffectType    string
+	AnimationDurationSeconds string
 }{
 	ID:                       "game_abilities.id",
 	GameClientAbilityID:      "game_abilities.game_client_ability_id",
@@ -119,6 +127,8 @@ var GameAbilityTableColumns = struct {
 	LaunchingDelaySeconds:    "game_abilities.launching_delay_seconds",
 	DisplayOnMiniMap:         "game_abilities.display_on_mini_map",
 	MiniMapDisplayEffectType: "game_abilities.mini_map_display_effect_type",
+	MechDisplayEffectType:    "game_abilities.mech_display_effect_type",
+	AnimationDurationSeconds: "game_abilities.animation_duration_seconds",
 }
 
 // Generated where
@@ -141,6 +151,8 @@ var GameAbilityWhere = struct {
 	LaunchingDelaySeconds    whereHelperint
 	DisplayOnMiniMap         whereHelperbool
 	MiniMapDisplayEffectType whereHelperstring
+	MechDisplayEffectType    whereHelperstring
+	AnimationDurationSeconds whereHelperint
 }{
 	ID:                       whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID:      whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -159,6 +171,8 @@ var GameAbilityWhere = struct {
 	LaunchingDelaySeconds:    whereHelperint{field: "\"game_abilities\".\"launching_delay_seconds\""},
 	DisplayOnMiniMap:         whereHelperbool{field: "\"game_abilities\".\"display_on_mini_map\""},
 	MiniMapDisplayEffectType: whereHelperstring{field: "\"game_abilities\".\"mini_map_display_effect_type\""},
+	MechDisplayEffectType:    whereHelperstring{field: "\"game_abilities\".\"mech_display_effect_type\""},
+	AnimationDurationSeconds: whereHelperint{field: "\"game_abilities\".\"animation_duration_seconds\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -194,9 +208,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
