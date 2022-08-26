@@ -909,7 +909,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		for _, r := range opts.FilterRarities {
 			vals = append(vals, r)
 		}
-		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID)), vals...))
+		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier)), vals...))
 	}
 	if len(opts.FilterStatuses) > 0 {
 		hasIdleToggled := false
@@ -1132,7 +1132,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 						opts.SortDir,
 					)))
 		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID), opts.SortDir))
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
 		}
 	} else {
 		queryMods = append(queryMods,
@@ -1359,4 +1359,43 @@ func MechBattleReady(mechID string) (bool, error) {
 	}
 
 	return battleReady, nil
+}
+
+func GetPlayerMechModels(userID string) ([]*server.MechModel, error) {
+
+	mechModels, err := boiler.MechModels(
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.MechModels, boiler.MechModelColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.CollectionItems,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		qm.Where(fmt.Sprintf("%s.%s = '%s'",
+			boiler.TableNames.CollectionItems,
+			boiler.CollectionItemColumns.OwnerID,
+			userID,
+		)),
+		qm.GroupBy(fmt.Sprintf("%s.%s",
+			boiler.TableNames.MechModels,
+			boiler.MechModelColumns.ID,
+		)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		boil.DebugMode = false
+		gamelog.L.Error().Err(err).Msg("Could not get mech models.")
+		return nil, err
+	}
+
+	serverMechModels := server.MechModelsFromBoiler(mechModels)
+
+	return serverMechModels, nil
 }

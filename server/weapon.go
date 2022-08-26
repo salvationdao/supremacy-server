@@ -181,3 +181,30 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		ItemSaleID:           itemSaleID,
 	}
 }
+
+type WeaponModel struct {
+	ID            string      `json:"id"`
+	Label         string      `json:"label"`
+	BrandID       null.String `json:"brand_id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	DefaultSkinID string      `json:"default_skin_id"`
+	WeaponType    string      `json:"weapon_type"`
+	RepairBlocks  int         `json:"repair_blocks"`
+}
+
+func WeaponModelsFromBoiler(mechModel []*boiler.WeaponModel) []*WeaponModel {
+	var smm []*WeaponModel
+
+	for _, wm := range mechModel {
+		smm = append(smm, &WeaponModel{
+			ID:            wm.ID,
+			Label:         wm.Label,
+			CreatedAt:     wm.CreatedAt,
+			DefaultSkinID: wm.DefaultSkinID,
+			BrandID:       wm.BrandID,
+			WeaponType:    wm.WeaponType,
+			RepairBlocks:  wm.RepairBlocks,
+		})
+	}
+	return smm
+}

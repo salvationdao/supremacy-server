@@ -13,6 +13,7 @@ import (
 	"server/db/boiler"
 	"server/synctool/types"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -925,18 +926,20 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 
 	for _, record := range records {
 		gameAbility := &boiler.GameAbility{
-			ID:                 record[0],
-			FactionID:          record[2],
-			BattleAbilityID:    null.NewString(record[3], record[3] != ""),
-			Label:              record[4],
-			Colour:             record[5],
-			ImageURL:           record[6],
-			SupsCost:           record[7],
-			Description:        record[8],
-			TextColour:         record[9],
-			CurrentSups:        record[10],
-			Level:              record[11],
-			LocationSelectType: record[12],
+			ID:                       record[0],
+			FactionID:                record[2],
+			BattleAbilityID:          null.NewString(record[3], record[3] != ""),
+			Label:                    record[4],
+			Colour:                   record[5],
+			ImageURL:                 record[6],
+			SupsCost:                 record[7],
+			Description:              record[8],
+			TextColour:               record[9],
+			CurrentSups:              record[10],
+			Level:                    record[11],
+			LocationSelectType:       record[12],
+			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
+			MiniMapDisplayEffectType: record[16],
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -945,7 +948,11 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			continue
 		}
 
-		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
+		if record[13] != "" {
+			gameAbility.DeletedAt = null.TimeFrom(time.Now())
+		}
+
+		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[14])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -972,6 +979,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.Level,
 				boiler.GameAbilityColumns.LocationSelectType,
 				boiler.GameAbilityColumns.LaunchingDelaySeconds,
+				boiler.GameAbilityColumns.DisplayOnMiniMap,
 			),
 			boil.Infer(),
 		)

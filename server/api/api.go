@@ -238,6 +238,7 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/mech/{mech_id}/details", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
+				s.WS("/mech/{mech_id}/status", HubKeyPlayerAssetMechDetailPublic, pasc.PlayerAssetMechDetailPublic)
 				s.WS("/custom_avatar/{avatar_id}/details", HubKeyPlayerCustomAvatarDetails, pc.ProfileCustomAvatarDetailsHandler)
 
 				// battle related endpoint
@@ -249,7 +250,7 @@ func NewAPI(
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
-				s.WS("/arena/{arena_id}/deadly_ability_countdown_list", server.HubKeyDeadlyAbilityCountdownList, api.DeadlyAbilityPendingList)
+				s.WS("/arena/{arena_id}/mini_map_ability_display_list", server.HubKeyMiniMapAbilityDisplayList, api.MiniMapAbilityDisplayList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 
