@@ -895,26 +895,6 @@ func (am *ArenaManager) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Co
 	return nil
 }
 
-const HubKeyWarMachineStatusUpdated = "WAR:MACHINE:STATUS:UPDATED"
-
-func (am *ArenaManager) WarMachineStatusSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	mechID := chi.RouteContext(ctx).URLParam("mech_id")
-	if mechID == "" {
-		return fmt.Errorf("offer id is required")
-	}
-
-	arena, err := am.GetArenaFromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	if wm := arena.CurrentBattleWarMachineByID(mechID); wm != nil {
-		reply(wm.Status)
-	}
-
-	return nil
-}
-
 const HubKeyBattleAbilityOptInCheck = "BATTLE:ABILITY:OPT:IN:CHECK"
 
 // BattleAbilityOptInSubscribeHandler return battle ability for non login player
@@ -1571,8 +1551,57 @@ func (arena *Arena) GameClientJsonDataParser() {
 			wm.Status.IsStunned = dataPayload.WarMachineStatus.IsStunned
 			wm.Status.IsHacked = dataPayload.WarMachineStatus.IsHacked
 
-			// broadcast war machine status
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/mech/%s/status", arena.ID, wm.ID), HubKeyWarMachineStatusUpdated, wm.Status)
+			// EMP
+			bpas, err := boiler.BlueprintPlayerAbilities(
+				boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.IN([]int{12, 13}),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load player abilities")
+				continue
+			}
+
+			for _, bpa := range bpas {
+				offeringID := fmt.Sprintf("%s:%s", wm.ID, bpa.MechDisplayEffectType)
+				mma := &MiniMapAbilityContent{
+					OfferingID:               offeringID,
+					LocationSelectType:       bpa.LocationSelectType,
+					MiniMapDisplayEffectType: bpa.MiniMapDisplayEffectType,
+					MechDisplayEffectType:    bpa.MechDisplayEffectType,
+					MechID:                   wm.ID,
+				}
+				switch bpa.GameClientAbilityID {
+				case 12: // EMP
+					if wm.Status.IsStunned {
+						// add ability onto pending list, and broadcast
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
+						)
+						continue
+					}
+					ws.PublishMessage(
+						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityDisplayList,
+						btl.MiniMapAbilityDisplayList.Remove(offeringID),
+					)
+				case 13: // HACKER DRONE
+					if wm.Status.IsHacked {
+						// add ability onto pending list, and broadcast
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
+						)
+						continue
+					}
+					ws.PublishMessage(
+						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityDisplayList,
+						btl.MiniMapAbilityDisplayList.Remove(offeringID),
+					)
+				}
+			}
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
