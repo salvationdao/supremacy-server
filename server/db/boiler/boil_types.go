@@ -140,6 +140,7 @@ const (
 	MiniMapDisplayEffectTypePULSE       = "PULSE"
 	MiniMapDisplayEffectTypeBORDER      = "BORDER"
 	MiniMapDisplayEffectTypeDROP        = "DROP"
+	MiniMapDisplayEffectTypeSHAKE       = "SHAKE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

@@ -4,7 +4,7 @@ ALTER TABLE blueprint_player_abilities
 
 UPDATE blueprint_player_abilities
 SET mini_map_display_effect_type = 'PULSE',
-    animation_duration_seconds = 10
+    mech_display_effect_type = 'SHAKE'
 WHERE game_client_ability_id = 12; -- EMP
 
 UPDATE blueprint_player_abilities
