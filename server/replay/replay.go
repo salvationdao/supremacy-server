@@ -37,9 +37,21 @@ const StopRecording RecordController = "stopRecord"
 var ErrDontLogRecordingStatus = fmt.Errorf("can record is false and not logged")
 
 func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordController) error {
-	environment := server.Env()
 	canRecord := db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false)
 	if !canRecord {
+		// stop recording already running recording
+		replay, err := boiler.FindBattleReplay(gamedb.StdConn, replayID)
+		if err == nil && err != sql.ErrNoRows {
+			if replay.RecordingStatus == boiler.RecordingStatusRECORDING && action == StopRecording {
+				err := recordPostRequest(replayID, battle.ArenaID, battle.BattleNumber, StopRecording)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("replay_id", replayID).Str("battle_id", battle.ID).Msg("Failed to post recording request")
+					return err
+				}
+				// return here to stop recording
+				return nil
+			}
+		}
 		if !server.IsProductionEnv() {
 			return ErrDontLogRecordingStatus
 		}
@@ -47,13 +59,25 @@ func RecordReplayRequest(battle *boiler.Battle, replayID string, action RecordCo
 		return fmt.Errorf("recording replay is turned off in kv. consider turning it on")
 	}
 
+	err := recordPostRequest(replayID, battle.ArenaID, battle.BattleNumber, action)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("replay_id", replayID).Str("battle_id", battle.ID).Msg("Failed to post recording request")
+		return err
+	}
+
+	gamelog.L.Info().Msg(fmt.Sprintf("Ovenmedia Recording Status: %s", action))
+
+	return nil
+}
+
+func recordPostRequest(replayID, arenaID string, battleNumber int, action RecordController) error {
 	req := RecordingRequest{
 		ID: replayID,
 		Stream: OvenmediaRecordingStream{
-			Name: fmt.Sprintf("%s-%s", server.Env(), battle.ArenaID),
+			Name: fmt.Sprintf("%s-%s", server.Env(), arenaID),
 		},
-		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s-%s.mp4", environment, replayID, strconv.Itoa(battle.BattleNumber)),
-		InfoPath: fmt.Sprintf("/info/%s/${Stream}/%s-%s.xml", environment, replayID, strconv.Itoa(battle.BattleNumber)),
+		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s-%s.mp4", server.Env(), replayID, strconv.Itoa(battleNumber)),
+		InfoPath: fmt.Sprintf("/info/%s/${Stream}/%s-%s.xml", server.Env(), replayID, strconv.Itoa(battleNumber)),
 	}
 
 	body, err := json.Marshal(req)

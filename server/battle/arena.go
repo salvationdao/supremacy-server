@@ -249,6 +249,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
 				}
 				btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+				btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
 				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
@@ -279,7 +280,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	if a, ok := am.arenas[ba.ID]; ok {
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
-		
+
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 			if err != nil {
@@ -293,6 +294,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 				btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
 			}
 			btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
+			btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
 			_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
