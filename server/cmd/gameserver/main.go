@@ -170,6 +170,8 @@ func main() {
 					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
+
+					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -208,6 +210,8 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
+
+					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
 
 					server.SetEnv(environment)
 

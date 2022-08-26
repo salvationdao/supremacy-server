@@ -67,7 +67,84 @@ type Battle struct {
 
 	inserted bool
 
+	abilityDetails []*AbilityDetail
+
+	MiniMapAbilityDisplayList *MiniMapAbilityDisplayList
+
 	deadlock.RWMutex
+}
+
+type MiniMapAbilityDisplayList struct {
+	m map[string]*MiniMapAbilityContent // map [offeringID] *MiniMapAbilityContent
+	deadlock.RWMutex
+}
+
+type MiniMapAbilityContent struct {
+	OfferingID         string              `json:"offering_id"`
+	Location           server.CellLocation `json:"location"`
+	MechID             string              `json:"mech_id"`
+	ImageUrl           string              `json:"image_url"`
+	Colour             string              `json:"colour"`
+	DisplayEffectType  string              `json:"display_effect_type"`
+	LocationSelectType string              `json:"location_select_type"`
+	Radius             null.Int            `json:"radius,omitempty"`
+	LaunchingAt        null.Time           `json:"launching_at,omitempty"`
+	clearByPickUp      bool
+}
+
+// Add new pending ability and return a copy of current list
+func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
+	dap.Lock()
+	defer dap.Unlock()
+
+	dap.m[offeringID] = dac
+
+	result := []MiniMapAbilityContent{}
+	for _, d := range dap.m {
+		result = append(result, *d)
+	}
+
+	return result
+}
+
+// Remove pending ability and return a copy of current list
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
+	dap.Lock()
+	defer dap.Unlock()
+
+	delete(dap.m, offeringID)
+
+	result := []MiniMapAbilityContent{}
+	for _, dac := range dap.m {
+		result = append(result, *dac)
+	}
+
+	return result
+}
+
+// Get a mini map ability from givent offering id
+func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityContent {
+	dap.RLock()
+	defer dap.RUnlock()
+
+	da, ok := dap.m[offingID]
+	if !ok {
+		return nil
+	}
+	return da
+}
+
+// List a copy of current pending list
+func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
+	dap.RLock()
+	defer dap.RUnlock()
+
+	result := []MiniMapAbilityContent{}
+	for _, dac := range dap.m {
+		result = append(result, *dac)
+	}
+
+	return result
 }
 
 type RecordingSession struct {
@@ -109,8 +186,8 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.Height = gm.Height
 	btl.gameMap.CellsX = gm.CellsX
 	btl.gameMap.CellsY = gm.CellsY
-	btl.gameMap.LeftPixels = gm.LeftPixels
-	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.PixelLeft = gm.PixelLeft
+	btl.gameMap.PixelTop = gm.PixelTop
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
@@ -312,92 +389,28 @@ func (btl *Battle) start() {
 func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) *server.GameLocation {
 	gameMap := btl.gameMap
 	// To get the location in game its
-	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
-	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + PixelLeft
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
+
 	return &server.GameLocation{
-		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.LeftPixels,
-		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.TopPixels,
+		X: int(cell.X.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelLeft))).IntPart()),
+		Y: int(cell.Y.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelTop))).IntPart()),
 	}
 }
 
 // getCellCoordinatesFromGameWorldXY converts location in game to a cell location
 func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocation) *server.CellLocation {
 	gameMap := btl.gameMap
+
 	return &server.CellLocation{
-		X: (location.X - gameMap.LeftPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
-		Y: (location.Y - gameMap.TopPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+		X: decimal.NewFromInt(int64(location.X)).Sub(decimal.NewFromInt(int64(gameMap.PixelLeft))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
+		Y: decimal.NewFromInt(int64(location.Y)).Sub(decimal.NewFromInt(int64(gameMap.PixelTop))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
 	}
 }
 
 type WarMachinePosition struct {
 	X int
 	Y int
-}
-
-func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEvent) {
-	// only calculate reinforcement location
-	if abilityEvent.GameClientAbilityID != 10 {
-		return
-	}
-
-	// get snapshots of the red mountain war machines health and postion
-	rmw := []WarMachinePosition{}
-	aliveWarMachines := []WarMachinePosition{}
-	for _, wm := range btl.WarMachines {
-		// store red mountain war machines
-		if wm.FactionID != server.RedMountainFactionID || wm.Position == nil {
-			continue
-		}
-
-		// get snapshot of current war machine
-		x := wm.Position.X
-		y := wm.Position.Y
-
-		rmw = append(rmw, WarMachinePosition{
-			X: x,
-			Y: y,
-		})
-
-		// store alive red mountain war machines
-		if wm.Health <= 0 || wm.Health >= 10000 {
-			continue
-		}
-		aliveWarMachines = append(aliveWarMachines, WarMachinePosition{
-			X: x,
-			Y: y,
-		})
-	}
-
-	// should never happen, but just in case
-	if len(rmw) == 0 {
-		gamelog.L.Warn().Str("ability_trigger_offering_id", abilityEvent.EventID.String()).Msg("No Red Mountain mech in the battle to locate reinforcement bot, which should never happen...")
-		return
-	}
-
-	if len(aliveWarMachines) > 0 {
-		// random pick one of the red mountain postion
-		wm := aliveWarMachines[rand.Intn(len(aliveWarMachines))]
-
-		// set cell
-		abilityEvent.TriggeredOnCellX = &wm.X
-		abilityEvent.TriggeredOnCellY = &wm.Y
-		abilityEvent.GameLocation = &server.GameLocation{
-			X: wm.X,
-			Y: wm.Y,
-		}
-
-		return
-	}
-
-	wm := rmw[rand.Intn(len(rmw))]
-	// set cell
-	abilityEvent.TriggeredOnCellX = &wm.X
-	abilityEvent.TriggeredOnCellY = &wm.Y
-
-	abilityEvent.GameLocation = &server.GameLocation{
-		X: wm.X,
-		Y: wm.Y,
-	}
 }
 
 func (btl *Battle) endAbilities() {
@@ -1344,21 +1357,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
-	// Indexes correspond to the game_client_ability_id in the db
-	abilityDetails := make([]*AbilityDetail, 20)
-	// Nuke
-	abilityDetails[1] = &AbilityDetail{
-		Radius: 5200,
-	}
-	// EMP
-	abilityDetails[12] = &AbilityDetail{
-		Radius: 10000,
-	}
-	// BLACKOUT
-	abilityDetails[16] = &AbilityDetail{
-		Radius: 20000,
-	}
-
 	// Current Battle Zone
 	var battleZone *server.BattleZone
 	if len(btl.battleZones) > 0 {
@@ -1405,7 +1403,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
@@ -1459,7 +1457,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
@@ -1482,7 +1480,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		WarMachines:        wms,
 		SpawnedAI:          ais,
 		WarMachineLocation: lt,
-		AbilityDetails:     abilityDetails,
+		AbilityDetails:     btl.abilityDetails,
 	}
 }
 
