@@ -1109,7 +1109,7 @@ func (am *ArenaManager) WarMachineStatSubscribe(ctx context.Context, key string,
 		// Hidden/Incognito
 		if wStat.Position != nil {
 			hideMech := arena.CurrentBattle().playerAbilityManager().IsWarMachineHidden(wm.Hash)
-			hideMech = arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || arena.CurrentBattle().playerAbilityManager().IsWarMachineInBlackout(server.GameLocation{
 				X: wStat.Position.X,
 				Y: wStat.Position.Y,
 			})

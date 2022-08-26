@@ -1405,7 +1405,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
@@ -1459,7 +1459,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
