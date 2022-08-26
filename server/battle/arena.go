@@ -1227,7 +1227,7 @@ type AbilityCompletePayload struct {
 type BattleWMDestroyedPayload struct {
 	BattleID                string `json:"battle_id"`
 	DestroyedWarMachineHash string `json:"destroyed_war_machine_hash"`
-	KillByWarMachineHash    string `json:"killed_by_war_machine_hash"`
+	KilledByWarMachineHash  string `json:"killed_by_war_machine_hash"`
 	RelatedEventIDString    string `json:"related_event_id_string"`
 	DamageHistory           []struct {
 		Amount         int    `json:"amount"`
