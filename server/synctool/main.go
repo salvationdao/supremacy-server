@@ -937,6 +937,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			LocationSelectType:       record[12],
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
+			MechDisplayEffectType:    record[17],
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -950,6 +951,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[14])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue

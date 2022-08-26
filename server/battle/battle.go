@@ -80,16 +80,17 @@ type MiniMapAbilityDisplayList struct {
 }
 
 type MiniMapAbilityContent struct {
-	OfferingID         string              `json:"offering_id"`
-	Location           server.CellLocation `json:"location"`
-	MechID             string              `json:"mech_id"`
-	ImageUrl           string              `json:"image_url"`
-	Colour             string              `json:"colour"`
-	DisplayEffectType  string              `json:"display_effect_type"`
-	LocationSelectType string              `json:"location_select_type"`
-	Radius             null.Int            `json:"radius,omitempty"`
-	LaunchingAt        null.Time           `json:"launching_at,omitempty"`
-	clearByPickUp      bool
+	OfferingID               string              `json:"offering_id"`
+	Location                 server.CellLocation `json:"location"`
+	MechID                   string              `json:"mech_id"`
+	ImageUrl                 string              `json:"image_url"`
+	Colour                   string              `json:"colour"`
+	MiniMapDisplayEffectType string              `json:"mini_map_display_effect_type"`
+	MechDisplayEffectType    string              `json:"mech_display_effect_type"`
+	LocationSelectType       string              `json:"location_select_type"`
+	Radius                   null.Int            `json:"radius,omitempty"`
+	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
+	clearByPickUp            bool
 }
 
 // Add new pending ability and return a copy of current list
@@ -1399,6 +1400,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
 			Stats:              w.Stats,
+			Status:             w.Status,
 		}
 		// Hidden/Incognito
 		if wCopy.Position != nil {
@@ -1452,6 +1454,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
 			Stats:              w.Stats,
+			Status:             w.Status,
 		}
 
 		// Hidden/Incognito
@@ -2242,6 +2245,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				BattlesSurvived: mech.Stats.BattlesSurvived,
 				TotalLosses:     mech.Stats.TotalLosses,
 			},
+			Status: &Status{},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {

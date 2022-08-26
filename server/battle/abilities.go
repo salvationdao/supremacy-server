@@ -707,11 +707,12 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 				X: ls.startPoint.X,
 				Y: ls.startPoint.Y,
 			},
-			LocationSelectType: gameAbility.LocationSelectType,
-			ImageUrl:           gameAbility.ImageURL,
-			Colour:             gameAbility.Colour,
-			DisplayEffectType:  gameAbility.MiniMapDisplayEffectType,
-			clearByPickUp:      gameAbility.GameClientAbilityID == 0,
+			LocationSelectType:       gameAbility.LocationSelectType,
+			ImageUrl:                 gameAbility.ImageURL,
+			Colour:                   gameAbility.Colour,
+			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
+			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
+			clearByPickUp:            gameAbility.GameClientAbilityID == 0,
 		}
 
 		// if delay second is greater than zero
@@ -740,23 +741,32 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 			}
 		}
 
-		go func(battle *Battle, abilityContent *MiniMapAbilityContent) {
-			// Hack: delay 1 second for game client animation
-			time.Sleep(1 * time.Second)
+		mma.LaunchingAt = null.TimeFromPtr(nil)
+		if ability := btl.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+			mma.Radius = null.IntFrom(ability.Radius)
+		}
+		// broadcast changes
+		ws.PublishMessage(
+			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			server.HubKeyMiniMapAbilityDisplayList,
+			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+		)
 
-			abilityContent.LaunchingAt = null.TimeFromPtr(nil)
-			if ability := battle.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
-				abilityContent.Radius = null.IntFrom(ability.Radius)
-			}
+		if gameAbility.AnimationDurationSeconds > 0 {
+			go func(battle *Battle, abilityContent *MiniMapAbilityContent, animationSeconds int) {
+				time.Sleep(time.Duration(animationSeconds) * time.Second)
 
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
-				battle.MiniMapAbilityDisplayList.Add(offeringID.String(), abilityContent),
-			)
-		}(btl, mma)
-
+				if battle != nil && battle.stage.Load() == BattleStageStart {
+					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+						)
+					}
+				}
+			}(btl, mma, gameAbility.AnimationDurationSeconds)
+		}
 	}
 
 	userUUID := uuid.FromStringOrNil(ls.userID)

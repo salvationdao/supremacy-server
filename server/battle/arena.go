@@ -1517,7 +1517,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMPickupPayload
-			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+			if err = json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message repair pick up payload")
 				continue
 			}
@@ -1535,19 +1535,78 @@ func (arena *Arena) GameClientJsonDataParser() {
 				server.HubKeyMiniMapAbilityDisplayList,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
+
 		case "BATTLE:WAR_MACHINE_STATUS":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
 			}
 
-			var dataPayload WarMachineStatusPayload
-			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-				L.Warn().Err(err).Msg("unable to unmarshal battle message war machine status payload")
+			var dataPayload *WarMachineStatusPayload
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 				continue
 			}
 
-			// TODO: update war machine hacked/stunned status
+			wm := arena.CurrentBattleWarMachineByHash(dataPayload.WarMachineHash)
+			if wm == nil {
+				continue
+			}
+
+			wm.Status.IsStunned = dataPayload.Status.IsStunned
+			wm.Status.IsHacked = dataPayload.Status.IsHacked
+
+			// EMP
+			bpas, err := boiler.BlueprintPlayerAbilities(
+				boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.IN([]int{12, 13}),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load player abilities")
+				continue
+			}
+
+			for _, bpa := range bpas {
+				offeringID := fmt.Sprintf("%s:%s", wm.ID, bpa.MechDisplayEffectType)
+				mma := &MiniMapAbilityContent{
+					OfferingID:               offeringID,
+					LocationSelectType:       bpa.LocationSelectType,
+					MiniMapDisplayEffectType: bpa.MiniMapDisplayEffectType,
+					MechDisplayEffectType:    bpa.MechDisplayEffectType,
+					MechID:                   wm.ID,
+				}
+				switch bpa.GameClientAbilityID {
+				case 12: // EMP
+					if wm.Status.IsStunned {
+						// add ability onto pending list, and broadcast
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
+						)
+						continue
+					}
+					ws.PublishMessage(
+						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityDisplayList,
+						btl.MiniMapAbilityDisplayList.Remove(offeringID),
+					)
+				case 13: // HACKER DRONE
+					if wm.Status.IsHacked {
+						// add ability onto pending list, and broadcast
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							btl.MiniMapAbilityDisplayList.Add(offeringID, mma),
+						)
+						continue
+					}
+					ws.PublishMessage(
+						fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+						server.HubKeyMiniMapAbilityDisplayList,
+						btl.MiniMapAbilityDisplayList.Remove(offeringID),
+					)
+				}
+			}
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
@@ -1556,7 +1615,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload *AbilityCompletePayload
-			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 				continue
 			}
@@ -1797,6 +1856,7 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Image:         "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
 		ImageAvatar:   "https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-mini-mech.png",
 		AIType:        &payload.Type,
+		Status:        &Status{},
 	}
 
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)

@@ -59,7 +59,14 @@ type WarMachine struct {
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
 
+	Status *Status `json:"status"`
+
 	deadlock.RWMutex // lock for any mech detail changes
+}
+
+type Status struct {
+	IsHacked  bool `json:"is_hacked"`
+	IsStunned bool `json:"is_stunned"`
 }
 
 type WarMachineGameClient struct {
