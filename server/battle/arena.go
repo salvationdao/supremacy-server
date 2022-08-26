@@ -1182,7 +1182,7 @@ type BattleStartPayload struct {
 	MapName       string `json:"Map_Name"`
 	WarMachines   []struct {
 		Hash          string `json:"Hash"`
-		ParticipantID int    `json:"Participant_ID"`
+		ParticipantID byte   `json:"Participant_ID"`
 	} `json:"War_Machines"`
 }
 
@@ -1194,11 +1194,11 @@ type MapDetailsPayload struct {
 
 type BattleEndPayload struct {
 	WinningWarMachines []struct {
-		Hash   string `json:"hash"`
-		Health int    `json:"health"`
-	} `json:"winning_war_machines"`
-	BattleID     string `json:"battle_id"`
-	WinCondition string `json:"win_condition"`
+		Hash   string `json:"Hash"`
+		Health int    `json:"Health"`
+	} `json:"Winning_War_Machines"`
+	BattleID     string `json:"Battle_ID"`
+	WinCondition string `json:"Win_Condition"`
 }
 
 type AbilityMoveCommandCompletePayload struct {
@@ -1240,21 +1240,21 @@ type BattleWMDestroyedPayload struct {
 }
 
 type AISpawnedRequest struct {
-	BattleID      string          `json:"battle_id"`
-	ParticipantID byte            `json:"participant_id"`
-	Hash          string          `json:"hash"`
-	UserID        string          `json:"user_id"`
-	Name          string          `json:"name"`
-	Model         string          `json:"model"`
-	Skin          string          `json:"skin"`
-	MaxHealth     uint32          `json:"health_max"`
-	Health        uint32          `json:"health"`
-	MaxShield     uint32          `json:"shield_max"`
-	Shield        uint32          `json:"shield"`
-	FactionID     string          `json:"faction_id"`
-	Position      *server.Vector3 `json:"position"`
-	Rotation      int             `json:"rotation"`
-	Type          AIType          `json:"type"`
+	BattleID      string          `json:"Battle_ID"`
+	ParticipantID byte            `json:"Participant_ID"`
+	Hash          string          `json:"Hash"`
+	UserID        string          `json:"User_ID"`
+	Name          string          `json:"Name"`
+	Model         string          `json:"Model"`
+	Skin          string          `json:"Skin"`
+	MaxHealth     uint32          `json:"Health_Max"`
+	Health        uint32          `json:"Health"`
+	MaxShield     uint32          `json:"Shield_Max"`
+	Shield        uint32          `json:"Shield"`
+	FactionID     string          `json:"Faction_ID"`
+	Position      *server.Vector3 `json:"Position"`
+	Rotation      int             `json:"Rotation"`
+	Type          AIType          `json:"Type"`
 }
 
 type AIType string
