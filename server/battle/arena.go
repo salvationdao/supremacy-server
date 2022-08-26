@@ -19,6 +19,7 @@ import (
 	"server/telegram"
 	"server/xsyn_rpcclient"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -1215,12 +1216,12 @@ type ZoneChangeEvent struct {
 	Location   server.GameLocation `json:"location"`
 	Radius     int                 `json:"radius"`
 	ShrinkTime int                 `json:"shrink_time"`
-	WarnTime   int                 `json:"warnTime"`
+	WarnTime   int                 `json:"warn_time"`
 }
 
 type AbilityCompletePayload struct {
-	BattleID string `json:"battleID"`
-	EventID  string `json:"eventID"`
+	BattleID string `json:"battle_id"`
+	EventID  string `json:"event_id"`
 }
 
 type BattleWMDestroyedPayload struct {
@@ -1268,6 +1269,16 @@ type BattleWMPickupPayload struct {
 	WarMachineHash string `json:"war_machine_hash"`
 	EventID        string `json:"event_id"`
 	BattleID       string `json:"battle_id"`
+}
+
+type WarMachineStatusPayload struct {
+	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	BattleID       string `json:"battle_id"`
+	Status         struct {
+		IsHacked  bool `json:"is_hacked"`
+		IsStunned bool `json:"is_stunned"`
+	} `json:"war_machine_status"`
 }
 
 func (arena *Arena) start() {
@@ -1356,7 +1367,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
 		L.Info().Msg("game client message received")
 
-		switch msg.BattleCommand {
+		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
+		switch command {
 		case "BATTLE:MAP_DETAILS":
 			var dataPayload *MapDetailsPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1523,6 +1535,19 @@ func (arena *Arena) GameClientJsonDataParser() {
 				server.HubKeyMiniMapAbilityDisplayList,
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
+		case "BATTLE:WAR_MACHINE_STATUS":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload WarMachineStatusPayload
+			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message war machine status payload")
+				continue
+			}
+
+			// TODO: update war machine hacked/stunned status
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
@@ -1660,7 +1685,7 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
-		replaySession:          recordSession,
+		replaySession: recordSession,
 	}
 
 	al, err := db.AbilityLabelList()
