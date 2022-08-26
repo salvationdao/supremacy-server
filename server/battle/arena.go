@@ -1525,7 +1525,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			eventID := dataPayload.EventID
 
 			// skip if ability not exists, or it is not a picked-up ability
-			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil || !da.clearByPickUp {
+			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil {
 				continue
 			}
 
@@ -1572,6 +1572,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 					LocationSelectType:       bpa.LocationSelectType,
 					MiniMapDisplayEffectType: bpa.MiniMapDisplayEffectType,
 					MechDisplayEffectType:    bpa.MechDisplayEffectType,
+					Colour:                   bpa.Colour,
+					ImageUrl:                 bpa.ImageURL,
 					MechID:                   wm.ID,
 				}
 				switch bpa.GameClientAbilityID {
@@ -1623,7 +1625,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			eventID := dataPayload.EventID
 
 			// skip if ability not exists, or it is a picked-up ability
-			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil || da.clearByPickUp {
+			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil {
 				continue
 			}
 
