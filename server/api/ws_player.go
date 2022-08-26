@@ -173,8 +173,10 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 			return terror.Error(err, "Failed to sync passport db")
 		}
 
-		for _, tmpl := range templates {
-			templateIDS = append(templateIDS, tmpl.ID)
+		for i := 0; i < 3; i++ {
+			for _, tmpl := range templates {
+				templateIDS = append(templateIDS, tmpl.ID)
+			}
 		}
 
 		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{
