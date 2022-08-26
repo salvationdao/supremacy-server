@@ -1181,15 +1181,15 @@ type BattleStartPayload struct {
 		Hash          string `json:"hash"`
 		ParticipantID byte   `json:"participant_id"`
 	} `json:"war_machines"`
-	BattleID      string `json:"battle_id"`
+	BattleID      string `json:"Battle_ID"`
 	ClientBuildNo string `json:"client_build_no"`
 	MapName       string `json:"map_name"` // The name of the map actually loaded
 }
 
 type MapDetailsPayload struct {
-	Details     server.GameMap      `json:"details"`
-	BattleZones []server.BattleZone `json:"battle_zones"`
-	BattleID    string              `json:"battle_id"`
+	Details     server.GameMap      `json:"Details"`
+	BattleZones []server.BattleZone `json:"Battle_Zones"`
+	BattleID    string              `json:"Battle_ID"`
 }
 
 type BattleEndPayload struct {
@@ -1197,17 +1197,17 @@ type BattleEndPayload struct {
 		Hash   string `json:"hash"`
 		Health int    `json:"health"`
 	} `json:"winning_war_machines"`
-	BattleID     string `json:"battle_id"`
+	BattleID     string `json:"Battle_ID"`
 	WinCondition string `json:"win_condition"`
 }
 
 type AbilityMoveCommandCompletePayload struct {
-	BattleID       string `json:"battle_id"`
+	BattleID       string `json:"Battle_ID"`
 	WarMachineHash string `json:"war_machine_hash"`
 }
 
 type ZoneChangePayload struct {
-	BattleID  string `json:"battle_id"`
+	BattleID  string `json:"Battle_ID"`
 	ZoneIndex int    `json:"zone_index"`
 	WarnTime  int    `json:"warn_time"`
 }
@@ -1220,12 +1220,12 @@ type ZoneChangeEvent struct {
 }
 
 type AbilityCompletePayload struct {
-	BattleID string `json:"battle_id"`
+	BattleID string `json:"Battle_ID"`
 	EventID  string `json:"event_id"`
 }
 
 type BattleWMDestroyedPayload struct {
-	BattleID                string `json:"battle_id"`
+	BattleID                string `json:"Battle_ID"`
 	DestroyedWarMachineHash string `json:"destroyed_war_machine_hash"`
 	KillByWarMachineHash    string `json:"killed_by_war_machine_hash"`
 	RelatedEventIDString    string `json:"related_event_id_string"`
@@ -1240,7 +1240,7 @@ type BattleWMDestroyedPayload struct {
 }
 
 type AISpawnedRequest struct {
-	BattleID      string          `json:"battle_id"`
+	BattleID      string          `json:"Battle_ID"`
 	ParticipantID byte            `json:"participant_id"`
 	Hash          string          `json:"hash"`
 	UserID        string          `json:"user_id"`
@@ -1268,13 +1268,13 @@ const (
 type BattleWMPickupPayload struct {
 	WarMachineHash string `json:"war_machine_hash"`
 	EventID        string `json:"event_id"`
-	BattleID       string `json:"battle_id"`
+	BattleID       string `json:"Battle_ID"`
 }
 
 type WarMachineStatusPayload struct {
 	WarMachineHash string `json:"war_machine_hash"`
 	EventID        string `json:"event_id"`
-	BattleID       string `json:"battle_id"`
+	BattleID       string `json:"Battle_ID"`
 	Status         struct {
 		IsHacked  bool `json:"is_hacked"`
 		IsStunned bool `json:"is_stunned"`
@@ -1787,7 +1787,7 @@ func (arena *Arena) beginBattle() {
 	arena.storeCurrentBattle(btl)
 
 	arena.Message(BATTLEINIT, &struct {
-		BattleID     string                  `json:"battle_id"`
+		BattleID     string                  `json:"Battle_ID"`
 		MapName      string                  `json:"map_name"`
 		BattleNumber int                     `json:"battle_number"`
 		WarMachines  []*WarMachineGameClient `json:"war_machines"`
