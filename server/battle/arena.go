@@ -1202,14 +1202,14 @@ type BattleEndPayload struct {
 }
 
 type AbilityMoveCommandCompletePayload struct {
-	BattleID       string `json:"battle_id"`
-	WarMachineHash string `json:"war_machine_hash"`
+	BattleID       string `json:"Battle_Id"`
+	WarMachineHash string `json:"War_Machine_Hash"`
 }
 
 type ZoneChangePayload struct {
-	BattleID  string `json:"battle_id"`
-	ZoneIndex int    `json:"zone_index"`
-	WarnTime  int    `json:"warn_time"`
+	BattleID  string `json:"Battle_Id"`
+	ZoneIndex int    `json:"Zone_Index"`
+	WarnTime  int    `json:"Warn_Time"`
 }
 
 type ZoneChangeEvent struct {
@@ -1266,19 +1266,19 @@ const (
 )
 
 type BattleWMPickupPayload struct {
-	WarMachineHash string `json:"war_machine_hash"`
-	EventID        string `json:"event_id"`
-	BattleID       string `json:"battle_id"`
+	WarMachineHash string `json:"War_Machine_Hash"`
+	EventID        string `json:"Event_Id"`
+	BattleID       string `json:"Battle_Id"`
 }
 
 type WarMachineStatusPayload struct {
-	WarMachineHash string `json:"war_machine_hash"`
-	EventID        string `json:"event_id"`
-	BattleID       string `json:"battle_id"`
+	WarMachineHash string `json:"War_Machine_Hash"`
+	EventID        string `json:"Event_Id"`
+	BattleID       string `json:"Battle_Id"`
 	Status         struct {
-		IsHacked  bool `json:"is_hacked"`
-		IsStunned bool `json:"is_stunned"`
-	} `json:"war_machine_status"`
+		IsHacked  bool `json:"Is_Hacked"`
+		IsStunned bool `json:"Is_Stunned"`
+	} `json:"War_Machine_Status"`
 }
 
 func (arena *Arena) start() {
@@ -1369,7 +1369,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
 		switch command {
-		case "BATTLE:MAP_DETAILS":
+		case "BattleCommand_Map_Details":
 			var dataPayload *MapDetailsPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1411,7 +1411,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 
 			}
 
-		case "BATTLE:START":
+		case "BattleCommand_Start":
 			var dataPayload *BattleStartPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1433,7 +1433,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				return
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
-		case "BATTLE:OUTRO_FINISHED":
+		case "BattleCommand_Outro_Finished":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
@@ -1458,9 +1458,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 				}
 			}
 			arena.beginBattle()
-		case "BATTLE:INTRO_FINISHED":
+		case "BattleCommand_Intro_Finished":
 			btl.start()
-		case "BATTLE:WAR_MACHINE_DESTROYED":
+		case "BattleCommand_War_Machine_Destroyed":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1472,14 +1472,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 			btl.Destroyed(&dataPayload)
-		case "BATTLE:END":
+		case "BattleCommand_End":
 			var dataPayload *BattleEndPayload
 			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 			btl.end(dataPayload)
-		case "BATTLE:AI_SPAWNED":
+		case "BattleCommand_AI_Spawned":
 			var dataPayload *AISpawnedRequest
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message payload")
@@ -1489,7 +1489,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed to spawn ai")
 			}
-		case "BATTLE:ABILITY_MOVE_COMMAND_COMPLETE":
+		case "BattleCommand_Ability_Move_Command_Complete":
 			var dataPayload *AbilityMoveCommandCompletePayload
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal ability move command complete payload")
@@ -1499,7 +1499,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed update war machine move command")
 			}
-		case "BATTLE:ZONE_CHANGE":
+		case "BattleCommand_Zone_Change":
 			var dataPayload *ZoneChangePayload
 			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
@@ -1510,7 +1510,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed to zone change")
 			}
-		case "BATTLE:WAR_MACHINE_PICKUP":
+		case "BattleCommand_War_Machine_Pickup":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1536,7 +1536,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
 			)
 
-		case "BATTLE:WAR_MACHINE_STATUS":
+		case "BattleCommand_War_Machine_Status":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
@@ -1608,7 +1608,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				}
 			}
 
-		case "BATTLE:ABILITY_COMPLETE":
+		case "BattleCommand_Ability_Complete":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
