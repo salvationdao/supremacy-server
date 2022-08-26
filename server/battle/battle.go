@@ -1681,7 +1681,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	}
 
 	var destroyedWarMachine *WarMachine
-	dHash := dp.DestroyedWarMachineEvent.DestroyedWarMachineHash
+	dHash := dp.DestroyedWarMachineHash
 	for i, wm := range btl.WarMachines {
 		if wm.Hash == dHash {
 			// set health to 0
@@ -1723,9 +1723,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var killedByUser *UserBrief
 		var killByWarMachine *WarMachine
-		if dp.DestroyedWarMachineEvent.KillByWarMachineHash != "" {
+		if dp.KillByWarMachineHash != "" {
 			for _, wm := range btl.WarMachines {
-				if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
+				if wm.Hash == dp.KillByWarMachineHash {
 					killByWarMachine = wm
 					// update user kill
 					if wm.OwnedByID != "" {
@@ -1758,12 +1758,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					break
 				}
 			}
-		} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+		} else if dp.RelatedEventIDString != "" {
 			// check related event id
 			var abl *boiler.BattleAbilityTrigger
 			var err error
 			retAbl := func() (*boiler.BattleAbilityTrigger, error) {
-				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
+				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.RelatedEventIDString)).One(gamedb.StdConn)
 				return abl, err
 			}
 
@@ -1783,7 +1783,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			}
 
 			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
 			}
 			// get ability via offering id
 
@@ -1792,7 +1792,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err == nil {
 					// update kill by user and killed by information
 					killedByUser = currentUser
-					dp.DestroyedWarMachineEvent.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
+					dp.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
 				}
 
 				// update player ability kills and faction kills
@@ -1822,7 +1822,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					}
 
 					// sent instance to system ban manager
-					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
+					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
 
 				} else {
 					// update user kill
@@ -1865,11 +1865,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var warMachineID uuid.UUID
 		var killByWarMachineID uuid.UUID
-		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)
+		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.KillByWarMachineHash)
 
 		if err != nil || len(ids) == 0 {
 			gamelog.L.Warn().
-				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
+				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.KillByWarMachineHash)).
 				Str("battle_id", btl.ID).
 				Err(err).
 				Msg("can't retrieve mech ids")
@@ -1878,18 +1878,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			warMachineID = ids[0]
 			if len(ids) > 1 {
 				killByWarMachineID = ids[1]
-			}
-
-			//TODO: implement related id
-			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-				relatedEventuuid, err := uuid.FromString(dp.DestroyedWarMachineEvent.RelatedEventIDString)
-				if err != nil {
-					gamelog.L.Warn().
-						Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
-						Str("battle_id", btl.ID).
-						Msg("can't create uuid from non-empty related event idf")
-				}
-				dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
 			}
 
 			bh := &boiler.BattleHistory{
@@ -1903,8 +1891,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				bh.WarMachineTwoID = null.StringFrom(killByWarMachineID.String())
 			}
 
-			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-				bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
+			if dp.RelatedEventIDString != "" {
+				bh.RelatedID = null.StringFrom(dp.RelatedEventIDString)
 			}
 
 			err = bh.Insert(gamedb.StdConn, boil.Infer())
@@ -1943,7 +1931,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		// calc total damage and merge the duplicated damage source
 		totalDamage := 0
 		newDamageHistory := []*DamageHistory{}
-		for _, damage := range dp.DestroyedWarMachineEvent.DamageHistory {
+		for _, damage := range dp.DamageHistory {
 			totalDamage += damage.Amount
 			// check instigator token id exist in the list
 			if damage.InstigatorHash != "" {
@@ -1993,7 +1981,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				Hash:          destroyedWarMachine.Hash,
 				FactionID:     destroyedWarMachine.FactionID,
 			},
-			KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
+			KilledBy: dp.KilledBy,
 		}
 		// get total damage amount for calculating percentage
 		for _, damage := range newDamageHistory {
