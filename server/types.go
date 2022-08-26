@@ -653,19 +653,19 @@ type GameLocation struct {
 	Y int `json:"y"`
 }
 type GameAbilityEvent struct {
-	EventID             uuid.UUID     `json:"eventID" db:"event_id"`
+	EventID             uuid.UUID     `json:"event_id" db:"event_id"`
 	GameAbilityID       *uuid.UUID    `json:"gameAbilityID,omitempty" db:"game_ability_id,omitempty"`
 	AbilityHash         *string       `json:"abilityHash,omitempty" db:"ability_hash,omitempty"`
-	GameClientAbilityID byte          `json:"gameClientAbilityID" db:"game_client_ability_id"`
-	ParticipantID       *byte         `json:"participantID,omitempty" db:"participant_id"`
-	WarMachineHash      *string       `json:"warMachineHash,omitempty"`
-	FactionID           *string       `json:"factionID,omitempty"`
+	GameClientAbilityID byte          `json:"game_client_ability_id" db:"game_client_ability_id"`
+	ParticipantID       *byte         `json:"participant_id,omitempty" db:"participant_id"`
+	WarMachineHash      *string       `json:"war_machine_hash,omitempty"`
+	FactionID           *string       `json:"faction_id,omitempty"`
 	IsTriggered         bool          `json:"isTriggered" db:"is_triggered"`
-	TriggeredByUserID   *uuid.UUID    `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
-	TriggeredByUsername *string       `json:"triggeredByUsername"`
+	TriggeredByUserID   *uuid.UUID    `json:"triggered_by_user_id,omitempty" db:"triggered_by_user_id,omitempty"`
+	TriggeredByUsername *string       `json:"triggered_by_username"`
 	GameAbility         *GameAbility  `json:"gameAbility,omitempty"`
-	GameLocation        *GameLocation `json:"gameLocation"`
-	GameLocationEnd     *GameLocation `json:"gameLocationEnd"`
+	GameLocation        *GameLocation `json:"game_location"`
+	GameLocationEnd     *GameLocation `json:"game_location_end"`
 }
 
 type BattleZone struct {

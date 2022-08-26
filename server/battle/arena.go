@@ -19,6 +19,7 @@ import (
 	"server/telegram"
 	"server/xsyn_rpcclient"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -1215,12 +1216,12 @@ type ZoneChangeEvent struct {
 	Location   server.GameLocation `json:"location"`
 	Radius     int                 `json:"radius"`
 	ShrinkTime int                 `json:"shrink_time"`
-	WarnTime   int                 `json:"warnTime"`
+	WarnTime   int                 `json:"warn_time"`
 }
 
 type AbilityCompletePayload struct {
-	BattleID string `json:"battleID"`
-	EventID  string `json:"eventID"`
+	BattleID string `json:"battle_id"`
+	EventID  string `json:"event_id"`
 }
 
 type BattleWMDestroyedPayload struct {
@@ -1270,11 +1271,14 @@ type BattleWMPickupPayload struct {
 	BattleID       string `json:"battle_id"`
 }
 
-type BattleWarMachineStatusPayload struct {
-	WarMachineStatus *Status `json:"war_machine_status"`
-	WarMachineHash   string  `json:"war_machine_hash"`
-	EventID          string  `json:"event_id"`
-	BattleID         string  `json:"battle_id"`
+type WarMachineStatusPayload struct {
+	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	BattleID       string `json:"battle_id"`
+	Status         struct {
+		IsHacked  bool `json:"is_hacked"`
+		IsStunned bool `json:"is_stunned"`
+	} `json:"war_machine_status"`
 }
 
 func (arena *Arena) start() {
@@ -1363,7 +1367,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
 		L.Info().Msg("game client message received")
 
-		switch msg.BattleCommand {
+		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient
+		switch command {
 		case "BATTLE:MAP_DETAILS":
 			var dataPayload *MapDetailsPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1537,7 +1542,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 
-			var dataPayload *BattleWarMachineStatusPayload
+			var dataPayload *WarMachineStatusPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 				continue
@@ -1548,8 +1553,8 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 
-			wm.Status.IsStunned = dataPayload.WarMachineStatus.IsStunned
-			wm.Status.IsHacked = dataPayload.WarMachineStatus.IsHacked
+			wm.Status.IsStunned = dataPayload.Status.IsStunned
+			wm.Status.IsHacked = dataPayload.Status.IsHacked
 
 			// EMP
 			bpas, err := boiler.BlueprintPlayerAbilities(
