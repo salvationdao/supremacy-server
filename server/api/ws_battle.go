@@ -300,7 +300,7 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	return nil
 }
 
-func (api *API) DeadlyAbilityPendingList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
 	if err != nil {
 		reply(nil)
@@ -310,13 +310,7 @@ func (api *API) DeadlyAbilityPendingList(ctx context.Context, key string, payloa
 	// if current battle still running
 	btl := arena.CurrentBattle()
 	if btl != nil {
-		// if ability system is available
-		as := btl.AbilitySystem()
-		if battle.AbilitySystemIsAvailable(as) {
-
-			// reply current ability pending list
-			reply(as.DeadlyAbilityPendingList.Get())
-		}
+		reply(btl.MiniMapAbilityDisplayList.List())
 	}
 
 	return nil

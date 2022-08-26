@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"strings"
 	"sync/atomic"
@@ -644,8 +645,8 @@ func (b *TAtomBool) Get() bool {
 }
 
 type CellLocation struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X decimal.Decimal `json:"x"`
+	Y decimal.Decimal `json:"y"`
 }
 type GameLocation struct {
 	X int `json:"x"`
@@ -662,8 +663,6 @@ type GameAbilityEvent struct {
 	IsTriggered         bool          `json:"isTriggered" db:"is_triggered"`
 	TriggeredByUserID   *uuid.UUID    `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
 	TriggeredByUsername *string       `json:"triggeredByUsername"`
-	TriggeredOnCellX    *int          `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
-	TriggeredOnCellY    *int          `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
 	GameAbility         *GameAbility  `json:"gameAbility,omitempty"`
 	GameLocation        *GameLocation `json:"gameLocation"`
 	GameLocationEnd     *GameLocation `json:"gameLocationEnd"`

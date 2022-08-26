@@ -106,3 +106,48 @@ func PlayerAbilityAssign(playerID string, blueprintID string) error {
 
 	return nil
 }
+
+type AbilityLabel struct {
+	Label               string `db:"label"`
+	GameClientAbilityID int    `db:"game_client_ability_id"`
+}
+
+func AbilityLabelList() ([]*AbilityLabel, error) {
+	q := fmt.Sprintf(
+		`
+			SELECT DISTINCT (ta.label), ta.game_client_ability_id
+			FROM (
+					SELECT DISTINCT(UPPER(%[2]s)) AS label, %[3]s
+			      	FROM %[1]s
+			      	UNION
+			      	SELECT DISTINCT(UPPER(%[5]s)) AS label, %[6]s
+			      	FROM %[4]s
+			) ta
+			ORDER BY ta.game_client_ability_id DESC;
+		`,
+		boiler.TableNames.BlueprintPlayerAbilities,               // 1
+		boiler.BlueprintPlayerAbilityColumns.Label,               // 2
+		boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID, // 3
+		boiler.TableNames.GameAbilities,                          // 4
+		boiler.GameAbilityColumns.Label,                          // 5
+		boiler.GameAbilityColumns.GameClientAbilityID,            // 6
+	)
+
+	rows, err := gamedb.StdConn.Query(q)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to query abilities")
+	}
+
+	resp := []*AbilityLabel{}
+	for rows.Next() {
+		al := &AbilityLabel{}
+		err = rows.Scan(&al.Label, &al.GameClientAbilityID)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to scan ability label")
+		}
+
+		resp = append(resp, al)
+	}
+
+	return resp, nil
+}

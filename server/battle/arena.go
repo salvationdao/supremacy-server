@@ -279,7 +279,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 	if a, ok := am.arenas[ba.ID]; ok {
 		// set connected flag of the prev arena to false
 		a.connected.Store(false)
-		
+
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 			if err != nil {
@@ -1215,6 +1215,11 @@ type ZoneChangeEvent struct {
 	WarnTime   int                 `json:"warnTime"`
 }
 
+type AbilityCompletePayload struct {
+	BattleID string `json:"battleID"`
+	EventID  string `json:"eventID"`
+}
+
 type BattleWMDestroyedPayload struct {
 	DestroyedWarMachineEvent struct {
 		DestroyedWarMachineHash string    `json:"destroyedWarMachineHash"`
@@ -1459,8 +1464,6 @@ func (arena *Arena) GameClientJsonDataParser() {
 				continue
 			}
 			btl.Destroyed(&dataPayload)
-		case "BATTLE:WAR_MACHINE_PICKUP":
-			// NOTE: repair ability is moved to mech ability, this endpoint maybe used for other pickup ability
 		case "BATTLE:END":
 			var dataPayload *BattleEndPayload
 			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -1499,6 +1502,57 @@ func (arena *Arena) GameClientJsonDataParser() {
 			if err != nil {
 				L.Error().Err(err).Msg("failed to zone change")
 			}
+		case "BATTLE:WAR_MACHINE_PICKUP":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload BattleWMPickupPayload
+			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle message repair pick up payload")
+				continue
+			}
+
+			eventID := dataPayload.EventID
+
+			// skip if ability not exists, or it is not a picked-up ability
+			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil || !da.clearByPickUp {
+				continue
+			}
+
+			// remove repair from pending list, and broadcast
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Remove(dataPayload.EventID),
+			)
+
+		case "BATTLE:ABILITY_COMPLETE":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload *AbilityCompletePayload
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
+				continue
+			}
+
+			eventID := dataPayload.EventID
+
+			// skip if ability not exists, or it is a picked-up ability
+			if da := btl.MiniMapAbilityDisplayList.Get(eventID); da == nil || da.clearByPickUp {
+				continue
+			}
+
+			// remove ability from pending list, and broadcast
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", btl.ArenaID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Remove(eventID),
+			)
 		default:
 			L.Warn().Err(err).Msg("Battle Arena WS: no command response")
 		}
@@ -1607,8 +1661,39 @@ func (arena *Arena) beginBattle() {
 		inserted:               inserted,
 		stage:                  atomic.NewInt32(BattleStageStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
+		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
+			m: make(map[string]*MiniMapAbilityContent),
+		},
 		replaySession:          recordSession,
 	}
+
+	al, err := db.AbilityLabelList()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load ability labels")
+	}
+	if al != nil && len(al) > 0 {
+		// Indexes correspond to the game_client_ability_id in the db
+		// NOTE: game_client_ability_id start from 0
+		btl.abilityDetails = make([]*AbilityDetail, al[0].GameClientAbilityID+1)
+
+		for _, a := range al {
+			switch a.GameClientAbilityID {
+			case 1: // NUKE
+				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
+					Radius: 5200,
+				}
+			case 12: // EMP
+				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
+					Radius: 10000,
+				}
+			case 16: // BLACKOUT
+				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
+					Radius: 20000,
+				}
+			}
+		}
+	}
+
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 

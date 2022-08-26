@@ -5,7 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const GameClientTileSize = 2000
+const GameClientTileSize int64 = 2000
 
 // To get the location in game its
 //  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels

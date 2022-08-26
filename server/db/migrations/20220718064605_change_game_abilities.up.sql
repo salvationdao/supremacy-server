@@ -13,12 +13,6 @@ SET
 WHERE
     game_client_ability_id = 3 or game_client_ability_id = 4 OR game_client_ability_id = 7;
 
-INSERT INTO
-    game_abilities (game_client_ability_id, faction_id, label, colour, image_url, description, text_colour, level, sups_cost)
-VALUES
-    (5, '98bf7bb3-1a7c-4f21-8843-458d62884060', 'OVERCHARGE','#FFFFFF','https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-overcharge.jpg', 'Consume your remaining shield for an explosive defence mechanism.','#000000','MECH','100000000000000000000'),
-    (5, '7c6dde21-b067-46cf-9e56-155c88a520e2', 'OVERCHARGE','#FFFFFF','https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-overcharge.jpg', 'Consume your remaining shield for an explosive defence mechanism.','#000000','MECH','100000000000000000000');
-
 UPDATE
     game_abilities
 SET
