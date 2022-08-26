@@ -449,6 +449,11 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
 		}
 
+		// if hacker drone
+		if wm.Status.IsHacked && bpa.GameClientAbilityID == 13 {
+			return terror.Error(fmt.Errorf("already hacked"), "The mech is already hacked.")
+		}
+
 		// check the mech is in the
 		if wm.FactionID == factionID {
 			return terror.Error(fmt.Errorf("not opponent mech"), "Must select an opponent mech.")
