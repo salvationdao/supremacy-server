@@ -1177,13 +1177,13 @@ type BattleMsg struct {
 }
 
 type BattleStartPayload struct {
-	WarMachines []struct {
-		Hash          string `json:"hash"`
-		ParticipantID byte   `json:"participant_id"`
-	} `json:"war_machines"`
-	BattleID      string `json:"battle_id"`
-	ClientBuildNo string `json:"client_build_no"`
-	MapName       string `json:"map_name"` // The name of the map actually loaded
+	BattleID      string `json:"Battle_ID"`
+	ClientBuildNo string `json:"Client_Build_No"`
+	MapName       string `json:"Map_Name"`
+	WarMachines   []struct {
+		Hash          string `json:"Hash"`
+		ParticipantID int    `json:"Participant_ID"`
+	} `json:"War_Machines"`
 }
 
 type MapDetailsPayload struct {
@@ -1225,18 +1225,18 @@ type AbilityCompletePayload struct {
 }
 
 type BattleWMDestroyedPayload struct {
-	BattleID                string `json:"battle_id"`
-	DestroyedWarMachineHash string `json:"destroyed_war_machine_hash"`
-	KillByWarMachineHash    string `json:"killed_by_war_machine_hash"`
-	RelatedEventIDString    string `json:"related_event_id_string"`
+	BattleID                string `json:"Battle_ID"`
+	DestroyedWarMachineHash string `json:"Destroyed_War_Machine_Hash"`
+	KilledByWarMachineHash  string `json:"Killed_By_War_Machine_Hash"`
+	RelatedEventIDString    string `json:"Related_Event_ID_String"`
+	KilledBy                string `json:"Killed_By"`
+	ParticipantID           int    `json:"Participant_ID"`
 	DamageHistory           []struct {
-		Amount         int    `json:"amount"`
-		InstigatorHash string `json:"instigator_hash"`
-		SourceHash     string `json:"source_hash"`
-		SourceName     string `json:"source_name"`
-	} `json:"damage_history"`
-	KilledBy      string `json:"killed_by"`
-	ParticipantID int    `json:"participant_id"`
+		Amount         int    `json:"Amount"`
+		InstigatorHash string `json:"Instigator_Hash"`
+		SourceHash     string `json:"Source_Hash"`
+		SourceName     string `json:"Source_Name"`
+	} `json:"Damage_History"`
 }
 
 type AISpawnedRequest struct {
