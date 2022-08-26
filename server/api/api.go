@@ -208,6 +208,7 @@ func NewAPI(
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
+			r.Mount("/replay", BattleReplayRouter(api))
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 			r.Mount("/system_messages", SystemMessagesRouter(api))
 

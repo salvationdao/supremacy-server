@@ -24,6 +24,7 @@ var TableNames = struct {
 	BattleQueue                                        string
 	BattleQueueFees                                    string
 	BattleQueueNotifications                           string
+	BattleReplays                                      string
 	BattleViewers                                      string
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
@@ -176,6 +177,7 @@ var TableNames = struct {
 	BattleQueue:                    "battle_queue",
 	BattleQueueFees:                "battle_queue_fees",
 	BattleQueueNotifications:       "battle_queue_notifications",
+	BattleReplays:                  "battle_replays",
 	BattleViewers:                  "battle_viewers",
 	BattleWarMachineQueues:         "battle_war_machine_queues",
 	BattleWins:                     "battle_wins",

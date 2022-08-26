@@ -122,6 +122,18 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
@@ -130,6 +142,19 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
@@ -138,6 +163,19 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 		Type: notificationType,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
@@ -146,6 +184,19 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
@@ -154,6 +205,19 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationBattleZoneChange broadcast game notification to client
@@ -162,6 +226,19 @@ func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEv
 		Type: GameNotificationTypeBattleZoneChange,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle

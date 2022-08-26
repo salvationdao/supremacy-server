@@ -58,6 +58,7 @@ type Battle struct {
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
 	startedAt              time.Time
+	replaySession          *RecordingSession
 
 	_playerAbilityManager *PlayerAbilityManager
 
@@ -67,6 +68,16 @@ type Battle struct {
 	inserted bool
 
 	deadlock.RWMutex
+}
+
+type RecordingSession struct {
+	ReplaySession *boiler.BattleReplay `json:"replay_session"`
+	Events        []*RecordingEvents   `json:"battle_events"`
+}
+
+type RecordingEvents struct {
+	Timestamp    time.Time        `json:"timestamp"`
+	Notification GameNotification `json:"notification"`
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
