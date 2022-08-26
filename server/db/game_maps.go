@@ -127,45 +127,10 @@ func GameMapGetByID(id string) (*boiler.GameMap, error) {
 		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
 
-	mapCount, err := boiler.GameMaps(mapQueries...).Count(gamedb.StdConn)
+	gameMap, err := boiler.GameMaps(mapQueries...).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
-
-	if mapCount == 1 {
-		gameMap, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
-		if err != nil {
-			return nil, err
-		}
-
-		return gameMap[0], nil
-	}
-
-	// if !allowLastMap {
-	// 	lastBattle, err := boiler.Battles(
-	// 		qm.Select(
-	// 			boiler.BattleColumns.ID,
-	// 			boiler.BattleColumns.GameMapID,
-	// 		),
-	// 		boiler.BattleWhere.EndedAt.IsNotNull(),
-	// 		qm.OrderBy("ended_at desc"),
-	// 	).One(gamedb.StdConn)
-	// 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 		return nil, err
-	// 	}
-
-	// 	if lastBattle != nil {
-	// 		mapQueries = append(mapQueries, boiler.GameMapWhere.ID.NEQ(lastBattle.GameMapID))
-	// 	}
-	// }
-
-	maps, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	rand.Seed(time.Now().UnixNano())
-	gameMap := maps[rand.Intn(len(maps))]
 
 	return gameMap, nil
 }
