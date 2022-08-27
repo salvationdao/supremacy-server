@@ -861,6 +861,7 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
+	ids := []string{}
 	for _, record := range records {
 		battleAbility := &boiler.BattleAbility{
 			ID:                record[0],
@@ -902,6 +903,17 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		fmt.Println("UPDATED: "+battleAbility.ID, battleAbility.Label)
+
+		// record id list
+		ids = append(ids, battleAbility.ID)
+	}
+
+	// soft delete any row that is not on the list
+	_, err = boiler.BattleAbilities(
+		boiler.BattleAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.BattleAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static battle abilities data.")
 	}
 
 	fmt.Println("Finish syncing battle abilities")
@@ -1008,10 +1020,10 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		boiler.GameAbilityWhere.ID.NIN(ids),
 	).UpdateAll(db, boiler.M{boiler.GameAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
 	if err != nil {
-		fmt.Println(err.Error(), "Failed to archive rows that are not on the sync data.")
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
 	}
 
-	fmt.Println("Finish syncing battle abilities")
+	fmt.Println("Finish syncing game abilities")
 
 	return nil
 }
