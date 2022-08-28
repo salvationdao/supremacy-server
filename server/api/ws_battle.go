@@ -34,7 +34,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
 	api.Command(HubKeyPlayerBattleMechHistoryList, bc.PlayerBattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
-	api.Command(HubKeyNextBattleDetails, bc.NextBattleDetails)
+	// api.Command(HubKeyNextBattleDetails, bc.NextBattleDetails)
 
 	// commands from battle
 
@@ -302,90 +302,16 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	return nil
 }
 
-const HubKeyNextBattleDetails = "BATTLE:NEXT:DETAILS"
+func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 
-type BattleMap struct {
-	Name          string `json:"name,omitempty"`
-	BackgroundURL string `json:"background_url,omitempty"`
-	LogoURL       string `json:"logo_url,omitempty"`
-}
-type NextBattle struct {
-	Map   *BattleMap `json:"map,omitempty"`
-	BcID  string     `json:"bc_id,omitempty"`
-	ZhiID string     `json:"zhi_id,omitempty"`
-	RmID  string     `json:"rm_id,omitempty"`
-
-	BCMechIDs  []string `json:"bc_mech_ids,omitempty"`
-	ZHIMechIDs []string `json:"zhi_mech_ids,omitempty"`
-	RMMechIDs  []string `json:"rm_mech_ids,omitempty"`
-}
-
-func (bc *BattleControllerWS) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-
-	// get queue
-	queue, err := db.LoadBattleQueue(context.Background(), 3)
-
+	// details
+	resp, err := db.GetNextBattle(ctx)
 	if err != nil {
-		return err
-	}
-
-	rm, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Red Mountain Offworld Mining Corporation")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "failed getting faction (RM)")
-	}
-
-	zhi, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Zaibatsu Heavy Industries")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "failed getting faction (ZHI)")
-	}
-
-	boc, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Boston Cybernetics")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "failed getting faction (BOC)")
-	}
-
-	rmMechIDs := []string{}
-	zhiMechIDs := []string{}
-	bcMechIDs := []string{}
-
-	for _, q := range queue {
-		if q.FactionID == rm.ID {
-			rmMechIDs = append(rmMechIDs, q.MechID)
-		}
-
-		if q.FactionID == zhi.ID {
-			zhiMechIDs = append(zhiMechIDs, q.MechID)
-		}
-
-		if q.FactionID == boc.ID {
-			bcMechIDs = append(bcMechIDs, q.MechID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "failed getting uppcoming battle details")
 		}
 	}
 
-	// get map details
-
-	bMap := &BattleMap{}
-
-	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" DESC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "failed getting next map in queue")
-	}
-
-	if mapInQueue != nil && mapInQueue.R != nil {
-		bMap.LogoURL = mapInQueue.R.Map.LogoURL
-		bMap.BackgroundURL = mapInQueue.R.Map.BackgroundURL
-		bMap.Name = mapInQueue.R.Map.Name
-	}
-
-	resp := NextBattle{
-		BCMechIDs:  bcMechIDs,
-		ZHIMechIDs: zhiMechIDs,
-		RMMechIDs:  rmMechIDs,
-		BcID:       boc.ID,
-		ZhiID:      zhi.ID,
-		RmID:       rm.ID,
-		Map:        bMap,
-	}
 	reply(resp)
 
 	return nil

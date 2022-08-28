@@ -1226,6 +1226,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 }
 
 const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
+const HubKeyNextBattleDetails = "BATTLE:NEXT:DETAILS"
 
 func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []*PlayerReward, mechRewardRecords []*MechReward) {
 	defer func() {
@@ -1321,6 +1322,15 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
 	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+		ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)
+	}()
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo, playerRewardRecords, mechRewardRecords)
