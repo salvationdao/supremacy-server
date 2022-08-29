@@ -1726,9 +1726,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var killedByUser *UserBrief
 		var killByWarMachine *WarMachine
-		if dp.KillByWarMachineHash != "" {
+		if dp.KilledByWarMachineHash != "" {
 			for _, wm := range btl.WarMachines {
-				if wm.Hash == dp.KillByWarMachineHash {
+				if wm.Hash == dp.KilledByWarMachineHash {
 					killByWarMachine = wm
 					// update user kill
 					if wm.OwnedByID != "" {
@@ -1868,11 +1868,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var warMachineID uuid.UUID
 		var killByWarMachineID uuid.UUID
-		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.KillByWarMachineHash)
+		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.KilledByWarMachineHash)
 
 		if err != nil || len(ids) == 0 {
 			gamelog.L.Warn().
-				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.KillByWarMachineHash)).
+				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.KilledByWarMachineHash)).
 				Str("battle_id", btl.ID).
 				Err(err).
 				Msg("can't retrieve mech ids")

@@ -299,7 +299,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			},
 			config: &AbilityConfig{
 				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
-				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 20)) * time.Second,
 				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
