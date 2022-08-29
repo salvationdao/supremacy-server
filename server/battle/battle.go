@@ -59,6 +59,7 @@ type Battle struct {
 	rpcClient              *xsyn_rpcclient.XrpcClient
 	battleMechData         []*db.BattleMechData
 	startedAt              time.Time
+	replaySession          *RecordingSession
 
 	_playerAbilityManager *PlayerAbilityManager
 
@@ -67,7 +68,94 @@ type Battle struct {
 
 	inserted bool
 
+	abilityDetails []*AbilityDetail
+
+	MiniMapAbilityDisplayList *MiniMapAbilityDisplayList
+
 	deadlock.RWMutex
+}
+
+type MiniMapAbilityDisplayList struct {
+	m map[string]*MiniMapAbilityContent // map [offeringID] *MiniMapAbilityContent
+	deadlock.RWMutex
+}
+
+type MiniMapAbilityContent struct {
+	OfferingID               string              `json:"offering_id"`
+	Location                 server.CellLocation `json:"location"`
+	MechID                   string              `json:"mech_id"`
+	ImageUrl                 string              `json:"image_url"`
+	Colour                   string              `json:"colour"`
+	MiniMapDisplayEffectType string              `json:"mini_map_display_effect_type"`
+	MechDisplayEffectType    string              `json:"mech_display_effect_type"`
+	LocationSelectType       string              `json:"location_select_type"`
+	Radius                   null.Int            `json:"radius,omitempty"`
+	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
+}
+
+// Add new pending ability and return a copy of current list
+func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbilityContent) []MiniMapAbilityContent {
+	dap.Lock()
+	defer dap.Unlock()
+
+	dap.m[offeringID] = dac
+
+	result := []MiniMapAbilityContent{}
+	for _, d := range dap.m {
+		result = append(result, *d)
+	}
+
+	return result
+}
+
+// Remove pending ability and return a copy of current list
+func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbilityContent {
+	dap.Lock()
+	defer dap.Unlock()
+
+	delete(dap.m, offeringID)
+
+	result := []MiniMapAbilityContent{}
+	for _, dac := range dap.m {
+		result = append(result, *dac)
+	}
+
+	return result
+}
+
+// Get a mini map ability from givent offering id
+func (dap *MiniMapAbilityDisplayList) Get(offingID string) *MiniMapAbilityContent {
+	dap.RLock()
+	defer dap.RUnlock()
+
+	da, ok := dap.m[offingID]
+	if !ok {
+		return nil
+	}
+	return da
+}
+
+// List a copy of current pending list
+func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
+	dap.RLock()
+	defer dap.RUnlock()
+
+	result := []MiniMapAbilityContent{}
+	for _, dac := range dap.m {
+		result = append(result, *dac)
+	}
+
+	return result
+}
+
+type RecordingSession struct {
+	ReplaySession *boiler.BattleReplay `json:"replay_session"`
+	Events        []*RecordingEvents   `json:"battle_events"`
+}
+
+type RecordingEvents struct {
+	Timestamp    time.Time        `json:"timestamp"`
+	Notification GameNotification `json:"notification"`
 }
 
 func (btl *Battle) AbilitySystem() *AbilitiesSystem {
@@ -103,8 +191,8 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.gameMap.Height = gm.Height
 	btl.gameMap.CellsX = gm.CellsX
 	btl.gameMap.CellsY = gm.CellsY
-	btl.gameMap.LeftPixels = gm.LeftPixels
-	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.PixelLeft = gm.PixelLeft
+	btl.gameMap.PixelTop = gm.PixelTop
 	btl.gameMap.DisabledCells = gm.DisabledCells
 	btl.battleZones = battleZones
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("end")
@@ -316,92 +404,28 @@ func (btl *Battle) start() {
 func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell *server.CellLocation) *server.GameLocation {
 	gameMap := btl.gameMap
 	// To get the location in game its
-	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
-	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + PixelLeft
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
+
 	return &server.GameLocation{
-		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.LeftPixels,
-		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + gameMap.TopPixels,
+		X: int(cell.X.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelLeft))).IntPart()),
+		Y: int(cell.Y.Mul(decimal.NewFromInt(server.GameClientTileSize)).Add(decimal.NewFromInt(server.GameClientTileSize / 2)).Add(decimal.NewFromInt(int64(gameMap.PixelTop))).IntPart()),
 	}
 }
 
 // getCellCoordinatesFromGameWorldXY converts location in game to a cell location
 func (btl *Battle) getCellCoordinatesFromGameWorldXY(location *server.GameLocation) *server.CellLocation {
 	gameMap := btl.gameMap
+
 	return &server.CellLocation{
-		X: (location.X - gameMap.LeftPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
-		Y: (location.Y - gameMap.TopPixels - server.GameClientTileSize*2) / server.GameClientTileSize,
+		X: decimal.NewFromInt(int64(location.X)).Sub(decimal.NewFromInt(int64(gameMap.PixelLeft))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
+		Y: decimal.NewFromInt(int64(location.Y)).Sub(decimal.NewFromInt(int64(gameMap.PixelTop))).Sub(decimal.NewFromInt(server.GameClientTileSize * 2)).Div(decimal.NewFromInt(server.GameClientTileSize)),
 	}
 }
 
 type WarMachinePosition struct {
 	X int
 	Y int
-}
-
-func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEvent) {
-	// only calculate reinforcement location
-	if abilityEvent.GameClientAbilityID != 10 {
-		return
-	}
-
-	// get snapshots of the red mountain war machines health and postion
-	rmw := []WarMachinePosition{}
-	aliveWarMachines := []WarMachinePosition{}
-	for _, wm := range btl.WarMachines {
-		// store red mountain war machines
-		if wm.FactionID != server.RedMountainFactionID || wm.Position == nil {
-			continue
-		}
-
-		// get snapshot of current war machine
-		x := wm.Position.X
-		y := wm.Position.Y
-
-		rmw = append(rmw, WarMachinePosition{
-			X: x,
-			Y: y,
-		})
-
-		// store alive red mountain war machines
-		if wm.Health <= 0 || wm.Health >= 10000 {
-			continue
-		}
-		aliveWarMachines = append(aliveWarMachines, WarMachinePosition{
-			X: x,
-			Y: y,
-		})
-	}
-
-	// should never happen, but just in case
-	if len(rmw) == 0 {
-		gamelog.L.Warn().Str("ability_trigger_offering_id", abilityEvent.EventID.String()).Msg("No Red Mountain mech in the battle to locate reinforcement bot, which should never happen...")
-		return
-	}
-
-	if len(aliveWarMachines) > 0 {
-		// random pick one of the red mountain postion
-		wm := aliveWarMachines[rand.Intn(len(aliveWarMachines))]
-
-		// set cell
-		abilityEvent.TriggeredOnCellX = &wm.X
-		abilityEvent.TriggeredOnCellY = &wm.Y
-		abilityEvent.GameLocation = &server.GameLocation{
-			X: wm.X,
-			Y: wm.Y,
-		}
-
-		return
-	}
-
-	wm := rmw[rand.Intn(len(rmw))]
-	// set cell
-	abilityEvent.TriggeredOnCellX = &wm.X
-	abilityEvent.TriggeredOnCellY = &wm.Y
-
-	abilityEvent.GameLocation = &server.GameLocation{
-		X: wm.X,
-		Y: wm.Y,
-	}
 }
 
 func (btl *Battle) endAbilities() {
@@ -1369,21 +1393,6 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		return nil
 	}
 
-	// Indexes correspond to the game_client_ability_id in the db
-	abilityDetails := make([]*AbilityDetail, 20)
-	// Nuke
-	abilityDetails[1] = &AbilityDetail{
-		Radius: 5200,
-	}
-	// EMP
-	abilityDetails[12] = &AbilityDetail{
-		Radius: 10000,
-	}
-	// BLACKOUT
-	abilityDetails[16] = &AbilityDetail{
-		Radius: 20000,
-	}
-
 	// Current Battle Zone
 	var battleZone *server.BattleZone
 	if len(btl.battleZones) > 0 {
@@ -1426,11 +1435,12 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
 			Stats:              w.Stats,
+			Status:             w.Status,
 		}
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
@@ -1479,12 +1489,13 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 			Shield:             w.Shield,
 			ShieldRechargeRate: w.ShieldRechargeRate,
 			Stats:              w.Stats,
+			Status:             w.Status,
 		}
 
 		// Hidden/Incognito
 		if wCopy.Position != nil {
 			hideMech := btl._playerAbilityManager.IsWarMachineHidden(wCopy.Hash)
-			hideMech = btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
+			hideMech = hideMech || btl._playerAbilityManager.IsWarMachineInBlackout(server.GameLocation{
 				X: wCopy.Position.X,
 				Y: wCopy.Position.Y,
 			})
@@ -1507,7 +1518,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		WarMachines:        wms,
 		SpawnedAI:          ais,
 		WarMachineLocation: lt,
-		AbilityDetails:     abilityDetails,
+		AbilityDetails:     btl.abilityDetails,
 	}
 }
 
@@ -1708,7 +1719,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	}
 
 	var destroyedWarMachine *WarMachine
-	dHash := dp.DestroyedWarMachineEvent.DestroyedWarMachineHash
+	dHash := dp.DestroyedWarMachineHash
 	for i, wm := range btl.WarMachines {
 		if wm.Hash == dHash {
 			// set health to 0
@@ -1750,9 +1761,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var killedByUser *UserBrief
 		var killByWarMachine *WarMachine
-		if dp.DestroyedWarMachineEvent.KillByWarMachineHash != "" {
+		if dp.KilledByWarMachineHash != "" {
 			for _, wm := range btl.WarMachines {
-				if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
+				if wm.Hash == dp.KilledByWarMachineHash {
 					killByWarMachine = wm
 					// update user kill
 					if wm.OwnedByID != "" {
@@ -1785,12 +1796,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					break
 				}
 			}
-		} else if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+		} else if dp.RelatedEventIDString != "" {
 			// check related event id
 			var abl *boiler.BattleAbilityTrigger
 			var err error
 			retAbl := func() (*boiler.BattleAbilityTrigger, error) {
-				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
+				abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.RelatedEventIDString)).One(gamedb.StdConn)
 				return abl, err
 			}
 
@@ -1810,7 +1821,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			}
 
 			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
+				gamelog.L.Error().Str("log_name", "battle arena").Str("related event id", dp.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
 			}
 			// get ability via offering id
 
@@ -1819,7 +1830,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err == nil {
 					// update kill by user and killed by information
 					killedByUser = currentUser
-					dp.DestroyedWarMachineEvent.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
+					dp.KilledBy = fmt.Sprintf("(%s)", abl.AbilityLabel)
 				}
 
 				// update player ability kills and faction kills
@@ -1849,7 +1860,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					}
 
 					// sent instance to system ban manager
-					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.DestroyedWarMachineEvent.RelatedEventIDString)
+					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
 
 				} else {
 					// update user kill
@@ -1892,11 +1903,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		var warMachineID uuid.UUID
 		var killByWarMachineID uuid.UUID
-		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)
+		ids, err := db.MechIDsFromHash(destroyedWarMachine.Hash, dp.KilledByWarMachineHash)
 
 		if err != nil || len(ids) == 0 {
 			gamelog.L.Warn().
-				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
+				Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.KilledByWarMachineHash)).
 				Str("battle_id", btl.ID).
 				Err(err).
 				Msg("can't retrieve mech ids")
@@ -1905,18 +1916,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			warMachineID = ids[0]
 			if len(ids) > 1 {
 				killByWarMachineID = ids[1]
-			}
-
-			//TODO: implement related id
-			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-				relatedEventuuid, err := uuid.FromString(dp.DestroyedWarMachineEvent.RelatedEventIDString)
-				if err != nil {
-					gamelog.L.Warn().
-						Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
-						Str("battle_id", btl.ID).
-						Msg("can't create uuid from non-empty related event idf")
-				}
-				dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
 			}
 
 			bh := &boiler.BattleHistory{
@@ -1930,8 +1929,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				bh.WarMachineTwoID = null.StringFrom(killByWarMachineID.String())
 			}
 
-			if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
-				bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
+			if dp.RelatedEventIDString != "" {
+				bh.RelatedID = null.StringFrom(dp.RelatedEventIDString)
 			}
 
 			err = bh.Insert(gamedb.StdConn, boil.Infer())
@@ -1970,7 +1969,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		// calc total damage and merge the duplicated damage source
 		totalDamage := 0
 		newDamageHistory := []*DamageHistory{}
-		for _, damage := range dp.DestroyedWarMachineEvent.DamageHistory {
+		for _, damage := range dp.DamageHistory {
 			totalDamage += damage.Amount
 			// check instigator token id exist in the list
 			if damage.InstigatorHash != "" {
@@ -2020,7 +2019,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				Hash:          destroyedWarMachine.Hash,
 				FactionID:     destroyedWarMachine.FactionID,
 			},
-			KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
+			KilledBy: dp.KilledBy,
 		}
 		// get total damage amount for calculating percentage
 		for _, damage := range newDamageHistory {
@@ -2254,9 +2253,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Name:        TruncateString(mech.Name, 20),
 			Label:       mech.Label,
 			FactionID:   mech.FactionID.String,
-			MaxHealth:   uint32(mech.MaxHitpoints),
-			Health:      uint32(mech.MaxHitpoints),
-			Speed:       mech.Speed,
+			MaxHealth:   uint32(mech.BoostedMaxHitpoints),
+			Health:      uint32(mech.BoostedMaxHitpoints),
+			Speed:       mech.BoostedSpeed,
 			Tier:        mech.Tier,
 			Image:       mech.ImageURL.String,
 			ImageAvatar: mech.AvatarURL.String,
@@ -2281,13 +2280,14 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				BattlesSurvived: mech.Stats.BattlesSurvived,
 				TotalLosses:     mech.Stats.TotalLosses,
 			},
+			Status: &Status{},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
 			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
 				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
 				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
-				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
+				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.BoostedRechargeRate)
 			}
 		}
 
@@ -2297,14 +2297,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		if mech.Model != nil {
-			model, ok := ModelMap[mech.Model.Label]
-			if !ok {
-				model = "WREX"
-			}
-			newWarMachine.Model = model
-			newWarMachine.ModelID = mech.ModelID
+		model, ok := ModelMap[mech.Label]
+		if !ok {
+			model = "WREX"
 		}
+		newWarMachine.Model = model
+		newWarMachine.ModelID = mech.BlueprintID
 
 		// check model skin
 		if mech.ChassisSkin != nil {
@@ -2313,6 +2311,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.Skin = mappedSkin
 			}
 		}
+		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")

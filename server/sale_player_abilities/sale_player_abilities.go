@@ -319,6 +319,7 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 				}
 			}
 
+			updatedPrices := []*SaleAbilityPriceResponse{}
 			for _, s := range pas.salePlayerAbilities {
 				s.CurrentPrice = s.CurrentPrice.Mul(oneHundred.Sub(pas.ReductionPercentage).Div(oneHundred))
 				if s.CurrentPrice.LessThan(pas.FloorPrice) {
@@ -331,12 +332,14 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 					continue
 				}
 
-				// Broadcast updated sale ability price
-				ws.PublishMessage("/secure/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
+				updatedPrices = append(updatedPrices, &SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
 			}
+
+			// Broadcast updated sale ability prices
+			ws.PublishMessage("/secure/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, updatedPrices)
 		case claim := <-pas.Claim:
 			if saleAbility, ok := pas.salePlayerAbilities[claim.SaleID]; ok {
 				saleAbility.AmountSold = saleAbility.AmountSold + 1
@@ -361,11 +364,16 @@ func (pas *SalePlayerAbilityManager) SalePlayerAbilitiesUpdater() {
 					break
 				}
 
+				updatedPrices := []*SaleAbilityPriceResponse{}
+				for _, s := range pas.salePlayerAbilities {
+					updatedPrices = append(updatedPrices, &SaleAbilityPriceResponse{
+						ID:           s.ID,
+						CurrentPrice: s.CurrentPrice.StringFixed(0),
+					})
+				}
+
 				// Broadcast updated sale ability price
-				ws.PublishMessage("/secure/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
-					ID:           saleAbility.ID,
-					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
-				})
+				ws.PublishMessage("/secure/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, updatedPrices)
 			}
 		}
 	}

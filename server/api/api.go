@@ -208,6 +208,7 @@ func NewAPI(
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
 			r.Mount("/player_abilities", PlayerAbilitiesRouter(api))
+			r.Mount("/replay", BattleReplayRouter(api))
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 			r.Mount("/system_messages", SystemMessagesRouter(api))
 
@@ -249,7 +250,7 @@ func NewAPI(
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)
-				s.WS("/arena/{arena_id}/deadly_ability_countdown_list", server.HubKeyDeadlyAbilityCountdownList, api.DeadlyAbilityPendingList)
+				s.WS("/arena/{arena_id}/mini_map_ability_display_list", server.HubKeyMiniMapAbilityDisplayList, api.MiniMapAbilityDisplayList)
 				s.WS("/live_viewer_count", HubKeyViewerLiveCountUpdated, api.LiveViewerCount)
 			}))
 

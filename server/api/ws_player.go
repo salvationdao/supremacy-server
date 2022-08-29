@@ -140,29 +140,43 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to sync passport db")
 	}
 
-	if pc.API.Config.Environment == "staging" || pc.API.Config.Environment == "development" {
+	if !server.IsProductionEnv() {
+		// assign mechs base on player's faction
+		labelList := []string{}
+		switch user.FactionID.String {
+		case server.RedMountainFactionID:
+			labelList = []string{
+				"Red Mountain Olympus Mons LY07 Villain Chassis",
+				"Red Mountain Olympus Mons LY07 Evo Chassis",
+				"Red Mountain Olympus Mons LY07 Red Blue Chassis",
+			}
+		case server.BostonCyberneticsFactionID:
+			labelList = []string{
+				"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
+				"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
+				"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
+			}
+
+		case server.ZaibatsuFactionID:
+			labelList = []string{
+				"Zaibatsu Tenshi Mk1 White Neon Chassis",
+				"Zaibatsu Tenshi Mk1 Destroyer Chassis",
+				"Zaibatsu Tenshi Mk1 Evangelica Chassis",
+			}
+		}
+
 		templateIDS := []string{}
 		templates, err := boiler.Templates(
-			boiler.TemplateWhere.Label.IN(
-				[]string{
-					"Boston Cybernetics Law Enforcer X-1000 White Blue Chassis",
-					"Red Mountain Olympus Mons LY07 Villain Chassis",
-					"Zaibatsu Tenshi Mk1 White Neon Chassis",
-					"Boston Cybernetics Law Enforcer X-1000 BioHazard Chassis",
-					"Red Mountain Olympus Mons LY07 Evo Chassis",
-					"Zaibatsu Tenshi Mk1 Destroyer Chassis",
-					"Boston Cybernetics Law Enforcer X-1000 Crystal Blue Chassis",
-					"Zaibatsu Tenshi Mk1 Evangelica Chassis",
-					"Red Mountain Olympus Mons LY07 Red Blue Chassis",
-				},
-			),
+			boiler.TemplateWhere.Label.IN(labelList),
 		).All(tx)
 		if err != nil {
 			return terror.Error(err, "Failed to sync passport db")
 		}
 
-		for _, tmpl := range templates {
-			templateIDS = append(templateIDS, tmpl.ID)
+		for i := 0; i < 3; i++ {
+			for _, tmpl := range templates {
+				templateIDS = append(templateIDS, tmpl.ID)
+			}
 		}
 
 		err = pc.API.Passport.AssignTemplateToUser(&xsyn_rpcclient.AssignTemplateReq{

@@ -138,7 +138,7 @@ var MechModelSkinCompatibilityRels = struct {
 // mechModelSkinCompatibilityR is where relationships are stored.
 type mechModelSkinCompatibilityR struct {
 	BlueprintMechSkin *BlueprintMechSkin `boiler:"BlueprintMechSkin" boil:"BlueprintMechSkin" json:"BlueprintMechSkin" toml:"BlueprintMechSkin" yaml:"BlueprintMechSkin"`
-	MechModel         *MechModel         `boiler:"MechModel" boil:"MechModel" json:"MechModel" toml:"MechModel" yaml:"MechModel"`
+	MechModel         *BlueprintMech     `boiler:"MechModel" boil:"MechModel" json:"MechModel" toml:"MechModel" yaml:"MechModel"`
 }
 
 // NewStruct creates a new relationship struct
@@ -414,15 +414,15 @@ func (o *MechModelSkinCompatibility) BlueprintMechSkin(mods ...qm.QueryMod) blue
 }
 
 // MechModel pointed to by the foreign key.
-func (o *MechModelSkinCompatibility) MechModel(mods ...qm.QueryMod) mechModelQuery {
+func (o *MechModelSkinCompatibility) MechModel(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechModelID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_models\"")
+	query := BlueprintMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mechs\"")
 
 	return query
 }
@@ -573,8 +573,8 @@ func (mechModelSkinCompatibilityL) LoadMechModel(e boil.Executor, singular bool,
 	}
 
 	query := NewQuery(
-		qm.From(`mech_models`),
-		qm.WhereIn(`mech_models.id in ?`, args...),
+		qm.From(`blueprint_mechs`),
+		qm.WhereIn(`blueprint_mechs.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -582,19 +582,19 @@ func (mechModelSkinCompatibilityL) LoadMechModel(e boil.Executor, singular bool,
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
+		return errors.Wrap(err, "failed to eager load BlueprintMech")
 	}
 
-	var resultSlice []*MechModel
+	var resultSlice []*BlueprintMech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMech")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_models")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_mechs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mechs")
 	}
 
 	if len(mechModelSkinCompatibilityAfterSelectHooks) != 0 {
@@ -613,9 +613,9 @@ func (mechModelSkinCompatibilityL) LoadMechModel(e boil.Executor, singular bool,
 		foreign := resultSlice[0]
 		object.R.MechModel = foreign
 		if foreign.R == nil {
-			foreign.R = &mechModelR{}
+			foreign.R = &blueprintMechR{}
 		}
-		foreign.R.MechModelSkinCompatibilities = append(foreign.R.MechModelSkinCompatibilities, object)
+		foreign.R.MechModelMechModelSkinCompatibilities = append(foreign.R.MechModelMechModelSkinCompatibilities, object)
 		return nil
 	}
 
@@ -624,9 +624,9 @@ func (mechModelSkinCompatibilityL) LoadMechModel(e boil.Executor, singular bool,
 			if local.MechModelID == foreign.ID {
 				local.R.MechModel = foreign
 				if foreign.R == nil {
-					foreign.R = &mechModelR{}
+					foreign.R = &blueprintMechR{}
 				}
-				foreign.R.MechModelSkinCompatibilities = append(foreign.R.MechModelSkinCompatibilities, local)
+				foreign.R.MechModelMechModelSkinCompatibilities = append(foreign.R.MechModelMechModelSkinCompatibilities, local)
 				break
 			}
 		}
@@ -683,8 +683,8 @@ func (o *MechModelSkinCompatibility) SetBlueprintMechSkin(exec boil.Executor, in
 
 // SetMechModel of the mechModelSkinCompatibility to the related item.
 // Sets o.R.MechModel to related.
-// Adds o to related.R.MechModelSkinCompatibilities.
-func (o *MechModelSkinCompatibility) SetMechModel(exec boil.Executor, insert bool, related *MechModel) error {
+// Adds o to related.R.MechModelMechModelSkinCompatibilities.
+func (o *MechModelSkinCompatibility) SetMechModel(exec boil.Executor, insert bool, related *BlueprintMech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -717,11 +717,11 @@ func (o *MechModelSkinCompatibility) SetMechModel(exec boil.Executor, insert boo
 	}
 
 	if related.R == nil {
-		related.R = &mechModelR{
-			MechModelSkinCompatibilities: MechModelSkinCompatibilitySlice{o},
+		related.R = &blueprintMechR{
+			MechModelMechModelSkinCompatibilities: MechModelSkinCompatibilitySlice{o},
 		}
 	} else {
-		related.R.MechModelSkinCompatibilities = append(related.R.MechModelSkinCompatibilities, o)
+		related.R.MechModelMechModelSkinCompatibilities = append(related.R.MechModelMechModelSkinCompatibilities, o)
 	}
 
 	return nil

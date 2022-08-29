@@ -42,13 +42,13 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 		qm.Select(fmt.Sprintf(`
 				distinct on (%[1]s) %[1]s as skin_id,
                                     %s    as type,
-                                    %s           as ownership_id,
-                                    %s      as static_id
+                                    %s    as ownership_id,
+                                    %s    as static_id
 		`,
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ModelID)),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID)),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
@@ -154,6 +154,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				}
 				weaponSkinCollectionID = &weaponSkinCollection.ID
 
+
 				weaponCollection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(weapon.ID), qm.Select(boiler.CollectionItemColumns.ID)).One(gamedb.StdConn)
 				if err != nil {
 					continue
@@ -162,7 +163,7 @@ func GetUserMechHangarItems(userID string) ([]*SiloType, error) {
 				newAttribute := MechSiloAccessories{
 					Type:        "weapon",
 					OwnershipID: weaponCollection.ID,
-					StaticID:    weapon.WeaponModelID,
+					StaticID:    weapon.BlueprintID,
 					Skin: &SiloSkin{
 						Type:        "skin",
 						OwnershipID: weaponSkinCollectionID,
@@ -267,7 +268,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 			continue
 		}
 
-		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(gamedb.StdConn)
+		weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(gamedb.StdConn)
 		if err != nil {
 			continue
 		}
@@ -275,7 +276,7 @@ func GetUserWeaponHangarItems(userID string) ([]*SiloType, error) {
 		weaponSilo := &SiloType{
 			Type:        ownedWeapon.ItemType,
 			OwnershipID: ownedWeapon.ID,
-			StaticID:    &weaponBlueprint.R.WeaponModel.ID,
+			StaticID:    &weaponBlueprint.ID,
 		}
 
 		weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(gamedb.StdConn)
@@ -310,7 +311,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 	mechSiloType := &SiloType{
 		Type:        "mech",
 		OwnershipID: mech.CollectionItemID,
-		StaticID:    &mech.Model.ID,
+		StaticID:    &mech.BlueprintID,
 	}
 
 	var mechAttributes []MechSiloAccessories
@@ -376,7 +377,7 @@ func GetUserMechHangarItemsWithMechID(mech *server.Mech, userID string, trx boil
 			newAttribute := MechSiloAccessories{
 				Type:        "weapon",
 				OwnershipID: weaponCollection.ID,
-				StaticID:    weapon.WeaponModelID,
+				StaticID:    weapon.BlueprintID,
 				Skin: &SiloSkin{
 					Type:        "skin",
 					OwnershipID: weaponSkinCollectionID,
@@ -423,7 +424,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 		return nil, terror.Error(fmt.Errorf("weapon not availiable in hangar"), "Weapon not available on hangar by itself")
 	}
 
-	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID), qm.Load(boiler.BlueprintWeaponRels.WeaponModel)).One(trx)
+	weaponBlueprint, err := boiler.BlueprintWeapons(boiler.BlueprintWeaponWhere.ID.EQ(weapon.BlueprintID)).One(trx)
 	if err != nil {
 		return nil, terror.Error(err, "Failed to get blueprint weapon")
 	}
@@ -431,7 +432,7 @@ func GetUserWeaponHangarItemsWithID(weapon *server.Weapon, userID string, trx bo
 	weaponSilo := &SiloType{
 		Type:        weapon.CollectionItem.ItemType,
 		OwnershipID: weapon.CollectionItemID,
-		StaticID:    &weaponBlueprint.R.WeaponModel.ID,
+		StaticID:    &weaponBlueprint.ID,
 	}
 
 	weaponSkin, err := boiler.WeaponSkins(boiler.WeaponSkinWhere.ID.EQ(weapon.EquippedWeaponSkinID)).One(trx)

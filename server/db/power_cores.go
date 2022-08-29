@@ -121,7 +121,10 @@ func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) err
 	}
 
 	// get mech
-	mech, err := boiler.FindMech(tx, mechID)
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+		qm.Load(boiler.MechRels.Blueprint),
+		).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
@@ -135,9 +138,9 @@ func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) err
 	}
 
 	// wrong size
-	if mech.PowerCoreSize != powerCore.Size {
+	if mech.R.Blueprint.PowerCoreSize != powerCore.Size {
 		err := fmt.Errorf("powercore size mismatch")
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreSize", mech.PowerCoreSize).Str("powerCore.Size", powerCore.Size).Msg("this powercore doesn't fit")
+		gamelog.L.Error().Err(err).Str("mech.PowerCoreSize", mech.R.Blueprint.PowerCoreSize).Str("powerCore.Size", powerCore.Size).Msg("this powercore doesn't fit")
 		return terror.Error(err, "This power core doesn't fit this war machine.")
 	}
 

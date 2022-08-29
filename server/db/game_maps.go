@@ -50,8 +50,8 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 		gameMap.Height,
 		gameMap.CellsX,
 		gameMap.CellsY,
-		gameMap.TopPixels,
-		gameMap.LeftPixels,
+		gameMap.PixelTop,
+		gameMap.PixelLeft,
 		gameMap.DisabledCells,
 	)
 	if err != nil {
