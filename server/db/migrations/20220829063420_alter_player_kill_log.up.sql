@@ -9,7 +9,7 @@ UPDATE
     player_kill_log
 SET is_verified = TRUE;
 
-CREATE INDEX IF NOT EXISTS idx_player_kill_log_team_kill_record_search ON player_kill_log (game_ability_id, is_team_kill, is_verified, ability_offering_id);
+CREATE INDEX IF NOT EXISTS idx_player_kill_log_team_kill_record_search ON player_kill_log (player_id, game_ability_id, is_team_kill, is_verified);
 
 DROP TYPE IF EXISTS ABILITY_TRIGGER_TYPE;
 CREATE TYPE ABILITY_TRIGGER_TYPE AS ENUM ('BATTLE_ABILITY','MECH_ABILITY','PLAYER_ABILITY');

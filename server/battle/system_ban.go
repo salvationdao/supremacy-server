@@ -225,14 +225,16 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 		ga := bat.R.GameAbility
 		q := fmt.Sprintf(
 			`
-			SELECT DISTINCT (%[2]s) FROM %[1]s 
-			WHERE %[3]s = $1 AND %[4]s = TRUE AND %[5]s = FALSE AND %[2]s NOTNULL;
+			SELECT DISTINCT (%[2]s) 
+			FROM %[1]s 
+			WHERE %[3]s = $1 AND %[4]s = $2 AND %[5]s = TRUE AND %[6]s = FALSE;
 		`,
 			boiler.TableNames.PlayerKillLog,               // 1
 			boiler.PlayerKillLogColumns.AbilityOfferingID, // 2
-			boiler.PlayerKillLogColumns.GameAbilityID,     // 3
-			boiler.PlayerKillLogColumns.IsTeamKill,        // 4
-			boiler.PlayerKillLogColumns.IsVerified,        // 5
+			boiler.PlayerKillLogColumns.PlayerID,          // 3
+			boiler.PlayerKillLogColumns.GameAbilityID,     // 4
+			boiler.PlayerKillLogColumns.IsTeamKill,        // 5
+			boiler.PlayerKillLogColumns.IsVerified,        // 6
 		)
 
 		rows, err := gamedb.StdConn.Query(q, ga.ID)
