@@ -1300,6 +1300,7 @@ type PlayerAssetMechSubmodel struct {
 	MarketLocked        bool           `json:"market_locked"`
 	XsynLocked          bool           `json:"xsyn_locked"`
 	LockedToMarketplace bool           `json:"locked_to_marketplace"`
+	Level               int            `json:"level"`
 
 	EquippedOn string `json:"equipped_on"`
 	ID         string `json:"id"`
@@ -1377,6 +1378,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 			XsynLocked:          s.CollectionItem.XsynLocked,
 			MarketLocked:        s.CollectionItem.MarketLocked,
 			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
+			Level:               s.Level,
 		})
 	}
 
@@ -1401,6 +1403,7 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 	// need a list of blueprint mechs that the user owns
 	rows, err := boiler.NewQuery(
 		qm.Select(
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.DefaultChassisSkinID),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BrandID),
@@ -1414,7 +1417,7 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Collection),
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.AvailabilityID),
-			),
+		),
 		qm.From(boiler.TableNames.CollectionItems),
 		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
@@ -1429,7 +1432,8 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
 		)),
-		).Query(gamedb.StdConn)
+		qm.GroupBy(qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID)),
+	).Query(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("issue getting mech model list")
 		return err
@@ -1438,19 +1442,20 @@ func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.
 	for rows.Next() {
 		mbp := &server.BlueprintMech{}
 		err = rows.Scan(
-				&mbp.Label,
-				&mbp.DefaultChassisSkinID,
-				&mbp.BrandID,
-				&mbp.MechType,
-				&mbp.RepairBlocks,
-				&mbp.BoostStat,
-				&mbp.WeaponHardpoints,
-				&mbp.PowerCoreSize,
-				&mbp.UtilitySlots,
-				&mbp.Speed,
-				&mbp.MaxHitpoints,
-				&mbp.Collection,
-				&mbp.AvailabilityID,
+			&mbp.ID,
+			&mbp.Label,
+			&mbp.DefaultChassisSkinID,
+			&mbp.BrandID,
+			&mbp.MechType,
+			&mbp.RepairBlocks,
+			&mbp.BoostStat,
+			&mbp.WeaponHardpoints,
+			&mbp.PowerCoreSize,
+			&mbp.UtilitySlots,
+			&mbp.Speed,
+			&mbp.MaxHitpoints,
+			&mbp.Collection,
+			&mbp.AvailabilityID,
 		)
 		if err != nil {
 			l.Error().Err(err).Msg("issue parsing mech blueprints")
@@ -1639,6 +1644,7 @@ func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx contex
 			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 		)),
+		qm.GroupBy(qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID)),
 	).Query(gamedb.StdConn)
 	if err != nil {
 		l.Error().Err(err).Msg("issue getting weapon model list")

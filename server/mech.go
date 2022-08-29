@@ -76,7 +76,6 @@ type Mech struct {
 type BlueprintMech struct {
 	ID                   string    `json:"id"`
 	Label                string    `json:"label"`
-	Skin                 string    `json:"skin"`
 	WeaponHardpoints     int       `json:"weapon_hardpoints"`
 	UtilitySlots         int       `json:"utility_slots"`
 	Speed                int       `json:"speed"`
@@ -86,11 +85,11 @@ type BlueprintMech struct {
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
 	Collection           string    `json:"collection"`
 
-	BrandID        string `json:"brand_id"`
-	MechType       string `json:"mech_type"`
-	RepairBlocks   int    `json:"repair_blocks"`
-	BoostStat      string `json:"boost_stat"`
-	AvailabilityID string `json:"availability_id"`
+	BrandID        string      `json:"brand_id"`
+	MechType       string      `json:"mech_type"`
+	RepairBlocks   int         `json:"repair_blocks"`
+	BoostStat      string      `json:"boost_stat"`
+	AvailabilityID null.String `json:"availability_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`

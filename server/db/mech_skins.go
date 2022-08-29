@@ -246,14 +246,12 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 				))
 		}
 	}
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, err
 	}
-
 	// Limit/Offset
 	if opts.PageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(opts.PageSize))
@@ -279,6 +277,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LockedToMech),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.GenesisTokenID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LimitedReleaseTokenID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.Level),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
@@ -344,6 +343,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			&mc.LockedToMech,
 			&mc.GenesisTokenID,
 			&mc.LimitedReleaseTokenID,
+			&mc.Level,
 			&mc.BlueprintID,
 			&mc.Label,
 			&mc.Tier,
