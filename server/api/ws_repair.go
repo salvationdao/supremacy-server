@@ -327,7 +327,7 @@ func (api *API) RepairOfferClose(ctx context.Context, user *boiler.Player, key s
 			return terror.Error(fmt.Errorf("offer is closed"), "The offer is already closed.")
 		}
 
-		err = api.ArenaManager.CloseRepairOffers([]*boiler.RepairOffer{ro}, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+		err = api.ArenaManager.CloseRepairOffers([]string{ro.ID}, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("repair offer", ro).Msg("Failed to close repair offer.")
 			return terror.Error(err, "Failed to close repair offer.")
@@ -706,13 +706,22 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		return terror.Error(err, "Failed to load incomplete repair offer")
 	}
 
+	if len(ros) == 0 {
+		reply(true)
+		return nil
+	}
+
+	roIDs := []string{}
+	for _, ro := range ros {
+		roIDs = append(roIDs, ro.ID)
+	}
+
 	err = api.ArenaManager.SendRepairFunc(func() error {
-		err = api.ArenaManager.CloseRepairOffers(ros, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
+		err = api.ArenaManager.CloseRepairOffers(roIDs, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
 			return terror.Error(err, "Failed to close repair offer.")
 		}
-
 		return nil
 	})
 	if err != nil {

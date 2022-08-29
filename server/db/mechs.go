@@ -1042,7 +1042,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 						opts.SortDir,
 					)))
 		} else if opts.SortBy == "rarity" {
-			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID), opts.SortDir))
+			queryMods = append(queryMods, GenerateTierSort(qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier), opts.SortDir))
 		}
 	} else {
 		queryMods = append(queryMods,

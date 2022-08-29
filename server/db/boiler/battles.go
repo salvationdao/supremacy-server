@@ -141,6 +141,7 @@ var BattleRels = struct {
 	BattleMechs              string
 	BattleQueues             string
 	BattleQueueNotifications string
+	BattleReplays            string
 	Players                  string
 	BattleWins               string
 	ChatHistories            string
@@ -164,6 +165,7 @@ var BattleRels = struct {
 	BattleMechs:              "BattleMechs",
 	BattleQueues:             "BattleQueues",
 	BattleQueueNotifications: "BattleQueueNotifications",
+	BattleReplays:            "BattleReplays",
 	Players:                  "Players",
 	BattleWins:               "BattleWins",
 	ChatHistories:            "ChatHistories",
@@ -190,6 +192,7 @@ type battleR struct {
 	BattleMechs              BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
 	BattleQueues             BattleQueueSlice             `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
 	BattleQueueNotifications BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
+	BattleReplays            BattleReplaySlice            `boiler:"BattleReplays" boil:"BattleReplays" json:"BattleReplays" toml:"BattleReplays" yaml:"BattleReplays"`
 	Players                  PlayerSlice                  `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	BattleWins               BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	ChatHistories            ChatHistorySlice             `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
@@ -721,6 +724,27 @@ func (o *Battle) BattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotifi
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_queue_notifications\".*"})
+	}
+
+	return query
+}
+
+// BattleReplays retrieves all the battle_replay's BattleReplays with an executor.
+func (o *Battle) BattleReplays(mods ...qm.QueryMod) battleReplayQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_replays\".\"battle_id\"=?", o.ID),
+	)
+
+	query := BattleReplays(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_replays\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_replays\".*"})
 	}
 
 	return query
@@ -2280,6 +2304,104 @@ func (battleL) LoadBattleQueueNotifications(e boil.Executor, singular bool, mayb
 				local.R.BattleQueueNotifications = append(local.R.BattleQueueNotifications, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleQueueNotificationR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleReplays allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadBattleReplays(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_replays`),
+		qm.WhereIn(`battle_replays.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_replays")
+	}
+
+	var resultSlice []*BattleReplay
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_replays")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_replays")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_replays")
+	}
+
+	if len(battleReplayAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleReplays = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleReplayR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.BattleReplays = append(local.R.BattleReplays, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleReplayR{}
 				}
 				foreign.R.Battle = local
 				break
@@ -4096,6 +4218,58 @@ func (o *Battle) RemoveBattleQueueNotifications(exec boil.Executor, related ...*
 		}
 	}
 
+	return nil
+}
+
+// AddBattleReplays adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.BattleReplays.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddBattleReplays(exec boil.Executor, insert bool, related ...*BattleReplay) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_replays\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleReplayPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			BattleReplays: related,
+		}
+	} else {
+		o.R.BattleReplays = append(o.R.BattleReplays, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleReplayR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
 	return nil
 }
 

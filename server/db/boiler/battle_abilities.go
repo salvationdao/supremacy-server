@@ -27,8 +27,9 @@ type BattleAbility struct {
 	Label                  string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	CooldownDurationSecond int       `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldown_duration_second" toml:"cooldown_duration_second" yaml:"cooldown_duration_second"`
 	Description            string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	DeletedAt              null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	MaximumCommanderCount  int       `boiler:"maximum_commander_count" boil:"maximum_commander_count" json:"maximum_commander_count" toml:"maximum_commander_count" yaml:"maximum_commander_count"`
+	DeletedAt              null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	KillingPowerLevel      string    `boiler:"killing_power_level" boil:"killing_power_level" json:"killing_power_level" toml:"killing_power_level" yaml:"killing_power_level"`
 
 	R *battleAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,15 +40,17 @@ var BattleAbilityColumns = struct {
 	Label                  string
 	CooldownDurationSecond string
 	Description            string
-	DeletedAt              string
 	MaximumCommanderCount  string
+	DeletedAt              string
+	KillingPowerLevel      string
 }{
 	ID:                     "id",
 	Label:                  "label",
 	CooldownDurationSecond: "cooldown_duration_second",
 	Description:            "description",
-	DeletedAt:              "deleted_at",
 	MaximumCommanderCount:  "maximum_commander_count",
+	DeletedAt:              "deleted_at",
+	KillingPowerLevel:      "killing_power_level",
 }
 
 var BattleAbilityTableColumns = struct {
@@ -55,15 +58,17 @@ var BattleAbilityTableColumns = struct {
 	Label                  string
 	CooldownDurationSecond string
 	Description            string
-	DeletedAt              string
 	MaximumCommanderCount  string
+	DeletedAt              string
+	KillingPowerLevel      string
 }{
 	ID:                     "battle_abilities.id",
 	Label:                  "battle_abilities.label",
 	CooldownDurationSecond: "battle_abilities.cooldown_duration_second",
 	Description:            "battle_abilities.description",
-	DeletedAt:              "battle_abilities.deleted_at",
 	MaximumCommanderCount:  "battle_abilities.maximum_commander_count",
+	DeletedAt:              "battle_abilities.deleted_at",
+	KillingPowerLevel:      "battle_abilities.killing_power_level",
 }
 
 // Generated where
@@ -73,15 +78,17 @@ var BattleAbilityWhere = struct {
 	Label                  whereHelperstring
 	CooldownDurationSecond whereHelperint
 	Description            whereHelperstring
-	DeletedAt              whereHelpernull_Time
 	MaximumCommanderCount  whereHelperint
+	DeletedAt              whereHelpernull_Time
+	KillingPowerLevel      whereHelperstring
 }{
 	ID:                     whereHelperstring{field: "\"battle_abilities\".\"id\""},
 	Label:                  whereHelperstring{field: "\"battle_abilities\".\"label\""},
 	CooldownDurationSecond: whereHelperint{field: "\"battle_abilities\".\"cooldown_duration_second\""},
 	Description:            whereHelperstring{field: "\"battle_abilities\".\"description\""},
-	DeletedAt:              whereHelpernull_Time{field: "\"battle_abilities\".\"deleted_at\""},
 	MaximumCommanderCount:  whereHelperint{field: "\"battle_abilities\".\"maximum_commander_count\""},
+	DeletedAt:              whereHelpernull_Time{field: "\"battle_abilities\".\"deleted_at\""},
+	KillingPowerLevel:      whereHelperstring{field: "\"battle_abilities\".\"killing_power_level\""},
 }
 
 // BattleAbilityRels is where relationship names are stored.
@@ -108,9 +115,9 @@ func (*battleAbilityR) NewStruct() *battleAbilityR {
 type battleAbilityL struct{}
 
 var (
-	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description", "deleted_at", "maximum_commander_count"}
+	battleAbilityAllColumns            = []string{"id", "label", "cooldown_duration_second", "description", "maximum_commander_count", "deleted_at", "killing_power_level"}
 	battleAbilityColumnsWithoutDefault = []string{"label", "cooldown_duration_second", "description"}
-	battleAbilityColumnsWithDefault    = []string{"id", "deleted_at", "maximum_commander_count"}
+	battleAbilityColumnsWithDefault    = []string{"id", "maximum_commander_count", "deleted_at", "killing_power_level"}
 	battleAbilityPrimaryKeyColumns     = []string{"id"}
 	battleAbilityGeneratedColumns      = []string{}
 )

@@ -19,6 +19,7 @@ type MechSkin struct {
 	Label                 string      `json:"label"`
 	Level                 int         `json:"level"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
+	LockedToMech          bool        `json:"locked_to_mech"`
 	CreatedAt             time.Time   `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails

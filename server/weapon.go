@@ -195,3 +195,13 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		ItemSaleID:           itemSaleID,
 	}
 }
+
+type WeaponModel struct {
+	ID            string      `json:"id"`
+	Label         string      `json:"label"`
+	BrandID       null.String `json:"brand_id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	DefaultSkinID string      `json:"default_skin_id"`
+	WeaponType    string      `json:"weapon_type"`
+	RepairBlocks  int         `json:"repair_blocks"`
+}

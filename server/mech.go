@@ -86,6 +86,12 @@ type BlueprintMech struct {
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
 	Collection           string    `json:"collection"`
 
+	BrandID        string `json:"brand_id"`
+	MechType       string `json:"mech_type"`
+	RepairBlocks   int    `json:"repair_blocks"`
+	BoostStat      string `json:"boost_stat"`
+	AvailabilityID string `json:"availability_id"`
+
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`

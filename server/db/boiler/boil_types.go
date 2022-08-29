@@ -51,6 +51,13 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for AbilityKillingPowerLevel
+const (
+	AbilityKillingPowerLevelDEADLY = "DEADLY"
+	AbilityKillingPowerLevelNORMAL = "NORMAL"
+	AbilityKillingPowerLevelNONE   = "NONE"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
@@ -77,6 +84,13 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 	BattleEventPickup           = "pickup"
+)
+
+// Enum values for RecordingStatus
+const (
+	RecordingStatusRECORDING = "RECORDING"
+	RecordingStatusSTOPPED   = "STOPPED"
+	RecordingStatusIDLE      = "IDLE"
 )
 
 // Enum values for WeaponType
@@ -128,10 +142,24 @@ const (
 
 // Enum values for LocationSelectTypeEnum
 const (
-	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
-	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
-	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
-	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
+	LocationSelectTypeEnumLINE_SELECT          = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
+	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
+)
+
+// Enum values for MiniMapDisplayEffectType
+const (
+	MiniMapDisplayEffectTypeNONE        = "NONE"
+	MiniMapDisplayEffectTypeRANGE       = "RANGE"
+	MiniMapDisplayEffectTypeMECH_PULSE  = "MECH_PULSE"
+	MiniMapDisplayEffectTypeMECH_BORDER = "MECH_BORDER"
+	MiniMapDisplayEffectTypePULSE       = "PULSE"
+	MiniMapDisplayEffectTypeBORDER      = "BORDER"
+	MiniMapDisplayEffectTypeDROP        = "DROP"
+	MiniMapDisplayEffectTypeSHAKE       = "SHAKE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants

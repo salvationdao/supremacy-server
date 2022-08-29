@@ -54,8 +54,11 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
+	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.playerAssetMechSubmodelListHandler)
+	api.SecureUserCommand(HubKeyPlayerMechModelList, pac.playerMechModelListHandler)
+	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.playerAssetWeaponSubmodelListHandler)
+	api.SecureUserCommand(HubKeyPlayerWeaponModelList, pac.playerWeaponModelListHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
-
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
 
@@ -1259,4 +1262,425 @@ func (api *API) GetMaxWeaponStats(w http.ResponseWriter, r *http.Request) (int, 
 	decimal.MarshalJSONWithoutQuotes = false
 
 	return status, resp
+}
+
+const HubKeyplayerAssetMechSubmodelList = "PLAYER:ASSET:MECH:SUBMODEL:LIST"
+
+type PlayerAssetMechSubmodelListRequest struct {
+	Payload struct {
+		Search                   string                `json:"search"`
+		Filter                   *db.ListFilterRequest `json:"filter"`
+		Sort                     *db.ListSortRequest   `json:"sort"`
+		SortBy                   string                `json:"sort_by"`
+		SortDir                  db.SortByDir          `json:"sort_dir"`
+		PageSize                 int                   `json:"page_size"`
+		Page                     int                   `json:"page"`
+		DisplayXsyn              bool                  `json:"display_xsyn"`
+		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed      bool                  `json:"include_market_listed"`
+		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		FilterRarities           []string              `json:"rarities"`
+		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
+		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetMechSubmodelListResp struct {
+	Total     int64                      `json:"total"`
+	Submodels []*PlayerAssetMechSubmodel `json:"submodels"`
+}
+
+type PlayerAssetMechSubmodel struct {
+	Images              *server.Images `json:"images"`
+	CollectionSlug      string         `json:"collection_slug"`
+	Hash                string         `json:"hash"`
+	TokenID             int64          `json:"token_id"`
+	Tier                string         `json:"tier"`
+	OwnerID             string         `json:"owner_id"`
+	MarketLocked        bool           `json:"market_locked"`
+	XsynLocked          bool           `json:"xsyn_locked"`
+	LockedToMarketplace bool           `json:"locked_to_marketplace"`
+
+	EquippedOn string `json:"equipped_on"`
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
+
+	req := &PlayerAssetMechSubmodelListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.MechSkinListOpts{
+		Search:                   req.Payload.Search,
+		Filter:                   req.Payload.Filter,
+		Sort:                     req.Payload.Sort,
+		PageSize:                 req.Payload.PageSize,
+		Page:                     req.Payload.Page,
+		OwnerID:                  user.ID,
+		DisplayXsyn:              req.Payload.DisplayXsyn,
+		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		FilterRarities:           req.Payload.FilterRarities,
+		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
+		SortBy:                   req.Payload.SortBy,
+		SortDir:                  req.Payload.SortDir,
+		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
+	}
+
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, submodels, err := db.MechSkinList(listOpts)
+	if err != nil {
+		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting war machine skin list")
+		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
+	}
+
+	playerAssetMechSubmodel := []*PlayerAssetMechSubmodel{}
+
+	for _, s := range submodels {
+		playerAssetMechSubmodel = append(playerAssetMechSubmodel, &PlayerAssetMechSubmodel{
+			Images: &server.Images{
+				ImageURL:         s.ImageURL,
+				CardAnimationURL: s.CardAnimationURL,
+				AvatarURL:        s.AvatarURL,
+				AnimationURL:     s.AnimationURL,
+				BackgroundColor:  s.BackgroundColor,
+				YoutubeURL:       s.YoutubeURL,
+				LargeImageURL:    s.LargeImageURL,
+			},
+			ID:                  s.ID,
+			Label:               s.Label,
+			EquippedOn:          s.EquippedOn.String,
+			CreatedAt:           s.CreatedAt,
+			CollectionSlug:      s.CollectionItem.CollectionSlug,
+			Hash:                s.CollectionItem.Hash,
+			TokenID:             s.CollectionItem.TokenID,
+			Tier:                s.Tier,
+			OwnerID:             s.CollectionItem.OwnerID,
+			XsynLocked:          s.CollectionItem.XsynLocked,
+			MarketLocked:        s.CollectionItem.MarketLocked,
+			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
+		})
+	}
+
+	reply(&PlayerAssetMechSubmodelListResp{
+		Total:     total,
+		Submodels: playerAssetMechSubmodel,
+	})
+	return nil
+}
+
+const HubKeyPlayerMechModelList = "PLAYER:MECH:MODEL:LIST"
+
+func (pac *PlayerAssetsControllerWS) playerMechModelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerMechModelListHandler").Str("user_id", user.ID).Logger()
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	results := []*server.BlueprintMech{}
+
+	// need a list of blueprint mechs that the user owns
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.DefaultChassisSkinID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BrandID),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MechType),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.RepairBlocks),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.BoostStat),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.WeaponHardpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.PowerCoreSize),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.UtilitySlots),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Speed),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.Collection),
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.AvailabilityID),
+			),
+		qm.From(boiler.TableNames.CollectionItems),
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// inner join mech blueprint
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintMechs,
+			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+		)),
+		).Query(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("issue getting mech model list")
+		return err
+	}
+
+	for rows.Next() {
+		mbp := &server.BlueprintMech{}
+		err = rows.Scan(
+				&mbp.Label,
+				&mbp.DefaultChassisSkinID,
+				&mbp.BrandID,
+				&mbp.MechType,
+				&mbp.RepairBlocks,
+				&mbp.BoostStat,
+				&mbp.WeaponHardpoints,
+				&mbp.PowerCoreSize,
+				&mbp.UtilitySlots,
+				&mbp.Speed,
+				&mbp.MaxHitpoints,
+				&mbp.Collection,
+				&mbp.AvailabilityID,
+		)
+		if err != nil {
+			l.Error().Err(err).Msg("issue parsing mech blueprints")
+			return err
+		}
+		results = append(results, mbp)
+	}
+
+	reply(results)
+	return nil
+}
+
+const HubKeyplayerAssetWeaponSubmodelList = "PLAYER:ASSET:WEAPON:SUBMODEL:LIST"
+
+type PlayerAssetWeaponSubmodelListRequest struct {
+	Payload struct {
+		Search                   string                `json:"search"`
+		Filter                   *db.ListFilterRequest `json:"filter"`
+		Sort                     *db.ListSortRequest   `json:"sort"`
+		SortBy                   string                `json:"sort_by"`
+		SortDir                  db.SortByDir          `json:"sort_dir"`
+		PageSize                 int                   `json:"page_size"`
+		Page                     int                   `json:"page"`
+		DisplayXsyn              bool                  `json:"display_xsyn"`
+		ExcludeMarketLocked      bool                  `json:"exclude_market_locked"`
+		IncludeMarketListed      bool                  `json:"include_market_listed"`
+		DisplayGenesisAndLimited bool                  `json:"display_genesis_and_limited"`
+		FilterRarities           []string              `json:"rarities"`
+		FilterSkinCompatibility  []string              `json:"skin_compatibility"`
+		FilterEquippedStatuses   []string              `json:"equipped_statuses"`
+	} `json:"payload"`
+}
+
+type PlayerAssetWeaponSubmodelListResp struct {
+	Total     int64                        `json:"total"`
+	Submodels []*PlayerAssetWeaponSubmodel `json:"submodels"`
+}
+
+type PlayerAssetWeaponSubmodel struct {
+	Images              *server.Images `json:"images"`
+	CollectionSlug      string         `json:"collection_slug"`
+	Hash                string         `json:"hash"`
+	TokenID             int64          `json:"token_id"`
+	Tier                string         `json:"tier"`
+	OwnerID             string         `json:"owner_id"`
+	MarketLocked        bool           `json:"market_locked"`
+	XsynLocked          bool           `json:"xsyn_locked"`
+	LockedToMarketplace bool           `json:"locked_to_marketplace"`
+
+	EquippedOn string `json:"equipped_on"`
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerAssetWeaponSubmodelListHandler").Str("user_id", user.ID).Logger()
+
+	req := &PlayerAssetWeaponSubmodelListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		l.Error().Err(err).Msg("json unmarshal error")
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
+	listOpts := &db.WeaponSkinListOpts{
+		Search:                   req.Payload.Search,
+		Filter:                   req.Payload.Filter,
+		Sort:                     req.Payload.Sort,
+		PageSize:                 req.Payload.PageSize,
+		Page:                     req.Payload.Page,
+		OwnerID:                  user.ID,
+		DisplayXsyn:              req.Payload.DisplayXsyn,
+		ExcludeMarketLocked:      req.Payload.ExcludeMarketLocked,
+		IncludeMarketListed:      req.Payload.IncludeMarketListed,
+		FilterRarities:           req.Payload.FilterRarities,
+		FilterEquippedStatuses:   req.Payload.FilterEquippedStatuses,
+		SortBy:                   req.Payload.SortBy,
+		SortDir:                  req.Payload.SortDir,
+		DisplayGenesisAndLimited: req.Payload.DisplayGenesisAndLimited,
+		FilterSkinCompatibility:  req.Payload.FilterSkinCompatibility,
+	}
+
+	if req.Payload.SortBy != "" && req.Payload.SortDir.IsValid() {
+		listOpts.SortBy = req.Payload.SortBy
+		listOpts.SortDir = req.Payload.SortDir
+	}
+
+	total, submodels, err := db.WeaponSkinList(listOpts)
+	if err != nil {
+		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting weapon skin list")
+		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
+	}
+
+	playerAssetWeaponSubmodel := []*PlayerAssetWeaponSubmodel{}
+
+	for _, s := range submodels {
+		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, &PlayerAssetWeaponSubmodel{
+			Images: &server.Images{
+				ImageURL:         s.ImageURL,
+				CardAnimationURL: s.CardAnimationURL,
+				AvatarURL:        s.AvatarURL,
+				AnimationURL:     s.AnimationURL,
+				BackgroundColor:  s.BackgroundColor,
+				YoutubeURL:       s.YoutubeURL,
+				LargeImageURL:    s.LargeImageURL,
+			},
+			ID:                  s.ID,
+			Label:               s.Label,
+			EquippedOn:          s.EquippedOn.String,
+			CreatedAt:           s.CreatedAt,
+			CollectionSlug:      s.CollectionItem.CollectionSlug,
+			Hash:                s.CollectionItem.Hash,
+			TokenID:             s.CollectionItem.TokenID,
+			Tier:                s.Tier,
+			OwnerID:             s.CollectionItem.OwnerID,
+			XsynLocked:          s.CollectionItem.XsynLocked,
+			MarketLocked:        s.CollectionItem.MarketLocked,
+			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
+		})
+	}
+
+	reply(&PlayerAssetWeaponSubmodelListResp{
+		Total:     total,
+		Submodels: playerAssetWeaponSubmodel,
+	})
+	return nil
+}
+
+const HubKeyPlayerWeaponModelList = "PLAYER:WEAPON:MODEL:LIST"
+
+func (pac *PlayerAssetsControllerWS) playerWeaponModelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerWeaponModelListHandler").Str("user_id", user.ID).Logger()
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+	results := []*server.BlueprintWeapon{}
+
+	// need a list of blueprint mechs that the user owns
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Label),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Damage),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.GameClientWeaponID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponType),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DefaultDamageType),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DamageFalloff),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DamageFalloffRate),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Spread),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.RateOfFire),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Radius),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.RadiusDamageFalloff),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ProjectileSpeed),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.MaxAmmo),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.PowerCost),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.Collection),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.BrandID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DefaultSkinID),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.IsMelee),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ProjectileAmount),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DotTickDamage),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.DotMaxTicks),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.IsArced),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ChargeTimeSeconds),
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.BurstRateOfFire),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Weapons,
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+		// inner join blueprint weapon
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
+		)),
+	).Query(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("issue getting weapon model list")
+		return err
+	}
+
+	for rows.Next() {
+		wbp := &server.BlueprintWeapon{}
+		err = rows.Scan(
+			&wbp.ID,
+			&wbp.Label,
+			&wbp.Damage,
+			&wbp.GameClientWeaponID,
+			&wbp.WeaponType,
+			&wbp.DefaultDamageType,
+			&wbp.DamageFalloff,
+			&wbp.DamageFalloffRate,
+			&wbp.Spread,
+			&wbp.RateOfFire,
+			&wbp.Radius,
+			&wbp.RadiusDamageFalloff,
+			&wbp.ProjectileSpeed,
+			&wbp.MaxAmmo,
+			&wbp.PowerCost,
+			&wbp.Collection,
+			&wbp.BrandID,
+			&wbp.DefaultSkinID,
+			&wbp.IsMelee,
+			&wbp.ProjectileAmount,
+			&wbp.DotTickDamage,
+			&wbp.DotMaxTicks,
+			&wbp.IsArced,
+			&wbp.ChargeTimeSeconds,
+			&wbp.BurstRateOfFire,
+		)
+		if err != nil {
+			l.Error().Err(err).Msg("issue parsing weapon blueprints")
+			return err
+		}
+		results = append(results, wbp)
+	}
+
+	reply(results)
+	return nil
 }

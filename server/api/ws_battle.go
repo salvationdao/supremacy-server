@@ -299,3 +299,19 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
+
+func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
+	if err != nil {
+		reply(nil)
+		return nil
+	}
+
+	// if current battle still running
+	btl := arena.CurrentBattle()
+	if btl != nil {
+		reply(btl.MiniMapAbilityDisplayList.List())
+	}
+
+	return nil
+}
