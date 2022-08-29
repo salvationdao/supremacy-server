@@ -150,6 +150,7 @@ func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
 type RecordingSession struct {
 	ReplaySession *boiler.BattleReplay `json:"replay_session"`
 	Events        []*RecordingEvents   `json:"battle_events"`
+	CanRecord     bool                 `json:"can_record"`
 }
 
 type RecordingEvents struct {
@@ -1814,13 +1815,15 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						}
 
 						// insert a team kill record to last seven days kills
-						lastSevenDaysKill := boiler.PlayerKillLog{
-							PlayerID:   abl.PlayerID.String,
-							FactionID:  abl.FactionID,
-							BattleID:   btl.BattleID,
-							IsTeamKill: true,
+						pkl := boiler.PlayerKillLog{
+							PlayerID:          abl.PlayerID.String,
+							FactionID:         abl.FactionID,
+							BattleID:          btl.BattleID,
+							IsTeamKill:        true,
+							AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
+							GameAbilityID:     null.StringFrom(abl.GameAbilityID),
 						}
-						err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
+						err = pkl.Insert(gamedb.StdConn, boil.Infer())
 						if err != nil {
 							gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
 						}
@@ -1842,12 +1845,15 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					}
 
 					// insert a team kill record to last seven days kills
-					lastSevenDaysKill := boiler.PlayerKillLog{
-						PlayerID:  abl.PlayerID.String,
-						FactionID: abl.FactionID,
-						BattleID:  btl.BattleID,
+					pkl := boiler.PlayerKillLog{
+						PlayerID:          abl.PlayerID.String,
+						FactionID:         abl.FactionID,
+						BattleID:          btl.BattleID,
+						AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
+						GameAbilityID:     null.StringFrom(abl.GameAbilityID),
+						IsVerified:        true,
 					}
-					err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
+					err = pkl.Insert(gamedb.StdConn, boil.Infer())
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (ABILITY KILL)")
 					}
@@ -2269,21 +2275,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		//if mech.Blueprint != nil {
-		//	model, ok := ModelMap[mech.Blueprint.Label]
-		//	if !ok {
-		//		model = "WREX"
-		//	}
-		//	newWarMachine.Model = model
-		//	newWarMachine.ModelID = mech.BlueprintID
-		//}
 		model, ok := ModelMap[mech.Label]
 		if !ok {
 			model = "WREX"
 		}
 		newWarMachine.Model = model
 		newWarMachine.ModelID = mech.BlueprintID
-
 
 		// check model skin
 		if mech.ChassisSkin != nil {
@@ -2292,6 +2289,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.Skin = mappedSkin
 			}
 		}
+		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")

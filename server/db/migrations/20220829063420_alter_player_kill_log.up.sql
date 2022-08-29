@@ -7,7 +7,16 @@ ALTER TABLE player_kill_log
 -- set previous player kill logs is verified
 UPDATE
     player_kill_log
-SET
-    is_verified = true;
+SET is_verified = TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_player_kill_log_team_kill_record_search ON player_kill_log (game_ability_id, is_team_kill, is_verified, ability_offering_id);
+
+DROP TYPE IF EXISTS ABILITY_TRIGGER_TYPE;
+CREATE TYPE ABILITY_TRIGGER_TYPE AS ENUM ('BATTLE_ABILITY','MECH_ABILITY','PLAYER_ABILITY');
+
+ALTER TABLE battle_ability_triggers
+    ADD COLUMN IF NOT EXISTS on_mech_id uuid REFERENCES mechs (id),
+    ADD COLUMN IF NOT EXISTS trigger_type ABILITY_TRIGGER_TYPE NOT NULL DEFAULT 'BATTLE_ABILITY',
+    ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
+drop table mech_ability_trigger_logs;

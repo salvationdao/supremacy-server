@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server"
@@ -61,8 +62,8 @@ type ArenaManager struct {
 	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
 
-	arenas       map[string]*Arena
-	sync.RWMutex // lock for arena
+	arenas           map[string]*Arena
+	deadlock.RWMutex // lock for arena
 }
 
 type Opts struct {
@@ -237,7 +238,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
-			if btl.replaySession.ReplaySession != nil {
+			if btl.replaySession.ReplaySession != nil && btl.replaySession.CanRecord {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
@@ -256,7 +257,6 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 				}
 			}
-
 			btl.endAbilities()
 		}
 	}()
@@ -301,7 +301,6 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 			}
 		}
-
 	}
 
 	arena := &Arena{
@@ -986,12 +985,8 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 		return err
 	}
 
-	if arena.currentBattleState() != BattleStageStart {
-		return nil
-	}
-
-	bn := arena.currentBattleNumber()
-	if bn == -1 {
+	btl := arena.CurrentBattle()
+	if btl == nil || btl.stage.Load() != BattleStageStart {
 		return nil
 	}
 
@@ -1030,11 +1025,10 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 	switch ga.Label {
 	case "REPAIR":
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
-			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
-			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.ID),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -1047,11 +1041,10 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 
 	default:
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(mechAbilityID),
-			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
-			boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(mechAbilityID),
+			boiler.BattleAbilityTriggerWhere.TriggeredAt.GT(time.Now().Add(time.Duration(-coolDownSeconds)*time.Second)),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("mech id", wm.ID).Str("game ability id", mechAbilityID).Err(err).Msg("Failed to get mech ability trigger from db")
@@ -1059,7 +1052,7 @@ func (am *ArenaManager) WarMachineAbilitySubscribe(ctx context.Context, user *bo
 		}
 
 		if lastTrigger != nil {
-			reply(coolDownSeconds - int(time.Now().Sub(lastTrigger.CreatedAt).Seconds()))
+			reply(coolDownSeconds - int(time.Now().Sub(lastTrigger.TriggeredAt).Seconds()))
 			return nil
 		}
 
@@ -1434,7 +1427,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
-			if btl.replaySession.ReplaySession != nil {
+			if btl.replaySession.ReplaySession != nil && btl.replaySession.CanRecord {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
 					if err != replay.ErrDontLogRecordingStatus {
@@ -1467,14 +1460,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 
 			var dataPayload BattleWMDestroyedPayload
-			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
 			btl.Destroyed(&dataPayload)
 		case "BATTLE:END":
 			var dataPayload *BattleEndPayload
-			if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+			if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle message warmachine destroyed payload")
 				continue
 			}
@@ -1656,14 +1649,6 @@ func (arena *Arena) beginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
-	// delete all the mech ability trigger logs
-	_, err = boiler.MechAbilityTriggerLogs(
-		boiler.MechAbilityTriggerLogWhere.DeletedAt.IsNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.MechAbilityTriggerLogColumns.DeletedAt: null.TimeFrom(time.Now())})
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
-	}
-
 	gm, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
@@ -1675,10 +1660,7 @@ func (arena *Arena) beginBattle() {
 		Name: gm.Name,
 	}
 
-	var battleID string
 	var battle *boiler.Battle
-
-	var nextBattleNumber int
 	inserted := false
 
 	// query last battle
@@ -1693,27 +1675,34 @@ func (arena *Arena) beginBattle() {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
 	}
-	if lastBattle != nil {
-		nextBattleNumber = lastBattle.BattleNumber + 1
-	}
 
 	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
-		battleID = uuid.Must(uuid.NewV4()).String()
 		battle = &boiler.Battle{
-			ID:        battleID,
+			ID:        uuid.Must(uuid.NewV4()).String(),
 			GameMapID: gameMap.ID.String(),
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
+		}
+
+		if lastBattle != nil {
+			battle.BattleNumber = lastBattle.BattleNumber + 1
 		}
 
 	} else {
 		// refund abilities
 		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
 
+		// soft delete all the ability triggers in the unfinished battle
+		_, err = boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(lastBattle.ID),
+		).UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleAbilityTriggerColumns.DeletedAt: null.TimeFrom(time.Now())})
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
+		}
+
 		// if there is an unfinished battle
 		battle = lastBattle
-		battleID = lastBattle.ID
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
@@ -1728,17 +1717,18 @@ func (arena *Arena) beginBattle() {
 	recordSession := &RecordingSession{
 		ReplaySession: &boiler.BattleReplay{
 			ArenaID:         arena.ID,
-			BattleID:        battleID,
+			BattleID:        battle.ID,
 			RecordingStatus: boiler.RecordingStatusIDLE,
 		},
-		Events: events,
+		Events:    events,
+		CanRecord: db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false),
 	}
 
 	btl := &Battle{
 		arena:                  arena,
 		MapName:                gameMap.Name,
 		gameMap:                gameMap,
-		BattleID:               battleID,
+		BattleID:               battle.ID,
 		Battle:                 battle,
 		inserted:               inserted,
 		stage:                  atomic.NewInt32(BattleStageStart),
@@ -1797,7 +1787,7 @@ func (arena *Arena) beginBattle() {
 		BattleID:     btl.ID,
 		MapName:      btl.MapName,
 		WarMachines:  WarMachinesToClient(btl.WarMachines),
-		BattleNumber: nextBattleNumber,
+		BattleNumber: battle.BattleNumber,
 	})
 
 	go arena.NotifyUpcomingWarMachines()

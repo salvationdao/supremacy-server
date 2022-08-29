@@ -814,7 +814,8 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	}
 
 	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
+	btl := arena.CurrentBattle()
+	if btl == nil || btl.stage.Load() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
@@ -834,12 +835,6 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		return terror.Error(err, err.Error())
 	}
 
-	// get current battle
-	bn := arena.currentBattleNumber()
-	if bn == -1 {
-		return terror.Error(fmt.Errorf("current battle is cleaned up"), "Current battle is cleaned up.")
-	}
-
 	// get ability
 	a, err := boiler.FindGameAbility(gamedb.StdConn, req.Payload.GameAbilityID)
 	if err != nil {
@@ -853,10 +848,11 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	switch a.Label {
 	case "REPAIR":
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.BattleID),
+			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -867,10 +863,11 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		}
 	default:
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.BattleAbilityTriggerWhere.TriggeredAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -933,33 +930,43 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		}(arena, ga, wm.ID)
 	}
 
-	// trigger the ability
 	now := time.Now()
+	offeringID := uuid.Must(uuid.NewV4())
+
+	// log mech move command
+	mat := &boiler.BattleAbilityTrigger{
+		OnMechID:          null.StringFrom(wm.ID),
+		PlayerID:          null.StringFrom(user.ID),
+		GameAbilityID:     ga.ID,
+		AbilityLabel:      ga.Label,
+		IsAllSyndicates:   false,
+		FactionID:         factionID,
+		BattleID:          btl.BattleID,
+		AbilityOfferingID: offeringID.String(),
+		TriggeredAt:       now,
+		TriggerType:       boiler.AbilityTriggerTypeMECH_ABILITY,
+	}
+
+	boil.DebugMode = true
+	err = mat.Insert(gamedb.StdConn, boil.Infer())
+	boil.DebugMode = false
+	if err != nil {
+		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
+		return terror.Error(err, "Failed to record mech ability trigger")
+	}
+
+	// trigger the ability
 	event := &server.GameAbilityEvent{
 		IsTriggered:         true,
 		GameClientAbilityID: byte(ga.GameClientAbilityID),
 		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID,
-		EventID:             uuid.Must(uuid.NewV4()),
+		EventID:             offeringID,
+		FactionID:           &factionID,
 	}
 
 	// fire mech command
 	arena.Message("BATTLE:ABILITY", event)
-
-	// log mech move command
-	mat := &boiler.MechAbilityTriggerLog{
-		MechID:        wm.ID,
-		TriggeredByID: user.ID,
-		GameAbilityID: ga.ID,
-		BattleNumber:  bn,
-		CreatedAt:     now,
-	}
-
-	err = mat.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
-		return terror.Error(err, "Failed to record mech ability trigger")
-	}
 
 	// send notification
 	arena.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{

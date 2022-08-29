@@ -226,15 +226,13 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 		q := fmt.Sprintf(
 			`
 			SELECT DISTINCT (%[2]s) FROM %[1]s 
-			WHERE %[3]s = $1 && %[4]s = TRUE AND %[5]s = FALSE && %[2]s NOTNULL
-			ORDER BY %[6]s;
+			WHERE %[3]s = $1 AND %[4]s = TRUE AND %[5]s = FALSE AND %[2]s NOTNULL;
 		`,
 			boiler.TableNames.PlayerKillLog,               // 1
 			boiler.PlayerKillLogColumns.AbilityOfferingID, // 2
 			boiler.PlayerKillLogColumns.GameAbilityID,     // 3
 			boiler.PlayerKillLogColumns.IsTeamKill,        // 4
 			boiler.PlayerKillLogColumns.IsVerified,        // 5
-			boiler.PlayerKillLogColumns.CreatedAt,         // 6
 		)
 
 		rows, err := gamedb.StdConn.Query(q, ga.ID)
@@ -263,22 +261,6 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 
 		// trim to maximum tolerant count
 		offeringIDs = offeringIDs[:ga.MaximumTeamKillTolerantCount]
-	}
-
-	boil.DebugMode = true
-	_, err = boiler.PlayerKillLogs(
-		qm.WhereIn(
-			fmt.Sprintf(
-				"%s IN ?",
-				qm.Rels(boiler.TableNames.PlayerKillLog, boiler.PlayerKillLogColumns.AbilityOfferingID),
-			),
-			offeringIDs...,
-		),
-		boiler.PlayerKillLogWhere.AbilityOfferingID.EQ(null.StringFrom(relatedOfferingID)),
-	).UpdateAll(gamedb.StdConn, boiler.M{boiler.PlayerKillLogColumns.IsVerified: true})
-	boil.DebugMode = false
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("ability offering id", relatedOfferingID).Msg("Failed to set player kill verify flag to true.")
 	}
 
 	// ban player
@@ -327,6 +309,23 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("player ban", playerBan).Msg("Failed to insert system team kill ban into db")
 		return
+	}
+
+	_, err = boiler.PlayerKillLogs(
+		qm.WhereIn(
+			fmt.Sprintf(
+				"%s IN ?",
+				qm.Rels(boiler.TableNames.PlayerKillLog, boiler.PlayerKillLogColumns.AbilityOfferingID),
+			),
+			offeringIDs...,
+		),
+	).UpdateAll(gamedb.StdConn,
+		boiler.M{
+			boiler.PlayerKillLogColumns.IsVerified:       true,
+			boiler.PlayerKillLogColumns.RelatedPlayBanID: null.StringFrom(playerBan.ID),
+		})
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("ability offering id", relatedOfferingID).Msg("Failed to set player kill verify flag to true.")
 	}
 
 	// send player ban to chat
