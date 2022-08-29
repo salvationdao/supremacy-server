@@ -166,7 +166,7 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 	// start the judgment
 	bat, err := boiler.BattleAbilityTriggers(
 		boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(relativeOfferingID),
-		boiler.BattleAbilityTriggerWhere.PlayerID.IsNotNull(),
+		boiler.BattleAbilityTriggerWhere.PlayerID.EQ(null.StringFrom(tkj.playerID)),
 		qm.Load(boiler.BattleAbilityTriggerRels.GameAbility),
 	).One(gamedb.StdConn)
 	if err != nil {
