@@ -2,16 +2,72 @@ package db
 
 import (
 	"database/sql"
-	"github.com/shopspring/decimal"
+	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/friendsofgo/errors"
 	"github.com/ninja-software/terror/v2"
 )
+
+func GetBattleMechs() (boiler.BattleQueueSlice, error) {
+	battleMechs, err := GetNextBattleMech(server.ZaibatsuFactionID, []*boiler.BattleQueue{}, false)
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to get battle mechs")
+		return nil, err
+	}
+	return battleMechs, nil
+}
+
+const FACTION_MECH_LIMIT = 3
+
+// GetNextBattleMech returns the next 3 (or less) mechs in queue that belong to the specified faction.
+// By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
+// However, if 3 queued faction mechs with unique IDs does not currently exist, GetNextBattleMech may return mechs
+// with the same owner ID.
+func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, disableOwnerCheck bool) (boiler.BattleQueueSlice, error) {
+	fmt.Printf("-----------%d\n", len(battleMechs))
+	spew.Dump(battleMechs)
+	if len(battleMechs) == FACTION_MECH_LIMIT {
+		return battleMechs, nil
+	}
+
+	notInIDs := []string{}
+	notInOwnerIDs := []string{}
+	for _, bm := range battleMechs {
+		notInIDs = append(notInIDs, bm.ID)
+		if !disableOwnerCheck {
+			notInOwnerIDs = append(notInOwnerIDs, bm.OwnerID)
+		}
+	}
+
+	nextBattleMech, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(factionID),
+		boiler.BattleQueueWhere.ID.NIN(notInIDs),
+		boiler.BattleQueueWhere.OwnerID.NIN(notInOwnerIDs),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		if disableOwnerCheck {
+			return battleMechs, nil
+		} else {
+			return GetNextBattleMech(factionID, battleMechs, true)
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	battleMechs = append(battleMechs, nextBattleMech)
+
+	return GetNextBattleMech(factionID, battleMechs, false)
+}
 
 // MechArenaStatus return mech arena status from given collection item
 func MechArenaStatus(userID string, mechID string, factionID string) (*server.MechArenaInfo, error) {
