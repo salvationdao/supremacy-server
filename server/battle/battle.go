@@ -1354,7 +1354,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	_, err = mapInQueue.Delete(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to delete oldest map in battle_map_queue")
 	}
 
 	go func() {
