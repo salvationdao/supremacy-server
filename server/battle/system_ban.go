@@ -237,7 +237,7 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 			boiler.PlayerKillLogColumns.IsVerified,        // 6
 		)
 
-		rows, err := gamedb.StdConn.Query(q, ga.ID)
+		rows, err := gamedb.StdConn.Query(q, tkj.playerID, ga.ID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("related game ability id", bat.R.GameAbility.ID).Msg("Failed to load related player ability kill logs.")
 			return
