@@ -55,9 +55,9 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardGet, pac.PlayerAssetKeycardGetHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetRename, pac.PlayerMechRenameHandler)
 	api.SecureUserCommand(HubKeyplayerAssetMechSubmodelList, pac.playerAssetMechSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerMechModelList, pac.playerMechModelListHandler)
+	api.SecureUserCommand(HubKeyPlayerMechBlueprintList, pac.playerMechBlueprintListHandler)
 	api.SecureUserCommand(HubKeyplayerAssetWeaponSubmodelList, pac.playerAssetWeaponSubmodelListHandler)
-	api.SecureUserCommand(HubKeyPlayerWeaponModelList, pac.playerWeaponModelListHandler)
+	api.SecureUserCommand(HubKeyPlayerWeaponBlueprintList, pac.playerWeaponBlueprintListHandler)
 	api.SecureUserFactionCommand(HubKeyOpenCrate, pac.OpenCrateHandler)
 	// public profile
 	api.Command(HubKeyPlayerAssetMechListPublic, pac.PlayerAssetMechListPublicHandler)
@@ -1387,10 +1387,10 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 	return nil
 }
 
-const HubKeyPlayerMechModelList = "PLAYER:MECH:MODEL:LIST"
+const HubKeyPlayerMechBlueprintList = "PLAYER:MECH:BLUEPRINT:LIST"
 
-func (pac *PlayerAssetsControllerWS) playerMechModelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerMechModelListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) playerMechBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerMechBlueprintListHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
@@ -1586,10 +1586,10 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 	return nil
 }
 
-const HubKeyPlayerWeaponModelList = "PLAYER:WEAPON:MODEL:LIST"
+const HubKeyPlayerWeaponBlueprintList = "PLAYER:WEAPON:BLUEPRINT:LIST"
 
-func (pac *PlayerAssetsControllerWS) playerWeaponModelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "playerWeaponModelListHandler").Str("user_id", user.ID).Logger()
+func (pac *PlayerAssetsControllerWS) playerWeaponBlueprintListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "playerWeaponBlueprintListHandler").Str("user_id", user.ID).Logger()
 
 	if !user.FactionID.Valid {
 		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
