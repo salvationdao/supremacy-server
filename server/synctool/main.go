@@ -861,6 +861,7 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
+	ids := []string{}
 	for _, record := range records {
 		battleAbility := &boiler.BattleAbility{
 			ID:                record[0],
@@ -902,6 +903,17 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		fmt.Println("UPDATED: "+battleAbility.ID, battleAbility.Label)
+
+		// record id list
+		ids = append(ids, battleAbility.ID)
+	}
+
+	// soft delete any row that is not on the list
+	_, err = boiler.BattleAbilities(
+		boiler.BattleAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.BattleAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static battle abilities data.")
 	}
 
 	fmt.Println("Finish syncing battle abilities")
@@ -921,6 +933,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
+	ids := []string{}
 	for _, record := range records {
 		gameAbility := &boiler.GameAbility{
 			ID:                       record[0],
@@ -982,8 +995,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.CurrentSups,
 				boiler.GameAbilityColumns.Level,
 				boiler.GameAbilityColumns.LocationSelectType,
+				boiler.GameAbilityColumns.DeletedAt,
 				boiler.GameAbilityColumns.LaunchingDelaySeconds,
 				boiler.GameAbilityColumns.DisplayOnMiniMap,
+				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
+				boiler.GameAbilityColumns.MechDisplayEffectType,
+				boiler.GameAbilityColumns.AnimationDurationSeconds,
 			),
 			boil.Infer(),
 		)
@@ -993,9 +1010,20 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		fmt.Println("UPDATED: "+gameAbility.ID, gameAbility.GameClientAbilityID, gameAbility.Label)
+
+		// record id list
+		ids = append(ids, gameAbility.ID)
 	}
 
-	fmt.Println("Finish syncing battle abilities")
+	// soft delete any row that is not on the list
+	_, err = boiler.GameAbilities(
+		boiler.GameAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.GameAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
+	}
+
+	fmt.Println("Finish syncing game abilities")
 
 	return nil
 }
