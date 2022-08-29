@@ -1070,6 +1070,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
 			MechDisplayEffectType:    record[17],
+			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -1089,6 +1090,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -1120,6 +1127,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
 				boiler.GameAbilityColumns.MechDisplayEffectType,
 				boiler.GameAbilityColumns.AnimationDurationSeconds,
+				boiler.GameAbilityColumns.ShouldCheckTeamKill,
+				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
 			),
 			boil.Infer(),
 		)
@@ -1400,7 +1409,6 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	return nil
 }
 
-
 func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
@@ -1415,11 +1423,11 @@ func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 
 	for _, record := range records {
 		blueprintUtil := &boiler.BlueprintUtility{
-			ID:                record[0],
-			Label:             record[4],
-			Collection:        record[5],
-			Type: boiler.UtilityTypeSHIELD,
-			AvatarURL:         null.NewString(record[6], record[6] != ""),
+			ID:         record[0],
+			Label:      record[4],
+			Collection: record[5],
+			Type:       boiler.UtilityTypeSHIELD,
+			AvatarURL:  null.NewString(record[6], record[6] != ""),
 		}
 		blueprintUtilShield := &boiler.BlueprintUtilityShield{
 			BlueprintUtilityID: record[0],
@@ -1436,7 +1444,6 @@ func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-
 
 		// upsert blueprint quest
 		err = blueprintUtil.Upsert(
