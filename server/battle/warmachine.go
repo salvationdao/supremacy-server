@@ -170,6 +170,14 @@ type Weapon struct {
 	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
 	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
 	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
+	PowerCost           float64    `json:"powerCost"`
+	PowerInstantDrain   bool       `json:"powerInstantDrain"`
+	ProjectileAmount    int        `json:"projectileAmount"`
+	DotTickDamage       float64    `json:"dotTickDamage"`
+	DotMaxTicks         int        `json:"dotMaxTicks"`
+	IsArced             bool       `json:"isArced"`
+	ChargeTimeSeconds   float64    `json:"chargeTime"`
+	BurstRateOfFire     float64    `json:"burstRateOfFire"`
 }
 
 type Utility struct {
@@ -261,9 +269,12 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:                  weapon.ID,
-		Hash:                weapon.Hash,
-		Name:                weapon.Label,
+		ID:    weapon.ID,
+		Hash:  weapon.Hash,
+		Name:  weapon.Label,
+		Model: weapon.BlueprintID,
+		Skin:  weapon.WeaponSkin.BlueprintID,
+		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
 		DamageFalloffRate:   weapon.DamageFalloffRate.Int,
@@ -274,8 +285,13 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo.Int,
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
-		Model:               weapon.WeaponModelID,
-		Skin:                weapon.EquippedWeaponSkinID, // TODO: THIS NEEDS TO BE WEAPON SKIN BLUEPRINT ID
+		PowerCost:           weapon.PowerCost.Decimal.InexactFloat64(),
+		ProjectileAmount:    weapon.ProjectileAmount.Int,
+		DotTickDamage:       weapon.DotTickDamage.Decimal.InexactFloat64(),
+		DotMaxTicks:         weapon.DotMaxTicks.Int,
+		IsArced:             weapon.IsArced.Bool,
+		ChargeTimeSeconds:   weapon.ChargeTimeSeconds.Decimal.InexactFloat64(),
+		BurstRateOfFire:     weapon.BurstRateOfFire.Decimal.InexactFloat64(),
 	}
 }
 
@@ -360,7 +376,7 @@ func UtilityShieldFromServer(util *server.UtilityShield) *UtilityShield {
 		UtilityID:          util.UtilityID,
 		Hitpoints:          util.Hitpoints,
 		RechargeRate:       util.RechargeRate,
-		RechargeEnergyCost: util.RechargeEnergyCost,
+		RechargeEnergyCost: util.BoostedRechargeRate,
 	}
 }
 

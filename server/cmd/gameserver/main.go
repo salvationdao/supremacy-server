@@ -542,10 +542,9 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
-			FROM templates_old tpo
-			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
-			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+				SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
+				FROM templates_old tpo
+				INNER JOIN template_blueprints tpbp ON tpo.blueprint_chassis_id =  tpbp.blueprint_id_old; `
 		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue getting template ids")

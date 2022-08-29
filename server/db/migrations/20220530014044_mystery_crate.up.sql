@@ -34,7 +34,6 @@ CREATE TABLE mystery_crate_blueprints
 );
 
 ALTER TABLE weapons
-    ADD COLUMN weapon_model_id         UUID REFERENCES weapon_models (id),
     ADD COLUMN equipped_weapon_skin_id UUID REFERENCES weapon_skin (id);
 
 --
@@ -60,7 +59,7 @@ ALTER TABLE weapons
 --     END;
 -- $$;
 --
--- ALTER TABLE blueprint_mechs
+-- ALTER TABLE blueprint_mechs_old
 --     DROP COLUMN skin;
 -- --
 -- DO
@@ -68,9 +67,9 @@ ALTER TABLE weapons
 --     DECLARE
 --         mech_model MECH_MODELS%ROWTYPE;
 --     BEGIN
---         FOR mech_model IN SELECT * FROM mech_models WHERE brand_id IS NOT NULL
+--         FOR mech_model IN SELECT * FROM blueprint_mechs WHERE brand_id IS NOT NULL
 --             LOOP
---                 INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
+--                 INSERT INTO blueprint_mechs_old (brand_id, label, slug, weapon_hardpoints, utility_slots, speed,
 --                                              max_hitpoints, model_id, power_core_size)
 --                 VALUES (mech_model.brand_id,
 --                         CONCAT((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
@@ -147,10 +146,9 @@ CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechcrate_id UUID, factio
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-    VALUES (mechcrate_id, 'MECH', (SELECT bpm.id
-                                   FROM blueprint_mechs bpm
-                                   INNER JOIN mech_models mm on mm.id = bpm.model_id
-                                   WHERE bpm.power_core_size = core_size
+    VALUES (mechcrate_id, 'MECH', (SELECT mm.id
+                                   FROM  blueprint_mechs mm
+                                   WHERE mm.power_core_size = core_size::POWERCORE_SIZE
                                      AND mm.brand_id =
                                          CASE
                                              WHEN faction.label = 'Boston Cybernetics'
@@ -372,9 +370,8 @@ BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (crate_id, 'WEAPON', (SELECT bw.id
                                  FROM blueprint_weapons bw
-                                 INNER JOIN weapon_models wm ON wm.id = bw.weapon_model_id
-                                 WHERE wm.weapon_type = weapontype::WEAPON_TYPE
-                                   AND wm.brand_id =
+                                 WHERE bw.weapon_type = weapontype::WEAPON_TYPE
+                                   AND bw.brand_id =
                                        CASE
                                            WHEN faction.label = 'Boston Cybernetics'
                                                THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')

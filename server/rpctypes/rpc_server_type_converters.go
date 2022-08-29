@@ -106,7 +106,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 
 		if i.ChassisSkin == nil {
-			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.ModelID)
+			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.BlueprintID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
 				continue
@@ -450,11 +450,11 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.EnergyCost.Valid && !i.EnergyCost.Decimal.IsZero() {
+		if i.PowerCost.Valid && !i.PowerCost.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
-				Value:       i.EnergyCost.Decimal.InexactFloat64(),
+				Value:       i.PowerCost.Decimal.InexactFloat64(),
 			})
 		}
 
@@ -501,7 +501,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		if i.WeaponSkin == nil {
-			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID, &i.WeaponModelID)
+			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID, &i.BlueprintID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
 				continue

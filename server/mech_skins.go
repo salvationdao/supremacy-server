@@ -17,6 +17,7 @@ type MechSkin struct {
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
+	Level                 int         `json:"level"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	LockedToMech          bool        `json:"locked_to_mech"`
 	CreatedAt             time.Time   `json:"created_at"`
@@ -33,11 +34,12 @@ func (b *MechSkin) Scan(value interface{}) error {
 }
 
 type BlueprintMechSkin struct {
-	ID         string    `json:"id"`
-	Collection string    `json:"collection"`
-	Label      string    `json:"label"`
-	Tier       string    `json:"tier,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Collection   string    `json:"collection"`
+	Label        string    `json:"label"`
+	Tier         string    `json:"tier,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	DefaultLevel int       `json:"default_level"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -54,11 +56,12 @@ func (b *BlueprintMechSkin) Scan(value interface{}) error {
 
 func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintMechSkin {
 	return &BlueprintMechSkin{
-		ID:         mechSkin.ID,
-		Collection: mechSkin.Collection,
-		Label:      mechSkin.Label,
-		Tier:       mechSkin.Tier,
-		CreatedAt:  mechSkin.CreatedAt,
+		ID:           mechSkin.ID,
+		Collection:   mechSkin.Collection,
+		Label:        mechSkin.Label,
+		Tier:         mechSkin.Tier,
+		DefaultLevel: mechSkin.DefaultLevel,
+		CreatedAt:    mechSkin.CreatedAt,
 	}
 }
 

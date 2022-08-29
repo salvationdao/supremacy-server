@@ -341,7 +341,6 @@ func (o *Availability) BlueprintMechs(mods ...qm.QueryMod) blueprintMechQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"blueprint_mechs\".\"availability_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_mechs\".\"deleted_at\""),
 	)
 
 	query := BlueprintMechs(queryMods...)
@@ -396,7 +395,6 @@ func (availabilityL) LoadBlueprintMechs(e boil.Executor, singular bool, maybeAva
 	query := NewQuery(
 		qm.From(`blueprint_mechs`),
 		qm.WhereIn(`blueprint_mechs.availability_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
