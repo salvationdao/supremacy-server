@@ -1665,6 +1665,16 @@ func (btl *Battle) Tick(payload []byte) {
 		btl.playerAbilityManager().ResetHasBlackoutsUpdated()
 		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap", btl.ArenaID), HubKeyMinimapUpdatesSubscribe, minimapUpdates)
 	}
+
+	// Map Events
+	if len(payload) > offset {
+		mapEventCount := payload[offset]
+		fmt.Println(mapEventCount)
+		if mapEventCount > 0 {
+			mapEvents := payload[offset:]
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap_events", btl.ArenaID), HubKeyMinimapEventsSubscribe, mapEvents)
+		}
+	}
 }
 
 func (arena *Arena) reset() {

@@ -860,6 +860,37 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	return nil
 }
 
+const HubKeyMinimapEventsSubscribe = "MINIMAP:EVENTS:SUBSCRIBE"
+
+func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// skip, if current not battle
+	if arena.CurrentBattle() == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
+		return terror.Error(terror.ErrForbidden, "There is no battle currently for this map event.")
+	}
+
+	// TODO: store and send landmine locations and the hive map state
+	//minimapUpdates := []MinimapEvent{}
+	//for id, b := range arena.CurrentBattle().playerAbilityManager().Blackouts() {
+	//	minimapUpdates = append(minimapUpdates, MinimapEvent{
+	//		ID:            id,
+	//		GameAbilityID: BlackoutGameAbilityID,
+	//		Duration:      BlackoutDurationSeconds,
+	//		Radius:        int(BlackoutRadius),
+	//		Coords:        b.CellCoords,
+	//	})
+	//}
+	//
+	//reply(minimapUpdates)
+
+	return nil
+}
+
 const HubKeyBattleAbilityUpdated = "BATTLE:ABILITY:UPDATED"
 
 // PublicBattleAbilityUpdateSubscribeHandler return battle ability for non login player
