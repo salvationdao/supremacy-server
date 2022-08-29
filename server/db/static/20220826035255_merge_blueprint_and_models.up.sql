@@ -5,6 +5,11 @@ CREATE TYPE POWERCORE_SIZE AS ENUM ('SMALL', 'MEDIUM', 'LARGE');
 DROP TYPE IF EXISTS BOOST_STAT;
 CREATE TYPE BOOST_STAT AS ENUM ('MECH_HEALTH', 'MECH_SPEED', 'SHIELD_REGEN');
 
+UPDATE mech_models SET brand_id = '009f71fc-3594-4d24-a6e2-f05070d66f40' WHERE id = '5d3a973b-c62b-4438-b746-d3de2699d42a';
+UPDATE mech_models SET brand_id = '2b203c87-ad8c-4ce2-af17-e079835fdbcb' WHERE id = '625cd381-7c66-4e2f-9f69-f81589105730';
+UPDATE mech_models SET brand_id = '953ad4fc-3aa9-471f-a852-f39e9f36cd04' WHERE id = 'ac27f3b9-753d-4ace-84a9-21c041195344';
+
+
 ALTER TABLE mech_models
     ADD COLUMN boost_stat        BOOST_STAT,
     ADD COLUMN weapon_hardpoints INTEGER                                NOT NULL DEFAULT 0,
