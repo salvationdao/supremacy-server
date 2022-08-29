@@ -167,7 +167,7 @@ func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEv
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
-	q, err := db.LoadBattleQueue(context.Background(), 13)
+	q, err := db.LoadBattleQueue(context.Background(), 13, false)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return

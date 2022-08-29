@@ -1441,7 +1441,7 @@ func (arena *Arena) beginBattle() {
 
 	// get next map in battle queue
 	var gm *boiler.GameMap
-	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " DESC")).One(gamedb.StdConn)
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
 	}

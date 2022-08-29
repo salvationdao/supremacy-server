@@ -93,6 +93,10 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("start")
 	btl.Lock()
 	defer btl.Unlock()
+	fmt.Println("this is payload")
+	fmt.Println("this is payload")
+	fmt.Println("this is payload")
+	fmt.Println("this is payload", gm.Name)
 
 	btl.gameMap.ImageUrl = gm.ImageUrl
 	btl.gameMap.Width = gm.Width
@@ -295,6 +299,16 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+		ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)
+	}()
+
 	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
@@ -2087,7 +2101,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 func (btl *Battle) Load() error {
 	gamelog.L.Trace().Str("func", "Load").Msg("start")
-	q, err := db.LoadBattleQueue(context.Background(), 3)
+	q, err := db.LoadBattleQueue(context.Background(), 3, false)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")

@@ -273,14 +273,20 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	return result, err
 }
 
-func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
+func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle bool) ([]*boiler.BattleQueue, error) {
+
+	inBattle := ""
+	if excludeInBattle {
+		inBattle = "AND  x.battle_id IS NULL"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
 		) x
-		WHERE x.r <= $1
+		WHERE x.r <= $1 %s
 	`,
 		boiler.BattleQueueColumns.ID,
 		boiler.BattleQueueColumns.MechID,
@@ -290,6 +296,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
+		inBattle,
 	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
@@ -307,9 +314,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		if err != nil {
 			return nil, err
 		}
+
 		queue = append(queue, mc)
 	}
-
 	return queue, nil
 }
 
@@ -502,10 +509,16 @@ type NextBattle struct {
 }
 
 func GetNextBattle(ctx context.Context) (*NextBattle, error) {
-	queue, err := LoadBattleQueue(context.Background(), 3)
+	queue, err := LoadBattleQueue(context.Background(), 9, true)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("hellow")
+	fmt.Println("hellow")
+	fmt.Println("hellow")
+	fmt.Println("hellow")
+	fmt.Println("hellow", queue)
 
 	rm, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Red Mountain Offworld Mining Corporation")).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -544,7 +557,7 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 
 	bMap := &BattleMap{}
 
-	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" DESC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" ASC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "failed getting next map in queue")
 	}
