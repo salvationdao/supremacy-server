@@ -672,7 +672,7 @@ type BattleZone struct {
 	Location   GameLocation `json:"location"`
 	Radius     int          `json:"radius"`
 	Time       int          `json:"time"`
-	ShrinkTime int          `json:"shrinkTime"`
+	ShrinkTime int          `json:"shrink_time"`
 }
 
 var env string

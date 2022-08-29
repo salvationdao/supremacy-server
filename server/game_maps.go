@@ -12,16 +12,16 @@ const GameClientTileSize int64 = 2000
 //  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
 
 type GameMap struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	Name          string    `json:"name" db:"name"`
-	ImageUrl      string    `json:"image_url" db:"image_url"`
-	Width         int       `json:"width" db:"width"`
-	Height        int       `json:"height" db:"height"`
-	CellsX        int       `json:"cells_x" db:"cells_x"`
-	CellsY        int       `json:"cells_y" db:"cells_y"`
-	PixelTop      int       `json:"pixel_top" db:"top_pixels"`
-	PixelLeft     int       `json:"pixel_left" db:"left_pixels"`
-	DisabledCells []int64   `json:"disabled_cells" db:"disabled_cells"`
+	ID            uuid.UUID `json:"ID" db:"id"`
+	Name          string    `json:"Name" db:"name"`
+	ImageUrl      string    `json:"Image_Url" db:"image_url"`
+	Width         int       `json:"Width" db:"width"`
+	Height        int       `json:"Height" db:"height"`
+	CellsX        int       `json:"Cells_X" db:"cells_x"`
+	CellsY        int       `json:"Cells_Y" db:"cells_y"`
+	PixelTop      int       `json:"Pixel_Top" db:"top_pixels"`
+	PixelLeft     int       `json:"Pixel_Left" db:"left_pixels"`
+	DisabledCells []int64   `json:"Disabled_Cells" db:"disabled_cells"`
 }
 
 type WarMachineMetadata struct {

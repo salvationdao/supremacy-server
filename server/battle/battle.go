@@ -90,7 +90,6 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
-	clearByPickUp            bool
 }
 
 // Add new pending ability and return a copy of current list
