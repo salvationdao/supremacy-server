@@ -149,17 +149,17 @@ var BlueprintMechAnimationWhere = struct {
 
 // BlueprintMechAnimationRels is where relationship names are stored.
 var BlueprintMechAnimationRels = struct {
-	BlueprintMechAnimationMechModel string
-	BlueprintMechAnimations         string
+	MechModelBlueprintMech  string
+	BlueprintMechAnimations string
 }{
-	BlueprintMechAnimationMechModel: "BlueprintMechAnimationMechModel",
-	BlueprintMechAnimations:         "BlueprintMechAnimations",
+	MechModelBlueprintMech:  "MechModelBlueprintMech",
+	BlueprintMechAnimations: "BlueprintMechAnimations",
 }
 
 // blueprintMechAnimationR is where relationships are stored.
 type blueprintMechAnimationR struct {
-	BlueprintMechAnimationMechModel *MechModel         `boiler:"BlueprintMechAnimationMechModel" boil:"BlueprintMechAnimationMechModel" json:"BlueprintMechAnimationMechModel" toml:"BlueprintMechAnimationMechModel" yaml:"BlueprintMechAnimationMechModel"`
-	BlueprintMechAnimations         MechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
+	MechModelBlueprintMech  *BlueprintMech     `boiler:"MechModelBlueprintMech" boil:"MechModelBlueprintMech" json:"MechModelBlueprintMech" toml:"MechModelBlueprintMech" yaml:"MechModelBlueprintMech"`
+	BlueprintMechAnimations MechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
 }
 
 // NewStruct creates a new relationship struct
@@ -420,16 +420,16 @@ func (q blueprintMechAnimationQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// BlueprintMechAnimationMechModel pointed to by the foreign key.
-func (o *BlueprintMechAnimation) BlueprintMechAnimationMechModel(mods ...qm.QueryMod) mechModelQuery {
+// MechModelBlueprintMech pointed to by the foreign key.
+func (o *BlueprintMechAnimation) MechModelBlueprintMech(mods ...qm.QueryMod) blueprintMechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechModel),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_models\"")
+	query := BlueprintMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mechs\"")
 
 	return query
 }
@@ -455,9 +455,9 @@ func (o *BlueprintMechAnimation) BlueprintMechAnimations(mods ...qm.QueryMod) me
 	return query
 }
 
-// LoadBlueprintMechAnimationMechModel allows an eager lookup of values, cached into the
+// LoadMechModelBlueprintMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechAnimationL) LoadBlueprintMechAnimationMechModel(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
+func (blueprintMechAnimationL) LoadMechModelBlueprintMech(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintMechAnimation
 	var object *BlueprintMechAnimation
 
@@ -497,8 +497,8 @@ func (blueprintMechAnimationL) LoadBlueprintMechAnimationMechModel(e boil.Execut
 	}
 
 	query := NewQuery(
-		qm.From(`mech_models`),
-		qm.WhereIn(`mech_models.id in ?`, args...),
+		qm.From(`blueprint_mechs`),
+		qm.WhereIn(`blueprint_mechs.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -506,19 +506,19 @@ func (blueprintMechAnimationL) LoadBlueprintMechAnimationMechModel(e boil.Execut
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
+		return errors.Wrap(err, "failed to eager load BlueprintMech")
 	}
 
-	var resultSlice []*MechModel
+	var resultSlice []*BlueprintMech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMech")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_models")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_mechs")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mechs")
 	}
 
 	if len(blueprintMechAnimationAfterSelectHooks) != 0 {
@@ -535,22 +535,22 @@ func (blueprintMechAnimationL) LoadBlueprintMechAnimationMechModel(e boil.Execut
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.BlueprintMechAnimationMechModel = foreign
+		object.R.MechModelBlueprintMech = foreign
 		if foreign.R == nil {
-			foreign.R = &mechModelR{}
+			foreign.R = &blueprintMechR{}
 		}
-		foreign.R.BlueprintMechAnimations = append(foreign.R.BlueprintMechAnimations, object)
+		foreign.R.MechModelBlueprintMechAnimations = append(foreign.R.MechModelBlueprintMechAnimations, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.MechModel == foreign.ID {
-				local.R.BlueprintMechAnimationMechModel = foreign
+				local.R.MechModelBlueprintMech = foreign
 				if foreign.R == nil {
-					foreign.R = &mechModelR{}
+					foreign.R = &blueprintMechR{}
 				}
-				foreign.R.BlueprintMechAnimations = append(foreign.R.BlueprintMechAnimations, local)
+				foreign.R.MechModelBlueprintMechAnimations = append(foreign.R.MechModelBlueprintMechAnimations, local)
 				break
 			}
 		}
@@ -657,10 +657,10 @@ func (blueprintMechAnimationL) LoadBlueprintMechAnimations(e boil.Executor, sing
 	return nil
 }
 
-// SetBlueprintMechAnimationMechModel of the blueprintMechAnimation to the related item.
-// Sets o.R.BlueprintMechAnimationMechModel to related.
-// Adds o to related.R.BlueprintMechAnimations.
-func (o *BlueprintMechAnimation) SetBlueprintMechAnimationMechModel(exec boil.Executor, insert bool, related *MechModel) error {
+// SetMechModelBlueprintMech of the blueprintMechAnimation to the related item.
+// Sets o.R.MechModelBlueprintMech to related.
+// Adds o to related.R.MechModelBlueprintMechAnimations.
+func (o *BlueprintMechAnimation) SetMechModelBlueprintMech(exec boil.Executor, insert bool, related *BlueprintMech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -686,18 +686,18 @@ func (o *BlueprintMechAnimation) SetBlueprintMechAnimationMechModel(exec boil.Ex
 	o.MechModel = related.ID
 	if o.R == nil {
 		o.R = &blueprintMechAnimationR{
-			BlueprintMechAnimationMechModel: related,
+			MechModelBlueprintMech: related,
 		}
 	} else {
-		o.R.BlueprintMechAnimationMechModel = related
+		o.R.MechModelBlueprintMech = related
 	}
 
 	if related.R == nil {
-		related.R = &mechModelR{
-			BlueprintMechAnimations: BlueprintMechAnimationSlice{o},
+		related.R = &blueprintMechR{
+			MechModelBlueprintMechAnimations: BlueprintMechAnimationSlice{o},
 		}
 	} else {
-		related.R.BlueprintMechAnimations = append(related.R.BlueprintMechAnimations, o)
+		related.R.MechModelBlueprintMechAnimations = append(related.R.MechModelBlueprintMechAnimations, o)
 	}
 
 	return nil

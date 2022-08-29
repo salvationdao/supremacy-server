@@ -8,8 +8,16 @@ type MechModel struct {
 	ID                   string      `json:"id"`
 	Label                string      `json:"label"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	BrandID              null.String `json:"brand_id"`
+	BrandID              string      `json:"brand_id"`
 	MechType             string      `json:"mech_type"`
+	BoostStat            string      `json:"boost_stat"`
+	WeaponHardpoints     string      `json:"weapon_hardpoints"`
+	UtilitySlots         string      `json:"utility_slots"`
+	Speed                string      `json:"speed"`
+	MaxHitpoints         string      `json:"max_hitpoints"`
+	PowerCoreSize        string      `json:"power_core_size"`
+	Collection           string      `json:"collection"`
+	AvailabilityID       null.String `json:"availability_id"`
 }
 
 type Brands struct {
@@ -40,7 +48,7 @@ type MechSkin struct {
 	Collection   string `json:"collection"`
 	Label        string `json:"label"`
 	Tier         string `json:"tier"`
-	StatModifier string `json:"stat_modifier"`
+	DefaultLevel string `json:"default_level"`
 }
 
 type MechModelSkinCompatibility struct {
@@ -70,14 +78,33 @@ type MysteryCrate struct {
 	YoutubeUrl       string `json:"youtube_url"`
 }
 
-type WeaponModel struct {
-	ID            string `json:"id"`
-	BrandID       string `json:"brand_id"`
-	Label         string `json:"label"`
-	WeaponType    string `json:"weapon_type"`
-	DefaultSkinID string `json:"default_skin_id"`
-	DeletedAt     string `json:"deleted_at"`
-	UpdatedAt     string `json:"updated_at"`
+type Weapon struct {
+	ID                  string      `json:"id"`
+	BrandID             string      `json:"brand_id"`
+	Label               string      `json:"label"`
+	WeaponType          string      `json:"weapon_type"`
+	DefaultSkinID       string      `json:"default_skin_id"`
+	Damage              string      `json:"damage"`
+	DamageFallOff       string      `json:"damage_falloff"`
+	DamageFalloffRate   string      `json:"damage_falloff_rate"`
+	Radius              string      `json:"radius"`
+	RadiusDamageFalloff string      `json:"radius_damage_falloff"`
+	Spread              string      `json:"spread"`
+	RateOfFire          string      `json:"rate_of_fire"`
+	ProjectileSpeed     string      `json:"projectile_speed"`
+	MaxAmmo             string      `json:"max_ammo"`
+	IsMelee            string      `json:"is_melee"`
+	PowerCost          string      `json:"power_cost"`
+	GameClientWeaponID null.String `json:"game_client_weapon_id"`
+	Collection          string      `json:"collection"`
+	DefaultDamageType   string      `json:"default_damage_type"`
+	ProjectileAmount    string      `json:"projectile_amount"`
+	DotTickDamage       string      `json:"dot_tick_damage"`
+	DotMaxTicks         string      `json:"dot_max_ticks"`
+	IsArced             string      `json:"is_arced"`
+	ChargeTimeSeconds   string      `json:"charge_time_seconds"`
+	BurstRateOfFire     string      `json:"burst_rate_of_fire"`
+	PowerInstantDrain   string      `json:"power_instant_drain"`
 }
 
 type WeaponSkin struct {

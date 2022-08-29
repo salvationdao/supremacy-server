@@ -38,6 +38,10 @@ func InsertNewCollectionItem(tx boil.Executor,
 		return nil, fmt.Errorf("invalid collection slug %s", collectionSlug)
 	}
 
+	if tier == "" {
+		tier = "MEGA"
+	}
+
 	query := fmt.Sprintf(`
 		INSERT INTO collection_items(
 			collection_slug, 
