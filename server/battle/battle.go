@@ -2261,14 +2261,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		if mech.Blueprint != nil {
-			model, ok := ModelMap[mech.Blueprint.Label]
-			if !ok {
-				model = "WREX"
-			}
-			newWarMachine.Model = model
-			newWarMachine.ModelID = mech.BlueprintID
+		model, ok := ModelMap[mech.Label]
+		if !ok {
+			model = "WREX"
 		}
+		newWarMachine.Model = model
+		newWarMachine.ModelID = mech.BlueprintID
 
 		// check model skin
 		if mech.ChassisSkin != nil {
@@ -2277,6 +2275,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.Skin = mappedSkin
 			}
 		}
+		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")

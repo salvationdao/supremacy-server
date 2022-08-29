@@ -19,7 +19,6 @@ type WarMachine struct {
 	Name          string  `json:"name"`
 	Label         string  `json:"label"`
 	ParticipantID byte    `json:"participantID"`
-	FactionID     string  `json:"factionID"`
 	MaxHealth     uint32  `json:"maxHealth"`
 	MaxShield     uint32  `json:"maxShield"`
 	Health        uint32  `json:"health"`
@@ -28,10 +27,12 @@ type WarMachine struct {
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
 	Skin    string `json:"skin"`
+	SkinID  string `json:"skinID"`
 	Speed   int    `json:"speed"`
 
-	Faction *Faction `json:"faction"`
-	Tier    string   `json:"tier"`
+	Faction   *Faction `json:"faction"`
+	FactionID string   `json:"factionID"`
+	Tier      string   `json:"tier"`
 
 	PowerCore *PowerCore     `json:"power_core,omitempty"`
 	Abilities []*GameAbility `json:"abilities"`
