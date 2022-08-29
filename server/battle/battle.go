@@ -2217,9 +2217,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Name:        TruncateString(mech.Name, 20),
 			Label:       mech.Label,
 			FactionID:   mech.FactionID.String,
-			MaxHealth:   uint32(mech.MaxHitpoints),
-			Health:      uint32(mech.MaxHitpoints),
-			Speed:       mech.Speed,
+			MaxHealth:   uint32(mech.BoostedMaxHitpoints),
+			Health:      uint32(mech.BoostedMaxHitpoints),
+			Speed:       mech.BoostedSpeed,
 			Tier:        mech.Tier,
 			Image:       mech.ImageURL.String,
 			ImageAvatar: mech.AvatarURL.String,
@@ -2251,7 +2251,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
 				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
 				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
-				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
+				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.BoostedRechargeRate)
 			}
 		}
 
@@ -2261,13 +2261,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		if mech.Model != nil {
-			model, ok := ModelMap[mech.Model.Label]
+		if mech.Blueprint != nil {
+			model, ok := ModelMap[mech.Blueprint.Label]
 			if !ok {
 				model = "WREX"
 			}
 			newWarMachine.Model = model
-			newWarMachine.ModelID = mech.ModelID
+			newWarMachine.ModelID = mech.BlueprintID
 		}
 
 		// check model skin

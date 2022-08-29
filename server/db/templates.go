@@ -279,7 +279,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
 		// get default weapon skins
 		wpSkin, err := boiler.WeaponModelSkinCompatibilities(
-			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(weapon.WeaponModelID),
+			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.EQ(weapon.ID),
 			qm.Load(boiler.WeaponModelSkinCompatibilityRels.BlueprintWeaponSkin),
 			).One(tx)
 		if err != nil {
@@ -342,7 +342,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 		// join utility
 		for i := 0; i < mechs[0].UtilitySlots; i++ {
-			if utilities[i] != nil {
+			if len(utilities) >= i && utilities[i] != nil {
 				err = AttachUtilityToMech(tx, ownerID.String(), mechs[0].ID, utilities[i].ID, lockedToMech)
 				if err != nil {
 					L.Error().Err(err).Msg("failed to join utility to mech")

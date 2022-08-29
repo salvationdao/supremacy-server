@@ -221,7 +221,7 @@ func (am *ArenaManager) CloseRepairOffers(repairOfferIDs []string, offerCloseRea
 }
 
 // RegisterMechRepairCase insert mech repair case and track repair stack
-func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, remainHealth uint32) error {
+func RegisterMechRepairCase(mechID string, blueprintID string, maxHealth uint32, remainHealth uint32) error {
 	if remainHealth == maxHealth {
 		return nil
 	}
@@ -234,9 +234,9 @@ func RegisterMechRepairCase(mechID string, modelID string, maxHealth uint32, rem
 	}
 
 	// get mech model
-	model, err := boiler.FindMechModel(gamedb.StdConn, modelID)
+	model, err := boiler.FindBlueprintMech(gamedb.StdConn, blueprintID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("mech model id", modelID).Msg("Failed to load mech model for repair block detail.")
+		gamelog.L.Error().Err(err).Str("mech model id", blueprintID).Msg("Failed to load mech model for repair block detail.")
 		return terror.Error(err, "Failed to load mech model")
 	}
 

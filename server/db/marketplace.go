@@ -180,15 +180,6 @@ var ItemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.Weapons, boiler.WeaponColumns.BlueprintID),
 		),
 	),
-	// weapon model
-	qm.LeftOuterJoin(
-		fmt.Sprintf(
-			"%s ON %s = %s",
-			boiler.TableNames.WeaponModels,
-			qm.Rels(boiler.TableNames.WeaponModels, boiler.WeaponModelColumns.ID),
-			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
-		),
-	),
 	// weapon skin
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -602,34 +593,34 @@ func MarketplaceItemSaleList(
 	}
 	if weaponStats != nil {
 		if weaponStats.FilterStatAmmo != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.MaxAmmo, weaponStats.FilterStatAmmo)...)
 		}
 		if weaponStats.FilterStatDamage != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Damage, weaponStats.FilterStatDamage)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Damage, weaponStats.FilterStatDamage)...)
 		}
 		if weaponStats.FilterStatDamageFalloff != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloff, weaponStats.FilterStatDamageFalloff)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.DamageFalloff, weaponStats.FilterStatDamageFalloff)...)
 		}
 		if weaponStats.FilterStatDamageFalloffRate != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.DamageFalloffRate, weaponStats.FilterStatDamageFalloffRate)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.DamageFalloffRate, weaponStats.FilterStatDamageFalloffRate)...)
 		}
 		if weaponStats.FilterStatRadius != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Radius, weaponStats.FilterStatRadius)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Radius, weaponStats.FilterStatRadius)...)
 		}
 		if weaponStats.FilterStatRadiusDamageFalloff != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RadiusDamageFalloff, weaponStats.FilterStatRadiusDamageFalloff)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RadiusDamageFalloff, weaponStats.FilterStatRadiusDamageFalloff)...)
 		}
 		if weaponStats.FilterStatRateOfFire != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.RateOfFire, weaponStats.FilterStatRateOfFire)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.RateOfFire, weaponStats.FilterStatRateOfFire)...)
 		}
 		if weaponStats.FilterStatEnergyCosts != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.EnergyCost, weaponStats.FilterStatEnergyCosts)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.PowerCost, weaponStats.FilterStatEnergyCosts)...)
 		}
 		if weaponStats.FilterStatProjectileSpeed != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.ProjectileSpeed, weaponStats.FilterStatProjectileSpeed)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.ProjectileSpeed, weaponStats.FilterStatProjectileSpeed)...)
 		}
 		if weaponStats.FilterStatSpread != nil {
-			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.WeaponColumns.Spread, weaponStats.FilterStatSpread)...)
+			queryMods = append(queryMods, GenerateWeaponStatFilterQueryMods(boiler.BlueprintWeaponColumns.Spread, weaponStats.FilterStatSpread)...)
 		}
 	}
 
@@ -1363,7 +1354,7 @@ func MarketplaceEventList(
 					qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
 					qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 					qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
-					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.WeaponModelID),
+					qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
 				),
 			),
 			boiler.WeaponWhere.ID.IN(weaponIDs),
