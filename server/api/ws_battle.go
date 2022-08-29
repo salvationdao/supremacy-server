@@ -34,7 +34,6 @@ func NewBattleController(api *API) *BattleControllerWS {
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
 	api.Command(HubKeyPlayerBattleMechHistoryList, bc.PlayerBattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
-	// api.Command(HubKeyNextBattleDetails, bc.NextBattleDetails)
 
 	// commands from battle
 

@@ -181,10 +181,6 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	gamelog.L.Trace().Str("func", "storeGameMap").Msg("start")
 	btl.Lock()
 	defer btl.Unlock()
-	fmt.Println("this is payload")
-	fmt.Println("this is payload")
-	fmt.Println("this is payload")
-	fmt.Println("this is payload", gm.Name)
 
 	btl.gameMap.ImageUrl = gm.ImageUrl
 	btl.gameMap.Width = gm.Width
@@ -391,7 +387,7 @@ func (btl *Battle) start() {
 	go func() {
 		qs, err := db.GetNextBattle(nil)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get next battle details")
 			return
 		}
 		ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)

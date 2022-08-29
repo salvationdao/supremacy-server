@@ -509,16 +509,11 @@ type NextBattle struct {
 }
 
 func GetNextBattle(ctx context.Context) (*NextBattle, error) {
-	queue, err := LoadBattleQueue(context.Background(), 9, true)
+	// get next 6 mechs for each faction (the first 3 might be in battle)
+	queue, err := LoadBattleQueue(context.Background(), 6, true)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("hellow")
-	fmt.Println("hellow")
-	fmt.Println("hellow")
-	fmt.Println("hellow")
-	fmt.Println("hellow", queue)
 
 	rm, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Red Mountain Offworld Mining Corporation")).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -554,9 +549,7 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 	}
 
 	// get map details
-
 	bMap := &BattleMap{}
-
 	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" ASC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "failed getting next map in queue")
