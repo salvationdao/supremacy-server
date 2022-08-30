@@ -68,7 +68,32 @@ func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, di
 	return GetNextBattleMech(factionID, battleMechs, false)
 }
 
-func GetEstimatedQueueTimeSecondsFromFactionID(factionID string) (int64, error) {
+func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
+	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
+	if err != nil {
+		return -1, err
+	}
+
+	var qp struct {
+		NextQueuePosition int64 `json:"next_queue_position"`
+	}
+	err = boiler.NewQuery(
+		qm.Select(fmt.Sprintf("count(DISTINCT %s) as next_queue_position",
+			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID),
+		)),
+		qm.From(boiler.TableNames.BattleQueue),
+		qm.Where(fmt.Sprintf("%s = ?",
+			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.FactionID)),
+			factionID),
+	).Bind(nil, gamedb.StdConn, &qp)
+	if err != nil {
+		return -1, err
+	}
+
+	return ((qp.NextQueuePosition + 1) / FACTION_MECH_LIMIT) * averageBattleLengthSecs, nil
+}
+
+func GetAverageBattleLengthSeconds() (int64, error) {
 	var bl struct {
 		AveLengthSeconds int64 `boil:"ave_length_seconds"`
 	}
@@ -88,23 +113,7 @@ func GetEstimatedQueueTimeSecondsFromFactionID(factionID string) (int64, error) 
 		return -1, err
 	}
 
-	var qp struct {
-		NextQueuePosition int64 `json:"next_queue_position"`
-	}
-	err = boiler.NewQuery(
-		qm.Select(fmt.Sprintf("count(DISTINCT %s) as next_queue_position",
-			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID),
-		)),
-		qm.From(boiler.TableNames.BattleQueue),
-		qm.Where(fmt.Sprintf("%s = ?",
-			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID)),
-			factionID),
-	).Bind(nil, gamedb.StdConn, &qp)
-	if err != nil {
-		return -1, err
-	}
-
-	return (qp.NextQueuePosition + 1) * bl.AveLengthSeconds, nil
+	return bl.AveLengthSeconds, nil
 }
 
 // MechArenaStatus return mech arena status from given collection item
@@ -165,7 +174,6 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 
 	if bqp != nil {
 		resp.Status = server.MechArenaStatusQueue
-		resp.QueuePosition = bqp.QueuePosition
 		resp.CanDeploy = false
 		return resp, nil
 	}
@@ -193,7 +201,7 @@ func MechArenaStatus(userID string, mechID string, factionID string) (*server.Me
 	return resp, nil
 }
 
-// MechQueuePosition return a list of mech queue position of the player (exclude in battle)
+// MechQueuePosition return the queue position of the specified mech (exclude in battle)
 func MechQueuePosition(mechID, factionID string) (*BattleQueuePosition, error) {
 	q := `
 		SELECT

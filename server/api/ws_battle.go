@@ -248,15 +248,22 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
 
-	eqts, err := db.GetEstimatedQueueTimeSecondsFromFactionID(factionID)
+	mwt, err := db.GetMinimumQueueWaitTimeSecondsFromFactionID(factionID)
 	if err != nil {
 		l.Error().Err(err).Msg("unable to retrieve estimated queue time")
 		return terror.Error(err, "Could not get estimated queue time.")
 	}
 
+	abl, err := db.GetAverageBattleLengthSeconds()
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve average game length")
+		return terror.Error(err, "Could not get average game length.")
+	}
+
 	reply(battle.QueueStatusResponse{
-		EstimatedQueueTimeSeconds: eqts,
-		QueueCost:                 db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		MinimumWaitTimeSeconds:   mwt,
+		AverageGameLengthSeconds: abl,
+		QueueCost:                db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
 	})
 	return nil
 }

@@ -38,13 +38,20 @@ type QueueJoinRequest struct {
 func CalcNextQueueStatus(factionID string) {
 	l := gamelog.L.With().Str("func", "CalcNextQueueStatus").Str("factionID", factionID).Logger()
 
-	eqts, err := db.GetEstimatedQueueTimeSecondsFromFactionID(factionID)
+	mwts, err := db.GetMinimumQueueWaitTimeSecondsFromFactionID(factionID)
 	if err != nil {
 		l.Warn().Err(err).Msg("unable to retrieve estimated queue time")
 	}
+
+	abl, err := db.GetAverageBattleLengthSeconds()
+	if err != nil {
+		l.Warn().Err(err).Msg("unable to retrieve average game length")
+	}
+
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
-		EstimatedQueueTimeSeconds: eqts,
-		QueueCost:                 db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		MinimumWaitTimeSeconds:   mwts,
+		AverageGameLengthSeconds: abl,
+		QueueCost:                db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
 	})
 }
 
@@ -328,8 +335,9 @@ func (am *ArenaManager) AssetUpdateRequest(ctx context.Context, user *boiler.Pla
 }
 
 type QueueStatusResponse struct {
-	EstimatedQueueTimeSeconds int64           `json:"estimated_queue_time_seconds"`
-	QueueCost                 decimal.Decimal `json:"queue_cost"`
+	MinimumWaitTimeSeconds   int64           `json:"minimum_wait_time_seconds"`
+	AverageGameLengthSeconds int64           `json:"average_game_length_seconds"`
+	QueueCost                decimal.Decimal `json:"queue_cost"`
 }
 
 const WSQueueStatusSubscribe = "BATTLE:QUEUE:STATUS:SUBSCRIBE"
