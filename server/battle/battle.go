@@ -53,6 +53,7 @@ type Battle struct {
 	gameMap                *server.GameMap
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
+	nextMapID              null.String
 	_abilities             *AbilitiesSystem
 	factions               map[uuid.UUID]*boiler.Faction
 	rpcClient              *xsyn_rpcclient.XrpcClient
@@ -382,6 +383,16 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get next battle details")
+			return
+		}
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
+
 	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
@@ -1249,6 +1260,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 }
 
 const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
+const HubKeyNextBattleDetails = "BATTLE:NEXT:DETAILS"
 
 func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []*PlayerReward, mechRewardRecords []*MechReward) {
 	defer func() {
@@ -1333,6 +1345,27 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
+
+	// get oldest map in the qeueu
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
+	}
+
+	_, err = mapInQueue.Delete(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to delete oldest map in battle_map_queue")
+	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo, playerRewardRecords, mechRewardRecords)
@@ -2081,7 +2114,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 func (btl *Battle) Load() error {
 	gamelog.L.Trace().Str("func", "Load").Msg("start")
-	q, err := db.LoadBattleQueue(context.Background(), 3)
+	q, err := db.LoadBattleQueue(context.Background(), 3, false)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")

@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -299,6 +300,18 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
+func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	// details
+	resp, err := db.GetNextBattle(ctx)
+	if err != nil {
+		return terror.Error(err, "failed getting uppcoming battle details")
+	}
+
+	reply(resp)
+
+	return nil
+}
 
 func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
@@ -312,6 +325,5 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 	if btl != nil {
 		reply(btl.MiniMapAbilityDisplayList.List())
 	}
-
 	return nil
 }
