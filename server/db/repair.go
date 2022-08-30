@@ -11,30 +11,58 @@ import (
 )
 
 func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
-	q := `
+	q := fmt.Sprintf(`
 		SELECT
-		    ro.id,
-		    ro.repair_case_id,
-		    ro.offered_by_id,
-		    ro.expires_at,
-		    ro.closed_at,
-		    ro.created_at,
-		    ro.offered_sups_amount,
-		    ro.finished_reason,
-		    rc.blocks_required_repair,
-		    rc.blocks_repaired,
-		    ro.offered_sups_amount/ro.blocks_total AS sups_worth_per_block,
-		    p.username,
-		    p.gid,
-		    p.faction_id,
-		    COUNT(ra.id) AS working_agent_count
-		FROM repair_offers ro
-		INNER JOIN repair_cases rc ON rc.id = ro.repair_case_id
-		INNER JOIN players p ON p.id = ro.offered_by_id
-		LEFT JOIN repair_agents ra ON ra.repair_offer_id = ro.id AND ra.finished_at ISNULL
-		WHERE ro.id = $1
-		GROUP BY ro.id, rc.blocks_required_repair, rc.blocks_repaired, ro.offered_sups_amount, ro.blocks_total, ro.closed_at, ro.finished_reason,p.username,p.gid,p.faction_id
-	`
+		    ro.%[2]s,
+		    ro.%[3]s,
+		    ro.%[4]s,
+		    ro.%[5]s,
+		    ro.%[6]s,
+		    ro.%[7]s,
+		    ro.%[8]s,
+		    ro.%[9]s,
+		    rc.%[13]s,
+		    rc.%[14]s,
+		    ro.%[8]s/ro.%[10]s AS sups_worth_per_block,
+		    p.%[17]s,
+		    p.%[18]s,
+		    p.%[19]s,
+		    COUNT(ra.%[21]s) AS working_agent_count
+		FROM %[1]s ro
+		INNER JOIN %[11]s rc ON rc.%[12]s = ro.%[3]s
+		INNER JOIN %[15]s p ON p.%[16]s = ro.%[4]s
+		LEFT JOIN %[20]s ra ON ra.%[22]s = ro.%[2]s AND ra.%[23]s ISNULL
+		WHERE ro.%[2]s = $1
+		GROUP BY ro.%[2]s, rc.%[13]s, rc.%[14]s, ro.%[8]s, ro.%[10]s, ro.%[6]s, ro.%[9]s, p.%[17]s, p.%[18]s, p.%[19]s
+	`,
+		boiler.TableNames.RepairOffers,              // 1
+		boiler.RepairOfferColumns.ID,                // 2
+		boiler.RepairOfferColumns.RepairCaseID,      // 3
+		boiler.RepairOfferColumns.OfferedByID,       // 4
+		boiler.RepairOfferColumns.ExpiresAt,         // 5
+		boiler.RepairOfferColumns.ClosedAt,          // 6
+		boiler.RepairOfferColumns.CreatedAt,         // 7
+		boiler.RepairOfferColumns.OfferedSupsAmount, // 8
+		boiler.RepairOfferColumns.FinishedReason,    // 9
+		boiler.RepairOfferColumns.BlocksTotal,       // 10
+
+		boiler.TableNames.RepairCases,                 // 11
+		boiler.RepairCaseColumns.ID,                   // 12
+		boiler.RepairCaseColumns.BlocksRequiredRepair, // 13
+		boiler.RepairCaseColumns.BlocksRepaired,       // 14
+
+		boiler.TableNames.Players,      // 15
+		boiler.PlayerColumns.ID,        // 16
+		boiler.PlayerColumns.Username,  // 17
+		boiler.PlayerColumns.Gid,       // 18
+		boiler.PlayerColumns.FactionID, // 19
+
+		boiler.TableNames.RepairAgents,          // 20
+		boiler.RepairAgentColumns.ID,            // 21
+		boiler.RepairAgentColumns.RepairOfferID, // 22
+		boiler.RepairAgentColumns.FinishedAt,    // 23
+
+	)
 	dro := &server.RepairOffer{
 		RepairOffer: &boiler.RepairOffer{},
 		JobOwner:    &server.PublicPlayer{},
@@ -63,40 +91,25 @@ func RepairOfferDetail(offerID string) (*server.RepairOffer, error) {
 	return dro, nil
 }
 
-// AbandonRepairAgent abandon repair agent and return the repair offer id
-func AbandonRepairAgent(repairAgentID string) (string, error) {
-	offerID := ""
-
-	q := `
-		UPDATE
-			repair_agents
-		SET
-		    finished_at = NOW(),
-		    finished_reason = $2
-		WHERE
-		    finished_at ISNULL AND id = $1
-	`
-
-	err := gamedb.StdConn.QueryRow(q, repairAgentID, boiler.RepairAgentFinishReasonABANDONED).Scan(&offerID)
-	if err != nil {
-		return "", err
-	}
-
-	return offerID, nil
-}
-
 // IsRepairCaseOwner check the player is the owner of the repair case
 func IsRepairCaseOwner(caseID string, playerID string) (bool, error) {
 	isOwner := false
-	q := `
+	q := fmt.Sprintf(`
 		SELECT 
 			COALESCE(
-			    (SELECT TRUE FROM collection_items ci WHERE ci.item_id = rc.mech_id AND ci.owner_id = $2), 
+			    (SELECT TRUE FROM %[1]s ci WHERE ci.%[3]s = rc.%[4]s AND ci.%[5]s = $2), 
 			    FALSE
 			)    
-		FROM repair_cases rc
-		WHERE rc.id = $1
-	`
+		FROM %[2]s rc
+		WHERE rc.%[6]s = $1
+	`,
+		boiler.TableNames.CollectionItems,    // 1
+		boiler.TableNames.RepairCases,        // 2
+		boiler.CollectionItemColumns.ItemID,  // 3
+		boiler.RepairCaseColumns.MechID,      // 4
+		boiler.CollectionItemColumns.OwnerID, // 5
+		boiler.RepairCaseColumns.ID,          // 6
+	)
 
 	err := gamedb.StdConn.QueryRow(q, caseID, playerID).Scan(&isOwner)
 	if err != nil {
