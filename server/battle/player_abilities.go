@@ -1030,19 +1030,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 		return terror.Error(err, err.Error())
 	}
 
-	//// check cell is disabled or not
-	//disableCells := arena.currentDisableCells()
-	//if disableCells == nil {
-	//	return terror.Error(fmt.Errorf("no disabeld cells provided"), "The selected cell is disabled.")
-	//}
-	//
-	//selectedCell := req.Payload.StartCoords.X.Add(req.Payload.StartCoords.Y.Mul(decimal.NewFromInt(int64(arena.CurrentBattle().gameMap.CellsX)))).IntPart()
-	//for _, dc := range disableCells {
-	//	if dc == selectedCell {
-	//		return terror.Error(fmt.Errorf("cell disabled"), "The selected cell is disabled.")
-	//	}
-	//}
-
 	// Only perform mech move command db checks if war machine is not a mini mech
 	isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
 	if isMiniMech {
