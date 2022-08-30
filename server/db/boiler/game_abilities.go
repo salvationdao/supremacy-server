@@ -44,6 +44,7 @@ type GameAbility struct {
 	AnimationDurationSeconds     int         `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
 	ShouldCheckTeamKill          bool        `boiler:"should_check_team_kill" boil:"should_check_team_kill" json:"should_check_team_kill" toml:"should_check_team_kill" yaml:"should_check_team_kill"`
 	MaximumTeamKillTolerantCount int         `boiler:"maximum_team_kill_tolerant_count" boil:"maximum_team_kill_tolerant_count" json:"maximum_team_kill_tolerant_count" toml:"maximum_team_kill_tolerant_count" yaml:"maximum_team_kill_tolerant_count"`
+	IgnoreSelfKill               bool        `boiler:"ignore_self_kill" boil:"ignore_self_kill" json:"ignore_self_kill" toml:"ignore_self_kill" yaml:"ignore_self_kill"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -71,6 +72,7 @@ var GameAbilityColumns = struct {
 	AnimationDurationSeconds     string
 	ShouldCheckTeamKill          string
 	MaximumTeamKillTolerantCount string
+	IgnoreSelfKill               string
 }{
 	ID:                           "id",
 	GameClientAbilityID:          "game_client_ability_id",
@@ -93,6 +95,7 @@ var GameAbilityColumns = struct {
 	AnimationDurationSeconds:     "animation_duration_seconds",
 	ShouldCheckTeamKill:          "should_check_team_kill",
 	MaximumTeamKillTolerantCount: "maximum_team_kill_tolerant_count",
+	IgnoreSelfKill:               "ignore_self_kill",
 }
 
 var GameAbilityTableColumns = struct {
@@ -117,6 +120,7 @@ var GameAbilityTableColumns = struct {
 	AnimationDurationSeconds     string
 	ShouldCheckTeamKill          string
 	MaximumTeamKillTolerantCount string
+	IgnoreSelfKill               string
 }{
 	ID:                           "game_abilities.id",
 	GameClientAbilityID:          "game_abilities.game_client_ability_id",
@@ -139,6 +143,7 @@ var GameAbilityTableColumns = struct {
 	AnimationDurationSeconds:     "game_abilities.animation_duration_seconds",
 	ShouldCheckTeamKill:          "game_abilities.should_check_team_kill",
 	MaximumTeamKillTolerantCount: "game_abilities.maximum_team_kill_tolerant_count",
+	IgnoreSelfKill:               "game_abilities.ignore_self_kill",
 }
 
 // Generated where
@@ -165,6 +170,7 @@ var GameAbilityWhere = struct {
 	AnimationDurationSeconds     whereHelperint
 	ShouldCheckTeamKill          whereHelperbool
 	MaximumTeamKillTolerantCount whereHelperint
+	IgnoreSelfKill               whereHelperbool
 }{
 	ID:                           whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID:          whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -187,6 +193,7 @@ var GameAbilityWhere = struct {
 	AnimationDurationSeconds:     whereHelperint{field: "\"game_abilities\".\"animation_duration_seconds\""},
 	ShouldCheckTeamKill:          whereHelperbool{field: "\"game_abilities\".\"should_check_team_kill\""},
 	MaximumTeamKillTolerantCount: whereHelperint{field: "\"game_abilities\".\"maximum_team_kill_tolerant_count\""},
+	IgnoreSelfKill:               whereHelperbool{field: "\"game_abilities\".\"ignore_self_kill\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -222,9 +229,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )

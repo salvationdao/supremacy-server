@@ -1807,34 +1807,38 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 					// only check team kill, if needed.
 					if ga != nil && ga.ShouldCheckTeamKill {
-						// update user kill
-						_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
-						if err != nil {
-							gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
-						}
+						// if ability ignore self kill or the kill is not self kill
+						if !ga.IgnoreSelfKill || abl.PlayerID.String != destroyedWarMachine.OwnedByID {
+							// update user kill
+							_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+							}
 
-						// insert a team kill record to last seven days kills
-						pkl := boiler.PlayerKillLog{
-							PlayerID:          abl.PlayerID.String,
-							FactionID:         abl.FactionID,
-							BattleID:          btl.BattleID,
-							IsTeamKill:        true,
-							AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
-							GameAbilityID:     null.StringFrom(abl.GameAbilityID),
-						}
-						err = pkl.Insert(gamedb.StdConn, boil.Infer())
-						if err != nil {
-							gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
-						}
+							// insert a team kill record to last seven days kills
+							pkl := boiler.PlayerKillLog{
+								PlayerID:          abl.PlayerID.String,
+								FactionID:         abl.FactionID,
+								BattleID:          btl.BattleID,
+								IsTeamKill:        true,
+								AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
+								GameAbilityID:     null.StringFrom(abl.GameAbilityID),
+							}
+							err = pkl.Insert(gamedb.StdConn, boil.Infer())
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
+							}
 
-						// subtract faction kill count
-						err = db.FactionSubtractAbilityKillCount(abl.FactionID)
-						if err != nil {
-							gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
-						}
+							// subtract faction kill count
+							err = db.FactionSubtractAbilityKillCount(abl.FactionID)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+							}
 
-						// sent instance to system ban manager
-						go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
+							// sent instance to system ban manager
+							go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
+
+						}
 					}
 				} else {
 					// update user kill
