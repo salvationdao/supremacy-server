@@ -70,6 +70,7 @@ type Battle struct {
 	abilityDetails []*AbilityDetail
 
 	MiniMapAbilityDisplayList *MiniMapAbilityDisplayList
+	MapEventList              *MapEventList
 
 	deadlock.RWMutex
 }
@@ -1521,10 +1522,9 @@ func (btl *Battle) Tick(payload []byte) {
 	wsMessages := []ws.Message{}
 
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
-	count := payload[1]
-	var c byte
+	count := int(payload[1])
 	offset := 2
-	for c = 0; c < count; c++ {
+	for c := 0; c < count; c++ {
 		participantID := payload[offset]
 		offset++
 
@@ -1651,7 +1651,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 
 	if btl.playerAbilityManager().HasBlackoutsUpdated() {
-		minimapUpdates := []MinimapEvent{}
+		var minimapUpdates []MinimapEvent
 		for id, b := range btl.playerAbilityManager().Blackouts() {
 			minimapUpdates = append(minimapUpdates, MinimapEvent{
 				ID:            id,
@@ -1669,10 +1669,13 @@ func (btl *Battle) Tick(payload []byte) {
 	// Map Events
 	if len(payload) > offset {
 		mapEventCount := payload[offset]
-		fmt.Println(mapEventCount)
 		if mapEventCount > 0 {
+			// Pass map events straight to frontend clients
 			mapEvents := payload[offset:]
-			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap_events", btl.ArenaID), HubKeyMinimapEventsSubscribe, mapEvents)
+			ws.PublishMessage(fmt.Sprintf("/public/arena/%s/minimap_events", btl.ArenaID), HubKeyMinimapEventsSubscribe, [][]byte{mapEvents})
+
+			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
+			btl.MapEventList.MapEventsUnpack(mapEvents)
 		}
 	}
 }

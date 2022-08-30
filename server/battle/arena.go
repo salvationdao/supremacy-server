@@ -874,19 +874,12 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 		return terror.Error(terror.ErrForbidden, "There is no battle currently for this map event.")
 	}
 
-	// TODO: store and send landmine locations and the hive map state
-	//minimapUpdates := []MinimapEvent{}
-	//for id, b := range arena.CurrentBattle().playerAbilityManager().Blackouts() {
-	//	minimapUpdates = append(minimapUpdates, MinimapEvent{
-	//		ID:            id,
-	//		GameAbilityID: BlackoutGameAbilityID,
-	//		Duration:      BlackoutDurationSeconds,
-	//		Radius:        int(BlackoutRadius),
-	//		Coords:        b.CellCoords,
-	//	})
-	//}
-	//
-	//reply(minimapUpdates)
+	// if current battle still running
+	btl := arena.CurrentBattle()
+	if btl != nil {
+		// send landmine, pickup locations and the hive map state
+		reply(btl.MapEventList.Pack())
+	}
 
 	return nil
 }
