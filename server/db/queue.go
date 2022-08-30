@@ -99,7 +99,7 @@ func GetAverageBattleLengthSeconds() (int64, error) {
 	}
 	err := boiler.NewQuery(
 		qm.SQL(fmt.Sprintf(`
-		SELECT coalesce(avg(battle_length.length), 0) as ave_length_seconds
+		SELECT coalesce(avg(battle_length.length), 0)::numeric::integer as ave_length_seconds
 		FROM (
 			SELECT extract(EPOCH FROM ended_at - started_at) AS length
 			FROM %s
