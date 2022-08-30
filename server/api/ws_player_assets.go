@@ -123,9 +123,14 @@ type PlayerAssetMech struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type PlayerAssetMechWithQueueStatus struct {
+	*PlayerAssetMech
+	InQueue bool `json:"in_queue"`
+}
+
 type PlayerAssetMechListResp struct {
-	Total int64              `json:"total"`
-	Mechs []*PlayerAssetMech `json:"mechs"`
+	Total int64                             `json:"total"`
+	Mechs []*PlayerAssetMechWithQueueStatus `json:"mechs"`
 }
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -168,41 +173,44 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssetMechs := []*PlayerAssetMech{}
+	playerAssetMechs := []*PlayerAssetMechWithQueueStatus{}
 
 	for _, m := range mechs {
-		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
-			ID:                    m.ID,
-			Label:                 m.Label,
-			WeaponHardpoints:      m.WeaponHardpoints,
-			UtilitySlots:          m.UtilitySlots,
-			Speed:                 m.Speed,
-			MaxHitpoints:          m.MaxHitpoints,
-			IsDefault:             m.IsDefault,
-			IsInsured:             m.IsInsured,
-			Name:                  m.Name,
-			GenesisTokenID:        m.GenesisTokenID,
-			LimitedReleaseTokenID: m.LimitedReleaseTokenID,
-			PowerCoreSize:         m.PowerCoreSize,
-			BlueprintID:           m.BlueprintID,
-			BrandID:               m.BrandID,
-			FactionID:             m.FactionID.String,
-			ChassisSkinID:         m.ChassisSkinID,
-			IntroAnimationID:      m.IntroAnimationID,
-			OutroAnimationID:      m.OutroAnimationID,
-			PowerCoreID:           m.PowerCoreID,
-			UpdatedAt:             m.UpdatedAt,
-			CreatedAt:             m.CreatedAt,
-			CollectionSlug:        m.CollectionItem.CollectionSlug,
-			Hash:                  m.CollectionItem.Hash,
-			TokenID:               m.CollectionItem.TokenID,
-			ItemType:              m.CollectionItem.ItemType,
-			Tier:                  m.CollectionItem.Tier,
-			OwnerID:               m.CollectionItem.OwnerID,
-			XsynLocked:            m.CollectionItem.XsynLocked,
-			MarketLocked:          m.CollectionItem.MarketLocked,
-			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
-			QueuePosition:         m.QueuePosition,
+		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMechWithQueueStatus{
+			PlayerAssetMech: &PlayerAssetMech{
+				ID:                    m.ID,
+				Label:                 m.Label,
+				WeaponHardpoints:      m.WeaponHardpoints,
+				UtilitySlots:          m.UtilitySlots,
+				Speed:                 m.Speed,
+				MaxHitpoints:          m.MaxHitpoints,
+				IsDefault:             m.IsDefault,
+				IsInsured:             m.IsInsured,
+				Name:                  m.Name,
+				GenesisTokenID:        m.GenesisTokenID,
+				LimitedReleaseTokenID: m.LimitedReleaseTokenID,
+				PowerCoreSize:         m.PowerCoreSize,
+				BlueprintID:           m.BlueprintID,
+				BrandID:               m.BrandID,
+				FactionID:             m.FactionID.String,
+				ChassisSkinID:         m.ChassisSkinID,
+				IntroAnimationID:      m.IntroAnimationID,
+				OutroAnimationID:      m.OutroAnimationID,
+				PowerCoreID:           m.PowerCoreID,
+				UpdatedAt:             m.UpdatedAt,
+				CreatedAt:             m.CreatedAt,
+				CollectionSlug:        m.CollectionItem.CollectionSlug,
+				Hash:                  m.CollectionItem.Hash,
+				TokenID:               m.CollectionItem.TokenID,
+				ItemType:              m.CollectionItem.ItemType,
+				Tier:                  m.CollectionItem.Tier,
+				OwnerID:               m.CollectionItem.OwnerID,
+				XsynLocked:            m.CollectionItem.XsynLocked,
+				MarketLocked:          m.CollectionItem.MarketLocked,
+				LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+				QueuePosition:         m.QueuePosition,
+			},
+			InQueue: m.QueuePosition.Valid,
 		})
 	}
 
@@ -261,41 +269,44 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListPublicHandler(ctx contex
 		return terror.Error(err, "Failed to find your War Machine assets, please try again or contact support.")
 	}
 
-	playerAssetMechs := []*PlayerAssetMech{}
+	playerAssetMechs := []*PlayerAssetMechWithQueueStatus{}
 
 	for _, m := range mechs {
-		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
-			ID:                    m.ID,
-			Label:                 m.Label,
-			WeaponHardpoints:      m.WeaponHardpoints,
-			UtilitySlots:          m.UtilitySlots,
-			Speed:                 m.Speed,
-			MaxHitpoints:          m.MaxHitpoints,
-			IsDefault:             m.IsDefault,
-			IsInsured:             m.IsInsured,
-			Name:                  m.Name,
-			GenesisTokenID:        m.GenesisTokenID,
-			LimitedReleaseTokenID: m.LimitedReleaseTokenID,
-			PowerCoreSize:         m.PowerCoreSize,
-			BlueprintID:           m.BlueprintID,
-			BrandID:               m.BrandID,
-			FactionID:             m.FactionID.String,
-			ChassisSkinID:         m.ChassisSkinID,
-			IntroAnimationID:      m.IntroAnimationID,
-			OutroAnimationID:      m.OutroAnimationID,
-			PowerCoreID:           m.PowerCoreID,
-			UpdatedAt:             m.UpdatedAt,
-			CreatedAt:             m.CreatedAt,
-			CollectionSlug:        m.CollectionItem.CollectionSlug,
-			Hash:                  m.CollectionItem.Hash,
-			TokenID:               m.CollectionItem.TokenID,
-			ItemType:              m.CollectionItem.ItemType,
-			Tier:                  m.CollectionItem.Tier,
-			OwnerID:               m.CollectionItem.OwnerID,
-			XsynLocked:            m.CollectionItem.XsynLocked,
-			MarketLocked:          m.CollectionItem.MarketLocked,
-			LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
-			QueuePosition:         m.QueuePosition,
+		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMechWithQueueStatus{
+			PlayerAssetMech: &PlayerAssetMech{
+				ID:                    m.ID,
+				Label:                 m.Label,
+				WeaponHardpoints:      m.WeaponHardpoints,
+				UtilitySlots:          m.UtilitySlots,
+				Speed:                 m.Speed,
+				MaxHitpoints:          m.MaxHitpoints,
+				IsDefault:             m.IsDefault,
+				IsInsured:             m.IsInsured,
+				Name:                  m.Name,
+				GenesisTokenID:        m.GenesisTokenID,
+				LimitedReleaseTokenID: m.LimitedReleaseTokenID,
+				PowerCoreSize:         m.PowerCoreSize,
+				BlueprintID:           m.BlueprintID,
+				BrandID:               m.BrandID,
+				FactionID:             m.FactionID.String,
+				ChassisSkinID:         m.ChassisSkinID,
+				IntroAnimationID:      m.IntroAnimationID,
+				OutroAnimationID:      m.OutroAnimationID,
+				PowerCoreID:           m.PowerCoreID,
+				UpdatedAt:             m.UpdatedAt,
+				CreatedAt:             m.CreatedAt,
+				CollectionSlug:        m.CollectionItem.CollectionSlug,
+				Hash:                  m.CollectionItem.Hash,
+				TokenID:               m.CollectionItem.TokenID,
+				ItemType:              m.CollectionItem.ItemType,
+				Tier:                  m.CollectionItem.Tier,
+				OwnerID:               m.CollectionItem.OwnerID,
+				XsynLocked:            m.CollectionItem.XsynLocked,
+				MarketLocked:          m.CollectionItem.MarketLocked,
+				LockedToMarketplace:   m.CollectionItem.LockedToMarketplace,
+				QueuePosition:         m.QueuePosition,
+			},
+			InQueue: m.QueuePosition.Valid,
 		})
 	}
 
