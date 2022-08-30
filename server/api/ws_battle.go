@@ -6,14 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -246,15 +246,17 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
+
+	eqts, err := db.GetEstimatedQueueTimeSecondsFromFactionID(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
-		return err
+		l.Error().Err(err).Msg("unable to retrieve estimated queue time")
+		return terror.Error(err, "Could not get estimated queue time.")
 	}
 
 	reply(battle.QueueStatusResponse{
-		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		EstimatedQueueTimeSeconds: eqts,
+		QueueCost:                 db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
 	})
 	return nil
 }

@@ -17,12 +17,13 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-func GetBattleMechs() (boiler.BattleQueueSlice, error) {
-	battleMechs, err := GetNextBattleMech(server.ZaibatsuFactionID, []*boiler.BattleQueue{}, false)
+func GetBattleMechsFromFactionID(factionID string) (boiler.BattleQueueSlice, error) {
+	battleMechs, err := GetNextBattleMech(factionID, []*boiler.BattleQueue{}, false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("Failed to get battle mechs")
 		return nil, err
 	}
+	spew.Dump(battleMechs)
 	return battleMechs, nil
 }
 
@@ -30,11 +31,9 @@ const FACTION_MECH_LIMIT = 3
 
 // GetNextBattleMech returns the next 3 (or less) mechs in queue that belong to the specified faction.
 // By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
-// However, if 3 queued faction mechs with unique IDs does not currently exist, GetNextBattleMech may return mechs
-// with the same owner ID.
+// However, if 3 queued faction mechs with unique owner IDs does not currently exist, GetNextBattleMech may return
+// mechs with the same owner ID.
 func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, disableOwnerCheck bool) (boiler.BattleQueueSlice, error) {
-	fmt.Printf("-----------%d\n", len(battleMechs))
-	spew.Dump(battleMechs)
 	if len(battleMechs) == FACTION_MECH_LIMIT {
 		return battleMechs, nil
 	}
@@ -67,6 +66,45 @@ func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, di
 	battleMechs = append(battleMechs, nextBattleMech)
 
 	return GetNextBattleMech(factionID, battleMechs, false)
+}
+
+func GetEstimatedQueueTimeSecondsFromFactionID(factionID string) (int64, error) {
+	var bl struct {
+		AveLengthSeconds int64 `boil:"ave_length_seconds"`
+	}
+	err := boiler.NewQuery(
+		qm.SQL(fmt.Sprintf(`
+		SELECT coalesce(avg(battle_length.length), 0) as ave_length_seconds
+		FROM (
+			SELECT extract(EPOCH FROM ended_at - started_at) AS length
+			FROM %s
+			WHERE %s IS NOT NULL
+			ORDER BY %s DESC
+			LIMIT 100
+		) battle_length;
+	`, boiler.TableNames.Battles, boiler.BattleColumns.EndedAt, boiler.BattleColumns.StartedAt)),
+	).Bind(nil, gamedb.StdConn, &bl)
+	if err != nil {
+		return -1, err
+	}
+
+	var qp struct {
+		NextQueuePosition int64 `json:"next_queue_position"`
+	}
+	err = boiler.NewQuery(
+		qm.Select(fmt.Sprintf("count(DISTINCT %s) as next_queue_position",
+			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID),
+		)),
+		qm.From(boiler.TableNames.BattleQueue),
+		qm.Where(fmt.Sprintf("%s = ?",
+			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID)),
+			factionID),
+	).Bind(nil, gamedb.StdConn, &qp)
+	if err != nil {
+		return -1, err
+	}
+
+	return (qp.NextQueuePosition + 1) * bl.AveLengthSeconds, nil
 }
 
 // MechArenaStatus return mech arena status from given collection item

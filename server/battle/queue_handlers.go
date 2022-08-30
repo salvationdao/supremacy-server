@@ -6,10 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/exp/slices"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -17,6 +13,11 @@ import (
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -35,14 +36,15 @@ type QueueJoinRequest struct {
 }
 
 func CalcNextQueueStatus(factionID string) {
-	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	l := gamelog.L.With().Str("func", "CalcNextQueueStatus").Str("factionID", factionID).Logger()
+
+	eqts, err := db.GetEstimatedQueueTimeSecondsFromFactionID(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-		return
+		l.Warn().Err(err).Msg("unable to retrieve estimated queue time")
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
-		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		EstimatedQueueTimeSeconds: eqts,
+		QueueCost:                 db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
 	})
 }
 
@@ -326,8 +328,8 @@ func (am *ArenaManager) AssetUpdateRequest(ctx context.Context, user *boiler.Pla
 }
 
 type QueueStatusResponse struct {
-	QueueLength int64           `json:"queue_length"`
-	QueueCost   decimal.Decimal `json:"queue_cost"`
+	EstimatedQueueTimeSeconds int64           `json:"estimated_queue_time_seconds"`
+	QueueCost                 decimal.Decimal `json:"queue_cost"`
 }
 
 const WSQueueStatusSubscribe = "BATTLE:QUEUE:STATUS:SUBSCRIBE"
