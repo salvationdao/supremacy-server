@@ -305,9 +305,7 @@ func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byt
 	// details
 	resp, err := db.GetNextBattle(ctx)
 	if err != nil {
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return terror.Error(err, "failed getting uppcoming battle details")
-		}
+		return terror.Error(err, "failed getting uppcoming battle details")
 	}
 
 	reply(resp)

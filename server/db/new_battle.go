@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -515,35 +516,20 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 		return nil, err
 	}
 
-	rm, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Red Mountain Offworld Mining Corporation")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "failed getting faction (RM)")
-	}
-
-	zhi, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Zaibatsu Heavy Industries")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "failed getting faction (ZHI)")
-	}
-
-	boc, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Boston Cybernetics")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "failed getting faction (BOC)")
-	}
-
 	rmMechIDs := []string{}
 	zhiMechIDs := []string{}
 	bcMechIDs := []string{}
 
 	for _, q := range queue {
-		if q.FactionID == rm.ID {
+		if q.FactionID == server.RedMountainFactionID {
 			rmMechIDs = append(rmMechIDs, q.MechID)
 		}
 
-		if q.FactionID == zhi.ID {
+		if q.FactionID == server.ZaibatsuFactionID {
 			zhiMechIDs = append(zhiMechIDs, q.MechID)
 		}
 
-		if q.FactionID == boc.ID {
+		if q.FactionID == server.BostonCyberneticsFactionID {
 			bcMechIDs = append(bcMechIDs, q.MechID)
 		}
 	}
@@ -565,9 +551,9 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 		BCMechIDs:  bcMechIDs,
 		ZHIMechIDs: zhiMechIDs,
 		RMMechIDs:  rmMechIDs,
-		BcID:       boc.ID,
-		ZhiID:      zhi.ID,
-		RmID:       rm.ID,
+		BcID:       server.BostonCyberneticsFactionID,
+		ZhiID:      server.ZaibatsuFactionID,
+		RmID:       server.RedMountainFactionID,
 		Map:        bMap,
 	}
 	return resp, nil

@@ -390,7 +390,7 @@ func (btl *Battle) start() {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get next battle details")
 			return
 		}
-		ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
 	}()
 
 	gamelog.L.Trace().Str("func", "start").Msg("end")
@@ -1363,7 +1363,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return
 		}
-		ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
 	}()
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)

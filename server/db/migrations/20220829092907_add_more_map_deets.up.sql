@@ -30,15 +30,5 @@ CREATE TABLE battle_map_queue
 );
 
 -- seed battle_map_queue
-DO 
-$$
-DECLARE hive_id UUID;
-DECLARE desert_id UUID;
-BEGIN
-    hive_id := (select id from game_maps where name = 'TheHive');
-    insert into battle_map_queue (map_id) VALUES (hive_id);
-
-    desert_id := (select id from game_maps where name = 'DesertCity');
-    insert into battle_map_queue (map_id) VALUES (desert_id);
-END;
-$$;
+INSERT INTO battle_map_queue (map_id) (SELECT id FROM game_maps WHERE name = 'TheHive');
+INSERT INTO battle_map_queue (map_id) (SELECT id FROM game_maps WHERE name = 'DesertCity');
