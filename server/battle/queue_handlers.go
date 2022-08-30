@@ -284,7 +284,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return
 			}
 
-			ws.PublishMessage("/public/arena/upcomming_battle", "BATTLE:NEXT:DETAILS", qs)
+			ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
 		}()
 
 		if err != nil {
