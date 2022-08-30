@@ -27,6 +27,7 @@ var TableNames = struct {
 	BattleQueue                                        string
 	BattleQueueFees                                    string
 	BattleQueueNotifications                           string
+	BattleReplays                                      string
 	BattleViewers                                      string
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
@@ -39,17 +40,16 @@ var TableNames = struct {
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
+	BlueprintMechsOld                                  string
+	BlueprintModules                                   string
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
 	BlueprintQuests                                    string
 	BlueprintUtility                                   string
-	BlueprintUtilityAccelerator                        string
-	BlueprintUtilityAntiMissile                        string
-	BlueprintUtilityAttackDrone                        string
-	BlueprintUtilityRepairDrone                        string
 	BlueprintUtilityShield                             string
 	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
+	BlueprintWeaponsOld                                string
 	Brands                                             string
 	ChatBannedFingerprints                             string
 	ChatHistory                                        string
@@ -77,7 +77,6 @@ var TableNames = struct {
 	MechAbilityTriggerLogs                             string
 	MechAnimation                                      string
 	MechModelSkinCompatibilities                       string
-	MechModels                                         string
 	MechMoveCommandLogs                                string
 	MechSkin                                           string
 	MechStats                                          string
@@ -88,6 +87,7 @@ var TableNames = struct {
 	Multipliers                                        string
 	MysteryCrate                                       string
 	MysteryCrateBlueprints                             string
+	OvenStreams                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerBans                                         string
@@ -147,14 +147,9 @@ var TableNames = struct {
 	Templates                                          string
 	TemplatesOld                                       string
 	Utility                                            string
-	UtilityAccelerator                                 string
-	UtilityAntiMissile                                 string
-	UtilityAttackDrone                                 string
-	UtilityRepairDrone                                 string
-	UtilityShield                                      string
+	UtilityShieldDontUse                               string
 	WeaponAmmo                                         string
 	WeaponModelSkinCompatibilities                     string
-	WeaponModels                                       string
 	WeaponSkin                                         string
 	Weapons                                            string
 }{
@@ -181,6 +176,7 @@ var TableNames = struct {
 	BattleQueue:                    "battle_queue",
 	BattleQueueFees:                "battle_queue_fees",
 	BattleQueueNotifications:       "battle_queue_notifications",
+	BattleReplays:                  "battle_replays",
 	BattleViewers:                  "battle_viewers",
 	BattleWarMachineQueues:         "battle_war_machine_queues",
 	BattleWins:                     "battle_wins",
@@ -193,17 +189,16 @@ var TableNames = struct {
 	BlueprintMechAnimation:         "blueprint_mech_animation",
 	BlueprintMechSkin:              "blueprint_mech_skin",
 	BlueprintMechs:                 "blueprint_mechs",
+	BlueprintMechsOld:              "blueprint_mechs_old",
+	BlueprintModules:               "blueprint_modules",
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
 	BlueprintQuests:                "blueprint_quests",
 	BlueprintUtility:               "blueprint_utility",
-	BlueprintUtilityAccelerator:    "blueprint_utility_accelerator",
-	BlueprintUtilityAntiMissile:    "blueprint_utility_anti_missile",
-	BlueprintUtilityAttackDrone:    "blueprint_utility_attack_drone",
-	BlueprintUtilityRepairDrone:    "blueprint_utility_repair_drone",
 	BlueprintUtilityShield:         "blueprint_utility_shield",
 	BlueprintWeaponSkin:            "blueprint_weapon_skin",
 	BlueprintWeapons:               "blueprint_weapons",
+	BlueprintWeaponsOld:            "blueprint_weapons_old",
 	Brands:                         "brands",
 	ChatBannedFingerprints:         "chat_banned_fingerprints",
 	ChatHistory:                    "chat_history",
@@ -231,7 +226,6 @@ var TableNames = struct {
 	MechAbilityTriggerLogs:         "mech_ability_trigger_logs",
 	MechAnimation:                  "mech_animation",
 	MechModelSkinCompatibilities:   "mech_model_skin_compatibilities",
-	MechModels:                     "mech_models",
 	MechMoveCommandLogs:            "mech_move_command_logs",
 	MechSkin:                       "mech_skin",
 	MechStats:                      "mech_stats",
@@ -242,6 +236,7 @@ var TableNames = struct {
 	Multipliers:                    "multipliers",
 	MysteryCrate:                   "mystery_crate",
 	MysteryCrateBlueprints:         "mystery_crate_blueprints",
+	OvenStreams:                    "oven_streams",
 	PlayerAbilities:                "player_abilities",
 	PlayerActiveLogs:               "player_active_logs",
 	PlayerBans:                     "player_bans",
@@ -301,14 +296,9 @@ var TableNames = struct {
 	Templates:                      "templates",
 	TemplatesOld:                   "templates_old",
 	Utility:                        "utility",
-	UtilityAccelerator:             "utility_accelerator",
-	UtilityAntiMissile:             "utility_anti_missile",
-	UtilityAttackDrone:             "utility_attack_drone",
-	UtilityRepairDrone:             "utility_repair_drone",
-	UtilityShield:                  "utility_shield",
+	UtilityShieldDontUse:           "utility_shield_dont_use",
 	WeaponAmmo:                     "weapon_ammo",
 	WeaponModelSkinCompatibilities: "weapon_model_skin_compatibilities",
-	WeaponModels:                   "weapon_models",
 	WeaponSkin:                     "weapon_skin",
 	Weapons:                        "weapons",
 }

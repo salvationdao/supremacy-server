@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"server"
 	"server/battle/player_abilities"
-	"server/benchmark"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -278,8 +277,7 @@ func (ld *LocationDeciders) hasSelector() bool {
 type AbilityConfig struct {
 	BattleAbilityOptInDuration          time.Duration
 	BattleAbilityLocationSelectDuration time.Duration
-	AdvanceAbilityShowUpUntilSeconds    int
-	AdvanceAbilityLabel                 string
+	DeadlyAbilityShowUpUntilSeconds     int
 	FirstAbilityLabel                   string
 }
 
@@ -302,8 +300,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			config: &AbilityConfig{
 				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
 				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
-				AdvanceAbilityShowUpUntilSeconds:    db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
-				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
+				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
 		},
@@ -368,14 +365,14 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		firstAbilityLabel = ""
 	}
 
-	excludedAbility := as.BattleAbilityPool.config.AdvanceAbilityLabel
-	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.AdvanceAbilityShowUpUntilSeconds {
+	includeDeadlyAbilities := false
+	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.DeadlyAbilityShowUpUntilSeconds {
 		// bring in advance battle ability
-		excludedAbility = ""
+		includeDeadlyAbilities = true
 	}
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, excludedAbility)
+	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, includeDeadlyAbilities)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 30, err
@@ -524,11 +521,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				bm := benchmark.New()
-				bm.Start("location select deciders")
 				as.locationDecidersSet()
-				bm.End("location select deciders")
-				bm.Alert(100)
 
 				// get another ability if no one opt in
 				if as.BattleAbilityPool.LocationDeciders.maxSelectorCount() == 0 {
@@ -632,7 +625,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 
 			offeringID := uuid.Must(uuid.NewV4())
-			userUUID := uuid.FromStringOrNil(ls.userID)
 
 			// start ability trigger process
 			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
@@ -657,23 +649,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				return
 			}
 
-			event := &server.GameAbilityEvent{
-				IsTriggered:         true,
-				GameClientAbilityID: byte(ga.GameClientAbilityID),
-				TriggeredByUserID:   &userUUID,
-				TriggeredByUsername: &player.Username.String,
-				EventID:             offeringID,
-				FactionID:           &ls.factionID,
-			}
-
-			event.GameLocation = btl.getGameWorldCoordinatesFromCellXY(&ls.startPoint)
-
-			if ga.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && ls.endPoint != nil {
-				event.GameLocationEnd = btl.getGameWorldCoordinatesFromCellXY(ls.endPoint)
-			}
-
-			// trigger location select
-			btl.arena.Message("BATTLE:ABILITY", event)
+			go as.launchAbility(ls, offeringID, ga, player, faction)
 
 			bat := boiler.BattleAbilityTrigger{
 				PlayerID:          null.StringFrom(ls.userID),
@@ -694,30 +670,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", ls.userID).Err(err).Msg("failed to update user ability triggered amount")
 			}
 
-			btl.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-				Type: LocationSelectTypeTrigger,
-				Ability: &AbilityBrief{
-					Label:    ga.Label,
-					ImageUrl: ga.ImageURL,
-					Colour:   ga.Colour,
-				},
-				CurrentUser: &UserBrief{
-					ID:        userUUID,
-					Username:  player.Username.String,
-					FactionID: player.FactionID.String,
-					Gid:       player.Gid,
-					Faction: &Faction{
-						ID:    faction.ID,
-						Label: faction.Label,
-						Theme: &Theme{
-							PrimaryColor:    faction.PrimaryColor,
-							SecondaryColor:  faction.SecondaryColor,
-							BackgroundColor: faction.BackgroundColor,
-						},
-					},
-				},
-			})
-
 			// enter cool down, when every selector fire the ability
 			if !as.BattleAbilityPool.LocationDeciders.hasSelector() {
 				// set new battle ability
@@ -734,6 +686,131 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 		}
 	}
+}
+
+func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUID, gameAbility *boiler.GameAbility, player *boiler.Player, faction *boiler.Faction) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at launching ability.", r)
+		}
+	}()
+
+	btl, ok := as.battle()
+	if !ok {
+		return
+	}
+
+	if gameAbility.DisplayOnMiniMap {
+		mma := &MiniMapAbilityContent{
+			OfferingID: offeringID.String(),
+			Location: server.CellLocation{
+				X: ls.startPoint.X,
+				Y: ls.startPoint.Y,
+			},
+			LocationSelectType:       gameAbility.LocationSelectType,
+			ImageUrl:                 gameAbility.ImageURL,
+			Colour:                   gameAbility.Colour,
+			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
+			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
+		}
+
+		// if delay second is greater than zero
+		if gameAbility.LaunchingDelaySeconds > 0 {
+			duration := time.Duration(gameAbility.LaunchingDelaySeconds) * time.Second
+
+			mma.LaunchingAt = null.TimeFrom(time.Now().Add(duration))
+
+			// add ability onto pending list, and broadcast
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			// time sleep
+			time.Sleep(duration)
+
+			// check ability system and battle are still available after time sleep
+			if !AbilitySystemIsAvailable(as) {
+				return
+			}
+			btl, ok = as.battle()
+			if !ok {
+				return
+			}
+		}
+
+		mma.LaunchingAt = null.TimeFromPtr(nil)
+		if ability := btl.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+			mma.Radius = null.IntFrom(ability.Radius)
+		}
+		// broadcast changes
+		ws.PublishMessage(
+			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			server.HubKeyMiniMapAbilityDisplayList,
+			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+		)
+
+		if gameAbility.AnimationDurationSeconds > 0 {
+			go func(battle *Battle, abilityContent *MiniMapAbilityContent, animationSeconds int) {
+				time.Sleep(time.Duration(animationSeconds) * time.Second)
+
+				if battle != nil && battle.stage.Load() == BattleStageStart {
+					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+						)
+					}
+				}
+			}(btl, mma, gameAbility.AnimationDurationSeconds)
+		}
+	}
+
+	userUUID := uuid.FromStringOrNil(ls.userID)
+
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: byte(gameAbility.GameClientAbilityID),
+		TriggeredByUserID:   &userUUID,
+		TriggeredByUsername: &player.Username.String,
+		EventID:             offeringID,
+		FactionID:           &ls.factionID,
+	}
+
+	event.GameLocation = btl.getGameWorldCoordinatesFromCellXY(&ls.startPoint)
+
+	if gameAbility.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && ls.endPoint != nil {
+		event.GameLocationEnd = btl.getGameWorldCoordinatesFromCellXY(ls.endPoint)
+	}
+
+	// trigger location select
+	btl.arena.Message("BATTLE:ABILITY", event)
+
+	btl.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+		Type: LocationSelectTypeTrigger,
+		Ability: &AbilityBrief{
+			Label:    gameAbility.Label,
+			ImageUrl: gameAbility.ImageURL,
+			Colour:   gameAbility.Colour,
+		},
+		CurrentUser: &UserBrief{
+			ID:        userUUID,
+			Username:  player.Username.String,
+			FactionID: player.FactionID.String,
+			Gid:       player.Gid,
+			Faction: &Faction{
+				ID:    faction.ID,
+				Label: faction.Label,
+				Theme: &Theme{
+					PrimaryColor:    faction.PrimaryColor,
+					SecondaryColor:  faction.SecondaryColor,
+					BackgroundColor: faction.BackgroundColor,
+				},
+			},
+		},
+	})
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered

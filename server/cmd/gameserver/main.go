@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os/signal"
 	"runtime"
 	"server"
 	"server/api"
@@ -19,6 +20,7 @@ import (
 	"server/gamelog"
 	"server/profanities"
 	"server/quest"
+	"server/replay"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
@@ -168,6 +170,8 @@ func main() {
 					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
 					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
+
+					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -206,6 +210,8 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
+
+					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
 
 					server.SetEnv(environment)
 
@@ -438,12 +444,24 @@ func main() {
 					asset.SyncAssetOwners(rpcClient)
 					gamelog.L.Info().Msgf("Asset transfers took %s", time.Since(start))
 
+					// stops all battle replay recordings when server goes down
+					go func() {
+						stop := make(chan os.Signal, 1)
+						signal.Notify(stop, os.Interrupt)
+						<-stop
+						err := replay.StopAllActiveRecording()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
+						}
+					}()
+
 					gamelog.L.Info().Msg("Running API")
 					err = api.Run(ctx)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
 					return nil
 				},
@@ -524,10 +542,9 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
-			FROM templates_old tpo
-			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
-			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+				SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
+				FROM templates_old tpo
+				INNER JOIN template_blueprints tpbp ON tpo.blueprint_chassis_id =  tpbp.blueprint_id_old; `
 		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue getting template ids")

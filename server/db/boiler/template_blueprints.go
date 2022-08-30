@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,58 +23,65 @@ import (
 
 // TemplateBlueprint is an object representing the database table.
 type TemplateBlueprint struct {
-	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	TemplateID  string    `boiler:"template_id" boil:"template_id" json:"template_id" toml:"template_id" yaml:"template_id"`
-	Type        string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	BlueprintID string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	TemplateID     string      `boiler:"template_id" boil:"template_id" json:"template_id" toml:"template_id" yaml:"template_id"`
+	Type           string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	BlueprintID    string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintIDOld null.String `boiler:"blueprint_id_old" boil:"blueprint_id_old" json:"blueprint_id_old,omitempty" toml:"blueprint_id_old" yaml:"blueprint_id_old,omitempty"`
 
 	R *templateBlueprintR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateBlueprintL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var TemplateBlueprintColumns = struct {
-	ID          string
-	TemplateID  string
-	Type        string
-	BlueprintID string
-	CreatedAt   string
+	ID             string
+	TemplateID     string
+	Type           string
+	BlueprintID    string
+	CreatedAt      string
+	BlueprintIDOld string
 }{
-	ID:          "id",
-	TemplateID:  "template_id",
-	Type:        "type",
-	BlueprintID: "blueprint_id",
-	CreatedAt:   "created_at",
+	ID:             "id",
+	TemplateID:     "template_id",
+	Type:           "type",
+	BlueprintID:    "blueprint_id",
+	CreatedAt:      "created_at",
+	BlueprintIDOld: "blueprint_id_old",
 }
 
 var TemplateBlueprintTableColumns = struct {
-	ID          string
-	TemplateID  string
-	Type        string
-	BlueprintID string
-	CreatedAt   string
+	ID             string
+	TemplateID     string
+	Type           string
+	BlueprintID    string
+	CreatedAt      string
+	BlueprintIDOld string
 }{
-	ID:          "template_blueprints.id",
-	TemplateID:  "template_blueprints.template_id",
-	Type:        "template_blueprints.type",
-	BlueprintID: "template_blueprints.blueprint_id",
-	CreatedAt:   "template_blueprints.created_at",
+	ID:             "template_blueprints.id",
+	TemplateID:     "template_blueprints.template_id",
+	Type:           "template_blueprints.type",
+	BlueprintID:    "template_blueprints.blueprint_id",
+	CreatedAt:      "template_blueprints.created_at",
+	BlueprintIDOld: "template_blueprints.blueprint_id_old",
 }
 
 // Generated where
 
 var TemplateBlueprintWhere = struct {
-	ID          whereHelperstring
-	TemplateID  whereHelperstring
-	Type        whereHelperstring
-	BlueprintID whereHelperstring
-	CreatedAt   whereHelpertime_Time
+	ID             whereHelperstring
+	TemplateID     whereHelperstring
+	Type           whereHelperstring
+	BlueprintID    whereHelperstring
+	CreatedAt      whereHelpertime_Time
+	BlueprintIDOld whereHelpernull_String
 }{
-	ID:          whereHelperstring{field: "\"template_blueprints\".\"id\""},
-	TemplateID:  whereHelperstring{field: "\"template_blueprints\".\"template_id\""},
-	Type:        whereHelperstring{field: "\"template_blueprints\".\"type\""},
-	BlueprintID: whereHelperstring{field: "\"template_blueprints\".\"blueprint_id\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"template_blueprints\".\"created_at\""},
+	ID:             whereHelperstring{field: "\"template_blueprints\".\"id\""},
+	TemplateID:     whereHelperstring{field: "\"template_blueprints\".\"template_id\""},
+	Type:           whereHelperstring{field: "\"template_blueprints\".\"type\""},
+	BlueprintID:    whereHelperstring{field: "\"template_blueprints\".\"blueprint_id\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"template_blueprints\".\"created_at\""},
+	BlueprintIDOld: whereHelpernull_String{field: "\"template_blueprints\".\"blueprint_id_old\""},
 }
 
 // TemplateBlueprintRels is where relationship names are stored.
@@ -97,9 +105,9 @@ func (*templateBlueprintR) NewStruct() *templateBlueprintR {
 type templateBlueprintL struct{}
 
 var (
-	templateBlueprintAllColumns            = []string{"id", "template_id", "type", "blueprint_id", "created_at"}
+	templateBlueprintAllColumns            = []string{"id", "template_id", "type", "blueprint_id", "created_at", "blueprint_id_old"}
 	templateBlueprintColumnsWithoutDefault = []string{"template_id", "type", "blueprint_id"}
-	templateBlueprintColumnsWithDefault    = []string{"id", "created_at"}
+	templateBlueprintColumnsWithDefault    = []string{"id", "created_at", "blueprint_id_old"}
 	templateBlueprintPrimaryKeyColumns     = []string{"id"}
 	templateBlueprintGeneratedColumns      = []string{}
 )

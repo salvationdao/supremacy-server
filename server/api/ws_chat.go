@@ -342,7 +342,7 @@ func (api *API) MessageBroadcaster() {
 				ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{cm})
 			}
 		case newBattleInfo := <-api.ArenaManager.NewBattleChan:
-			err := api.BroadcastNewBattle(newBattleInfo.BattleNumber)
+			err := api.BroadcastNewBattle(newBattleInfo.ID, newBattleInfo.BattleNumber)
 			if err != nil {
 				gamelog.L.Error().Err(err).Interface("Could not broadcast battle info ", newBattleInfo).Msg("failed to broadcast new battle info")
 				return
@@ -553,7 +553,8 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		}
 	}()
 
-	msg = fc.API.ProfanityManager.Detector.Censor(msg)
+	// disabled for alex's request 25/08/2022
+	//msg = fc.API.ProfanityManager.Detector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
@@ -895,13 +896,14 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 	return nil
 }
 
-func (api *API) BroadcastNewBattle(battleNumber int) error {
+func (api *API) BroadcastNewBattle(id string, battleNumber int) error {
 	factions, err := boiler.Factions().All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Could not get all factions, try again or contact support.")
 	}
 
 	cm := &ChatMessage{
+		ID:     id,
 		Type:   ChatMessageTypeNewBattle,
 		SentAt: time.Now(),
 		Data:   MessageNewBattle{BattleNumber: battleNumber},

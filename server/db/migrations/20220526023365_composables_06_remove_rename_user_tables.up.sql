@@ -23,5 +23,5 @@ ALTER TABLE asset_repair
 -- remove chassis from mech labels
 UPDATE mechs
 SET label = REPLACE(label, ' Chassis', '');
-UPDATE blueprint_mechs
+UPDATE blueprint_mechs_old
 SET label = REPLACE(label, ' Chassis', '');
