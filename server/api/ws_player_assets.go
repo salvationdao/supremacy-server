@@ -1312,6 +1312,7 @@ type PlayerAssetMechSubmodel struct {
 
 func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
+	boil.DebugMode = true
 
 	req := &PlayerAssetMechSubmodelListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1349,6 +1350,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 
 	total, submodels, err := db.MechSkinList(listOpts)
 	if err != nil {
+		boil.DebugMode = false
 		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting war machine skin list")
 		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
 	}
@@ -1386,6 +1388,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		Total:     total,
 		Submodels: playerAssetMechSubmodel,
 	})
+	boil.DebugMode = false
 	return nil
 }
 
