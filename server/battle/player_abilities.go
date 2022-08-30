@@ -947,9 +947,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		TriggerType:       boiler.AbilityTriggerTypeMECH_ABILITY,
 	}
 
-	boil.DebugMode = true
 	err = mat.Insert(gamedb.StdConn, boil.Infer())
-	boil.DebugMode = false
 	if err != nil {
 		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
 		return terror.Error(err, "Failed to record mech ability trigger")

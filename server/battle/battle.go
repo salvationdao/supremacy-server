@@ -150,7 +150,6 @@ func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
 type RecordingSession struct {
 	ReplaySession *boiler.BattleReplay `json:"replay_session"`
 	Events        []*RecordingEvents   `json:"battle_events"`
-	CanRecord     bool                 `json:"can_record"`
 }
 
 type RecordingEvents struct {

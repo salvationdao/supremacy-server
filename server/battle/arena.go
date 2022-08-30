@@ -238,11 +238,16 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// clean up current battle, if exists
 		if btl := arena.CurrentBattle(); btl != nil {
-			if btl.replaySession.ReplaySession != nil && btl.replaySession.CanRecord {
-				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
-				if err != nil {
-					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
-				}
+			btl.endAbilities()
+
+			if btl.replaySession.ReplaySession != nil {
+				battle := *btl.Battle
+				go func(battle boiler.Battle, replayID string) {
+					err = replay.RecordReplayRequest(&battle, replayID, replay.StopRecording)
+					if err != nil {
+						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+					}
+				}(battle, btl.replaySession.ReplaySession.ID)
 
 				eventByte, err := json.Marshal(btl.replaySession.Events)
 				if err != nil {
@@ -252,12 +257,17 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				btl.replaySession.ReplaySession.StoppedAt = null.TimeFrom(time.Now())
 				btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
-				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+				_, err = btl.replaySession.ReplaySession.Update(
+					gamedb.StdConn,
+					boil.Whitelist(
+						boiler.BattleReplayColumns.StoppedAt,
+						boiler.BattleReplayColumns.RecordingStatus,
+					),
+				)
 				if err != nil {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 				}
 			}
-			btl.endAbilities()
 		}
 	}()
 
@@ -287,7 +297,6 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 			if err != nil {
 				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 			}
-
 			eventByte, err := json.Marshal(btl.replaySession.Events)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
@@ -1427,7 +1436,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			}
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
-			if btl.replaySession.ReplaySession != nil && btl.replaySession.CanRecord {
+			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
 					if err != replay.ErrDontLogRecordingStatus {
@@ -1714,16 +1723,6 @@ func (arena *Arena) beginBattle() {
 
 	events := []*RecordingEvents{}
 
-	recordSession := &RecordingSession{
-		ReplaySession: &boiler.BattleReplay{
-			ArenaID:         arena.ID,
-			BattleID:        battle.ID,
-			RecordingStatus: boiler.RecordingStatusIDLE,
-		},
-		Events:    events,
-		CanRecord: db.GetBoolWithDefault(db.KeyCanRecordReplayStatus, false),
-	}
-
 	btl := &Battle{
 		arena:                  arena,
 		MapName:                gameMap.Name,
@@ -1736,7 +1735,14 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
-		replaySession: recordSession,
+		replaySession: &RecordingSession{
+			ReplaySession: &boiler.BattleReplay{
+				ArenaID:         arena.ID,
+				BattleID:        battle.ID,
+				RecordingStatus: boiler.RecordingStatusIDLE,
+			},
+			Events: events,
+		},
 	}
 
 	al, err := db.AbilityLabelList()

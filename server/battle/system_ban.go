@@ -111,7 +111,7 @@ func (tkj *TeamKillDefendant) removeCase(relatedOfferingID string) {
 		return
 	}
 
-	slices.Delete(tkj.relatedOfferingIDs, index, index+1)
+	tkj.relatedOfferingIDs = slices.Delete(tkj.relatedOfferingIDs, index, index+1)
 }
 
 func (tkj *TeamKillDefendant) GetNextCase() string {
@@ -225,9 +225,10 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 		ga := bat.R.GameAbility
 		q := fmt.Sprintf(
 			`
-			SELECT DISTINCT (%[2]s) 
+			SELECT DISTINCT (%[2]s) , %[7]s
 			FROM %[1]s 
-			WHERE %[3]s = $1 AND %[4]s = $2 AND %[5]s = TRUE AND %[6]s = FALSE;
+			WHERE %[3]s = $1 AND %[4]s = $2 AND %[5]s = TRUE AND %[6]s = FALSE
+			ORDER BY %[7]s;
 		`,
 			boiler.TableNames.PlayerKillLog,               // 1
 			boiler.PlayerKillLogColumns.AbilityOfferingID, // 2
@@ -235,6 +236,7 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 			boiler.PlayerKillLogColumns.GameAbilityID,     // 4
 			boiler.PlayerKillLogColumns.IsTeamKill,        // 5
 			boiler.PlayerKillLogColumns.IsVerified,        // 6
+			boiler.PlayerKillLogColumns.CreatedAt,         // 7
 		)
 
 		rows, err := gamedb.StdConn.Query(q, tkj.playerID, ga.ID)
@@ -247,7 +249,8 @@ func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 		offeringIDs = []interface{}{}
 		for rows.Next() {
 			offeringID := ""
-			err = rows.Scan(&offeringID)
+			createdAt := time.Now() // just for sql
+			err = rows.Scan(&offeringID, &createdAt)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("related game ability id", bat.R.GameAbility.ID).Msg("Failed to scan offering id.")
 				return
