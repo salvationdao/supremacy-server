@@ -394,6 +394,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 				ImageURL:  mechSkin.ImageURL,
 			},
 		},
+		RepairBlocks: mech.R.Blueprint.RepairBlocks,
 	}
 
 	reply(m)
