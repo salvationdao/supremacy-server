@@ -473,14 +473,14 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                tier,
 			                                default_level,
 			                                image_url,
-			                                  animation_url,
-			                                  card_animation_url,
-			                                  large_image_url,
-			                                  avatar_url,
-			                                  background_color,
-			                                  youtube_url
+			                                animation_url,
+			                                card_animation_url,
+			                                large_image_url,
+			                                avatar_url,
+			                                background_color,
+			                                youtube_url
 			                                )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO
 			    UPDATE SET id=$1,
@@ -902,7 +902,7 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			                                  background_color,
 			                                  youtube_url
 			                                  )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET 
