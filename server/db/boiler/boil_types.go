@@ -308,6 +308,13 @@ const (
 	BanFromTypePLAYER = "PLAYER"
 )
 
+// Enum values for RepairBayStatus
+const (
+	RepairBayStatusREPAIRING = "REPAIRING"
+	RepairBayStatusPENDING   = "PENDING"
+	RepairBayStatusDONE      = "DONE"
+)
+
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"

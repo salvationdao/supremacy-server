@@ -1,7 +1,9 @@
 package battle
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -39,6 +41,7 @@ func (am *ArenaManager) SendRepairFunc(fn func() error) error {
 
 func (am *ArenaManager) RepairOfferCleaner() {
 	ticker := time.NewTicker(1 * time.Minute)
+	repairBayTicker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -68,6 +71,62 @@ func (am *ArenaManager) RepairOfferCleaner() {
 				gamelog.L.Error().Err(err).Msg("Failed to close expired repair offers.")
 				continue
 			}
+
+		case <-repairBayTicker.C:
+			now := time.Now()
+			pms, err := boiler.PlayerMechRepairBays(
+				boiler.PlayerMechRepairBayWhere.Status.EQ(boiler.RepairBayStatusREPAIRING),
+				boiler.PlayerMechRepairBayWhere.NextRepairTime.LTE(null.TimeFrom(now)),
+				qm.Load(boiler.PlayerMechRepairBayRels.RepairCase),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load repairing cases.")
+				continue
+			}
+
+			wg := sync.WaitGroup{}
+			for _, pm := range pms {
+				wg.Add(1)
+				go func(playerMechRepairBay *boiler.PlayerMechRepairBay) {
+					defer wg.Done()
+					if playerMechRepairBay.R == nil || playerMechRepairBay.R.RepairCase == nil {
+						// todo: log warning
+						return
+					}
+
+					rc := playerMechRepairBay.R.RepairCase
+
+					// load system repair offer
+					systemOffer, err := rc.RepairOffers(
+						boiler.RepairOfferWhere.OfferedByID.IsNull(),
+					).One(gamedb.StdConn)
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
+						// todo: log error
+						return
+					}
+
+					if systemOffer == nil {
+						// todo: log warning
+						return
+					}
+
+					if systemOffer.ClosedAt.Valid || rc.CompletedAt.Valid {
+						// todo: swap bay
+						return
+					}
+
+					// do repair
+
+					// check repair complete
+
+					// return if complete
+
+					// otherwise swap bay
+
+				}(pm)
+			}
+
+			wg.Wait()
 
 		case fn := <-am.RepairOfferFuncChan:
 			fn()

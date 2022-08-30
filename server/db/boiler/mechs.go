@@ -208,6 +208,7 @@ var MechRels = struct {
 	EquippedOnMechSkins          string
 	ChassisMechUtilities         string
 	ChassisMechWeapons           string
+	PlayerMechRepairBays         string
 	EquippedOnPowerCores         string
 	RepairCases                  string
 	EquippedOnUtilities          string
@@ -237,6 +238,7 @@ var MechRels = struct {
 	EquippedOnMechSkins:          "EquippedOnMechSkins",
 	ChassisMechUtilities:         "ChassisMechUtilities",
 	ChassisMechWeapons:           "ChassisMechWeapons",
+	PlayerMechRepairBays:         "PlayerMechRepairBays",
 	EquippedOnPowerCores:         "EquippedOnPowerCores",
 	RepairCases:                  "RepairCases",
 	EquippedOnUtilities:          "EquippedOnUtilities",
@@ -269,6 +271,7 @@ type mechR struct {
 	EquippedOnMechSkins          MechSkinSlice                `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
 	ChassisMechUtilities         MechUtilitySlice             `boiler:"ChassisMechUtilities" boil:"ChassisMechUtilities" json:"ChassisMechUtilities" toml:"ChassisMechUtilities" yaml:"ChassisMechUtilities"`
 	ChassisMechWeapons           MechWeaponSlice              `boiler:"ChassisMechWeapons" boil:"ChassisMechWeapons" json:"ChassisMechWeapons" toml:"ChassisMechWeapons" yaml:"ChassisMechWeapons"`
+	PlayerMechRepairBays         PlayerMechRepairBaySlice     `boiler:"PlayerMechRepairBays" boil:"PlayerMechRepairBays" json:"PlayerMechRepairBays" toml:"PlayerMechRepairBays" yaml:"PlayerMechRepairBays"`
 	EquippedOnPowerCores         PowerCoreSlice               `boiler:"EquippedOnPowerCores" boil:"EquippedOnPowerCores" json:"EquippedOnPowerCores" toml:"EquippedOnPowerCores" yaml:"EquippedOnPowerCores"`
 	RepairCases                  RepairCaseSlice              `boiler:"RepairCases" boil:"RepairCases" json:"RepairCases" toml:"RepairCases" yaml:"RepairCases"`
 	EquippedOnUtilities          UtilitySlice                 `boiler:"EquippedOnUtilities" boil:"EquippedOnUtilities" json:"EquippedOnUtilities" toml:"EquippedOnUtilities" yaml:"EquippedOnUtilities"`
@@ -982,6 +985,28 @@ func (o *Mech) ChassisMechWeapons(mods ...qm.QueryMod) mechWeaponQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"mech_weapons\".*"})
+	}
+
+	return query
+}
+
+// PlayerMechRepairBays retrieves all the player_mech_repair_bay's PlayerMechRepairBays with an executor.
+func (o *Mech) PlayerMechRepairBays(mods ...qm.QueryMod) playerMechRepairBayQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_mech_repair_bays\".\"mech_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_mech_repair_bays\".\"deleted_at\""),
+	)
+
+	query := PlayerMechRepairBays(queryMods...)
+	queries.SetFrom(query.Query, "\"player_mech_repair_bays\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_mech_repair_bays\".*"})
 	}
 
 	return query
@@ -3483,6 +3508,105 @@ func (mechL) LoadChassisMechWeapons(e boil.Executor, singular bool, maybeMech in
 	return nil
 }
 
+// LoadPlayerMechRepairBays allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (mechL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_mech_repair_bays`),
+		qm.WhereIn(`player_mech_repair_bays.mech_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_mech_repair_bays.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_mech_repair_bays")
+	}
+
+	var resultSlice []*PlayerMechRepairBay
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_mech_repair_bays")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_mech_repair_bays")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_mech_repair_bays")
+	}
+
+	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerMechRepairBays = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerMechRepairBayR{}
+			}
+			foreign.R.Mech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechID {
+				local.R.PlayerMechRepairBays = append(local.R.PlayerMechRepairBays, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerMechRepairBayR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadEquippedOnPowerCores allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (mechL) LoadEquippedOnPowerCores(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
@@ -5476,6 +5600,58 @@ func (o *Mech) AddChassisMechWeapons(exec boil.Executor, insert bool, related ..
 			}
 		} else {
 			rel.R.Chassis = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerMechRepairBays adds the given related objects to the existing relationships
+// of the mech, optionally inserting them as new records.
+// Appends related to o.R.PlayerMechRepairBays.
+// Sets related.R.Mech appropriately.
+func (o *Mech) AddPlayerMechRepairBays(exec boil.Executor, insert bool, related ...*PlayerMechRepairBay) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerMechRepairBayPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			PlayerMechRepairBays: related,
+		}
+	} else {
+		o.R.PlayerMechRepairBays = append(o.R.PlayerMechRepairBays, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerMechRepairBayR{
+				Mech: o,
+			}
+		} else {
+			rel.R.Mech = o
 		}
 	}
 	return nil

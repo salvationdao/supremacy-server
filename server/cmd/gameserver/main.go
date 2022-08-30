@@ -453,6 +453,7 @@ func main() {
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
+						os.Exit(2)
 					}()
 
 					gamelog.L.Info().Msg("Running API")
