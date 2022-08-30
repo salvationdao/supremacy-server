@@ -450,13 +450,13 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			Label:            record[2],
 			Tier:             record[3],
 			DefaultLevel:     record[5],
-			ImageUrl:         record[6],
-			AnimationUrl:     record[7],
-			CardAnimationUrl: record[8],
-			LargeImageUrl:    record[9],
-			AvatarUrl:        record[10],
-			BackgroundColor:  record[11],
-			YoutubeUrl:       record[12],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
@@ -874,13 +874,13 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			Tier:             record[2],
 			Collection:       record[4],
 			StatModifier:     record[5],
-			ImageUrl:         record[6],
-			AnimationUrl:     record[7],
-			CardAnimationUrl: record[8],
-			LargeImageUrl:    record[9],
-			AvatarUrl:        record[10],
-			BackgroundColor:  record[11],
-			YoutubeUrl:       record[12],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		WeaponSkins = append(WeaponSkins, *weaponSkin)
