@@ -1323,6 +1323,22 @@ INSERT INTO weapon_skin(blueprint_id, equipped_on)
 SELECT wps.default_skin_id, wps.id
 FROM wps;
 
+
+-- ere we run it with blueprint_weapons_old
+WITH wps AS (
+--     this returns a weapon id and the default skin blueprint id for each weapon without an equipped skin (genesis weapons)
+    SELECT _w.id, _bpw.default_skin_id
+    FROM weapons _w
+     INNER JOIN collection_items _ci ON _ci.item_id = _w.id
+     INNER JOIN blueprint_weapons_old _bpwo ON _bpwo.id = _w.blueprint_id
+     INNER JOIN blueprint_weapons _bpw ON _bpw.id = _bpwo.weapon_model_id
+    WHERE _w.equipped_weapon_skin_id is null
+)
+INSERT INTO weapon_skin(blueprint_id, equipped_on)
+SELECT wps.default_skin_id, wps.id
+FROM wps;
+
+
 -- insert the collection_items or these weapons
 WITH wps_skin AS (
     SELECT 'weapon_skin' AS item_type, ws.id, bpws.tier, ci.owner_id
