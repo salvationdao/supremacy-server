@@ -141,3 +141,8 @@ func TotalRepairBlocks(mechID string) int {
 
 	return bm.RepairBlocks
 }
+
+func DecrementRepairSlotNumber(conn Conn, playerID string) error {
+
+	return nil
+}

@@ -29,6 +29,7 @@ type PlayerMechRepairSlot struct {
 	RepairCaseID   string    `boiler:"repair_case_id" boil:"repair_case_id" json:"repair_case_id" toml:"repair_case_id" yaml:"repair_case_id"`
 	Status         string    `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
 	NextRepairTime null.Time `boiler:"next_repair_time" boil:"next_repair_time" json:"next_repair_time,omitempty" toml:"next_repair_time" yaml:"next_repair_time,omitempty"`
+	SlotNumber     int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
 	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -44,6 +45,7 @@ var PlayerMechRepairSlotColumns = struct {
 	RepairCaseID   string
 	Status         string
 	NextRepairTime string
+	SlotNumber     string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -54,6 +56,7 @@ var PlayerMechRepairSlotColumns = struct {
 	RepairCaseID:   "repair_case_id",
 	Status:         "status",
 	NextRepairTime: "next_repair_time",
+	SlotNumber:     "slot_number",
 	CreatedAt:      "created_at",
 	UpdatedAt:      "updated_at",
 	DeletedAt:      "deleted_at",
@@ -66,6 +69,7 @@ var PlayerMechRepairSlotTableColumns = struct {
 	RepairCaseID   string
 	Status         string
 	NextRepairTime string
+	SlotNumber     string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -76,6 +80,7 @@ var PlayerMechRepairSlotTableColumns = struct {
 	RepairCaseID:   "player_mech_repair_slots.repair_case_id",
 	Status:         "player_mech_repair_slots.status",
 	NextRepairTime: "player_mech_repair_slots.next_repair_time",
+	SlotNumber:     "player_mech_repair_slots.slot_number",
 	CreatedAt:      "player_mech_repair_slots.created_at",
 	UpdatedAt:      "player_mech_repair_slots.updated_at",
 	DeletedAt:      "player_mech_repair_slots.deleted_at",
@@ -90,6 +95,7 @@ var PlayerMechRepairSlotWhere = struct {
 	RepairCaseID   whereHelperstring
 	Status         whereHelperstring
 	NextRepairTime whereHelpernull_Time
+	SlotNumber     whereHelperint
 	CreatedAt      whereHelpertime_Time
 	UpdatedAt      whereHelpertime_Time
 	DeletedAt      whereHelpernull_Time
@@ -100,6 +106,7 @@ var PlayerMechRepairSlotWhere = struct {
 	RepairCaseID:   whereHelperstring{field: "\"player_mech_repair_slots\".\"repair_case_id\""},
 	Status:         whereHelperstring{field: "\"player_mech_repair_slots\".\"status\""},
 	NextRepairTime: whereHelpernull_Time{field: "\"player_mech_repair_slots\".\"next_repair_time\""},
+	SlotNumber:     whereHelperint{field: "\"player_mech_repair_slots\".\"slot_number\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_slots\".\"created_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_slots\".\"updated_at\""},
 	DeletedAt:      whereHelpernull_Time{field: "\"player_mech_repair_slots\".\"deleted_at\""},
@@ -132,9 +139,9 @@ func (*playerMechRepairSlotR) NewStruct() *playerMechRepairSlotR {
 type playerMechRepairSlotL struct{}
 
 var (
-	playerMechRepairSlotAllColumns            = []string{"id", "player_id", "mech_id", "repair_case_id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
+	playerMechRepairSlotAllColumns            = []string{"id", "player_id", "mech_id", "repair_case_id", "status", "next_repair_time", "slot_number", "created_at", "updated_at", "deleted_at"}
 	playerMechRepairSlotColumnsWithoutDefault = []string{"player_id", "mech_id", "repair_case_id"}
-	playerMechRepairSlotColumnsWithDefault    = []string{"id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
+	playerMechRepairSlotColumnsWithDefault    = []string{"id", "status", "next_repair_time", "slot_number", "created_at", "updated_at", "deleted_at"}
 	playerMechRepairSlotPrimaryKeyColumns     = []string{"id"}
 	playerMechRepairSlotGeneratedColumns      = []string{}
 )

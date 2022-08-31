@@ -15,6 +15,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/battle"
 	"server/db"
@@ -32,6 +33,9 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
+
+	api.SecureUserCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
+
 }
 
 func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -97,28 +101,28 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 		return terror.Error(fmt.Errorf("missing mech id"), "Mech id is not provided.")
 	}
 
+	// validate ownership
+	cis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
+		return terror.Error(err, "Failed to load war machine detail.")
+	}
+
+	if len(req.Payload.MechIDs) != len(cis) {
+		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
+	}
+
+	for _, ci := range cis {
+		if ci.OwnerID != user.ID {
+			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
+		}
+	}
+
 	// send repair offer func in channel
 	err = api.ArenaManager.SendRepairFunc(func() error {
-		// validate ownership
-		cis, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-			boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
-		).All(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
-			return terror.Error(err, "Failed to load war machine detail.")
-		}
-
-		if len(req.Payload.MechIDs) != len(cis) {
-			return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
-		}
-
-		for _, ci := range cis {
-			if ci.OwnerID != user.ID {
-				return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
-			}
-		}
-
 		// look for repair cases
 		mrcs, err := boiler.RepairCases(
 			boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
@@ -897,6 +901,145 @@ func (api *API) RepairAgentAbandon(ctx context.Context, user *boiler.Player, key
 	return nil
 }
 
+type MechRepairSlotInsertRequest struct {
+	Payload struct {
+		MechIDs []string `json:"mech_ids"`
+	} `json:"payload"`
+}
+
+func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	L := gamelog.L.With().Str("func", "MechRepairSlotInsert").Interface("user", user).Logger()
+
+	req := &MechRepairSlotInsertRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// validate ownership
+	cis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to query war machine collection item")
+		return terror.Error(err, "Failed to load war machine detail.")
+	}
+
+	if len(req.Payload.MechIDs) != len(cis) {
+		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
+	}
+
+	for _, ci := range cis {
+		if ci.OwnerID != user.ID {
+			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
+		}
+	}
+
+	maximumRepairSlotCount := db.GetIntWithDefault(db.KeyAutoRepairSlotCount, 5)
+	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+	now := time.Now()
+
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		// check remain slots
+		occupiedSlotCount, err := boiler.PlayerMechRepairSlots(
+			boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(user.ID),
+			boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		).Count(gamedb.StdConn)
+		if err != nil {
+			L.Error().Err(err).Str("player id", user.ID).Msg("Failed to check remain repair slot count.")
+			return terror.Error(err, "Failed to check remain repair slot count.")
+		}
+
+		// return if no slot left
+		if maximumRepairSlotCount <= int(occupiedSlotCount) {
+			return nil
+		}
+
+		remainSlot := maximumRepairSlotCount - int(occupiedSlotCount)
+
+		// filter out mechs by db query
+		rcs, err := boiler.RepairCases(
+			boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
+			boiler.RepairCaseWhere.CompletedAt.IsNull(),
+
+			// filter out mechs which are in queue
+			qm.Where(
+				fmt.Sprintf(
+					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
+					boiler.TableNames.BattleQueue,
+					qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.MechID),
+					qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
+				),
+			),
+
+			// filter out mechs which are already in slot
+			qm.Where(
+				fmt.Sprintf(
+					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s != %s)",
+					boiler.TableNames.PlayerMechRepairSlots,
+					qm.Rels(boiler.TableNames.PlayerMechRepairSlots, boiler.PlayerMechRepairSlotColumns.MechID),
+					qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
+					qm.Rels(boiler.TableNames.PlayerMechRepairSlots, boiler.PlayerMechRepairSlotColumns.Status),
+					boiler.RepairSlotStatusDONE,
+				),
+			),
+		).All(gamedb.StdConn)
+		if err != nil {
+			L.Error().Err(err).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to check mechs' repair case.")
+			return terror.Error(err, "Failed to check mechs' repair case.")
+		}
+
+		// return, if no mechs are available
+		if rcs == nil {
+			return nil
+		}
+
+		// insert into slots in the input order
+		for i, mechID := range req.Payload.MechIDs {
+			// skip, if not available
+			idx := slices.IndexFunc(rcs, func(rc *boiler.RepairCase) bool { return rc.MechID == mechID })
+			if idx == -1 {
+				continue
+			}
+
+			pmr := boiler.PlayerMechRepairSlot{
+				PlayerID:     user.ID,
+				MechID:       mechID,
+				RepairCaseID: rcs[idx].ID,
+				Status:       boiler.RepairSlotStatusPENDING,
+				SlotNumber:   int(occupiedSlotCount) + (i + 1),
+			}
+
+			// if this is the first slot, and currently no slot is occupied
+			if i == 0 && occupiedSlotCount == 0 {
+				pmr.Status = boiler.RepairSlotStatusREPAIRING
+				pmr.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+			}
+
+			err = pmr.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("repair slot", pmr).Msg("Failed to insert repair slot")
+				return terror.Error(err, "Failed to insert repair slot.")
+			}
+
+			// continue, if not reach remain slot count
+			if i+1 < remainSlot {
+				continue
+			}
+
+			break
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // subscription
 
 // RepairOfferSubscribe return the detail of the offer
@@ -987,6 +1130,30 @@ func (api *API) MechActiveRepairOfferSubscribe(ctx context.Context, key string, 
 
 		reply(sro)
 	}
+
+	return nil
+}
+
+// PlayerMechRepairSlots return current player repair bay status
+func (api *API) PlayerMechRepairSlots(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("player id", user.ID).Str("func name", "PlayerMechRepairSlots").Logger()
+
+	resp := []*boiler.PlayerMechRepairSlot{}
+	pms, err := boiler.PlayerMechRepairSlots(
+		boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(user.ID),
+		boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load player mech .")
+		return err
+	}
+
+	for _, pm := range pms {
+		resp = append(resp, pm)
+	}
+
+	reply(resp)
 
 	return nil
 }

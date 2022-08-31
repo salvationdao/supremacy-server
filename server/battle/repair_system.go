@@ -95,9 +95,37 @@ func (am *ArenaManager) RepairOfferCleaner() {
 
 					// mark current repairing slot to "DONE" and mark next slot to "REPAIRING"
 					swapSlot := func(playerMechRepairSlot *boiler.PlayerMechRepairSlot) {
+						tx, err := gamedb.StdConn.Begin()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+							return
+						}
+
+						defer tx.Rollback()
+
+						// decrement slot number
+						q := fmt.Sprintf(
+							`
+								UPDATE
+									%[1]s
+								SET 
+								    %[2]s = %[2]s - 1
+								WHERE 
+								    %[3]s = $1 AND %[2]s > 0
+							`,
+							boiler.TableNames.PlayerMechRepairSlots,
+							boiler.PlayerMechRepairSlotColumns.SlotNumber,
+							boiler.PlayerMechRepairSlotColumns.PlayerID,
+						)
+						_, err = tx.Exec(q, playerMechRepairSlot.PlayerID)
+						if err != nil {
+							gamelog.L.Error().Err(err).Str("player id", playerMechRepairSlot.PlayerID).Msg("Failed to decrement slot number.")
+							return
+						}
+
 						// update current bay status to "DONE"
 						playerMechRepairSlot.Status = boiler.RepairSlotStatusDONE
-						_, err = playerMechRepairSlot.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
+						_, err = playerMechRepairSlot.Update(tx, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
 						if err != nil {
 							gamelog.L.Error().Err(err).Interface("player repair slot", playerMechRepairSlot).Msg("Failed to complete current repair slot.")
 							return
@@ -107,7 +135,7 @@ func (am *ArenaManager) RepairOfferCleaner() {
 							boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerMechRepairSlot.PlayerID),
 							boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
 							qm.OrderBy(boiler.PlayerMechRepairSlotColumns.CreatedAt),
-						).One(gamedb.StdConn)
+						).One(tx)
 						if err != nil && !errors.Is(err, sql.ErrNoRows) {
 							gamelog.L.Error().Str("player id", playerMechRepairSlot.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
 							return
@@ -116,12 +144,21 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						// next pending slot
 						if pmr != nil {
 							playerMechRepairSlot.Status = boiler.RepairSlotStatusPENDING
-							_, err = playerMechRepairSlot.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
+							_, err = playerMechRepairSlot.Update(tx, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
 							if err != nil {
 								gamelog.L.Error().Err(err).Interface("player repair slot", playerMechRepairSlot).Msg("Failed to complete current repair slot.")
 								return
 							}
 						}
+
+						err = tx.Commit()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+							return
+						}
+
+						// broadcast current repair bay
+						go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
 					}
 
 					// if no repair case, swap repair slot
@@ -252,8 +289,6 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
 						return
 					}
-
-					return
 
 				}(pm)
 			}
@@ -473,4 +508,25 @@ func RegisterMechRepairCase(mechID string, blueprintID string, maxHealth uint32,
 	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 	return nil
+}
+
+func BroadcastRepairBay(playerID string) {
+	l := gamelog.L.With().Str("player id", playerID).Str("func name", "BroadcastRepairBay").Logger()
+
+	resp := []*boiler.PlayerMechRepairSlot{}
+	pms, err := boiler.PlayerMechRepairSlots(
+		boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerID),
+		boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load player mech .")
+		return
+	}
+
+	if pms != nil {
+		resp = pms
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
 }
