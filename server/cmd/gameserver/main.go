@@ -446,13 +446,14 @@ func main() {
 
 					// stops all battle replay recordings when server goes down
 					go func() {
-						stop := make(chan os.Signal, 1)
+						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
 						err := replay.StopAllActiveRecording()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
+						os.Exit(2)
 					}()
 
 					gamelog.L.Info().Msg("Running API")

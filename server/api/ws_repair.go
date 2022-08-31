@@ -32,7 +32,6 @@ func NewMechRepairController(api *API) {
 	api.SecureUserCommand(server.HubKeyRepairAgentRecord, api.RepairAgentRecord)
 	api.SecureUserCommand(server.HubKeyRepairAgentComplete, api.RepairAgentComplete)
 	api.SecureUserCommand(server.HubKeyRepairAgentAbandon, api.RepairAgentAbandon)
-
 }
 
 func (api *API) RepairOfferList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
