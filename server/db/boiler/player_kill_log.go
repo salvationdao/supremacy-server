@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,83 +23,117 @@ import (
 
 // PlayerKillLog is an object representing the database table.
 type PlayerKillLog struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID   string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	PlayerID   string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	FactionID  string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	IsTeamKill bool      `boiler:"is_team_kill" boil:"is_team_kill" json:"is_team_kill" toml:"is_team_kill" yaml:"is_team_kill"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID          string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	PlayerID          string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FactionID         string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	IsTeamKill        bool        `boiler:"is_team_kill" boil:"is_team_kill" json:"is_team_kill" toml:"is_team_kill" yaml:"is_team_kill"`
+	CreatedAt         time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	AbilityOfferingID null.String `boiler:"ability_offering_id" boil:"ability_offering_id" json:"ability_offering_id,omitempty" toml:"ability_offering_id" yaml:"ability_offering_id,omitempty"`
+	GameAbilityID     null.String `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id,omitempty" toml:"game_ability_id" yaml:"game_ability_id,omitempty"`
+	IsVerified        bool        `boiler:"is_verified" boil:"is_verified" json:"is_verified" toml:"is_verified" yaml:"is_verified"`
+	RelatedPlayBanID  null.String `boiler:"related_play_ban_id" boil:"related_play_ban_id" json:"related_play_ban_id,omitempty" toml:"related_play_ban_id" yaml:"related_play_ban_id,omitempty"`
 
 	R *playerKillLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerKillLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerKillLogColumns = struct {
-	ID         string
-	BattleID   string
-	PlayerID   string
-	FactionID  string
-	IsTeamKill string
-	CreatedAt  string
+	ID                string
+	BattleID          string
+	PlayerID          string
+	FactionID         string
+	IsTeamKill        string
+	CreatedAt         string
+	AbilityOfferingID string
+	GameAbilityID     string
+	IsVerified        string
+	RelatedPlayBanID  string
 }{
-	ID:         "id",
-	BattleID:   "battle_id",
-	PlayerID:   "player_id",
-	FactionID:  "faction_id",
-	IsTeamKill: "is_team_kill",
-	CreatedAt:  "created_at",
+	ID:                "id",
+	BattleID:          "battle_id",
+	PlayerID:          "player_id",
+	FactionID:         "faction_id",
+	IsTeamKill:        "is_team_kill",
+	CreatedAt:         "created_at",
+	AbilityOfferingID: "ability_offering_id",
+	GameAbilityID:     "game_ability_id",
+	IsVerified:        "is_verified",
+	RelatedPlayBanID:  "related_play_ban_id",
 }
 
 var PlayerKillLogTableColumns = struct {
-	ID         string
-	BattleID   string
-	PlayerID   string
-	FactionID  string
-	IsTeamKill string
-	CreatedAt  string
+	ID                string
+	BattleID          string
+	PlayerID          string
+	FactionID         string
+	IsTeamKill        string
+	CreatedAt         string
+	AbilityOfferingID string
+	GameAbilityID     string
+	IsVerified        string
+	RelatedPlayBanID  string
 }{
-	ID:         "player_kill_log.id",
-	BattleID:   "player_kill_log.battle_id",
-	PlayerID:   "player_kill_log.player_id",
-	FactionID:  "player_kill_log.faction_id",
-	IsTeamKill: "player_kill_log.is_team_kill",
-	CreatedAt:  "player_kill_log.created_at",
+	ID:                "player_kill_log.id",
+	BattleID:          "player_kill_log.battle_id",
+	PlayerID:          "player_kill_log.player_id",
+	FactionID:         "player_kill_log.faction_id",
+	IsTeamKill:        "player_kill_log.is_team_kill",
+	CreatedAt:         "player_kill_log.created_at",
+	AbilityOfferingID: "player_kill_log.ability_offering_id",
+	GameAbilityID:     "player_kill_log.game_ability_id",
+	IsVerified:        "player_kill_log.is_verified",
+	RelatedPlayBanID:  "player_kill_log.related_play_ban_id",
 }
 
 // Generated where
 
 var PlayerKillLogWhere = struct {
-	ID         whereHelperstring
-	BattleID   whereHelperstring
-	PlayerID   whereHelperstring
-	FactionID  whereHelperstring
-	IsTeamKill whereHelperbool
-	CreatedAt  whereHelpertime_Time
+	ID                whereHelperstring
+	BattleID          whereHelperstring
+	PlayerID          whereHelperstring
+	FactionID         whereHelperstring
+	IsTeamKill        whereHelperbool
+	CreatedAt         whereHelpertime_Time
+	AbilityOfferingID whereHelpernull_String
+	GameAbilityID     whereHelpernull_String
+	IsVerified        whereHelperbool
+	RelatedPlayBanID  whereHelpernull_String
 }{
-	ID:         whereHelperstring{field: "\"player_kill_log\".\"id\""},
-	BattleID:   whereHelperstring{field: "\"player_kill_log\".\"battle_id\""},
-	PlayerID:   whereHelperstring{field: "\"player_kill_log\".\"player_id\""},
-	FactionID:  whereHelperstring{field: "\"player_kill_log\".\"faction_id\""},
-	IsTeamKill: whereHelperbool{field: "\"player_kill_log\".\"is_team_kill\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"player_kill_log\".\"created_at\""},
+	ID:                whereHelperstring{field: "\"player_kill_log\".\"id\""},
+	BattleID:          whereHelperstring{field: "\"player_kill_log\".\"battle_id\""},
+	PlayerID:          whereHelperstring{field: "\"player_kill_log\".\"player_id\""},
+	FactionID:         whereHelperstring{field: "\"player_kill_log\".\"faction_id\""},
+	IsTeamKill:        whereHelperbool{field: "\"player_kill_log\".\"is_team_kill\""},
+	CreatedAt:         whereHelpertime_Time{field: "\"player_kill_log\".\"created_at\""},
+	AbilityOfferingID: whereHelpernull_String{field: "\"player_kill_log\".\"ability_offering_id\""},
+	GameAbilityID:     whereHelpernull_String{field: "\"player_kill_log\".\"game_ability_id\""},
+	IsVerified:        whereHelperbool{field: "\"player_kill_log\".\"is_verified\""},
+	RelatedPlayBanID:  whereHelpernull_String{field: "\"player_kill_log\".\"related_play_ban_id\""},
 }
 
 // PlayerKillLogRels is where relationship names are stored.
 var PlayerKillLogRels = struct {
-	Battle  string
-	Faction string
-	Player  string
+	Battle         string
+	Faction        string
+	GameAbility    string
+	Player         string
+	RelatedPlayBan string
 }{
-	Battle:  "Battle",
-	Faction: "Faction",
-	Player:  "Player",
+	Battle:         "Battle",
+	Faction:        "Faction",
+	GameAbility:    "GameAbility",
+	Player:         "Player",
+	RelatedPlayBan: "RelatedPlayBan",
 }
 
 // playerKillLogR is where relationships are stored.
 type playerKillLogR struct {
-	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Battle         *Battle      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Faction        *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	GameAbility    *GameAbility `boiler:"GameAbility" boil:"GameAbility" json:"GameAbility" toml:"GameAbility" yaml:"GameAbility"`
+	Player         *Player      `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	RelatedPlayBan *PlayerBan   `boiler:"RelatedPlayBan" boil:"RelatedPlayBan" json:"RelatedPlayBan" toml:"RelatedPlayBan" yaml:"RelatedPlayBan"`
 }
 
 // NewStruct creates a new relationship struct
@@ -110,9 +145,9 @@ func (*playerKillLogR) NewStruct() *playerKillLogR {
 type playerKillLogL struct{}
 
 var (
-	playerKillLogAllColumns            = []string{"id", "battle_id", "player_id", "faction_id", "is_team_kill", "created_at"}
+	playerKillLogAllColumns            = []string{"id", "battle_id", "player_id", "faction_id", "is_team_kill", "created_at", "ability_offering_id", "game_ability_id", "is_verified", "related_play_ban_id"}
 	playerKillLogColumnsWithoutDefault = []string{"battle_id", "player_id", "faction_id"}
-	playerKillLogColumnsWithDefault    = []string{"id", "is_team_kill", "created_at"}
+	playerKillLogColumnsWithDefault    = []string{"id", "is_team_kill", "created_at", "ability_offering_id", "game_ability_id", "is_verified", "related_play_ban_id"}
 	playerKillLogPrimaryKeyColumns     = []string{"id"}
 	playerKillLogGeneratedColumns      = []string{}
 )
@@ -388,6 +423,21 @@ func (o *PlayerKillLog) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
+// GameAbility pointed to by the foreign key.
+func (o *PlayerKillLog) GameAbility(mods ...qm.QueryMod) gameAbilityQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.GameAbilityID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := GameAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"game_abilities\"")
+
+	return query
+}
+
 // Player pointed to by the foreign key.
 func (o *PlayerKillLog) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -399,6 +449,21 @@ func (o *PlayerKillLog) Player(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// RelatedPlayBan pointed to by the foreign key.
+func (o *PlayerKillLog) RelatedPlayBan(mods ...qm.QueryMod) playerBanQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RelatedPlayBanID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := PlayerBans(queryMods...)
+	queries.SetFrom(query.Query, "\"player_bans\"")
 
 	return query
 }
@@ -612,6 +677,115 @@ func (playerKillLogL) LoadFaction(e boil.Executor, singular bool, maybePlayerKil
 	return nil
 }
 
+// LoadGameAbility allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerKillLogL) LoadGameAbility(e boil.Executor, singular bool, maybePlayerKillLog interface{}, mods queries.Applicator) error {
+	var slice []*PlayerKillLog
+	var object *PlayerKillLog
+
+	if singular {
+		object = maybePlayerKillLog.(*PlayerKillLog)
+	} else {
+		slice = *maybePlayerKillLog.(*[]*PlayerKillLog)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerKillLogR{}
+		}
+		if !queries.IsNil(object.GameAbilityID) {
+			args = append(args, object.GameAbilityID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerKillLogR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.GameAbilityID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.GameAbilityID) {
+				args = append(args, obj.GameAbilityID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`game_abilities`),
+		qm.WhereIn(`game_abilities.id in ?`, args...),
+		qmhelper.WhereIsNull(`game_abilities.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load GameAbility")
+	}
+
+	var resultSlice []*GameAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice GameAbility")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for game_abilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for game_abilities")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.GameAbility = foreign
+		if foreign.R == nil {
+			foreign.R = &gameAbilityR{}
+		}
+		foreign.R.PlayerKillLogs = append(foreign.R.PlayerKillLogs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.GameAbilityID, foreign.ID) {
+				local.R.GameAbility = foreign
+				if foreign.R == nil {
+					foreign.R = &gameAbilityR{}
+				}
+				foreign.R.PlayerKillLogs = append(foreign.R.PlayerKillLogs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (playerKillLogL) LoadPlayer(e boil.Executor, singular bool, maybePlayerKillLog interface{}, mods queries.Applicator) error {
@@ -717,6 +891,115 @@ func (playerKillLogL) LoadPlayer(e boil.Executor, singular bool, maybePlayerKill
 	return nil
 }
 
+// LoadRelatedPlayBan allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerKillLogL) LoadRelatedPlayBan(e boil.Executor, singular bool, maybePlayerKillLog interface{}, mods queries.Applicator) error {
+	var slice []*PlayerKillLog
+	var object *PlayerKillLog
+
+	if singular {
+		object = maybePlayerKillLog.(*PlayerKillLog)
+	} else {
+		slice = *maybePlayerKillLog.(*[]*PlayerKillLog)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerKillLogR{}
+		}
+		if !queries.IsNil(object.RelatedPlayBanID) {
+			args = append(args, object.RelatedPlayBanID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerKillLogR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RelatedPlayBanID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RelatedPlayBanID) {
+				args = append(args, obj.RelatedPlayBanID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_bans`),
+		qm.WhereIn(`player_bans.id in ?`, args...),
+		qmhelper.WhereIsNull(`player_bans.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load PlayerBan")
+	}
+
+	var resultSlice []*PlayerBan
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice PlayerBan")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for player_bans")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_bans")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RelatedPlayBan = foreign
+		if foreign.R == nil {
+			foreign.R = &playerBanR{}
+		}
+		foreign.R.RelatedPlayBanPlayerKillLogs = append(foreign.R.RelatedPlayBanPlayerKillLogs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RelatedPlayBanID, foreign.ID) {
+				local.R.RelatedPlayBan = foreign
+				if foreign.R == nil {
+					foreign.R = &playerBanR{}
+				}
+				foreign.R.RelatedPlayBanPlayerKillLogs = append(foreign.R.RelatedPlayBanPlayerKillLogs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBattle of the playerKillLog to the related item.
 // Sets o.R.Battle to related.
 // Adds o to related.R.PlayerKillLogs.
@@ -809,6 +1092,85 @@ func (o *PlayerKillLog) SetFaction(exec boil.Executor, insert bool, related *Fac
 	return nil
 }
 
+// SetGameAbility of the playerKillLog to the related item.
+// Sets o.R.GameAbility to related.
+// Adds o to related.R.PlayerKillLogs.
+func (o *PlayerKillLog) SetGameAbility(exec boil.Executor, insert bool, related *GameAbility) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"player_kill_log\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.GameAbilityID, related.ID)
+	if o.R == nil {
+		o.R = &playerKillLogR{
+			GameAbility: related,
+		}
+	} else {
+		o.R.GameAbility = related
+	}
+
+	if related.R == nil {
+		related.R = &gameAbilityR{
+			PlayerKillLogs: PlayerKillLogSlice{o},
+		}
+	} else {
+		related.R.PlayerKillLogs = append(related.R.PlayerKillLogs, o)
+	}
+
+	return nil
+}
+
+// RemoveGameAbility relationship.
+// Sets o.R.GameAbility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PlayerKillLog) RemoveGameAbility(exec boil.Executor, related *GameAbility) error {
+	var err error
+
+	queries.SetScanner(&o.GameAbilityID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("game_ability_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.GameAbility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.PlayerKillLogs {
+		if queries.Equal(o.GameAbilityID, ri.GameAbilityID) {
+			continue
+		}
+
+		ln := len(related.R.PlayerKillLogs)
+		if ln > 1 && i < ln-1 {
+			related.R.PlayerKillLogs[i] = related.R.PlayerKillLogs[ln-1]
+		}
+		related.R.PlayerKillLogs = related.R.PlayerKillLogs[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetPlayer of the playerKillLog to the related item.
 // Sets o.R.Player to related.
 // Adds o to related.R.PlayerKillLogs.
@@ -852,6 +1214,85 @@ func (o *PlayerKillLog) SetPlayer(exec boil.Executor, insert bool, related *Play
 		related.R.PlayerKillLogs = append(related.R.PlayerKillLogs, o)
 	}
 
+	return nil
+}
+
+// SetRelatedPlayBan of the playerKillLog to the related item.
+// Sets o.R.RelatedPlayBan to related.
+// Adds o to related.R.RelatedPlayBanPlayerKillLogs.
+func (o *PlayerKillLog) SetRelatedPlayBan(exec boil.Executor, insert bool, related *PlayerBan) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"player_kill_log\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"related_play_ban_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RelatedPlayBanID, related.ID)
+	if o.R == nil {
+		o.R = &playerKillLogR{
+			RelatedPlayBan: related,
+		}
+	} else {
+		o.R.RelatedPlayBan = related
+	}
+
+	if related.R == nil {
+		related.R = &playerBanR{
+			RelatedPlayBanPlayerKillLogs: PlayerKillLogSlice{o},
+		}
+	} else {
+		related.R.RelatedPlayBanPlayerKillLogs = append(related.R.RelatedPlayBanPlayerKillLogs, o)
+	}
+
+	return nil
+}
+
+// RemoveRelatedPlayBan relationship.
+// Sets o.R.RelatedPlayBan to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PlayerKillLog) RemoveRelatedPlayBan(exec boil.Executor, related *PlayerBan) error {
+	var err error
+
+	queries.SetScanner(&o.RelatedPlayBanID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("related_play_ban_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RelatedPlayBan = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.RelatedPlayBanPlayerKillLogs {
+		if queries.Equal(o.RelatedPlayBanID, ri.RelatedPlayBanID) {
+			continue
+		}
+
+		ln := len(related.R.RelatedPlayBanPlayerKillLogs)
+		if ln > 1 && i < ln-1 {
+			related.R.RelatedPlayBanPlayerKillLogs[i] = related.R.RelatedPlayBanPlayerKillLogs[ln-1]
+		}
+		related.R.RelatedPlayBanPlayerKillLogs = related.R.RelatedPlayBanPlayerKillLogs[:ln-1]
+		break
+	}
 	return nil
 }
 

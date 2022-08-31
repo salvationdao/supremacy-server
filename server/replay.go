@@ -14,6 +14,7 @@ type BattleReplay struct {
 	RecordingStatus  string      `json:"recording_status"`
 	StartedAt        null.Time   `json:"started_at,omitempty"`
 	StoppedAt        null.Time   `json:"stopped_at,omitempty"`
+	Events           null.JSON   `json:"events"`
 }
 
 func BattleReplayFromBoiler(replay *boiler.BattleReplay) *BattleReplay {
@@ -26,5 +27,6 @@ func BattleReplayFromBoiler(replay *boiler.BattleReplay) *BattleReplay {
 		RecordingStatus:  replay.RecordingStatus,
 		StartedAt:        replay.StartedAt,
 		StoppedAt:        replay.StoppedAt,
+		Events:           replay.BattleEvents,
 	}
 }

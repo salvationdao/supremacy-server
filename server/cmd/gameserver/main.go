@@ -446,7 +446,7 @@ func main() {
 
 					// stops all battle replay recordings when server goes down
 					go func() {
-						stop := make(chan os.Signal, 1)
+						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
 						err := replay.StopAllActiveRecording()
