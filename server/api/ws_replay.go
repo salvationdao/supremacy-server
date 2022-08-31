@@ -24,15 +24,17 @@ func NewReplayController(api *API) *ReplayController {
 	}
 
 	api.Command(HubKeyGetAllReplays, rc.GetAllBattleReplays)
-	api.Command(HubKeyGetAllReplays, rc.GetBattleReplayDetails)
+	api.Command(HubKeyGetReplayDetails, rc.GetBattleReplayDetails)
 	return rc
 }
 
 type BattleReplayGetRequest struct {
-	Search string              `json:"search"`
-	Sort   *db.ListSortRequest `json:"sort"`
-	Limit  int                 `json:"limit"`
-	Offset int                 `json:"offset"`
+	Payload struct {
+		Search   string              `json:"search"`
+		Sort     *db.ListSortRequest `json:"sort"`
+		Page     int                 `json:"page"`
+		PageSize int                 `json:"page_size"`
+	} `json:"payload"`
 }
 
 type BattleReplayResponse struct {
@@ -46,19 +48,19 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 	req := &BattleReplayGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		fmt.Println(string(payload))
 		return terror.Error(err, "Invalid request received")
 	}
 
-	req.Sort.Column = boiler.BattleReplayColumns.CreatedAt
-	req.Sort.Table = boiler.TableNames.BattleReplays
+	req.Payload.Sort.Column = boiler.BattleReplayColumns.CreatedAt
+	req.Payload.Sort.Table = boiler.TableNames.BattleReplays
 
-	if req.Limit <= 0 || req.Offset < 0 {
-		return terror.Error(fmt.Errorf("invalid limit and offset"), "Invalid limit and offset")
-	}
+	limit := req.Payload.PageSize
+	offset := req.Payload.Page * req.Payload.PageSize
 
 	brs := []*server.BattleReplay{}
 
-	count, replays, err := db.ReplayList(req.Search, req.Sort, req.Limit, req.Offset)
+	count, replays, err := db.ReplayList(req.Payload.Search, req.Payload.Sort, limit, offset)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,9 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 }
 
 type BattleReplayDetailsRequest struct {
-	ReplayID string `json:"replay_id"`
+	Payload struct {
+		ReplayID string `json:"replay_id"`
+	} `json:"payload"`
 }
 
 const HubKeyGetReplayDetails = "GET:REPLAY:DETAILS"
@@ -88,12 +92,12 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		return terror.Error(err, "Invalid request received")
 	}
 
-	if req.ReplayID == "" {
+	if req.Payload.ReplayID == "" {
 		return terror.Error(err, "Invalid replay id")
 	}
 
 	replay, err := boiler.BattleReplays(
-		boiler.BattleReplayWhere.ID.EQ(req.ReplayID),
+		boiler.BattleReplayWhere.ID.EQ(req.Payload.ReplayID),
 		qm.Load(boiler.BattleReplayRels.Battle),
 		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
 	).One(gamedb.StdConn)
