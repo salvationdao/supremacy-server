@@ -719,7 +719,93 @@ func (api *API) RepairAgentComplete(ctx context.Context, user *boiler.Player, ke
 		roIDs = append(roIDs, ro.ID)
 	}
 
+	now := time.Now()
+	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+
 	err = api.ArenaManager.SendRepairFunc(func() error {
+		// check current mech is in active repair slot
+		pmr, err := boiler.PlayerMechRepairSlots(
+			boiler.PlayerMechRepairSlotWhere.MechID.EQ(rc.MechID),
+			boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to check repair slot from repair case.")
+			return terror.Error(err, "Failed to check repair slot")
+		}
+
+		// clean up repair slot, if exist
+		if pmr != nil {
+			func() {
+				tx, err := gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+					return
+				}
+
+				defer tx.Rollback()
+
+				if pmr.Status == boiler.RepairSlotStatusREPAIRING {
+					// set next
+					nextSlot, err := boiler.PlayerMechRepairSlots(
+						boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(pmr.PlayerID),
+						boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
+						qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+					).One(tx)
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
+						gamelog.L.Error().Str("player id", pmr.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
+						return
+					}
+
+					// upgrade next "PENDING" slot to "REPAIRING" slot
+					if nextSlot != nil {
+						nextSlot.Status = boiler.RepairSlotStatusREPAIRING
+						nextSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+						_, err = nextSlot.Update(tx, boil.Whitelist(
+							boiler.PlayerMechRepairSlotColumns.Status,
+							boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+						))
+						if err != nil {
+							gamelog.L.Error().Interface("repair slot", nextSlot).Err(err).Msg("Failed to update next repair slot.")
+							return
+						}
+					}
+				}
+
+				// decrement slot number from current slot
+				err = db.DecrementRepairSlotNumber(tx, pmr.PlayerID, pmr.SlotNumber)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
+					return
+				}
+
+				// mark current slot as "DONE"
+				pmr.Status = boiler.RepairSlotStatusDONE
+				pmr.SlotNumber = 0
+				pmr.NextRepairTime = null.TimeFromPtr(nil)
+				_, err = pmr.Update(tx,
+					boil.Whitelist(
+						boiler.PlayerMechRepairSlotColumns.Status,
+						boiler.PlayerMechRepairSlotColumns.SlotNumber,
+						boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+					),
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
+					return
+				}
+
+				err = tx.Commit()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+					return
+				}
+
+				// broadcast current repair bay
+				go battle.BroadcastRepairBay(pmr.PlayerID)
+			}()
+		}
+
+		// close repair offer
 		err = api.ArenaManager.CloseRepairOffers(roIDs, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
 		if err != nil {
 			gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")

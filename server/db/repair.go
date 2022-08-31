@@ -142,7 +142,24 @@ func TotalRepairBlocks(mechID string) int {
 	return bm.RepairBlocks
 }
 
-func DecrementRepairSlotNumber(conn Conn, playerID string) error {
-
+func DecrementRepairSlotNumber(conn Conn, playerID string, fromNumber int) error {
+	// decrement slot number
+	q := fmt.Sprintf(
+		`
+			UPDATE
+				%[1]s
+			SET 
+			    %[2]s = %[2]s - 1
+			WHERE 
+			    %[3]s = $1 AND %[2]s >= $2
+		`,
+		boiler.TableNames.PlayerMechRepairSlots,
+		boiler.PlayerMechRepairSlotColumns.SlotNumber,
+		boiler.PlayerMechRepairSlotColumns.PlayerID,
+	)
+	_, err := conn.Exec(q, playerID, fromNumber)
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -94,7 +94,7 @@ func (am *ArenaManager) RepairOfferCleaner() {
 					defer wg.Done()
 
 					// mark current repairing slot to "DONE" and mark next slot to "REPAIRING"
-					swapSlot := func(playerMechRepairSlot *boiler.PlayerMechRepairSlot) {
+					swapSlot := func(pmr *boiler.PlayerMechRepairSlot) {
 						tx, err := gamedb.StdConn.Begin()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
@@ -103,52 +103,51 @@ func (am *ArenaManager) RepairOfferCleaner() {
 
 						defer tx.Rollback()
 
+						nexSlot, err := boiler.PlayerMechRepairSlots(
+							boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(pmr.PlayerID),
+							boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
+							qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+						).One(tx)
+						if err != nil && !errors.Is(err, sql.ErrNoRows) {
+							gamelog.L.Error().Str("player id", pmr.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
+							return
+						}
+
+						// set next slot status to "REPAIRING"
+						if nexSlot != nil {
+							nexSlot.Status = boiler.RepairSlotStatusREPAIRING
+							nexSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+							_, err = nexSlot.Update(tx, boil.Whitelist(
+								boiler.PlayerMechRepairSlotColumns.Status,
+								boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+							))
+							if err != nil {
+								gamelog.L.Error().Err(err).Interface("player repair slot", pmr).Msg("Failed to complete current repair slot.")
+								return
+							}
+						}
+
 						// decrement slot number
-						q := fmt.Sprintf(
-							`
-								UPDATE
-									%[1]s
-								SET 
-								    %[2]s = %[2]s - 1
-								WHERE 
-								    %[3]s = $1 AND %[2]s > 0
-							`,
-							boiler.TableNames.PlayerMechRepairSlots,
-							boiler.PlayerMechRepairSlotColumns.SlotNumber,
-							boiler.PlayerMechRepairSlotColumns.PlayerID,
-						)
-						_, err = tx.Exec(q, playerMechRepairSlot.PlayerID)
+						err = db.DecrementRepairSlotNumber(tx, pmr.PlayerID, pmr.SlotNumber)
 						if err != nil {
-							gamelog.L.Error().Err(err).Str("player id", playerMechRepairSlot.PlayerID).Msg("Failed to decrement slot number.")
+							gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
 							return
 						}
 
 						// update current bay status to "DONE"
-						playerMechRepairSlot.Status = boiler.RepairSlotStatusDONE
-						_, err = playerMechRepairSlot.Update(tx, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
+						pmr.Status = boiler.RepairSlotStatusDONE
+						pmr.SlotNumber = 0
+						pmr.NextRepairTime = null.TimeFromPtr(nil)
+						_, err = pmr.Update(tx,
+							boil.Whitelist(
+								boiler.PlayerMechRepairSlotColumns.Status,
+								boiler.PlayerMechRepairSlotColumns.SlotNumber,
+								boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+							),
+						)
 						if err != nil {
-							gamelog.L.Error().Err(err).Interface("player repair slot", playerMechRepairSlot).Msg("Failed to complete current repair slot.")
+							gamelog.L.Error().Err(err).Interface("player repair slot", pmr).Msg("Failed to complete current repair slot.")
 							return
-						}
-
-						pmr, err := boiler.PlayerMechRepairSlots(
-							boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerMechRepairSlot.PlayerID),
-							boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
-							qm.OrderBy(boiler.PlayerMechRepairSlotColumns.CreatedAt),
-						).One(tx)
-						if err != nil && !errors.Is(err, sql.ErrNoRows) {
-							gamelog.L.Error().Str("player id", playerMechRepairSlot.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
-							return
-						}
-
-						// next pending slot
-						if pmr != nil {
-							playerMechRepairSlot.Status = boiler.RepairSlotStatusPENDING
-							_, err = playerMechRepairSlot.Update(tx, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.Status))
-							if err != nil {
-								gamelog.L.Error().Err(err).Interface("player repair slot", playerMechRepairSlot).Msg("Failed to complete current repair slot.")
-								return
-							}
 						}
 
 						err = tx.Commit()
@@ -158,7 +157,7 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						}
 
 						// broadcast current repair bay
-						go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
+						go BroadcastRepairBay(pmr.PlayerID)
 					}
 
 					// if no repair case, swap repair slot
