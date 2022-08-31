@@ -1721,11 +1721,6 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
-
-		if lastBattle != nil {
-			battle.BattleNumber = lastBattle.BattleNumber + 1
-		}
-
 	} else {
 		// refund abilities
 		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
