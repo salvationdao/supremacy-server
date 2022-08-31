@@ -16,12 +16,12 @@ import (
 	"github.com/friendsofgo/errors"
 )
 
-// GetBattleMechsFromFactionID returns the next 3 (or less) mechs in queue that belong to the specified faction.
+// GetPendingMechsFromFactionID returns the next 3 (or less) mechs in backlog that belong to the specified faction.
 // By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
-// However, if 3 queued faction mechs with unique owner IDs does not currently exist, GetBattleMechsFromFactionID may return
+// However, if 3 backlogged faction mechs with unique owner IDs does not currently exist, GetPendingMechsFromFactionID may return
 // mechs with the same owner ID.
-func GetBattleMechsFromFactionID(factionID string) (boiler.BattleQueueSlice, error) {
-	battleMechs, err := GetNextBattleMech(factionID, []*boiler.BattleQueue{}, false)
+func GetPendingMechsFromFactionID(factionID string, excludeMechIDs []string) (boiler.BattleQueueBacklogSlice, error) {
+	battleMechs, err := GetNextBacklogMech(factionID, []*boiler.BattleQueueBacklog{}, excludeMechIDs, []string{}, false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("Failed to get battle mechs")
 		return nil, err
@@ -32,40 +32,38 @@ func GetBattleMechsFromFactionID(factionID string) (boiler.BattleQueueSlice, err
 
 const FACTION_MECH_LIMIT = 3
 
-// GetNextBattleMech is a recursive function called by GetBattleMechsFromFactionID
-func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, disableOwnerCheck bool) (boiler.BattleQueueSlice, error) {
+// GetNextBacklogMech is a recursive function called by GetBattleMechsFromFactionID
+func GetNextBacklogMech(factionID string, battleMechs boiler.BattleQueueBacklogSlice, excludeMechIDs, excludeOwnerIDs []string, disableOwnerCheck bool) (boiler.BattleQueueBacklogSlice, error) {
 	if len(battleMechs) == FACTION_MECH_LIMIT {
 		return battleMechs, nil
 	}
 
-	notInIDs := []string{}
-	notInOwnerIDs := []string{}
 	for _, bm := range battleMechs {
-		notInIDs = append(notInIDs, bm.ID)
+		excludeMechIDs = append(excludeMechIDs, bm.MechID)
 		if !disableOwnerCheck {
-			notInOwnerIDs = append(notInOwnerIDs, bm.OwnerID)
+			excludeOwnerIDs = append(excludeOwnerIDs, bm.OwnerID)
 		}
 	}
 
-	nextBattleMech, err := boiler.BattleQueues(
-		boiler.BattleQueueWhere.FactionID.EQ(factionID),
-		boiler.BattleQueueWhere.ID.NIN(notInIDs),
-		boiler.BattleQueueWhere.OwnerID.NIN(notInOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
+	nextBattleMech, err := boiler.BattleQueueBacklogs(
+		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+		boiler.BattleQueueBacklogWhere.MechID.NIN(excludeMechIDs),
+		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
 		qm.Limit(1),
 	).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
 		if disableOwnerCheck {
 			return battleMechs, nil
 		} else {
-			return GetNextBattleMech(factionID, battleMechs, true)
+			return GetNextBacklogMech(factionID, battleMechs, excludeMechIDs, excludeOwnerIDs, true)
 		}
 	} else if err != nil {
 		return nil, err
 	}
 	battleMechs = append(battleMechs, nextBattleMech)
 
-	return GetNextBattleMech(factionID, battleMechs, false)
+	return GetNextBacklogMech(factionID, battleMechs, excludeMechIDs, excludeOwnerIDs, false)
 }
 
 // todo: rework this to factor in R queue positions

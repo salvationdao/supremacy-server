@@ -49,7 +49,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 		select {
 		case <-queueTicker.C:
 			gamelog.L.Debug().Msg("moving entries from queue backlog to battle queue")
-			// Every 5 seconds (set by KV), move 3 entries (per faction) from battle_queue_backlog to the
+			// Every 5 seconds (set by KV), move exactly 3 entries (per faction) from battle_queue_backlog to the
 			// battle_queue table, only if they satisfy the following criteria:
 			// - No two mechs can belong to the same owner, unless the faction's battle_queue is empty
 			// - Mechs did not participate in the previous battle (ignoring server resets)
