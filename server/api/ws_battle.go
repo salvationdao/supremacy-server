@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"server"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -59,7 +60,8 @@ type BattleMechHistoryRequest struct {
 
 type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
-	GameMap        *boiler.GameMap `json:"game_map"`
+	GameMap        *boiler.GameMap      `json:"game_map"`
+	BattleReplay   *server.BattleReplay `json:"battle_replay,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -92,13 +94,29 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
-		output = append(output, BattleMechDetailed{
+		replay, err := boiler.BattleReplays(
+			boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+			boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+			boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+			boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+		).One(gamedb.StdConn)
+		if err != nil && err != sql.ErrNoRows {
+			gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+		}
+
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
 			Battle: &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
 			},
-		})
+		}
+
+		if replay != nil {
+			battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+		}
+
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
@@ -139,18 +157,35 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
+		replay, err := boiler.BattleReplays(
+			boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+			boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+			boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+			boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+		).One(gamedb.StdConn)
+		if err != nil && err != sql.ErrNoRows {
+			gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+		}
+
 		var mech *boiler.Mech
 		if o.R != nil && o.R.Mech != nil {
 			mech = o.R.Mech
 		}
-		output = append(output, BattleMechDetailed{
+
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
 			Battle: &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
 			},
 			Mech: mech,
-		})
+		}
+
+		if replay != nil {
+			battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+		}
+		
+		output = append(output)
 	}
 
 	reply(BattleMechHistoryResponse{
