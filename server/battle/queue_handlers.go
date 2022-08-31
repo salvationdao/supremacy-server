@@ -381,6 +381,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 								),
 							)
 							if err != nil {
+								gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
 								return terror.Error(err, "Failed to update repair slot")
 							}
 						}

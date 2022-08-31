@@ -36,8 +36,7 @@ func NewMechRepairController(api *API) {
 
 	api.SecureUserCommand(server.HubKeyMechRepairSlotInsert, api.MechRepairSlotInsert)
 	api.SecureUserCommand(server.HubKeyMechRepairSlotRemove, api.MechRepairSlotRemove)
-	// TODO: remove slots
-	// TODO: swap slot
+	api.SecureUserCommand(server.HubKeyMechRepairSlotSwap, api.MechRepairSlotSwap)
 
 }
 
@@ -1271,6 +1270,118 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 	}
 
 	reply(true)
+	return nil
+}
+
+type MechRepairSlotSwapRequest struct {
+	Payload struct {
+		FromMechID string `json:"from_mech_id"`
+		ToMechID   string `json:"to_mech_id"`
+	} `json:"payload"`
+}
+
+func (api *API) MechRepairSlotSwap(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	L := gamelog.L.With().Str("func", "MechRepairSlotRemove").Interface("user", user).Logger()
+
+	req := &MechRepairSlotSwapRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	mechIDs := []string{req.Payload.FromMechID, req.Payload.ToMechID}
+
+	// validate ownership
+	cis, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.IN(mechIDs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		L.Error().Err(err).Str("item type", boiler.ItemTypeMech).Strs("mech id list", mechIDs).Msg("Failed to query war machine collection item")
+		return terror.Error(err, "Failed to load war machine detail.")
+	}
+
+	if len(mechIDs) != len(cis) {
+		return terror.Error(fmt.Errorf("contain non-mech asset"), "Request contain non-mech asset.")
+	}
+
+	for _, ci := range cis {
+		if ci.OwnerID != user.ID {
+			return terror.Error(fmt.Errorf("do not own the mech"), "The mech is not owned by you.")
+		}
+	}
+
+	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+	now := time.Now()
+
+	err = api.ArenaManager.SendRepairFunc(func() error {
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+			return terror.Error(err, "Failed to start db transaction")
+		}
+
+		defer tx.Rollback()
+
+		pms, err := boiler.PlayerMechRepairSlots(
+			boiler.PlayerMechRepairSlotWhere.MechID.IN(mechIDs),
+			boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		).All(tx)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load player mech repair slots.")
+			return terror.Error(err, "Failed to load repair slots")
+		}
+
+		if len(pms) != len(mechIDs) {
+			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the list")
+		}
+
+		// swap slot and status
+		tempSlotNumber := pms[0].SlotNumber
+		tempStatus := pms[0].Status
+
+		pms[0].SlotNumber = pms[1].SlotNumber
+		pms[0].Status = pms[1].Status
+
+		pms[0].SlotNumber = tempSlotNumber
+		pms[0].Status = tempStatus
+
+		for _, pm := range pms {
+			// set next repair time
+			pm.NextRepairTime = null.TimeFromPtr(nil)
+			if pm.Status == boiler.RepairSlotStatusREPAIRING {
+				pm.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+			}
+
+			// update repair slot
+			_, err = pm.Update(tx, boil.Whitelist(
+				boiler.PlayerMechRepairSlotColumns.SlotNumber,
+				boiler.PlayerMechRepairSlotColumns.Status,
+				boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+			))
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
+				return terror.Error(err, "Failed to update repair slot")
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+			return terror.Error(err, "Failed to commit db transaction.")
+		}
+
+		// broadcast new repair bay
+		go battle.BroadcastRepairBay(user.ID)
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	reply(true)
+
 	return nil
 }
 
