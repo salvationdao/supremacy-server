@@ -94,26 +94,27 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
-		replay, err := boiler.BattleReplays(
-			boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
-			boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
-			boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
-			boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
-		).One(gamedb.StdConn)
-		if err != nil && err != sql.ErrNoRows {
-			gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
-		}
-
 		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
+		}
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
-			},
-		}
-
-		if replay != nil {
-			battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+			}
 		}
 
 		output = append(output, battleMechDetail)
@@ -157,15 +158,6 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
-		replay, err := boiler.BattleReplays(
-			boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
-			boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
-			boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
-			boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
-		).One(gamedb.StdConn)
-		if err != nil && err != sql.ErrNoRows {
-			gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
-		}
 
 		var mech *boiler.Mech
 		if o.R != nil && o.R.Mech != nil {
@@ -174,17 +166,29 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 
 		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
-				Battle:  o.R.Battle,
-				GameMap: o.R.Battle.R.GameMap,
-			},
-			Mech: mech,
+			Mech:       mech,
 		}
 
-		if replay != nil {
-			battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
+				Battle:  o.R.Battle,
+				GameMap: o.R.Battle.R.GameMap,
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+			}
 		}
-		
+
 		output = append(output)
 	}
 
