@@ -47,6 +47,9 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 		return terror.Error(err, "Invalid request received")
 	}
 
+	req.Sort.Column = boiler.BattleReplayColumns.CreatedAt
+	req.Sort.Table = boiler.TableNames.BattleReplays
+
 	if req.Limit <= 0 || req.Offset < 0 {
 		return terror.Error(fmt.Errorf("invalid limit and offset"), "Invalid limit and offset")
 	}
