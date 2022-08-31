@@ -19,4 +19,5 @@ ALTER TABLE battle_ability_triggers
     ADD COLUMN IF NOT EXISTS trigger_type ABILITY_TRIGGER_TYPE NOT NULL DEFAULT 'BATTLE_ABILITY',
     ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
-drop table mech_ability_trigger_logs;
+ALTER TABLE mech_ability_trigger_logs
+    RENAME TO mech_ability_trigger_logs_old;
