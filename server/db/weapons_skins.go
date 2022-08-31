@@ -302,6 +302,7 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 	for rows.Next() {
 		mc := &server.WeaponSkin{
 			CollectionItem: &server.CollectionItem{},
+			SkinSwatch:     &server.Images{},
 			Images:         &server.Images{},
 		}
 
@@ -320,13 +321,13 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			&mc.BlueprintID,
 			&mc.Label,
 			&mc.Tier,
-			&mc.Images.ImageURL,
-			&mc.Images.CardAnimationURL,
-			&mc.Images.AvatarURL,
-			&mc.Images.LargeImageURL,
-			&mc.Images.AnimationURL,
-			&mc.Images.YoutubeURL,
-			&mc.Images.BackgroundColor,
+			&mc.SkinSwatch.ImageURL,
+			&mc.SkinSwatch.CardAnimationURL,
+			&mc.SkinSwatch.AvatarURL,
+			&mc.SkinSwatch.LargeImageURL,
+			&mc.SkinSwatch.AnimationURL,
+			&mc.SkinSwatch.YoutubeURL,
+			&mc.SkinSwatch.BackgroundColor,
 		}
 
 		err = rows.Scan(scanArgs...)
