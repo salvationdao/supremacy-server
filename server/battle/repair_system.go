@@ -89,6 +89,14 @@ func (am *ArenaManager) RepairOfferCleaner() {
 				wg.Add(1)
 				go func(playerMechRepairBay *boiler.PlayerMechRepairBay) {
 					defer wg.Done()
+
+					swapBay := func(playerMechRepairBay *boiler.PlayerMechRepairBay) error {
+						boiler.PlayerMechRepairBays().All()
+
+						return nil
+					}
+
+					// if no repair case
 					if playerMechRepairBay.R == nil || playerMechRepairBay.R.RepairCase == nil {
 						// todo: log warning
 						return
@@ -105,11 +113,13 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						return
 					}
 
+					// if no system offer
 					if systemOffer == nil {
 						// todo: log warning
 						return
 					}
 
+					// if offer close or
 					if systemOffer.ClosedAt.Valid || rc.CompletedAt.Valid {
 						// todo: swap bay
 						return
