@@ -2,12 +2,13 @@ package db
 
 import (
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"strconv"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func ReplayList(
@@ -65,6 +66,7 @@ func ReplayList(
 	}
 
 	queryMods = append(queryMods, qm.Limit(Limit))
+	fmt.Println(Limit, Offset)
 	queryMods = append(queryMods, qm.Offset(Offset))
 	queryMods = append(queryMods,
 		qm.Load(boiler.BattleReplayRels.Battle),

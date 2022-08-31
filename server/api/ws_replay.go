@@ -55,8 +55,12 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 	req.Payload.Sort.Column = boiler.BattleReplayColumns.CreatedAt
 	req.Payload.Sort.Table = boiler.TableNames.BattleReplays
 
+	if req.Payload.Page < 1 {
+		return terror.Error(fmt.Errorf("less than one page"), "Page should start from 1.")
+	}
+
 	limit := req.Payload.PageSize
-	offset := req.Payload.Page * req.Payload.PageSize
+	offset := (req.Payload.Page - 1) * req.Payload.PageSize
 
 	brs := []*server.BattleReplay{}
 
