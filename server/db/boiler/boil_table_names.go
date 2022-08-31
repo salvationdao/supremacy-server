@@ -20,6 +20,7 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines string
 	BattleHistory                                      string
 	BattleKills                                        string
+	BattleMapQueue                                     string
 	BattleMechs                                        string
 	BattleQueue                                        string
 	BattleQueueFees                                    string
@@ -71,7 +72,7 @@ var TableNames = struct {
 	Languages                                          string
 	Layers                                             string
 	MarketplaceEvents                                  string
-	MechAbilityTriggerLogs                             string
+	MechAbilityTriggerLogsOld                          string
 	MechAnimation                                      string
 	MechModelSkinCompatibilities                       string
 	MechMoveCommandLogs                                string
@@ -166,6 +167,7 @@ var TableNames = struct {
 	BattleEventsWarMachineDestroyedAssistedWarMachines: "battle_events_war_machine_destroyed_assisted_war_machines",
 	BattleHistory:                  "battle_history",
 	BattleKills:                    "battle_kills",
+	BattleMapQueue:                 "battle_map_queue",
 	BattleMechs:                    "battle_mechs",
 	BattleQueue:                    "battle_queue",
 	BattleQueueFees:                "battle_queue_fees",
@@ -217,7 +219,7 @@ var TableNames = struct {
 	Languages:                      "languages",
 	Layers:                         "layers",
 	MarketplaceEvents:              "marketplace_events",
-	MechAbilityTriggerLogs:         "mech_ability_trigger_logs",
+	MechAbilityTriggerLogsOld:      "mech_ability_trigger_logs_old",
 	MechAnimation:                  "mech_animation",
 	MechModelSkinCompatibilities:   "mech_model_skin_compatibilities",
 	MechMoveCommandLogs:            "mech_move_command_logs",

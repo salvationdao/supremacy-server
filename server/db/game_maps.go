@@ -114,3 +114,23 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 
 	return gameMap, nil
 }
+
+// GameMapGetRandom return a game map by given id
+func GameMapGetByID(id string) (*boiler.GameMap, error) {
+
+	mapQueries := []qm.QueryMod{
+		boiler.GameMapWhere.ID.EQ(id),
+		qm.Select(
+			boiler.GameMapColumns.ID,
+			boiler.GameMapColumns.Name,
+		),
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	}
+
+	gameMap, err := boiler.GameMaps(mapQueries...).One(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	return gameMap, nil
+}
