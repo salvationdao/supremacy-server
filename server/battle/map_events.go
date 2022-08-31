@@ -21,6 +21,12 @@ type MapEventList struct {
 	deadlock.RWMutex
 }
 
+func NewMapEventList() *MapEventList {
+	return &MapEventList{
+		Landmines: make(map[uint16]Landmine),
+	}
+}
+
 type MapEvent interface {
 	Pack() []byte
 }
@@ -56,7 +62,7 @@ func (mel *MapEventList) MapEventsUnpack(payload []byte) {
 			offset++
 			for l := 0; l < landMineCount; l++ {
 				landmineID := helpers.BytesToUInt16(payload[offset : offset+2])
-				offset += 4 // (uint16 + skip uint16) skip time offset as server doesn't need to know about it
+				offset += 3 // (uint16 + skip byte) skip time offset as server doesn't need to know about it
 				x := helpers.BytesToInt(payload[offset : offset+4])
 				offset += 4
 				y := helpers.BytesToInt(payload[offset : offset+4])
@@ -77,7 +83,7 @@ func (mel *MapEventList) MapEventsUnpack(payload []byte) {
 			offset += 2
 			for l := 0; l < landMineCount; l++ {
 				landmineID := helpers.BytesToUInt16(payload[offset : offset+2])
-				offset += 4 // (uint16 + skip uint16) skip time offset as server doesn't need to know about it
+				offset += 3 // (uint16 + skip byte) skip time offset as server doesn't need to know about it
 				mel.RemoveLandmine(landmineID)
 			}
 		}
@@ -99,11 +105,12 @@ func (mel *MapEventList) RemoveLandmine(landmineID uint16) {
 }
 
 // Pack all information a new frontend client needs to know (eg: landmine, pickup locations and the hive state)
-func (mel *MapEventList) Pack() [][]byte {
+func (mel *MapEventList) Pack() (bool, []byte) {
 	mel.Lock()
 	defer mel.Unlock()
 
-	var mapEvents [][]byte
+	payload := []byte{0} // prepend message count
+	var messageCount byte = 0
 
 	// Landmines
 	if len(mel.Landmines) > 0 {
@@ -113,26 +120,34 @@ func (mel *MapEventList) Pack() [][]byte {
 			if landmine.FactionNo == 0 || landmine.FactionNo > 3 {
 				continue
 			}
-			index := landmine.FactionNo + 1
+			index := landmine.FactionNo - 1
 			landminesPerFaction[index] = append(landminesPerFaction[index], landmine)
 		}
 
-		for _, landmines := range landminesPerFaction {
-			landminesEvent := []byte{
-				byte(MapEventTypeLandmineExplosions),
+		for factionNo, landmines := range landminesPerFaction {
+			landmineCount := len(landmines)
+			if landmineCount == 0 {
+				continue
 			}
-			landminesEvent = append(landminesEvent, helpers.UInt16ToBytes(uint16(len(landmines)))...)
+
+			payload = append(payload, byte(MapEventTypeLandmineActivations))
+			payload = append(payload, helpers.UInt16ToBytes(uint16(landmineCount))...)
+			payload = append(payload, byte(factionNo+1))
 
 			for _, landmine := range landmines {
-				landminesEvent = append(landminesEvent, helpers.UInt16ToBytes(landmine.ID)...)
-				landminesEvent = append(landminesEvent, helpers.UInt16ToBytes(0)...) // Time Offset
-				landminesEvent = append(landminesEvent, helpers.IntToBytes(landmine.X)...)
-				landminesEvent = append(landminesEvent, helpers.IntToBytes(landmine.Y)...)
+				payload = append(payload, helpers.UInt16ToBytes(landmine.ID)...)
+				payload = append(payload, 0) // Time Offset
+				payload = append(payload, helpers.IntToBytes(landmine.X)...)
+				payload = append(payload, helpers.IntToBytes(landmine.Y)...)
 			}
-
-			mapEvents = append(mapEvents, landminesEvent)
+			messageCount++
 		}
 	}
 
-	return mapEvents
+	if messageCount <= 1 {
+		return false, nil
+	}
+	payload[0] = messageCount
+
+	return true, payload
 }

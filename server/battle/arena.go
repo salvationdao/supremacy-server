@@ -868,17 +868,16 @@ func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key s
 		return err
 	}
 
-	// skip, if current not battle
-	if arena.CurrentBattle() == nil {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return terror.Error(terror.ErrForbidden, "There is no battle currently for this map event.")
-	}
-
 	// if current battle still running
 	btl := arena.CurrentBattle()
-	if btl != nil {
-		// send landmine, pickup locations and the hive map state
-		reply(btl.MapEventList.Pack())
+	if btl == nil {
+		return nil
+	}
+
+	// send landmine, pickup locations and the hive map state
+	hasMessages, mapEventsPacked := btl.MapEventList.Pack()
+	if hasMessages {
+		reply(mapEventsPacked)
 	}
 
 	return nil
@@ -1770,6 +1769,7 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
+		MapEventList:  NewMapEventList(),
 		replaySession: recordSession,
 	}
 
