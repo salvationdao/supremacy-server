@@ -348,6 +348,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 		mc := &server.MechSkin{
 			CollectionItem: &server.CollectionItem{},
 			Images:         &server.Images{},
+			SkinSwatch:     &server.Images{},
 		}
 
 		scanArgs := []interface{}{
@@ -369,13 +370,13 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			&mc.BlueprintID,
 			&mc.Label,
 			&mc.Tier,
-			&mc.Images.ImageURL,
-			&mc.Images.CardAnimationURL,
-			&mc.Images.AvatarURL,
-			&mc.Images.LargeImageURL,
-			&mc.Images.AnimationURL,
-			&mc.Images.YoutubeURL,
-			&mc.Images.BackgroundColor,
+			&mc.SkinSwatch.ImageURL,
+			&mc.SkinSwatch.CardAnimationURL,
+			&mc.SkinSwatch.AvatarURL,
+			&mc.SkinSwatch.LargeImageURL,
+			&mc.SkinSwatch.AnimationURL,
+			&mc.SkinSwatch.YoutubeURL,
+			&mc.SkinSwatch.BackgroundColor,
 		}
 
 		err = rows.Scan(scanArgs...)

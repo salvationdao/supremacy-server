@@ -1312,7 +1312,6 @@ type PlayerAssetMechSubmodel struct {
 
 func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	l := gamelog.L.With().Str("func", "playerAssetMechSubmodelListHandler").Str("user_id", user.ID).Logger()
-	boil.DebugMode = true
 
 	req := &PlayerAssetMechSubmodelListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -1350,7 +1349,6 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 
 	total, submodels, err := db.MechSkinList(listOpts)
 	if err != nil {
-		boil.DebugMode = false
 		l.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting war machine skin list")
 		return terror.Error(err, "Failed to find your war machine skin assets, please try again or contact support.")
 	}
@@ -1358,15 +1356,15 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 	playerAssetMechSubmodel := []*PlayerAssetMechSubmodel{}
 
 	for _, s := range submodels {
-		playerAssetMechSubmodel = append(playerAssetMechSubmodel, &PlayerAssetMechSubmodel{
+		pams := &PlayerAssetMechSubmodel{
 			Images: &server.Images{
-				ImageURL:         s.ImageURL,
-				CardAnimationURL: s.CardAnimationURL,
-				AvatarURL:        s.AvatarURL,
-				AnimationURL:     s.AnimationURL,
-				BackgroundColor:  s.BackgroundColor,
-				YoutubeURL:       s.YoutubeURL,
-				LargeImageURL:    s.LargeImageURL,
+				ImageURL:         s.SkinSwatch.ImageURL,
+				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
+				AvatarURL:        s.SkinSwatch.AvatarURL,
+				AnimationURL:     s.SkinSwatch.AnimationURL,
+				BackgroundColor:  s.SkinSwatch.BackgroundColor,
+				YoutubeURL:       s.SkinSwatch.YoutubeURL,
+				LargeImageURL:    s.SkinSwatch.LargeImageURL,
 			},
 			ID:                  s.ID,
 			Label:               s.Label,
@@ -1381,14 +1379,14 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 			MarketLocked:        s.CollectionItem.MarketLocked,
 			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
 			Level:               s.Level,
-		})
+		}
+		playerAssetMechSubmodel = append(playerAssetMechSubmodel, pams)
 	}
 
 	reply(&PlayerAssetMechSubmodelListResp{
 		Total:     total,
 		Submodels: playerAssetMechSubmodel,
 	})
-	boil.DebugMode = false
 	return nil
 }
 
@@ -1562,15 +1560,16 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 	playerAssetWeaponSubmodel := []*PlayerAssetWeaponSubmodel{}
 
 	for _, s := range submodels {
-		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, &PlayerAssetWeaponSubmodel{
+
+		paws := &PlayerAssetWeaponSubmodel{
 			Images: &server.Images{
-				ImageURL:         s.ImageURL,
-				CardAnimationURL: s.CardAnimationURL,
-				AvatarURL:        s.AvatarURL,
-				AnimationURL:     s.AnimationURL,
-				BackgroundColor:  s.BackgroundColor,
-				YoutubeURL:       s.YoutubeURL,
-				LargeImageURL:    s.LargeImageURL,
+				ImageURL:         s.SkinSwatch.ImageURL,
+				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
+				AvatarURL:        s.SkinSwatch.AvatarURL,
+				AnimationURL:     s.SkinSwatch.AnimationURL,
+				BackgroundColor:  s.SkinSwatch.BackgroundColor,
+				YoutubeURL:       s.SkinSwatch.YoutubeURL,
+				LargeImageURL:    s.SkinSwatch.LargeImageURL,
 			},
 			ID:                  s.ID,
 			Label:               s.Label,
@@ -1584,7 +1583,9 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 			XsynLocked:          s.CollectionItem.XsynLocked,
 			MarketLocked:        s.CollectionItem.MarketLocked,
 			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
-		})
+		}
+
+		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, paws)
 	}
 
 	reply(&PlayerAssetWeaponSubmodelListResp{
