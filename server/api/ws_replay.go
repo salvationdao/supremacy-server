@@ -8,6 +8,8 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"server"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 )
 
 type ReplayController struct {
@@ -68,9 +70,29 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 	return nil
 }
 
+type BattleReplayDetailsRequest struct {
+	ReplayID string `json:"replay_id"`
+}
+
 const HubKeyGetReplayDetails = "GET:REPLAY:DETAILS"
 
 func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &BattleReplayDetailsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	if req.ReplayID == "" {
+		return terror.Error(err, "Invalid replay id")
+	}
+
+	replay, err := boiler.FindBattleReplay(gamedb.StdConn, req.ReplayID)
+	if err != nil {
+		return terror.Error(err, "Failed to find battle replay")
+	}
+
+	reply(server.BattleReplayFromBoilerWithEvent(replay))
 
 	return nil
 }
