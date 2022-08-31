@@ -68,6 +68,8 @@ const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
 const KeyCanRecordReplayStatus KVKey = "can_record_replay"
 
+const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {

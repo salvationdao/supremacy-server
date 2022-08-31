@@ -128,7 +128,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	rcs, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
 		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		qm.Load(boiler.RepairCaseRels.RepairOffers),
+		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.ClosedAt.IsNull()),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Strs("mech ids", req.Payload.MechIDs).Msg("Failed to get repair case")

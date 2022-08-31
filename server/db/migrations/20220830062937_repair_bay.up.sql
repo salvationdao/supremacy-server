@@ -19,4 +19,3 @@ CREATE INDEX IF NOT EXISTS idx_player_mech_repair_slot_repair_search ON player_m
 CREATE INDEX IF NOT EXISTS idx_player_mech_repair_slot_player_search ON player_mech_repair_slots (player_id, status, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_player_mech_repair_slot_mech_status_search ON player_mech_repair_slots (mech_id, status, next_repair_time, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_player_mech_repair_slot_created_at ON player_mech_repair_slots (created_at);
-
