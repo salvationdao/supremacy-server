@@ -328,7 +328,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					return terror.Error(err, "Failed to update repair slot")
 				}
 
-				// update and broadcast
+				// update remain slots and broadcast
 				resp := []*boiler.PlayerMechRepairSlot{}
 				if count > 0 {
 					pms, err := boiler.PlayerMechRepairSlots(

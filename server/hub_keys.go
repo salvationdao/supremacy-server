@@ -46,6 +46,7 @@ const HubKeyMechActiveRepairOffer = "MECH:ACTIVE:REPAIR:OFFER"
 // repair bay
 
 const HubKeyMechRepairSlotInsert = "MECH:REPAIR:SLOT:INSERT"
+const HubKeyMechRepairSlotRemove = "MECH:REPAIR:SLOT:REMOVE"
 const HubKeyMechRepairSlots = "MECH:REPAIR:SLOTS"
 
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
