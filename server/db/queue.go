@@ -20,7 +20,7 @@ const FACTION_MECH_LIMIT = 3
 // By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
 // However, if 3 backlogged faction mechs with unique owner IDs does not currently exist, GetPendingMechsFromFactionID may return
 // mechs with the same owner ID.
-func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, disableOwnerCheck bool, limit ...int) (boiler.BattleQueueBacklogSlice, error) {
+func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit ...int) (boiler.BattleQueueBacklogSlice, error) {
 	count := FACTION_MECH_LIMIT
 	if len(limit) > 0 {
 		count = limit[0]
@@ -45,19 +45,19 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, di
 		excludeMechIDs = append(excludeMechIDs, bm.MechID)
 	}
 
-	if disableOwnerCheck && len(pendingMechs) < count {
-		numberLeft := count - len(pendingMechs)
-		moreMechs, err := boiler.BattleQueueBacklogs(
-			boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
-			boiler.BattleQueueBacklogWhere.MechID.NIN(excludeMechIDs),
-			qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
-			qm.Limit(numberLeft),
-		).All(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-		pendingMechs = append(pendingMechs, moreMechs...)
-	}
+	// if disableOwnerCheck && len(pendingMechs) < count {
+	// numberLeft := count - len(pendingMechs)
+	// moreMechs, err := boiler.BattleQueueBacklogs(
+	// 	boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+	// 	boiler.BattleQueueBacklogWhere.MechID.NIN(excludeMechIDs),
+	// 	qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
+	// 	qm.Limit(numberLeft),
+	// ).All(gamedb.StdConn)
+	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// 	return nil, err
+	// }
+	// pendingMechs = append(pendingMechs, moreMechs...)
+	// }
 
 	return pendingMechs, nil
 }
