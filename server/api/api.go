@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"server"
 	"server/battle"
+	"server/battle_queue"
 	"server/db"
 	"server/gamelog"
 	"server/marketplace"
@@ -47,6 +48,7 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
+	QueueManager             *battle_queue.BattleQueueManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -116,6 +118,7 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
+		QueueManager:             battle_queue.NewBattleQueueSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
