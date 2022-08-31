@@ -1401,6 +1401,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 							gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
 							return
 						}
+						return
 					}
 					btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
 					btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING

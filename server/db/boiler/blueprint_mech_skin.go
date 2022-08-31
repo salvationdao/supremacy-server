@@ -23,72 +23,121 @@ import (
 
 // BlueprintMechSkin is an object representing the database table.
 type BlueprintMechSkin struct {
-	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection      string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier            string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultLevel    int         `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
-	ProfileAvatarID null.String `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultLevel     int         `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	ProfileAvatarID  null.String `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechSkinColumns = struct {
-	ID              string
-	Collection      string
-	Label           string
-	Tier            string
-	CreatedAt       string
-	DefaultLevel    string
-	ProfileAvatarID string
+	ID               string
+	Collection       string
+	Label            string
+	Tier             string
+	CreatedAt        string
+	DefaultLevel     string
+	ImageURL         string
+	AnimationURL     string
+	CardAnimationURL string
+	LargeImageURL    string
+	AvatarURL        string
+	BackgroundColor  string
+	YoutubeURL       string
+	ProfileAvatarID  string
 }{
-	ID:              "id",
-	Collection:      "collection",
-	Label:           "label",
-	Tier:            "tier",
-	CreatedAt:       "created_at",
-	DefaultLevel:    "default_level",
-	ProfileAvatarID: "profile_avatar_id",
+	ID:               "id",
+	Collection:       "collection",
+	Label:            "label",
+	Tier:             "tier",
+	CreatedAt:        "created_at",
+	DefaultLevel:     "default_level",
+	ImageURL:         "image_url",
+	AnimationURL:     "animation_url",
+	CardAnimationURL: "card_animation_url",
+	LargeImageURL:    "large_image_url",
+	AvatarURL:        "avatar_url",
+	BackgroundColor:  "background_color",
+	YoutubeURL:       "youtube_url",
+	ProfileAvatarID:  "profile_avatar_id",
 }
 
 var BlueprintMechSkinTableColumns = struct {
-	ID              string
-	Collection      string
-	Label           string
-	Tier            string
-	CreatedAt       string
-	DefaultLevel    string
-	ProfileAvatarID string
+	ID               string
+	Collection       string
+	Label            string
+	Tier             string
+	CreatedAt        string
+	DefaultLevel     string
+	ImageURL         string
+	AnimationURL     string
+	CardAnimationURL string
+	LargeImageURL    string
+	AvatarURL        string
+	BackgroundColor  string
+	YoutubeURL       string
+	ProfileAvatarID  string
 }{
-	ID:              "blueprint_mech_skin.id",
-	Collection:      "blueprint_mech_skin.collection",
-	Label:           "blueprint_mech_skin.label",
-	Tier:            "blueprint_mech_skin.tier",
-	CreatedAt:       "blueprint_mech_skin.created_at",
-	DefaultLevel:    "blueprint_mech_skin.default_level",
-	ProfileAvatarID: "blueprint_mech_skin.profile_avatar_id",
+	ID:               "blueprint_mech_skin.id",
+	Collection:       "blueprint_mech_skin.collection",
+	Label:            "blueprint_mech_skin.label",
+	Tier:             "blueprint_mech_skin.tier",
+	CreatedAt:        "blueprint_mech_skin.created_at",
+	DefaultLevel:     "blueprint_mech_skin.default_level",
+	ImageURL:         "blueprint_mech_skin.image_url",
+	AnimationURL:     "blueprint_mech_skin.animation_url",
+	CardAnimationURL: "blueprint_mech_skin.card_animation_url",
+	LargeImageURL:    "blueprint_mech_skin.large_image_url",
+	AvatarURL:        "blueprint_mech_skin.avatar_url",
+	BackgroundColor:  "blueprint_mech_skin.background_color",
+	YoutubeURL:       "blueprint_mech_skin.youtube_url",
+	ProfileAvatarID:  "blueprint_mech_skin.profile_avatar_id",
 }
 
 // Generated where
 
 var BlueprintMechSkinWhere = struct {
-	ID              whereHelperstring
-	Collection      whereHelperstring
-	Label           whereHelperstring
-	Tier            whereHelperstring
-	CreatedAt       whereHelpertime_Time
-	DefaultLevel    whereHelperint
-	ProfileAvatarID whereHelpernull_String
+	ID               whereHelperstring
+	Collection       whereHelperstring
+	Label            whereHelperstring
+	Tier             whereHelperstring
+	CreatedAt        whereHelpertime_Time
+	DefaultLevel     whereHelperint
+	ImageURL         whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
+	ProfileAvatarID  whereHelpernull_String
 }{
-	ID:              whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
-	Collection:      whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
-	Label:           whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
-	Tier:            whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
-	DefaultLevel:    whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
-	ProfileAvatarID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
+	ID:               whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
+	Collection:       whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
+	Label:            whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
+	Tier:             whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
+	DefaultLevel:     whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
+	ImageURL:         whereHelpernull_String{field: "\"blueprint_mech_skin\".\"image_url\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_mech_skin\".\"animation_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"card_animation_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_mech_skin\".\"large_image_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"blueprint_mech_skin\".\"avatar_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_mech_skin\".\"background_color\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"youtube_url\""},
+	ProfileAvatarID:  whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
@@ -121,9 +170,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level", "profile_avatar_id"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "profile_avatar_id"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level", "profile_avatar_id"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "profile_avatar_id"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )

@@ -90,7 +90,7 @@ func recordPostRequest(replayID, arenaID string, battleNumber int, action Record
 		Stream: OvenmediaRecordingStream{
 			Name: fmt.Sprintf("%s-%s", server.Env(), arenaID),
 		},
-		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s-%s.mp4", server.Env(), replayID, strconv.Itoa(battleNumber)),
+		FilePath: fmt.Sprintf("/recordings/%s/${Stream}/%s.mp4", server.Env(), replayID),
 		InfoPath: fmt.Sprintf("/info/%s/${Stream}/%s-%s.xml", server.Env(), replayID, strconv.Itoa(battleNumber)),
 	}
 

@@ -481,10 +481,10 @@ func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Playe
 	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		if !ignoreError {
-			if err.Error() == "session is expired" {
-				gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+			if err.Error() != "session is expired" && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Msg("Failed to login with token")
 			}
-			gamelog.L.Error().Err(err).Msg("Failed to login with token")
+			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
 		}
 		return nil, err
 	}
