@@ -167,17 +167,24 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		}, nil
 	}
 
-	// Check in battle queue
-	queuePosition, err := MechQueuePosition(mechID)
+	owner, err := collectionItem.Owner().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	if queuePosition != nil {
-		return &server.MechArenaInfo{
-			Status:    server.MechArenaStatusQueue,
-			CanDeploy: false,
-		}, nil
+	if owner != nil && owner.FactionID.Valid {
+		// Check in battle queue
+		queuePosition, err := MechQueuePosition(mechID, owner.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+
+		if queuePosition != nil {
+			return &server.MechArenaInfo{
+				Status:    server.MechArenaStatusQueue,
+				CanDeploy: false,
+			}, nil
+		}
 	}
 
 	// Check if damaged
@@ -206,9 +213,9 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 	}, nil
 }
 
-// MechQueuePosition return the queue position of the specified mech.
+// MechQueuePosition return the faction queue position of the specified mech.
 // If the mech is in battle, MechQueuePosition returns 0.
-func MechQueuePosition(mechID string) (*BattleQueuePosition, error) {
+func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, error) {
 	q := `
 	SELECT
 		bq.mech_id,
@@ -222,12 +229,13 @@ func MechQueuePosition(mechID string) (*BattleQueuePosition, error) {
 		FROM
 			battle_queue _bq
 		WHERE
-			_bq.battle_id ISNULL) _bq ON _bq.mech_id = bq.mech_id
+			_bq.faction_id = $1
+			AND _bq.battle_id ISNULL) _bq ON _bq.mech_id = bq.mech_id
 	WHERE
-    bq.mech_id = $1
+		bq.mech_id = $2
 	`
 	qp := &BattleQueuePosition{}
-	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&qp.MechID, &qp.QueuePosition)
+	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
 	if err != nil {
 		return nil, err
 	}

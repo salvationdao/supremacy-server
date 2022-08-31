@@ -502,7 +502,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// check if queue
 	if collectionItem.ItemType == boiler.ItemTypeMech {
-		position, err := db.MechQueuePosition(collectionItem.ItemID)
+		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().
 				Str("user_id", user.ID).

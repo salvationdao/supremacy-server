@@ -132,7 +132,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 	if existMech != nil {
 		gamelog.L.Debug().Str("mech_id", existMech.MechID).Err(err).Msg("mech already in queue")
-		position, err := db.MechQueuePosition(existMech.MechID)
+		position, err := db.MechQueuePosition(existMech.MechID, factionID)
 		if err != nil {
 			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
