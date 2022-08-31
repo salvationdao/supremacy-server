@@ -300,8 +300,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
-	// process
+	// clean up repair slots, if any mechs are successfully deployed and in the bay
 	if len(deployedMechIDs) > 0 {
+		// wrap it in go routine, the channel will not slow down the deployment process
 		go func(playerID string, mechIDs []string) {
 			_ = am.SendRepairFunc(func() error {
 				tx, err = gamedb.StdConn.Begin()
