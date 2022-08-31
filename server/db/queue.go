@@ -16,16 +16,23 @@ import (
 
 const FACTION_MECH_LIMIT = 3
 
+func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
+	count, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(factionID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return -1, err
+	}
+
+	return count, nil
+}
+
 // GetPendingMechsFromFactionID returns the next 3 (or less) mechs in backlog that belong to the specified faction.
 // By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
 // However, if 3 backlogged faction mechs with unique owner IDs does not currently exist, GetPendingMechsFromFactionID may return
 // mechs with the same owner ID.
-func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit ...int) (boiler.BattleQueueBacklogSlice, error) {
-	count := FACTION_MECH_LIMIT
-	if len(limit) > 0 {
-		count = limit[0]
-	}
-
+func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit int) (boiler.BattleQueueBacklogSlice, error) {
 	pendingMechs, err := boiler.BattleQueueBacklogs(
 		qm.Select(fmt.Sprintf("DISTINCT ON (%s), %s.*",
 			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
@@ -34,7 +41,7 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
 		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
 		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
-		qm.Limit(count),
+		qm.Limit(limit),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
