@@ -199,7 +199,7 @@ var PlayerRels = struct {
 	SoldToItemSales                          string
 	BidderItemSalesBidHistories              string
 	UserMarketplaceEvents                    string
-	TriggeredByMechAbilityTriggerLogs        string
+	TriggeredByMechAbilityTriggerLogsOlds    string
 	TriggeredByMechMoveCommandLogs           string
 	OwnerMechsOlds                           string
 	OwnerPlayerAbilities                     string
@@ -269,7 +269,7 @@ var PlayerRels = struct {
 	SoldToItemSales:                          "SoldToItemSales",
 	BidderItemSalesBidHistories:              "BidderItemSalesBidHistories",
 	UserMarketplaceEvents:                    "UserMarketplaceEvents",
-	TriggeredByMechAbilityTriggerLogs:        "TriggeredByMechAbilityTriggerLogs",
+	TriggeredByMechAbilityTriggerLogsOlds:    "TriggeredByMechAbilityTriggerLogsOlds",
 	TriggeredByMechMoveCommandLogs:           "TriggeredByMechMoveCommandLogs",
 	OwnerMechsOlds:                           "OwnerMechsOlds",
 	OwnerPlayerAbilities:                     "OwnerPlayerAbilities",
@@ -342,7 +342,7 @@ type playerR struct {
 	SoldToItemSales                          ItemSaleSlice                    `boiler:"SoldToItemSales" boil:"SoldToItemSales" json:"SoldToItemSales" toml:"SoldToItemSales" yaml:"SoldToItemSales"`
 	BidderItemSalesBidHistories              ItemSalesBidHistorySlice         `boiler:"BidderItemSalesBidHistories" boil:"BidderItemSalesBidHistories" json:"BidderItemSalesBidHistories" toml:"BidderItemSalesBidHistories" yaml:"BidderItemSalesBidHistories"`
 	UserMarketplaceEvents                    MarketplaceEventSlice            `boiler:"UserMarketplaceEvents" boil:"UserMarketplaceEvents" json:"UserMarketplaceEvents" toml:"UserMarketplaceEvents" yaml:"UserMarketplaceEvents"`
-	TriggeredByMechAbilityTriggerLogs        MechAbilityTriggerLogSlice       `boiler:"TriggeredByMechAbilityTriggerLogs" boil:"TriggeredByMechAbilityTriggerLogs" json:"TriggeredByMechAbilityTriggerLogs" toml:"TriggeredByMechAbilityTriggerLogs" yaml:"TriggeredByMechAbilityTriggerLogs"`
+	TriggeredByMechAbilityTriggerLogsOlds    MechAbilityTriggerLogsOldSlice   `boiler:"TriggeredByMechAbilityTriggerLogsOlds" boil:"TriggeredByMechAbilityTriggerLogsOlds" json:"TriggeredByMechAbilityTriggerLogsOlds" toml:"TriggeredByMechAbilityTriggerLogsOlds" yaml:"TriggeredByMechAbilityTriggerLogsOlds"`
 	TriggeredByMechMoveCommandLogs           MechMoveCommandLogSlice          `boiler:"TriggeredByMechMoveCommandLogs" boil:"TriggeredByMechMoveCommandLogs" json:"TriggeredByMechMoveCommandLogs" toml:"TriggeredByMechMoveCommandLogs" yaml:"TriggeredByMechMoveCommandLogs"`
 	OwnerMechsOlds                           MechsOldSlice                    `boiler:"OwnerMechsOlds" boil:"OwnerMechsOlds" json:"OwnerMechsOlds" toml:"OwnerMechsOlds" yaml:"OwnerMechsOlds"`
 	OwnerPlayerAbilities                     PlayerAbilitySlice               `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
@@ -805,6 +805,7 @@ func (o *Player) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTrigger
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_ability_triggers\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_ability_triggers\".\"deleted_at\""),
 	)
 
 	query := BattleAbilityTriggers(queryMods...)
@@ -1202,23 +1203,23 @@ func (o *Player) UserMarketplaceEvents(mods ...qm.QueryMod) marketplaceEventQuer
 	return query
 }
 
-// TriggeredByMechAbilityTriggerLogs retrieves all the mech_ability_trigger_log's MechAbilityTriggerLogs with an executor via triggered_by_id column.
-func (o *Player) TriggeredByMechAbilityTriggerLogs(mods ...qm.QueryMod) mechAbilityTriggerLogQuery {
+// TriggeredByMechAbilityTriggerLogsOlds retrieves all the mech_ability_trigger_logs_old's MechAbilityTriggerLogsOlds with an executor via triggered_by_id column.
+func (o *Player) TriggeredByMechAbilityTriggerLogsOlds(mods ...qm.QueryMod) mechAbilityTriggerLogsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mech_ability_trigger_logs\".\"triggered_by_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mech_ability_trigger_logs\".\"deleted_at\""),
+		qm.Where("\"mech_ability_trigger_logs_old\".\"triggered_by_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mech_ability_trigger_logs_old\".\"deleted_at\""),
 	)
 
-	query := MechAbilityTriggerLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_ability_trigger_logs\"")
+	query := MechAbilityTriggerLogsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_ability_trigger_logs_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs_old\".*"})
 	}
 
 	return query
@@ -3067,6 +3068,7 @@ func (playerL) LoadBattleAbilityTriggers(e boil.Executor, singular bool, maybePl
 	query := NewQuery(
 		qm.From(`battle_ability_triggers`),
 		qm.WhereIn(`battle_ability_triggers.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_ability_triggers.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -4910,9 +4912,9 @@ func (playerL) LoadUserMarketplaceEvents(e boil.Executor, singular bool, maybePl
 	return nil
 }
 
-// LoadTriggeredByMechAbilityTriggerLogs allows an eager lookup of values, cached into the
+// LoadTriggeredByMechAbilityTriggerLogsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadTriggeredByMechAbilityTriggerLogs(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadTriggeredByMechAbilityTriggerLogsOlds(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -4950,9 +4952,9 @@ func (playerL) LoadTriggeredByMechAbilityTriggerLogs(e boil.Executor, singular b
 	}
 
 	query := NewQuery(
-		qm.From(`mech_ability_trigger_logs`),
-		qm.WhereIn(`mech_ability_trigger_logs.triggered_by_id in ?`, args...),
-		qmhelper.WhereIsNull(`mech_ability_trigger_logs.deleted_at`),
+		qm.From(`mech_ability_trigger_logs_old`),
+		qm.WhereIn(`mech_ability_trigger_logs_old.triggered_by_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_ability_trigger_logs_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -4960,22 +4962,22 @@ func (playerL) LoadTriggeredByMechAbilityTriggerLogs(e boil.Executor, singular b
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to eager load mech_ability_trigger_logs_old")
 	}
 
-	var resultSlice []*MechAbilityTriggerLog
+	var resultSlice []*MechAbilityTriggerLogsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_ability_trigger_logs_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to close results in eager load on mech_ability_trigger_logs_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_ability_trigger_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_ability_trigger_logs_old")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -4983,10 +4985,10 @@ func (playerL) LoadTriggeredByMechAbilityTriggerLogs(e boil.Executor, singular b
 		}
 	}
 	if singular {
-		object.R.TriggeredByMechAbilityTriggerLogs = resultSlice
+		object.R.TriggeredByMechAbilityTriggerLogsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &mechAbilityTriggerLogR{}
+				foreign.R = &mechAbilityTriggerLogsOldR{}
 			}
 			foreign.R.TriggeredBy = object
 		}
@@ -4996,9 +4998,9 @@ func (playerL) LoadTriggeredByMechAbilityTriggerLogs(e boil.Executor, singular b
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.TriggeredByID {
-				local.R.TriggeredByMechAbilityTriggerLogs = append(local.R.TriggeredByMechAbilityTriggerLogs, foreign)
+				local.R.TriggeredByMechAbilityTriggerLogsOlds = append(local.R.TriggeredByMechAbilityTriggerLogsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &mechAbilityTriggerLogR{}
+					foreign.R = &mechAbilityTriggerLogsOldR{}
 				}
 				foreign.R.TriggeredBy = local
 				break
@@ -10897,11 +10899,11 @@ func (o *Player) AddUserMarketplaceEvents(exec boil.Executor, insert bool, relat
 	return nil
 }
 
-// AddTriggeredByMechAbilityTriggerLogs adds the given related objects to the existing relationships
+// AddTriggeredByMechAbilityTriggerLogsOlds adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.TriggeredByMechAbilityTriggerLogs.
+// Appends related to o.R.TriggeredByMechAbilityTriggerLogsOlds.
 // Sets related.R.TriggeredBy appropriately.
-func (o *Player) AddTriggeredByMechAbilityTriggerLogs(exec boil.Executor, insert bool, related ...*MechAbilityTriggerLog) error {
+func (o *Player) AddTriggeredByMechAbilityTriggerLogsOlds(exec boil.Executor, insert bool, related ...*MechAbilityTriggerLogsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -10911,9 +10913,9 @@ func (o *Player) AddTriggeredByMechAbilityTriggerLogs(exec boil.Executor, insert
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+				"UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"triggered_by_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -10931,15 +10933,15 @@ func (o *Player) AddTriggeredByMechAbilityTriggerLogs(exec boil.Executor, insert
 
 	if o.R == nil {
 		o.R = &playerR{
-			TriggeredByMechAbilityTriggerLogs: related,
+			TriggeredByMechAbilityTriggerLogsOlds: related,
 		}
 	} else {
-		o.R.TriggeredByMechAbilityTriggerLogs = append(o.R.TriggeredByMechAbilityTriggerLogs, related...)
+		o.R.TriggeredByMechAbilityTriggerLogsOlds = append(o.R.TriggeredByMechAbilityTriggerLogsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &mechAbilityTriggerLogR{
+			rel.R = &mechAbilityTriggerLogsOldR{
 				TriggeredBy: o,
 			}
 		} else {

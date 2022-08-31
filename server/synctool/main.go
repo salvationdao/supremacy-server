@@ -1126,6 +1126,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
 			MechDisplayEffectType:    record[17],
+			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
+			IgnoreSelfKill:           strings.ToLower(record[21]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -1145,6 +1147,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -1176,6 +1184,9 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
 				boiler.GameAbilityColumns.MechDisplayEffectType,
 				boiler.GameAbilityColumns.AnimationDurationSeconds,
+				boiler.GameAbilityColumns.ShouldCheckTeamKill,
+				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
+				boiler.GameAbilityColumns.IgnoreSelfKill,
 			),
 			boil.Infer(),
 		)
