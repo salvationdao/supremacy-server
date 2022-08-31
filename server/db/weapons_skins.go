@@ -49,7 +49,12 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	boilerWeaponCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	boilerWeaponBlueprintDetails, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponSkinWhere.ID.EQ(boilerWeaponSkin.BlueprintID)).One(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +73,7 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 	if err != nil {
 		return nil, err
 	}
-	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerMechCollectionDetails, weaponSkinCompatMatrix), nil
+	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerWeaponCollectionDetails, weaponSkinCompatMatrix, boilerWeaponBlueprintDetails), nil
 }
 
 func IsWeaponSkinColumn(col string) bool {

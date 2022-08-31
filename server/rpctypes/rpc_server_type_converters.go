@@ -252,7 +252,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -271,7 +271,19 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if i.SkinSwatch != nil {
+			asset.ImageURL = i.SkinSwatch.ImageURL
+			asset.AnimationURL = i.SkinSwatch.AnimationURL
+			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			asset.AvatarURL = i.SkinSwatch.AvatarURL
+			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -506,13 +518,24 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
 				continue
 			}
-			asset.ImageURL = i.WeaponSkin.Images.ImageURL
-			asset.AnimationURL = i.WeaponSkin.Images.AnimationURL
-			asset.LargeImageURL = i.WeaponSkin.Images.LargeImageURL
-			asset.CardAnimationURL = i.WeaponSkin.Images.CardAnimationURL
-			asset.AvatarURL = i.WeaponSkin.Images.AvatarURL
-			asset.BackgroundColor = i.WeaponSkin.Images.BackgroundColor
-			asset.YoutubeURL = i.WeaponSkin.Images.YoutubeURL
+
+			if i.WeaponSkin.SkinSwatch != nil {
+				asset.ImageURL = i.WeaponSkin.SkinSwatch.ImageURL
+				asset.AnimationURL = i.WeaponSkin.SkinSwatch.AnimationURL
+				asset.LargeImageURL = i.WeaponSkin.SkinSwatch.LargeImageURL
+				asset.CardAnimationURL = i.WeaponSkin.SkinSwatch.CardAnimationURL
+				asset.AvatarURL = i.WeaponSkin.SkinSwatch.AvatarURL
+				asset.BackgroundColor = i.WeaponSkin.SkinSwatch.BackgroundColor
+				asset.YoutubeURL = i.WeaponSkin.SkinSwatch.YoutubeURL
+			} else {
+				asset.ImageURL = i.WeaponSkin.Images.ImageURL
+				asset.AnimationURL = i.WeaponSkin.Images.AnimationURL
+				asset.LargeImageURL = i.WeaponSkin.Images.LargeImageURL
+				asset.CardAnimationURL = i.WeaponSkin.Images.CardAnimationURL
+				asset.AvatarURL = i.WeaponSkin.Images.AvatarURL
+				asset.BackgroundColor = i.WeaponSkin.Images.BackgroundColor
+				asset.YoutubeURL = i.WeaponSkin.Images.YoutubeURL
+			}
 
 		} else {
 			asset.ImageURL = i.Images.ImageURL
@@ -523,7 +546,6 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			asset.BackgroundColor = i.Images.BackgroundColor
 			asset.YoutubeURL = i.Images.YoutubeURL
 		}
-
 
 		asset.Attributes = append(asset.Attributes,
 			&Attribute{
