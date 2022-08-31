@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strconv"
 )
 
 type BattleReplayController struct {
@@ -50,6 +51,19 @@ func (br *BattleReplayController) AddNewReplay(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("StreamID", req.CloudflareUID).Msg("Failed to update replay with stream ID")
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update replay with stream ID")
+	}
+
+	return http.StatusOK, nil
+}
+
+func (br *BattleReplayController) GetReplayDetails(w http.ResponseWriter, r *http.Request) (int, error) {
+	_, err := strconv.Atoi(chi.URLParam(r, "arena-id"))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get arena GID")
+	}
+	_, err = strconv.Atoi(chi.URLParam(r, "battle-number"))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get battle number")
 	}
 
 	return http.StatusOK, nil

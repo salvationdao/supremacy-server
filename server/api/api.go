@@ -25,7 +25,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/meehow/securebytes"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/ws"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -176,6 +175,7 @@ func NewAPI(
 	NewLeaderboardController(api)
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
+	_ = NewReplayController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

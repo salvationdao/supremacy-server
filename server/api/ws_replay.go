@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -90,7 +91,11 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		return terror.Error(err, "Invalid replay id")
 	}
 
-	replay, err := boiler.FindBattleReplay(gamedb.StdConn, req.ReplayID)
+	replay, err := boiler.BattleReplays(
+		boiler.BattleReplayWhere.ID.EQ(req.ReplayID),
+		qm.Load(boiler.BattleReplayRels.Battle),
+		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
+	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find battle replay")
 	}
