@@ -153,8 +153,11 @@ const (
 	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
 	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
 	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
-	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+	LocationSelectTypeEnumALLY_MECH_SELECT     = "ALLY_MECH_SELECT"
+	LocationSelectTypeEnumOPPONENT_MECH_SELECT = "OPPONENT_MECH_SELECT"
+	LocationSelectTypeEnumMECH_SELECT_ALLY     = "MECH_SELECT_ALLY"
 	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
+	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
 )
 
 // Enum values for MiniMapDisplayEffectType

@@ -1381,39 +1381,6 @@ func (arena *Arena) GameClientJsonDataParser() {
 			// update map detail
 			btl.storeGameMap(dataPayload.Details, dataPayload.BattleZones)
 
-			err = btl.setBattleQueue()
-			if err != nil {
-				L.Error().Err(err).Msg("battle start load out has failed")
-				return
-			}
-
-			if btl.replaySession.ReplaySession != nil {
-				func() {
-					err = btl.replaySession.ReplaySession.Insert(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("failed to insert new battle replay")
-						return
-					}
-
-					err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
-					if err != nil {
-						if err != replay.ErrDontLogRecordingStatus {
-							gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
-							return
-						}
-						return
-					}
-					btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
-					btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
-					_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
-						return
-					}
-				}()
-
-			}
-
 		case "BATTLE:START":
 			var dataPayload *BattleStartPayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
@@ -1769,6 +1736,19 @@ func (arena *Arena) beginBattle() {
 		},
 	}
 
+	// load war machines first
+	err = btl.Load()
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
+	}
+
+	// then set battle queue
+	err = btl.setBattleQueue()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("battle start load out has failed")
+		return
+	}
+
 	al, err := db.AbilityLabelList()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load ability labels")
@@ -1796,13 +1776,37 @@ func (arena *Arena) beginBattle() {
 		}
 	}
 
+	// start battle record
+	func() {
+		// insert
+		err = btl.replaySession.ReplaySession.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to insert new battle replay")
+			return
+		}
+
+		// url request
+		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
+		if err != nil {
+			if err != replay.ErrDontLogRecordingStatus {
+				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
+				return
+			}
+			return
+		}
+
+		// update start time
+		btl.replaySession.ReplaySession.StartedAt = null.TimeFrom(time.Now())
+		btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
+		_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+			return
+		}
+	}()
+
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
-
-	err = btl.Load()
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
 
 	// order the mechs by faction id
 
