@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"server"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -60,8 +59,8 @@ type BattleMechHistoryRequest struct {
 
 type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
-	GameMap        *boiler.GameMap      `json:"game_map"`
-	BattleReplay   *server.BattleReplay `json:"battle_replay,omitempty"`
+	GameMap        *boiler.GameMap `json:"game_map"`
+	BattleReplayID *string         `json:"battle_replay,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -108,12 +107,13 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Select(boiler.BattleReplayColumns.ID),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
-				battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
 			}
 		}
 
@@ -180,12 +180,13 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Select(boiler.BattleReplayColumns.ID),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
-				battleMechDetail.Battle.BattleReplay = server.BattleReplayFromBoiler(replay)
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
 			}
 		}
 
