@@ -158,12 +158,13 @@ type MarketplaceSaleItem1155 struct {
 type MechArenaStatus string
 
 const (
-	MechArenaStatusQueue   MechArenaStatus = "QUEUE"
-	MechArenaStatusBattle  MechArenaStatus = "BATTLE"
-	MechArenaStatusMarket  MechArenaStatus = "MARKET"
-	MechArenaStatusIdle    MechArenaStatus = "IDLE"
-	MechArenaStatusSold    MechArenaStatus = "SOLD"
-	MechArenaStatusDamaged MechArenaStatus = "DAMAGED"
+	MechArenaStatusPendingQueue MechArenaStatus = "PENDING_QUEUE"
+	MechArenaStatusQueue        MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle       MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket       MechArenaStatus = "MARKET"
+	MechArenaStatusIdle         MechArenaStatus = "IDLE"
+	MechArenaStatusSold         MechArenaStatus = "SOLD"
+	MechArenaStatusDamaged      MechArenaStatus = "DAMAGED"
 )
 
 type MechArenaInfo struct {

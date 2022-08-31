@@ -102,7 +102,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 
 		if !battleReady {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is not available for queuing")
+			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Msg("war machine is not available for queuing")
 			return fmt.Errorf("mech is cannot be used")
 		}
 
@@ -111,16 +111,28 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
-	// Check any of the mechs exist in the battle queue
+	// Check if any of the mechs exist in the battle queue backlog
+	backlogMech, err := boiler.BattleQueueBacklogs(boiler.BattleQueueBacklogWhere.MechID.IN(req.Payload.MechIDs)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech_ids", req.Payload.MechIDs).Err(err).Msg("failed to check if mech exists in queue backlog")
+		return terror.Error(err, "Failed to check whether or not mech is in the battle queue backlog")
+	}
+
+	if backlogMech != nil {
+		gamelog.L.Debug().Str("mech_id", backlogMech.MechID).Err(err).Msg("mech already in queue backlog")
+		return terror.Error(fmt.Errorf("mech already in queue backlog"), "Your mech is already in queue")
+	}
+
+	// Check if any of the mechs exist in the battle queue
 	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech_ids", req.Payload.MechIDs).Err(err).Msg("check mech exists in queue")
+		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech_ids", req.Payload.MechIDs).Err(err).Msg("failed to check if mech exists in queue")
 		return terror.Error(err, "Failed to check whether mech is in the battle queue")
 	}
 
 	if existMech != nil {
 		gamelog.L.Debug().Str("mech_id", existMech.MechID).Err(err).Msg("mech already in queue")
-		position, err := db.MechQueuePosition(existMech.MechID, factionID)
+		position, err := db.MechQueuePosition(existMech.MechID)
 		if err != nil {
 			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
@@ -161,7 +173,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	paidTxID := ""
 
 	deployedMechs := []*boiler.CollectionItem{}
-
 	for _, mci := range mcis {
 		err = func() error {
 			tx, err = gamedb.StdConn.Begin()
@@ -182,7 +193,8 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return terror.Error(err, "Failed to insert battle queue fee.")
 			}
 
-			bq := &boiler.BattleQueue{
+			// Insert into battle queue backlog
+			bqb := &boiler.BattleQueueBacklog{
 				MechID:    mci.ItemID,
 				QueuedAt:  time.Now(),
 				FactionID: factionID,
@@ -190,11 +202,11 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				FeeID:     null.StringFrom(bqf.ID),
 			}
 
-			err = bq.Insert(tx, boil.Infer())
+			err = bqb.Insert(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Str("log_name", "battle arena").
 					Interface("mech id", mci.ItemID).
-					Err(err).Msg("unable to insert mech into queue")
+					Err(err).Msg("unable to insert mech into battle queue backlog")
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
 
@@ -272,8 +284,18 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 			// broadcast queue detail
 			go func(mechID string) {
-				qs, err := db.MechArenaStatus(user.ID, mechID, factionID)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				collectionItem, err := boiler.CollectionItems(
+					boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+					boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+					boiler.CollectionItemWhere.ItemID.EQ(mechID),
+				).One(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech collection item")
+					return
+				}
+
+				qs, err := db.GetCollectionItemStatus(*collectionItem)
+				if err != nil {
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 					return
 				}
@@ -317,7 +339,6 @@ type AssetUpdateRequest struct {
 }
 
 func (am *ArenaManager) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-
 	msg := &AssetUpdateRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
@@ -325,12 +346,21 @@ func (am *ArenaManager) AssetUpdateRequest(ctx context.Context, user *boiler.Pla
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	queueDetails, err := db.MechArenaStatus(user.ID, msg.Payload.MechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(msg.Payload.MechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, msg.Payload.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, msg.Payload.MechID), WSPlayerAssetMechQueueSubscribe, mechStatus)
 	return nil
 }
 

@@ -14,9 +14,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/friendsofgo/errors"
-	"github.com/ninja-software/terror/v2"
 )
 
+// GetBattleMechsFromFactionID returns the next 3 (or less) mechs in queue that belong to the specified faction.
+// By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
+// However, if 3 queued faction mechs with unique owner IDs does not currently exist, GetBattleMechsFromFactionID may return
+// mechs with the same owner ID.
 func GetBattleMechsFromFactionID(factionID string) (boiler.BattleQueueSlice, error) {
 	battleMechs, err := GetNextBattleMech(factionID, []*boiler.BattleQueue{}, false)
 	if err != nil {
@@ -29,10 +32,7 @@ func GetBattleMechsFromFactionID(factionID string) (boiler.BattleQueueSlice, err
 
 const FACTION_MECH_LIMIT = 3
 
-// GetNextBattleMech returns the next 3 (or less) mechs in queue that belong to the specified faction.
-// By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
-// However, if 3 queued faction mechs with unique owner IDs does not currently exist, GetNextBattleMech may return
-// mechs with the same owner ID.
+// GetNextBattleMech is a recursive function called by GetBattleMechsFromFactionID
 func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, disableOwnerCheck bool) (boiler.BattleQueueSlice, error) {
 	if len(battleMechs) == FACTION_MECH_LIMIT {
 		return battleMechs, nil
@@ -68,6 +68,7 @@ func GetNextBattleMech(factionID string, battleMechs boiler.BattleQueueSlice, di
 	return GetNextBattleMech(factionID, battleMechs, false)
 }
 
+// todo: rework this to factor in R queue positions
 func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
 	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
 	if err != nil {
@@ -116,109 +117,117 @@ func GetAverageBattleLengthSeconds() (int64, error) {
 	return bl.AveLengthSeconds, nil
 }
 
-// MechArenaStatus return mech arena status from given collection item
-func MechArenaStatus(userID string, mechID string, factionID string) (*server.MechArenaInfo, error) {
-	resp := &server.MechArenaInfo{
-		Status:    server.MechArenaStatusIdle,
-		CanDeploy: true,
-	}
-
-	// check ownership of the mech
-	collectionItem, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.OwnerID.EQ(userID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-		boiler.CollectionItemWhere.ItemID.EQ(mechID),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return nil, terror.Error(err, "Failed to find mech from db")
-	}
-
-	// check market
+func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.MechArenaInfo, error) {
+	// Check in marketplace
 	now := time.Now()
-	is, err := collectionItem.ItemSales(
+	inMarketplace, err := collectionItem.ItemSales(
 		boiler.ItemSaleWhere.EndAt.GT(now),
 		boiler.ItemSaleWhere.SoldAt.IsNull(),
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "Failed to check mech in marketplace")
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return nil, err
 	}
 
-	if is != nil {
-		resp.Status = server.MechArenaStatusMarket
-		resp.CanDeploy = false
-		return resp, nil
+	if inMarketplace {
+		return &server.MechArenaInfo{
+			Status:    server.MechArenaStatusMarket,
+			CanDeploy: false,
+		}, nil
 	}
 
-	// check in battle
-	bq, err := boiler.BattleQueues(
-		boiler.BattleQueueWhere.MechID.EQ(collectionItem.ItemID),
+	mechID := collectionItem.ItemID
+
+	// Check in battle
+	inBattle, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.EQ(mechID),
 		boiler.BattleQueueWhere.BattleID.IsNotNull(),
-	).One(gamedb.StdConn)
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if inBattle {
+		return &server.MechArenaInfo{
+			Status:    server.MechArenaStatusBattle,
+			CanDeploy: false,
+		}, nil
+	}
+
+	// Check in battle queue backlog
+	pendingQueue, err := boiler.BattleQueueBacklogExists(gamedb.StdConn, mechID)
+	if err != nil {
+		return nil, err
+	}
+
+	if pendingQueue {
+		return &server.MechArenaInfo{
+			Status:    server.MechArenaStatusPendingQueue,
+			CanDeploy: false,
+		}, nil
+	}
+
+	// Check in battle queue
+	queuePosition, err := MechQueuePosition(mechID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "Failed to get war machine battle state from db")
+		return nil, err
 	}
 
-	// if mech is in battle
-	if bq != nil {
-		resp.Status = server.MechArenaStatusBattle
-		resp.CanDeploy = false
-		return resp, nil
+	if queuePosition != nil {
+		return &server.MechArenaInfo{
+			Status:    server.MechArenaStatusQueue,
+			CanDeploy: false,
+		}, nil
 	}
 
-	// check mech is in queue
-	bqp, err := MechQueuePosition(collectionItem.ItemID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err, "Failed to check mech position")
-	}
-
-	if bqp != nil {
-		resp.Status = server.MechArenaStatusQueue
-		resp.CanDeploy = false
-		return resp, nil
-	}
-
-	// check damaged
-	mrc, err := boiler.RepairCases(
+	// Check if damaged
+	rc, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.EQ(mechID),
 		boiler.RepairCaseWhere.CompletedAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("mech id", mechID).Msg("Failed to load mech rapair stat")
-		return nil, terror.Error(err, "Failed to load mech stat")
+		return nil, err
 	}
 
-	if mrc != nil {
-		resp.Status = server.MechArenaStatusDamaged
+	if rc != nil {
 		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-		totalBlocks := TotalRepairBlocks(mrc.MechID)
-		if decimal.NewFromInt(int64(mrc.BlocksRequiredRepair - mrc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
-			resp.CanDeploy = false
-			return resp, nil
+		totalBlocks := TotalRepairBlocks(rc.MechID)
+		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
+			return &server.MechArenaInfo{
+				Status:    server.MechArenaStatusDamaged,
+				CanDeploy: false,
+			}, nil
 		}
 	}
 
-	return resp, nil
+	return &server.MechArenaInfo{
+		Status:    server.MechArenaStatusIdle,
+		CanDeploy: true,
+	}, nil
 }
 
-// MechQueuePosition return the queue position of the specified mech (exclude in battle)
-func MechQueuePosition(mechID, factionID string) (*BattleQueuePosition, error) {
+// MechQueuePosition return the queue position of the specified mech.
+// If the mech is in battle, MechQueuePosition returns 0.
+func MechQueuePosition(mechID string) (*BattleQueuePosition, error) {
 	q := `
+	SELECT
+		bq.mech_id,
+		coalesce(_bq.queue_position, 0) AS queue_position
+	FROM
+		battle_queue bq
+		LEFT OUTER JOIN (
 		SELECT
-			bq.mech_id,
-			coalesce(_bq.queue_position, 0) AS queue_position
-		FROM battle_queue bq
-		LEFT OUTER JOIN (SELECT
-							 _bq.mech_id,
-							 row_number () over (ORDER BY _bq.queued_at) AS queue_position
-						 FROM
-							 battle_queue _bq
-						 WHERE
-								 _bq.faction_id = $1 AND _bq.battle_id isnull) _bq ON _bq.mech_id = bq.mech_id
-		WHERE bq.mech_id = $2
+			_bq.mech_id,
+			row_number() OVER (ORDER BY _bq.queued_at) AS queue_position
+		FROM
+			battle_queue _bq
+		WHERE
+			_bq.battle_id ISNULL) _bq ON _bq.mech_id = bq.mech_id
+	WHERE
+    bq.mech_id = $1
 	`
 	qp := &BattleQueuePosition{}
-	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
+	err := gamedb.StdConn.QueryRow(q, mechID).Scan(&qp.MechID, &qp.QueuePosition)
 	if err != nil {
 		return nil, err
 	}

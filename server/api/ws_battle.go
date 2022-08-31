@@ -271,12 +271,21 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	reply(queueDetails)
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	reply(mechStatus)
 	return nil
 }
 
