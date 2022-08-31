@@ -189,7 +189,7 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 			}
 		}
 
-		output = append(output)
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
