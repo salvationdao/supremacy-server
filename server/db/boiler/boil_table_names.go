@@ -94,7 +94,7 @@ var TableNames = struct {
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
-	PlayerMechRepairBays                               string
+	PlayerMechRepairSlots                              string
 	PlayerMultipliers                                  string
 	PlayerPreferences                                  string
 	PlayerSettingsPreferences                          string
@@ -242,7 +242,7 @@ var TableNames = struct {
 	PlayerKeycards:                 "player_keycards",
 	PlayerKillLog:                  "player_kill_log",
 	PlayerLanguages:                "player_languages",
-	PlayerMechRepairBays:           "player_mech_repair_bays",
+	PlayerMechRepairSlots:          "player_mech_repair_slots",
 	PlayerMultipliers:              "player_multipliers",
 	PlayerPreferences:              "player_preferences",
 	PlayerSettingsPreferences:      "player_settings_preferences",

@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// PlayerMechRepairBay is an object representing the database table.
-type PlayerMechRepairBay struct {
+// PlayerMechRepairSlot is an object representing the database table.
+type PlayerMechRepairSlot struct {
 	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	PlayerID       string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
 	MechID         string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
@@ -33,11 +33,11 @@ type PlayerMechRepairBay struct {
 	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
-	R *playerMechRepairBayR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L playerMechRepairBayL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *playerMechRepairSlotR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L playerMechRepairSlotL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var PlayerMechRepairBayColumns = struct {
+var PlayerMechRepairSlotColumns = struct {
 	ID             string
 	PlayerID       string
 	MechID         string
@@ -59,7 +59,7 @@ var PlayerMechRepairBayColumns = struct {
 	DeletedAt:      "deleted_at",
 }
 
-var PlayerMechRepairBayTableColumns = struct {
+var PlayerMechRepairSlotTableColumns = struct {
 	ID             string
 	PlayerID       string
 	MechID         string
@@ -70,20 +70,20 @@ var PlayerMechRepairBayTableColumns = struct {
 	UpdatedAt      string
 	DeletedAt      string
 }{
-	ID:             "player_mech_repair_bays.id",
-	PlayerID:       "player_mech_repair_bays.player_id",
-	MechID:         "player_mech_repair_bays.mech_id",
-	RepairCaseID:   "player_mech_repair_bays.repair_case_id",
-	Status:         "player_mech_repair_bays.status",
-	NextRepairTime: "player_mech_repair_bays.next_repair_time",
-	CreatedAt:      "player_mech_repair_bays.created_at",
-	UpdatedAt:      "player_mech_repair_bays.updated_at",
-	DeletedAt:      "player_mech_repair_bays.deleted_at",
+	ID:             "player_mech_repair_slots.id",
+	PlayerID:       "player_mech_repair_slots.player_id",
+	MechID:         "player_mech_repair_slots.mech_id",
+	RepairCaseID:   "player_mech_repair_slots.repair_case_id",
+	Status:         "player_mech_repair_slots.status",
+	NextRepairTime: "player_mech_repair_slots.next_repair_time",
+	CreatedAt:      "player_mech_repair_slots.created_at",
+	UpdatedAt:      "player_mech_repair_slots.updated_at",
+	DeletedAt:      "player_mech_repair_slots.deleted_at",
 }
 
 // Generated where
 
-var PlayerMechRepairBayWhere = struct {
+var PlayerMechRepairSlotWhere = struct {
 	ID             whereHelperstring
 	PlayerID       whereHelperstring
 	MechID         whereHelperstring
@@ -94,19 +94,19 @@ var PlayerMechRepairBayWhere = struct {
 	UpdatedAt      whereHelpertime_Time
 	DeletedAt      whereHelpernull_Time
 }{
-	ID:             whereHelperstring{field: "\"player_mech_repair_bays\".\"id\""},
-	PlayerID:       whereHelperstring{field: "\"player_mech_repair_bays\".\"player_id\""},
-	MechID:         whereHelperstring{field: "\"player_mech_repair_bays\".\"mech_id\""},
-	RepairCaseID:   whereHelperstring{field: "\"player_mech_repair_bays\".\"repair_case_id\""},
-	Status:         whereHelperstring{field: "\"player_mech_repair_bays\".\"status\""},
-	NextRepairTime: whereHelpernull_Time{field: "\"player_mech_repair_bays\".\"next_repair_time\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_bays\".\"created_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_bays\".\"updated_at\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"player_mech_repair_bays\".\"deleted_at\""},
+	ID:             whereHelperstring{field: "\"player_mech_repair_slots\".\"id\""},
+	PlayerID:       whereHelperstring{field: "\"player_mech_repair_slots\".\"player_id\""},
+	MechID:         whereHelperstring{field: "\"player_mech_repair_slots\".\"mech_id\""},
+	RepairCaseID:   whereHelperstring{field: "\"player_mech_repair_slots\".\"repair_case_id\""},
+	Status:         whereHelperstring{field: "\"player_mech_repair_slots\".\"status\""},
+	NextRepairTime: whereHelpernull_Time{field: "\"player_mech_repair_slots\".\"next_repair_time\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_slots\".\"created_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"player_mech_repair_slots\".\"updated_at\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"player_mech_repair_slots\".\"deleted_at\""},
 }
 
-// PlayerMechRepairBayRels is where relationship names are stored.
-var PlayerMechRepairBayRels = struct {
+// PlayerMechRepairSlotRels is where relationship names are stored.
+var PlayerMechRepairSlotRels = struct {
 	Mech       string
 	Player     string
 	RepairCase string
@@ -116,52 +116,52 @@ var PlayerMechRepairBayRels = struct {
 	RepairCase: "RepairCase",
 }
 
-// playerMechRepairBayR is where relationships are stored.
-type playerMechRepairBayR struct {
+// playerMechRepairSlotR is where relationships are stored.
+type playerMechRepairSlotR struct {
 	Mech       *Mech       `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Player     *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 	RepairCase *RepairCase `boiler:"RepairCase" boil:"RepairCase" json:"RepairCase" toml:"RepairCase" yaml:"RepairCase"`
 }
 
 // NewStruct creates a new relationship struct
-func (*playerMechRepairBayR) NewStruct() *playerMechRepairBayR {
-	return &playerMechRepairBayR{}
+func (*playerMechRepairSlotR) NewStruct() *playerMechRepairSlotR {
+	return &playerMechRepairSlotR{}
 }
 
-// playerMechRepairBayL is where Load methods for each relationship are stored.
-type playerMechRepairBayL struct{}
+// playerMechRepairSlotL is where Load methods for each relationship are stored.
+type playerMechRepairSlotL struct{}
 
 var (
-	playerMechRepairBayAllColumns            = []string{"id", "player_id", "mech_id", "repair_case_id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
-	playerMechRepairBayColumnsWithoutDefault = []string{"player_id", "mech_id", "repair_case_id"}
-	playerMechRepairBayColumnsWithDefault    = []string{"id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
-	playerMechRepairBayPrimaryKeyColumns     = []string{"id"}
-	playerMechRepairBayGeneratedColumns      = []string{}
+	playerMechRepairSlotAllColumns            = []string{"id", "player_id", "mech_id", "repair_case_id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
+	playerMechRepairSlotColumnsWithoutDefault = []string{"player_id", "mech_id", "repair_case_id"}
+	playerMechRepairSlotColumnsWithDefault    = []string{"id", "status", "next_repair_time", "created_at", "updated_at", "deleted_at"}
+	playerMechRepairSlotPrimaryKeyColumns     = []string{"id"}
+	playerMechRepairSlotGeneratedColumns      = []string{}
 )
 
 type (
-	// PlayerMechRepairBaySlice is an alias for a slice of pointers to PlayerMechRepairBay.
-	// This should almost always be used instead of []PlayerMechRepairBay.
-	PlayerMechRepairBaySlice []*PlayerMechRepairBay
-	// PlayerMechRepairBayHook is the signature for custom PlayerMechRepairBay hook methods
-	PlayerMechRepairBayHook func(boil.Executor, *PlayerMechRepairBay) error
+	// PlayerMechRepairSlotSlice is an alias for a slice of pointers to PlayerMechRepairSlot.
+	// This should almost always be used instead of []PlayerMechRepairSlot.
+	PlayerMechRepairSlotSlice []*PlayerMechRepairSlot
+	// PlayerMechRepairSlotHook is the signature for custom PlayerMechRepairSlot hook methods
+	PlayerMechRepairSlotHook func(boil.Executor, *PlayerMechRepairSlot) error
 
-	playerMechRepairBayQuery struct {
+	playerMechRepairSlotQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	playerMechRepairBayType                 = reflect.TypeOf(&PlayerMechRepairBay{})
-	playerMechRepairBayMapping              = queries.MakeStructMapping(playerMechRepairBayType)
-	playerMechRepairBayPrimaryKeyMapping, _ = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, playerMechRepairBayPrimaryKeyColumns)
-	playerMechRepairBayInsertCacheMut       sync.RWMutex
-	playerMechRepairBayInsertCache          = make(map[string]insertCache)
-	playerMechRepairBayUpdateCacheMut       sync.RWMutex
-	playerMechRepairBayUpdateCache          = make(map[string]updateCache)
-	playerMechRepairBayUpsertCacheMut       sync.RWMutex
-	playerMechRepairBayUpsertCache          = make(map[string]insertCache)
+	playerMechRepairSlotType                 = reflect.TypeOf(&PlayerMechRepairSlot{})
+	playerMechRepairSlotMapping              = queries.MakeStructMapping(playerMechRepairSlotType)
+	playerMechRepairSlotPrimaryKeyMapping, _ = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, playerMechRepairSlotPrimaryKeyColumns)
+	playerMechRepairSlotInsertCacheMut       sync.RWMutex
+	playerMechRepairSlotInsertCache          = make(map[string]insertCache)
+	playerMechRepairSlotUpdateCacheMut       sync.RWMutex
+	playerMechRepairSlotUpdateCache          = make(map[string]updateCache)
+	playerMechRepairSlotUpsertCacheMut       sync.RWMutex
+	playerMechRepairSlotUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -172,23 +172,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var playerMechRepairBayAfterSelectHooks []PlayerMechRepairBayHook
+var playerMechRepairSlotAfterSelectHooks []PlayerMechRepairSlotHook
 
-var playerMechRepairBayBeforeInsertHooks []PlayerMechRepairBayHook
-var playerMechRepairBayAfterInsertHooks []PlayerMechRepairBayHook
+var playerMechRepairSlotBeforeInsertHooks []PlayerMechRepairSlotHook
+var playerMechRepairSlotAfterInsertHooks []PlayerMechRepairSlotHook
 
-var playerMechRepairBayBeforeUpdateHooks []PlayerMechRepairBayHook
-var playerMechRepairBayAfterUpdateHooks []PlayerMechRepairBayHook
+var playerMechRepairSlotBeforeUpdateHooks []PlayerMechRepairSlotHook
+var playerMechRepairSlotAfterUpdateHooks []PlayerMechRepairSlotHook
 
-var playerMechRepairBayBeforeDeleteHooks []PlayerMechRepairBayHook
-var playerMechRepairBayAfterDeleteHooks []PlayerMechRepairBayHook
+var playerMechRepairSlotBeforeDeleteHooks []PlayerMechRepairSlotHook
+var playerMechRepairSlotAfterDeleteHooks []PlayerMechRepairSlotHook
 
-var playerMechRepairBayBeforeUpsertHooks []PlayerMechRepairBayHook
-var playerMechRepairBayAfterUpsertHooks []PlayerMechRepairBayHook
+var playerMechRepairSlotBeforeUpsertHooks []PlayerMechRepairSlotHook
+var playerMechRepairSlotAfterUpsertHooks []PlayerMechRepairSlotHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *PlayerMechRepairBay) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayAfterSelectHooks {
+func (o *PlayerMechRepairSlot) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -198,8 +198,8 @@ func (o *PlayerMechRepairBay) doAfterSelectHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *PlayerMechRepairBay) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayBeforeInsertHooks {
+func (o *PlayerMechRepairSlot) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -209,8 +209,8 @@ func (o *PlayerMechRepairBay) doBeforeInsertHooks(exec boil.Executor) (err error
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *PlayerMechRepairBay) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayAfterInsertHooks {
+func (o *PlayerMechRepairSlot) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -220,8 +220,8 @@ func (o *PlayerMechRepairBay) doAfterInsertHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *PlayerMechRepairBay) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayBeforeUpdateHooks {
+func (o *PlayerMechRepairSlot) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -231,8 +231,8 @@ func (o *PlayerMechRepairBay) doBeforeUpdateHooks(exec boil.Executor) (err error
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *PlayerMechRepairBay) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayAfterUpdateHooks {
+func (o *PlayerMechRepairSlot) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -242,8 +242,8 @@ func (o *PlayerMechRepairBay) doAfterUpdateHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *PlayerMechRepairBay) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayBeforeDeleteHooks {
+func (o *PlayerMechRepairSlot) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -253,8 +253,8 @@ func (o *PlayerMechRepairBay) doBeforeDeleteHooks(exec boil.Executor) (err error
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *PlayerMechRepairBay) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayAfterDeleteHooks {
+func (o *PlayerMechRepairSlot) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -264,8 +264,8 @@ func (o *PlayerMechRepairBay) doAfterDeleteHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *PlayerMechRepairBay) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayBeforeUpsertHooks {
+func (o *PlayerMechRepairSlot) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -275,8 +275,8 @@ func (o *PlayerMechRepairBay) doBeforeUpsertHooks(exec boil.Executor) (err error
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *PlayerMechRepairBay) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerMechRepairBayAfterUpsertHooks {
+func (o *PlayerMechRepairSlot) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMechRepairSlotAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -285,33 +285,33 @@ func (o *PlayerMechRepairBay) doAfterUpsertHooks(exec boil.Executor) (err error)
 	return nil
 }
 
-// AddPlayerMechRepairBayHook registers your hook function for all future operations.
-func AddPlayerMechRepairBayHook(hookPoint boil.HookPoint, playerMechRepairBayHook PlayerMechRepairBayHook) {
+// AddPlayerMechRepairSlotHook registers your hook function for all future operations.
+func AddPlayerMechRepairSlotHook(hookPoint boil.HookPoint, playerMechRepairSlotHook PlayerMechRepairSlotHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		playerMechRepairBayAfterSelectHooks = append(playerMechRepairBayAfterSelectHooks, playerMechRepairBayHook)
+		playerMechRepairSlotAfterSelectHooks = append(playerMechRepairSlotAfterSelectHooks, playerMechRepairSlotHook)
 	case boil.BeforeInsertHook:
-		playerMechRepairBayBeforeInsertHooks = append(playerMechRepairBayBeforeInsertHooks, playerMechRepairBayHook)
+		playerMechRepairSlotBeforeInsertHooks = append(playerMechRepairSlotBeforeInsertHooks, playerMechRepairSlotHook)
 	case boil.AfterInsertHook:
-		playerMechRepairBayAfterInsertHooks = append(playerMechRepairBayAfterInsertHooks, playerMechRepairBayHook)
+		playerMechRepairSlotAfterInsertHooks = append(playerMechRepairSlotAfterInsertHooks, playerMechRepairSlotHook)
 	case boil.BeforeUpdateHook:
-		playerMechRepairBayBeforeUpdateHooks = append(playerMechRepairBayBeforeUpdateHooks, playerMechRepairBayHook)
+		playerMechRepairSlotBeforeUpdateHooks = append(playerMechRepairSlotBeforeUpdateHooks, playerMechRepairSlotHook)
 	case boil.AfterUpdateHook:
-		playerMechRepairBayAfterUpdateHooks = append(playerMechRepairBayAfterUpdateHooks, playerMechRepairBayHook)
+		playerMechRepairSlotAfterUpdateHooks = append(playerMechRepairSlotAfterUpdateHooks, playerMechRepairSlotHook)
 	case boil.BeforeDeleteHook:
-		playerMechRepairBayBeforeDeleteHooks = append(playerMechRepairBayBeforeDeleteHooks, playerMechRepairBayHook)
+		playerMechRepairSlotBeforeDeleteHooks = append(playerMechRepairSlotBeforeDeleteHooks, playerMechRepairSlotHook)
 	case boil.AfterDeleteHook:
-		playerMechRepairBayAfterDeleteHooks = append(playerMechRepairBayAfterDeleteHooks, playerMechRepairBayHook)
+		playerMechRepairSlotAfterDeleteHooks = append(playerMechRepairSlotAfterDeleteHooks, playerMechRepairSlotHook)
 	case boil.BeforeUpsertHook:
-		playerMechRepairBayBeforeUpsertHooks = append(playerMechRepairBayBeforeUpsertHooks, playerMechRepairBayHook)
+		playerMechRepairSlotBeforeUpsertHooks = append(playerMechRepairSlotBeforeUpsertHooks, playerMechRepairSlotHook)
 	case boil.AfterUpsertHook:
-		playerMechRepairBayAfterUpsertHooks = append(playerMechRepairBayAfterUpsertHooks, playerMechRepairBayHook)
+		playerMechRepairSlotAfterUpsertHooks = append(playerMechRepairSlotAfterUpsertHooks, playerMechRepairSlotHook)
 	}
 }
 
-// One returns a single playerMechRepairBay record from the query.
-func (q playerMechRepairBayQuery) One(exec boil.Executor) (*PlayerMechRepairBay, error) {
-	o := &PlayerMechRepairBay{}
+// One returns a single playerMechRepairSlot record from the query.
+func (q playerMechRepairSlotQuery) One(exec boil.Executor) (*PlayerMechRepairSlot, error) {
+	o := &PlayerMechRepairSlot{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -320,7 +320,7 @@ func (q playerMechRepairBayQuery) One(exec boil.Executor) (*PlayerMechRepairBay,
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_mech_repair_bays")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_mech_repair_slots")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -330,16 +330,16 @@ func (q playerMechRepairBayQuery) One(exec boil.Executor) (*PlayerMechRepairBay,
 	return o, nil
 }
 
-// All returns all PlayerMechRepairBay records from the query.
-func (q playerMechRepairBayQuery) All(exec boil.Executor) (PlayerMechRepairBaySlice, error) {
-	var o []*PlayerMechRepairBay
+// All returns all PlayerMechRepairSlot records from the query.
+func (q playerMechRepairSlotQuery) All(exec boil.Executor) (PlayerMechRepairSlotSlice, error) {
+	var o []*PlayerMechRepairSlot
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerMechRepairBay slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerMechRepairSlot slice")
 	}
 
-	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -350,8 +350,8 @@ func (q playerMechRepairBayQuery) All(exec boil.Executor) (PlayerMechRepairBaySl
 	return o, nil
 }
 
-// Count returns the count of all PlayerMechRepairBay records in the query.
-func (q playerMechRepairBayQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PlayerMechRepairSlot records in the query.
+func (q playerMechRepairSlotQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -359,14 +359,14 @@ func (q playerMechRepairBayQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count player_mech_repair_bays rows")
+		return 0, errors.Wrap(err, "boiler: failed to count player_mech_repair_slots rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q playerMechRepairBayQuery) Exists(exec boil.Executor) (bool, error) {
+func (q playerMechRepairSlotQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -375,14 +375,14 @@ func (q playerMechRepairBayQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if player_mech_repair_bays exists")
+		return false, errors.Wrap(err, "boiler: failed to check if player_mech_repair_slots exists")
 	}
 
 	return count > 0, nil
 }
 
 // Mech pointed to by the foreign key.
-func (o *PlayerMechRepairBay) Mech(mods ...qm.QueryMod) mechQuery {
+func (o *PlayerMechRepairSlot) Mech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -397,7 +397,7 @@ func (o *PlayerMechRepairBay) Mech(mods ...qm.QueryMod) mechQuery {
 }
 
 // Player pointed to by the foreign key.
-func (o *PlayerMechRepairBay) Player(mods ...qm.QueryMod) playerQuery {
+func (o *PlayerMechRepairSlot) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -412,7 +412,7 @@ func (o *PlayerMechRepairBay) Player(mods ...qm.QueryMod) playerQuery {
 }
 
 // RepairCase pointed to by the foreign key.
-func (o *PlayerMechRepairBay) RepairCase(mods ...qm.QueryMod) repairCaseQuery {
+func (o *PlayerMechRepairSlot) RepairCase(mods ...qm.QueryMod) repairCaseQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.RepairCaseID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -428,20 +428,20 @@ func (o *PlayerMechRepairBay) RepairCase(mods ...qm.QueryMod) repairCaseQuery {
 
 // LoadMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayerMechRepairBay interface{}, mods queries.Applicator) error {
-	var slice []*PlayerMechRepairBay
-	var object *PlayerMechRepairBay
+func (playerMechRepairSlotL) LoadMech(e boil.Executor, singular bool, maybePlayerMechRepairSlot interface{}, mods queries.Applicator) error {
+	var slice []*PlayerMechRepairSlot
+	var object *PlayerMechRepairSlot
 
 	if singular {
-		object = maybePlayerMechRepairBay.(*PlayerMechRepairBay)
+		object = maybePlayerMechRepairSlot.(*PlayerMechRepairSlot)
 	} else {
-		slice = *maybePlayerMechRepairBay.(*[]*PlayerMechRepairBay)
+		slice = *maybePlayerMechRepairSlot.(*[]*PlayerMechRepairSlot)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &playerMechRepairBayR{}
+			object.R = &playerMechRepairSlotR{}
 		}
 		args = append(args, object.MechID)
 
@@ -449,7 +449,7 @@ func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayer
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &playerMechRepairBayR{}
+				obj.R = &playerMechRepairSlotR{}
 			}
 
 			for _, a := range args {
@@ -493,7 +493,7 @@ func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayer
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -511,7 +511,7 @@ func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayer
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, object)
+		foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, object)
 		return nil
 	}
 
@@ -522,7 +522,7 @@ func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayer
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, local)
+				foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, local)
 				break
 			}
 		}
@@ -533,20 +533,20 @@ func (playerMechRepairBayL) LoadMech(e boil.Executor, singular bool, maybePlayer
 
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlayerMechRepairBay interface{}, mods queries.Applicator) error {
-	var slice []*PlayerMechRepairBay
-	var object *PlayerMechRepairBay
+func (playerMechRepairSlotL) LoadPlayer(e boil.Executor, singular bool, maybePlayerMechRepairSlot interface{}, mods queries.Applicator) error {
+	var slice []*PlayerMechRepairSlot
+	var object *PlayerMechRepairSlot
 
 	if singular {
-		object = maybePlayerMechRepairBay.(*PlayerMechRepairBay)
+		object = maybePlayerMechRepairSlot.(*PlayerMechRepairSlot)
 	} else {
-		slice = *maybePlayerMechRepairBay.(*[]*PlayerMechRepairBay)
+		slice = *maybePlayerMechRepairSlot.(*[]*PlayerMechRepairSlot)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &playerMechRepairBayR{}
+			object.R = &playerMechRepairSlotR{}
 		}
 		args = append(args, object.PlayerID)
 
@@ -554,7 +554,7 @@ func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlay
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &playerMechRepairBayR{}
+				obj.R = &playerMechRepairSlotR{}
 			}
 
 			for _, a := range args {
@@ -598,7 +598,7 @@ func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlay
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -616,7 +616,7 @@ func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlay
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, object)
+		foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, object)
 		return nil
 	}
 
@@ -627,7 +627,7 @@ func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlay
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, local)
+				foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, local)
 				break
 			}
 		}
@@ -638,20 +638,20 @@ func (playerMechRepairBayL) LoadPlayer(e boil.Executor, singular bool, maybePlay
 
 // LoadRepairCase allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybePlayerMechRepairBay interface{}, mods queries.Applicator) error {
-	var slice []*PlayerMechRepairBay
-	var object *PlayerMechRepairBay
+func (playerMechRepairSlotL) LoadRepairCase(e boil.Executor, singular bool, maybePlayerMechRepairSlot interface{}, mods queries.Applicator) error {
+	var slice []*PlayerMechRepairSlot
+	var object *PlayerMechRepairSlot
 
 	if singular {
-		object = maybePlayerMechRepairBay.(*PlayerMechRepairBay)
+		object = maybePlayerMechRepairSlot.(*PlayerMechRepairSlot)
 	} else {
-		slice = *maybePlayerMechRepairBay.(*[]*PlayerMechRepairBay)
+		slice = *maybePlayerMechRepairSlot.(*[]*PlayerMechRepairSlot)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &playerMechRepairBayR{}
+			object.R = &playerMechRepairSlotR{}
 		}
 		args = append(args, object.RepairCaseID)
 
@@ -659,7 +659,7 @@ func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybe
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &playerMechRepairBayR{}
+				obj.R = &playerMechRepairSlotR{}
 			}
 
 			for _, a := range args {
@@ -703,7 +703,7 @@ func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybe
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for repair_cases")
 	}
 
-	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -721,7 +721,7 @@ func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybe
 		if foreign.R == nil {
 			foreign.R = &repairCaseR{}
 		}
-		foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, object)
+		foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, object)
 		return nil
 	}
 
@@ -732,7 +732,7 @@ func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybe
 				if foreign.R == nil {
 					foreign.R = &repairCaseR{}
 				}
-				foreign.R.PlayerMechRepairBays = append(foreign.R.PlayerMechRepairBays, local)
+				foreign.R.PlayerMechRepairSlots = append(foreign.R.PlayerMechRepairSlots, local)
 				break
 			}
 		}
@@ -741,10 +741,10 @@ func (playerMechRepairBayL) LoadRepairCase(e boil.Executor, singular bool, maybe
 	return nil
 }
 
-// SetMech of the playerMechRepairBay to the related item.
+// SetMech of the playerMechRepairSlot to the related item.
 // Sets o.R.Mech to related.
-// Adds o to related.R.PlayerMechRepairBays.
-func (o *PlayerMechRepairBay) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.PlayerMechRepairSlots.
+func (o *PlayerMechRepairSlot) SetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -753,9 +753,9 @@ func (o *PlayerMechRepairBay) SetMech(exec boil.Executor, insert bool, related *
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+		"UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, playerMechRepairBayPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerMechRepairSlotPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -769,7 +769,7 @@ func (o *PlayerMechRepairBay) SetMech(exec boil.Executor, insert bool, related *
 
 	o.MechID = related.ID
 	if o.R == nil {
-		o.R = &playerMechRepairBayR{
+		o.R = &playerMechRepairSlotR{
 			Mech: related,
 		}
 	} else {
@@ -778,19 +778,19 @@ func (o *PlayerMechRepairBay) SetMech(exec boil.Executor, insert bool, related *
 
 	if related.R == nil {
 		related.R = &mechR{
-			PlayerMechRepairBays: PlayerMechRepairBaySlice{o},
+			PlayerMechRepairSlots: PlayerMechRepairSlotSlice{o},
 		}
 	} else {
-		related.R.PlayerMechRepairBays = append(related.R.PlayerMechRepairBays, o)
+		related.R.PlayerMechRepairSlots = append(related.R.PlayerMechRepairSlots, o)
 	}
 
 	return nil
 }
 
-// SetPlayer of the playerMechRepairBay to the related item.
+// SetPlayer of the playerMechRepairSlot to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.PlayerMechRepairBays.
-func (o *PlayerMechRepairBay) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.PlayerMechRepairSlots.
+func (o *PlayerMechRepairSlot) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -799,9 +799,9 @@ func (o *PlayerMechRepairBay) SetPlayer(exec boil.Executor, insert bool, related
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+		"UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-		strmangle.WhereClause("\"", "\"", 2, playerMechRepairBayPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerMechRepairSlotPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -815,7 +815,7 @@ func (o *PlayerMechRepairBay) SetPlayer(exec boil.Executor, insert bool, related
 
 	o.PlayerID = related.ID
 	if o.R == nil {
-		o.R = &playerMechRepairBayR{
+		o.R = &playerMechRepairSlotR{
 			Player: related,
 		}
 	} else {
@@ -824,19 +824,19 @@ func (o *PlayerMechRepairBay) SetPlayer(exec boil.Executor, insert bool, related
 
 	if related.R == nil {
 		related.R = &playerR{
-			PlayerMechRepairBays: PlayerMechRepairBaySlice{o},
+			PlayerMechRepairSlots: PlayerMechRepairSlotSlice{o},
 		}
 	} else {
-		related.R.PlayerMechRepairBays = append(related.R.PlayerMechRepairBays, o)
+		related.R.PlayerMechRepairSlots = append(related.R.PlayerMechRepairSlots, o)
 	}
 
 	return nil
 }
 
-// SetRepairCase of the playerMechRepairBay to the related item.
+// SetRepairCase of the playerMechRepairSlot to the related item.
 // Sets o.R.RepairCase to related.
-// Adds o to related.R.PlayerMechRepairBays.
-func (o *PlayerMechRepairBay) SetRepairCase(exec boil.Executor, insert bool, related *RepairCase) error {
+// Adds o to related.R.PlayerMechRepairSlots.
+func (o *PlayerMechRepairSlot) SetRepairCase(exec boil.Executor, insert bool, related *RepairCase) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -845,9 +845,9 @@ func (o *PlayerMechRepairBay) SetRepairCase(exec boil.Executor, insert bool, rel
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+		"UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"repair_case_id"}),
-		strmangle.WhereClause("\"", "\"", 2, playerMechRepairBayPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerMechRepairSlotPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -861,7 +861,7 @@ func (o *PlayerMechRepairBay) SetRepairCase(exec boil.Executor, insert bool, rel
 
 	o.RepairCaseID = related.ID
 	if o.R == nil {
-		o.R = &playerMechRepairBayR{
+		o.R = &playerMechRepairSlotR{
 			RepairCase: related,
 		}
 	} else {
@@ -870,56 +870,56 @@ func (o *PlayerMechRepairBay) SetRepairCase(exec boil.Executor, insert bool, rel
 
 	if related.R == nil {
 		related.R = &repairCaseR{
-			PlayerMechRepairBays: PlayerMechRepairBaySlice{o},
+			PlayerMechRepairSlots: PlayerMechRepairSlotSlice{o},
 		}
 	} else {
-		related.R.PlayerMechRepairBays = append(related.R.PlayerMechRepairBays, o)
+		related.R.PlayerMechRepairSlots = append(related.R.PlayerMechRepairSlots, o)
 	}
 
 	return nil
 }
 
-// PlayerMechRepairBays retrieves all the records using an executor.
-func PlayerMechRepairBays(mods ...qm.QueryMod) playerMechRepairBayQuery {
-	mods = append(mods, qm.From("\"player_mech_repair_bays\""), qmhelper.WhereIsNull("\"player_mech_repair_bays\".\"deleted_at\""))
-	return playerMechRepairBayQuery{NewQuery(mods...)}
+// PlayerMechRepairSlots retrieves all the records using an executor.
+func PlayerMechRepairSlots(mods ...qm.QueryMod) playerMechRepairSlotQuery {
+	mods = append(mods, qm.From("\"player_mech_repair_slots\""), qmhelper.WhereIsNull("\"player_mech_repair_slots\".\"deleted_at\""))
+	return playerMechRepairSlotQuery{NewQuery(mods...)}
 }
 
-// FindPlayerMechRepairBay retrieves a single record by ID with an executor.
+// FindPlayerMechRepairSlot retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindPlayerMechRepairBay(exec boil.Executor, iD string, selectCols ...string) (*PlayerMechRepairBay, error) {
-	playerMechRepairBayObj := &PlayerMechRepairBay{}
+func FindPlayerMechRepairSlot(exec boil.Executor, iD string, selectCols ...string) (*PlayerMechRepairSlot, error) {
+	playerMechRepairSlotObj := &PlayerMechRepairSlot{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"player_mech_repair_bays\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"player_mech_repair_slots\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, playerMechRepairBayObj)
+	err := q.Bind(nil, exec, playerMechRepairSlotObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from player_mech_repair_bays")
+		return nil, errors.Wrap(err, "boiler: unable to select from player_mech_repair_slots")
 	}
 
-	if err = playerMechRepairBayObj.doAfterSelectHooks(exec); err != nil {
-		return playerMechRepairBayObj, err
+	if err = playerMechRepairSlotObj.doAfterSelectHooks(exec); err != nil {
+		return playerMechRepairSlotObj, err
 	}
 
-	return playerMechRepairBayObj, nil
+	return playerMechRepairSlotObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *PlayerMechRepairBay) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PlayerMechRepairSlot) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no player_mech_repair_bays provided for insertion")
+		return errors.New("boiler: no player_mech_repair_slots provided for insertion")
 	}
 
 	var err error
@@ -936,33 +936,33 @@ func (o *PlayerMechRepairBay) Insert(exec boil.Executor, columns boil.Columns) e
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(playerMechRepairBayColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerMechRepairSlotColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	playerMechRepairBayInsertCacheMut.RLock()
-	cache, cached := playerMechRepairBayInsertCache[key]
-	playerMechRepairBayInsertCacheMut.RUnlock()
+	playerMechRepairSlotInsertCacheMut.RLock()
+	cache, cached := playerMechRepairSlotInsertCache[key]
+	playerMechRepairSlotInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			playerMechRepairBayAllColumns,
-			playerMechRepairBayColumnsWithDefault,
-			playerMechRepairBayColumnsWithoutDefault,
+			playerMechRepairSlotAllColumns,
+			playerMechRepairSlotColumnsWithDefault,
+			playerMechRepairSlotColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"player_mech_repair_bays\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"player_mech_repair_slots\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"player_mech_repair_bays\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"player_mech_repair_slots\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -989,22 +989,22 @@ func (o *PlayerMechRepairBay) Insert(exec boil.Executor, columns boil.Columns) e
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into player_mech_repair_bays")
+		return errors.Wrap(err, "boiler: unable to insert into player_mech_repair_slots")
 	}
 
 	if !cached {
-		playerMechRepairBayInsertCacheMut.Lock()
-		playerMechRepairBayInsertCache[key] = cache
-		playerMechRepairBayInsertCacheMut.Unlock()
+		playerMechRepairSlotInsertCacheMut.Lock()
+		playerMechRepairSlotInsertCache[key] = cache
+		playerMechRepairSlotInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the PlayerMechRepairBay.
+// Update uses an executor to update the PlayerMechRepairSlot.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *PlayerMechRepairBay) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PlayerMechRepairSlot) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1014,28 +1014,28 @@ func (o *PlayerMechRepairBay) Update(exec boil.Executor, columns boil.Columns) (
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	playerMechRepairBayUpdateCacheMut.RLock()
-	cache, cached := playerMechRepairBayUpdateCache[key]
-	playerMechRepairBayUpdateCacheMut.RUnlock()
+	playerMechRepairSlotUpdateCacheMut.RLock()
+	cache, cached := playerMechRepairSlotUpdateCache[key]
+	playerMechRepairSlotUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			playerMechRepairBayAllColumns,
-			playerMechRepairBayPrimaryKeyColumns,
+			playerMechRepairSlotAllColumns,
+			playerMechRepairSlotPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update player_mech_repair_bays, could not build whitelist")
+			return 0, errors.New("boiler: unable to update player_mech_repair_slots, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, playerMechRepairBayPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, playerMechRepairSlotPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, append(wl, playerMechRepairBayPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, append(wl, playerMechRepairSlotPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1050,42 +1050,42 @@ func (o *PlayerMechRepairBay) Update(exec boil.Executor, columns boil.Columns) (
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update player_mech_repair_bays row")
+		return 0, errors.Wrap(err, "boiler: unable to update player_mech_repair_slots row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_mech_repair_slots")
 	}
 
 	if !cached {
-		playerMechRepairBayUpdateCacheMut.Lock()
-		playerMechRepairBayUpdateCache[key] = cache
-		playerMechRepairBayUpdateCacheMut.Unlock()
+		playerMechRepairSlotUpdateCacheMut.Lock()
+		playerMechRepairSlotUpdateCache[key] = cache
+		playerMechRepairSlotUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q playerMechRepairBayQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q playerMechRepairSlotQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: unable to update all for player_mech_repair_slots")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_mech_repair_slots")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o PlayerMechRepairBaySlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PlayerMechRepairSlotSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1107,13 +1107,13 @@ func (o PlayerMechRepairBaySlice) UpdateAll(exec boil.Executor, cols M) (int64, 
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairBayPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairSlotPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerMechRepairBayPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerMechRepairSlotPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1121,21 +1121,21 @@ func (o PlayerMechRepairBaySlice) UpdateAll(exec boil.Executor, cols M) (int64, 
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in playerMechRepairBay slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in playerMechRepairSlot slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerMechRepairBay")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerMechRepairSlot")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *PlayerMechRepairBay) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PlayerMechRepairSlot) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no player_mech_repair_bays provided for upsert")
+		return errors.New("boiler: no player_mech_repair_slots provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1148,7 +1148,7 @@ func (o *PlayerMechRepairBay) Upsert(exec boil.Executor, updateOnConflict bool, 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(playerMechRepairBayColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerMechRepairSlotColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1178,42 +1178,42 @@ func (o *PlayerMechRepairBay) Upsert(exec boil.Executor, updateOnConflict bool, 
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	playerMechRepairBayUpsertCacheMut.RLock()
-	cache, cached := playerMechRepairBayUpsertCache[key]
-	playerMechRepairBayUpsertCacheMut.RUnlock()
+	playerMechRepairSlotUpsertCacheMut.RLock()
+	cache, cached := playerMechRepairSlotUpsertCache[key]
+	playerMechRepairSlotUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			playerMechRepairBayAllColumns,
-			playerMechRepairBayColumnsWithDefault,
-			playerMechRepairBayColumnsWithoutDefault,
+			playerMechRepairSlotAllColumns,
+			playerMechRepairSlotColumnsWithDefault,
+			playerMechRepairSlotColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			playerMechRepairBayAllColumns,
-			playerMechRepairBayPrimaryKeyColumns,
+			playerMechRepairSlotAllColumns,
+			playerMechRepairSlotPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert player_mech_repair_bays, could not build update column list")
+			return errors.New("boiler: unable to upsert player_mech_repair_slots, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(playerMechRepairBayPrimaryKeyColumns))
-			copy(conflict, playerMechRepairBayPrimaryKeyColumns)
+			conflict = make([]string, len(playerMechRepairSlotPrimaryKeyColumns))
+			copy(conflict, playerMechRepairSlotPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"player_mech_repair_bays\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"player_mech_repair_slots\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, ret)
+			cache.retMapping, err = queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1240,23 +1240,23 @@ func (o *PlayerMechRepairBay) Upsert(exec boil.Executor, updateOnConflict bool, 
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert player_mech_repair_bays")
+		return errors.Wrap(err, "boiler: unable to upsert player_mech_repair_slots")
 	}
 
 	if !cached {
-		playerMechRepairBayUpsertCacheMut.Lock()
-		playerMechRepairBayUpsertCache[key] = cache
-		playerMechRepairBayUpsertCacheMut.Unlock()
+		playerMechRepairSlotUpsertCacheMut.Lock()
+		playerMechRepairSlotUpsertCache[key] = cache
+		playerMechRepairSlotUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single PlayerMechRepairBay record with an executor.
+// Delete deletes a single PlayerMechRepairSlot record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *PlayerMechRepairBay) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *PlayerMechRepairSlot) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no PlayerMechRepairBay provided for delete")
+		return 0, errors.New("boiler: no PlayerMechRepairSlot provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1268,16 +1268,16 @@ func (o *PlayerMechRepairBay) Delete(exec boil.Executor, hardDelete bool) (int64
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerMechRepairBayPrimaryKeyMapping)
-		sql = "DELETE FROM \"player_mech_repair_bays\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerMechRepairSlotPrimaryKeyMapping)
+		sql = "DELETE FROM \"player_mech_repair_slots\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_mech_repair_bays\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"player_mech_repair_slots\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(playerMechRepairBayType, playerMechRepairBayMapping, append(wl, playerMechRepairBayPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(playerMechRepairSlotType, playerMechRepairSlotMapping, append(wl, playerMechRepairSlotPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1290,12 +1290,12 @@ func (o *PlayerMechRepairBay) Delete(exec boil.Executor, hardDelete bool) (int64
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: unable to delete from player_mech_repair_slots")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_mech_repair_slots")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1306,9 +1306,9 @@ func (o *PlayerMechRepairBay) Delete(exec boil.Executor, hardDelete bool) (int64
 }
 
 // DeleteAll deletes all matching rows.
-func (q playerMechRepairBayQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q playerMechRepairSlotQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no playerMechRepairBayQuery provided for delete all")
+		return 0, errors.New("boiler: no playerMechRepairSlotQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1320,24 +1320,24 @@ func (q playerMechRepairBayQuery) DeleteAll(exec boil.Executor, hardDelete bool)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from player_mech_repair_slots")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_mech_repair_slots")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o PlayerMechRepairBaySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o PlayerMechRepairSlotSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(playerMechRepairBayBeforeDeleteHooks) != 0 {
+	if len(playerMechRepairSlotBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1351,21 +1351,21 @@ func (o PlayerMechRepairBaySlice) DeleteAll(exec boil.Executor, hardDelete bool)
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairBayPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairSlotPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"player_mech_repair_bays\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMechRepairBayPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"player_mech_repair_slots\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMechRepairSlotPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairBayPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairSlotPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_mech_repair_bays\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playerMechRepairBayPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"player_mech_repair_slots\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playerMechRepairSlotPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1377,15 +1377,15 @@ func (o PlayerMechRepairBaySlice) DeleteAll(exec boil.Executor, hardDelete bool)
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from playerMechRepairBay slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from playerMechRepairSlot slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_mech_repair_bays")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_mech_repair_slots")
 	}
 
-	if len(playerMechRepairBayAfterDeleteHooks) != 0 {
+	if len(playerMechRepairSlotAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1398,8 +1398,8 @@ func (o PlayerMechRepairBaySlice) DeleteAll(exec boil.Executor, hardDelete bool)
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *PlayerMechRepairBay) Reload(exec boil.Executor) error {
-	ret, err := FindPlayerMechRepairBay(exec, o.ID)
+func (o *PlayerMechRepairSlot) Reload(exec boil.Executor) error {
+	ret, err := FindPlayerMechRepairSlot(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1410,27 +1410,27 @@ func (o *PlayerMechRepairBay) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *PlayerMechRepairBaySlice) ReloadAll(exec boil.Executor) error {
+func (o *PlayerMechRepairSlotSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := PlayerMechRepairBaySlice{}
+	slice := PlayerMechRepairSlotSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairBayPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMechRepairSlotPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"player_mech_repair_bays\".* FROM \"player_mech_repair_bays\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMechRepairBayPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"player_mech_repair_slots\".* FROM \"player_mech_repair_slots\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMechRepairSlotPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in PlayerMechRepairBaySlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PlayerMechRepairSlotSlice")
 	}
 
 	*o = slice
@@ -1438,10 +1438,10 @@ func (o *PlayerMechRepairBaySlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// PlayerMechRepairBayExists checks if the PlayerMechRepairBay row exists.
-func PlayerMechRepairBayExists(exec boil.Executor, iD string) (bool, error) {
+// PlayerMechRepairSlotExists checks if the PlayerMechRepairSlot row exists.
+func PlayerMechRepairSlotExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"player_mech_repair_bays\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"player_mech_repair_slots\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1451,7 +1451,7 @@ func PlayerMechRepairBayExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if player_mech_repair_bays exists")
+		return false, errors.Wrap(err, "boiler: unable to check if player_mech_repair_slots exists")
 	}
 
 	return exists, nil

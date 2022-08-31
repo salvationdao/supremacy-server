@@ -100,26 +100,26 @@ var RepairCaseWhere = struct {
 
 // RepairCaseRels is where relationship names are stored.
 var RepairCaseRels = struct {
-	Mech                 string
-	PlayerMechRepairBays string
-	RepairAgents         string
-	RepairBlocks         string
-	RepairOffers         string
+	Mech                  string
+	PlayerMechRepairSlots string
+	RepairAgents          string
+	RepairBlocks          string
+	RepairOffers          string
 }{
-	Mech:                 "Mech",
-	PlayerMechRepairBays: "PlayerMechRepairBays",
-	RepairAgents:         "RepairAgents",
-	RepairBlocks:         "RepairBlocks",
-	RepairOffers:         "RepairOffers",
+	Mech:                  "Mech",
+	PlayerMechRepairSlots: "PlayerMechRepairSlots",
+	RepairAgents:          "RepairAgents",
+	RepairBlocks:          "RepairBlocks",
+	RepairOffers:          "RepairOffers",
 }
 
 // repairCaseR is where relationships are stored.
 type repairCaseR struct {
-	Mech                 *Mech                    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	PlayerMechRepairBays PlayerMechRepairBaySlice `boiler:"PlayerMechRepairBays" boil:"PlayerMechRepairBays" json:"PlayerMechRepairBays" toml:"PlayerMechRepairBays" yaml:"PlayerMechRepairBays"`
-	RepairAgents         RepairAgentSlice         `boiler:"RepairAgents" boil:"RepairAgents" json:"RepairAgents" toml:"RepairAgents" yaml:"RepairAgents"`
-	RepairBlocks         RepairBlockSlice         `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
-	RepairOffers         RepairOfferSlice         `boiler:"RepairOffers" boil:"RepairOffers" json:"RepairOffers" toml:"RepairOffers" yaml:"RepairOffers"`
+	Mech                  *Mech                     `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	PlayerMechRepairSlots PlayerMechRepairSlotSlice `boiler:"PlayerMechRepairSlots" boil:"PlayerMechRepairSlots" json:"PlayerMechRepairSlots" toml:"PlayerMechRepairSlots" yaml:"PlayerMechRepairSlots"`
+	RepairAgents          RepairAgentSlice          `boiler:"RepairAgents" boil:"RepairAgents" json:"RepairAgents" toml:"RepairAgents" yaml:"RepairAgents"`
+	RepairBlocks          RepairBlockSlice          `boiler:"RepairBlocks" boil:"RepairBlocks" json:"RepairBlocks" toml:"RepairBlocks" yaml:"RepairBlocks"`
+	RepairOffers          RepairOfferSlice          `boiler:"RepairOffers" boil:"RepairOffers" json:"RepairOffers" toml:"RepairOffers" yaml:"RepairOffers"`
 }
 
 // NewStruct creates a new relationship struct
@@ -395,23 +395,23 @@ func (o *RepairCase) Mech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
-// PlayerMechRepairBays retrieves all the player_mech_repair_bay's PlayerMechRepairBays with an executor.
-func (o *RepairCase) PlayerMechRepairBays(mods ...qm.QueryMod) playerMechRepairBayQuery {
+// PlayerMechRepairSlots retrieves all the player_mech_repair_slot's PlayerMechRepairSlots with an executor.
+func (o *RepairCase) PlayerMechRepairSlots(mods ...qm.QueryMod) playerMechRepairSlotQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"player_mech_repair_bays\".\"repair_case_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"player_mech_repair_bays\".\"deleted_at\""),
+		qm.Where("\"player_mech_repair_slots\".\"repair_case_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_mech_repair_slots\".\"deleted_at\""),
 	)
 
-	query := PlayerMechRepairBays(queryMods...)
-	queries.SetFrom(query.Query, "\"player_mech_repair_bays\"")
+	query := PlayerMechRepairSlots(queryMods...)
+	queries.SetFrom(query.Query, "\"player_mech_repair_slots\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"player_mech_repair_bays\".*"})
+		queries.SetSelect(query.Query, []string{"\"player_mech_repair_slots\".*"})
 	}
 
 	return query
@@ -587,9 +587,9 @@ func (repairCaseL) LoadMech(e boil.Executor, singular bool, maybeRepairCase inte
 	return nil
 }
 
-// LoadPlayerMechRepairBays allows an eager lookup of values, cached into the
+// LoadPlayerMechRepairSlots allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (repairCaseL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, maybeRepairCase interface{}, mods queries.Applicator) error {
+func (repairCaseL) LoadPlayerMechRepairSlots(e boil.Executor, singular bool, maybeRepairCase interface{}, mods queries.Applicator) error {
 	var slice []*RepairCase
 	var object *RepairCase
 
@@ -627,9 +627,9 @@ func (repairCaseL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, mayb
 	}
 
 	query := NewQuery(
-		qm.From(`player_mech_repair_bays`),
-		qm.WhereIn(`player_mech_repair_bays.repair_case_id in ?`, args...),
-		qmhelper.WhereIsNull(`player_mech_repair_bays.deleted_at`),
+		qm.From(`player_mech_repair_slots`),
+		qm.WhereIn(`player_mech_repair_slots.repair_case_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_mech_repair_slots.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -637,22 +637,22 @@ func (repairCaseL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, mayb
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load player_mech_repair_bays")
+		return errors.Wrap(err, "failed to eager load player_mech_repair_slots")
 	}
 
-	var resultSlice []*PlayerMechRepairBay
+	var resultSlice []*PlayerMechRepairSlot
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice player_mech_repair_bays")
+		return errors.Wrap(err, "failed to bind eager loaded slice player_mech_repair_slots")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on player_mech_repair_bays")
+		return errors.Wrap(err, "failed to close results in eager load on player_mech_repair_slots")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_mech_repair_bays")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_mech_repair_slots")
 	}
 
-	if len(playerMechRepairBayAfterSelectHooks) != 0 {
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -660,10 +660,10 @@ func (repairCaseL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, mayb
 		}
 	}
 	if singular {
-		object.R.PlayerMechRepairBays = resultSlice
+		object.R.PlayerMechRepairSlots = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &playerMechRepairBayR{}
+				foreign.R = &playerMechRepairSlotR{}
 			}
 			foreign.R.RepairCase = object
 		}
@@ -673,9 +673,9 @@ func (repairCaseL) LoadPlayerMechRepairBays(e boil.Executor, singular bool, mayb
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.RepairCaseID {
-				local.R.PlayerMechRepairBays = append(local.R.PlayerMechRepairBays, foreign)
+				local.R.PlayerMechRepairSlots = append(local.R.PlayerMechRepairSlots, foreign)
 				if foreign.R == nil {
-					foreign.R = &playerMechRepairBayR{}
+					foreign.R = &playerMechRepairSlotR{}
 				}
 				foreign.R.RepairCase = local
 				break
@@ -1028,11 +1028,11 @@ func (o *RepairCase) SetMech(exec boil.Executor, insert bool, related *Mech) err
 	return nil
 }
 
-// AddPlayerMechRepairBays adds the given related objects to the existing relationships
+// AddPlayerMechRepairSlots adds the given related objects to the existing relationships
 // of the repair_case, optionally inserting them as new records.
-// Appends related to o.R.PlayerMechRepairBays.
+// Appends related to o.R.PlayerMechRepairSlots.
 // Sets related.R.RepairCase appropriately.
-func (o *RepairCase) AddPlayerMechRepairBays(exec boil.Executor, insert bool, related ...*PlayerMechRepairBay) error {
+func (o *RepairCase) AddPlayerMechRepairSlots(exec boil.Executor, insert bool, related ...*PlayerMechRepairSlot) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1042,9 +1042,9 @@ func (o *RepairCase) AddPlayerMechRepairBays(exec boil.Executor, insert bool, re
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"player_mech_repair_bays\" SET %s WHERE %s",
+				"UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"repair_case_id"}),
-				strmangle.WhereClause("\"", "\"", 2, playerMechRepairBayPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, playerMechRepairSlotPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1062,15 +1062,15 @@ func (o *RepairCase) AddPlayerMechRepairBays(exec boil.Executor, insert bool, re
 
 	if o.R == nil {
 		o.R = &repairCaseR{
-			PlayerMechRepairBays: related,
+			PlayerMechRepairSlots: related,
 		}
 	} else {
-		o.R.PlayerMechRepairBays = append(o.R.PlayerMechRepairBays, related...)
+		o.R.PlayerMechRepairSlots = append(o.R.PlayerMechRepairSlots, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &playerMechRepairBayR{
+			rel.R = &playerMechRepairSlotR{
 				RepairCase: o,
 			}
 		} else {
