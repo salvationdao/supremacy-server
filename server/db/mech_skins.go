@@ -2,14 +2,14 @@ package db
 
 import (
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/boil"
+	"strings"
 
 	"github.com/gofrs/uuid"
 )
@@ -164,6 +164,27 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 		)),
 	)
 
+	if len(opts.FilterSkinCompatibility) > 0 {
+		//// inner join mech model
+		var vals []string
+		runeIdentifier := "'"
+		for _, r := range opts.FilterSkinCompatibility {
+			vals = append(vals, runeIdentifier+r+runeIdentifier)
+		}
+
+		queryMods = append(queryMods,
+			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s WHERE %s GROUP BY %s) sq on sq.%s = %s",
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				boiler.MechModelSkinCompatibilityColumns.MechModelID,
+				boiler.TableNames.MechModelSkinCompatibilities,
+				fmt.Sprintf("%s IN (%s)", qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID), strings.Join(vals, ",")),
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			)),
+		)
+	}
+
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
@@ -218,19 +239,6 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 				Operator: OperatorValueTypeIsNotNull,
 			}, 0, ""))
 		}
-	}
-	if len(opts.FilterSkinCompatibility) > 0 {
-		//// inner join mech model
-		qm.InnerJoin(fmt.Sprintf(`(
-		SELECT blueprint_mech_skin_id, JSONB_AGG(mech_model_id) AS model_ids	
-		FROM %s
-		GROUP BY blueprint_mech_skin_id
-	) %s on %s = %s`,
-			boiler.TableNames.MechModelSkinCompatibilities,
-			boiler.WeaponModelSkinCompatibilityWhere.WeaponModelID.IN(opts.FilterSkinCompatibility),
-			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
-			qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.ID),
-		))
 	}
 
 	//Search

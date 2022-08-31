@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"strings"
 )
 
 func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin, modelID *string) (*server.WeaponSkin, error) {
@@ -132,13 +133,28 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
 		)),
-		// inner join weapon model
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-			boiler.TableNames.WeaponModelSkinCompatibilities,
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
-			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
-		)),
 	)
+
+	if len(opts.FilterSkinCompatibility) > 0 {
+		//// inner join weapon model
+		var vals []string
+		runeIdentifier := "'"
+		for _, r := range opts.FilterSkinCompatibility {
+			vals = append(vals, runeIdentifier+r+runeIdentifier)
+		}
+
+		queryMods = append(queryMods,
+			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s WHERE %s GROUP BY %s) sq on sq.%s = %s",
+				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
+				boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID,
+				boiler.TableNames.WeaponModelSkinCompatibilities,
+				fmt.Sprintf("%s IN (%s)", qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID), strings.Join(vals, ",")),
+				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
+				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
+				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			)),
+		)
+	}
 
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
@@ -195,13 +211,6 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			}, 0, ""))
 		}
 	}
-	if len(opts.FilterSkinCompatibility) > 0 {
-		vals := []interface{}{}
-		for _, sc := range opts.FilterSkinCompatibility {
-			vals = append(vals, sc)
-		}
-		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID)), vals...))
-	}
 
 	//Search
 	if opts.Search != "" {
@@ -249,13 +258,13 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.Tier),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.ImageURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.CardAnimationURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.AvatarURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.LargeImageURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.AnimationURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.YoutubeURL),
-			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BackgroundColor),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ImageURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.CardAnimationURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.LargeImageURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AnimationURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.YoutubeURL),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.BackgroundColor),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
