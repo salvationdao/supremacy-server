@@ -527,5 +527,5 @@ func BroadcastRepairBay(playerID string) {
 		resp = pms
 	}
 
-	ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
 }

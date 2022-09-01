@@ -1028,6 +1028,7 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 	now := time.Now()
 
+	shouldBroadcast := false
 	err = api.ArenaManager.SendRepairFunc(func() error {
 		// check remain slots
 		occupiedSlotCount, err := boiler.PlayerMechRepairSlots(
@@ -1064,13 +1065,13 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 			// filter out mechs which are already in slot
 			qm.Where(
 				fmt.Sprintf(
-					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s != %s)",
+					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s != ?)",
 					boiler.TableNames.PlayerMechRepairSlots,
 					qm.Rels(boiler.TableNames.PlayerMechRepairSlots, boiler.PlayerMechRepairSlotColumns.MechID),
 					qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
 					qm.Rels(boiler.TableNames.PlayerMechRepairSlots, boiler.PlayerMechRepairSlotColumns.Status),
-					boiler.RepairSlotStatusDONE,
 				),
+				boiler.RepairSlotStatusDONE,
 			),
 		).All(gamedb.StdConn)
 		if err != nil {
@@ -1082,9 +1083,15 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 		if rcs == nil {
 			return nil
 		}
-
+		// index for inserted mech
+		insertedIndex := 0
 		// insert into slots in the input order
-		for i, mechID := range req.Payload.MechIDs {
+		for _, mechID := range req.Payload.MechIDs {
+			// continue, if not reach remain slot count
+			if insertedIndex >= remainSlot {
+				break
+			}
+
 			// skip, if not available
 			idx := slices.IndexFunc(rcs, func(rc *boiler.RepairCase) bool { return rc.MechID == mechID })
 			if idx == -1 {
@@ -1096,11 +1103,11 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 				MechID:       mechID,
 				RepairCaseID: rcs[idx].ID,
 				Status:       boiler.RepairSlotStatusPENDING,
-				SlotNumber:   int(occupiedSlotCount) + (i + 1),
+				SlotNumber:   int(occupiedSlotCount) + (insertedIndex + 1),
 			}
 
 			// if this is the first slot, and currently no slot is occupied
-			if i == 0 && occupiedSlotCount == 0 {
+			if pmr.SlotNumber == 1 {
 				pmr.Status = boiler.RepairSlotStatusREPAIRING
 				pmr.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
 			}
@@ -1111,16 +1118,18 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 				return terror.Error(err, "Failed to insert repair slot.")
 			}
 
-			// continue, if not reach remain slot count
-			if i+1 < remainSlot {
-				continue
-			}
-
-			break
+			shouldBroadcast = true
+			insertedIndex++
 		}
 
 		return nil
 	})
+
+	// broadcast changes, if slot changed
+	if shouldBroadcast {
+		go battle.BroadcastRepairBay(user.ID)
+	}
+
 	if err != nil {
 		return err
 	}
