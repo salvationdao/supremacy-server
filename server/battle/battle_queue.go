@@ -165,26 +165,26 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
-				return
+				continue
 			}
 			if len(zaiPendingMechs) < db.FACTION_MECH_LIMIT {
-				return
+				continue
 			}
 			rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
-				return
+				continue
 			}
 			if len(rmPendingMechs) < db.FACTION_MECH_LIMIT {
-				return
+				continue
 			}
 			bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
-				return
+				continue
 			}
 			if len(bcPendingMechs) < db.FACTION_MECH_LIMIT {
-				return
+				continue
 			}
 
 			func() {

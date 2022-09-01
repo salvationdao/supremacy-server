@@ -34,37 +34,18 @@ func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
 // mechs with the same owner ID.
 func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit int) (boiler.BattleQueueBacklogSlice, error) {
 	pendingMechs, err := boiler.BattleQueueBacklogs(
-		qm.Select(fmt.Sprintf("DISTINCT ON (%s), %s.*",
+		qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
 			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
 			boiler.TableNames.BattleQueueBacklog,
 		)),
 		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
 		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
+		qm.OrderBy(fmt.Sprintf("%s, %s desc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
 		qm.Limit(limit),
 	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, err
 	}
-
-	// excludeMechIDs := []string{}
-	// for _, bm := range pendingMechs {
-	// 	excludeMechIDs = append(excludeMechIDs, bm.MechID)
-	// }
-
-	// if disableOwnerCheck && len(pendingMechs) < count {
-	// numberLeft := count - len(pendingMechs)
-	// moreMechs, err := boiler.BattleQueueBacklogs(
-	// 	boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
-	// 	boiler.BattleQueueBacklogWhere.MechID.NIN(excludeMechIDs),
-	// 	qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueBacklogColumns.QueuedAt)),
-	// 	qm.Limit(numberLeft),
-	// ).All(gamedb.StdConn)
-	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 	return nil, err
-	// }
-	// pendingMechs = append(pendingMechs, moreMechs...)
-	// }
 
 	return pendingMechs, nil
 }
