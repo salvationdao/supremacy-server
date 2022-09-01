@@ -11,8 +11,6 @@ const (
 	MapEventTypeAirstrikeExplosions MapEventType = iota
 	MapEventTypeLandmineActivations
 	MapEventTypeLandmineExplosions
-	MapEventTypePickupLanded
-	MapEventTypePickupUsed
 	MapEventTypeHiveHexUpdate
 )
 
