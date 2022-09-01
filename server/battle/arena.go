@@ -1675,7 +1675,7 @@ func (arena *Arena) startBattle() {
 }
 
 func (arena *Arena) initNextBattle() {
-	q, err := db.LoadBattleQueue(context.Background(), 3)
+	q, err := db.LoadBattleQueue(context.Background(), 3, true)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
 		gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
