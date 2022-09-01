@@ -29,6 +29,10 @@ type BattleQueueManager struct {
 	// on mech(s) deploy
 	Deploy chan *Deploy
 
+	rmMissingCount  int // 0
+	bcMissingCount  int // 0
+	zaiMissingCount int // 0
+
 	closed *atomic.Bool
 	deadlock.RWMutex
 }
@@ -136,6 +140,12 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			// battle. If not, then pause the battle start
 
 		case deploy := <-qs.Deploy:
+			// todo:
+			// 1. load whole queue backlog
+			// 2. if there are missing mechs, fill in the missing mech from backlog to queue
+			// 3. otherwise, insert sets (3 mech per fection from each faction)
+			// 4. check idle arena, and run arena.initNextBattle()
+
 			// On mech deploy, move entries from the battle_queue_backlog to the
 			// battle_queue table, only if they satisfy the following criteria:
 			// - No two mechs can belong to the same owner, unless the faction's battle_queue is empty

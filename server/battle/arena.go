@@ -357,6 +357,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 type Arena struct {
 	*boiler.BattleArena
+	stage                    atomic.Int32 // running, idle
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -1703,11 +1704,25 @@ func (arena *Arena) startBattle() {
 }
 
 func (arena *Arena) initNextBattle() {
+	q, err := db.LoadBattleQueue(context.Background(), 3)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
+		gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
+		return
+	}
+
+	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+
+		// set arena to idle
+		return
+	}
+
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
 	// delete all the unfinished mech command
-	_, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
