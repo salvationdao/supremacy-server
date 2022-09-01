@@ -94,6 +94,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
 	questManager *quest.System,
+	privateKeySignerHex string,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -204,7 +205,7 @@ func NewAPI(
 			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
-			r.Mount("/battle_history", BattleHistoryRouter())
+			r.Mount("/battle_history", BattleHistoryRouter(privateKeySignerHex))
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
