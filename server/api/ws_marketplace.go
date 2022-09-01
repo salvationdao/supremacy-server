@@ -535,16 +535,16 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// Process listing fee
-	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
-	if !ok {
-		err = fmt.Errorf("failed to get hard coded syndicate player id")
-		gamelog.L.Error().
-			Str("player_id", user.ID).
-			Str("faction_id", user.FactionID.String).
-			Err(err).
-			Msg("unable to get hard coded syndicate player ID from faction ID")
-		return terror.Error(err, errMsg)
-	}
+	//factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	//if !ok {
+	//	err = fmt.Errorf("failed to get hard coded syndicate player id")
+	//	gamelog.L.Error().
+	//		Str("player_id", user.ID).
+	//		Str("faction_id", user.FactionID.String).
+	//		Err(err).
+	//		Msg("unable to get hard coded syndicate player ID from faction ID")
+	//	return terror.Error(err, errMsg)
+	//}
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(10))
@@ -576,7 +576,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	// Pay Listing Fees
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
 		Amount:               feePrice.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
@@ -741,16 +741,16 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, errMsg)
 	}
 
-	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
-	if !ok {
-		err = fmt.Errorf("failed to get hard coded syndicate player id")
-		gamelog.L.Error().
-			Str("player_id", user.ID).
-			Str("faction_id", user.FactionID.String).
-			Err(err).
-			Msg("unable to get hard coded syndicate player ID from faction ID")
-		return terror.Error(err, errMsg)
-	}
+	//factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	//if !ok {
+	//	err = fmt.Errorf("failed to get hard coded syndicate player id")
+	//	gamelog.L.Error().
+	//		Str("player_id", user.ID).
+	//		Str("faction_id", user.FactionID.String).
+	//		Err(err).
+	//		Msg("unable to get hard coded syndicate player ID from faction ID")
+	//	return terror.Error(err, errMsg)
+	//}
 
 	// Check if can sell any keycards
 	keycard, err := db.PlayerKeycard(req.Payload.ItemID)
@@ -835,7 +835,7 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 	// Pay sup
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
 		Amount:               feePrice.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|keycard|%s|%d", req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
@@ -1292,15 +1292,15 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// Pay sales cut fee amount to faction account
-	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
-	if !ok {
-		err = fmt.Errorf("failed to get hard coded syndicate player id")
-		l.Error().Err(err).Msg("unable to get hard coded syndicate player ID from faction ID")
-		return terror.Error(err, errMsg)
-	}
+	//factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	//if !ok {
+	//	err = fmt.Errorf("failed to get hard coded syndicate player id")
+	//	l.Error().Err(err).Msg("unable to get hard coded syndicate player ID from faction ID")
+	//	return terror.Error(err, errMsg)
+	//}
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
 		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
@@ -1545,15 +1545,15 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	salesCutPercentageFee := db.GetDecimalWithDefault(db.KeyMarketplaceSaleCutPercentageFee, decimal.NewFromFloat(0.1))
 
 	// Pay sales cut fee amount to faction account
-	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
-	if !ok {
-		err = fmt.Errorf("failed to get hard coded syndicate player id")
-		l.Error().Err(err).Msg("unable to get hard coded syndicate player ID from faction ID")
-		return terror.Error(err, errMsg)
-	}
+	//factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	//if !ok {
+	//	err = fmt.Errorf("failed to get hard coded syndicate player id")
+	//	l.Error().Err(err).Msg("unable to get hard coded syndicate player ID from faction ID")
+	//	return terror.Error(err, errMsg)
+	//}
 	feeTXID, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		ToUserID:             uuid.Must(uuid.FromString(server.SupremacyChallengeFundUserID)), // NOTE: send fees to challenge fund for now. (was faction account)
 		Amount:               saleItemCost.Mul(salesCutPercentageFee).String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item_fee:buyout|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),

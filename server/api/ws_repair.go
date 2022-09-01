@@ -1224,7 +1224,7 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 					shouldUpdate = true
 				}
 
-				if i == 0 {
+				if pm.SlotNumber == 1 {
 					if pm.Status != boiler.RepairSlotStatusREPAIRING {
 						pm.Status = boiler.RepairSlotStatusREPAIRING
 						shouldUpdate = true
@@ -1270,7 +1270,7 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 		}
 
 		// broadcast new list
-		ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", user.ID), server.HubKeyMechRepairSlots, resp)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", user.ID), server.HubKeyMechRepairSlots, resp)
 
 		return nil
 	})
