@@ -13,6 +13,7 @@ import (
 	"server/api"
 	"server/asset"
 	"server/battle"
+	"server/battle_queue"
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
@@ -382,11 +383,19 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					start = time.Now()
+					// initialise quest manager
 					qm, err := quest.New()
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+					gamelog.L.Info().Msgf("Quest manager took %s", time.Since(start))
+
+					start = time.Now()
+					// initialise battle queue manager
+					bqm := battle_queue.NewBattleQueueSystem()
+					gamelog.L.Info().Msgf("Battle Queue manager took %s", time.Since(start))
 
 					start = time.Now()
 					// initialise battle arena
@@ -399,6 +408,7 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
+						BattleQueueManager:       bqm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
@@ -414,7 +424,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm, bqm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -477,7 +487,7 @@ func main() {
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
@@ -776,6 +786,7 @@ func SetupAPI(
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
 	questManager *quest.System,
+	battleQueueManager *battle_queue.BattleQueueManager,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -834,7 +845,7 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex, battleQueueManager)
 	if err != nil {
 		return nil, err
 	}
