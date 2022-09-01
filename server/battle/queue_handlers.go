@@ -156,7 +156,16 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	now := time.Now()
 	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 
-	for _, mci := range mcis {
+	// insert mech from the input order
+	for _, mechID := range req.Payload.MechIDs {
+		idx := slices.IndexFunc(mcis, func(mci *boiler.CollectionItem) bool {
+			return mci.ItemID == mechID
+		})
+		if idx == -1 {
+			continue
+		}
+		mci := mcis[idx]
+
 		err = func() error {
 			tx, err = gamedb.StdConn.Begin()
 			if err != nil {
