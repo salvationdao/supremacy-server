@@ -53,6 +53,7 @@ type Battle struct {
 	gameMap                *server.GameMap
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
+	nextMapID              null.String
 	_abilities             *AbilitiesSystem
 	factions               map[uuid.UUID]*boiler.Faction
 	rpcClient              *xsyn_rpcclient.XrpcClient
@@ -90,7 +91,6 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
-	clearByPickUp            bool
 }
 
 // Add new pending ability and return a copy of current list
@@ -383,6 +383,16 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get next battle details")
+			return
+		}
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
+
 	gamelog.L.Trace().Str("func", "start").Msg("end")
 }
 
@@ -1250,6 +1260,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 }
 
 const HubKeyBattleEndDetailUpdated = "BATTLE:END:DETAIL:UPDATED"
+const HubKeyNextBattleDetails = "BATTLE:NEXT:DETAILS"
 
 func (btl *Battle) endBroadcast(endInfo *BattleEndDetail, playerRewardRecords []*PlayerReward, mechRewardRecords []*MechReward) {
 	defer func() {
@@ -1334,6 +1345,27 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
 	}
+
+	// get oldest map in the qeueu
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
+	}
+
+	_, err = mapInQueue.Delete(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to delete oldest map in battle_map_queue")
+	}
+
+	go func() {
+		qs, err := db.GetNextBattle(nil)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+	}()
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo, playerRewardRecords, mechRewardRecords)
@@ -1800,33 +1832,47 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 				// update player ability kills and faction kills
 				if strings.EqualFold(destroyedWarMachine.FactionID, abl.FactionID) {
-					// update user kill
-					_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+					// load game ability
+					ga, err := abl.GameAbility().One(gamedb.StdConn)
 					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+						gamelog.L.Error().Str("game ability id", abl.GameAbilityID).Err(err).Msg("Failed to load game ability.")
 					}
 
-					// insert a team kill record to last seven days kills
-					lastSevenDaysKill := boiler.PlayerKillLog{
-						PlayerID:   abl.PlayerID.String,
-						FactionID:  abl.FactionID,
-						BattleID:   btl.BattleID,
-						IsTeamKill: true,
-					}
-					err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
-					}
+					// only check team kill, if needed.
+					if ga != nil && ga.ShouldCheckTeamKill {
+						// if ability ignore self kill or the kill is not self kill
+						if !ga.IgnoreSelfKill || abl.PlayerID.String != destroyedWarMachine.OwnedByID {
+							// update user kill
+							_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+							}
 
-					// subtract faction kill count
-					err = db.FactionSubtractAbilityKillCount(abl.FactionID)
-					if err != nil {
-						gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+							// insert a team kill record to last seven days kills
+							pkl := boiler.PlayerKillLog{
+								PlayerID:          abl.PlayerID.String,
+								FactionID:         abl.FactionID,
+								BattleID:          btl.BattleID,
+								IsTeamKill:        true,
+								AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
+								GameAbilityID:     null.StringFrom(abl.GameAbilityID),
+							}
+							err = pkl.Insert(gamedb.StdConn, boil.Infer())
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (TEAM KILL)")
+							}
+
+							// subtract faction kill count
+							err = db.FactionSubtractAbilityKillCount(abl.FactionID)
+							if err != nil {
+								gamelog.L.Error().Str("log_name", "battle arena").Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+							}
+
+							// sent instance to system ban manager
+							go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
+
+						}
 					}
-
-					// sent instance to system ban manager
-					go btl.arena.SystemBanManager.SendToTeamKillCourtroom(abl.PlayerID.String, dp.RelatedEventIDString)
-
 				} else {
 					// update user kill
 					_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
@@ -1835,12 +1881,15 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					}
 
 					// insert a team kill record to last seven days kills
-					lastSevenDaysKill := boiler.PlayerKillLog{
-						PlayerID:  abl.PlayerID.String,
-						FactionID: abl.FactionID,
-						BattleID:  btl.BattleID,
+					pkl := boiler.PlayerKillLog{
+						PlayerID:          abl.PlayerID.String,
+						FactionID:         abl.FactionID,
+						BattleID:          btl.BattleID,
+						AbilityOfferingID: null.StringFrom(dp.RelatedEventIDString),
+						GameAbilityID:     null.StringFrom(abl.GameAbilityID),
+						IsVerified:        true,
 					}
-					err = lastSevenDaysKill.Insert(gamedb.StdConn, boil.Infer())
+					err = pkl.Insert(gamedb.StdConn, boil.Infer())
 					if err != nil {
 						gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to insert player last seven days kill record- (ABILITY KILL)")
 					}
@@ -2065,7 +2114,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 func (btl *Battle) Load() error {
 	gamelog.L.Trace().Str("func", "Load").Msg("start")
-	q, err := db.LoadBattleQueue(context.Background(), 3)
+	q, err := db.LoadBattleQueue(context.Background(), 3, false)
 	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
@@ -2218,9 +2267,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			Name:        TruncateString(mech.Name, 20),
 			Label:       mech.Label,
 			FactionID:   mech.FactionID.String,
-			MaxHealth:   uint32(mech.MaxHitpoints),
-			Health:      uint32(mech.MaxHitpoints),
-			Speed:       mech.Speed,
+			MaxHealth:   uint32(mech.BoostedMaxHitpoints),
+			Health:      uint32(mech.BoostedMaxHitpoints),
+			Speed:       mech.BoostedSpeed,
 			Tier:        mech.Tier,
 			Image:       mech.ImageURL.String,
 			ImageAvatar: mech.AvatarURL.String,
@@ -2252,7 +2301,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
 				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
 				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
-				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
+				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.BoostedRechargeRate)
 			}
 		}
 
@@ -2262,14 +2311,12 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		}
 
 		// check model
-		if mech.Model != nil {
-			model, ok := ModelMap[mech.Model.Label]
-			if !ok {
-				model = "WREX"
-			}
-			newWarMachine.Model = model
-			newWarMachine.ModelID = mech.ModelID
+		model, ok := ModelMap[mech.Label]
+		if !ok {
+			model = "WREX"
 		}
+		newWarMachine.Model = model
+		newWarMachine.ModelID = mech.BlueprintID
 
 		// check model skin
 		if mech.ChassisSkin != nil {
@@ -2278,6 +2325,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				newWarMachine.Skin = mappedSkin
 			}
 		}
+		newWarMachine.SkinID = mech.ChassisSkinID
 
 		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")

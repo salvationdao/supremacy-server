@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"server"
 	"server/battle/player_abilities"
 	"server/db"
@@ -449,6 +448,11 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the battlefield.")
 		}
 
+		// if hacker drone
+		if wm.Status.IsHacked && bpa.GameClientAbilityID == 13 {
+			return terror.Error(fmt.Errorf("already hacked"), "The mech is already hacked.")
+		}
+
 		// check the mech is in the
 		if wm.FactionID == factionID {
 			return terror.Error(fmt.Errorf("not opponent mech"), "Must select an opponent mech.")
@@ -809,7 +813,8 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	}
 
 	// check battle stage
-	if arena.currentBattleState() == BattleStageEnd {
+	btl := arena.CurrentBattle()
+	if btl == nil || btl.stage.Load() == BattleStageEnd {
 		return terror.Error(terror.ErrInvalidInput, "Current battle is ended.")
 	}
 
@@ -829,12 +834,6 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		return terror.Error(err, err.Error())
 	}
 
-	// get current battle
-	bn := arena.currentBattleNumber()
-	if bn == -1 {
-		return terror.Error(fmt.Errorf("current battle is cleaned up"), "Current battle is cleaned up.")
-	}
-
 	// get ability
 	a, err := boiler.FindGameAbility(gamedb.StdConn, req.Payload.GameAbilityID)
 	if err != nil {
@@ -848,10 +847,11 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 	switch a.Label {
 	case "REPAIR":
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.MechAbilityTriggerLogWhere.BattleNumber.EQ(bn),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.BattleID),
+			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -862,10 +862,11 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		}
 	default:
 		// get ability from db
-		lastTrigger, err := boiler.MechAbilityTriggerLogs(
-			boiler.MechAbilityTriggerLogWhere.MechID.EQ(wm.ID),
-			boiler.MechAbilityTriggerLogWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.MechAbilityTriggerLogWhere.CreatedAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+		lastTrigger, err := boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
+			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
+			boiler.BattleAbilityTriggerWhere.TriggeredAt.GT(time.Now().Add(time.Duration(-abilityCooldownSeconds)*time.Second)),
+			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Failed to get last ability trigger")
@@ -928,26 +929,21 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		}(arena, ga, wm.ID)
 	}
 
-	// trigger the ability
 	now := time.Now()
-	event := &server.GameAbilityEvent{
-		IsTriggered:         true,
-		GameClientAbilityID: byte(ga.GameClientAbilityID),
-		WarMachineHash:      &wm.Hash,
-		ParticipantID:       &wm.ParticipantID,
-		EventID:             uuid.Must(uuid.NewV4()),
-	}
-
-	// fire mech command
-	arena.Message("BATTLE:ABILITY", event)
+	offeringID := uuid.Must(uuid.NewV4())
 
 	// log mech move command
-	mat := &boiler.MechAbilityTriggerLog{
-		MechID:        wm.ID,
-		TriggeredByID: user.ID,
-		GameAbilityID: ga.ID,
-		BattleNumber:  bn,
-		CreatedAt:     now,
+	mat := &boiler.BattleAbilityTrigger{
+		OnMechID:          null.StringFrom(wm.ID),
+		PlayerID:          null.StringFrom(user.ID),
+		GameAbilityID:     ga.ID,
+		AbilityLabel:      ga.Label,
+		IsAllSyndicates:   false,
+		FactionID:         factionID,
+		BattleID:          btl.BattleID,
+		AbilityOfferingID: offeringID.String(),
+		TriggeredAt:       now,
+		TriggerType:       boiler.AbilityTriggerTypeMECH_ABILITY,
 	}
 
 	err = mat.Insert(gamedb.StdConn, boil.Infer())
@@ -955,6 +951,19 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		gamelog.L.Error().Interface("mech ability trigger", mat).Err(err).Msg("Failed to insert mech ability trigger.")
 		return terror.Error(err, "Failed to record mech ability trigger")
 	}
+
+	// trigger the ability
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: byte(ga.GameClientAbilityID),
+		WarMachineHash:      &wm.Hash,
+		ParticipantID:       &wm.ParticipantID,
+		EventID:             offeringID,
+		FactionID:           &factionID,
+	}
+
+	// fire mech command
+	arena.Message("BATTLE:ABILITY", event)
 
 	// send notification
 	arena.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
@@ -1024,19 +1033,6 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 	if err != nil {
 		gamelog.L.Warn().Str("mech id", wm.ID).Str("user id", user.ID).Msg("Unauthorised mech command - create")
 		return terror.Error(err, err.Error())
-	}
-
-	// check cell is disabled or not
-	disableCells := arena.currentDisableCells()
-	if disableCells == nil {
-		return terror.Error(fmt.Errorf("no disabeld cells provided"), "The selected cell is disabled.")
-	}
-
-	selectedCell := req.Payload.StartCoords.X.Add(req.Payload.StartCoords.Y.Mul(decimal.NewFromInt(int64(arena.CurrentBattle().gameMap.CellsX)))).IntPart()
-	for _, dc := range disableCells {
-		if dc == selectedCell {
-			return terror.Error(fmt.Errorf("cell disabled"), "The selected cell is disabled.")
-		}
 	}
 
 	// Only perform mech move command db checks if war machine is not a mini mech

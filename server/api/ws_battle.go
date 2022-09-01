@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -59,6 +60,7 @@ type BattleMechHistoryRequest struct {
 type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
+	BattleReplayID *string         `json:"battle_replay,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -91,13 +93,31 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
-		output = append(output, BattleMechDetailed{
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
+		}
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
-			},
-		})
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Select(boiler.BattleReplayColumns.ID),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
+			}
+		}
+
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
@@ -138,18 +158,39 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
+
 		var mech *boiler.Mech
 		if o.R != nil && o.R.Mech != nil {
 			mech = o.R.Mech
 		}
-		output = append(output, BattleMechDetailed{
+
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
+			Mech:       mech,
+		}
+
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
-			},
-			Mech: mech,
-		})
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Select(boiler.BattleReplayColumns.ID),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
+			}
+		}
+
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
@@ -299,6 +340,18 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
+func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	// details
+	resp, err := db.GetNextBattle(ctx)
+	if err != nil {
+		return terror.Error(err, "failed getting uppcoming battle details")
+	}
+
+	reply(resp)
+
+	return nil
+}
 
 func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
@@ -312,6 +365,5 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 	if btl != nil {
 		reply(btl.MiniMapAbilityDisplayList.List())
 	}
-
 	return nil
 }

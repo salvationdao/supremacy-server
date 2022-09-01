@@ -264,7 +264,7 @@ ALTER TABLE chassis_utility
     RENAME TO mech_utility;
 
 -- ALTER TABLE blueprint_chassis
---     RENAME TO blueprint_mechs;
+--     RENAME TO blueprint_mechs_old;
 
 ALTER TABLE blueprint_chassis_animation
     RENAME TO blueprint_mech_animation;

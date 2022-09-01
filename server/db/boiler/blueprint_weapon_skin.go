@@ -14,6 +14,7 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,82 +24,131 @@ import (
 
 // BlueprintWeaponSkin is an object representing the database table.
 type BlueprintWeaponSkin struct {
-	ID           string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label        string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier         string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt    time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Collection   string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	StatModifier decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
+	ID               string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label            string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Tier             string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt        time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Collection       string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	StatModifier     decimal.NullDecimal `boiler:"stat_modifier" boil:"stat_modifier" json:"stat_modifier,omitempty" toml:"stat_modifier" yaml:"stat_modifier,omitempty"`
+	ImageURL         null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	AnimationURL     null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	CardAnimationURL null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	LargeImageURL    null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	AvatarURL        null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	BackgroundColor  null.String         `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	YoutubeURL       null.String         `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintWeaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintWeaponSkinColumns = struct {
-	ID           string
-	Label        string
-	Tier         string
-	CreatedAt    string
-	Collection   string
-	StatModifier string
+	ID               string
+	Label            string
+	Tier             string
+	CreatedAt        string
+	Collection       string
+	StatModifier     string
+	ImageURL         string
+	AnimationURL     string
+	CardAnimationURL string
+	LargeImageURL    string
+	AvatarURL        string
+	BackgroundColor  string
+	YoutubeURL       string
 }{
-	ID:           "id",
-	Label:        "label",
-	Tier:         "tier",
-	CreatedAt:    "created_at",
-	Collection:   "collection",
-	StatModifier: "stat_modifier",
+	ID:               "id",
+	Label:            "label",
+	Tier:             "tier",
+	CreatedAt:        "created_at",
+	Collection:       "collection",
+	StatModifier:     "stat_modifier",
+	ImageURL:         "image_url",
+	AnimationURL:     "animation_url",
+	CardAnimationURL: "card_animation_url",
+	LargeImageURL:    "large_image_url",
+	AvatarURL:        "avatar_url",
+	BackgroundColor:  "background_color",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintWeaponSkinTableColumns = struct {
-	ID           string
-	Label        string
-	Tier         string
-	CreatedAt    string
-	Collection   string
-	StatModifier string
+	ID               string
+	Label            string
+	Tier             string
+	CreatedAt        string
+	Collection       string
+	StatModifier     string
+	ImageURL         string
+	AnimationURL     string
+	CardAnimationURL string
+	LargeImageURL    string
+	AvatarURL        string
+	BackgroundColor  string
+	YoutubeURL       string
 }{
-	ID:           "blueprint_weapon_skin.id",
-	Label:        "blueprint_weapon_skin.label",
-	Tier:         "blueprint_weapon_skin.tier",
-	CreatedAt:    "blueprint_weapon_skin.created_at",
-	Collection:   "blueprint_weapon_skin.collection",
-	StatModifier: "blueprint_weapon_skin.stat_modifier",
+	ID:               "blueprint_weapon_skin.id",
+	Label:            "blueprint_weapon_skin.label",
+	Tier:             "blueprint_weapon_skin.tier",
+	CreatedAt:        "blueprint_weapon_skin.created_at",
+	Collection:       "blueprint_weapon_skin.collection",
+	StatModifier:     "blueprint_weapon_skin.stat_modifier",
+	ImageURL:         "blueprint_weapon_skin.image_url",
+	AnimationURL:     "blueprint_weapon_skin.animation_url",
+	CardAnimationURL: "blueprint_weapon_skin.card_animation_url",
+	LargeImageURL:    "blueprint_weapon_skin.large_image_url",
+	AvatarURL:        "blueprint_weapon_skin.avatar_url",
+	BackgroundColor:  "blueprint_weapon_skin.background_color",
+	YoutubeURL:       "blueprint_weapon_skin.youtube_url",
 }
 
 // Generated where
 
 var BlueprintWeaponSkinWhere = struct {
-	ID           whereHelperstring
-	Label        whereHelperstring
-	Tier         whereHelperstring
-	CreatedAt    whereHelpertime_Time
-	Collection   whereHelperstring
-	StatModifier whereHelperdecimal_NullDecimal
+	ID               whereHelperstring
+	Label            whereHelperstring
+	Tier             whereHelperstring
+	CreatedAt        whereHelpertime_Time
+	Collection       whereHelperstring
+	StatModifier     whereHelperdecimal_NullDecimal
+	ImageURL         whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
-	ID:           whereHelperstring{field: "\"blueprint_weapon_skin\".\"id\""},
-	Label:        whereHelperstring{field: "\"blueprint_weapon_skin\".\"label\""},
-	Tier:         whereHelperstring{field: "\"blueprint_weapon_skin\".\"tier\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_weapon_skin\".\"created_at\""},
-	Collection:   whereHelperstring{field: "\"blueprint_weapon_skin\".\"collection\""},
-	StatModifier: whereHelperdecimal_NullDecimal{field: "\"blueprint_weapon_skin\".\"stat_modifier\""},
+	ID:               whereHelperstring{field: "\"blueprint_weapon_skin\".\"id\""},
+	Label:            whereHelperstring{field: "\"blueprint_weapon_skin\".\"label\""},
+	Tier:             whereHelperstring{field: "\"blueprint_weapon_skin\".\"tier\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_weapon_skin\".\"created_at\""},
+	Collection:       whereHelperstring{field: "\"blueprint_weapon_skin\".\"collection\""},
+	StatModifier:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapon_skin\".\"stat_modifier\""},
+	ImageURL:         whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"image_url\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"animation_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"card_animation_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"large_image_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"avatar_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"background_color\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"youtube_url\""},
 }
 
 // BlueprintWeaponSkinRels is where relationship names are stored.
 var BlueprintWeaponSkinRels = struct {
+	DefaultSkinBlueprintWeapons    string
 	WeaponModelSkinCompatibilities string
-	DefaultSkinWeaponModels        string
 	BlueprintWeaponSkins           string
 }{
+	DefaultSkinBlueprintWeapons:    "DefaultSkinBlueprintWeapons",
 	WeaponModelSkinCompatibilities: "WeaponModelSkinCompatibilities",
-	DefaultSkinWeaponModels:        "DefaultSkinWeaponModels",
 	BlueprintWeaponSkins:           "BlueprintWeaponSkins",
 }
 
 // blueprintWeaponSkinR is where relationships are stored.
 type blueprintWeaponSkinR struct {
+	DefaultSkinBlueprintWeapons    BlueprintWeaponSlice              `boiler:"DefaultSkinBlueprintWeapons" boil:"DefaultSkinBlueprintWeapons" json:"DefaultSkinBlueprintWeapons" toml:"DefaultSkinBlueprintWeapons" yaml:"DefaultSkinBlueprintWeapons"`
 	WeaponModelSkinCompatibilities WeaponModelSkinCompatibilitySlice `boiler:"WeaponModelSkinCompatibilities" boil:"WeaponModelSkinCompatibilities" json:"WeaponModelSkinCompatibilities" toml:"WeaponModelSkinCompatibilities" yaml:"WeaponModelSkinCompatibilities"`
-	DefaultSkinWeaponModels        WeaponModelSlice                  `boiler:"DefaultSkinWeaponModels" boil:"DefaultSkinWeaponModels" json:"DefaultSkinWeaponModels" toml:"DefaultSkinWeaponModels" yaml:"DefaultSkinWeaponModels"`
 	BlueprintWeaponSkins           WeaponSkinSlice                   `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
 }
 
@@ -111,9 +161,9 @@ func (*blueprintWeaponSkinR) NewStruct() *blueprintWeaponSkinR {
 type blueprintWeaponSkinL struct{}
 
 var (
-	blueprintWeaponSkinAllColumns            = []string{"id", "label", "tier", "created_at", "collection", "stat_modifier"}
+	blueprintWeaponSkinAllColumns            = []string{"id", "label", "tier", "created_at", "collection", "stat_modifier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url"}
 	blueprintWeaponSkinColumnsWithoutDefault = []string{"label"}
-	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "collection", "stat_modifier"}
+	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "collection", "stat_modifier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url"}
 	blueprintWeaponSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponSkinGeneratedColumns      = []string{}
 )
@@ -360,6 +410,28 @@ func (q blueprintWeaponSkinQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// DefaultSkinBlueprintWeapons retrieves all the blueprint_weapon's BlueprintWeapons with an executor via default_skin_id column.
+func (o *BlueprintWeaponSkin) DefaultSkinBlueprintWeapons(mods ...qm.QueryMod) blueprintWeaponQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"blueprint_weapons\".\"default_skin_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"blueprint_weapons\".\"deleted_at\""),
+	)
+
+	query := BlueprintWeapons(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_weapons\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"blueprint_weapons\".*"})
+	}
+
+	return query
+}
+
 // WeaponModelSkinCompatibilities retrieves all the weapon_model_skin_compatibility's WeaponModelSkinCompatibilities with an executor.
 func (o *BlueprintWeaponSkin) WeaponModelSkinCompatibilities(mods ...qm.QueryMod) weaponModelSkinCompatibilityQuery {
 	var queryMods []qm.QueryMod
@@ -377,28 +449,6 @@ func (o *BlueprintWeaponSkin) WeaponModelSkinCompatibilities(mods ...qm.QueryMod
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"weapon_model_skin_compatibilities\".*"})
-	}
-
-	return query
-}
-
-// DefaultSkinWeaponModels retrieves all the weapon_model's WeaponModels with an executor via default_skin_id column.
-func (o *BlueprintWeaponSkin) DefaultSkinWeaponModels(mods ...qm.QueryMod) weaponModelQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"weapon_models\".\"default_skin_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"weapon_models\".\"deleted_at\""),
-	)
-
-	query := WeaponModels(queryMods...)
-	queries.SetFrom(query.Query, "\"weapon_models\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"weapon_models\".*"})
 	}
 
 	return query
@@ -423,6 +473,105 @@ func (o *BlueprintWeaponSkin) BlueprintWeaponSkins(mods ...qm.QueryMod) weaponSk
 	}
 
 	return query
+}
+
+// LoadDefaultSkinBlueprintWeapons allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintWeaponSkinL) LoadDefaultSkinBlueprintWeapons(e boil.Executor, singular bool, maybeBlueprintWeaponSkin interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintWeaponSkin
+	var object *BlueprintWeaponSkin
+
+	if singular {
+		object = maybeBlueprintWeaponSkin.(*BlueprintWeaponSkin)
+	} else {
+		slice = *maybeBlueprintWeaponSkin.(*[]*BlueprintWeaponSkin)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintWeaponSkinR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintWeaponSkinR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_weapons`),
+		qm.WhereIn(`blueprint_weapons.default_skin_id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_weapons.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load blueprint_weapons")
+	}
+
+	var resultSlice []*BlueprintWeapon
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_weapons")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on blueprint_weapons")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_weapons")
+	}
+
+	if len(blueprintWeaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.DefaultSkinBlueprintWeapons = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &blueprintWeaponR{}
+			}
+			foreign.R.DefaultSkin = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.DefaultSkinID {
+				local.R.DefaultSkinBlueprintWeapons = append(local.R.DefaultSkinBlueprintWeapons, foreign)
+				if foreign.R == nil {
+					foreign.R = &blueprintWeaponR{}
+				}
+				foreign.R.DefaultSkin = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadWeaponModelSkinCompatibilities allows an eager lookup of values, cached into the
@@ -516,105 +665,6 @@ func (blueprintWeaponSkinL) LoadWeaponModelSkinCompatibilities(e boil.Executor, 
 					foreign.R = &weaponModelSkinCompatibilityR{}
 				}
 				foreign.R.BlueprintWeaponSkin = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadDefaultSkinWeaponModels allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintWeaponSkinL) LoadDefaultSkinWeaponModels(e boil.Executor, singular bool, maybeBlueprintWeaponSkin interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintWeaponSkin
-	var object *BlueprintWeaponSkin
-
-	if singular {
-		object = maybeBlueprintWeaponSkin.(*BlueprintWeaponSkin)
-	} else {
-		slice = *maybeBlueprintWeaponSkin.(*[]*BlueprintWeaponSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintWeaponSkinR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintWeaponSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`weapon_models`),
-		qm.WhereIn(`weapon_models.default_skin_id in ?`, args...),
-		qmhelper.WhereIsNull(`weapon_models.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load weapon_models")
-	}
-
-	var resultSlice []*WeaponModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice weapon_models")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on weapon_models")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapon_models")
-	}
-
-	if len(weaponModelAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.DefaultSkinWeaponModels = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &weaponModelR{}
-			}
-			foreign.R.DefaultSkin = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.DefaultSkinID {
-				local.R.DefaultSkinWeaponModels = append(local.R.DefaultSkinWeaponModels, foreign)
-				if foreign.R == nil {
-					foreign.R = &weaponModelR{}
-				}
-				foreign.R.DefaultSkin = local
 				break
 			}
 		}
@@ -721,6 +771,58 @@ func (blueprintWeaponSkinL) LoadBlueprintWeaponSkins(e boil.Executor, singular b
 	return nil
 }
 
+// AddDefaultSkinBlueprintWeapons adds the given related objects to the existing relationships
+// of the blueprint_weapon_skin, optionally inserting them as new records.
+// Appends related to o.R.DefaultSkinBlueprintWeapons.
+// Sets related.R.DefaultSkin appropriately.
+func (o *BlueprintWeaponSkin) AddDefaultSkinBlueprintWeapons(exec boil.Executor, insert bool, related ...*BlueprintWeapon) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.DefaultSkinID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"blueprint_weapons\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"default_skin_id"}),
+				strmangle.WhereClause("\"", "\"", 2, blueprintWeaponPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.DefaultSkinID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintWeaponSkinR{
+			DefaultSkinBlueprintWeapons: related,
+		}
+	} else {
+		o.R.DefaultSkinBlueprintWeapons = append(o.R.DefaultSkinBlueprintWeapons, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &blueprintWeaponR{
+				DefaultSkin: o,
+			}
+		} else {
+			rel.R.DefaultSkin = o
+		}
+	}
+	return nil
+}
+
 // AddWeaponModelSkinCompatibilities adds the given related objects to the existing relationships
 // of the blueprint_weapon_skin, optionally inserting them as new records.
 // Appends related to o.R.WeaponModelSkinCompatibilities.
@@ -768,58 +870,6 @@ func (o *BlueprintWeaponSkin) AddWeaponModelSkinCompatibilities(exec boil.Execut
 			}
 		} else {
 			rel.R.BlueprintWeaponSkin = o
-		}
-	}
-	return nil
-}
-
-// AddDefaultSkinWeaponModels adds the given related objects to the existing relationships
-// of the blueprint_weapon_skin, optionally inserting them as new records.
-// Appends related to o.R.DefaultSkinWeaponModels.
-// Sets related.R.DefaultSkin appropriately.
-func (o *BlueprintWeaponSkin) AddDefaultSkinWeaponModels(exec boil.Executor, insert bool, related ...*WeaponModel) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.DefaultSkinID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"weapon_models\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"default_skin_id"}),
-				strmangle.WhereClause("\"", "\"", 2, weaponModelPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.DefaultSkinID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &blueprintWeaponSkinR{
-			DefaultSkinWeaponModels: related,
-		}
-	} else {
-		o.R.DefaultSkinWeaponModels = append(o.R.DefaultSkinWeaponModels, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &weaponModelR{
-				DefaultSkin: o,
-			}
-		} else {
-			rel.R.DefaultSkin = o
 		}
 	}
 	return nil
