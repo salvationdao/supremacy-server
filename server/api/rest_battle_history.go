@@ -39,7 +39,7 @@ type BattleHistoryRecord struct {
 	Winner    FactionShortcode `json:"winner"`
 	RunnerUp  FactionShortcode `json:"runner_up"`
 	Loser     FactionShortcode `json:"loser"`
-	Signature string
+	Signature string           `json:"signature"`
 }
 
 // BattleHistoryController holds handlers for battle history requests
