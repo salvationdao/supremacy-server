@@ -393,11 +393,6 @@ func main() {
 					gamelog.L.Info().Msgf("Quest manager took %s", time.Since(start))
 
 					start = time.Now()
-					// initialise battle queue manager
-					bqm := battle_queue.NewBattleQueueSystem()
-					gamelog.L.Info().Msgf("Battle Queue manager took %s", time.Since(start))
-
-					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 
@@ -408,12 +403,19 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
-						BattleQueueManager:       bqm,
 					})
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
+					// initialise battle queue manager
+					bqm, err := battle_queue.NewBattleQueueSystem(arenaManager, rpcClient)
+					if err != nil {
+						return terror.Error(err, "Battle Queue manager init failed")
+					}
+					gamelog.L.Info().Msgf("Battle Queue manager took %s", time.Since(start))
+
+					start = time.Now()
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up Zendesk")

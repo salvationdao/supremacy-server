@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"server"
-	"server/battle_queue"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -282,15 +281,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
 			deployedMechs = append(deployedMechs, mci)
-
-			am.BattleQueueManager.Deploy <- &battle_queue.Deploy{
-				FactionID: factionID,
-				StartBattles: func() {
-					for _, a := range am.AvailableArenas() {
-						a.startBattle()
-					}
-				},
-			}
 
 			// broadcast queue detail
 			go func(mechID string) {

@@ -2124,6 +2124,7 @@ func (btl *Battle) Load() error {
 
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		btl.arena.isIdle.Store(true)
 		return nil
 	}
 

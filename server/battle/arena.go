@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"server"
-	"server/battle_queue"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -63,7 +62,6 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
-	BattleQueueManager       *battle_queue.BattleQueueManager
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
@@ -78,7 +76,6 @@ type Opts struct {
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	QuestManager             *quest.System
-	BattleQueueManager       *battle_queue.BattleQueueManager
 }
 
 func NewArenaManager(opts *Opts) *ArenaManager {
@@ -94,7 +91,6 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
-		BattleQueueManager:       opts.BattleQueueManager,
 		arenas:                   make(map[string]*Arena),
 	}
 
@@ -147,12 +143,12 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	return arena, nil
 }
 
-func (am *ArenaManager) AvailableArenas() []*Arena {
+func (am *ArenaManager) IdleArenas() []*Arena {
 	am.RLock()
 	defer am.RUnlock()
 	resp := []*Arena{}
 	for _, a := range am.arenas {
-		if a.connected.Load() {
+		if a.connected.Load() && a.isIdle.Load() {
 			resp = append(resp, a)
 		}
 	}
@@ -345,6 +341,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		SystemMessagingManager:   am.SystemMessagingManager,
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
+		isIdle:                   atomic.Bool{},
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -383,6 +380,8 @@ type Arena struct {
 	LastBattleResult *BattleEndDetail
 
 	QuestManager *quest.System
+
+	isIdle atomic.Bool
 
 	gameClientJsonDataChan chan []byte
 	sync.RWMutex
@@ -1303,7 +1302,7 @@ type WarMachineStatusPayload struct {
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.beginBattle()
+	arena.BeginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -1445,7 +1444,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
-			arena.beginBattle()
+			arena.BeginBattle()
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
@@ -1630,7 +1629,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
-func (arena *Arena) beginBattle() {
+func (arena *Arena) BeginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
@@ -1642,6 +1641,7 @@ func (arena *Arena) beginBattle() {
 
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		arena.isIdle.Store(true)
 		return
 	}
 

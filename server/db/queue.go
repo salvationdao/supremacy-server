@@ -47,10 +47,10 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 		return nil, err
 	}
 
-	excludeMechIDs := []string{}
-	for _, bm := range pendingMechs {
-		excludeMechIDs = append(excludeMechIDs, bm.MechID)
-	}
+	// excludeMechIDs := []string{}
+	// for _, bm := range pendingMechs {
+	// 	excludeMechIDs = append(excludeMechIDs, bm.MechID)
+	// }
 
 	// if disableOwnerCheck && len(pendingMechs) < count {
 	// numberLeft := count - len(pendingMechs)
