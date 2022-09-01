@@ -55,7 +55,7 @@ func Gotimeout(cb func(), timeout time.Duration, errorCallback func(error)) {
 	start <- true
 }
 
-// Unpacks 8 booleans from a single byte
+// UnpackBooleansFromByte Unpacks 8 booleans from a single byte
 func UnpackBooleansFromByte(packedByte byte) []bool {
 	booleans := make([]bool, 8)
 	for i := 0; i < 8; i++ {
@@ -64,7 +64,7 @@ func UnpackBooleansFromByte(packedByte byte) []bool {
 	return booleans
 }
 
-// Packs up to 8 booleans into a single byte/
+// PackBooleansIntoByte Packs up to 8 booleans into a single byte/
 func PackBooleansIntoByte(booleans []bool) byte {
 	var packedByte byte
 	for i, b := range booleans {
@@ -75,10 +75,34 @@ func PackBooleansIntoByte(booleans []bool) byte {
 	return packedByte
 }
 
-// Converts byte array to int32
+// BytesToInt Converts byte array to int32
 func BytesToInt(bytes []byte) int32 {
 	_ = bytes[3] // bounds check hint to compiler
 	return int32(bytes[3]) | int32(bytes[2])<<8 | int32(bytes[1])<<16 | int32(bytes[0])<<24
+}
+
+// BytesToUInt16 Converts byte array to uint16
+func BytesToUInt16(bytes []byte) uint16 {
+	_ = bytes[1] // bounds check hint to compiler
+	return uint16(bytes[1]) | uint16(bytes[0])<<8
+}
+
+// IntToBytes Converts int32 to byte array
+func IntToBytes(v int32) []byte {
+	return []byte{
+		byte((v >> 24) & 0xFF),
+		byte((v >> 16) & 0xFF),
+		byte((v >> 8) & 0xFF),
+		byte((v >> 0) & 0xFF),
+	}
+}
+
+// UInt16ToBytes Converts uint16 to byte array
+func UInt16ToBytes(v uint16) []byte {
+	return []byte{
+		byte(v >> 8),
+		byte(v >> 0),
+	}
 }
 
 func UUIDArray2StrArray(uids []uuid.UUID) []string {

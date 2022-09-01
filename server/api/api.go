@@ -245,6 +245,7 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena/{arena_id}/minimap_events", battle.HubKeyMinimapEventsSubscribe, api.ArenaManager.MinimapEventsSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
 				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
