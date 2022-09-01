@@ -445,11 +445,18 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	var MechSkins []types.MechSkin
 	for _, record := range records {
 		mechModel := &types.MechSkin{
-			ID:           record[0],
-			Collection:   record[1],
-			Label:        record[2],
-			Tier:         record[3],
-			DefaultLevel: record[5],
+			ID:               record[0],
+			Collection:       record[1],
+			Label:            record[2],
+			Tier:             record[3],
+			DefaultLevel:     record[5],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
@@ -464,22 +471,43 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                collection,
 			                                label,
 			                                tier,
-			                                default_level
+			                                default_level,
+			                                image_url,
+			                                animation_url,
+			                                card_animation_url,
+			                                large_image_url,
+			                                avatar_url,
+			                                background_color,
+			                                youtube_url
 			                                )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO
 			    UPDATE SET id=$1,
 			               collection=$2,
 			               label=$3,
 			               tier=$4,
-			               default_level=$5;
+			               default_level=$5,
+			               image_url=$6,
+			               animation_url=$7,
+			               card_animation_url=$8,
+			               large_image_url=$9,
+			               avatar_url=$10,
+			               background_color=$11,
+			               youtube_url=$12;
 		`,
 			mechSkin.ID,
 			mechSkin.Collection,
 			mechSkin.Label,
 			mechSkin.Tier,
 			defaultLevel,
+			mechSkin.ImageUrl,
+			mechSkin.AnimationUrl,
+			mechSkin.CardAnimationUrl,
+			mechSkin.LargeImageUrl,
+			mechSkin.AvatarUrl,
+			mechSkin.BackgroundColor,
+			mechSkin.YoutubeUrl,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)
@@ -841,11 +869,18 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 	var WeaponSkins []types.WeaponSkin
 	for _, record := range records {
 		weaponSkin := &types.WeaponSkin{
-			ID:           record[0],
-			Label:        record[1],
-			Tier:         record[2],
-			Collection:   record[4],
-			StatModifier: record[5],
+			ID:               record[0],
+			Label:            record[1],
+			Tier:             record[2],
+			Collection:       record[4],
+			StatModifier:     record[5],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		WeaponSkins = append(WeaponSkins, *weaponSkin)
@@ -858,9 +893,16 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			                                  label,
 			                                  tier,
 			                                  collection,
-			                                  stat_modifier
+			                                  stat_modifier,
+			                                  image_url,
+			                                  animation_url,
+			                                  card_animation_url,
+			                                  large_image_url,
+			                                  avatar_url,
+			                                  background_color,
+			                                  youtube_url
 			                                  )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET 
@@ -868,13 +910,27 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			               label=$2,
 			               tier=$3,
 			               collection=$4,
-			               stat_modifier=$5;
+			               stat_modifier=$5,
+			               image_url=$6,
+			               animation_url=$7,
+			               card_animation_url=$8,
+			               large_image_url=$9,
+			               avatar_url=$10,
+			               background_color=$11,
+			               youtube_url=$12;
 		`,
 			weaponSkin.ID,
 			weaponSkin.Label,
 			weaponSkin.Tier,
 			weaponSkin.Collection,
 			null.NewString(weaponSkin.StatModifier, weaponSkin.StatModifier != ""),
+			weaponSkin.ImageUrl,
+			weaponSkin.AnimationUrl,
+			weaponSkin.CardAnimationUrl,
+			weaponSkin.LargeImageUrl,
+			weaponSkin.AvatarUrl,
+			weaponSkin.BackgroundColor,
+			weaponSkin.YoutubeUrl,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
@@ -1070,6 +1126,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
 			MechDisplayEffectType:    record[17],
+			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
+			IgnoreSelfKill:           strings.ToLower(record[21]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -1089,6 +1147,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -1120,6 +1184,9 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
 				boiler.GameAbilityColumns.MechDisplayEffectType,
 				boiler.GameAbilityColumns.AnimationDurationSeconds,
+				boiler.GameAbilityColumns.ShouldCheckTeamKill,
+				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
+				boiler.GameAbilityColumns.IgnoreSelfKill,
 			),
 			boil.Infer(),
 		)
@@ -1400,7 +1467,6 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	return nil
 }
 
-
 func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 	r := csv.NewReader(f)
 
@@ -1415,11 +1481,11 @@ func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 
 	for _, record := range records {
 		blueprintUtil := &boiler.BlueprintUtility{
-			ID:                record[0],
-			Label:             record[4],
-			Collection:        record[5],
-			Type: boiler.UtilityTypeSHIELD,
-			AvatarURL:         null.NewString(record[6], record[6] != ""),
+			ID:         record[0],
+			Label:      record[4],
+			Collection: record[5],
+			Type:       boiler.UtilityTypeSHIELD,
+			AvatarURL:  null.NewString(record[6], record[6] != ""),
 		}
 		blueprintUtilShield := &boiler.BlueprintUtilityShield{
 			BlueprintUtilityID: record[0],
@@ -1436,7 +1502,6 @@ func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-
 
 		// upsert blueprint quest
 		err = blueprintUtil.Upsert(

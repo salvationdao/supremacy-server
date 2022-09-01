@@ -96,6 +96,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
 	questManager *quest.System,
+	privateKeySignerHex string,
 	battleQueueManager *battle_queue.BattleQueueManager,
 ) (*API, error) {
 	// spin up syndicate system
@@ -207,7 +208,7 @@ func NewAPI(
 			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
-			r.Mount("/battle_history", BattleHistoryRouter())
+			r.Mount("/battle_history", BattleHistoryRouter(privateKeySignerHex))
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
@@ -250,6 +251,7 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
+				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
 
 				s.WSBatch("/arena/{arena_id}/mech/{slotNumber}", "/public/arena/{arena_id}/mech", battle.HubKeyWarMachineStatUpdated, api.ArenaManager.WarMachineStatSubscribe)
 				s.WS("/arena/{arena_id}/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, api.ArenaManager.BribeStageSubscribe)

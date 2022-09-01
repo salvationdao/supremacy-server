@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
@@ -272,14 +274,20 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	return result, err
 }
 
-func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
+func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle bool) ([]*boiler.BattleQueue, error) {
+
+	inBattle := ""
+	if excludeInBattle {
+		inBattle = "AND  x.battle_id IS NULL"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
 		) x
-		WHERE x.r <= $1
+		WHERE x.r <= $1 %s
 	`,
 		boiler.BattleQueueColumns.ID,
 		boiler.BattleQueueColumns.MechID,
@@ -289,6 +297,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
+		inBattle,
 	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
@@ -306,9 +315,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		if err != nil {
 			return nil, err
 		}
+
 		queue = append(queue, mc)
 	}
-
 	return queue, nil
 }
 
@@ -467,4 +476,70 @@ func BattleViewerUpsert(battleID string, userID string) error {
 	}
 
 	return nil
+}
+
+type BattleMap struct {
+	Name          string `json:"name,omitempty"`
+	BackgroundURL string `json:"background_url,omitempty"`
+	LogoURL       string `json:"logo_url,omitempty"`
+}
+type NextBattle struct {
+	Map   *BattleMap `json:"map,omitempty"`
+	BcID  string     `json:"bc_id,omitempty"`
+	ZhiID string     `json:"zhi_id,omitempty"`
+	RmID  string     `json:"rm_id,omitempty"`
+
+	BCMechIDs  []string `json:"bc_mech_ids,omitempty"`
+	ZHIMechIDs []string `json:"zhi_mech_ids,omitempty"`
+	RMMechIDs  []string `json:"rm_mech_ids,omitempty"`
+}
+
+func GetNextBattle(ctx context.Context) (*NextBattle, error) {
+	// get next 6 mechs for each faction (the first 3 might be in battle)
+	queue, err := LoadBattleQueue(context.Background(), 6, true)
+	if err != nil {
+		return nil, err
+	}
+
+	rmMechIDs := []string{}
+	zhiMechIDs := []string{}
+	bcMechIDs := []string{}
+
+	for _, q := range queue {
+		if q.FactionID == server.RedMountainFactionID {
+			rmMechIDs = append(rmMechIDs, q.MechID)
+		}
+
+		if q.FactionID == server.ZaibatsuFactionID {
+			zhiMechIDs = append(zhiMechIDs, q.MechID)
+		}
+
+		if q.FactionID == server.BostonCyberneticsFactionID {
+			bcMechIDs = append(bcMechIDs, q.MechID)
+		}
+	}
+
+	// get map details
+	bMap := &BattleMap{}
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" ASC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "failed getting next map in queue")
+	}
+
+	if mapInQueue != nil && mapInQueue.R != nil {
+		bMap.LogoURL = mapInQueue.R.Map.LogoURL
+		bMap.BackgroundURL = mapInQueue.R.Map.BackgroundURL
+		bMap.Name = mapInQueue.R.Map.Name
+	}
+
+	resp := &NextBattle{
+		BCMechIDs:  bcMechIDs,
+		ZHIMechIDs: zhiMechIDs,
+		RMMechIDs:  rmMechIDs,
+		BcID:       server.BostonCyberneticsFactionID,
+		ZhiID:      server.ZaibatsuFactionID,
+		RmID:       server.RedMountainFactionID,
+		Map:        bMap,
+	}
+	return resp, nil
 }

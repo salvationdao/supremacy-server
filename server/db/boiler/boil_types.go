@@ -71,6 +71,13 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for ArenaTypeEnum
 const (
 	ArenaTypeEnumSTORY      = "STORY"

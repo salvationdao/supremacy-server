@@ -315,6 +315,18 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 			return nil
 		}()
+
+		// broadcast queue detail
+		go func() {
+			qs, err := db.GetNextBattle(ctx)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+				return
+			}
+
+			ws.PublishMessage("/public/arena/upcomming_battle", HubKeyNextBattleDetails, qs)
+		}()
+
 		if err != nil {
 			// error out if no mech is deployed
 			if len(deployedMechs) == 0 {
