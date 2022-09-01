@@ -12,8 +12,11 @@ import (
 	"go.uber.org/atomic"
 )
 
+type StartBattlesFn func()
+
 type Deploy struct {
-	FactionID string
+	FactionID    string
+	StartBattles StartBattlesFn
 }
 
 type BattleQueueManager struct {
@@ -150,6 +153,8 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			}
 
 			qs.MovePendingMechs(deploy.FactionID, limit)
+
+			deploy.StartBattles()
 		}
 	}
 }

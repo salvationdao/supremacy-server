@@ -48,7 +48,7 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
-	QueueManager             *battle_queue.BattleQueueManager
+	BattleQueueManager       *battle_queue.BattleQueueManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -96,6 +96,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
 	questManager *quest.System,
+	battleQueueManager *battle_queue.BattleQueueManager,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -118,7 +119,7 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
-		QueueManager:             battle_queue.NewBattleQueueSystem(),
+		BattleQueueManager:       battleQueueManager,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"server"
+	"server/battle_queue"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -60,6 +61,7 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
+	BattleQueueManager       *battle_queue.BattleQueueManager
 
 	arenas       map[string]*Arena
 	sync.RWMutex // lock for arena
@@ -74,6 +76,7 @@ type Opts struct {
 	Telegram                 *telegram.Telegram
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	QuestManager             *quest.System
+	BattleQueueManager       *battle_queue.BattleQueueManager
 }
 
 func NewArenaManager(opts *Opts) *ArenaManager {
@@ -89,6 +92,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
+		BattleQueueManager:       opts.BattleQueueManager,
 		arenas:                   make(map[string]*Arena),
 	}
 
@@ -139,6 +143,18 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	}
 
 	return arena, nil
+}
+
+func (am *ArenaManager) AvailableArenas() []*Arena {
+	am.RLock()
+	defer am.RUnlock()
+	resp := []*Arena{}
+	for _, a := range am.arenas {
+		if a.connected.Load() {
+			resp = append(resp, a)
+		}
+	}
+	return resp
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*boiler.BattleArena {
@@ -1283,7 +1299,7 @@ type WarMachineStatusPayload struct {
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.beginBattle()
+	arena.initNextBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -1457,7 +1473,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
-			arena.beginBattle()
+			arena.initNextBattle()
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
@@ -1642,7 +1658,51 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
-func (arena *Arena) beginBattle() {
+func (arena *Arena) startBattle() {
+	var nextBattleNumber int
+	// query last battle
+	lastBattle, err := boiler.Battles(
+		boiler.BattleWhere.ArenaID.EQ(arena.ID),
+		qm.OrderBy("battle_number DESC"), qm.Limit(1),
+		qm.Load(
+			boiler.BattleRels.GameMap,
+			qm.Select(boiler.GameMapColumns.Name),
+		),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
+	}
+	if lastBattle != nil {
+		if !lastBattle.EndedAt.Valid {
+			// If last battle has not finished, return
+			return
+		}
+
+		nextBattleNumber = lastBattle.BattleNumber + 1
+	}
+
+	err = arena.CurrentBattle().Load()
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
+		return
+	}
+
+	arena.Message(BATTLEINIT, &struct {
+		BattleID     string                  `json:"battle_id"`
+		MapName      string                  `json:"map_name"`
+		BattleNumber int                     `json:"battle_number"`
+		WarMachines  []*WarMachineGameClient `json:"war_machines"`
+	}{
+		BattleID:     arena.CurrentBattle().ID,
+		MapName:      arena.CurrentBattle().MapName,
+		WarMachines:  WarMachinesToClient(arena.CurrentBattle().WarMachines),
+		BattleNumber: nextBattleNumber,
+	})
+
+	go arena.NotifyUpcomingWarMachines()
+}
+
+func (arena *Arena) initNextBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
@@ -1678,7 +1738,6 @@ func (arena *Arena) beginBattle() {
 	var battleID string
 	var battle *boiler.Battle
 
-	var nextBattleNumber int
 	inserted := false
 
 	// query last battle
@@ -1693,9 +1752,6 @@ func (arena *Arena) beginBattle() {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
 	}
-	if lastBattle != nil {
-		nextBattleNumber = lastBattle.BattleNumber + 1
-	}
 
 	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
@@ -1706,7 +1762,6 @@ func (arena *Arena) beginBattle() {
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
-
 	} else {
 		// refund abilities
 		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
@@ -1720,7 +1775,6 @@ func (arena *Arena) beginBattle() {
 		gameMap.Name = lastBattle.R.GameMap.Name
 
 		inserted = true
-
 	}
 
 	events := []*RecordingEvents{}
@@ -1779,28 +1833,8 @@ func (arena *Arena) beginBattle() {
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
 
-	err = btl.Load()
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
-
-	// order the mechs by faction id
-
 	arena.storeCurrentBattle(btl)
-
-	arena.Message(BATTLEINIT, &struct {
-		BattleID     string                  `json:"battle_id"`
-		MapName      string                  `json:"map_name"`
-		BattleNumber int                     `json:"battle_number"`
-		WarMachines  []*WarMachineGameClient `json:"war_machines"`
-	}{
-		BattleID:     btl.ID,
-		MapName:      btl.MapName,
-		WarMachines:  WarMachinesToClient(btl.WarMachines),
-		BattleNumber: nextBattleNumber,
-	})
-
-	go arena.NotifyUpcomingWarMachines()
+	arena.startBattle()
 }
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
