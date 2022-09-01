@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"server"
 	"server/battle"
-	"server/battle_queue"
 	"server/db"
 	"server/gamelog"
 	"server/marketplace"
@@ -48,7 +47,6 @@ type API struct {
 	Cookie                   *securebytes.SecureBytes
 	IsCookieSecure           bool
 	SalePlayerAbilityManager *sale_player_abilities.SalePlayerAbilityManager
-	BattleQueueManager       *battle_queue.BattleQueueManager
 	Commander                *ws.Commander
 	SecureUserCommander      *ws.Commander
 	SecureFactionCommander   *ws.Commander
@@ -97,7 +95,6 @@ func NewAPI(
 	syncConfig *synctool.StaticSyncTool,
 	questManager *quest.System,
 	privateKeySignerHex string,
-	battleQueueManager *battle_queue.BattleQueueManager,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -120,7 +117,6 @@ func NewAPI(
 		LanguageDetector:         languageDetector,
 		IsCookieSecure:           config.CookieSecure,
 		SalePlayerAbilityManager: sale_player_abilities.NewSalePlayerAbilitiesSystem(),
-		BattleQueueManager:       battleQueueManager,
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),

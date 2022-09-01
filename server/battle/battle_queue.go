@@ -1,10 +1,9 @@
-package battle_queue
+package battle
 
 import (
 	"fmt"
 	"math"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -26,9 +25,8 @@ type Deploy struct {
 }
 
 type BattleQueueManager struct {
-	blacklistedOwnerIDs   []string // [mech owner IDs]
-	canNextBattleCommence bool     // the next battle will not start if this is false
-	arenaManager          *battle.ArenaManager
+	arenaManager        *ArenaManager
+	blacklistedOwnerIDs []string // [mech owner IDs]
 
 	// KVs
 	QueueTickerIntervalSeconds int
@@ -37,7 +35,7 @@ type BattleQueueManager struct {
 	deadlock.RWMutex
 }
 
-func NewBattleQueueSystem(am *battle.ArenaManager, rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManager, error) {
+func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManager, error) {
 	zaiQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.ZaibatsuFactionID)
 	if err != nil {
 		return nil, err
@@ -120,7 +118,6 @@ func NewBattleQueueSystem(am *battle.ArenaManager, rpc *xsyn_rpcclient.XsynXrpcC
 	qs := &BattleQueueManager{
 		blacklistedOwnerIDs:        []string{},
 		QueueTickerIntervalSeconds: db.GetIntWithDefault(db.KeyQueueTickerIntervalSeconds, 10),
-		arenaManager:               am,
 	}
 
 	go qs.BattleQueueUpdater()
@@ -142,66 +139,6 @@ func (qs *BattleQueueManager) SetMechOwnerBlacklist(newBlacklist []string) {
 	qs.blacklistedOwnerIDs = newBlacklist
 }
 
-func (qs *BattleQueueManager) MovePendingMechs(factionID string, limit int) {
-	l := gamelog.L.With().Str("func", "MovePendingMechs").Logger()
-
-	qs.RLock()
-	// Get mechs from backlog
-	pendingMechs, err := db.GetPendingMechsFromFactionID(factionID, qs.blacklistedOwnerIDs, limit)
-	if err != nil {
-		l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
-		return
-	}
-	qs.RUnlock()
-
-	if len(pendingMechs) < limit {
-		return
-	}
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		l.Error().Err(err).Msg("failed to create db transaction")
-		return
-	}
-	defer tx.Rollback()
-
-	// Remove the mechs from the backlog and place them in the battle queue
-	for _, pm := range pendingMechs {
-		if pm == nil {
-			continue
-		}
-
-		bq := boiler.BattleQueue{
-			MechID:             pm.MechID,
-			FactionID:          pm.FactionID,
-			OwnerID:            pm.OwnerID,
-			FeeID:              pm.FeeID,
-			QueueFeeTXID:       pm.QueueFeeTXID,
-			QueueFeeTXIDRefund: pm.QueueFeeTXIDRefund,
-			UpdatedAt:          pm.UpdatedAt,
-			QueuedAt:           pm.QueuedAt,
-		}
-		err := bq.Insert(tx, boil.Infer())
-		if err != nil {
-			l.Error().Err(err).Msg("failed to insert into battle queue")
-			return
-		}
-
-		pm.Delete(tx)
-		if err != nil {
-			l.Error().Err(err).Msg("failed to remove from battle queue backlog")
-			return
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		l.Error().Err(err).Msg("failed to commit db transaction")
-		return
-	}
-
-	qs.MovePendingMechs(factionID, db.FACTION_MECH_LIMIT)
-}
-
 func (qs *BattleQueueManager) BattleQueueUpdater() {
 	l := gamelog.L.With().Str("func", "BattleQueueUpdater").Logger()
 
@@ -221,81 +158,86 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			// 3. otherwise, insert sets (3 mech per fection from each faction)
 			// 4. check idle arena, and run arena.initNextBattle()
 
+			qs.RLock()
+			blacklisted := qs.blacklistedOwnerIDs
+			qs.RUnlock()
 			// Get mechs from backlog
-			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, qs.blacklistedOwnerIDs, db.FACTION_MECH_LIMIT)
+			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				return
 			}
 			if len(zaiPendingMechs) < db.FACTION_MECH_LIMIT {
-				continue
+				return
 			}
-			rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, qs.blacklistedOwnerIDs, db.FACTION_MECH_LIMIT)
+			rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				return
 			}
 			if len(rmPendingMechs) < db.FACTION_MECH_LIMIT {
-				continue
+				return
 			}
-			bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, qs.blacklistedOwnerIDs, db.FACTION_MECH_LIMIT)
+			bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				return
 			}
 			if len(bcPendingMechs) < db.FACTION_MECH_LIMIT {
-				continue
-			}
-
-			tx, err := gamedb.StdConn.Begin()
-			if err != nil {
-				l.Error().Err(err).Msg("failed to create db transaction")
-				return
-			}
-			defer tx.Rollback()
-
-			pendingMechs := []*boiler.BattleQueueBacklog{}
-			pendingMechs = append(pendingMechs, zaiPendingMechs...)
-			pendingMechs = append(pendingMechs, rmPendingMechs...)
-			pendingMechs = append(pendingMechs, bcPendingMechs...)
-			// Remove the mechs from the backlog and place them in the battle queue
-			for _, pm := range pendingMechs {
-				if pm == nil {
-					continue
-				}
-
-				bq := boiler.BattleQueue{
-					MechID:             pm.MechID,
-					FactionID:          pm.FactionID,
-					OwnerID:            pm.OwnerID,
-					FeeID:              pm.FeeID,
-					QueueFeeTXID:       pm.QueueFeeTXID,
-					QueueFeeTXIDRefund: pm.QueueFeeTXIDRefund,
-					UpdatedAt:          pm.UpdatedAt,
-					QueuedAt:           pm.QueuedAt,
-				}
-				err := bq.Insert(tx, boil.Infer())
-				if err != nil {
-					l.Error().Err(err).Msg("failed to insert into battle queue")
-					return
-				}
-
-				pm.Delete(tx)
-				if err != nil {
-					l.Error().Err(err).Msg("failed to remove from battle queue backlog")
-					return
-				}
-			}
-			err = tx.Commit()
-			if err != nil {
-				l.Error().Err(err).Msg("failed to commit db transaction")
 				return
 			}
 
-			// Call BeginBattle on idle arenas
-			for _, a := range qs.arenaManager.IdleArenas() {
-				a.BeginBattle()
-			}
+			func() {
+				tx, err := gamedb.StdConn.Begin()
+				if err != nil {
+					l.Error().Err(err).Msg("failed to create db transaction")
+					return
+				}
+				defer tx.Rollback()
+
+				pendingMechs := []*boiler.BattleQueueBacklog{}
+				pendingMechs = append(pendingMechs, zaiPendingMechs...)
+				pendingMechs = append(pendingMechs, rmPendingMechs...)
+				pendingMechs = append(pendingMechs, bcPendingMechs...)
+				// Remove the mechs from the backlog and place them in the battle queue
+				for _, pm := range pendingMechs {
+					if pm == nil {
+						continue
+					}
+
+					bq := boiler.BattleQueue{
+						MechID:             pm.MechID,
+						FactionID:          pm.FactionID,
+						OwnerID:            pm.OwnerID,
+						FeeID:              pm.FeeID,
+						QueueFeeTXID:       pm.QueueFeeTXID,
+						QueueFeeTXIDRefund: pm.QueueFeeTXIDRefund,
+						UpdatedAt:          pm.UpdatedAt,
+						QueuedAt:           pm.QueuedAt,
+					}
+					err := bq.Insert(tx, boil.Infer())
+					if err != nil {
+						l.Error().Err(err).Msg("failed to insert into battle queue")
+						return
+					}
+
+					pm.Delete(tx)
+					if err != nil {
+						l.Error().Err(err).Msg("failed to remove from battle queue backlog")
+						return
+					}
+				}
+				err = tx.Commit()
+				if err != nil {
+					l.Error().Err(err).Msg("failed to commit db transaction")
+					return
+				}
+
+				// Call BeginBattle on idle arenas
+				for _, a := range qs.arenaManager.IdleArenas() {
+					a.BeginBattle()
+				}
+			}()
 		}
 	}
 }

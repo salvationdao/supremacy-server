@@ -13,7 +13,6 @@ import (
 	"server/api"
 	"server/asset"
 	"server/battle"
-	"server/battle_queue"
 	"server/comms"
 	"server/db"
 	"server/db/boiler"
@@ -396,7 +395,7 @@ func main() {
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 
-					arenaManager := battle.NewArenaManager(&battle.Opts{
+					arenaManager, err := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
@@ -404,16 +403,11 @@ func main() {
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
 					})
+					if err != nil {
+						return terror.Error(err, "Arena Manager init failed")
+					}
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
-
-					start = time.Now()
-					// initialise battle queue manager
-					bqm, err := battle_queue.NewBattleQueueSystem(arenaManager, rpcClient)
-					if err != nil {
-						return terror.Error(err, "Battle Queue manager init failed")
-					}
-					gamelog.L.Info().Msgf("Battle Queue manager took %s", time.Since(start))
 
 					start = time.Now()
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
@@ -426,7 +420,7 @@ func main() {
 					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm, bqm)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -788,7 +782,6 @@ func SetupAPI(
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
 	questManager *quest.System,
-	battleQueueManager *battle_queue.BattleQueueManager,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -847,7 +840,7 @@ func SetupAPI(
 
 	// API Server
 	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex, battleQueueManager)
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}
