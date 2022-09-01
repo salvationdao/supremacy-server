@@ -1303,7 +1303,7 @@ type WarMachineStatusPayload struct {
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.initNextBattle()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -1445,7 +1445,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
-			arena.initNextBattle()
+			arena.beginBattle()
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
@@ -1630,67 +1630,20 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
-func (arena *Arena) startBattle() {
-	var nextBattleNumber int
-	// query last battle
-	lastBattle, err := boiler.Battles(
-		boiler.BattleWhere.ArenaID.EQ(arena.ID),
-		qm.OrderBy("battle_number DESC"), qm.Limit(1),
-		qm.Load(
-			boiler.BattleRels.GameMap,
-			qm.Select(boiler.GameMapColumns.Name),
-		),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
-	}
-	if lastBattle != nil {
-		if !lastBattle.EndedAt.Valid {
-			// If last battle has not finished, return
-			return
-		}
+func (arena *Arena) beginBattle() {
+	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
+	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
-		nextBattleNumber = lastBattle.BattleNumber + 1
-	}
-
-	err = arena.CurrentBattle().Load()
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-		return
-	}
-
-	arena.Message(BATTLEINIT, &struct {
-		BattleID     string                  `json:"battle_id"`
-		MapName      string                  `json:"map_name"`
-		BattleNumber int                     `json:"battle_number"`
-		WarMachines  []*WarMachineGameClient `json:"war_machines"`
-	}{
-		BattleID:     arena.CurrentBattle().ID,
-		MapName:      arena.CurrentBattle().MapName,
-		WarMachines:  WarMachinesToClient(arena.CurrentBattle().WarMachines),
-		BattleNumber: nextBattleNumber,
-	})
-
-	go arena.NotifyUpcomingWarMachines()
-}
-
-func (arena *Arena) initNextBattle() {
-	q, err := db.LoadBattleQueue(context.Background(), 3, true)
+	q, err := db.LoadBattleQueue(context.Background(), 3, false)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
-		gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 		return
 	}
 
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-
-		// set arena to idle
 		return
 	}
-
-	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
-	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
 	// delete all the unfinished mech command
 	_, err = boiler.MechMoveCommandLogs(
