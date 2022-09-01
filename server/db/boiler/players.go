@@ -4026,7 +4026,7 @@ func (playerL) LoadBattles(e boil.Executor, singular bool, maybePlayer interface
 	}
 
 	query := NewQuery(
-		qm.Select("\"battles\".id, \"battles\".game_map_id, \"battles\".started_at, \"battles\".ended_at, \"battles\".battle_number, \"battles\".started_battle_seconds, \"battles\".ended_battle_seconds, \"battles\".arena_id, \"a\".\"player_id\""),
+		qm.Select("\"battles\".id, \"battles\".game_map_id, \"battles\".started_at, \"battles\".ended_at, \"battles\".battle_number, \"battles\".started_battle_seconds_old, \"battles\".ended_battle_seconds_old, \"battles\".arena_id, \"a\".\"player_id\""),
 		qm.From("\"battles\""),
 		qm.InnerJoin("\"battle_viewers\" as \"a\" on \"battles\".\"id\" = \"a\".\"battle_id\""),
 		qm.WhereIn("\"a\".\"player_id\" in ?", args...),
@@ -4047,7 +4047,7 @@ func (playerL) LoadBattles(e boil.Executor, singular bool, maybePlayer interface
 		one := new(Battle)
 		var localJoinCol string
 
-		err = results.Scan(&one.ID, &one.GameMapID, &one.StartedAt, &one.EndedAt, &one.BattleNumber, &one.StartedBattleSeconds, &one.EndedBattleSeconds, &one.ArenaID, &localJoinCol)
+		err = results.Scan(&one.ID, &one.GameMapID, &one.StartedAt, &one.EndedAt, &one.BattleNumber, &one.StartedBattleSecondsOld, &one.EndedBattleSecondsOld, &one.ArenaID, &localJoinCol)
 		if err != nil {
 			return errors.Wrap(err, "failed to scan eager loaded results for battles")
 		}

@@ -1,19 +1,6 @@
--- drop battle unique key to support multi arena
--- DROP INDEX IF EXISTS battles_battle_number_key;
-ALTER TABLE battles
-    ALTER COLUMN battle_number DROP DEFAULT,
-    ALTER COLUMN battle_number TYPE INTEGER USING battle_number::INTEGER,
-    DROP CONSTRAINT IF EXISTS battles_battle_number_key CASCADE,
-    DROP CONSTRAINT IF EXISTS battles_ended_battle_seconds_key,
-    DROP CONSTRAINT IF EXISTS battles_started_battle_seconds_key;
-
-DROP INDEX IF EXISTS battles_ended_battle_seconds_key;
-DROP INDEX IF EXISTS battles_started_battle_seconds_key;
-
-ALTER TABLE battles
-    ADD CONSTRAINT battles_arena_id_battle_number_key UNIQUE (arena_id, battle_number),
-    ADD CONSTRAINT battles_arena_id_ended_battle_seconds_key UNIQUE (arena_id, ended_battle_seconds),
-    ADD CONSTRAINT battles_arena_id_started_battle_seconds_key UNIQUE (arena_id, started_battle_seconds);
+-- rename battle columns that are no longer used
+ALTER TABLE battles RENAME COLUMN started_battle_seconds TO started_battle_seconds_old;
+ALTER TABLE battles RENAME COLUMN ended_battle_seconds TO ended_battle_seconds_old;
 
 CREATE TABLE battle_lobbies
 (
