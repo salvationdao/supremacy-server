@@ -54,11 +54,6 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 		return nil, err
 	}
 
-	boilerWeaponBlueprintDetails, err := boiler.BlueprintWeaponSkins(boiler.BlueprintWeaponSkinWhere.ID.EQ(boilerWeaponSkin.BlueprintID)).One(tx)
-	if err != nil {
-		return nil, err
-	}
-
 	queryMods := []qm.QueryMod{
 		boiler.WeaponModelSkinCompatibilityWhere.BlueprintWeaponSkinID.EQ(boilerWeaponSkin.BlueprintID),
 	}
@@ -73,7 +68,7 @@ func WeaponSkin(tx boil.Executor, id string, blueprintID *string) (*server.Weapo
 	if err != nil {
 		return nil, err
 	}
-	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerWeaponCollectionDetails, weaponSkinCompatMatrix, boilerWeaponBlueprintDetails), nil
+	return server.WeaponSkinFromBoiler(boilerWeaponSkin, boilerWeaponCollectionDetails, weaponSkinCompatMatrix, boilerWeaponSkin.R.Blueprint), nil
 }
 
 func IsWeaponSkinColumn(col string) bool {

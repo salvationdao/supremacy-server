@@ -61,13 +61,6 @@ func MechSkin(trx boil.Executor, id string, modelID *string) (*server.MechSkin, 
 		return nil, err
 	}
 
-	boilerMechSkinBlueprintDetails, err := boiler.BlueprintMechSkins(
-		boiler.BlueprintMechSkinWhere.ID.EQ(boilerMech.BlueprintID),
-	).One(trx)
-	if err != nil {
-		return nil, err
-	}
-
 	queryMods := []qm.QueryMod{
 		boiler.MechModelSkinCompatibilityWhere.BlueprintMechSkinID.EQ(boilerMech.BlueprintID),
 	}
@@ -84,12 +77,15 @@ func MechSkin(trx boil.Executor, id string, modelID *string) (*server.MechSkin, 
 		return nil, err
 	}
 
-	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails, mechSkinCompatabilityMatrix, boilerMechSkinBlueprintDetails), nil
+	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails, mechSkinCompatabilityMatrix, boilerMech.R.Blueprint), nil
 }
 
 func MechSkins(id ...string) ([]*server.MechSkin, error) {
 	var skins []*server.MechSkin
-	boilerMechSkins, err := boiler.MechSkins(boiler.MechSkinWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerMechSkins, err := boiler.MechSkins(
+		boiler.MechSkinWhere.ID.IN(id),
+		qm.Load(boiler.MechSkinRels.Blueprint),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -99,14 +95,8 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 		if err != nil {
 			return nil, err
 		}
-		boilerMechSkinBlueprintDetails, err := boiler.BlueprintMechSkins(
-			boiler.BlueprintMechSkinWhere.ID.EQ(ms.BlueprintID),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return nil, err
-		}
 
-		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails, nil, boilerMechSkinBlueprintDetails))
+		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails, nil, ms.R.Blueprint))
 	}
 	return skins, nil
 }
