@@ -128,7 +128,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	rcs, err := boiler.RepairCases(
 		boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
 		boiler.RepairCaseWhere.CompletedAt.IsNull(),
-		qm.Load(boiler.RepairCaseRels.RepairOffers),
+		qm.Load(boiler.RepairCaseRels.RepairOffers, boiler.RepairOfferWhere.ClosedAt.IsNull()),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Strs("mech ids", req.Payload.MechIDs).Msg("Failed to get repair case")
@@ -152,9 +152,20 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	var tx *sql.Tx
 	paidTxID := ""
 
-	deployedMechs := []*boiler.CollectionItem{}
+	deployedMechIDs := []string{}
+	now := time.Now()
+	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 
-	for _, mci := range mcis {
+	// insert mech from the input order
+	for _, mechID := range req.Payload.MechIDs {
+		idx := slices.IndexFunc(mcis, func(mci *boiler.CollectionItem) bool {
+			return mci.ItemID == mechID
+		})
+		if idx == -1 {
+			continue
+		}
+		mci := mcis[idx]
+
 		err = func() error {
 			tx, err = gamedb.StdConn.Begin()
 			if err != nil {
@@ -260,7 +271,8 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 				return terror.Error(err, "Unable to join queue, contact support or try again.")
 			}
-			deployedMechs = append(deployedMechs, mci)
+
+			deployedMechIDs = append(deployedMechIDs, mci.ItemID)
 
 			// broadcast queue detail
 			go func(mechID string) {
@@ -269,7 +281,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 					return
 				}
-
 				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), WSPlayerAssetMechQueueSubscribe, qs)
 			}(mci.ItemID)
 
@@ -289,7 +300,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 		if err != nil {
 			// error out if no mech is deployed
-			if len(deployedMechs) == 0 {
+			if len(deployedMechIDs) == 0 {
 				return terror.Error(err, "Failed to deploy mech.")
 			}
 
@@ -298,10 +309,115 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}
 	}
 
+	// clean up repair slots, if any mechs are successfully deployed and in the bay
+	if len(deployedMechIDs) > 0 {
+		// wrap it in go routine, the channel will not slow down the deployment process
+		go func(playerID string, mechIDs []string) {
+			_ = am.SendRepairFunc(func() error {
+				tx, err = gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+					return terror.Error(err, "Failed to start db transaction")
+				}
+
+				defer tx.Rollback()
+
+				count, err := boiler.PlayerMechRepairSlots(
+					boiler.PlayerMechRepairSlotWhere.MechID.IN(mechIDs),
+					boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+				).UpdateAll(
+					tx,
+					boiler.M{
+						boiler.PlayerMechRepairSlotColumns.Status:         boiler.RepairSlotStatusDONE,
+						boiler.PlayerMechRepairSlotColumns.SlotNumber:     0,
+						boiler.PlayerMechRepairSlotColumns.NextRepairTime: null.TimeFromPtr(nil),
+					},
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Strs("mech id list", mechIDs).Msg("Failed to update repair slot.")
+					return terror.Error(err, "Failed to update repair slot")
+				}
+
+				// update remain slots and broadcast
+				resp := []*boiler.PlayerMechRepairSlot{}
+				if count > 0 {
+					pms, err := boiler.PlayerMechRepairSlots(
+						boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerID),
+						boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+						qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+					).All(tx)
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to load player mech repair slots.")
+						return terror.Error(err, "Failed to load repair slots")
+					}
+
+					for i, pm := range pms {
+						shouldUpdate := false
+
+						// check slot number
+						if pm.SlotNumber != i+1 {
+							pm.SlotNumber = i + 1
+							shouldUpdate = true
+						}
+
+						if i == 0 {
+							if pm.Status != boiler.RepairSlotStatusREPAIRING {
+								pm.Status = boiler.RepairSlotStatusREPAIRING
+								shouldUpdate = true
+							}
+
+							if !pm.NextRepairTime.Valid {
+								pm.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+								shouldUpdate = true
+							}
+						} else {
+							if pm.Status != boiler.RepairSlotStatusPENDING {
+								pm.Status = boiler.RepairSlotStatusPENDING
+								shouldUpdate = true
+							}
+
+							if pm.NextRepairTime.Valid {
+								pm.NextRepairTime = null.TimeFromPtr(nil)
+								shouldUpdate = true
+							}
+						}
+
+						if shouldUpdate {
+							_, err = pm.Update(tx,
+								boil.Whitelist(
+									boiler.PlayerMechRepairSlotColumns.SlotNumber,
+									boiler.PlayerMechRepairSlotColumns.Status,
+									boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+								),
+							)
+							if err != nil {
+								gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
+								return terror.Error(err, "Failed to update repair slot")
+							}
+						}
+
+						resp = append(resp, pm)
+					}
+				}
+
+				err = tx.Commit()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+					return terror.Error(err, "Failed to commit db transaction.")
+				}
+
+				// broadcast new list
+				ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
+
+				return nil
+			})
+		}(user.ID, deployedMechIDs)
+	}
+
 	// Send updated battle queue status to all subscribers
 	go CalcNextQueueStatus(factionID)
 
-	if len(deployedMechs) != len(req.Payload.MechIDs) {
+	if len(deployedMechIDs) != len(req.Payload.MechIDs) {
 		return terror.Error(fmt.Errorf("not all the mechs are deployed"), "Mechs are partially deployed.")
 	}
 
