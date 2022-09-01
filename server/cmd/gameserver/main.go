@@ -172,6 +172,9 @@ func main() {
 					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
 
 					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
+
+					// Crypto signatures for battle histories
+					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -830,7 +833,8 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager)
+	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}
