@@ -380,6 +380,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 		return terror.Error(err, "Failed to load mech info")
 	}
 
+	if mech.R != nil && mech.R.ChassisSkin != nil && mech.R.ChassisSkin.R != nil && mech.R.ChassisSkin.R.Blueprint != nil {
+		ci.Tier = mech.R.ChassisSkin.R.Blueprint.Tier
+	}
+
 	m := server.Mech{
 		ID:             mech.ID,
 		Label:          mech.R.Blueprint.Label,
@@ -391,6 +395,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 			ImageURL:  mechSkin.ImageURL,
 		},
 		ChassisSkin: &server.MechSkin{
+			CollectionItem: server.CollectionItemFromBoiler(ci),
 			Images: &server.Images{
 				AvatarURL: mechSkin.AvatarURL,
 				ImageURL:  mechSkin.ImageURL,
