@@ -133,7 +133,14 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
 		)),
-	)
+	//	qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
+	//		boiler.TableNames.WeaponModelSkinCompatibilities,
+	//		qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+	//		qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
+	//		qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+	//		qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponModel),
+	//	)),
+	//)
 
 	if len(opts.FilterSkinCompatibility) > 0 {
 		//// inner join weapon model
