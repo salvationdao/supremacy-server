@@ -29,14 +29,13 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gobwas/ws v1.1.0
 	github.com/h2non/filetype v1.1.3
-	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/meehow/securebytes v0.3.1
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/ninja-syndicate/hub v1.9.2
-	github.com/ninja-syndicate/supremacy-bridge v1.0.37
+	github.com/ninja-syndicate/supremacy-bridge v0.1.47
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
@@ -56,9 +55,7 @@ require (
 	github.com/DataDog/datadog-go/v5 v5.1.0 // indirect
 	github.com/DataDog/sketches-go v1.4.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect
@@ -73,6 +70,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jackc/pgconn v1.10.1 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
@@ -105,7 +103,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/ethereum/go-ethereum v1.10.23
+	github.com/ethereum/go-ethereum v1.10.15
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -122,7 +120,7 @@ require (
 	github.com/jackc/pgtype v1.9.1 // indirect
 	github.com/jackc/puddle v1.2.0 // indirect
 	github.com/klauspost/compress v1.14.2 // indirect
-	github.com/lib/pq v1.10.2 // indirect
+	github.com/lib/pq v1.10.2
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect

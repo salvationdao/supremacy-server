@@ -246,6 +246,7 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena/{arena_id}/minimap_events", battle.HubKeyMinimapEventsSubscribe, api.ArenaManager.MinimapEventsSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
 				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
@@ -274,6 +275,9 @@ func NewAPI(
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
+
+				// user repair bay
+				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
 
 				// battle related endpoint
 				s.WS("/user/{user_id}/arena/{arena_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)

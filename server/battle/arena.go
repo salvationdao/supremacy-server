@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"net"
 	"net/http"
 	"server"
@@ -23,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/shopspring/decimal"
 	"golang.org/x/exp/slices"
@@ -865,6 +866,29 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	}
 
 	reply(minimapUpdates)
+	return nil
+}
+
+const HubKeyMinimapEventsSubscribe = "MINIMAP:EVENTS:SUBSCRIBE"
+
+func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// if current battle still running
+	btl := arena.CurrentBattle()
+	if btl == nil {
+		return nil
+	}
+
+	// send landmine, pickup locations and the hive map state
+	hasMessages, mapEventsPacked := btl.MapEventList.Pack()
+	if hasMessages {
+		reply(mapEventsPacked)
+	}
+
 	return nil
 }
 
@@ -1726,6 +1750,7 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
+		MapEventList: NewMapEventList(),
 		replaySession: &RecordingSession{
 			ReplaySession: &boiler.BattleReplay{
 				ArenaID:         arena.ID,
@@ -1762,7 +1787,7 @@ func (arena *Arena) beginBattle() {
 			switch a.GameClientAbilityID {
 			case 1: // NUKE
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
-					Radius: 5200,
+					Radius: 2000,
 				}
 			case 12: // EMP
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{

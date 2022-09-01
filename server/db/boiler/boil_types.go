@@ -315,6 +315,13 @@ const (
 	BanFromTypePLAYER = "PLAYER"
 )
 
+// Enum values for RepairSlotStatus
+const (
+	RepairSlotStatusREPAIRING = "REPAIRING"
+	RepairSlotStatusPENDING   = "PENDING"
+	RepairSlotStatusDONE      = "DONE"
+)
+
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"
