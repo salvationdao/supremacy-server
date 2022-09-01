@@ -136,7 +136,7 @@ func (mel *MapEventList) Pack() (bool, []byte) {
 
 			for _, landmine := range landmines {
 				payload = append(payload, helpers.UInt16ToBytes(landmine.ID)...)
-				payload = append(payload, 0) // Time Offset
+				payload = append(payload, 255) // Time offset never go past 250, so 255 is used to mark an event that will spawn instantly with no animation
 				payload = append(payload, helpers.IntToBytes(landmine.X)...)
 				payload = append(payload, helpers.IntToBytes(landmine.Y)...)
 			}
@@ -144,7 +144,7 @@ func (mel *MapEventList) Pack() (bool, []byte) {
 		}
 	}
 
-	if messageCount <= 1 {
+	if messageCount == 0 {
 		return false, nil
 	}
 	payload[0] = messageCount

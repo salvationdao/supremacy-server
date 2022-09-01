@@ -33,7 +33,6 @@ import (
 type AbilityRadius int
 
 const (
-	NukeRadius     AbilityRadius = 5200
 	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 

@@ -1750,7 +1750,7 @@ func (arena *Arena) beginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
-		MapEventList:  NewMapEventList(),
+		MapEventList: NewMapEventList(),
 		replaySession: &RecordingSession{
 			ReplaySession: &boiler.BattleReplay{
 				ArenaID:         arena.ID,
@@ -1787,7 +1787,7 @@ func (arena *Arena) beginBattle() {
 			switch a.GameClientAbilityID {
 			case 1: // NUKE
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
-					Radius: 5200,
+					Radius: 2000,
 				}
 			case 12: // EMP
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
