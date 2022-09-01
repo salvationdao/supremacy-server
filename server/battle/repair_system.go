@@ -261,27 +261,10 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 						// broadcast mech status
-						go func(pmrs *boiler.PlayerMechRepairSlot) {
-							canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+						go broadcastMechQueueStatus(playerMechRepairSlot, rc)
 
-							totalBlocks := db.TotalRepairBlocks(rc.MechID)
-
-							// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
-							if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-								owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
-								if err != nil {
-									gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
-								}
-
-								queueDetails, err := db.MechArenaStatus(owner.ID, pmrs.MechID, owner.FactionID.String)
-								if err != nil && !errors.Is(err, sql.ErrNoRows) {
-									gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-									return
-								}
-
-								ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
-							}
-						}(playerMechRepairSlot)
+						// broadcast current repair bay
+						go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
 
 						return
 					}
@@ -320,27 +303,7 @@ func (am *ArenaManager) RepairOfferCleaner() {
 						return
 					}
 					// broadcast mech status
-					go func(pmrs *boiler.PlayerMechRepairSlot) {
-						canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
-
-						totalBlocks := db.TotalRepairBlocks(rc.MechID)
-
-						// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
-						if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
-							owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
-							if err != nil {
-								gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
-							}
-
-							queueDetails, err := db.MechArenaStatus(owner.ID, pmrs.MechID, owner.FactionID.String)
-							if err != nil && !errors.Is(err, sql.ErrNoRows) {
-								gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
-								return
-							}
-
-							ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
-						}
-					}(playerMechRepairSlot)
+					go broadcastMechQueueStatus(playerMechRepairSlot, rc)
 				}(pm)
 			}
 
@@ -349,6 +312,28 @@ func (am *ArenaManager) RepairOfferCleaner() {
 		case fn := <-am.RepairOfferFuncChan:
 			fn()
 		}
+	}
+}
+
+func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.RepairCase) {
+	canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+
+	totalBlocks := db.TotalRepairBlocks(pmrs.MechID)
+
+	// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
+	if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
+		owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
+		}
+
+		queueDetails, err := db.MechArenaStatus(owner.ID, pmrs.MechID, owner.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	}
 }
 
