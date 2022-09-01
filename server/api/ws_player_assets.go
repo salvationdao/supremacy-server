@@ -348,14 +348,13 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 
 // PlayerAssetMechBriefInfo load brief mech info for quick deploy
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	cctx := chi.RouteContext(ctx)
-	mechID := cctx.URLParam("mech_id")
+	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 	if mechID == "" {
 		return terror.Error(fmt.Errorf("missing mech id"), "Missing mech id.")
 	}
 
 	// get collection and check ownership
-	_, err := boiler.CollectionItems(
+	ci, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(mechID),
 		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 	).One(gamedb.StdConn)
@@ -382,8 +381,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 	}
 
 	m := server.Mech{
-		ID:    mech.ID,
-		Label: mech.R.Blueprint.Label,
+		ID:             mech.ID,
+		Label:          mech.R.Blueprint.Label,
+		Name:           mech.Name,
+		RepairBlocks:   mech.R.Blueprint.RepairBlocks,
+		CollectionItem: server.CollectionItemFromBoiler(ci),
 		Images: &server.Images{
 			AvatarURL: mechSkin.AvatarURL,
 			ImageURL:  mechSkin.ImageURL,
@@ -394,7 +396,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechBriefInfo(ctx context.Contex
 				ImageURL:  mechSkin.ImageURL,
 			},
 		},
-		RepairBlocks: mech.R.Blueprint.RepairBlocks,
 	}
 
 	reply(m)
