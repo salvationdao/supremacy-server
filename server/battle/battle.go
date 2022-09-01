@@ -1379,6 +1379,8 @@ type GameSettingsResponse struct {
 	WarMachineLocation []byte             `json:"war_machine_location"`
 	BattleIdentifier   int                `json:"battle_identifier"`
 	AbilityDetails     []*AbilityDetail   `json:"ability_details"`
+
+	TimeNow time.Time `json:"time_now"` // time for frontend to adjust the different
 }
 
 func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
@@ -1516,6 +1518,7 @@ func GameSettingsPayload(btl *Battle) *GameSettingsResponse {
 		SpawnedAI:          ais,
 		WarMachineLocation: lt,
 		AbilityDetails:     btl.abilityDetails,
+		TimeNow:            time.Now(),
 	}
 }
 
