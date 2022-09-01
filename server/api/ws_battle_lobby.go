@@ -38,15 +38,17 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// check mechs
+	// initial mech amount check
 	if len(req.Payload.MechIDs) == 0 {
 		return terror.Error(fmt.Errorf("mech id list not provided"), "Initial mech is not provided.")
 	}
 
+	// NOTE: three mech per faction by default
 	if len(req.Payload.MechIDs) > 3 {
 		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
 	}
 
+	// ownership check
 	mcis, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
 		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
@@ -87,6 +89,29 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		if mci.OwnerID != user.ID {
 			return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
 		}
+	}
+
+	// entry fee check
+	if req.Payload.EntryFee.IsNegative() {
+		return terror.Error(fmt.Errorf("negative entry fee"), "Entry fee cannot be negative.")
+	}
+
+	// reward cut check
+	if !req.Payload.FirstFactionCut.IsPositive() || !req.Payload.SecondFactionCut.IsPositive() || !req.Payload.ThirdFactionCut.IsPositive() {
+		return terror.Error(fmt.Errorf("invalid reward cut"), "Reward cut must be positive.")
+	}
+
+	if !req.Payload.FirstFactionCut.Add(req.Payload.SecondFactionCut).Add(req.Payload.ThirdFactionCut).Equal(decimal.NewFromInt(100)) {
+		return terror.Error(fmt.Errorf("total must be 100"), "The total of the reward cut must equal 100.")
+	}
+
+	// start process
+	err = api.ArenaManager.SendBattleLobbyFunc(func() error {
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
