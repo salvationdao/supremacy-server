@@ -71,6 +71,13 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for ArenaTypeEnum
 const (
 	ArenaTypeEnumSTORY      = "STORY"
@@ -146,8 +153,11 @@ const (
 	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
 	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
 	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
-	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+	LocationSelectTypeEnumALLY_MECH_SELECT     = "ALLY_MECH_SELECT"
+	LocationSelectTypeEnumOPPONENT_MECH_SELECT = "OPPONENT_MECH_SELECT"
+	LocationSelectTypeEnumMECH_SELECT_ALLY     = "MECH_SELECT_ALLY"
 	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
+	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
 )
 
 // Enum values for MiniMapDisplayEffectType

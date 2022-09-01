@@ -532,6 +532,7 @@ func (o *Battle) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTrigger
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_ability_triggers\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_ability_triggers\".\"deleted_at\""),
 	)
 
 	query := BattleAbilityTriggers(queryMods...)
@@ -1356,6 +1357,7 @@ func (battleL) LoadBattleAbilityTriggers(e boil.Executor, singular bool, maybeBa
 	query := NewQuery(
 		qm.From(`battle_ability_triggers`),
 		qm.WhereIn(`battle_ability_triggers.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_ability_triggers.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

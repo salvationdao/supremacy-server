@@ -177,20 +177,23 @@ var PlayerBanWhere = struct {
 
 // PlayerBanRels is where relationship names are stored.
 var PlayerBanRels = struct {
-	BannedBy          string
-	BannedPlayer      string
-	RelatedPunishVote string
+	BannedBy                     string
+	BannedPlayer                 string
+	RelatedPunishVote            string
+	RelatedPlayBanPlayerKillLogs string
 }{
-	BannedBy:          "BannedBy",
-	BannedPlayer:      "BannedPlayer",
-	RelatedPunishVote: "RelatedPunishVote",
+	BannedBy:                     "BannedBy",
+	BannedPlayer:                 "BannedPlayer",
+	RelatedPunishVote:            "RelatedPunishVote",
+	RelatedPlayBanPlayerKillLogs: "RelatedPlayBanPlayerKillLogs",
 }
 
 // playerBanR is where relationships are stored.
 type playerBanR struct {
-	BannedBy          *Player     `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
-	BannedPlayer      *Player     `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
-	RelatedPunishVote *PunishVote `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
+	BannedBy                     *Player            `boiler:"BannedBy" boil:"BannedBy" json:"BannedBy" toml:"BannedBy" yaml:"BannedBy"`
+	BannedPlayer                 *Player            `boiler:"BannedPlayer" boil:"BannedPlayer" json:"BannedPlayer" toml:"BannedPlayer" yaml:"BannedPlayer"`
+	RelatedPunishVote            *PunishVote        `boiler:"RelatedPunishVote" boil:"RelatedPunishVote" json:"RelatedPunishVote" toml:"RelatedPunishVote" yaml:"RelatedPunishVote"`
+	RelatedPlayBanPlayerKillLogs PlayerKillLogSlice `boiler:"RelatedPlayBanPlayerKillLogs" boil:"RelatedPlayBanPlayerKillLogs" json:"RelatedPlayBanPlayerKillLogs" toml:"RelatedPlayBanPlayerKillLogs" yaml:"RelatedPlayBanPlayerKillLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -492,6 +495,27 @@ func (o *PlayerBan) RelatedPunishVote(mods ...qm.QueryMod) punishVoteQuery {
 
 	query := PunishVotes(queryMods...)
 	queries.SetFrom(query.Query, "\"punish_votes\"")
+
+	return query
+}
+
+// RelatedPlayBanPlayerKillLogs retrieves all the player_kill_log's PlayerKillLogs with an executor via related_play_ban_id column.
+func (o *PlayerBan) RelatedPlayBanPlayerKillLogs(mods ...qm.QueryMod) playerKillLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_kill_log\".\"related_play_ban_id\"=?", o.ID),
+	)
+
+	query := PlayerKillLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"player_kill_log\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_kill_log\".*"})
+	}
 
 	return query
 }
@@ -815,6 +839,104 @@ func (playerBanL) LoadRelatedPunishVote(e boil.Executor, singular bool, maybePla
 	return nil
 }
 
+// LoadRelatedPlayBanPlayerKillLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerBanL) LoadRelatedPlayBanPlayerKillLogs(e boil.Executor, singular bool, maybePlayerBan interface{}, mods queries.Applicator) error {
+	var slice []*PlayerBan
+	var object *PlayerBan
+
+	if singular {
+		object = maybePlayerBan.(*PlayerBan)
+	} else {
+		slice = *maybePlayerBan.(*[]*PlayerBan)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerBanR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerBanR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_kill_log`),
+		qm.WhereIn(`player_kill_log.related_play_ban_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_kill_log")
+	}
+
+	var resultSlice []*PlayerKillLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_kill_log")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_kill_log")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_kill_log")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RelatedPlayBanPlayerKillLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerKillLogR{}
+			}
+			foreign.R.RelatedPlayBan = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.RelatedPlayBanID) {
+				local.R.RelatedPlayBanPlayerKillLogs = append(local.R.RelatedPlayBanPlayerKillLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerKillLogR{}
+				}
+				foreign.R.RelatedPlayBan = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBannedBy of the playerBan to the related item.
 // Sets o.R.BannedBy to related.
 // Adds o to related.R.BannedByPlayerBans.
@@ -983,6 +1105,131 @@ func (o *PlayerBan) RemoveRelatedPunishVote(exec boil.Executor, related *PunishV
 		related.R.RelatedPunishVotePlayerBans = related.R.RelatedPunishVotePlayerBans[:ln-1]
 		break
 	}
+	return nil
+}
+
+// AddRelatedPlayBanPlayerKillLogs adds the given related objects to the existing relationships
+// of the player_ban, optionally inserting them as new records.
+// Appends related to o.R.RelatedPlayBanPlayerKillLogs.
+// Sets related.R.RelatedPlayBan appropriately.
+func (o *PlayerBan) AddRelatedPlayBanPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.RelatedPlayBanID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_kill_log\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"related_play_ban_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.RelatedPlayBanID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerBanR{
+			RelatedPlayBanPlayerKillLogs: related,
+		}
+	} else {
+		o.R.RelatedPlayBanPlayerKillLogs = append(o.R.RelatedPlayBanPlayerKillLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerKillLogR{
+				RelatedPlayBan: o,
+			}
+		} else {
+			rel.R.RelatedPlayBan = o
+		}
+	}
+	return nil
+}
+
+// SetRelatedPlayBanPlayerKillLogs removes all previously related items of the
+// player_ban replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.RelatedPlayBan's RelatedPlayBanPlayerKillLogs accordingly.
+// Replaces o.R.RelatedPlayBanPlayerKillLogs with related.
+// Sets related.R.RelatedPlayBan's RelatedPlayBanPlayerKillLogs accordingly.
+func (o *PlayerBan) SetRelatedPlayBanPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	query := "update \"player_kill_log\" set \"related_play_ban_id\" = null where \"related_play_ban_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.RelatedPlayBanPlayerKillLogs {
+			queries.SetScanner(&rel.RelatedPlayBanID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.RelatedPlayBan = nil
+		}
+
+		o.R.RelatedPlayBanPlayerKillLogs = nil
+	}
+	return o.AddRelatedPlayBanPlayerKillLogs(exec, insert, related...)
+}
+
+// RemoveRelatedPlayBanPlayerKillLogs relationships from objects passed in.
+// Removes related items from R.RelatedPlayBanPlayerKillLogs (uses pointer comparison, removal does not keep order)
+// Sets related.R.RelatedPlayBan.
+func (o *PlayerBan) RemoveRelatedPlayBanPlayerKillLogs(exec boil.Executor, related ...*PlayerKillLog) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.RelatedPlayBanID, nil)
+		if rel.R != nil {
+			rel.R.RelatedPlayBan = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("related_play_ban_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.RelatedPlayBanPlayerKillLogs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.RelatedPlayBanPlayerKillLogs)
+			if ln > 1 && i < ln-1 {
+				o.R.RelatedPlayBanPlayerKillLogs[i] = o.R.RelatedPlayBanPlayerKillLogs[ln-1]
+			}
+			o.R.RelatedPlayBanPlayerKillLogs = o.R.RelatedPlayBanPlayerKillLogs[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
