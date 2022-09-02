@@ -84,6 +84,8 @@ type Battle struct {
 type MechBattleBrief struct {
 	MechID    string      `json:"mech_id"`
 	Name      string      `json:"name"`
+	Tier      string      `json:"tier"`
+	ImageUrl  string      `json:"image_url"`
 	FactionID string      `json:"faction_id"`
 	Kills     []*KillInfo `json:"kills"`
 	KilledBy  *KillInfo   `json:"killed,omitempty"`
@@ -708,6 +710,9 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 					if wm.Name != "" {
 						mbb.Name = wm.Name
 					}
+
+					mbb.Tier = wm.Tier
+					mbb.ImageUrl = wm.ImageAvatar
 
 					for _, destroyedMechRecord := range btl.destroyedWarMachineMap {
 						destroyedMech := destroyedMechRecord.DestroyedWarMachine
