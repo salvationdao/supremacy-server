@@ -75,6 +75,22 @@ func PackBooleansIntoByte(booleans []bool) byte {
 	return packedByte
 }
 
+// PackBooleansIntoBytes Packs booleans into a byte array
+func PackBooleansIntoBytes(booleans []bool) []byte {
+	var packedBytes []byte
+	count := -1
+	for i := 0; i < len(booleans); i++ {
+		if i%8 == 0 {
+			count++
+			packedBytes = append(packedBytes, 0)
+		}
+		if booleans[i] {
+			packedBytes[count] |= 1 << i
+		}
+	}
+	return packedBytes
+}
+
 // BytesToInt Converts byte array to int32
 func BytesToInt(bytes []byte) int32 {
 	_ = bytes[3] // bounds check hint to compiler

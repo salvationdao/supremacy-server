@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"github.com/gofrs/uuid"
 	"github.com/sasha-s/go-deadlock"
 	"server/helpers"
 )
@@ -8,20 +9,30 @@ import (
 type MapEventType byte
 
 const (
-	MapEventTypeAirstrikeExplosions MapEventType = iota
-	MapEventTypeLandmineActivations
-	MapEventTypeLandmineExplosions
-	MapEventTypeHiveHexUpdate
+	MapEventTypeAirstrikeExplosions MapEventType = iota // The locations of airstrike missile impacts.
+	MapEventTypeLandmineActivations                     // The id, location and faction of a mine that got activated.
+	MapEventTypeLandmineExplosions                      // The ids of mines that exploded.
+	MapEventTypeHiveState                               // The full state of The Hive map.
+	MapEventTypeHiveHexRaised                           // The ids of the hexes that have recently raised.
+	MapEventTypeHiveHexLowered                          // The ids of the hexes that have recently lowered.
 )
+
+const TheHiveMapID string = "bf84dd8e-e124-4c77-99a1-f515a81752b1"
 
 type MapEventList struct {
 	Landmines map[uint16]Landmine
+	HiveState []bool
+
+	mapID string
+
 	deadlock.RWMutex
 }
 
-func NewMapEventList() *MapEventList {
+func NewMapEventList(mapID uuid.UUID) *MapEventList {
 	return &MapEventList{
 		Landmines: make(map[uint16]Landmine),
+		HiveState: make([]bool, 589),
+		mapID:     mapID.String(),
 	}
 }
 
@@ -84,6 +95,23 @@ func (mel *MapEventList) MapEventsUnpack(payload []byte) {
 				offset += 3 // (uint16 + skip byte) skip time offset as server doesn't need to know about it
 				mel.RemoveLandmine(landmineID)
 			}
+
+		case MapEventTypeHiveHexRaised:
+			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
+			offset += 2
+			for i := 0; i <= hexes; i++ {
+				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
+				offset += 3 // (skip time offset)
+				mel.HiveState[hexID] = true
+			}
+		case MapEventTypeHiveHexLowered:
+			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
+			offset += 2
+			for i := 0; i <= hexes; i++ {
+				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
+				offset += 3 // (skip time offset)
+				mel.HiveState[hexID] = false
+			}
 		}
 	}
 }
@@ -112,7 +140,7 @@ func (mel *MapEventList) Pack() (bool, []byte) {
 
 	// Landmines
 	if len(mel.Landmines) > 0 {
-		// Group landmines by faction (MapEventType_LandmineActivations sends each faction's landmines separately for optimised byte size messages)
+		// Group landmines by faction (MapEventTypeLandmineActivations sends each faction's landmines separately for optimised byte size messages)
 		var landminesPerFaction [3][]Landmine
 		for _, landmine := range mel.Landmines {
 			if landmine.FactionNo == 0 || landmine.FactionNo > 3 {
@@ -140,6 +168,13 @@ func (mel *MapEventList) Pack() (bool, []byte) {
 			}
 			messageCount++
 		}
+	}
+
+	// The Hive State
+	if mel.mapID == TheHiveMapID {
+		payload = append(payload, byte(MapEventTypeHiveState))
+		packedHiveState := helpers.PackBooleansIntoBytes(mel.HiveState)
+		payload = append(payload, packedHiveState...)
 	}
 
 	if messageCount == 0 {
