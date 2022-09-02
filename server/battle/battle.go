@@ -92,6 +92,7 @@ type MechBattleBrief struct {
 type KillInfo struct {
 	Name      string `json:"name"`
 	FactionID string `json:"faction_id"`
+	ImageUrl  string `json:"image_url"`
 }
 
 type MiniMapAbilityDisplayList struct {
@@ -462,7 +463,7 @@ func (btl *Battle) endAbilities() {
 	btl.storeAbilities(nil)
 }
 
-func (btl *Battle) generateBattleEndInfo(payload *BattleEndPayload) {
+func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the creation of ending info: endCreateStats!", r)
@@ -721,6 +722,7 @@ func (btl *Battle) generateBattleEndInfo(payload *BattleEndPayload) {
 						if destroyedMech.Hash == wm.Hash {
 							if killerMech != nil {
 								killInfo.Name = killerMech.Name
+								killInfo.ImageUrl = killerMech.ImageAvatar
 							}
 							mbb.KilledBy = killInfo // set kill by info
 							continue
@@ -729,6 +731,7 @@ func (btl *Battle) generateBattleEndInfo(payload *BattleEndPayload) {
 
 							killInfo.Name = destroyedMech.Name
 							killInfo.FactionID = destroyedMech.FactionID
+							killInfo.ImageUrl = destroyedMech.ImageAvatar
 							mbb.Kills = append(mbb.Kills, killInfo)
 							continue
 						}
@@ -928,61 +931,32 @@ func (btl *Battle) RewardMechOwner(
 
 	updateCols := []string{}
 	// reward bonus
-
 	if !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
 		challengeFundUserID := uuid.FromStringOrNil(server.SupremacyChallengeFundUserID)
 		balance := btl.arena.RPCClient.UserBalanceGet(challengeFundUserID)
-
-		// fill 100,000 sups from treasury, if challenge fund is not enough
-		if balance.LessThan(bonusSups) {
-			refilledSups := decimal.New(100000, 18) // 100k sups
-
-			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-				ToUserID:             challengeFundUserID,
-				Amount:               refilledSups.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("refulled sups from treasury to challenge fund|%d", time.Now().UnixNano())),
+		// if challenge fund is enough
+		if balance.GreaterThanOrEqual(bonusSups) {
+			// transfer bonus reward
+			rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				FromUserID:           challengeFundUserID,
+				ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
+				Amount:               bonusSups.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("bonus_battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "Refilled 100k sups for bonus reward.",
+				SubGroup:             string(server.TransactionGroupBonusBattleReward), // for tracking bonus payout
+				Description:          fmt.Sprintf("bonus reward from battle #%d.", btl.BattleNumber),
 			})
 			if err != nil {
-				gamelog.L.Error().
-					Str("Challenge fund user id", challengeFundUserID.String()).
-					Str("Amount", refilledSups.StringFixed(0)).
-					Err(err).
-					Msg("Could not transfer 100k sups from treasury into challenge fund account!!")
-				return
+				l.Error().Err(err).
+					Str("from", server.SupremacyBattleUserID).
+					Str("to", owner.ID).
+					Str("amount", bonusSups.StringFixed(0)).
+					Msg("Failed to pay player battle reward")
 			}
-			gamelog.L.Warn().
-				Str("Challenge fund user id", challengeFundUserID.String()).
-				Str("Amount", refilledSups.StringFixed(0)).
-				Str("TXID", txid).
-				Err(err).
-				Msg("Had to transfer 100k sups from treasury into challenge fund account for battle bonus reward.")
-		}
 
-		// transfer bonus reward
-		rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-			FromUserID:           challengeFundUserID,
-			ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
-			Amount:               bonusSups.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("bonus_battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
-			Group:                string(server.TransactionGroupSupremacy),
-			SubGroup:             string(server.TransactionGroupBattle),
-			Description:          fmt.Sprintf("bonus reward from battle #%d.", btl.BattleNumber),
-		})
-		if err != nil {
-			l.Error().Err(err).
-				Str("from", server.SupremacyBattleUserID).
-				Str("to", owner.ID).
-				Str("amount", bonusSups.StringFixed(0)).
-				Msg("Failed to pay player battle reward")
-			return
+			battleQueueFee.BonusSupsTXID = null.StringFrom(rewardBonusTXID)
+			updateCols = append(updateCols, boiler.BattleQueueFeeColumns.BonusSupsTXID)
 		}
-
-		battleQueueFee.BonusSupsTXID = null.StringFrom(rewardBonusTXID)
-		updateCols = append(updateCols, boiler.BattleQueueFeeColumns.BonusSupsTXID)
 	}
 
 	// reward sups
@@ -1248,7 +1222,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.endAbilities()
 	btl.processWarMachineRepair()
-	btl.generateBattleEndInfo(payload)
+	btl.handleBattleEnd(payload)
 
 	// TODO: we can remove this after a while
 	_, err = boiler.BattleQueueNotifications(
@@ -2133,6 +2107,7 @@ func (btl *Battle) Load() error {
 				if rc.MechID == wm.ID {
 					totalBlocks := db.TotalRepairBlocks(rc.MechID)
 					wm.Health = wm.MaxHealth * uint32(totalBlocks-(rc.BlocksRequiredRepair-rc.BlocksRepaired)) / uint32(totalBlocks)
+					wm.damagedBlockCount = rc.BlocksRequiredRepair - rc.BlocksRepaired
 					break
 				}
 			}

@@ -38,7 +38,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.BlueprintMechSkinColumns.Tier), // get tier from blueprint mech skin table
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
@@ -174,7 +174,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
-					SELECT _ms.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpms.label
+					SELECT _ms.*, _ci.hash, _ci.token_id, _bpms.tier, _ci.owner_id, _bpms.label
 					FROM mech_skin _ms
 					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
 					INNER JOIN blueprint_mech_skin _bpms on _bpms.id = _ms.blueprint_id

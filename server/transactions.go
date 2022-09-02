@@ -28,13 +28,14 @@ type Transaction struct {
 type TransactionGroup string
 
 const (
-	TransactionGroupStore           TransactionGroup = "STORE"
-	TransactionGroupDeposit         TransactionGroup = "DEPOSIT"
-	TransactionGroupWithdrawal      TransactionGroup = "WITHDRAWAL"
-	TransactionGroupMarketplace     TransactionGroup = "MARKETPLACE"
-	TransactionGroupBattle          TransactionGroup = "BATTLE"
-	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
-	TransactionGroupRepair          TransactionGroup = "REPAIR"
-	TransactionGroupSyndicate       TransactionGroup = "SYNDICATE"
-	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
+	TransactionGroupStore             TransactionGroup = "STORE"
+	TransactionGroupDeposit           TransactionGroup = "DEPOSIT"
+	TransactionGroupWithdrawal        TransactionGroup = "WITHDRAWAL"
+	TransactionGroupMarketplace       TransactionGroup = "MARKETPLACE"
+	TransactionGroupBattle            TransactionGroup = "BATTLE"
+	TransactionGroupBonusBattleReward TransactionGroup = "BONUS BATTLE REWARD"
+	TransactionGroupSupremacy         TransactionGroup = "SUPREMACY"
+	TransactionGroupRepair            TransactionGroup = "REPAIR"
+	TransactionGroupSyndicate         TransactionGroup = "SYNDICATE"
+	TransactionGroupAssetManagement   TransactionGroup = "ASSET MANAGEMENT"
 )
