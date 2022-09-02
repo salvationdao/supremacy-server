@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
-
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type ReplayController struct {
@@ -83,7 +82,7 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 
 type BattleReplayDetailsRequest struct {
 	Payload struct {
-		ReplayID string `json:"replay_id"`
+		BattleNumber int `json:"battle_number"`
 	} `json:"payload"`
 }
 
@@ -96,12 +95,18 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		return terror.Error(err, "Invalid request received")
 	}
 
-	if req.Payload.ReplayID == "" {
-		return terror.Error(err, "Invalid replay id")
-	}
-
-	replay, err := boiler.BattleReplays(
-		boiler.BattleReplayWhere.ID.EQ(req.Payload.ReplayID),
+	battleReplay, err := boiler.BattleReplays(
+		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+		qm.Where(
+			fmt.Sprintf(
+				"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s = ? )",
+				boiler.TableNames.Battles,
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.ID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.BattleNumber),
+			),
+			req.Payload.BattleNumber,
+		),
 		qm.Load(boiler.BattleReplayRels.Battle),
 		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
 	).One(gamedb.StdConn)
@@ -109,7 +114,7 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		return terror.Error(err, "Failed to find battle replay")
 	}
 
-	reply(server.BattleReplayFromBoilerWithEvent(replay))
+	reply(server.BattleReplayFromBoilerWithEvent(battleReplay))
 
 	return nil
 }
