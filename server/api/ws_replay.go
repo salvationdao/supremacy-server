@@ -83,6 +83,7 @@ func (rc *ReplayController) GetAllBattleReplays(ctx context.Context, key string,
 type BattleReplayDetailsRequest struct {
 	Payload struct {
 		BattleNumber int `json:"battle_number"`
+		ArenaGID     int `json:"arena_gid"`
 	} `json:"payload"`
 }
 
@@ -109,6 +110,17 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		),
 		qm.Load(boiler.BattleReplayRels.Battle),
 		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
+		qm.Where(
+			fmt.Sprintf(
+				"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s = ? )",
+				boiler.TableNames.BattleArena,
+				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.ID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
+				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.Gid),
+			),
+			req.Payload.ArenaGID,
+		),
+		qm.Load(boiler.BattleReplayRels.Arena),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find battle replay")
