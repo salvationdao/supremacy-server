@@ -50,7 +50,6 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 	return pendingMechs, nil
 }
 
-// todo: rework this to factor in R queue positions
 func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
 	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
 	if err != nil {
@@ -58,22 +57,33 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 	}
 
 	var qp struct {
-		NextQueuePosition int64 `json:"next_queue_position"`
+		QueuePosition int64 `json:"queue_position"`
 	}
 	err = boiler.NewQuery(
-		qm.Select(fmt.Sprintf("count(DISTINCT %s) as next_queue_position",
-			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.OwnerID),
-		)),
-		qm.From(boiler.TableNames.BattleQueue),
-		qm.Where(fmt.Sprintf("%s = ?",
-			qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.FactionID)),
-			factionID),
+		qm.SQL(fmt.Sprintf(`
+		SELECT
+			row_number() OVER (ORDER BY %s) AS queue_position
+		FROM
+			%s
+		WHERE
+			%s = $1
+			AND %s IS NULL
+		`,
+			boiler.BattleQueueColumns.QueuedAt,
+			boiler.TableNames.BattleQueue,
+			boiler.BattleQueueColumns.FactionID,
+			boiler.BattleQueueColumns.BattleID),
+			factionID, // $1
+		),
 	).Bind(nil, gamedb.StdConn, &qp)
+	if errors.Is(err, sql.ErrNoRows) {
+		return int64(GetIntWithDefault(KeyQueueTickerIntervalSeconds, 10)), nil
+	}
 	if err != nil {
 		return -1, err
 	}
 
-	return ((qp.NextQueuePosition + 1) / FACTION_MECH_LIMIT) * averageBattleLengthSecs, nil
+	return ((qp.QueuePosition + 1) / FACTION_MECH_LIMIT) * averageBattleLengthSecs, nil
 }
 
 func GetAverageBattleLengthSeconds() (int64, error) {
