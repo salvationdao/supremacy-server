@@ -1,8 +1,9 @@
 package battle
 
 import (
-	"github.com/gofrs/uuid"
+	"fmt"
 	"github.com/sasha-s/go-deadlock"
+	"server/gamelog"
 	"server/helpers"
 )
 
@@ -17,27 +18,23 @@ const (
 	MapEventTypeHiveHexLowered                          // The ids of the hexes that have recently lowered.
 )
 
-const TheHiveMapID string = "bf84dd8e-e124-4c77-99a1-f515a81752b1"
+const TheHiveMapName string = "TheHive" // Would prefer to check uuid but it changes between seeds
 
 type MapEventList struct {
 	Landmines map[uint16]Landmine
 	HiveState []bool
 
-	mapID string
+	mapName string
 
 	deadlock.RWMutex
 }
 
-func NewMapEventList(mapID uuid.UUID) *MapEventList {
+func NewMapEventList(mapName string) *MapEventList {
 	return &MapEventList{
 		Landmines: make(map[uint16]Landmine),
 		HiveState: make([]bool, 589),
-		mapID:     mapID.String(),
+		mapName:   mapName,
 	}
-}
-
-type MapEvent interface {
-	Pack() []byte
 }
 
 type Landmine struct {
@@ -45,13 +42,6 @@ type Landmine struct {
 	FactionNo byte   `json:"faction"`
 	X         int32  `json:"x"`
 	Y         int32  `json:"y"`
-}
-
-func (e *Landmine) Pack() []byte {
-	var bytes []byte
-	bytes = append(bytes)
-
-	return bytes
 }
 
 func (mel *MapEventList) MapEventsUnpack(payload []byte) {
@@ -97,20 +87,43 @@ func (mel *MapEventList) MapEventsUnpack(payload []byte) {
 			}
 
 		case MapEventTypeHiveHexRaised:
+			var invalidIDs []uint16
+
 			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
 			offset += 2
-			for i := 0; i <= hexes; i++ {
+			for i := 0; i < hexes; i++ {
 				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
 				offset += 3 // (skip time offset)
+				if hexID > 589 {
+					invalidIDs = append(invalidIDs, hexID)
+					continue
+				}
 				mel.HiveState[hexID] = true
+				fmt.Printf("raised %d\n", hexID)
+			}
+
+			if len(invalidIDs) > 0 {
+				gamelog.L.Warn().Msgf(`MapEventTypeHiveHexRaised received invalid ids: %v`, invalidIDs)
+				gamelog.L.Warn().Msgf(`%v`, payload)
 			}
 		case MapEventTypeHiveHexLowered:
+			var invalidIDs []uint16
+
 			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
 			offset += 2
-			for i := 0; i <= hexes; i++ {
+			for i := 0; i < hexes; i++ {
 				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
 				offset += 3 // (skip time offset)
+				if hexID > 589 {
+					invalidIDs = append(invalidIDs, hexID)
+					continue
+				}
 				mel.HiveState[hexID] = false
+			}
+
+			if len(invalidIDs) > 0 {
+				gamelog.L.Warn().Msgf(`MapEventTypeHiveHexLowered received invalid ids: %v`, invalidIDs)
+				gamelog.L.Warn().Msgf(`%v`, payload)
 			}
 		}
 	}
@@ -171,10 +184,11 @@ func (mel *MapEventList) Pack() (bool, []byte) {
 	}
 
 	// The Hive State
-	if mel.mapID == TheHiveMapID {
+	if mel.mapName == TheHiveMapName {
 		payload = append(payload, byte(MapEventTypeHiveState))
 		packedHiveState := helpers.PackBooleansIntoBytes(mel.HiveState)
 		payload = append(payload, packedHiveState...)
+		messageCount++
 	}
 
 	if messageCount == 0 {
