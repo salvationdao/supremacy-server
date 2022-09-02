@@ -238,6 +238,12 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 					a.BeginBattle()
 				}
 			}()
+
+			go func() {
+				CalcNextQueueStatus(server.ZaibatsuFactionID)
+				CalcNextQueueStatus(server.RedMountainFactionID)
+				CalcNextQueueStatus(server.BostonCyberneticsFactionID)
+			}()
 		}
 	}
 }
