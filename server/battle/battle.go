@@ -784,13 +784,14 @@ type PlayerBattleCompleteMessage struct {
 	MechBattleBriefs []*MechBattleBrief `json:"mech_battle_briefs"`
 }
 type MechReward struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Label        string          `json:"label"`
-	FactionID    string          `json:"faction_id"`
-	AvatarURL    string          `json:"avatar_url"`
-	OwnerID      string          `json:"owner_id"`
-	RewardedSups decimal.Decimal `json:"rewarded_sups"`
+	ID                string          `json:"id"`
+	Name              string          `json:"name"`
+	Label             string          `json:"label"`
+	FactionID         string          `json:"faction_id"`
+	AvatarURL         string          `json:"avatar_url"`
+	OwnerID           string          `json:"owner_id"`
+	RewardedSups      decimal.Decimal `json:"rewarded_sups"`
+	RewardedSupsBonus decimal.Decimal `json:"rewarded_sups_bonus"`
 }
 
 // RewardBattleMechOwners give reward to war machine owner
@@ -1069,13 +1070,14 @@ func (btl *Battle) RewardMechOwner(
 	// record mech reward
 	if m := btl.arena.CurrentBattleWarMachineByID(mechID); m != nil {
 		btl.mechRewards = append(btl.mechRewards, &MechReward{
-			ID:           m.ID,
-			FactionID:    m.FactionID,
-			Name:         m.Name,
-			Label:        m.Label,
-			AvatarURL:    m.ImageAvatar,
-			RewardedSups: pw.RewardedSups,
-			OwnerID:      owner.ID,
+			ID:                m.ID,
+			FactionID:         m.FactionID,
+			Name:              m.Name,
+			Label:             m.Label,
+			AvatarURL:         m.ImageAvatar,
+			RewardedSups:      pw.RewardedSups,
+			RewardedSupsBonus: pw.RewardedSupsBonus,
+			OwnerID:           owner.ID,
 		})
 	}
 
@@ -1943,18 +1945,25 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			}
 		}
 
+		// initial destroy record
 		wmd := &WMDestroyedRecord{
-			DestroyedWarMachine: &WarMachineBrief{
-				ParticipantID: destroyedWarMachine.ParticipantID,
-				ImageUrl:      destroyedWarMachine.Image,
-				ImageAvatar:   destroyedWarMachine.ImageAvatar,
-				Name:          destroyedWarMachine.Name,
-				Hash:          destroyedWarMachine.Hash,
-				FactionID:     destroyedWarMachine.FactionID,
-			},
 			KilledBy: dp.KilledBy,
 		}
 
+		// set destroyed war machine
+		wmd.DestroyedWarMachine = &WarMachineBrief{
+			ParticipantID: destroyedWarMachine.ParticipantID,
+			ImageUrl:      destroyedWarMachine.Image,
+			ImageAvatar:   destroyedWarMachine.ImageAvatar,
+			Name:          destroyedWarMachine.Label,
+			Hash:          destroyedWarMachine.Hash,
+			FactionID:     destroyedWarMachine.FactionID,
+		}
+		if destroyedWarMachine.Name != "" {
+			wmd.DestroyedWarMachine.Name = destroyedWarMachine.Name
+		}
+
+		//
 		if killByWarMachine != nil {
 			wmd.KillerFactionID = killByWarMachine.FactionID
 		} else if killedByUser != nil {
@@ -1971,14 +1980,20 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			if damage.InstigatorHash != "" {
 				for _, wm := range btl.WarMachines {
 					if wm.Hash == damage.InstigatorHash {
-						damageRecord.CausedByWarMachine = &WarMachineBrief{
+						wmb := &WarMachineBrief{
 							ParticipantID: wm.ParticipantID,
 							ImageUrl:      wm.Image,
 							ImageAvatar:   wm.ImageAvatar,
-							Name:          wm.Name,
+							Name:          wm.Label,
 							Hash:          wm.Hash,
 							FactionID:     wm.FactionID,
 						}
+						if wm.Name != "" {
+							wmb.Name = wm.Name
+						}
+
+						damageRecord.CausedByWarMachine = wmb
+
 					}
 				}
 			}
@@ -1990,9 +2005,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				ParticipantID: killByWarMachine.ParticipantID,
 				ImageUrl:      killByWarMachine.Image,
 				ImageAvatar:   killByWarMachine.ImageAvatar,
-				Name:          killByWarMachine.Name,
+				Name:          killByWarMachine.Label,
 				Hash:          killByWarMachine.Hash,
 				FactionID:     killByWarMachine.FactionID,
+			}
+			if killByWarMachine.Name != "" {
+				wmd.KilledByWarMachine.Name = killByWarMachine.Name
 			}
 		}
 
