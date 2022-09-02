@@ -57,7 +57,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 		return -1, err
 	}
 
-	var qp struct {
+	var qps []*struct {
 		QueuePosition int64 `json:"queue_position"`
 	}
 	err = boiler.NewQuery(
@@ -76,7 +76,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 			boiler.BattleQueueColumns.BattleID),
 			factionID, // $1
 		),
-	).Bind(nil, gamedb.StdConn, &qp)
+	).Bind(nil, gamedb.StdConn, &qps)
 	if errors.Is(err, sql.ErrNoRows) {
 		return int64(GetIntWithDefault(KeyQueueTickerIntervalSeconds, 10)), nil
 	}
@@ -84,7 +84,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 		return -1, err
 	}
 
-	return ((qp.QueuePosition + 1) / FACTION_MECH_LIMIT) * averageBattleLengthSecs, nil
+	return ((int64(len(qps)) + 1) / FACTION_MECH_LIMIT) * averageBattleLengthSecs, nil
 }
 
 func GetAverageBattleLengthSeconds() (int64, error) {
