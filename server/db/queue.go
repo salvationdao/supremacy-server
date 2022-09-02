@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/friendsofgo/errors"
@@ -172,9 +173,14 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		}
 
 		if queuePosition != nil {
+			eta, err := GetMinimumQueueWaitTimeSecondsFromFactionID(owner.FactionID.String)
+			if err != nil {
+				return nil, err
+			}
 			return &server.MechArenaInfo{
-				Status:    server.MechArenaStatusQueue,
-				CanDeploy: false,
+				Status:           server.MechArenaStatusQueue,
+				CanDeploy:        false,
+				BattleETASeconds: null.Int64From(eta),
 			}, nil
 		}
 	}
