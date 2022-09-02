@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
 	"server"
@@ -78,6 +80,8 @@ type API struct {
 	questManager *quest.System
 
 	ViewerUpdateChan chan bool
+
+	ChallengeFund decimal.Decimal
 }
 
 // NewAPI registers routes
@@ -214,7 +218,7 @@ func NewAPI(
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 			r.Mount("/system_messages", SystemMessagesRouter(api))
 
-			r.Mount("/battle", BattleRouter(arenaManager))
+			r.Mount("/battle", BattleRouter(api))
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
@@ -234,6 +238,8 @@ func NewAPI(
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
+
+				s.WS("/challenge_fund", server.HubKeyChallengeFundSubscribe, api.ChallengeFundSubscribeHandler)
 
 				s.WS("/arena_list", server.HubKeyBattleArenaListSubscribe, api.ArenaListSubscribeHandler)
 				s.WS("/arena/{arena_id}/closed", server.HubKeyBattleArenaClosedSubscribe, api.ArenaClosedSubscribeHandler)
@@ -363,6 +369,7 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
+	go api.ChallengeFundDebounceBroadcast()
 
 	return api, nil
 }
@@ -397,4 +404,22 @@ func (api *API) Close() {
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) ChallengeFundDebounceBroadcast() {
+	// initialise challenge fund
+	api.ChallengeFund = decimal.Zero
+	interval := 500 * time.Millisecond
+
+	timer := time.NewTimer(interval)
+	for {
+		select {
+		case <-api.ArenaManager.ChallengeFundUpdateChan:
+			timer.Reset(interval)
+		case <-timer.C:
+			api.ChallengeFund = api.Passport.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
+			ws.PublishMessage("/public/challenge_fund", server.HubKeyChallengeFundSubscribe, api.ChallengeFund)
+		}
+	}
+
 }

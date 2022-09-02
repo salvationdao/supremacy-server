@@ -78,7 +78,9 @@ type DamageRecord struct {
 type WMDestroyedRecord struct {
 	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
 	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine,omitempty"`
+	KilledByUser        *UserBrief       `json:"killed_by_user"`
 	KilledBy            string           `json:"killed_by"`
+	KillerFactionID     string           `json:"killer_faction_id"`
 	DamageRecords       []*DamageRecord  `json:"damage_records"`
 }
 
