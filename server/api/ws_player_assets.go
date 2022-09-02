@@ -1380,6 +1380,18 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
 			Level:               s.Level,
 		}
+
+		//if there isnt any image url (which skin swatch should have) return image from weapon model compatibility tables
+		if pams.Images.ImageURL == null.StringFrom("") {
+			pams.Images.ImageURL = s.Images.ImageURL
+			pams.Images.CardAnimationURL = s.Images.CardAnimationURL
+			pams.Images.AvatarURL = s.Images.AvatarURL
+			pams.Images.AnimationURL = s.Images.AnimationURL
+			pams.Images.BackgroundColor = s.Images.BackgroundColor
+			pams.Images.YoutubeURL = s.Images.YoutubeURL
+			pams.Images.LargeImageURL = s.Images.LargeImageURL
+		}
+
 		playerAssetMechSubmodel = append(playerAssetMechSubmodel, pams)
 	}
 
@@ -1583,6 +1595,17 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 			XsynLocked:          s.CollectionItem.XsynLocked,
 			MarketLocked:        s.CollectionItem.MarketLocked,
 			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
+		}
+
+		//if there isnt an image url (which skin swatch should have) return image from weapon model compatibility tables
+		if paws.Images.ImageURL == null.StringFrom("") {
+			paws.Images.ImageURL = s.Images.ImageURL
+			paws.Images.CardAnimationURL = s.Images.CardAnimationURL
+			paws.Images.AvatarURL = s.Images.AvatarURL
+			paws.Images.AnimationURL = s.Images.AnimationURL
+			paws.Images.BackgroundColor = s.Images.BackgroundColor
+			paws.Images.YoutubeURL = s.Images.YoutubeURL
+			paws.Images.LargeImageURL = s.Images.LargeImageURL
 		}
 
 		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, paws)

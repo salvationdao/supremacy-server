@@ -133,14 +133,15 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
 			qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
 		)),
-	//	qm.InnerJoin(fmt.Sprintf("%s ON %s = %s AND %s = %s",
-	//		boiler.TableNames.WeaponModelSkinCompatibilities,
-	//		qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
-	//		qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponSkinColumns.BlueprintID),
-	//		qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
-	//		qm.Rels(boiler.TableNames.WeaponSkin, boiler.WeaponModel),
-	//	)),
-	//)
+		qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+			boiler.TableNames.WeaponModelSkinCompatibilities,
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
+			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
+		)),
+	)
 
 	if len(opts.FilterSkinCompatibility) > 0 {
 		//// inner join weapon model
@@ -272,6 +273,13 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.AnimationURL),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.YoutubeURL),
 			qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.BackgroundColor),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.ImageURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.CardAnimationURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.LargeImageURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.AnimationURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.YoutubeURL),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BackgroundColor),
 		),
 		qm.From(boiler.TableNames.CollectionItems),
 	)
@@ -307,41 +315,48 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 	defer rows.Close()
 
 	for rows.Next() {
-		mc := &server.WeaponSkin{
+		ws := &server.WeaponSkin{
 			CollectionItem: &server.CollectionItem{},
 			SkinSwatch:     &server.Images{},
 			Images:         &server.Images{},
 		}
 
 		scanArgs := []interface{}{
-			&mc.CollectionItem.CollectionSlug,
-			&mc.CollectionItem.Hash,
-			&mc.CollectionItem.TokenID,
-			&mc.CollectionItem.OwnerID,
-			&mc.CollectionItem.ItemType,
-			&mc.CollectionItem.MarketLocked,
-			&mc.CollectionItem.XsynLocked,
-			&mc.CollectionItem.LockedToMarketplace,
-			&mc.CollectionItem.AssetHidden,
-			&mc.ID,
-			&mc.EquippedOn,
-			&mc.BlueprintID,
-			&mc.Label,
-			&mc.Tier,
-			&mc.SkinSwatch.ImageURL,
-			&mc.SkinSwatch.CardAnimationURL,
-			&mc.SkinSwatch.AvatarURL,
-			&mc.SkinSwatch.LargeImageURL,
-			&mc.SkinSwatch.AnimationURL,
-			&mc.SkinSwatch.YoutubeURL,
-			&mc.SkinSwatch.BackgroundColor,
+			&ws.CollectionItem.CollectionSlug,
+			&ws.CollectionItem.Hash,
+			&ws.CollectionItem.TokenID,
+			&ws.CollectionItem.OwnerID,
+			&ws.CollectionItem.ItemType,
+			&ws.CollectionItem.MarketLocked,
+			&ws.CollectionItem.XsynLocked,
+			&ws.CollectionItem.LockedToMarketplace,
+			&ws.CollectionItem.AssetHidden,
+			&ws.ID,
+			&ws.EquippedOn,
+			&ws.BlueprintID,
+			&ws.Label,
+			&ws.Tier,
+			&ws.SkinSwatch.ImageURL,
+			&ws.SkinSwatch.CardAnimationURL,
+			&ws.SkinSwatch.AvatarURL,
+			&ws.SkinSwatch.LargeImageURL,
+			&ws.SkinSwatch.AnimationURL,
+			&ws.SkinSwatch.YoutubeURL,
+			&ws.SkinSwatch.BackgroundColor,
+			&ws.Images.ImageURL,
+			&ws.Images.CardAnimationURL,
+			&ws.Images.AvatarURL,
+			&ws.Images.LargeImageURL,
+			&ws.Images.AnimationURL,
+			&ws.Images.YoutubeURL,
+			&ws.Images.BackgroundColor,
 		}
 
 		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return total, weaponSkins, err
 		}
-		weaponSkins = append(weaponSkins, mc)
+		weaponSkins = append(weaponSkins, ws)
 	}
 
 	return total, weaponSkins, nil
