@@ -408,7 +408,7 @@ func (api *API) Close() {
 func (api *API) ChallengeFundDebounceBroadcast() {
 	// initialise challenge fund
 	api.ChallengeFund = decimal.Zero
-	interval := 5 * time.Second
+	interval := 500 * time.Millisecond
 
 	timer := time.NewTimer(interval)
 	for {
