@@ -1691,8 +1691,9 @@ func (arena *Arena) beginBattle() {
 	}
 
 	gameMap := &server.GameMap{
-		ID:   uuid.Must(uuid.FromString(gm.ID)),
-		Name: gm.Name,
+		ID:            uuid.Must(uuid.FromString(gm.ID)),
+		Name:          gm.Name,
+		BackgroundUrl: gm.BackgroundURL,
 	}
 
 	var battle *boiler.Battle
