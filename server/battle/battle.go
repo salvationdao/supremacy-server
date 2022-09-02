@@ -717,6 +717,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 					for _, destroyedMechRecord := range btl.destroyedWarMachineMap {
 						destroyedMech := destroyedMechRecord.DestroyedWarMachine
 						killerMech := destroyedMechRecord.KilledByWarMachine
+						killerUser := destroyedMechRecord.KilledByUser
 
 						killInfo := &KillInfo{
 							Name:      destroyedMechRecord.KilledBy,
@@ -728,6 +729,8 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 							if killerMech != nil {
 								killInfo.Name = killerMech.Name
 								killInfo.ImageUrl = killerMech.ImageAvatar
+							} else if killerUser != nil {
+								killInfo.Name = fmt.Sprintf("%s%s", killerUser.Username, destroyedMechRecord.KilledBy)
 							}
 							mbb.KilledBy = killInfo // set kill by info
 							continue
@@ -1955,6 +1958,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		if killByWarMachine != nil {
 			wmd.KillerFactionID = killByWarMachine.FactionID
 		} else if killedByUser != nil {
+			wmd.KilledByUser = killedByUser
 			wmd.KillerFactionID = killedByUser.FactionID
 		}
 
