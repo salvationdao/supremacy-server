@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -82,6 +83,23 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 	}
 
 	return pendingMechs, nil
+}
+
+func GetBattleETASecondsFromMechID(mechID string, factionID string) (int64, error) {
+	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
+	if err != nil {
+		return -1, err
+	}
+
+	queuePosition, err := MechQueuePosition(mechID, factionID)
+	if err != nil {
+		return -1, err
+	}
+	if queuePosition.QueuePosition == 0 {
+		return 0, err
+	}
+
+	return int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs, nil
 }
 
 func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
@@ -200,13 +218,13 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 
 	if owner != nil && owner.FactionID.Valid {
 		// Check in battle queue
-		queuePosition, err := MechQueuePosition(mechID, owner.FactionID.String)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		exists, err := boiler.BattleQueueExists(gamedb.StdConn, mechID)
+		if err != nil {
 			return nil, err
 		}
 
-		if queuePosition != nil {
-			eta, err := GetMinimumQueueWaitTimeSecondsFromFactionID(owner.FactionID.String)
+		if exists {
+			eta, err := GetBattleETASecondsFromMechID(mechID, owner.FactionID.String)
 			if err != nil {
 				return nil, err
 			}
