@@ -43,7 +43,7 @@ func CalcNextQueueStatus(factionID string) {
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
 		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 }
 
@@ -177,7 +177,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mci.ItemID,
 				PaidByID: user.ID,
-				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 			}
 
 			err = bqf.Insert(tx, boil.Infer())
