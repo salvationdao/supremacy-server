@@ -38,7 +38,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
-			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.BlueprintMechSkinColumns.Tier), // get tier from blueprint mech skin table
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
@@ -174,7 +174,7 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// inner join skin
 		qm.InnerJoin(fmt.Sprintf(`(
-					SELECT _ms.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bpms.label
+					SELECT _ms.*, _ci.hash, _ci.token_id, _bpms.tier, _ci.owner_id, _bpms.label
 					FROM mech_skin _ms
 					INNER JOIN collection_items _ci on _ci.item_id = _ms.id
 					INNER JOIN blueprint_mech_skin _bpms on _bpms.id = _ms.blueprint_id
@@ -314,7 +314,7 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 func Mech(conn boil.Executor, mechID string) (*server.Mech, error) {
 	bm := benchmark.New()
 	bm.Start("db Mech")
-	defer func(){
+	defer func() {
 		bm.End("db Mech")
 		bm.Alert(150)
 	}()
@@ -790,13 +790,13 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 	if opts.ExcludeDamagedMech {
 		queryMods = append(queryMods, qm.Where(
 			fmt.Sprintf(
-				"NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s * 2 < %s)",
+				`NOT EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s * 2 > %s)`,
 				boiler.TableNames.RepairCases,
 				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
 				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
 				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.CompletedAt),
-				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRepaired),
 				qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.BlocksRequiredRepair),
+				qm.Rels(boiler.TableNames.BlueprintMechs, boiler.BlueprintMechColumns.RepairBlocks),
 			),
 		))
 	}

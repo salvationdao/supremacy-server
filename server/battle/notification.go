@@ -10,7 +10,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -249,9 +248,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
-
-	// broadcast system message to mech owners
-	system_messages.BroadcastMechQueueMessage(q)
 
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {

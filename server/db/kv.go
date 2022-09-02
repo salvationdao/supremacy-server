@@ -60,6 +60,7 @@ const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
 const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
 const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
 const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
+const KeyBattleSupsRewardBonus KVKey = "battle_sups_reward_bonus"
 const KeyCanDeployDamagedRatio KVKey = "can_deploy_damaged_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
