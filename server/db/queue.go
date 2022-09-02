@@ -74,7 +74,7 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 		)),
 		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
 		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s, %s desc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
+		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
 		qm.Limit(limit),
 	).All(gamedb.StdConn)
 	if err != nil {
