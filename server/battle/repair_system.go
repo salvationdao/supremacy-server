@@ -1,7 +1,9 @@
 package battle
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -10,6 +12,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -39,6 +42,7 @@ func (am *ArenaManager) SendRepairFunc(fn func() error) error {
 
 func (am *ArenaManager) RepairOfferCleaner() {
 	ticker := time.NewTicker(1 * time.Minute)
+	repairBayTicker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -69,9 +73,267 @@ func (am *ArenaManager) RepairOfferCleaner() {
 				continue
 			}
 
+		case <-repairBayTicker.C:
+			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+
+			now := time.Now()
+			pms, err := boiler.PlayerMechRepairSlots(
+				boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusREPAIRING),
+				boiler.PlayerMechRepairSlotWhere.NextRepairTime.LTE(null.TimeFrom(now)),
+				qm.Load(boiler.PlayerMechRepairSlotRels.RepairCase),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load repairing cases.")
+				continue
+			}
+
+			wg := sync.WaitGroup{}
+			for _, pm := range pms {
+				wg.Add(1)
+				go func(playerMechRepairSlot *boiler.PlayerMechRepairSlot) {
+					defer wg.Done()
+
+					// mark current repairing slot to "DONE" and mark next slot to "REPAIRING"
+					swapSlot := func(pmr *boiler.PlayerMechRepairSlot) {
+						tx, err := gamedb.StdConn.Begin()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+							return
+						}
+
+						defer tx.Rollback()
+
+						nexSlot, err := boiler.PlayerMechRepairSlots(
+							boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(pmr.PlayerID),
+							boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusPENDING),
+							qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+						).One(tx)
+						if err != nil && !errors.Is(err, sql.ErrNoRows) {
+							gamelog.L.Error().Str("player id", pmr.PlayerID).Err(err).Msg("Failed to load player mech repair bays.")
+							return
+						}
+
+						// set next slot status to "REPAIRING"
+						if nexSlot != nil {
+							nexSlot.Status = boiler.RepairSlotStatusREPAIRING
+							nexSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+							_, err = nexSlot.Update(tx, boil.Whitelist(
+								boiler.PlayerMechRepairSlotColumns.Status,
+								boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+							))
+							if err != nil {
+								gamelog.L.Error().Err(err).Interface("player repair slot", pmr).Msg("Failed to complete current repair slot.")
+								return
+							}
+						}
+
+						// decrement slot number
+						err = db.DecrementRepairSlotNumber(tx, pmr.PlayerID, pmr.SlotNumber)
+						if err != nil {
+							gamelog.L.Error().Err(err).Str("player id", pmr.PlayerID).Msg("Failed to decrement slot number.")
+							return
+						}
+
+						// update current bay status to "DONE"
+						pmr.Status = boiler.RepairSlotStatusDONE
+						pmr.SlotNumber = 0
+						pmr.NextRepairTime = null.TimeFromPtr(nil)
+						_, err = pmr.Update(tx,
+							boil.Whitelist(
+								boiler.PlayerMechRepairSlotColumns.Status,
+								boiler.PlayerMechRepairSlotColumns.SlotNumber,
+								boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+							),
+						)
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("player repair slot", pmr).Msg("Failed to complete current repair slot.")
+							return
+						}
+
+						err = tx.Commit()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+							return
+						}
+
+						// broadcast current repair bay
+						go BroadcastRepairBay(pmr.PlayerID)
+					}
+
+					// if no repair case, swap repair slot
+					if playerMechRepairSlot.R == nil || playerMechRepairSlot.R.RepairCase == nil {
+						gamelog.L.Warn().Interface("repair slot", playerMechRepairSlot).Msg("The mech is missing repair case.")
+						swapSlot(playerMechRepairSlot)
+						return
+					}
+
+					rc := playerMechRepairSlot.R.RepairCase
+
+					// load system repair offer
+					systemOffer, err := rc.RepairOffers(
+						boiler.RepairOfferWhere.OfferedByID.IsNull(),
+					).One(gamedb.StdConn)
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
+						gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to load system repair offer of the repair case.")
+						return
+					}
+
+					// if no system offer, swap repair case
+					if systemOffer == nil {
+						gamelog.L.Warn().Interface("repair case", rc).Msg("The mech is missing system repair offer.")
+						swapSlot(playerMechRepairSlot)
+						return
+					}
+
+					// if system offer or repair case are already closed
+					if systemOffer.ClosedAt.Valid || rc.CompletedAt.Valid {
+						swapSlot(playerMechRepairSlot)
+						return
+					}
+
+					// generate an agent from repair center
+					ra := &boiler.RepairAgent{
+						RepairCaseID:   rc.ID,
+						RepairOfferID:  systemOffer.ID,
+						PlayerID:       server.RepairCenterUserID,
+						RequiredStacks: 0,
+					}
+
+					err = ra.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("repair agent", ra).Msg("Failed to generate repair agent from repair center user")
+						return
+					}
+
+					deleteAgent := func(agentID string) {
+						_, err = boiler.RepairAgents(
+							boiler.RepairAgentWhere.ID.EQ(agentID),
+						).DeleteAll(gamedb.StdConn, true)
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("repair agent id", agentID).Msg("Failed to delete repair agent")
+							return
+						}
+					}
+
+					// do repair
+					rb := boiler.RepairBlock{
+						RepairAgentID: ra.ID,
+						RepairCaseID:  rc.ID,
+						RepairOfferID: systemOffer.ID,
+					}
+
+					err = rb.Insert(gamedb.StdConn, boil.Infer())
+					if err != nil {
+						// clean up repair agent
+						deleteAgent(ra.ID)
+
+						// swap repair slot, if unable to write block
+						if err.Error() == "unable to write block" {
+							swapSlot(playerMechRepairSlot)
+							return
+						}
+
+						gamelog.L.Error().Err(err).Interface("repair block", rb).Msg("Failed to insert repair block by repair center.")
+						return
+					}
+
+					// check repair complete
+					err = rc.Reload(gamedb.StdConn)
+					if err != nil {
+						// might be cleaned up already
+						gamelog.L.Warn().Err(err).Msg("Failed to reload repair case.")
+						swapSlot(playerMechRepairSlot)
+						return
+					}
+
+					// repair broadcast repair details
+					ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+
+					// if not complete
+					if rc.BlocksRequiredRepair > rc.BlocksRepaired {
+						// set next repair time
+						playerMechRepairSlot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+						_, err = playerMechRepairSlot.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerMechRepairSlotColumns.NextRepairTime))
+						if err != nil {
+							gamelog.L.Error().Err(err).Interface("repair slot", playerMechRepairSlot).Msg("Failed to update next repair time of the repair slot.")
+						}
+
+						ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
+
+						// broadcast mech status
+						go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+
+						// broadcast current repair bay
+						go BroadcastRepairBay(playerMechRepairSlot.PlayerID)
+
+						return
+					}
+
+					ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, nil)
+
+					// otherwise swap bay
+					swapSlot(playerMechRepairSlot)
+
+					// close offers
+					rc.CompletedAt = null.TimeFrom(now)
+					_, err = rc.Update(gamedb.StdConn, boil.Whitelist(boiler.RepairCaseColumns.CompletedAt))
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to complete repair case.")
+					}
+
+					// close related offers
+					ros, err := rc.RepairOffers(
+						boiler.RepairOfferWhere.ClosedAt.IsNull(),
+					).All(gamedb.StdConn)
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("repair case", rc).Msg("Failed to load repair offers from the repair case.")
+					}
+
+					if ros == nil || len(ros) == 0 {
+						return
+					}
+
+					roIDs := []string{}
+					for _, ro := range ros {
+						roIDs = append(roIDs, ro.ID)
+					}
+					err = am.CloseRepairOffers(roIDs, boiler.RepairAgentFinishReasonSUCCEEDED, boiler.RepairAgentFinishReasonEXPIRED)
+					if err != nil {
+						gamelog.L.Error().Err(err).Interface("repair offers", ros).Msg("Failed to close repair offer.")
+						return
+					}
+					// broadcast mech status
+					go broadcastMechQueueStatus(playerMechRepairSlot, rc)
+				}(pm)
+			}
+
+			wg.Wait()
+
 		case fn := <-am.RepairOfferFuncChan:
 			fn()
 		}
+	}
+}
+
+func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.RepairCase) {
+	canDeployRatio := db.GetDecimalWithDefault(db.KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
+
+	totalBlocks := db.TotalRepairBlocks(pmrs.MechID)
+
+	// broadcast current mech stat if damage blocks is less than or equal to deploy ratio
+	if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).LessThanOrEqual(canDeployRatio) {
+		owner, err := boiler.FindPlayer(gamedb.StdConn, pmrs.PlayerID)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
+		}
+
+		queueDetails, err := db.MechArenaStatus(owner.ID, pmrs.MechID, owner.FactionID.String)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+			return
+		}
+
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
 	}
 }
 
@@ -282,4 +544,25 @@ func RegisterMechRepairCase(mechID string, blueprintID string, maxHealth uint32,
 	ws.PublishMessage(fmt.Sprintf("/secure/mech/%s/repair_case", rc.MechID), server.HubKeyMechRepairCase, rc)
 
 	return nil
+}
+
+func BroadcastRepairBay(playerID string) {
+	l := gamelog.L.With().Str("player id", playerID).Str("func name", "BroadcastRepairBay").Logger()
+
+	resp := []*boiler.PlayerMechRepairSlot{}
+	pms, err := boiler.PlayerMechRepairSlots(
+		boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerID),
+		boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+		qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+	).All(gamedb.StdConn)
+	if err != nil {
+		l.Error().Err(err).Msg("Failed to load player mech .")
+		return
+	}
+
+	if pms != nil {
+		resp = pms
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
 }

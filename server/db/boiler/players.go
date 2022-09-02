@@ -214,6 +214,7 @@ var PlayerRels = struct {
 	PlayerKeycards                           string
 	PlayerKillLogs                           string
 	PlayerLanguages                          string
+	PlayerMechRepairSlots                    string
 	PlayerMultipliers                        string
 	PlayerPreferences                        string
 	PlayerSpoilsOfWars                       string
@@ -287,6 +288,7 @@ var PlayerRels = struct {
 	PlayerKeycards:                           "PlayerKeycards",
 	PlayerKillLogs:                           "PlayerKillLogs",
 	PlayerLanguages:                          "PlayerLanguages",
+	PlayerMechRepairSlots:                    "PlayerMechRepairSlots",
 	PlayerMultipliers:                        "PlayerMultipliers",
 	PlayerPreferences:                        "PlayerPreferences",
 	PlayerSpoilsOfWars:                       "PlayerSpoilsOfWars",
@@ -363,6 +365,7 @@ type playerR struct {
 	PlayerKeycards                           PlayerKeycardSlice               `boiler:"PlayerKeycards" boil:"PlayerKeycards" json:"PlayerKeycards" toml:"PlayerKeycards" yaml:"PlayerKeycards"`
 	PlayerKillLogs                           PlayerKillLogSlice               `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages                          PlayerLanguageSlice              `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
+	PlayerMechRepairSlots                    PlayerMechRepairSlotSlice        `boiler:"PlayerMechRepairSlots" boil:"PlayerMechRepairSlots" json:"PlayerMechRepairSlots" toml:"PlayerMechRepairSlots" yaml:"PlayerMechRepairSlots"`
 	PlayerMultipliers                        PlayerMultiplierSlice            `boiler:"PlayerMultipliers" boil:"PlayerMultipliers" json:"PlayerMultipliers" toml:"PlayerMultipliers" yaml:"PlayerMultipliers"`
 	PlayerPreferences                        PlayerPreferenceSlice            `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayerSpoilsOfWars                       PlayerSpoilsOfWarSlice           `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
@@ -1530,6 +1533,28 @@ func (o *Player) PlayerLanguages(mods ...qm.QueryMod) playerLanguageQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_languages\".*"})
+	}
+
+	return query
+}
+
+// PlayerMechRepairSlots retrieves all the player_mech_repair_slot's PlayerMechRepairSlots with an executor.
+func (o *Player) PlayerMechRepairSlots(mods ...qm.QueryMod) playerMechRepairSlotQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_mech_repair_slots\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"player_mech_repair_slots\".\"deleted_at\""),
+	)
+
+	query := PlayerMechRepairSlots(queryMods...)
+	queries.SetFrom(query.Query, "\"player_mech_repair_slots\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_mech_repair_slots\".*"})
 	}
 
 	return query
@@ -6454,6 +6479,105 @@ func (playerL) LoadPlayerLanguages(e boil.Executor, singular bool, maybePlayer i
 				local.R.PlayerLanguages = append(local.R.PlayerLanguages, foreign)
 				if foreign.R == nil {
 					foreign.R = &playerLanguageR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerMechRepairSlots allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayerMechRepairSlots(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_mech_repair_slots`),
+		qm.WhereIn(`player_mech_repair_slots.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`player_mech_repair_slots.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_mech_repair_slots")
+	}
+
+	var resultSlice []*PlayerMechRepairSlot
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_mech_repair_slots")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_mech_repair_slots")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_mech_repair_slots")
+	}
+
+	if len(playerMechRepairSlotAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerMechRepairSlots = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerMechRepairSlotR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerMechRepairSlots = append(local.R.PlayerMechRepairSlots, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerMechRepairSlotR{}
 				}
 				foreign.R.Player = local
 				break
@@ -12040,6 +12164,58 @@ func (o *Player) AddPlayerLanguages(exec boil.Executor, insert bool, related ...
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerLanguageR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerMechRepairSlots adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayerMechRepairSlots.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayerMechRepairSlots(exec boil.Executor, insert bool, related ...*PlayerMechRepairSlot) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_mech_repair_slots\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerMechRepairSlotPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerMechRepairSlots: related,
+		}
+	} else {
+		o.R.PlayerMechRepairSlots = append(o.R.PlayerMechRepairSlots, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerMechRepairSlotR{
 				Player: o,
 			}
 		} else {

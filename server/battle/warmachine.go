@@ -63,6 +63,9 @@ type WarMachine struct {
 	Status *Status `json:"status"`
 
 	deadlock.RWMutex // lock for any mech detail changes
+
+	// data for system message
+	damagedBlockCount int
 }
 
 type Status struct {
@@ -71,12 +74,15 @@ type Status struct {
 }
 
 type WarMachineGameClient struct {
-	Hash      string   `json:"Hash"`
-	Name      string   `json:"Name"`
-	OwnerName string   `json:"Owner_Name"`
-	Faction   *Faction `json:"faction"`
-	Model     string   `json:"model"`
-	Skin      string   `json:"skin"`
+	Hash      string   `json:"hash"`
+	Name      string   `json:"name"`
+	OwnerName string   `json:"owner_name"`
+	Faction   *Faction `json:"faction"` // will be deprecated soon
+	FactionID string   `json:"faction_id"`
+	Model     string   `json:"model"` // will be deprecated soon
+	ModelID   string   `json:"model_id"`
+	Skin      string   `json:"skin"` // will be deprecated soon
+	SkinID    string   `json:"skin_id"`
 	Tier      string   `json:"tier"`
 
 	Weapons       []*Weapon               `json:"weapons"`
@@ -243,8 +249,11 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		Name:      wm.Name,
 		OwnerName: wm.OwnerUsername,
 		Faction:   wm.Faction,
+		FactionID: wm.FactionID,
 		Model:     wm.Model,
+		ModelID:   wm.ModelID,
 		Skin:      wm.Skin,
+		SkinID:    wm.SkinID,
 		Tier:      wm.Tier,
 
 		Weapons: wm.Weapons,

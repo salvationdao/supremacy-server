@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"net"
 	"net/http"
 	"server"
@@ -78,6 +80,8 @@ type API struct {
 	questManager *quest.System
 
 	ViewerUpdateChan chan bool
+
+	ChallengeFund decimal.Decimal
 }
 
 // NewAPI registers routes
@@ -94,6 +98,7 @@ func NewAPI(
 	pm *profanities.ProfanityManager,
 	syncConfig *synctool.StaticSyncTool,
 	questManager *quest.System,
+	privateKeySignerHex string,
 ) (*API, error) {
 	// spin up syndicate system
 	ss, err := syndicate.NewSystem(pp, pm)
@@ -203,7 +208,7 @@ func NewAPI(
 			r.Use(server.RestDatadogTrace(config.Environment))
 
 			r.Get("/max_weapon_stats", WithError(api.GetMaxWeaponStats))
-			r.Mount("/battle_history", BattleHistoryRouter())
+			r.Mount("/battle_history", BattleHistoryRouter(privateKeySignerHex))
 			r.Mount("/faction", FactionRouter(api))
 			r.Mount("/feature", FeatureRouter(api))
 			r.Mount("/auth", AuthRouter(api))
@@ -212,7 +217,7 @@ func NewAPI(
 			r.Mount("/sale_abilities", SaleAbilitiesRouter(api))
 			r.Mount("/system_messages", SystemMessagesRouter(api))
 
-			r.Mount("/battle", BattleRouter(arenaManager))
+			r.Mount("/battle", BattleRouter(api))
 			r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 			r.Mount("/syndicate", SyndicateRouter(api))
@@ -233,6 +238,8 @@ func NewAPI(
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/global_active_players", HubKeyGlobalActivePlayersSubscribe, pc.GlobalActivePlayersSubscribeHandler)
 
+				s.WS("/challenge_fund", server.HubKeyChallengeFundSubscribe, api.ChallengeFundSubscribeHandler)
+
 				s.WS("/arena_list", server.HubKeyBattleArenaListSubscribe, api.ArenaListSubscribeHandler)
 				s.WS("/arena/{arena_id}/closed", server.HubKeyBattleArenaClosedSubscribe, api.ArenaClosedSubscribeHandler)
 
@@ -244,6 +251,7 @@ func NewAPI(
 				s.WS("/arena/{arena_id}/notification", battle.HubKeyGameNotification, nil)
 				s.WS("/arena/{arena_id}/battle_ability", battle.HubKeyBattleAbilityUpdated, api.ArenaManager.PublicBattleAbilityUpdateSubscribeHandler)
 				s.WS("/arena/{arena_id}/minimap", battle.HubKeyMinimapUpdatesSubscribe, api.ArenaManager.MinimapUpdatesSubscribeHandler)
+				s.WS("/arena/{arena_id}/minimap_events", battle.HubKeyMinimapEventsSubscribe, api.ArenaManager.MinimapEventsSubscribeHandler)
 				s.WS("/arena/{arena_id}/game_settings", battle.HubKeyGameSettingsUpdated, api.ArenaManager.SendSettings)
 				s.WS("/arena/{arena_id}/battle_end_result", battle.HubKeyBattleEndDetailUpdated, api.BattleEndDetail)
 				s.WS("/arena/upcomming_battle", battle.HubKeyNextBattleDetails, api.NextBattleDetails)
@@ -272,6 +280,9 @@ func NewAPI(
 				s.WS("/user/{user_id}/telegram_shortcode_register", server.HubKeyTelegramShortcodeRegistered, nil, MustMatchUserID)
 				s.WS("/user/{user_id}/quest_stat", server.HubKeyPlayerQuestStats, server.MustSecure(pc.PlayerQuestStat), MustMatchUserID)
 				s.WS("/user/{user_id}/quest_progression", server.HubKeyPlayerQuestProgressions, server.MustSecure(pc.PlayerQuestProgressions), MustMatchUserID)
+
+				// user repair bay
+				s.WS("/user/{user_id}/repair_bay", server.HubKeyMechRepairSlots, server.MustSecure(api.PlayerMechRepairSlots), MustMatchUserID)
 
 				// battle related endpoint
 				s.WS("/user/{user_id}/arena/{arena_id}/battle_ability/check_opt_in", battle.HubKeyBattleAbilityOptInCheck, server.MustSecure(api.ArenaManager.BattleAbilityOptInSubscribeHandler), MustMatchUserID, MustHaveFaction)
@@ -357,6 +368,7 @@ func NewAPI(
 	}
 
 	api.FactionActivePlayerSetup()
+	go api.ChallengeFundDebounceBroadcast()
 
 	return api, nil
 }
@@ -391,4 +403,22 @@ func (api *API) Close() {
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) ChallengeFundDebounceBroadcast() {
+	// initialise challenge fund
+	api.ChallengeFund = decimal.Zero
+	interval := 500 * time.Millisecond
+
+	timer := time.NewTimer(interval)
+	for {
+		select {
+		case <-api.ArenaManager.ChallengeFundUpdateChan:
+			timer.Reset(interval)
+		case <-timer.C:
+			api.ChallengeFund = api.Passport.UserBalanceGet(uuid.FromStringOrNil(server.SupremacyChallengeFundUserID))
+			ws.PublishMessage("/public/challenge_fund", server.HubKeyChallengeFundSubscribe, api.ChallengeFund)
+		}
+	}
+
 }
