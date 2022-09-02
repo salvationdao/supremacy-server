@@ -17,6 +17,39 @@ import (
 
 const FACTION_MECH_LIMIT = 3
 
+func GetPreviousBattleOwnerIDs() ([]string, error) {
+	var oids []*struct {
+		OwnerID string `json:"owner_id"`
+	}
+	err := boiler.NewQuery(
+		qm.SQL(fmt.Sprintf(`
+		SELECT
+			owner_id
+		FROM
+			%s
+		ORDER BY %s desc
+		LIMIT %d
+		`,
+			boiler.TableNames.BattleQueue,
+			boiler.BattleQueueColumns.InsertedAt,
+			FACTION_MECH_LIMIT*3),
+		),
+	).Bind(nil, gamedb.StdConn, &oids)
+	if errors.Is(err, sql.ErrNoRows) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return []string{}, err
+	}
+
+	ownerIDs := []string{}
+	for _, o := range oids {
+		ownerIDs = append(ownerIDs, o.OwnerID)
+	}
+
+	return ownerIDs, nil
+}
+
 func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
 	count, err := boiler.BattleQueues(
 		boiler.BattleQueueWhere.FactionID.EQ(factionID),

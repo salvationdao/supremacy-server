@@ -158,9 +158,11 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			// 3. otherwise, insert sets (3 mech per fection from each faction)
 			// 4. check idle arena, and run arena.initNextBattle()
 
-			qs.RLock()
-			blacklisted := qs.blacklistedOwnerIDs
-			qs.RUnlock()
+			blacklisted, err := db.GetPreviousBattleOwnerIDs()
+			if err != nil {
+				l.Error().Err(err).Msg("Failed to fetch blacklisted owner ids")
+				continue
+			}
 			// Get mechs from backlog
 			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
