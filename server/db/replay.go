@@ -46,7 +46,7 @@ func ReplayList(
 			qm.InnerJoin(
 				fmt.Sprintf(
 					"%s ON %s = %s AND %s = ?",
-					boiler.TableNames.Battles,
+					boiler.TableNames.BattleReplays,
 					qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.ID),
 					qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
 					qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.BattleNumber),
