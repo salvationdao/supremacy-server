@@ -925,37 +925,36 @@ func (btl *Battle) RewardMechOwner(
 	pw := &PlayerBattleCompleteMessage{
 		PlayerID:          owner.ID,
 		RewardedSups:      rewardedSups,
-		RewardedSupsBonus: bonusSups,
+		RewardedSupsBonus: decimal.Zero,
 		FactionRank:       ranking,
 	}
 
 	updateCols := []string{}
 	// reward bonus
 	if !owner.IsAi && bonusSups.GreaterThan(decimal.Zero) {
-		challengeFundUserID := uuid.FromStringOrNil(server.SupremacyChallengeFundUserID)
-		balance := btl.arena.RPCClient.UserBalanceGet(challengeFundUserID)
-		// if challenge fund is enough
-		if balance.GreaterThanOrEqual(bonusSups) {
-			// transfer bonus reward
-			rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           challengeFundUserID,
-				ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
-				Amount:               bonusSups.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("bonus_battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBonusBattleReward), // for tracking bonus payout
-				Description:          fmt.Sprintf("bonus reward from battle #%d.", btl.BattleNumber),
-			})
-			if err != nil {
-				l.Error().Err(err).
-					Str("from", server.SupremacyBattleUserID).
-					Str("to", owner.ID).
-					Str("amount", bonusSups.StringFixed(0)).
-					Msg("Failed to pay player battle reward")
-			}
+		// transfer bonus reward
+		rewardBonusTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
+			ToUserID:             uuid.Must(uuid.FromString(owner.ID)),
+			Amount:               bonusSups.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("bonus_battle_reward|%s|%d", btl.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBonusBattleReward), // for tracking bonus payout
+			Description:          fmt.Sprintf("bonus reward from battle #%d.", btl.BattleNumber),
+		})
+		if err != nil {
+			l.Error().Err(err).
+				Str("from", server.SupremacyBattleUserID).
+				Str("to", owner.ID).
+				Str("amount", bonusSups.StringFixed(0)).
+				Msg("Failed to pay player battle reward")
+		}
 
+		// update reward bonus, if successfully payout
+		if rewardBonusTXID != "" {
 			battleQueueFee.BonusSupsTXID = null.StringFrom(rewardBonusTXID)
 			updateCols = append(updateCols, boiler.BattleQueueFeeColumns.BonusSupsTXID)
+			pw.RewardedSupsBonus = bonusSups
 		}
 	}
 
