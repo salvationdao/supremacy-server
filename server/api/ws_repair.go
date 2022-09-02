@@ -192,8 +192,8 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 				// pay sups to offer repair job
 				offerTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-					ToUserID:             uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+					FromUserID:           uuid.FromStringOrNil(user.ID),
+					ToUserID:             uuid.FromStringOrNil(server.RepairCenterUserID),
 					Amount:               offeredSups.Add(tax).String(),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("create_repair_offer|%s|%d", ro.ID, time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupSupremacy),
@@ -216,8 +216,8 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 				// pay tax to XSYN treasury
 				offerTaxTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-					ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+					FromUserID:           uuid.FromStringOrNil(server.RepairCenterUserID),
+					ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was to treasury)
 					Amount:               tax.String(),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("repair_offer_tax|%s|%d", ro.ID, time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupSupremacy),
@@ -229,6 +229,11 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 					gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay tax for offering repair job")
 					return terror.Error(err, "Failed to pay sups for offering repair job.")
 				}
+
+				// trigger challenge fund update
+				defer func() {
+					api.ArenaManager.ChallengeFundUpdateChan <- true
+				}()
 
 				refundTaxFunc := func() {
 					_, err = api.Passport.RefundSupsMessage(offerTaxTXID)

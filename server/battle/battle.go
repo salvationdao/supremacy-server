@@ -926,6 +926,11 @@ func (btl *Battle) RewardMechOwner(
 	bonusSups decimal.Decimal,
 	rewardAbility bool,
 ) {
+	// trigger challenge fund update
+	defer func() {
+		btl.arena.ChallengeFundUpdateChan <- true
+	}()
+
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
 	pw := &PlayerBattleCompleteMessage{
 		PlayerID:          owner.ID,

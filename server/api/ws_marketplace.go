@@ -595,6 +595,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
 	}
 
+	// trigger challenge fund update
+	defer func() {
+		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	}()
+
 	// Begin transaction
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -852,6 +857,11 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		err = fmt.Errorf("failed to process marketplace fee transaction")
 		return terror.Error(err, "Failed tp process transaction for Marketplace Fee.")
 	}
+
+	// trigger challenge fund update
+	defer func() {
+		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	}()
 
 	// Start transaction
 	tx, err := gamedb.StdConn.Begin()
@@ -1313,6 +1323,11 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// trigger challenge fund update
+	defer func() {
+		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	}()
+
 	// Give sales cut amount to seller
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
@@ -1565,6 +1580,11 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		l.Error().Err(err).Msg("failed to process sales cut fee transaction for purchase sale item")
 		return terror.Error(err, errMsg)
 	}
+
+	// trigger challenge fund update
+	defer func() {
+		mp.API.ArenaManager.ChallengeFundUpdateChan <- true
+	}()
 
 	keycardBlueprint, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(saleItem.Keycard.ID)).One(gamedb.StdConn)
 	if err != nil {

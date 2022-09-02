@@ -65,6 +65,8 @@ type ArenaManager struct {
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
+
+	ChallengeFundUpdateChan chan bool
 }
 
 type Opts struct {
@@ -92,6 +94,8 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
+
+		ChallengeFundUpdateChan: make(chan bool),
 	}
 
 	am.server = &http.Server{
@@ -329,6 +333,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		SystemMessagingManager:   am.SystemMessagingManager,
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
+		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -362,6 +367,7 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
+	ChallengeFundUpdateChan  chan bool
 
 	LastBattleResult *BattleEndDetail
 
