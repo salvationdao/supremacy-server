@@ -72,6 +72,9 @@ func ReplayList(
 		qm.Load(boiler.BattleReplayRels.Battle),
 		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
 	)
+	queryMods = append(queryMods,
+		qm.Load(boiler.BattleReplayRels.Arena),
+	)
 
 	brs, err := boiler.BattleReplays(queryMods...).All(gamedb.StdConn)
 	if err != nil {

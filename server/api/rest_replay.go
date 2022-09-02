@@ -89,7 +89,7 @@ func (br *BattleReplayController) GetReplayDetails(w http.ResponseWriter, r *htt
 				"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s = ? )",
 				boiler.TableNames.BattleArena,
 				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.ID),
-				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.ArenaID),
 				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.Gid),
 			),
 			arenaGID,
