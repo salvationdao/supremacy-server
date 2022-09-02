@@ -1350,18 +1350,19 @@ func (api *API) MechRepairSlotSwap(ctx context.Context, user *boiler.Player, key
 
 		newRepairSlots := []*boiler.PlayerMechRepairSlot{
 			{
-				// slot 1
+				// slot 1 id
 				ID: slotOne.ID,
 
-				// slot 2 detail
+				// slot 2 details
 				Status:         slotTwo.Status,
 				SlotNumber:     slotTwo.SlotNumber,
 				NextRepairTime: null.TimeFromPtr(nil),
 			},
 			{
-				// slot 2
+				// slot 2 id
 				ID: slotTwo.ID,
 
+				// slot 1 details
 				Status:         slotOne.Status,
 				SlotNumber:     slotOne.SlotNumber,
 				NextRepairTime: null.TimeFromPtr(nil),
@@ -1369,7 +1370,7 @@ func (api *API) MechRepairSlotSwap(ctx context.Context, user *boiler.Player, key
 		}
 
 		for _, slot := range newRepairSlots {
-			// set next repair time
+			// set next repair time, if status is repairing
 			if slot.Status == boiler.RepairSlotStatusREPAIRING {
 				slot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
 			}
