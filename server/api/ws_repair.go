@@ -1345,31 +1345,43 @@ func (api *API) MechRepairSlotSwap(ctx context.Context, user *boiler.Player, key
 			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the list")
 		}
 
-		// swap slot and status
-		tempSlotNumber := pms[0].SlotNumber
-		tempStatus := pms[0].Status
+		slotOne := pms[0]
+		slotTwo := pms[1]
 
-		pms[0].SlotNumber = pms[1].SlotNumber
-		pms[0].Status = pms[1].Status
+		newRepairSlots := []*boiler.PlayerMechRepairSlot{
+			{
+				// slot 1
+				ID: slotOne.ID,
 
-		pms[0].SlotNumber = tempSlotNumber
-		pms[0].Status = tempStatus
+				// slot 2 detail
+				Status:         slotTwo.Status,
+				SlotNumber:     slotTwo.SlotNumber,
+				NextRepairTime: null.TimeFromPtr(nil),
+			},
+			{
+				// slot 2
+				ID: slotTwo.ID,
 
-		for _, pm := range pms {
+				Status:         slotOne.Status,
+				SlotNumber:     slotOne.SlotNumber,
+				NextRepairTime: null.TimeFromPtr(nil),
+			},
+		}
+
+		for _, slot := range newRepairSlots {
 			// set next repair time
-			pm.NextRepairTime = null.TimeFromPtr(nil)
-			if pm.Status == boiler.RepairSlotStatusREPAIRING {
-				pm.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+			if slot.Status == boiler.RepairSlotStatusREPAIRING {
+				slot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
 			}
 
 			// update repair slot
-			_, err = pm.Update(tx, boil.Whitelist(
+			_, err = slot.Update(tx, boil.Whitelist(
 				boiler.PlayerMechRepairSlotColumns.SlotNumber,
 				boiler.PlayerMechRepairSlotColumns.Status,
 				boiler.PlayerMechRepairSlotColumns.NextRepairTime,
 			))
 			if err != nil {
-				gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
+				gamelog.L.Error().Err(err).Interface("repair slot", slot).Msg("Failed to update repair slot.")
 				return terror.Error(err, "Failed to update repair slot")
 			}
 		}
