@@ -6,17 +6,18 @@ import (
 )
 
 type BattleReplay struct {
-	Battle           *boiler.Battle  `json:"battle"`
-	GameMap          *boiler.GameMap `json:"game_map"`
-	ID               string          `json:"id"`
-	StreamID         null.String     `json:"stream_id,omitempty"`
-	ArenaID          string          `json:"arena_id"`
-	BattleID         string          `json:"battle_id"`
-	IsCompleteBattle bool            `json:"is_complete_battle"`
-	RecordingStatus  string          `json:"recording_status"`
-	StartedAt        null.Time       `json:"started_at,omitempty"`
-	StoppedAt        null.Time       `json:"stopped_at,omitempty"`
-	Events           null.JSON       `json:"events"`
+	Battle           *boiler.Battle      `json:"battle"`
+	GameMap          *boiler.GameMap     `json:"game_map"`
+	Arena            *boiler.BattleArena `json:"arena"`
+	ID               string              `json:"id"`
+	StreamID         null.String         `json:"stream_id,omitempty"`
+	ArenaID          string              `json:"arena_id"`
+	BattleID         string              `json:"battle_id"`
+	IsCompleteBattle bool                `json:"is_complete_battle"`
+	RecordingStatus  string              `json:"recording_status"`
+	StartedAt        null.Time           `json:"started_at,omitempty"`
+	StoppedAt        null.Time           `json:"stopped_at,omitempty"`
+	Events           null.JSON           `json:"events"`
 }
 
 func BattleReplayFromBoilerWithEvent(replay *boiler.BattleReplay) *BattleReplay {
@@ -38,6 +39,10 @@ func BattleReplayFromBoilerWithEvent(replay *boiler.BattleReplay) *BattleReplay 
 		if replay.R.Battle.R != nil && replay.R.Battle.R.GameMap != nil {
 			battleReplay.GameMap = replay.R.Battle.R.GameMap
 		}
+	}
+
+	if replay.R != nil && replay.R.Arena != nil {
+		battleReplay.Arena = replay.R.Arena
 	}
 
 	return battleReplay
@@ -69,6 +74,10 @@ func BattleReplayFromBoilerNoEvent(replay *boiler.BattleReplay) *BattleReplay {
 		if replay.R.Battle.R != nil && replay.R.Battle.R.GameMap != nil {
 			battleReplay.GameMap = replay.R.Battle.R.GameMap
 		}
+	}
+
+	if replay.R != nil && replay.R.Arena != nil {
+		battleReplay.Arena = replay.R.Arena
 	}
 
 	return battleReplay
