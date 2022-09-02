@@ -730,7 +730,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 								killInfo.Name = killerMech.Name
 								killInfo.ImageUrl = killerMech.ImageAvatar
 							} else if killerUser != nil {
-								killInfo.Name = fmt.Sprintf("%s%s", killerUser.Username, destroyedMechRecord.KilledBy)
+								killInfo.Name = fmt.Sprintf("%s %s", killerUser.Username, destroyedMechRecord.KilledBy)
 							}
 							mbb.KilledBy = killInfo // set kill by info
 							continue
