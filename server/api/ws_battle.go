@@ -367,3 +367,8 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 	}
 	return nil
 }
+
+func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(api.ChallengeFund)
+	return nil
+}

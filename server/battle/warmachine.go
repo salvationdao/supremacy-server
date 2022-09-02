@@ -63,6 +63,9 @@ type WarMachine struct {
 	Status *Status `json:"status"`
 
 	deadlock.RWMutex // lock for any mech detail changes
+
+	// data for system message
+	damagedBlockCount int
 }
 
 type Status struct {
