@@ -1944,15 +1944,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 
 		wmd := &WMDestroyedRecord{
+			KilledBy: dp.KilledBy,
 			DestroyedWarMachine: &WarMachineBrief{
 				ParticipantID: destroyedWarMachine.ParticipantID,
 				ImageUrl:      destroyedWarMachine.Image,
 				ImageAvatar:   destroyedWarMachine.ImageAvatar,
-				Name:          destroyedWarMachine.Name,
+				Name:          destroyedWarMachine.Label,
 				Hash:          destroyedWarMachine.Hash,
 				FactionID:     destroyedWarMachine.FactionID,
 			},
-			KilledBy: dp.KilledBy,
+		}
+		if destroyedWarMachine.Name != "" {
+			wmd.DestroyedWarMachine.Name = destroyedWarMachine.Name
 		}
 
 		if killByWarMachine != nil {
@@ -1971,14 +1974,20 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			if damage.InstigatorHash != "" {
 				for _, wm := range btl.WarMachines {
 					if wm.Hash == damage.InstigatorHash {
-						damageRecord.CausedByWarMachine = &WarMachineBrief{
+						wmb := &WarMachineBrief{
 							ParticipantID: wm.ParticipantID,
 							ImageUrl:      wm.Image,
 							ImageAvatar:   wm.ImageAvatar,
-							Name:          wm.Name,
+							Name:          wm.Label,
 							Hash:          wm.Hash,
 							FactionID:     wm.FactionID,
 						}
+						if wm.Name != "" {
+							wmb.Name = wm.Name
+						}
+
+						damageRecord.CausedByWarMachine = wmb
+
 					}
 				}
 			}
@@ -1990,9 +1999,12 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				ParticipantID: killByWarMachine.ParticipantID,
 				ImageUrl:      killByWarMachine.Image,
 				ImageAvatar:   killByWarMachine.ImageAvatar,
-				Name:          killByWarMachine.Name,
+				Name:          killByWarMachine.Label,
 				Hash:          killByWarMachine.Hash,
 				FactionID:     killByWarMachine.FactionID,
+			}
+			if killByWarMachine.Name != "" {
+				wmd.KilledByWarMachine.Name = killByWarMachine.Name
 			}
 		}
 
