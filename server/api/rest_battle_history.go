@@ -9,6 +9,7 @@ import (
 	"server/gamedb"
 	"server/helpers"
 	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/friendsofgo/errors"
@@ -32,6 +33,10 @@ const ZaibatsuShortcode FactionShortcode = "ZHI"
 const RedMountainShortcode FactionShortcode = "RMOMC"
 const BostonShortcode FactionShortcode = "BC"
 
+type CurrentBattle struct {
+	Number    int   `json:"number"`
+	ExpiresAt int64 `json:"expires_at"`
+}
 type BattleHistoryRecord struct {
 	Number            int              `json:"number"`
 	StartedAt         int64            `json:"started_at"`
@@ -82,7 +87,7 @@ func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
 //		]
 // }
 type BattleHistoryCurrent struct {
-	CurrentBattle   *BattleHistoryRecord   `json:"current_battle"`
+	CurrentBattle   *CurrentBattle         `json:"current_battle"`
 	PreviousBattles []*BattleHistoryRecord `json:"previous_battles"`
 }
 
@@ -98,16 +103,9 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 
 	// Head of battle array
 	curr := battles[0]
-	currentBattleRecord := &BattleHistoryRecord{
-		Number:            curr.BattleNumber,
-		StartedAt:         curr.StartedAt.Unix(),
-		EndedAt:           nil,
-		Winner:            int64(FactionMap[NoneShortcode]),
-		RunnerUp:          int64(FactionMap[NoneShortcode]),
-		Loser:             int64(FactionMap[NoneShortcode]),
-		WinnerShortcode:   NoneShortcode,
-		RunnerUpShortcode: NoneShortcode,
-		LoserShortcode:    NoneShortcode,
+	currentBattleRecord := &CurrentBattle{
+		Number:    curr.BattleNumber,
+		ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
 	}
 
 	previousBattleRecords := []*BattleHistoryRecord{}
