@@ -34,8 +34,9 @@ const RedMountainShortcode FactionShortcode = "RMOMC"
 const BostonShortcode FactionShortcode = "BC"
 
 type CurrentBattle struct {
-	Number    int   `json:"number"`
-	ExpiresAt int64 `json:"expires_at"`
+	Number    int    `json:"number"`
+	ExpiresAt int64  `json:"expires_at"`
+	Signature string `json:"signature"`
 }
 type BattleHistoryRecord struct {
 	Number            int              `json:"number"`
@@ -103,9 +104,20 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 
 	// Head of battle array
 	curr := battles[0]
+	expiry := time.Now().Add(5 * time.Minute).Unix()
+	signer := bridge.NewSigner(c.signerPrivateKeyHex)
+	_, sig, err := signer.GenerateCurrentBattleSignature(
+		int64(curr.BattleNumber),
+		expiry,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("generate signature: %w", err)
+	}
+
 	currentBattleRecord := &CurrentBattle{
 		Number:    curr.BattleNumber,
-		ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+		ExpiresAt: expiry,
+		Signature: hexutil.Encode(sig),
 	}
 
 	previousBattleRecords := []*BattleHistoryRecord{}
