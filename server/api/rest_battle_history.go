@@ -104,7 +104,7 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 
 	// Head of battle array
 	curr := battles[0]
-	expiry := time.Now().Add(5 * time.Minute).Unix()
+	expiry := time.Now().Add(30 * time.Second).Unix()
 	signer := bridge.NewSigner(c.signerPrivateKeyHex)
 	_, sig, err := signer.GenerateCurrentBattleSignature(
 		int64(curr.BattleNumber),
