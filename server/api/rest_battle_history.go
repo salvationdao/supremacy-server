@@ -94,12 +94,9 @@ type BattleHistoryCurrent struct {
 
 // BattleHistoryCurrent gets current battle and previous battle records (100 records)
 func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r *http.Request) (int, error) {
-	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(100)).All(gamedb.StdConn)
+	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(11)).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrap(err, "get battles")
-	}
-	if len(battles) != 100 {
-		return http.StatusBadRequest, fmt.Errorf("expected 100 battles, got %d", len(battles))
 	}
 
 	// Head of battle array
