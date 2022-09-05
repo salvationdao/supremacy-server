@@ -62,7 +62,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 	}
 	defer tx.Rollback()
 	zaiQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s asc", boiler.BattleQueueColumns.QueuedAt)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(zaiQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
@@ -70,7 +70,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	rmQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s asc", boiler.BattleQueueColumns.QueuedAt)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(rmQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
@@ -78,7 +78,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	bcQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s asc", boiler.BattleQueueColumns.QueuedAt)),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(bcQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
