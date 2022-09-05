@@ -1848,7 +1848,7 @@ func (arena *Arena) BeginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
-		MapEventList: NewMapEventList(),
+		MapEventList: NewMapEventList(gameMap.Name),
 		replaySession: &RecordingSession{
 			ReplaySession: &boiler.BattleReplay{
 				ArenaID:         arena.ID,
