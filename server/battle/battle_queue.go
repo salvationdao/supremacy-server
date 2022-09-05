@@ -152,7 +152,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 	for {
 		select {
 		case <-queueTicker.C:
-			gamelog.L.Debug().Msg("moving entries from queue backlog to battle queue")
+			l.Debug().Msg("moving entries from queue backlog to battle queue")
 			// 1. load whole queue backlog
 			// 2. if there are missing mechs, fill in the missing mech from backlog to queue
 			// 3. otherwise, insert sets (3 mech per fection from each faction)
