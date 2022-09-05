@@ -103,7 +103,6 @@ type WeaponSkinListOpts struct {
 
 func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, error) {
 
-	boil.DebugMode = true
 	var weaponSkins []*server.WeaponSkin
 
 	var queryMods []qm.QueryMod
@@ -245,7 +244,6 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		return 0, nil, err
 	}
 
@@ -317,7 +315,6 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		queryMods...,
 	).Query(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		gamelog.L.Error().Err(err).Msg("failed to run dynamic weapon skin query")
 		return 0, nil, err
 	}
@@ -363,13 +360,10 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 
 		err = rows.Scan(scanArgs...)
 		if err != nil {
-			boil.DebugMode = false
 			return total, weaponSkins, err
 		}
 		weaponSkins = append(weaponSkins, ws)
 	}
-
-	boil.DebugMode = false
 
 	return total, weaponSkins, nil
 }
