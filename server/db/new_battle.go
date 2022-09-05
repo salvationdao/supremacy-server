@@ -251,9 +251,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT %s, %s, %s, %s, %s, %s, %s, %s
+		SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
-			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
+			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY %s ASC) AS r, t.*
 			FROM battle_queue t
 		) x
 		WHERE x.r <= $1 %s
@@ -266,7 +266,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
+		boiler.BattleQueueColumns.InsertedAt,
 		inBattle,
+		boiler.BattleQueueColumns.InsertedAt,
 	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
@@ -280,7 +282,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 
 	for result.Next() {
 		mc := &boiler.BattleQueue{}
-		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified, &mc.SystemMessageNotified)
+		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified, &mc.SystemMessageNotified, &mc.InsertedAt)
 		if err != nil {
 			return nil, err
 		}

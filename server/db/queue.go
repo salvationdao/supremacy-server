@@ -152,7 +152,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 			%s = $1
 			AND %s IS NULL
 		`,
-			boiler.BattleQueueColumns.QueuedAt,
+			boiler.BattleQueueColumns.InsertedAt,
 			boiler.TableNames.BattleQueue,
 			boiler.BattleQueueColumns.FactionID,
 			boiler.BattleQueueColumns.BattleID),
