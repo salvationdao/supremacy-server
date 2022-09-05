@@ -490,6 +490,39 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 		}
 	}
 
+	if len(rmMechIDs) < FACTION_MECH_LIMIT {
+		limit := FACTION_MECH_LIMIT - len(rmMechIDs)
+		extra, err := GetPendingMechsFromFactionID(server.RedMountainFactionID, []string{}, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range extra {
+			rmMechIDs = append(rmMechIDs, m.MechID)
+		}
+	}
+
+	if len(zhiMechIDs) < FACTION_MECH_LIMIT {
+		limit := FACTION_MECH_LIMIT - len(zhiMechIDs)
+		extra, err := GetPendingMechsFromFactionID(server.ZaibatsuFactionID, []string{}, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range extra {
+			zhiMechIDs = append(zhiMechIDs, m.MechID)
+		}
+	}
+
+	if len(bcMechIDs) < FACTION_MECH_LIMIT {
+		limit := FACTION_MECH_LIMIT - len(bcMechIDs)
+		extra, err := GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, []string{}, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range extra {
+			bcMechIDs = append(bcMechIDs, m.MechID)
+		}
+	}
+
 	// get map details
 	bMap := &BattleMap{}
 	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" ASC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
