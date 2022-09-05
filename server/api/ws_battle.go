@@ -303,7 +303,7 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 	reply(battle.QueueStatusResponse{
 		MinimumWaitTimeSeconds:   mwt,
 		AverageGameLengthSeconds: abl,
-		QueueCost:                db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		QueueCost:                db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 	return nil
 }
@@ -382,5 +382,10 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 	if btl != nil {
 		reply(btl.MiniMapAbilityDisplayList.List())
 	}
+	return nil
+}
+
+func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(api.ChallengeFund)
 	return nil
 }

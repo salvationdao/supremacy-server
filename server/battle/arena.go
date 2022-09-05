@@ -66,6 +66,8 @@ type ArenaManager struct {
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
+
+	ChallengeFundUpdateChan chan bool
 }
 
 type Opts struct {
@@ -99,7 +101,9 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		RepairOfferFuncChan:      make(chan func()),
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
-		BattleQueueManager:       bqm,
+
+		ChallengeFundUpdateChan: make(chan bool),
+		BattleQueueManager:      bqm,
 	}
 
 	bqm.arenaManager = am
@@ -351,6 +355,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		SystemMessagingManager:   am.SystemMessagingManager,
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
+		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
 		BattleQueueManager:       am.BattleQueueManager,
 		isIdle:                   atomic.Bool{},
 	}
@@ -387,6 +392,7 @@ type Arena struct {
 	SystemBanManager         *SystemBanManager
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	NewBattleChan            chan *NewBattleChan
+	ChallengeFundUpdateChan  chan bool
 
 	LastBattleResult *BattleEndDetail
 
@@ -743,7 +749,7 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 
 		// pay queue fee from treasury when it is not in production
 		if !server.IsProductionEnv() {
-			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18))
+			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18))
 
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mech.ID,
@@ -894,6 +900,29 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	}
 
 	reply(minimapUpdates)
+	return nil
+}
+
+const HubKeyMinimapEventsSubscribe = "MINIMAP:EVENTS:SUBSCRIBE"
+
+func (am *ArenaManager) MinimapEventsSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// if current battle still running
+	btl := arena.CurrentBattle()
+	if btl == nil {
+		return nil
+	}
+
+	// send landmine, pickup locations and the hive map state
+	hasMessages, mapEventsPacked := btl.MapEventList.Pack()
+	if hasMessages {
+		reply(mapEventsPacked)
+	}
+
 	return nil
 }
 
@@ -1702,8 +1731,9 @@ func (arena *Arena) BeginBattle() {
 	}
 
 	gameMap := &server.GameMap{
-		ID:   uuid.Must(uuid.FromString(gm.ID)),
-		Name: gm.Name,
+		ID:            uuid.Must(uuid.FromString(gm.ID)),
+		Name:          gm.Name,
+		BackgroundUrl: gm.BackgroundURL,
 	}
 
 	var battle *boiler.Battle
@@ -1766,6 +1796,7 @@ func (arena *Arena) BeginBattle() {
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
 			m: make(map[string]*MiniMapAbilityContent),
 		},
+		MapEventList: NewMapEventList(),
 		replaySession: &RecordingSession{
 			ReplaySession: &boiler.BattleReplay{
 				ArenaID:         arena.ID,
@@ -1802,7 +1833,7 @@ func (arena *Arena) BeginBattle() {
 			switch a.GameClientAbilityID {
 			case 1: // NUKE
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
-					Radius: 5200,
+					Radius: 2000,
 				}
 			case 12: // EMP
 				btl.abilityDetails[a.GameClientAbilityID] = &AbilityDetail{
@@ -1870,7 +1901,106 @@ func (arena *Arena) BeginBattle() {
 		BattleNumber: battle.BattleNumber,
 	})
 
+	// broadcast system message for mechs entering the battle
+	go btl.BattleStartSystemMessage()
+
 	go arena.NotifyUpcomingWarMachines()
+}
+
+type SystemMessageBattleStart struct {
+	PlayerID  string               `json:"player_id"`
+	FactionID string               `json:"faction_id"`
+	Mechs     []*SystemMessageMech `json:"mechs"`
+}
+
+type SystemMessageMech struct {
+	MechID        string `json:"mech_id"`
+	FactionID     string `json:"faction_id"`
+	Name          string `json:"name"`
+	ImageUrl      string `json:"image_url"`
+	Tier          string `json:"tier"`
+	TotalBlocks   int    `json:"total_blocks"`
+	DamagedBlocks int    `json:"damaged_blocks"`
+}
+
+func (btl *Battle) BattleStartSystemMessage() {
+	l := gamelog.L.With().Str("func", "BattleStartSystemMessage").Logger()
+
+	playerMechs := make(map[string][]*WarMachine)
+	for _, wm := range btl.WarMachines {
+		pm, ok := playerMechs[wm.OwnedByID]
+		if !ok {
+			pm = []*WarMachine{}
+		}
+		playerMechs[wm.OwnedByID] = append(pm, wm)
+	}
+
+	for playerID, mechs := range playerMechs {
+		go func(playerID string, mechs []*WarMachine) {
+			tx, err := gamedb.StdConn.Begin()
+			if err != nil {
+				l.Error().Err(err).Msg("unable to begin tx")
+				return
+			}
+			defer tx.Rollback()
+
+			bsm := &SystemMessageBattleStart{
+				PlayerID: playerID,
+				Mechs:    []*SystemMessageMech{},
+			}
+
+			for _, mech := range mechs {
+				smm := &SystemMessageMech{
+					MechID:        mech.ID,
+					FactionID:     mech.Faction.ID,
+					Name:          mech.Label,
+					ImageUrl:      mech.ImageAvatar,
+					Tier:          mech.Tier,
+					TotalBlocks:   db.TotalRepairBlocks(mech.ID),
+					DamagedBlocks: mech.damagedBlockCount,
+				}
+
+				if mech.Name != "" {
+					smm.Name = mech.Name
+				}
+
+				bsm.Mechs = append(bsm.Mechs, smm)
+			}
+
+			b, err := json.Marshal(bsm)
+			if err != nil {
+				l.Error().Err(err).Interface("battle start data", bsm).Msg("failed to marshal battle start system message data")
+				return
+			}
+
+			message := fmt.Sprintf("Your mech enters battle #%d", btl.BattleNumber)
+			if len(mechs) > 1 {
+				message = fmt.Sprintf("Your mechs enter battle #%d", btl.BattleNumber)
+			}
+
+			msg := &boiler.SystemMessage{
+				PlayerID: playerID,
+				SenderID: server.SupremacyBattleUserID,
+				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeMechBattleBegin)),
+				Title:    "Battle Begin",
+				Message:  message,
+				Data:     null.JSONFrom(b),
+			}
+			err = msg.Insert(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Interface("newSystemMessage", msg).Msg("failed to insert new system message into db")
+				return
+			}
+
+			err = tx.Commit()
+			if err != nil {
+				l.Error().Err(err).Msg("failed to commit transaction")
+				return
+			}
+
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/system_messages", playerID), server.HubKeySystemMessageListUpdatedSubscribe, true)
+		}(playerID, mechs)
+	}
 }
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {

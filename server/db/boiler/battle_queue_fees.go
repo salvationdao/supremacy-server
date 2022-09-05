@@ -35,6 +35,7 @@ type BattleQueueFee struct {
 	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt         time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt         null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	BonusSupsTXID     null.String     `boiler:"bonus_sups_tx_id" boil:"bonus_sups_tx_id" json:"bonus_sups_tx_id,omitempty" toml:"bonus_sups_tx_id" yaml:"bonus_sups_tx_id,omitempty"`
 
 	R *battleQueueFeeR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueFeeL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var BattleQueueFeeColumns = struct {
 	CreatedAt         string
 	UpdatedAt         string
 	DeletedAt         string
+	BonusSupsTXID     string
 }{
 	ID:                "id",
 	MechID:            "mech_id",
@@ -64,6 +66,7 @@ var BattleQueueFeeColumns = struct {
 	CreatedAt:         "created_at",
 	UpdatedAt:         "updated_at",
 	DeletedAt:         "deleted_at",
+	BonusSupsTXID:     "bonus_sups_tx_id",
 }
 
 var BattleQueueFeeTableColumns = struct {
@@ -78,6 +81,7 @@ var BattleQueueFeeTableColumns = struct {
 	CreatedAt         string
 	UpdatedAt         string
 	DeletedAt         string
+	BonusSupsTXID     string
 }{
 	ID:                "battle_queue_fees.id",
 	MechID:            "battle_queue_fees.mech_id",
@@ -90,6 +94,7 @@ var BattleQueueFeeTableColumns = struct {
 	CreatedAt:         "battle_queue_fees.created_at",
 	UpdatedAt:         "battle_queue_fees.updated_at",
 	DeletedAt:         "battle_queue_fees.deleted_at",
+	BonusSupsTXID:     "battle_queue_fees.bonus_sups_tx_id",
 }
 
 // Generated where
@@ -106,6 +111,7 @@ var BattleQueueFeeWhere = struct {
 	CreatedAt         whereHelpertime_Time
 	UpdatedAt         whereHelpertime_Time
 	DeletedAt         whereHelpernull_Time
+	BonusSupsTXID     whereHelpernull_String
 }{
 	ID:                whereHelperstring{field: "\"battle_queue_fees\".\"id\""},
 	MechID:            whereHelperstring{field: "\"battle_queue_fees\".\"mech_id\""},
@@ -118,6 +124,7 @@ var BattleQueueFeeWhere = struct {
 	CreatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"created_at\""},
 	UpdatedAt:         whereHelpertime_Time{field: "\"battle_queue_fees\".\"updated_at\""},
 	DeletedAt:         whereHelpernull_Time{field: "\"battle_queue_fees\".\"deleted_at\""},
+	BonusSupsTXID:     whereHelpernull_String{field: "\"battle_queue_fees\".\"bonus_sups_tx_id\""},
 }
 
 // BattleQueueFeeRels is where relationship names are stored.
@@ -150,9 +157,9 @@ func (*battleQueueFeeR) NewStruct() *battleQueueFeeR {
 type battleQueueFeeL struct{}
 
 var (
-	battleQueueFeeAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleQueueFeeAllColumns            = []string{"id", "mech_id", "paid_by_id", "amount", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id"}
 	battleQueueFeeColumnsWithoutDefault = []string{"mech_id", "paid_by_id", "amount"}
-	battleQueueFeeColumnsWithDefault    = []string{"id", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleQueueFeeColumnsWithDefault    = []string{"id", "paid_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "created_at", "updated_at", "deleted_at", "bonus_sups_tx_id"}
 	battleQueueFeePrimaryKeyColumns     = []string{"id"}
 	battleQueueFeeGeneratedColumns      = []string{}
 )
