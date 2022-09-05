@@ -9,6 +9,7 @@ import (
 	"server/gamedb"
 	"server/helpers"
 	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/friendsofgo/errors"
@@ -32,6 +33,11 @@ const ZaibatsuShortcode FactionShortcode = "ZHI"
 const RedMountainShortcode FactionShortcode = "RMOMC"
 const BostonShortcode FactionShortcode = "BC"
 
+type CurrentBattle struct {
+	Number    int    `json:"number"`
+	ExpiresAt int64  `json:"expires_at"`
+	Signature string `json:"signature"`
+}
 type BattleHistoryRecord struct {
 	Number            int              `json:"number"`
 	StartedAt         int64            `json:"started_at"`
@@ -82,32 +88,33 @@ func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
 //		]
 // }
 type BattleHistoryCurrent struct {
-	CurrentBattle   *BattleHistoryRecord   `json:"current_battle"`
+	CurrentBattle   *CurrentBattle         `json:"current_battle"`
 	PreviousBattles []*BattleHistoryRecord `json:"previous_battles"`
 }
 
 // BattleHistoryCurrent gets current battle and previous battle records (100 records)
 func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r *http.Request) (int, error) {
-	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(100)).All(gamedb.StdConn)
+	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(11)).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrap(err, "get battles")
-	}
-	if len(battles) != 100 {
-		return http.StatusBadRequest, fmt.Errorf("expected 100 battles, got %d", len(battles))
 	}
 
 	// Head of battle array
 	curr := battles[0]
-	currentBattleRecord := &BattleHistoryRecord{
-		Number:            curr.BattleNumber,
-		StartedAt:         curr.StartedAt.Unix(),
-		EndedAt:           nil,
-		Winner:            int64(FactionMap[NoneShortcode]),
-		RunnerUp:          int64(FactionMap[NoneShortcode]),
-		Loser:             int64(FactionMap[NoneShortcode]),
-		WinnerShortcode:   NoneShortcode,
-		RunnerUpShortcode: NoneShortcode,
-		LoserShortcode:    NoneShortcode,
+	expiry := time.Now().Add(30 * time.Second).Unix()
+	signer := bridge.NewSigner(c.signerPrivateKeyHex)
+	_, sig, err := signer.GenerateCurrentBattleSignature(
+		int64(curr.BattleNumber),
+		expiry,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("generate signature: %w", err)
+	}
+
+	currentBattleRecord := &CurrentBattle{
+		Number:    curr.BattleNumber,
+		ExpiresAt: expiry,
+		Signature: hexutil.Encode(sig),
 	}
 
 	previousBattleRecords := []*BattleHistoryRecord{}
