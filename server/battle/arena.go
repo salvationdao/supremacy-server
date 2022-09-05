@@ -62,6 +62,7 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
+	BattleQueueManager       *BattleQueueManager
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
@@ -80,7 +81,13 @@ type Opts struct {
 	QuestManager             *quest.System
 }
 
-func NewArenaManager(opts *Opts) *ArenaManager {
+func NewArenaManager(opts *Opts) (*ArenaManager, error) {
+	// Initialise battle queue manager
+	bqm, err := NewBattleQueueSystem(opts.RPCClient)
+	if err != nil {
+		return nil, terror.Error(err, "Battle Queue manager init failed")
+	}
+
 	am := &ArenaManager{
 		Addr:                     opts.Addr,
 		timeout:                  opts.Timeout,
@@ -96,7 +103,10 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 		arenas:                   make(map[string]*Arena),
 
 		ChallengeFundUpdateChan: make(chan bool),
+		BattleQueueManager:      bqm,
 	}
+
+	bqm.arenaManager = am
 
 	am.server = &http.Server{
 		Handler:      am,
@@ -108,7 +118,7 @@ func NewArenaManager(opts *Opts) *ArenaManager {
 	am.PlayerRankUpdater()
 	go am.RepairOfferCleaner()
 
-	return am
+	return am, nil
 }
 
 func (am *ArenaManager) GetArenaFromContext(ctx context.Context) (*Arena, error) {
@@ -145,6 +155,18 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	}
 
 	return arena, nil
+}
+
+func (am *ArenaManager) IdleArenas() []*Arena {
+	am.RLock()
+	defer am.RUnlock()
+	resp := []*Arena{}
+	for _, a := range am.arenas {
+		if a.connected.Load() && a.isIdle.Load() {
+			resp = append(resp, a)
+		}
+	}
+	return resp
 }
 
 func (am *ArenaManager) AvailableBattleArenas() []*boiler.BattleArena {
@@ -337,6 +359,8 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
+		BattleQueueManager:       am.BattleQueueManager,
+		isIdle:                   atomic.Bool{},
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -358,6 +382,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 
 type Arena struct {
 	*boiler.BattleArena
+	stage                    atomic.Int32 // running, idle
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
@@ -375,6 +400,9 @@ type Arena struct {
 	LastBattleResult *BattleEndDetail
 
 	QuestManager *quest.System
+
+	isIdle             atomic.Bool
+	BattleQueueManager *BattleQueueManager
 
 	gameClientJsonDataChan chan []byte
 
@@ -1353,7 +1381,7 @@ type WarMachineStatusPayload struct {
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.beginBattle()
+	arena.BeginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -1495,7 +1523,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
-			arena.beginBattle()
+			arena.BeginBattle()
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
@@ -1694,12 +1722,24 @@ func (arena *Arena) GameClientJsonDataParser() {
 	}
 }
 
-func (arena *Arena) beginBattle() {
+func (arena *Arena) BeginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
+	q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
+		return
+	}
+
+	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		arena.isIdle.Store(true)
+		return
+	}
+
 	// delete all the unfinished mech command
-	_, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
@@ -1792,7 +1832,6 @@ func (arena *Arena) beginBattle() {
 		gameMap.Name = lastBattle.R.GameMap.Name
 
 		inserted = true
-
 	}
 
 	events := []*RecordingEvents{}
@@ -1895,6 +1934,12 @@ func (arena *Arena) beginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
+
+	ownerBlacklist := []string{}
+	for _, m := range btl.WarMachines {
+		ownerBlacklist = append(ownerBlacklist, m.OwnedByID)
+	}
+	arena.BattleQueueManager.SetMechOwnerBlacklist(ownerBlacklist)
 
 	arena.Message(BATTLEINIT, &struct {
 		BattleID     string                  `json:"battle_id"`
