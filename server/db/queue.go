@@ -7,6 +7,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -162,6 +163,8 @@ func GetAverageBattleLengthSeconds() (int64, error) {
 }
 
 func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.MechArenaInfo, error) {
+	l := gamelog.L.With().Str("func", "GetCollectionItemStatus").Interface("collectionItem", collectionItem).Logger()
+
 	// Check in marketplace
 	now := time.Now()
 	inMarketplace, err := collectionItem.ItemSales(
@@ -170,6 +173,7 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		boiler.ItemSaleWhere.DeletedAt.IsNull(),
 	).Exists(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to check in marketplace")
 		return nil, err
 	}
 
@@ -188,6 +192,7 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		boiler.BattleQueueWhere.BattleID.IsNotNull(),
 	).Exists(gamedb.StdConn)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to check in battle")
 		return nil, err
 	}
 
@@ -201,17 +206,20 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 	// Check in battle queue backlog
 	pendingQueue, err := boiler.BattleQueueBacklogExists(gamedb.StdConn, mechID)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to check in queue backlog")
 		return nil, err
 	}
 
 	owner, err := collectionItem.Owner().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("failed to get owner of collection item")
 		return nil, err
 	}
 
 	if pendingQueue {
 		eta, err := GetMinimumQueueWaitTimeSecondsFromFactionID(owner.FactionID.String)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get faction queue eta")
 			return nil, err
 		}
 
@@ -226,12 +234,14 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		// Check in battle queue
 		exists, err := boiler.BattleQueueExists(gamedb.StdConn, mechID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to check in queue")
 			return nil, err
 		}
 
 		if exists {
 			eta, err := GetBattleETASecondsFromMechID(mechID, owner.FactionID.String)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to get battle eta for mech")
 				return nil, err
 			}
 			return &server.MechArenaInfo{
@@ -248,6 +258,7 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		boiler.RepairCaseWhere.CompletedAt.IsNull(),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		l.Error().Err(err).Msg("failed to check if damaged")
 		return nil, err
 	}
 
