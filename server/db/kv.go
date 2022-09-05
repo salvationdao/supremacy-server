@@ -14,6 +14,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+type KVKey string
+
+const KeyQueueTickerIntervalSeconds = "queue_ticker_interval_seconds"
+
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const KeySaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
@@ -27,8 +31,6 @@ const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
-
-type KVKey string
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
 const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"

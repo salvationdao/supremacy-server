@@ -382,17 +382,20 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					start = time.Now()
+					// initialise quest manager
 					qm, err := quest.New()
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+					gamelog.L.Info().Msgf("Quest manager took %s", time.Since(start))
 
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 
-					arenaManager := battle.NewArenaManager(&battle.Opts{
+					arenaManager, err := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
@@ -400,10 +403,13 @@ func main() {
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
 					})
+					if err != nil {
+						return terror.Error(err, "Arena Manager init failed")
+					}
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up Zendesk")
@@ -477,7 +483,7 @@ func main() {
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
