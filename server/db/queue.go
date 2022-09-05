@@ -83,6 +83,36 @@ func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, li
 		return nil, err
 	}
 
+	if len(pendingMechs) == limit {
+		return pendingMechs, nil
+	}
+
+	pendingMechs, err = boiler.BattleQueueBacklogs(
+		qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
+			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
+			boiler.TableNames.BattleQueueBacklog,
+		)),
+		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
+		qm.Limit(limit),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(pendingMechs) == limit {
+		return pendingMechs, nil
+	}
+
+	pendingMechs, err = boiler.BattleQueueBacklogs(
+		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
+		qm.Limit(limit),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
 	return pendingMechs, nil
 }
 
@@ -122,7 +152,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 			%s = $1
 			AND %s IS NULL
 		`,
-			boiler.BattleQueueColumns.QueuedAt,
+			boiler.BattleQueueColumns.InsertedAt,
 			boiler.TableNames.BattleQueue,
 			boiler.BattleQueueColumns.FactionID,
 			boiler.BattleQueueColumns.BattleID),

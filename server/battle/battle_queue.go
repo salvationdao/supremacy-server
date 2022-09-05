@@ -42,11 +42,11 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 	if err != nil {
 		return nil, err
 	}
-	rmQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.ZaibatsuFactionID)
+	rmQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.RedMountainFactionID)
 	if err != nil {
 		return nil, err
 	}
-	bcQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.ZaibatsuFactionID)
+	bcQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.BostonCyberneticsFactionID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,8 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 	}
 	defer tx.Rollback()
 	zaiQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
+		boiler.BattleQueueWhere.FactionID.EQ(server.ZaibatsuFactionID),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.InsertedAt)),
 		qm.Limit(int(zaiQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
@@ -70,7 +71,8 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	rmQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
+		boiler.BattleQueueWhere.FactionID.EQ(server.RedMountainFactionID),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.InsertedAt)),
 		qm.Limit(int(rmQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
@@ -78,7 +80,8 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	bcQueues, err := boiler.BattleQueues(
-		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
+		boiler.BattleQueueWhere.FactionID.EQ(server.BostonCyberneticsFactionID),
+		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.InsertedAt)),
 		qm.Limit(int(bcQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
 	).All(tx)
@@ -167,32 +170,35 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			}
 
 			// Get mechs from backlog
-			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
+			_zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
-			if len(zaiPendingMechs) < db.FACTION_MECH_LIMIT {
+			if len(_zaiPendingMechs) < db.FACTION_MECH_LIMIT {
+				l.Warn().Err(err).Msg("len(_zaiPendingMechs) < db.FACTION_MECH_LIMIT")
 				continue
 			}
-			rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
+			_rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
-			if len(rmPendingMechs) < db.FACTION_MECH_LIMIT {
+			if len(_rmPendingMechs) < db.FACTION_MECH_LIMIT {
+				l.Warn().Err(err).Msg("len(_rmPendingMechs) < db.FACTION_MECH_LIMIT ")
 				continue
 			}
-			bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
+			_bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
 				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
-			if len(bcPendingMechs) < db.FACTION_MECH_LIMIT {
+			if len(_bcPendingMechs) < db.FACTION_MECH_LIMIT {
+				l.Warn().Err(err).Msg("len(_bcPendingMechs) < db.FACTION_MECH_LIMIT ")
 				continue
 			}
 
-			func() {
+			func(zaiPendingMechs, rmPendingMechs, bcPendingMechs boiler.BattleQueueBacklogSlice) {
 				tx, err := gamedb.StdConn.Begin()
 				if err != nil {
 					l.Warn().Err(err).Msg("failed to create db transaction")
@@ -257,7 +263,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				for _, a := range qs.arenaManager.IdleArenas() {
 					a.BeginBattle()
 				}
-			}()
+			}(_zaiPendingMechs, _rmPendingMechs, _bcPendingMechs)
 
 			go func() {
 				CalcNextQueueStatus(server.ZaibatsuFactionID)
