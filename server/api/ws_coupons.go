@@ -83,7 +83,8 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 		_, err := boiler.NewQuery(
 			qm.SQL(
 				fmt.Sprintf(`
-					UPDATE %s SET %s = false 
+					UPDATE %s SET %s = false,
+								  %s = null,
 					WHERE %s = $1`,
 					boiler.TableNames.Coupons,
 					boiler.CouponColumns.Redeemed,
@@ -102,13 +103,15 @@ func (cc *CouponController) CodeRedemptionHandler(ctx context.Context, user *boi
 	err = boiler.NewQuery(
 		qm.SQL(
 			fmt.Sprintf(`
-					UPDATE %s SET %s = true 
+					UPDATE %s SET %s = true,
+								  %s = NOW()
 					WHERE %s IS FALSE 
 					AND %s = $1
 					AND %s > NOW()
 					RETURNING  %s, %s, %s, %s`,
 				boiler.TableNames.Coupons,
 				boiler.CouponColumns.Redeemed,
+				boiler.CouponColumns.RedeemedAt,
 				boiler.CouponColumns.Redeemed,
 				boiler.CouponColumns.Code,
 				boiler.CouponColumns.ExpiryDate,
