@@ -29,7 +29,7 @@ func GetPreviousBattleOwnerIDs() ([]string, error) {
 			owner_id
 		FROM
 			%s
-		ORDER BY %s desc
+		ORDER BY %s DESC
 		LIMIT %d
 		`,
 			boiler.TableNames.BattleQueue,
@@ -69,16 +69,29 @@ func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
 // However, if 3 backlogged faction mechs with unique owner IDs does not currently exist, GetPendingMechsFromFactionID may return
 // mechs with the same owner ID.
 func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit int) (boiler.BattleQueueBacklogSlice, error) {
-	pendingMechs, err := boiler.BattleQueueBacklogs(
-		qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
-			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
-			boiler.TableNames.BattleQueueBacklog,
-		)),
-		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
-		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
-		qm.Limit(limit),
-	).All(gamedb.StdConn)
+	queries := []qm.QueryMod{}
+
+	if !server.IsDevelopmentEnv() {
+		// select distinct players, if not dev
+		queries = []qm.QueryMod{
+			qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
+				qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
+				boiler.TableNames.BattleQueueBacklog,
+			)),
+			boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+			boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
+			qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
+			qm.Limit(limit),
+		}
+	} else {
+		queries = []qm.QueryMod{
+			boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
+			qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
+			qm.Limit(limit),
+		}
+	}
+
+	pendingMechs, err := boiler.BattleQueueBacklogs(queries...).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +128,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 	err = boiler.NewQuery(
 		qm.SQL(fmt.Sprintf(`
 		SELECT
-			row_number() OVER (ORDER BY %s) AS queue_position
+			ROW_NUMBER() OVER (ORDER BY %s) AS queue_position
 		FROM
 			%s
 		WHERE
@@ -145,9 +158,9 @@ func GetAverageBattleLengthSeconds() (int64, error) {
 	}
 	err := boiler.NewQuery(
 		qm.SQL(fmt.Sprintf(`
-		SELECT coalesce(avg(battle_length.length), 0)::numeric::integer as ave_length_seconds
+		SELECT COALESCE(AVG(battle_length.length), 0)::NUMERIC::INTEGER AS ave_length_seconds
 		FROM (
-			SELECT extract(EPOCH FROM ended_at - started_at) AS length
+			SELECT EXTRACT(EPOCH FROM ended_at - started_at) AS length
 			FROM %s
 			WHERE %s IS NOT NULL
 			ORDER BY %s DESC
@@ -290,13 +303,13 @@ func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, e
 	q := `
 	SELECT
 		bq.mech_id,
-		coalesce(_bq.queue_position, 0) AS queue_position
+		COALESCE(_bq.queue_position, 0) AS queue_position
 	FROM
 		battle_queue bq
 		LEFT OUTER JOIN (
 		SELECT
 			_bq.mech_id,
-			row_number() OVER (ORDER BY _bq.queued_at) AS queue_position
+			ROW_NUMBER() OVER (ORDER BY _bq.queued_at) AS queue_position
 		FROM
 			battle_queue _bq
 		WHERE
@@ -318,15 +331,15 @@ func FactionQueue(factionID string) ([]*BattleQueuePosition, error) {
 	q := `
 		SELECT
 			bq.mech_id,
-			coalesce(_bq.queue_position, 0) AS queue_position
+			COALESCE(_bq.queue_position, 0) AS queue_position
 		FROM battle_queue bq
 		LEFT OUTER JOIN (SELECT
 							 _bq.mech_id,
-							 row_number () over (ORDER BY _bq.queued_at) AS queue_position
+							 ROW_NUMBER () OVER (ORDER BY _bq.queued_at) AS queue_position
 						 FROM
 							 battle_queue _bq
 						 WHERE
-								 _bq.faction_id = $1 AND _bq.battle_id isnull) _bq ON _bq.mech_id = bq.mech_id
+								 _bq.faction_id = $1 AND _bq.battle_id ISNULL) _bq ON _bq.mech_id = bq.mech_id
 		WHERE bq.faction_id = $1
 	`
 

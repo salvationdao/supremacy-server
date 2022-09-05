@@ -18,3 +18,6 @@ CREATE TABLE IF NOT EXISTS blueprint_player_abilities
     mech_display_effect_type     MINI_MAP_DISPLAY_EFFECT_TYPE NOT NULL DEFAULT 'NONE',
     animation_duration_seconds   INT                          NOT NULL DEFAULT 0
 );
+
+ALTER TABLE blueprint_player_abilities
+    ADD COLUMN IF NOT EXISTS deleted_at timestamptz;

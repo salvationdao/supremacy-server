@@ -1146,6 +1146,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			continue
 		}
 
+		fmt.Println(record[13])
+
 		if record[13] != "" {
 			gameAbility.DeletedAt = null.TimeFrom(time.Now())
 		}
@@ -1325,9 +1327,9 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 	}
 
 	// soft delete any row that is not on the list
-	_, err = boiler.GameAbilities(
-		boiler.GameAbilityWhere.ID.NIN(ids),
-	).UpdateAll(db, boiler.M{boiler.GameAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	_, err = boiler.BlueprintPlayerAbilities(
+		boiler.BlueprintPlayerAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.BlueprintPlayerAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
 	if err != nil {
 		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
 	}
