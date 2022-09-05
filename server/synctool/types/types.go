@@ -44,18 +44,18 @@ type Faction struct {
 }
 
 type MechSkin struct {
-	ID               string `json:"id"`
-	Collection       string `json:"collection"`
-	Label            string `json:"label"`
-	Tier             string `json:"tier"`
-	DefaultLevel     string `json:"default_level"`
-	ImageUrl         string `json:"image_url"`
-	AnimationUrl     string `json:"animation_url"`
-	CardAnimationUrl string `json:"card_animation_url"`
-	LargeImageUrl    string `json:"large_image_url"`
-	AvatarUrl        string `json:"avatar_url"`
-	BackgroundColor  string `json:"background_color"`
-	YoutubeUrl       string `json:"youtube_url"`
+	ID               string      `json:"id"`
+	Collection       string      `json:"collection"`
+	Label            string      `json:"label"`
+	Tier             string      `json:"tier"`
+	DefaultLevel     string      `json:"default_level"`
+	ImageUrl         null.String `json:"image_url"`
+	AnimationUrl     null.String `json:"animation_url"`
+	CardAnimationUrl null.String `json:"card_animation_url"`
+	LargeImageUrl    null.String `json:"large_image_url"`
+	AvatarUrl        null.String `json:"avatar_url"`
+	BackgroundColor  null.String `json:"background_color"`
+	YoutubeUrl       null.String `json:"youtube_url"`
 }
 
 type MechModelSkinCompatibility struct {
@@ -115,19 +115,19 @@ type Weapon struct {
 }
 
 type WeaponSkin struct {
-	ID               string `json:"id"`
-	Label            string `json:"label"`
-	Tier             string `json:"tier"`
-	CreatedAt        string `json:"created_at"`
-	Collection       string `json:"collection"`
-	StatModifier     string `json:"stat_modifier"`
-	ImageUrl         string `json:"image_url"`
-	AnimationUrl     string `json:"animation_url"`
-	CardAnimationUrl string `json:"card_animation_url"`
-	LargeImageUrl    string `json:"large_image_url"`
-	AvatarUrl        string `json:"avatar_url"`
-	BackgroundColor  string `json:"background_color"`
-	YoutubeUrl       string `json:"youtube_url"`
+	ID               string      `json:"id"`
+	Label            string      `json:"label"`
+	Tier             string      `json:"tier"`
+	CreatedAt        string      `json:"created_at"`
+	Collection       string      `json:"collection"`
+	StatModifier     string      `json:"stat_modifier"`
+	ImageUrl         null.String `json:"image_url"`
+	AnimationUrl     null.String `json:"animation_url"`
+	CardAnimationUrl null.String `json:"card_animation_url"`
+	LargeImageUrl    null.String `json:"large_image_url"`
+	AvatarUrl        null.String `json:"avatar_url"`
+	BackgroundColor  null.String `json:"background_color"`
+	YoutubeUrl       null.String `json:"youtube_url"`
 }
 
 type WeaponModelSkinCompatibility struct {

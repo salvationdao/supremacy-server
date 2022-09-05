@@ -6,6 +6,7 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -50,7 +51,7 @@ func (sbm *SystemBanManager) HasOngoingTeamKillCases(playerID string) bool {
 	}
 
 	// does not have any instance
-	if tkj.GetCase() == "" {
+	if tkj.GetNextCase() == "" {
 		return false
 	}
 
@@ -71,8 +72,8 @@ func (sbm *SystemBanManager) SendToTeamKillCourtroom(playerID string, relativeOf
 }
 
 type TeamKillDefendant struct {
-	playerID             string
-	relatedOfferingIDMap map[string]bool
+	playerID           string
+	relatedOfferingIDs []string
 	sync.Mutex
 
 	judgingCountdownSeconds int
@@ -82,7 +83,7 @@ type TeamKillDefendant struct {
 func newTeamKillDefendant(playerID string, sbm *SystemBanManager) *TeamKillDefendant {
 	tkj := &TeamKillDefendant{
 		playerID:                playerID,
-		relatedOfferingIDMap:    make(map[string]bool),
+		relatedOfferingIDs:      []string{},
 		judgingCountdownSeconds: db.GetIntWithDefault(db.KeyJudgingCountdownSeconds, 3),
 		systemBanManager:        sbm,
 	}
@@ -96,9 +97,8 @@ func (tkj *TeamKillDefendant) addCase(relatedOfferingID string) {
 	tkj.Lock()
 	defer tkj.Unlock()
 
-	ok := tkj.relatedOfferingIDMap[relatedOfferingID]
-	if !ok {
-		tkj.relatedOfferingIDMap[relatedOfferingID] = true
+	if slices.IndexFunc(tkj.relatedOfferingIDs, func(offeringID string) bool { return offeringID == relatedOfferingID }) == -1 {
+		tkj.relatedOfferingIDs = append(tkj.relatedOfferingIDs, relatedOfferingID)
 	}
 }
 
@@ -106,19 +106,23 @@ func (tkj *TeamKillDefendant) removeCase(relatedOfferingID string) {
 	tkj.Lock()
 	defer tkj.Unlock()
 
-	delete(tkj.relatedOfferingIDMap, relatedOfferingID)
+	index := slices.Index(tkj.relatedOfferingIDs, relatedOfferingID)
+	if index == -1 {
+		return
+	}
+
+	tkj.relatedOfferingIDs = slices.Delete(tkj.relatedOfferingIDs, index, index+1)
 }
 
-func (tkj *TeamKillDefendant) GetCase() string {
+func (tkj *TeamKillDefendant) GetNextCase() string {
 	tkj.Lock()
 	defer tkj.Unlock()
 
-	// return the first offering id of the map
-	for offeringID := range tkj.relatedOfferingIDMap {
-		return offeringID
+	if len(tkj.relatedOfferingIDs) == 0 {
+		return ""
 	}
 
-	return ""
+	return tkj.relatedOfferingIDs[0]
 }
 
 func (tkj *TeamKillDefendant) startJudgingCycle() {
@@ -126,7 +130,7 @@ func (tkj *TeamKillDefendant) startJudgingCycle() {
 
 	for {
 		time.Sleep(1 * time.Second)
-		if offeringID := tkj.GetCase(); offeringID != "" {
+		if offeringID := tkj.GetNextCase(); offeringID != "" {
 			tkj.judging(offeringID)
 			tkj.removeCase(offeringID)
 			noInstanceDurationSeconds = 0
@@ -141,7 +145,7 @@ func (tkj *TeamKillDefendant) startJudgingCycle() {
 			tkj.systemBanManager.Lock()
 
 			// final check instance
-			if tkj.GetCase() != "" {
+			if tkj.GetNextCase() != "" {
 				// reset countdown and restart
 				noInstanceDurationSeconds = 0
 				tkj.systemBanManager.Unlock()
@@ -156,7 +160,7 @@ func (tkj *TeamKillDefendant) startJudgingCycle() {
 	}
 }
 
-func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
+func (tkj *TeamKillDefendant) judging(relatedOfferingID string) {
 	tkj.Lock()
 	defer tkj.Unlock()
 
@@ -165,26 +169,21 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 
 	// start the judgment
 	bat, err := boiler.BattleAbilityTriggers(
-		boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(relativeOfferingID),
-		boiler.BattleAbilityTriggerWhere.PlayerID.IsNotNull(),
+		boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(relatedOfferingID),
+		boiler.BattleAbilityTriggerWhere.PlayerID.EQ(null.StringFrom(tkj.playerID)),
 		qm.Load(boiler.BattleAbilityTriggerRels.GameAbility),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("ability offering id", relativeOfferingID).Msg("Failed to get battle ability trigger from db")
-		return
-	}
-
-	// skip, if ability is a landmine
-	if bat.R != nil && bat.R.GameAbility.Label == "LANDMINE" {
+		gamelog.L.Error().Err(err).Str("ability offering id", relatedOfferingID).Msg("Failed to get battle ability trigger from db")
 		return
 	}
 
 	bhs, err := boiler.BattleHistories(
-		boiler.BattleHistoryWhere.RelatedID.EQ(null.StringFrom(relativeOfferingID)),
+		boiler.BattleHistoryWhere.RelatedID.EQ(null.StringFrom(relatedOfferingID)),
 		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Str("related id", relativeOfferingID).Msg("Failed to get battle history from db")
+		gamelog.L.Error().Err(err).Str("related id", relatedOfferingID).Msg("Failed to get battle history from db")
 		return
 	}
 
@@ -210,7 +209,63 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 
 	// skip, if not team kill
 	if teamKillCount <= 0 {
+		_, err = boiler.PlayerKillLogs(
+			boiler.PlayerKillLogWhere.AbilityOfferingID.EQ(null.StringFrom(relatedOfferingID)),
+		).UpdateAll(gamedb.StdConn, boiler.M{boiler.PlayerKillLogColumns.IsVerified: true})
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("ability offering id", relatedOfferingID).Msg("Failed to set player kill verify flag to true.")
+		}
 		return
+	}
+
+	offeringIDs := []interface{}{relatedOfferingID}
+
+	// if maximum team kill tolerant
+	if bat.R != nil && bat.R.GameAbility != nil && bat.R.GameAbility.MaximumTeamKillTolerantCount > 0 {
+		ga := bat.R.GameAbility
+		q := fmt.Sprintf(
+			`
+			SELECT DISTINCT (%[2]s) , %[7]s
+			FROM %[1]s 
+			WHERE %[3]s = $1 AND %[4]s = $2 AND %[5]s = TRUE AND %[6]s = FALSE
+			ORDER BY %[7]s;
+		`,
+			boiler.TableNames.PlayerKillLog,               // 1
+			boiler.PlayerKillLogColumns.AbilityOfferingID, // 2
+			boiler.PlayerKillLogColumns.PlayerID,          // 3
+			boiler.PlayerKillLogColumns.GameAbilityID,     // 4
+			boiler.PlayerKillLogColumns.IsTeamKill,        // 5
+			boiler.PlayerKillLogColumns.IsVerified,        // 6
+			boiler.PlayerKillLogColumns.CreatedAt,         // 7
+		)
+
+		rows, err := gamedb.StdConn.Query(q, tkj.playerID, ga.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("related game ability id", bat.R.GameAbility.ID).Msg("Failed to load related player ability kill logs.")
+			return
+		}
+
+		// re-declare offering id list
+		offeringIDs = []interface{}{}
+		for rows.Next() {
+			offeringID := ""
+			createdAt := time.Now() // just for sql
+			err = rows.Scan(&offeringID, &createdAt)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("related game ability id", bat.R.GameAbility.ID).Msg("Failed to scan offering id.")
+				return
+			}
+
+			offeringIDs = append(offeringIDs, offeringID)
+		}
+
+		// skip, if offingID count hasn't met maximum tolerant count
+		if len(offeringIDs) < ga.MaximumTeamKillTolerantCount {
+			return
+		}
+
+		// trim to maximum tolerant count
+		offeringIDs = offeringIDs[:ga.MaximumTeamKillTolerantCount]
 	}
 
 	// ban player
@@ -259,6 +314,23 @@ func (tkj *TeamKillDefendant) judging(relativeOfferingID string) {
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("player ban", playerBan).Msg("Failed to insert system team kill ban into db")
 		return
+	}
+
+	_, err = boiler.PlayerKillLogs(
+		qm.WhereIn(
+			fmt.Sprintf(
+				"%s IN ?",
+				qm.Rels(boiler.TableNames.PlayerKillLog, boiler.PlayerKillLogColumns.AbilityOfferingID),
+			),
+			offeringIDs...,
+		),
+	).UpdateAll(gamedb.StdConn,
+		boiler.M{
+			boiler.PlayerKillLogColumns.IsVerified:       true,
+			boiler.PlayerKillLogColumns.RelatedPlayBanID: null.StringFrom(playerBan.ID),
+		})
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("ability offering id", relatedOfferingID).Msg("Failed to set player kill verify flag to true.")
 	}
 
 	// send player ban to chat

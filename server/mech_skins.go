@@ -26,6 +26,21 @@ type MechSkin struct {
 	EquippedOnDetails *EquippedOnDetails
 }
 
+func CollectionItemFromBoiler(ci *boiler.CollectionItem) *CollectionItem {
+	return &CollectionItem{
+		CollectionSlug: ci.CollectionSlug,
+		Hash:           ci.Hash,
+		TokenID:        ci.TokenID,
+		ItemType:       ci.ItemType,
+		ItemID:         ci.ItemID,
+		Tier:           ci.Tier,
+		OwnerID:        ci.OwnerID,
+		MarketLocked:   ci.MarketLocked,
+		XsynLocked:     ci.XsynLocked,
+		AssetHidden:    ci.AssetHidden,
+	}
+}
+
 func (b *MechSkin) Scan(value interface{}) error {
 	v, ok := value.([]byte)
 	if !ok {

@@ -9,28 +9,55 @@ import (
 	"server/gamedb"
 	"server/helpers"
 	"strconv"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/ninja-syndicate/supremacy-bridge/bridge"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type FactionShortcode string
+
+var FactionMap = map[FactionShortcode]int{
+	NoneShortcode:        0,
+	ZaibatsuShortcode:    1,
+	RedMountainShortcode: 2,
+	BostonShortcode:      3,
+}
+
+const NoneShortcode FactionShortcode = "NONE"
+const ZaibatsuShortcode FactionShortcode = "ZHI"
+const RedMountainShortcode FactionShortcode = "RMOMC"
+const BostonShortcode FactionShortcode = "BC"
+
+type CurrentBattle struct {
+	Number    int    `json:"number"`
+	ExpiresAt int64  `json:"expires_at"`
+	Signature string `json:"signature"`
+}
 type BattleHistoryRecord struct {
-	Number    int     `json:"number"`
-	StartedAt int64   `json:"started_at"`
-	EndedAt   *int64  `json:"ended_at"`
-	Winner    *string `json:"winner"`
-	RunnerUp  *string `json:"runner_up"`
-	Loser     *string `json:"loser"`
+	Number            int              `json:"number"`
+	StartedAt         int64            `json:"started_at"`
+	EndedAt           *int64           `json:"ended_at"`
+	Winner            int64            `json:"winner"`
+	RunnerUp          int64            `json:"runner_up"`
+	Loser             int64            `json:"loser"`
+	WinnerShortcode   FactionShortcode `json:"winner_shortcode"`
+	RunnerUpShortcode FactionShortcode `json:"runner_up_shortcode"`
+	LoserShortcode    FactionShortcode `json:"loser_shortcode"`
+	Signature         string           `json:"signature"`
 }
 
 // BattleHistoryController holds handlers for battle history requests
 type BattleHistoryController struct {
+	signerPrivateKeyHex string
 }
 
-func BattleHistoryRouter() chi.Router {
-	c := &BattleHistoryController{}
+func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
+	c := &BattleHistoryController{signerPrivateKeyHex}
 	r := chi.NewRouter()
 	r.Get("/", WithError(c.BattleHistoryCurrent))
 	r.Get("/{battle_number}", WithError(c.BattleHistory))
@@ -61,35 +88,40 @@ func BattleHistoryRouter() chi.Router {
 //		]
 // }
 type BattleHistoryCurrent struct {
-	CurrentBattle   *BattleHistoryRecord   `json:"current_battle"`
+	CurrentBattle   *CurrentBattle         `json:"current_battle"`
 	PreviousBattles []*BattleHistoryRecord `json:"previous_battles"`
 }
 
 // BattleHistoryCurrent gets current battle and previous battle records (100 records)
 func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r *http.Request) (int, error) {
-	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(100)).All(gamedb.StdConn)
+	battles, err := boiler.Battles(qm.OrderBy("started_at DESC"), qm.Limit(11)).All(gamedb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrap(err, "get battles")
 	}
-	if len(battles) != 100 {
-		return http.StatusBadRequest, fmt.Errorf("expected 100 battles, got %d", len(battles))
+
+	// Head of battle array
+	curr := battles[0]
+	expiry := time.Now().Add(30 * time.Second).Unix()
+	signer := bridge.NewSigner(c.signerPrivateKeyHex)
+	_, sig, err := signer.GenerateCurrentBattleSignature(
+		int64(curr.BattleNumber),
+		expiry,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("generate signature: %w", err)
 	}
 
-	curr := battles[0]
-
-	currentBattleRecord := &BattleHistoryRecord{
+	currentBattleRecord := &CurrentBattle{
 		Number:    curr.BattleNumber,
-		StartedAt: curr.StartedAt.Unix(),
-		EndedAt:   nil,
-		Winner:    nil,
-		RunnerUp:  nil,
-		Loser:     nil,
+		ExpiresAt: expiry,
+		Signature: hexutil.Encode(sig),
 	}
 
 	previousBattleRecords := []*BattleHistoryRecord{}
 
+	// Tail of battle array
 	for _, battle := range battles[1:] {
-		previousBattleRecord, err := BattleRecord(battle)
+		previousBattleRecord, err := BattleRecord(battle, c.signerPrivateKeyHex)
 		if err != nil {
 			return http.StatusBadRequest, errors.Wrap(err, "get battle record")
 		}
@@ -132,7 +164,7 @@ func (c *BattleHistoryController) BattleHistory(w http.ResponseWriter, r *http.R
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrapf(err, "get battle for battle: %d", battleNumber)
 	}
-	record, err := BattleRecord(battle)
+	record, err := BattleRecord(battle, c.signerPrivateKeyHex)
 	if err != nil {
 		return http.StatusBadRequest, errors.Wrapf(err, "get battle record for battle: %d", battleNumber)
 	}
@@ -140,7 +172,7 @@ func (c *BattleHistoryController) BattleHistory(w http.ResponseWriter, r *http.R
 }
 
 // BattleRecord processes the battle DB item and converts to to a battle history record
-func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
+func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryRecord, error) {
 	var endUnix *int64
 	if b.EndedAt.Valid {
 		endUnixNonPtr := b.EndedAt.Time.Unix()
@@ -155,23 +187,20 @@ func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
 		return nil, errors.Wrapf(err, "get battle mechs for battle: %d", b.BattleNumber)
 	}
 
-	ZaibatsuShortcode := "ZHI"
-	RedMountainShortcode := "RMOMC"
-	BostonShortcode := "BC"
+	var winner FactionShortcode = NoneShortcode
+	var runnerUp FactionShortcode = NoneShortcode
+	var loser FactionShortcode = NoneShortcode
 
-	var winner *string
-	var runnerUp *string
-	var loser *string
 	for _, mech := range mechs {
 		// Mechs in here are connected to the winning faction only
 		if mech.FactionWon.Bool {
 			switch mech.FactionID {
 			case server.ZaibatsuFactionID:
-				winner = &ZaibatsuShortcode
+				winner = ZaibatsuShortcode
 			case server.RedMountainFactionID:
-				winner = &RedMountainShortcode
+				winner = RedMountainShortcode
 			case server.BostonCyberneticsFactionID:
-				winner = &BostonShortcode
+				winner = BostonShortcode
 			default:
 				return nil, fmt.Errorf("faction not recognised: %s", mech.FactionID)
 			}
@@ -183,27 +212,27 @@ func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
 
 		switch mech.FactionID {
 		case server.ZaibatsuFactionID:
-			runnerUp = &ZaibatsuShortcode
+			runnerUp = ZaibatsuShortcode
 		case server.RedMountainFactionID:
-			runnerUp = &RedMountainShortcode
+			runnerUp = RedMountainShortcode
 		case server.BostonCyberneticsFactionID:
-			runnerUp = &BostonShortcode
+			runnerUp = BostonShortcode
 		default:
 			return nil, fmt.Errorf("faction not recognised: %s", mech.FactionID)
 		}
 
 		// Remaining faction is the loser
 		// TODO: Fix my sloppy conditionals
-		if winner != &ZaibatsuShortcode && runnerUp != &ZaibatsuShortcode {
-			loser = &ZaibatsuShortcode
+		if winner != ZaibatsuShortcode && runnerUp != ZaibatsuShortcode {
+			loser = ZaibatsuShortcode
 		}
 
-		if winner != &RedMountainShortcode && runnerUp != &RedMountainShortcode {
-			loser = &RedMountainShortcode
+		if winner != RedMountainShortcode && runnerUp != RedMountainShortcode {
+			loser = RedMountainShortcode
 		}
 
-		if winner != &BostonShortcode && runnerUp != &BostonShortcode {
-			loser = &BostonShortcode
+		if winner != BostonShortcode && runnerUp != BostonShortcode {
+			loser = BostonShortcode
 		}
 
 		// Got enough information, break
@@ -211,12 +240,32 @@ func BattleRecord(b *boiler.Battle) (*BattleHistoryRecord, error) {
 	}
 
 	result := &BattleHistoryRecord{
-		Number:    b.BattleNumber,
-		StartedAt: b.StartedAt.Unix(),
-		EndedAt:   endUnix,
-		Winner:    winner,
-		RunnerUp:  runnerUp,
-		Loser:     loser,
+		Number:            b.BattleNumber,
+		StartedAt:         b.StartedAt.Unix(),
+		EndedAt:           endUnix,
+		Winner:            int64(FactionMap[winner]),
+		RunnerUp:          int64(FactionMap[runnerUp]),
+		Loser:             int64(FactionMap[loser]),
+		WinnerShortcode:   winner,
+		RunnerUpShortcode: runnerUp,
+		LoserShortcode:    loser,
 	}
+
+	if result.WinnerShortcode != NoneShortcode && result.RunnerUpShortcode != NoneShortcode && result.LoserShortcode != NoneShortcode {
+		signer := bridge.NewSigner(signerPrivateKeyHex)
+		_, sig, err := signer.GenerateBattleRecordSignature(
+			int64(b.BattleNumber),
+			b.StartedAt.Unix(),
+			b.EndedAt.Time.Unix(),
+			int64(FactionMap[result.WinnerShortcode]),
+			int64(FactionMap[result.RunnerUpShortcode]),
+			int64(FactionMap[result.LoserShortcode]),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("generate signature: %w", err)
+		}
+		result.Signature = hexutil.Encode(sig)
+	}
+
 	return result, nil
 }

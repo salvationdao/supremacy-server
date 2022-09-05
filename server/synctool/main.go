@@ -450,13 +450,13 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			Label:            record[2],
 			Tier:             record[3],
 			DefaultLevel:     record[5],
-			ImageUrl:         record[6],
-			AnimationUrl:     record[7],
-			CardAnimationUrl: record[8],
-			LargeImageUrl:    record[9],
-			AvatarUrl:        record[10],
-			BackgroundColor:  record[11],
-			YoutubeUrl:       record[12],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
@@ -874,13 +874,13 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			Tier:             record[2],
 			Collection:       record[4],
 			StatModifier:     record[5],
-			ImageUrl:         record[6],
-			AnimationUrl:     record[7],
-			CardAnimationUrl: record[8],
-			LargeImageUrl:    record[9],
-			AvatarUrl:        record[10],
-			BackgroundColor:  record[11],
-			YoutubeUrl:       record[12],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		WeaponSkins = append(WeaponSkins, *weaponSkin)
@@ -1126,6 +1126,8 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
 			MechDisplayEffectType:    record[17],
+			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
+			IgnoreSelfKill:           strings.ToLower(record[21]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -1145,6 +1147,12 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -1176,6 +1184,9 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
 				boiler.GameAbilityColumns.MechDisplayEffectType,
 				boiler.GameAbilityColumns.AnimationDurationSeconds,
+				boiler.GameAbilityColumns.ShouldCheckTeamKill,
+				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
+				boiler.GameAbilityColumns.IgnoreSelfKill,
 			),
 			boil.Infer(),
 		)

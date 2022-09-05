@@ -207,37 +207,6 @@ func (ev EventType) String() string {
 	return [...]string{"killed", "kill", "spawned_ai", "ability_triggered"}[ev]
 }
 
-type MechWithOwner struct {
-	OwnerID   uuid.UUID
-	MechID    uuid.UUID
-	FactionID uuid.UUID
-}
-
-func WinBattle(battleID string, winCondition string, mechs ...*MechWithOwner) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "WinBattle").Err(err).Msg("unable to begin tx")
-		return err
-	}
-	defer tx.Rollback()
-	for _, m := range mechs {
-		mw := &boiler.BattleWin{
-			BattleID:     battleID,
-			WinCondition: winCondition,
-			MechID:       m.MechID.String(),
-			OwnerID:      m.OwnerID.String(),
-			FactionID:    m.FactionID.String(),
-		}
-		err = mw.Insert(tx, boil.Infer())
-	}
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "WinBattle").Err(err).Msg("unable to commit tx")
-		return err
-	}
-	return err
-}
-
 //DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)

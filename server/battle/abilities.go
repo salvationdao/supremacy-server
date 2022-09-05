@@ -33,7 +33,6 @@ import (
 type AbilityRadius int
 
 const (
-	NukeRadius     AbilityRadius = 5200
 	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 
@@ -298,8 +297,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentDeciders: make(map[string]bool),
 			},
 			config: &AbilityConfig{
-				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
-				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 20)) * time.Second,
+				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 20)) * time.Second,
 				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},

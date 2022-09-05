@@ -72,7 +72,7 @@ var TableNames = struct {
 	Languages                                          string
 	Layers                                             string
 	MarketplaceEvents                                  string
-	MechAbilityTriggerLogs                             string
+	MechAbilityTriggerLogsOld                          string
 	MechAnimation                                      string
 	MechModelSkinCompatibilities                       string
 	MechMoveCommandLogs                                string
@@ -94,6 +94,7 @@ var TableNames = struct {
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
+	PlayerMechRepairSlots                              string
 	PlayerMultipliers                                  string
 	PlayerPreferences                                  string
 	PlayerSettingsPreferences                          string
@@ -219,7 +220,7 @@ var TableNames = struct {
 	Languages:                      "languages",
 	Layers:                         "layers",
 	MarketplaceEvents:              "marketplace_events",
-	MechAbilityTriggerLogs:         "mech_ability_trigger_logs",
+	MechAbilityTriggerLogsOld:      "mech_ability_trigger_logs_old",
 	MechAnimation:                  "mech_animation",
 	MechModelSkinCompatibilities:   "mech_model_skin_compatibilities",
 	MechMoveCommandLogs:            "mech_move_command_logs",
@@ -241,6 +242,7 @@ var TableNames = struct {
 	PlayerKeycards:                 "player_keycards",
 	PlayerKillLog:                  "player_kill_log",
 	PlayerLanguages:                "player_languages",
+	PlayerMechRepairSlots:          "player_mech_repair_slots",
 	PlayerMultipliers:              "player_multipliers",
 	PlayerPreferences:              "player_preferences",
 	PlayerSettingsPreferences:      "player_settings_preferences",

@@ -71,6 +71,13 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for ArenaTypeEnum
 const (
 	ArenaTypeEnumSTORY      = "STORY"
@@ -306,6 +313,13 @@ const (
 	BanFromTypeSYSTEM = "SYSTEM"
 	BanFromTypeADMIN  = "ADMIN"
 	BanFromTypePLAYER = "PLAYER"
+)
+
+// Enum values for RepairSlotStatus
+const (
+	RepairSlotStatusREPAIRING = "REPAIRING"
+	RepairSlotStatusPENDING   = "PENDING"
+	RepairSlotStatusDONE      = "DONE"
 )
 
 // Enum values for PlayerRankEnum
