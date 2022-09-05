@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"math/rand"
 	"server"
 	"server/db"
@@ -20,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -2090,9 +2091,21 @@ func (btl *Battle) Load() error {
 	}
 
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
-		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-		btl.arena.isIdle.Store(true)
-		return nil
+		if !server.IsDevelopmentEnv() {
+			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+			btl.arena.isIdle.Store(true)
+			return nil
+		} else {
+			// build the mechs
+			err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
+			if err != nil {
+				gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+				gamelog.L.Trace().Str("func", "Load").Msg("end")
+				return err
+			}
+			gamelog.L.Trace().Str("func", "Load").Msg("end")
+			return btl.Load()
+		}
 	}
 
 	for i, bq := range q {
