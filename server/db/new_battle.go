@@ -267,8 +267,8 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
 		boiler.BattleQueueColumns.InsertedAt,
-		inBattle,
 		boiler.BattleQueueColumns.InsertedAt,
+		inBattle,
 	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
