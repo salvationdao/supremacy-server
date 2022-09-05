@@ -1,16 +1,3 @@
-CREATE TABLE blueprint_player_abilities
-(
-    id                     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    game_client_ability_id INT4             NOT NULL,
-    label                  TEXT             NOT NULL,
-    colour                 TEXT             NOT NULL,
-    image_url              TEXT             NOT NULL,
-    description            TEXT             NOT NULL,
-    text_colour            TEXT             NOT NULL,
-    location_select_type                 TEXT NOT NULL CHECK (location_select_type IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
-    created_at             TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE player_abilities
 ( -- ephemeral, entries are removed on use
     id                     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
