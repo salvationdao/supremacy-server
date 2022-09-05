@@ -43,7 +43,7 @@ func CalcNextQueueStatus(factionID string) {
 	}
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, QueueStatusResponse{
 		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 }
 
@@ -177,7 +177,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mci.ItemID,
 				PaidByID: user.ID,
-				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+				Amount:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 			}
 
 			err = bqf.Insert(tx, boil.Infer())
@@ -360,7 +360,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 							shouldUpdate = true
 						}
 
-						if i == 0 {
+						if pm.SlotNumber == 1 {
 							if pm.Status != boiler.RepairSlotStatusREPAIRING {
 								pm.Status = boiler.RepairSlotStatusREPAIRING
 								shouldUpdate = true
@@ -406,8 +406,10 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					return terror.Error(err, "Failed to commit db transaction.")
 				}
 
-				// broadcast new list
-				ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
+				// broadcast new list, if changed
+				if count > 0 {
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
+				}
 
 				return nil
 			})

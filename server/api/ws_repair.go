@@ -192,8 +192,8 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 				// pay sups to offer repair job
 				offerTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
-					ToUserID:             uuid.Must(uuid.FromString(server.RepairCenterUserID)),
+					FromUserID:           uuid.FromStringOrNil(user.ID),
+					ToUserID:             uuid.FromStringOrNil(server.RepairCenterUserID),
 					Amount:               offeredSups.Add(tax).String(),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("create_repair_offer|%s|%d", ro.ID, time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupSupremacy),
@@ -216,8 +216,8 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 
 				// pay tax to XSYN treasury
 				offerTaxTXID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-					FromUserID:           uuid.Must(uuid.FromString(server.RepairCenterUserID)),
-					ToUserID:             uuid.UUID(server.XsynTreasuryUserID),
+					FromUserID:           uuid.FromStringOrNil(server.RepairCenterUserID),
+					ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID), // NOTE: send fees to challenge fund for now. (was to treasury)
 					Amount:               tax.String(),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("repair_offer_tax|%s|%d", ro.ID, time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupSupremacy),
@@ -229,6 +229,11 @@ func (api *API) RepairOfferIssue(ctx context.Context, user *boiler.Player, key s
 					gamelog.L.Error().Str("player_id", user.ID).Str("repair offer id", ro.ID).Str("amount", tax.String()).Err(err).Msg("Failed to pay tax for offering repair job")
 					return terror.Error(err, "Failed to pay sups for offering repair job.")
 				}
+
+				// trigger challenge fund update
+				defer func() {
+					api.ArenaManager.ChallengeFundUpdateChan <- true
+				}()
 
 				refundTaxFunc := func() {
 					_, err = api.Passport.RefundSupsMessage(offerTaxTXID)
@@ -1224,7 +1229,7 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 					shouldUpdate = true
 				}
 
-				if i == 0 {
+				if pm.SlotNumber == 1 {
 					if pm.Status != boiler.RepairSlotStatusREPAIRING {
 						pm.Status = boiler.RepairSlotStatusREPAIRING
 						shouldUpdate = true
@@ -1270,7 +1275,7 @@ func (api *API) MechRepairSlotRemove(ctx context.Context, user *boiler.Player, k
 		}
 
 		// broadcast new list
-		ws.PublishMessage(fmt.Sprintf("/user/%s/repair_bay", user.ID), server.HubKeyMechRepairSlots, resp)
+		ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", user.ID), server.HubKeyMechRepairSlots, resp)
 
 		return nil
 	})
@@ -1345,31 +1350,44 @@ func (api *API) MechRepairSlotSwap(ctx context.Context, user *boiler.Player, key
 			return terror.Error(fmt.Errorf("mech not found"), "The mech is not in the list")
 		}
 
-		// swap slot and status
-		tempSlotNumber := pms[0].SlotNumber
-		tempStatus := pms[0].Status
+		slotOne := pms[0]
+		slotTwo := pms[1]
 
-		pms[0].SlotNumber = pms[1].SlotNumber
-		pms[0].Status = pms[1].Status
+		newRepairSlots := []*boiler.PlayerMechRepairSlot{
+			{
+				// slot 1 id
+				ID: slotOne.ID,
 
-		pms[0].SlotNumber = tempSlotNumber
-		pms[0].Status = tempStatus
+				// slot 2 details
+				Status:         slotTwo.Status,
+				SlotNumber:     slotTwo.SlotNumber,
+				NextRepairTime: null.TimeFromPtr(nil),
+			},
+			{
+				// slot 2 id
+				ID: slotTwo.ID,
 
-		for _, pm := range pms {
-			// set next repair time
-			pm.NextRepairTime = null.TimeFromPtr(nil)
-			if pm.Status == boiler.RepairSlotStatusREPAIRING {
-				pm.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+				// slot 1 details
+				Status:         slotOne.Status,
+				SlotNumber:     slotOne.SlotNumber,
+				NextRepairTime: null.TimeFromPtr(nil),
+			},
+		}
+
+		for _, slot := range newRepairSlots {
+			// set next repair time, if status is repairing
+			if slot.Status == boiler.RepairSlotStatusREPAIRING {
+				slot.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
 			}
 
 			// update repair slot
-			_, err = pm.Update(tx, boil.Whitelist(
+			_, err = slot.Update(tx, boil.Whitelist(
 				boiler.PlayerMechRepairSlotColumns.SlotNumber,
 				boiler.PlayerMechRepairSlotColumns.Status,
 				boiler.PlayerMechRepairSlotColumns.NextRepairTime,
 			))
 			if err != nil {
-				gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
+				gamelog.L.Error().Err(err).Interface("repair slot", slot).Msg("Failed to update repair slot.")
 				return terror.Error(err, "Failed to update repair slot")
 			}
 		}
