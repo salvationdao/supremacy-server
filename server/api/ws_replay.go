@@ -101,7 +101,7 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 		return terror.Error(err, "Invalid request received")
 	}
 
-	var battleReplayResp *BattleReplayDetailsResponse
+	battleReplayResp := &BattleReplayDetailsResponse{}
 
 	battleReplay, err := boiler.BattleReplays(
 		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
