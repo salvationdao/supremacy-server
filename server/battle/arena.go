@@ -322,6 +322,9 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		socket:                 wsConn,
 		connected:              atomic.NewBool(true),
 		gameClientJsonDataChan: make(chan []byte, 3),
+		MechCommandCheckMap: &MechCommandCheckMap{
+			m: make(map[string]chan bool),
+		},
 
 		// objects inherited from arena manager
 		RPCClient:                am.RPCClient,
@@ -374,7 +377,35 @@ type Arena struct {
 	QuestManager *quest.System
 
 	gameClientJsonDataChan chan []byte
+
+	MechCommandCheckMap *MechCommandCheckMap
 	sync.RWMutex
+}
+
+type MechCommandCheckMap struct {
+	m map[string]chan bool
+	sync.RWMutex
+}
+
+func (mc *MechCommandCheckMap) Register(key string, ch chan bool) {
+	mc.Lock()
+	defer mc.Unlock()
+
+	mc.m[key] = ch
+}
+func (mc *MechCommandCheckMap) Remove(key string) {
+	mc.Lock()
+	defer mc.Unlock()
+	if _, ok := mc.m[key]; ok {
+		delete(mc.m, key)
+	}
+}
+func (mc *MechCommandCheckMap) Send(key string, isValid bool) {
+	mc.RLock()
+	defer mc.RUnlock()
+	if ch, ok := mc.m[key]; ok {
+		ch <- isValid
+	}
 }
 
 func (am *ArenaManager) IsClientConnected() error {
@@ -1251,9 +1282,11 @@ type ZoneChangeEvent struct {
 	WarnTime   int                 `json:"warn_time"`
 }
 
-type MechMoveCommandFailedPayload struct {
+type MechMoveCommandResponsePayload struct {
 	BattleID       string `json:"battle_id"`
 	WarMachineHash string `json:"war_machine_hash"`
+	EventID        string `json:"event_id"`
+	IsValid        bool   `json:"is_valid"`
 }
 
 type AbilityCompletePayload struct {
@@ -1614,19 +1647,20 @@ func (arena *Arena) GameClientJsonDataParser() {
 					)
 				}
 			}
-		case "BATTLE:ABILITY_MOVE_COMMAND_FAILED":
+		case "BATTLE:ABILITY_MOVE_COMMAND_RESPONSE":
 			// do not process, if battle already ended
 			if btl.stage.Load() == BattleStageEnd {
 				continue
 			}
 
-			var dataPayload *MechMoveCommandFailedPayload
+			var dataPayload *MechMoveCommandResponsePayload
 			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
 				continue
 			}
 
-			// TODO: clear up mech move command
+			// send response to mech command check
+			arena.MechCommandCheckMap.Send(dataPayload.EventID, dataPayload.IsValid)
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended

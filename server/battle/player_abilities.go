@@ -263,12 +263,12 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-var playerAbilityBucket = leakybucket.NewCollector(1, 2, true)
+var playerAbilityBucket = leakybucket.NewCollector(2, 2, true)
 
 func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	b := playerAbilityBucket.Add(user.ID, 2)
+	b := playerAbilityBucket.Add(user.ID, 1)
 	if b == 0 {
-		return terror.Error(fmt.Errorf("Too many executions. Please wait a bit before trying again."))
+		return terror.Error(fmt.Errorf("too many executions"), "Too many executions. Please wait a bit before trying again.")
 	}
 
 	// check player is banned
@@ -311,11 +311,10 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 
 	// mech command handler
 	if req.Payload.LocationSelectType == "MECH_COMMAND" {
-		err := arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
+		err = arena.MechMoveCommandCreateHandler(ctx, user, factionID, key, payload, reply)
 		if err != nil {
-			return terror.Error(err, "Failed to fire mech command")
+			return err
 		}
-
 		return nil
 	}
 
@@ -1054,12 +1053,17 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	now := time.Now()
 
+	// register channel
+	eventID := uuid.Must(uuid.NewV4())
+	ch := make(chan bool)
+	arena.MechCommandCheckMap.Register(eventID.String(), ch)
+
 	event := &server.GameAbilityEvent{
 		IsTriggered:         true,
 		GameClientAbilityID: MechMoveCommandCreateGameAbilityID, // 8
 		WarMachineHash:      &wm.Hash,
 		ParticipantID:       &wm.ParticipantID, // trigger on war machine
-		EventID:             uuid.Must(uuid.NewV4()),
+		EventID:             eventID,
 		GameLocation: arena.CurrentBattle().getGameWorldCoordinatesFromCellXY(&server.CellLocation{
 			X: req.Payload.StartCoords.X,
 			Y: req.Payload.StartCoords.Y,
@@ -1068,6 +1072,20 @@ func (arena *Arena) MechMoveCommandCreateHandler(ctx context.Context, user *boil
 
 	// check mech command
 	arena.Message("BATTLE:ABILITY", event)
+
+	// wait for the message to come back
+	select {
+	case isValidLocation := <-ch:
+		// remove channel after complete
+		arena.MechCommandCheckMap.Remove(eventID.String())
+		if !isValidLocation {
+			return terror.Error(fmt.Errorf("invalid location"), "Selected location is not valid.")
+		}
+	case <-time.After(1500 * time.Millisecond):
+		// remove channel after 1.5s timeout
+		arena.MechCommandCheckMap.Remove(eventID.String())
+		return terror.Error(fmt.Errorf("failed to check location is valid"), "Selected location is not valid.")
+	}
 
 	if !isMiniMech {
 		// cancel any unfinished move commands of the mech
