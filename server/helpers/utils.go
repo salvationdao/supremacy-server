@@ -80,12 +80,13 @@ func PackBooleansIntoBytes(booleans []bool) []byte {
 	var packedBytes []byte
 	count := -1
 	for i := 0; i < len(booleans); i++ {
-		if i%8 == 0 {
+		b := i % 8
+		if b == 0 {
 			count++
 			packedBytes = append(packedBytes, 0)
 		}
 		if booleans[i] {
-			packedBytes[count] |= 1 << i
+			packedBytes[count] |= 1 << b
 		}
 	}
 	return packedBytes

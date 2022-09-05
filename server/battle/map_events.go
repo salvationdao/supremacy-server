@@ -1,7 +1,6 @@
 package battle
 
 import (
-	"fmt"
 	"github.com/sasha-s/go-deadlock"
 	"server/gamelog"
 	"server/helpers"
@@ -87,43 +86,29 @@ func (mel *MapEventList) MapEventsUnpack(payload []byte) {
 			}
 
 		case MapEventTypeHiveHexRaised:
-			var invalidIDs []uint16
-
 			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
 			offset += 2
 			for i := 0; i < hexes; i++ {
 				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
 				offset += 3 // (skip time offset)
 				if hexID > 589 {
-					invalidIDs = append(invalidIDs, hexID)
-					continue
+					gamelog.L.Warn().Msgf(`MapEventTypeHiveHexRaised received invalid id: %v`, hexID)
+					break
 				}
-				mel.HiveState[hexID] = true
-				fmt.Printf("raised %d\n", hexID)
+				mel.UpdateHexState(hexID, true)
 			}
 
-			if len(invalidIDs) > 0 {
-				gamelog.L.Warn().Msgf(`MapEventTypeHiveHexRaised received invalid ids: %v`, invalidIDs)
-				gamelog.L.Warn().Msgf(`%v`, payload)
-			}
 		case MapEventTypeHiveHexLowered:
-			var invalidIDs []uint16
-
 			hexes := int(helpers.BytesToUInt16(payload[offset : offset+2]))
 			offset += 2
 			for i := 0; i < hexes; i++ {
 				hexID := helpers.BytesToUInt16(payload[offset : offset+2])
 				offset += 3 // (skip time offset)
 				if hexID > 589 {
-					invalidIDs = append(invalidIDs, hexID)
-					continue
+					gamelog.L.Warn().Msgf(`MapEventTypeHiveHexLowered received invalid id: %v`, hexID)
+					break
 				}
-				mel.HiveState[hexID] = false
-			}
-
-			if len(invalidIDs) > 0 {
-				gamelog.L.Warn().Msgf(`MapEventTypeHiveHexLowered received invalid ids: %v`, invalidIDs)
-				gamelog.L.Warn().Msgf(`%v`, payload)
+				mel.UpdateHexState(hexID, false)
 			}
 		}
 	}
@@ -141,6 +126,13 @@ func (mel *MapEventList) RemoveLandmine(landmineID uint16) {
 	defer mel.Unlock()
 
 	delete(mel.Landmines, landmineID)
+}
+
+func (mel *MapEventList) UpdateHexState(hexID uint16, raised bool) {
+	mel.Lock()
+	defer mel.Unlock()
+
+	mel.HiveState[hexID] = raised
 }
 
 // Pack all information a new frontend client needs to know (eg: landmine, pickup locations and the hive state)
