@@ -162,14 +162,14 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 
 			blacklisted, err := db.GetPreviousBattleOwnerIDs()
 			if err != nil {
-				l.Error().Err(err).Msg("Failed to fetch blacklisted owner ids")
+				l.Warn().Err(err).Msg("Failed to fetch blacklisted owner ids")
 				continue
 			}
 
 			// Get mechs from backlog
 			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
-				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
+				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
 			if len(zaiPendingMechs) < db.FACTION_MECH_LIMIT {
@@ -177,7 +177,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			}
 			rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
-				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
+				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
 			if len(rmPendingMechs) < db.FACTION_MECH_LIMIT {
@@ -185,7 +185,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			}
 			bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
-				l.Error().Err(err).Msg("Failed to fetch pending backlogged mechs")
+				l.Warn().Err(err).Msg("Failed to fetch pending backlogged mechs")
 				continue
 			}
 			if len(bcPendingMechs) < db.FACTION_MECH_LIMIT {
@@ -195,7 +195,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 			func() {
 				tx, err := gamedb.StdConn.Begin()
 				if err != nil {
-					l.Error().Err(err).Msg("failed to create db transaction")
+					l.Warn().Err(err).Msg("failed to create db transaction")
 					return
 				}
 				defer tx.Rollback()
@@ -222,19 +222,19 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 					}
 					err := bq.Insert(tx, boil.Infer())
 					if err != nil {
-						l.Error().Err(err).Msg("failed to insert into battle queue")
+						l.Warn().Err(err).Msg("failed to insert into battle queue")
 						return
 					}
 
 					pm.Delete(tx)
 					if err != nil {
-						l.Error().Err(err).Msg("failed to remove from battle queue backlog")
+						l.Warn().Err(err).Msg("failed to remove from battle queue backlog")
 						return
 					}
 				}
 				err = tx.Commit()
 				if err != nil {
-					l.Error().Err(err).Msg("failed to commit db transaction")
+					l.Warn().Err(err).Msg("failed to commit db transaction")
 					return
 				}
 
