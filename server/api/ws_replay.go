@@ -87,6 +87,11 @@ type BattleReplayDetailsRequest struct {
 	} `json:"payload"`
 }
 
+type BattleReplayDetailsResponse struct {
+	BattleReplay *server.BattleReplay `json:"battle_replay"`
+	Mechs        []*server.Mech       `json:"mechs"`
+}
+
 const HubKeyGetReplayDetails = "GET:REPLAY:DETAILS"
 
 func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -95,6 +100,8 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
+
+	var battleReplayResp *BattleReplayDetailsResponse
 
 	battleReplay, err := boiler.BattleReplays(
 		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
@@ -125,8 +132,26 @@ func (rc *ReplayController) GetBattleReplayDetails(ctx context.Context, key stri
 	if err != nil {
 		return terror.Error(err, "Failed to find battle replay")
 	}
+	battleReplayResp.BattleReplay = server.BattleReplayFromBoilerWithEvent(battleReplay)
 
-	reply(server.BattleReplayFromBoilerWithEvent(battleReplay))
+	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(battleReplay.BattleID)).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get battle mechs")
+	}
+	var MechIDs []string
+
+	for _, battleMech := range battleMechs {
+		MechIDs = append(MechIDs, battleMech.MechID)
+	}
+
+	mechs, err := db.Mechs(MechIDs...)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech ids")
+	}
+
+	battleReplayResp.Mechs = mechs
+
+	reply(battleReplayResp)
 
 	return nil
 }
