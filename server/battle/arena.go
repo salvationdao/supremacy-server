@@ -1251,6 +1251,11 @@ type ZoneChangeEvent struct {
 	WarnTime   int                 `json:"warn_time"`
 }
 
+type MechMoveCommandFailedPayload struct {
+	BattleID       string `json:"battle_id"`
+	WarMachineHash string `json:"war_machine_hash"`
+}
+
 type AbilityCompletePayload struct {
 	BattleID string `json:"battle_id"`
 	EventID  string `json:"event_id"`
@@ -1609,6 +1614,19 @@ func (arena *Arena) GameClientJsonDataParser() {
 					)
 				}
 			}
+		case "BATTLE:ABILITY_MOVE_COMMAND_FAILED":
+			// do not process, if battle already ended
+			if btl.stage.Load() == BattleStageEnd {
+				continue
+			}
+
+			var dataPayload *MechMoveCommandFailedPayload
+			if err = json.Unmarshal(msg.Payload, &dataPayload); err != nil {
+				L.Warn().Err(err).Msg("unable to unmarshal battle zone change payload")
+				continue
+			}
+
+			// TODO: clear up mech move command
 
 		case "BATTLE:ABILITY_COMPLETE":
 			// do not process, if battle already ended
