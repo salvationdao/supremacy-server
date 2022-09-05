@@ -266,11 +266,16 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		canDeployRatio := GetDecimalWithDefault(KeyCanDeployDamagedRatio, decimal.NewFromFloat(0.5))
 		totalBlocks := TotalRepairBlocks(rc.MechID)
 		if decimal.NewFromInt(int64(rc.BlocksRequiredRepair - rc.BlocksRepaired)).Div(decimal.NewFromInt(int64(totalBlocks))).GreaterThan(canDeployRatio) {
+			// If less than 50% repaired
 			return &server.MechArenaInfo{
 				Status:    server.MechArenaStatusDamaged,
 				CanDeploy: false,
 			}, nil
 		}
+		return &server.MechArenaInfo{
+			Status:    server.MechArenaStatusDamaged,
+			CanDeploy: true,
+		}, nil
 	}
 
 	return &server.MechArenaInfo{
