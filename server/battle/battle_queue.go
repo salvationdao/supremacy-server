@@ -42,11 +42,11 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 	if err != nil {
 		return nil, err
 	}
-	rmQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.ZaibatsuFactionID)
+	rmQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.RedMountainFactionID)
 	if err != nil {
 		return nil, err
 	}
-	bcQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.ZaibatsuFactionID)
+	bcQueueCount, err := db.GetNumberOfMechsInQueueFromFactionID(server.BostonCyberneticsFactionID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +62,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 	}
 	defer tx.Rollback()
 	zaiQueues, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(server.ZaibatsuFactionID),
 		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(zaiQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
@@ -70,6 +71,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	rmQueues, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(server.RedMountainFactionID),
 		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(rmQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
@@ -78,6 +80,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 		return nil, err
 	}
 	bcQueues, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(server.BostonCyberneticsFactionID),
 		qm.OrderBy(fmt.Sprintf("%s desc", boiler.BattleQueueColumns.QueuedAt)),
 		qm.Limit(int(bcQueueCount)-cullCount),
 		qm.Load(boiler.BattleQueueRels.Fee),
