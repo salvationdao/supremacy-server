@@ -2068,22 +2068,22 @@ func (btl *Battle) Load() error {
 		return err
 	}
 
-	if !server.IsDevelopmentEnv() {
-		if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+		if !server.IsDevelopmentEnv() {
 			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 			btl.arena.isIdle.Store(true)
 			return nil
-		}
-	} else {
-		// build the mechs
-		err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
-		if err != nil {
-			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+		} else {
+			// build the mechs
+			err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
+			if err != nil {
+				gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+				gamelog.L.Trace().Str("func", "Load").Msg("end")
+				return err
+			}
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
-			return err
+			return btl.Load()
 		}
-		gamelog.L.Trace().Str("func", "Load").Msg("end")
-		return btl.Load()
 	}
 
 	for i, bq := range q {
