@@ -1389,7 +1389,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetMechSubmodelListHandler(ctx cont
 		}
 
 		//if there isnt any image url (which skin swatch should have) return image from weapon model compatibility tables
-		if pams.Images.ImageURL == null.StringFrom("") {
+		if !pams.Images.ImageURL.Valid || pams.Images.ImageURL.String == "" {
 			pams.Images.ImageURL = s.Images.ImageURL
 			pams.Images.CardAnimationURL = s.Images.CardAnimationURL
 			pams.Images.AvatarURL = s.Images.AvatarURL
@@ -1605,7 +1605,7 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 		}
 
 		//if there isnt an image url (which skin swatch should have) return image from weapon model compatibility tables
-		if paws.Images.ImageURL == null.StringFrom("") {
+		if !paws.Images.ImageURL.Valid || paws.Images.ImageURL.String == "" {
 			paws.Images.ImageURL = s.Images.ImageURL
 			paws.Images.CardAnimationURL = s.Images.CardAnimationURL
 			paws.Images.AvatarURL = s.Images.AvatarURL

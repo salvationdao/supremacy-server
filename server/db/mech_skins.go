@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -10,8 +11,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"strings"
-
-	"github.com/gofrs/uuid"
 )
 
 // InsertNewMechSkin if modelID is nil it will return images of a random mech in this skin
@@ -177,11 +176,15 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 	)
 
 	if len(opts.FilterSkinCompatibility) > 0 {
-		//// inner join mech model
+		// inner join mech model
 		var vals []string
 		runeIdentifier := "'"
 		for _, r := range opts.FilterSkinCompatibility {
-			vals = append(vals, runeIdentifier+r+runeIdentifier)
+			uuidCheck, err := uuid.FromString(r)
+			if err != nil {
+				return 0, nil, err
+			}
+			vals = append(vals, runeIdentifier+uuidCheck.String()+runeIdentifier)
 		}
 
 		queryMods = append(queryMods,
