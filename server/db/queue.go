@@ -204,16 +204,22 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		return nil, err
 	}
 
-	if pendingQueue {
-		return &server.MechArenaInfo{
-			Status:    server.MechArenaStatusPendingQueue,
-			CanDeploy: false,
-		}, nil
-	}
-
 	owner, err := collectionItem.Owner().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
+	}
+
+	if pendingQueue {
+		eta, err := GetMinimumQueueWaitTimeSecondsFromFactionID(owner.FactionID.String)
+		if err != nil {
+			return nil, err
+		}
+
+		return &server.MechArenaInfo{
+			Status:           server.MechArenaStatusPendingQueue,
+			CanDeploy:        false,
+			BattleETASeconds: null.Int64From(eta),
+		}, nil
 	}
 
 	if owner != nil && owner.FactionID.Valid {

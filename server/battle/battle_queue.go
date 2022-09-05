@@ -163,6 +163,7 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				l.Error().Err(err).Msg("Failed to fetch blacklisted owner ids")
 				continue
 			}
+
 			// Get mechs from backlog
 			zaiPendingMechs, err := db.GetPendingMechsFromFactionID(server.ZaibatsuFactionID, blacklisted, db.FACTION_MECH_LIMIT)
 			if err != nil {
