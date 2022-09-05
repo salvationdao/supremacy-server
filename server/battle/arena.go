@@ -1674,7 +1674,7 @@ func (arena *Arena) BeginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
-	q, err := db.LoadBattleQueue(context.Background(), 3, false)
+	q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
 		return
