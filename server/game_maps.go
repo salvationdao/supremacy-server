@@ -15,6 +15,7 @@ type GameMap struct {
 	ID            uuid.UUID `json:"ID" db:"id"`
 	Name          string    `json:"Name" db:"name"`
 	ImageUrl      string    `json:"Image_Url" db:"image_url"`
+	BackgroundUrl string    `json:"Background_Url" db:"background_url"`
 	Width         int       `json:"Width" db:"width"`
 	Height        int       `json:"Height" db:"height"`
 	CellsX        int       `json:"Cells_X" db:"cells_x"`

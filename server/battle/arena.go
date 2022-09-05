@@ -723,7 +723,7 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 
 		// pay queue fee from treasury when it is not in production
 		if !server.IsProductionEnv() {
-			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18))
+			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18))
 
 			bqf := &boiler.BattleQueueFee{
 				MechID:   mech.ID,
@@ -1693,8 +1693,9 @@ func (arena *Arena) beginBattle() {
 	}
 
 	gameMap := &server.GameMap{
-		ID:   uuid.Must(uuid.FromString(gm.ID)),
-		Name: gm.Name,
+		ID:            uuid.Must(uuid.FromString(gm.ID)),
+		Name:          gm.Name,
+		BackgroundUrl: gm.BackgroundURL,
 	}
 
 	var battle *boiler.Battle
