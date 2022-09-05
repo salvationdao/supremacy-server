@@ -190,6 +190,7 @@ var MechRels = struct {
 	OutroAnimation               string
 	PowerCore                    string
 	BattleQueue                  string
+	BattleQueueBacklog           string
 	MechStat                     string
 	ChassisMechsOld              string
 	OnMechBattleAbilityTriggers  string
@@ -221,6 +222,7 @@ var MechRels = struct {
 	OutroAnimation:               "OutroAnimation",
 	PowerCore:                    "PowerCore",
 	BattleQueue:                  "BattleQueue",
+	BattleQueueBacklog:           "BattleQueueBacklog",
 	MechStat:                     "MechStat",
 	ChassisMechsOld:              "ChassisMechsOld",
 	OnMechBattleAbilityTriggers:  "OnMechBattleAbilityTriggers",
@@ -255,6 +257,7 @@ type mechR struct {
 	OutroAnimation               *MechAnimation                 `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
 	PowerCore                    *PowerCore                     `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
 	BattleQueue                  *BattleQueue                   `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
+	BattleQueueBacklog           *BattleQueueBacklog            `boiler:"BattleQueueBacklog" boil:"BattleQueueBacklog" json:"BattleQueueBacklog" toml:"BattleQueueBacklog" yaml:"BattleQueueBacklog"`
 	MechStat                     *MechStat                      `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
 	ChassisMechsOld              *MechsOld                      `boiler:"ChassisMechsOld" boil:"ChassisMechsOld" json:"ChassisMechsOld" toml:"ChassisMechsOld" yaml:"ChassisMechsOld"`
 	OnMechBattleAbilityTriggers  BattleAbilityTriggerSlice      `boiler:"OnMechBattleAbilityTriggers" boil:"OnMechBattleAbilityTriggers" json:"OnMechBattleAbilityTriggers" toml:"OnMechBattleAbilityTriggers" yaml:"OnMechBattleAbilityTriggers"`
@@ -619,6 +622,20 @@ func (o *Mech) BattleQueue(mods ...qm.QueryMod) battleQueueQuery {
 
 	query := BattleQueues(queryMods...)
 	queries.SetFrom(query.Query, "\"battle_queue\"")
+
+	return query
+}
+
+// BattleQueueBacklog pointed to by the foreign key.
+func (o *Mech) BattleQueueBacklog(mods ...qm.QueryMod) battleQueueBacklogQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"mech_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BattleQueueBacklogs(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_backlog\"")
 
 	return query
 }
@@ -1747,6 +1764,107 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 				local.R.BattleQueue = foreign
 				if foreign.R == nil {
 					foreign.R = &battleQueueR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleQueueBacklog allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (mechL) LoadBattleQueueBacklog(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_queue_backlog`),
+		qm.WhereIn(`battle_queue_backlog.mech_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BattleQueueBacklog")
+	}
+
+	var resultSlice []*BattleQueueBacklog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueueBacklog")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battle_queue_backlog")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_backlog")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BattleQueueBacklog = foreign
+		if foreign.R == nil {
+			foreign.R = &battleQueueBacklogR{}
+		}
+		foreign.R.Mech = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.MechID {
+				local.R.BattleQueueBacklog = foreign
+				if foreign.R == nil {
+					foreign.R = &battleQueueBacklogR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -4497,6 +4615,56 @@ func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQu
 
 	if related.R == nil {
 		related.R = &battleQueueR{
+			Mech: o,
+		}
+	} else {
+		related.R.Mech = o
+	}
+	return nil
+}
+
+// SetBattleQueueBacklog of the mech to the related item.
+// Sets o.R.BattleQueueBacklog to related.
+// Adds o to related.R.Mech.
+func (o *Mech) SetBattleQueueBacklog(exec boil.Executor, insert bool, related *BattleQueueBacklog) error {
+	var err error
+
+	if insert {
+		related.MechID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"battle_queue_backlog\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+			strmangle.WhereClause("\"", "\"", 2, battleQueueBacklogPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.MechID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.MechID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			BattleQueueBacklog: related,
+		}
+	} else {
+		o.R.BattleQueueBacklog = related
+	}
+
+	if related.R == nil {
+		related.R = &battleQueueBacklogR{
 			Mech: o,
 		}
 	} else {

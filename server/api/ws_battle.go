@@ -13,7 +13,6 @@ import (
 	"server/gamelog"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
@@ -287,15 +286,24 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
+
+	mwt, err := db.GetMinimumQueueWaitTimeSecondsFromFactionID(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
-		return err
+		l.Error().Err(err).Msg("unable to retrieve estimated queue time")
+		return terror.Error(err, "Could not get estimated queue time.")
+	}
+
+	abl, err := db.GetAverageBattleLengthSeconds()
+	if err != nil {
+		l.Error().Err(err).Msg("unable to retrieve average game length")
+		return terror.Error(err, "Could not get average game length.")
 	}
 
 	reply(battle.QueueStatusResponse{
-		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		MinimumWaitTimeSeconds:   mwt,
+		AverageGameLengthSeconds: abl,
+		QueueCost:                db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 	return nil
 }
@@ -303,12 +311,21 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	reply(queueDetails)
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	reply(mechStatus)
 	return nil
 }
 
