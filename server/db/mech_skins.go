@@ -10,7 +10,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"strings"
 )
 
 // InsertNewMechSkin if modelID is nil it will return images of a random mech in this skin
@@ -176,30 +175,33 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 	)
 
 	if len(opts.FilterSkinCompatibility) > 0 {
-		// inner join mech model
-		var vals []string
-		runeIdentifier := "'"
-		for _, r := range opts.FilterSkinCompatibility {
-			uuidCheck, err := uuid.FromString(r)
-			if err != nil {
-				return 0, nil, err
+		var args []interface{}
+		whereClause := fmt.Sprintf("WHERE %s IN (", qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID))
+		//// inner join mech model
+		for i, r := range opts.FilterSkinCompatibility {
+			args = append(args, r)
+			if i+1 == len(opts.FilterSkinCompatibility) {
+				whereClause = whereClause + "?)"
+				continue
 			}
-			vals = append(vals, runeIdentifier+uuidCheck.String()+runeIdentifier)
+			whereClause = whereClause + fmt.Sprintf("?,")
 		}
 
 		queryMods = append(queryMods,
-			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s WHERE %s GROUP BY %s) sq on sq.%s = %s",
+			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s %s GROUP BY %s) sq on sq.%s = %s",
 				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 				boiler.MechModelSkinCompatibilityColumns.MechModelID,
 				boiler.TableNames.MechModelSkinCompatibilities,
-				fmt.Sprintf("%s IN (%s)", qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID), strings.Join(vals, ",")),
+				whereClause,
 				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
 				qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
-			)),
+			),
+				args...,
+			),
 		)
 	}
-
+	
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,

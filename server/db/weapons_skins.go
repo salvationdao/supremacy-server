@@ -12,7 +12,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"strings"
 )
 
 func InsertNewWeaponSkin(tx *sql.Tx, ownerID uuid.UUID, blueprintWeaponSkin *server.BlueprintWeaponSkin, modelID *string) (*server.WeaponSkin, error) {
@@ -145,29 +144,31 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 	)
 
 	if len(opts.FilterSkinCompatibility) > 0 {
-		// inner join weapon model
-		var vals []string
-		runeIdentifier := "'"
-		for _, r := range opts.FilterSkinCompatibility {
-			uuidCheck, err := uuid.FromString(r)
-			if err != nil {
-				return 0, nil, err
+		var args []interface{}
+		whereClause := fmt.Sprintf("WHERE %s IN (", qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID))
+		//// inner join weapon model
+		for i, r := range opts.FilterSkinCompatibility {
+			args = append(args, r)
+			if i+1 == len(opts.FilterSkinCompatibility) {
+				whereClause = whereClause + "?)"
+				continue
 			}
-			vals = append(vals, runeIdentifier+uuidCheck.String()+runeIdentifier)
+			whereClause = whereClause + fmt.Sprintf("?,")
 		}
 
 		queryMods = append(queryMods,
-			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s WHERE %s GROUP BY %s) sq on sq.%s = %s",
+			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s %s GROUP BY %s) sq on sq.%s = %s",
 				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
 				boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID,
 				boiler.TableNames.WeaponModelSkinCompatibilities,
-				fmt.Sprintf("%s IN (%s)", qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID), strings.Join(vals, ",")),
+				whereClause,
 				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
 				boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID,
 				qm.Rels(boiler.TableNames.BlueprintWeaponSkin, boiler.BlueprintWeaponSkinColumns.ID),
-			)),
+			),
+				args...,
+			),
 		)
-
 	}
 
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
@@ -364,6 +365,6 @@ func WeaponSkinList(opts *WeaponSkinListOpts) (int64, []*server.WeaponSkin, erro
 		}
 		weaponSkins = append(weaponSkins, ws)
 	}
-
+	
 	return total, weaponSkins, nil
 }
