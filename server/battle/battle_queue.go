@@ -11,7 +11,9 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
+	"github.com/ninja-syndicate/ws"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
@@ -234,6 +236,21 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				if err != nil {
 					l.Error().Err(err).Msg("failed to commit db transaction")
 					return
+				}
+
+				if len(pendingMechs) > 0 {
+					eta, err := db.GetBattleETASecondsFromMechID(pendingMechs[0].MechID, pendingMechs[0].FactionID)
+					if err != nil {
+						l.Warn().Err(err).Msg("failed to get battle eta for mech")
+					}
+
+					for _, pm := range pendingMechs {
+						ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", pm.FactionID, pm.MechID), WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+							Status:           server.MechArenaStatusQueue,
+							CanDeploy:        false,
+							BattleETASeconds: null.Int64From(eta),
+						})
+					}
 				}
 
 				// Call BeginBattle on idle arenas
