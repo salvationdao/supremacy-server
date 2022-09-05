@@ -129,20 +129,23 @@ var BattleQueueFeeWhere = struct {
 
 // BattleQueueFeeRels is where relationship names are stored.
 var BattleQueueFeeRels = struct {
-	Mech            string
-	PaidBy          string
-	FeeBattleQueues string
+	Mech                   string
+	PaidBy                 string
+	FeeBattleQueues        string
+	FeeBattleQueueBacklogs string
 }{
-	Mech:            "Mech",
-	PaidBy:          "PaidBy",
-	FeeBattleQueues: "FeeBattleQueues",
+	Mech:                   "Mech",
+	PaidBy:                 "PaidBy",
+	FeeBattleQueues:        "FeeBattleQueues",
+	FeeBattleQueueBacklogs: "FeeBattleQueueBacklogs",
 }
 
 // battleQueueFeeR is where relationships are stored.
 type battleQueueFeeR struct {
-	Mech            *Mech            `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	PaidBy          *Player          `boiler:"PaidBy" boil:"PaidBy" json:"PaidBy" toml:"PaidBy" yaml:"PaidBy"`
-	FeeBattleQueues BattleQueueSlice `boiler:"FeeBattleQueues" boil:"FeeBattleQueues" json:"FeeBattleQueues" toml:"FeeBattleQueues" yaml:"FeeBattleQueues"`
+	Mech                   *Mech                   `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	PaidBy                 *Player                 `boiler:"PaidBy" boil:"PaidBy" json:"PaidBy" toml:"PaidBy" yaml:"PaidBy"`
+	FeeBattleQueues        BattleQueueSlice        `boiler:"FeeBattleQueues" boil:"FeeBattleQueues" json:"FeeBattleQueues" toml:"FeeBattleQueues" yaml:"FeeBattleQueues"`
+	FeeBattleQueueBacklogs BattleQueueBacklogSlice `boiler:"FeeBattleQueueBacklogs" boil:"FeeBattleQueueBacklogs" json:"FeeBattleQueueBacklogs" toml:"FeeBattleQueueBacklogs" yaml:"FeeBattleQueueBacklogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -449,6 +452,27 @@ func (o *BattleQueueFee) FeeBattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_queue\".*"})
+	}
+
+	return query
+}
+
+// FeeBattleQueueBacklogs retrieves all the battle_queue_backlog's BattleQueueBacklogs with an executor via fee_id column.
+func (o *BattleQueueFee) FeeBattleQueueBacklogs(mods ...qm.QueryMod) battleQueueBacklogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_queue_backlog\".\"fee_id\"=?", o.ID),
+	)
+
+	query := BattleQueueBacklogs(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_backlog\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_queue_backlog\".*"})
 	}
 
 	return query
@@ -762,6 +786,104 @@ func (battleQueueFeeL) LoadFeeBattleQueues(e boil.Executor, singular bool, maybe
 	return nil
 }
 
+// LoadFeeBattleQueueBacklogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleQueueFeeL) LoadFeeBattleQueueBacklogs(e boil.Executor, singular bool, maybeBattleQueueFee interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueFee
+	var object *BattleQueueFee
+
+	if singular {
+		object = maybeBattleQueueFee.(*BattleQueueFee)
+	} else {
+		slice = *maybeBattleQueueFee.(*[]*BattleQueueFee)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleQueueFeeR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleQueueFeeR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_queue_backlog`),
+		qm.WhereIn(`battle_queue_backlog.fee_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_queue_backlog")
+	}
+
+	var resultSlice []*BattleQueueBacklog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_backlog")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue_backlog")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_backlog")
+	}
+
+	if len(battleQueueBacklogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.FeeBattleQueueBacklogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleQueueBacklogR{}
+			}
+			foreign.R.Fee = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FeeID) {
+				local.R.FeeBattleQueueBacklogs = append(local.R.FeeBattleQueueBacklogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleQueueBacklogR{}
+				}
+				foreign.R.Fee = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetMech of the battleQueueFee to the related item.
 // Sets o.R.Mech to related.
 // Adds o to related.R.BattleQueueFees.
@@ -972,6 +1094,131 @@ func (o *BattleQueueFee) RemoveFeeBattleQueues(exec boil.Executor, related ...*B
 				o.R.FeeBattleQueues[i] = o.R.FeeBattleQueues[ln-1]
 			}
 			o.R.FeeBattleQueues = o.R.FeeBattleQueues[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddFeeBattleQueueBacklogs adds the given related objects to the existing relationships
+// of the battle_queue_fee, optionally inserting them as new records.
+// Appends related to o.R.FeeBattleQueueBacklogs.
+// Sets related.R.Fee appropriately.
+func (o *BattleQueueFee) AddFeeBattleQueueBacklogs(exec boil.Executor, insert bool, related ...*BattleQueueBacklog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FeeID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_queue_backlog\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"fee_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleQueueBacklogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FeeID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleQueueFeeR{
+			FeeBattleQueueBacklogs: related,
+		}
+	} else {
+		o.R.FeeBattleQueueBacklogs = append(o.R.FeeBattleQueueBacklogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleQueueBacklogR{
+				Fee: o,
+			}
+		} else {
+			rel.R.Fee = o
+		}
+	}
+	return nil
+}
+
+// SetFeeBattleQueueBacklogs removes all previously related items of the
+// battle_queue_fee replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Fee's FeeBattleQueueBacklogs accordingly.
+// Replaces o.R.FeeBattleQueueBacklogs with related.
+// Sets related.R.Fee's FeeBattleQueueBacklogs accordingly.
+func (o *BattleQueueFee) SetFeeBattleQueueBacklogs(exec boil.Executor, insert bool, related ...*BattleQueueBacklog) error {
+	query := "update \"battle_queue_backlog\" set \"fee_id\" = null where \"fee_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.FeeBattleQueueBacklogs {
+			queries.SetScanner(&rel.FeeID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Fee = nil
+		}
+
+		o.R.FeeBattleQueueBacklogs = nil
+	}
+	return o.AddFeeBattleQueueBacklogs(exec, insert, related...)
+}
+
+// RemoveFeeBattleQueueBacklogs relationships from objects passed in.
+// Removes related items from R.FeeBattleQueueBacklogs (uses pointer comparison, removal does not keep order)
+// Sets related.R.Fee.
+func (o *BattleQueueFee) RemoveFeeBattleQueueBacklogs(exec boil.Executor, related ...*BattleQueueBacklog) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FeeID, nil)
+		if rel.R != nil {
+			rel.R.Fee = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("fee_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.FeeBattleQueueBacklogs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.FeeBattleQueueBacklogs)
+			if ln > 1 && i < ln-1 {
+				o.R.FeeBattleQueueBacklogs[i] = o.R.FeeBattleQueueBacklogs[ln-1]
+			}
+			o.R.FeeBattleQueueBacklogs = o.R.FeeBattleQueueBacklogs[:ln-1]
 			break
 		}
 	}

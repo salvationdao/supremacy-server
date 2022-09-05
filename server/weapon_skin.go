@@ -14,13 +14,14 @@ import (
 type WeaponSkin struct {
 	*CollectionItem
 	*Images
-	ID            string      `json:"id"`
-	BlueprintID   string      `json:"blueprint_id"`
-	Label         string      `json:"label"`
-	WeaponType    string      `json:"weapon_type"`
-	EquippedOn    null.String `json:"equipped_on,omitempty"`
-	Tier          string      `json:"tier"`
-	CreatedAt     time.Time   `json:"created_at"`
+	SkinSwatch  *Images
+	ID          string      `json:"id"`
+	BlueprintID string      `json:"blueprint_id"`
+	Label       string      `json:"label"`
+	WeaponType  string      `json:"weapon_type"`
+	EquippedOn  null.String `json:"equipped_on,omitempty"`
+	Tier        string      `json:"tier"`
+	CreatedAt   time.Time   `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails
 }
@@ -34,12 +35,12 @@ func (b *WeaponSkin) Scan(value interface{}) error {
 }
 
 type BlueprintWeaponSkin struct {
-	ID               string              `json:"id"`
-	Label            string              `json:"label"`
-	Tier             string              `json:"tier"`
-	Collection       string              `json:"collection"`
-	StatModifier     decimal.NullDecimal `json:"stat_modifier,omitempty"`
-	CreatedAt        time.Time           `json:"created_at"`
+	ID           string              `json:"id"`
+	Label        string              `json:"label"`
+	Tier         string              `json:"tier"`
+	Collection   string              `json:"collection"`
+	StatModifier decimal.NullDecimal `json:"stat_modifier,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -69,28 +70,28 @@ func (b *WeaponSkinSlice) Scan(value interface{}) error {
 
 func BlueprintWeaponSkinFromBoiler(weaponSkin *boiler.BlueprintWeaponSkin) *BlueprintWeaponSkin {
 	return &BlueprintWeaponSkin{
-		ID:               weaponSkin.ID,
-		Label:            weaponSkin.Label,
-		Tier:             weaponSkin.Tier,
-		CreatedAt:        weaponSkin.CreatedAt,
-		Collection:       weaponSkin.Collection,
-		StatModifier:     weaponSkin.StatModifier,
+		ID:           weaponSkin.ID,
+		Label:        weaponSkin.Label,
+		Tier:         weaponSkin.Tier,
+		CreatedAt:    weaponSkin.CreatedAt,
+		Collection:   weaponSkin.Collection,
+		StatModifier: weaponSkin.StatModifier,
 	}
 }
 
-func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem, weaponSkinCompatMatrix *boiler.WeaponModelSkinCompatibility) *WeaponSkin {
+func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem, weaponSkinCompatMatrix *boiler.WeaponModelSkinCompatibility, blueprintWeaponSkin *boiler.BlueprintWeaponSkin) *WeaponSkin {
 	return &WeaponSkin{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
 		Images: &Images{
 			ImageURL:         weaponSkinCompatMatrix.ImageURL,
@@ -101,11 +102,20 @@ func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.Coll
 			AnimationURL:     weaponSkinCompatMatrix.AnimationURL,
 			YoutubeURL:       weaponSkinCompatMatrix.YoutubeURL,
 		},
-		Label: weaponSkin.R.Blueprint.Label,
-		Tier: weaponSkin.R.Blueprint.Tier,
-		ID:            weaponSkin.ID,
-		BlueprintID:   weaponSkin.BlueprintID,
-		EquippedOn:    weaponSkin.EquippedOn,
-		CreatedAt:     weaponSkin.CreatedAt,
+		SkinSwatch: &Images{
+			ImageURL:         blueprintWeaponSkin.ImageURL,
+			CardAnimationURL: blueprintWeaponSkin.CardAnimationURL,
+			AvatarURL:        blueprintWeaponSkin.AvatarURL,
+			LargeImageURL:    blueprintWeaponSkin.LargeImageURL,
+			BackgroundColor:  blueprintWeaponSkin.BackgroundColor,
+			AnimationURL:     blueprintWeaponSkin.AnimationURL,
+			YoutubeURL:       blueprintWeaponSkin.YoutubeURL,
+		},
+		Label:       weaponSkin.R.Blueprint.Label,
+		Tier:        weaponSkin.R.Blueprint.Tier,
+		ID:          weaponSkin.ID,
+		BlueprintID: weaponSkin.BlueprintID,
+		EquippedOn:  weaponSkin.EquippedOn,
+		CreatedAt:   weaponSkin.CreatedAt,
 	}
 }

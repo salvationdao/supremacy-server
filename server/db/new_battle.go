@@ -295,21 +295,6 @@ type MechAndPosition struct {
 	QueuePosition int64     `db:"queue_position"`
 }
 
-func QueueLength(factionID uuid.UUID) (int64, error) {
-	bqs, err := boiler.BattleQueues(
-		qm.Select(
-			boiler.BattleQueueColumns.ID,
-		),
-		boiler.BattleQueueWhere.FactionID.EQ(factionID.String()),
-		boiler.BattleQueueWhere.BattleID.IsNull(), // only count the mech that is not in battle
-	).All(gamedb.StdConn)
-	if err != nil {
-		return -1, err
-	}
-
-	return int64(len(bqs)), nil
-}
-
 // QueueOwnerList returns the mech's in queue from an owner.
 func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 	q := `
