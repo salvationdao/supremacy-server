@@ -252,7 +252,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -271,7 +271,19 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if i.SkinSwatch != nil {
+			asset.ImageURL = i.SkinSwatch.ImageURL
+			asset.AnimationURL = i.SkinSwatch.AnimationURL
+			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			asset.AvatarURL = i.SkinSwatch.AvatarURL
+			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -524,7 +536,6 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			asset.YoutubeURL = i.Images.YoutubeURL
 		}
 
-
 		asset.Attributes = append(asset.Attributes,
 			&Attribute{
 				TraitType: "Submodel",
@@ -599,7 +610,7 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -618,7 +629,19 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if i.SkinSwatch != nil {
+			asset.ImageURL = i.SkinSwatch.ImageURL
+			asset.AnimationURL = i.SkinSwatch.AnimationURL
+			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			asset.AvatarURL = i.SkinSwatch.AvatarURL
+			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets

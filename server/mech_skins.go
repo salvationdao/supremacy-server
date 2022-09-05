@@ -12,6 +12,7 @@ import (
 type MechSkin struct {
 	*CollectionItem
 	*Images
+	SkinSwatch            *Images
 	ID                    string      `json:"id"`
 	BlueprintID           string      `json:"blueprint_id"`
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
@@ -80,7 +81,7 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 	}
 }
 
-func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem, skinDetails *boiler.MechModelSkinCompatibility) *MechSkin {
+func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem, skinDetails *boiler.MechModelSkinCompatibility, blueprintMechSkinDetails *boiler.BlueprintMechSkin) *MechSkin {
 	mskin := &MechSkin{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -102,6 +103,15 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			BackgroundColor:  skinDetails.BackgroundColor,
 			AnimationURL:     skinDetails.AnimationURL,
 			YoutubeURL:       skinDetails.YoutubeURL,
+		},
+		SkinSwatch: &Images{
+			ImageURL:         blueprintMechSkinDetails.ImageURL,
+			CardAnimationURL: blueprintMechSkinDetails.CardAnimationURL,
+			AvatarURL:        blueprintMechSkinDetails.AvatarURL,
+			LargeImageURL:    blueprintMechSkinDetails.LargeImageURL,
+			BackgroundColor:  blueprintMechSkinDetails.BackgroundColor,
+			AnimationURL:     blueprintMechSkinDetails.AnimationURL,
+			YoutubeURL:       blueprintMechSkinDetails.YoutubeURL,
 		},
 		Label:          skin.R.Blueprint.Label,
 		ID:             skin.ID,
