@@ -131,6 +131,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%splayer_abilities.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncPlayerAbilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -1199,6 +1209,119 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 
 		// record id list
 		ids = append(ids, gameAbility.ID)
+	}
+
+	// soft delete any row that is not on the list
+	_, err = boiler.GameAbilities(
+		boiler.GameAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.GameAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
+	}
+
+	fmt.Println("Finish syncing game abilities")
+
+	return nil
+}
+
+func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	ids := []string{}
+	for _, record := range records {
+		playerAbility := &boiler.BlueprintPlayerAbility{
+			ID:                       record[0],
+			Label:                    record[2],
+			Colour:                   record[3],
+			ImageURL:                 record[4],
+			Description:              record[5],
+			TextColour:               record[6],
+			LocationSelectType:       record[7],
+			DisplayOnMiniMap:         strings.ToLower(record[12]) == "true",
+			MiniMapDisplayEffectType: record[14],
+			MechDisplayEffectType:    record[15],
+		}
+
+		playerAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.RarityWeight, err = strconv.Atoi(record[9])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.InventoryLimit, err = strconv.Atoi(record[10])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.CooldownSeconds, err = strconv.Atoi(record[11])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.AnimationDurationSeconds, err = strconv.Atoi(record[16])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		// upsert game ability
+		err = playerAbility.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintPlayerAbilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+				boiler.BlueprintPlayerAbilityColumns.Label,
+				boiler.BlueprintPlayerAbilityColumns.Colour,
+				boiler.BlueprintPlayerAbilityColumns.ImageURL,
+				boiler.BlueprintPlayerAbilityColumns.Description,
+				boiler.BlueprintPlayerAbilityColumns.TextColour,
+				boiler.BlueprintPlayerAbilityColumns.LocationSelectType,
+				boiler.BlueprintPlayerAbilityColumns.RarityWeight,
+				boiler.BlueprintPlayerAbilityColumns.InventoryLimit,
+				boiler.BlueprintPlayerAbilityColumns.CooldownSeconds,
+				boiler.BlueprintPlayerAbilityColumns.DisplayOnMiniMap,
+				boiler.BlueprintPlayerAbilityColumns.LaunchingDelaySeconds,
+				boiler.BlueprintPlayerAbilityColumns.MiniMapDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.MechDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.AnimationDurationSeconds,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			return err
+		}
+
+		fmt.Println("UPDATED: "+playerAbility.ID, playerAbility.GameClientAbilityID, playerAbility.Label)
+
+		// record id list
+		ids = append(ids, playerAbility.ID)
 	}
 
 	// soft delete any row that is not on the list

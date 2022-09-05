@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS blueprint_player_abilities
     image_url                    TEXT                         NOT NULL,
     description                  TEXT                         NOT NULL,
     text_colour                  TEXT                         NOT NULL,
-    location_select_type         TEXT                         NOT NULL CHECK (location_select_type IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
+    location_select_type         LOCATION_SELECT_TYPE_ENUM    NOT NULL,
     created_at                   TIMESTAMPTZ                  NOT NULL DEFAULT NOW(),
     rarity_weight                INT                          NOT NULL DEFAULT -1,
     inventory_limit              INT                          NOT NULL DEFAULT 1,
