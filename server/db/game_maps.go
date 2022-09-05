@@ -18,6 +18,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 		qm.Select(
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
+			boiler.GameMapColumns.BackgroundURL,
 		),
 		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
@@ -73,6 +74,7 @@ func GameMapGetByID(id string) (*boiler.GameMap, error) {
 		qm.Select(
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
+			boiler.GameMapColumns.BackgroundURL,
 		),
 		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
