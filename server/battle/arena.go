@@ -455,6 +455,15 @@ func (arena *Arena) CurrentBattle() *Battle {
 	return arena._currentBattle
 }
 
+func (arena *Arena) UpdateArenaStatus(isIdle bool) {
+	arena.isIdle.Store(isIdle)
+	arena.RLock()
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/status", arena.ID), server.HubKeyArenaStatusSubscribe, &ArenaStatus{
+		IsIdle: isIdle,
+	})
+	arena.RUnlock()
+}
+
 func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena.Lock()
 	defer arena.Unlock()
@@ -840,6 +849,22 @@ func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
+	return nil
+}
+
+type ArenaStatus struct {
+	IsIdle bool `json:"is_idle"`
+}
+
+func (am *ArenaManager) ArenaStatusSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	arena, err := am.GetArenaFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	reply(&ArenaStatus{
+		IsIdle: arena.isIdle.Load(),
+	})
 	return nil
 }
 
@@ -1732,13 +1757,13 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-		arena.isIdle.Store(true)
+		arena.UpdateArenaStatus(true)
 		return
 	}
 
-	arena.isIdle.Store(false)
+	arena.UpdateArenaStatus(false)
 
 	// delete all the unfinished mech command
 	_, err = boiler.MechMoveCommandLogs(

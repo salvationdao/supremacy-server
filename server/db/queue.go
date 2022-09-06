@@ -19,6 +19,25 @@ import (
 
 const FACTION_MECH_LIMIT = 3
 
+func GetPlayerQueueCount(playerID string) (int64, error) {
+	count, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.OwnerID.EQ(playerID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return -1, err
+	}
+
+	count2, err := boiler.BattleQueueBacklogs(
+		boiler.BattleQueueBacklogWhere.OwnerID.EQ(playerID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return -1, err
+	}
+
+	return count + count2, nil
+}
+
 func GetPreviousBattleOwnerIDs() ([]string, error) {
 	var oids []*struct {
 		OwnerID string `json:"owner_id"`
@@ -70,29 +89,8 @@ func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
 // mechs with the same owner ID.
 func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit int) (boiler.BattleQueueBacklogSlice, error) {
 	pendingMechs, err := boiler.BattleQueueBacklogs(
-		qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
-			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
-			boiler.TableNames.BattleQueueBacklog,
-		)),
 		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
 		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
-		qm.Limit(limit),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(pendingMechs) == limit {
-		return pendingMechs, nil
-	}
-
-	pendingMechs, err = boiler.BattleQueueBacklogs(
-		qm.Select(fmt.Sprintf("DISTINCT ON (%s) %s.*",
-			qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.OwnerID),
-			boiler.TableNames.BattleQueueBacklog,
-		)),
-		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
 		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
 		qm.Limit(limit),
 	).All(gamedb.StdConn)

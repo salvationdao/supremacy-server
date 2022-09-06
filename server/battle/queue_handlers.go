@@ -82,6 +82,19 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		return terror.Error(fmt.Errorf("contain non-mech assest"), "The list contains non-mech asset.")
 	}
 
+	queueCount, err := db.GetPlayerQueueCount(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("userID", user.ID).Err(err).Msg("failed to check player queue count")
+		return terror.Error(err, "Something went wrong while attempting to queue your mech(s). Please try again or contact support if this problem persists.")
+	}
+	queueLimit := db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)
+	if queueCount >= int64(queueLimit) {
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot have more than %d mechs in queue at the same time. Please wait before queueing any more mechs.", queueLimit))
+	}
+	if (int64(len(mcis)) + queueCount) > int64(queueLimit) {
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot have more than %d mechs in queue at the same time. You currently have %d mechs in queue. Please remove at least %d mechs from your selection and try again.", queueLimit, queueCount, len(mcis)-(queueLimit-int(queueCount))))
+	}
+
 	for _, mci := range mcis {
 		if mci.XsynLocked {
 			err := fmt.Errorf("mech is locked to xsyn locked")
