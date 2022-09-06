@@ -1738,6 +1738,8 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
+	arena.isIdle.Store(false)
+
 	// delete all the unfinished mech command
 	_, err = boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
