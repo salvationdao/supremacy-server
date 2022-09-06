@@ -458,7 +458,7 @@ func (arena *Arena) CurrentBattle() *Battle {
 func (arena *Arena) UpdateArenaStatus(isIdle bool) {
 	arena.isIdle.Store(isIdle)
 	arena.RLock()
-	ws.PublishMessage(fmt.Sprintf("/arena/%s/status", arena.ID), server.HubKeyArenaStatusSubscribe, &ArenaStatus{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/status", arena.ID), server.HubKeyArenaStatusSubscribe, &ArenaStatus{
 		IsIdle: isIdle,
 	})
 	arena.RUnlock()
@@ -1757,7 +1757,7 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 		arena.UpdateArenaStatus(true)
 		return

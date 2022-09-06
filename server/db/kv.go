@@ -16,6 +16,8 @@ import (
 
 type KVKey string
 
+const KeyProdReopeningDate = "prod_reopening_date"
+
 const KeyQueueTickerIntervalSeconds = "queue_ticker_interval_seconds"
 
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
