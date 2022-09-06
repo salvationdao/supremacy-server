@@ -944,16 +944,19 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 	}
 
 	minimapUpdates := []MinimapEvent{}
-	for id, b := range arena.CurrentBattle().playerAbilityManager().Blackouts() {
-		minimapUpdates = append(minimapUpdates, MinimapEvent{
-			ID:            id,
-			GameAbilityID: BlackoutGameAbilityID,
-			Duration:      BlackoutDurationSeconds,
-			Radius:        int(BlackoutRadius),
-			Coords:        b.CellCoords,
-		})
+	if btl := arena.CurrentBattle(); btl != nil {
+		if pam := arena.CurrentBattle().playerAbilityManager(); pam != nil {
+			for id, b := range pam.Blackouts() {
+				minimapUpdates = append(minimapUpdates, MinimapEvent{
+					ID:            id,
+					GameAbilityID: BlackoutGameAbilityID,
+					Duration:      BlackoutDurationSeconds,
+					Radius:        int(BlackoutRadius),
+					Coords:        b.CellCoords,
+				})
+			}
+		}
 	}
-
 	reply(minimapUpdates)
 	return nil
 }
