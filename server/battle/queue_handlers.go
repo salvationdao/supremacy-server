@@ -443,11 +443,9 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 	idleArenas := am.IdleArenas()
 	if len(idleArenas) > 0 {
-		am.RLock()
 		for _, arena := range idleArenas {
 			arena.CurrentBattle().Load()
 		}
-		am.RUnlock()
 	}
 
 	// Send updated battle queue status to all subscribers
