@@ -121,18 +121,6 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
-	replaySession := arena.CurrentBattle().replaySession
-	if replaySession.ReplaySession != nil {
-		newEvent := &RecordingEvents{
-			Timestamp: time.Now(),
-			Notification: GameNotification{
-				Type: GameNotificationTypeText,
-				Data: data,
-			},
-		}
-
-		replaySession.Events = append(replaySession.Events, newEvent)
-	}
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
