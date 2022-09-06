@@ -441,20 +441,13 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}(user.ID, deployedMechIDs)
 	}
 
-	am.EachArena(func(arena *Arena) bool {
-		if btl := arena.CurrentBattle(); btl != nil {
-			btl.RLock()
-			if btl.qWaitChan != nil {
-				select {
-				case btl.qWaitChan <- 0:
-				default:
-					gamelog.L.Debug().Msg("Queue wait channel buffer on battle is full.")
-				}
-			}
-			btl.RUnlock()
+	idleArenas := am.IdleArenas()
+	if len(idleArenas) > 0 {
+		for _, arena := range idleArenas {
+			// start new battle if arena is idle
+			arena.BeginBattle()
 		}
-		return true
-	})
+	}
 
 	// Send updated battle queue status to all subscribers
 	go CalcNextQueueStatus(factionID)

@@ -2112,20 +2112,13 @@ func (btl *Battle) Load() error {
 				return err
 			}
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
-		} else {
-			gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle. Waiting...")
-			btl.arena.storeCurrentBattle(btl)
-			btl.qWaitChan = make(chan byte, 10)
-			select {
-			case _ = <-btl.qWaitChan:
-				gamelog.L.Debug().Msg("Received byte on queue wait channel. Trying to load battle again.")
-				btl.RLock()
-				btl.qWaitChan = nil
-				btl.RUnlock()
-				return btl.Load()
-			}
+			return btl.Load()
 		}
-		return btl.Load()
+
+		// mark the arena as idle
+		gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		btl.arena.UpdateArenaStatus(true)
+		return nil
 	}
 
 	for i, bq := range q {
