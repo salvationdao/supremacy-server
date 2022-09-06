@@ -109,7 +109,6 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
-				qm.Select(boiler.BattleReplayColumns.ID),
 				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
@@ -186,7 +185,6 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
-				qm.Select(boiler.BattleReplayColumns.ID),
 				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
