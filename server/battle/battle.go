@@ -2111,12 +2111,11 @@ func (btl *Battle) Load() error {
 				return err
 			}
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
-			return btl.Load()
 		} else {
 			gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 			time.Sleep(1 * time.Second)
-			return btl.Load()
 		}
+		return btl.Load()
 	}
 
 	for i, bq := range q {
