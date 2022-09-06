@@ -447,7 +447,7 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(0.25, 1, true) // 4 msg per second
+var bucket = leakybucket.NewCollector(4, 4, true) // 4 msg per second
 
 // ChatMessageHandler sends chat message from player
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
