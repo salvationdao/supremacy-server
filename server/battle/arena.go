@@ -349,7 +349,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
-		isIdle:                   atomic.Bool{},
+		isIdle:                   *atomic.NewBool(true),
 	}
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
@@ -390,12 +390,13 @@ type Arena struct {
 
 	QuestManager *quest.System
 
-	isIdle atomic.Bool
-
 	gameClientJsonDataChan chan []byte
 
 	MechCommandCheckMap *MechCommandCheckMap
 	sync.RWMutex
+
+	beginBattleMux sync.Mutex
+	isIdle         atomic.Bool
 }
 
 type MechCommandCheckMap struct {
@@ -1536,7 +1537,13 @@ func (arena *Arena) GameClientJsonDataParser() {
 					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
+
+			// set idle is true
+			arena.isIdle.Store(true)
+
+			// begin battle
 			arena.BeginBattle()
+
 		case "BATTLE:INTRO_FINISHED":
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
@@ -1736,6 +1743,14 @@ func (arena *Arena) GameClientJsonDataParser() {
 }
 
 func (arena *Arena) BeginBattle() {
+	arena.beginBattleMux.Lock()
+	defer arena.beginBattleMux.Unlock()
+
+	// skip, if arena is not idle
+	if !arena.isIdle.Load() {
+		return
+	}
+
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
