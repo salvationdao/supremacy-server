@@ -41,6 +41,7 @@ func PlayerMysteryCrate(id uuid.UUID) (*server.MysteryCrate, error) {
 
 	crate, err := boiler.MysteryCrates(
 		boiler.MysteryCrateWhere.ID.EQ(collection.ItemID),
+		qm.Load(boiler.MysteryCrateRels.Blueprint),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -141,7 +142,10 @@ func PlayerMysteryCrateList(
 		collectionItemIDs = append(collectionItemIDs, ci.ID)
 	}
 
-	mysteryCrates, err := boiler.MysteryCrates(boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs)).All(gamedb.StdConn)
+	mysteryCrates, err := boiler.MysteryCrates(
+		boiler.MysteryCrateWhere.ID.IN(mysteryCrateIDs),
+		qm.Load(boiler.MysteryCrateRels.Blueprint),
+		).All(gamedb.StdConn)
 	if err != nil {
 		return total, nil, terror.Error(err)
 	}

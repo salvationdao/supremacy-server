@@ -1,35 +1,38 @@
 package battle
 
 import (
-	"github.com/sasha-s/go-deadlock"
 	"server"
 	"server/db/boiler"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
 type WarMachine struct {
-	ID            string `json:"id"`
-	Hash          string `json:"hash"`
-	OwnedByID     string `json:"ownedByID"`
-	OwnerUsername string `json:"ownerUsername"`
-	Name          string `json:"name"`
-	Label         string `json:"label"`
-	ParticipantID byte   `json:"participantID"`
-	FactionID     string `json:"factionID"`
-	MaxHealth     uint32 `json:"maxHealth"`
-	MaxShield     uint32 `json:"maxShield"`
-	Health        uint32 `json:"health"`
+	ID            string  `json:"id"`
+	Hash          string  `json:"hash"`
+	OwnedByID     string  `json:"ownedByID"`
+	OwnerUsername string  `json:"ownerUsername"`
+	Name          string  `json:"name"`
+	Label         string  `json:"label"`
+	ParticipantID byte    `json:"participantID"`
+	MaxHealth     uint32  `json:"maxHealth"`
+	MaxShield     uint32  `json:"maxShield"`
+	Health        uint32  `json:"health"`
+	AIType        *AIType `json:"aiType"`
 
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
 	Skin    string `json:"skin"`
+	SkinID  string `json:"skinID"`
 	Speed   int    `json:"speed"`
 
-	Faction *Faction `json:"faction"`
-	Tier    string   `json:"tier"`
+	Faction   *Faction `json:"faction"`
+	FactionID string   `json:"factionID"`
+	Tier      string   `json:"tier"`
 
 	PowerCore *PowerCore     `json:"power_core,omitempty"`
 	Abilities []*GameAbility `json:"abilities"`
@@ -57,7 +60,45 @@ type WarMachine struct {
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
 
+	Status *Status `json:"status"`
+
 	deadlock.RWMutex // lock for any mech detail changes
+
+	// data for system message
+	damagedBlockCount int
+}
+
+type Status struct {
+	IsHacked  bool `json:"is_hacked"`
+	IsStunned bool `json:"is_stunned"`
+}
+
+type WarMachineGameClient struct {
+	Hash      string   `json:"hash"`
+	Name      string   `json:"name"`
+	OwnerName string   `json:"owner_name"`
+	Faction   *Faction `json:"faction"` // will be deprecated soon
+	FactionID string   `json:"faction_id"`
+	Model     string   `json:"model"` // will be deprecated soon
+	ModelID   string   `json:"model_id"`
+	Skin      string   `json:"skin"` // will be deprecated soon
+	SkinID    string   `json:"skin_id"`
+	Tier      string   `json:"tier"`
+
+	Weapons       []*Weapon               `json:"weapons"`
+	Customisation WarMachineCustomisation `json:"customisation"`
+
+	Health             uint32 `json:"health"`
+	HealthMax          uint32 `json:"health_max"`
+	ShieldMax          uint32 `json:"shield_max"`
+	ShieldRechargeRate uint32 `json:"shield_recharge_rate"`
+
+	Speed                int     `json:"speed"`
+	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
+
+	PowerCore  PowerCoreGameClient  `json:"power_core"`
+	PowerStats WarMachinePowerStats `json:"power_stats"`
+	Stats      *Stats               `json:"stats"`
 }
 
 type Stats struct {
@@ -66,6 +107,11 @@ type Stats struct {
 	TotalKills      int `json:"total_kills"`
 	BattlesSurvived int `json:"battles_survived"`
 	TotalLosses     int `json:"total_losses"`
+}
+
+type WarMachineCustomisation struct {
+	IntroAnimationID string `json:"intro_animation_id"`
+	OutroAnimationID string `json:"outro_animation_id"`
 }
 
 type PowerCore struct {
@@ -78,6 +124,21 @@ type PowerCore struct {
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
+}
+
+type PowerCoreGameClient struct {
+	PowerCapacity            float32 `json:"power_capacity"`
+	RechargeRate             float32 `json:"recharge_rate"`
+	MaxDrawRate              float32 `json:"max_draw_rate"`
+	WeaponSystemAllocation   float32 `json:"weapon_system_allocation"`
+	MovementSystemAllocation float32 `json:"movement_system_allocation"`
+	UtilitySystemAllocation  float32 `json:"utility_system_allocation"`
+}
+
+type WarMachinePowerStats struct {
+	IdleDrain float32 `json:"idle_drain"`
+	WalkDrain float32 `json:"walk_drain"`
+	RunDrain  float32 `json:"run_drain"`
 }
 
 type DamageType byte
@@ -116,6 +177,14 @@ type Weapon struct {
 	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
 	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
 	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
+	PowerCost           float64    `json:"powerCost"`
+	PowerInstantDrain   bool       `json:"powerInstantDrain"`
+	ProjectileAmount    int        `json:"projectileAmount"`
+	DotTickDamage       float64    `json:"dotTickDamage"`
+	DotMaxTicks         int        `json:"dotMaxTicks"`
+	IsArced             bool       `json:"isArced"`
+	ChargeTimeSeconds   float64    `json:"chargeTime"`
+	BurstRateOfFire     float64    `json:"burstRateOfFire"`
 }
 
 type Utility struct {
@@ -166,6 +235,40 @@ type UtilityAntiMissile struct {
 	FireEnergyCost int    `json:"fire_energy_cost"`
 }
 
+func WarMachinesToClient(wms []*WarMachine) []*WarMachineGameClient {
+	var warMachines []*WarMachineGameClient
+	for _, wm := range wms {
+		warMachines = append(warMachines, WarMachineToClient(wm))
+	}
+	return warMachines
+}
+
+func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
+	return &WarMachineGameClient{
+		Hash:      wm.Hash,
+		Name:      wm.Name,
+		OwnerName: wm.OwnerUsername,
+		Faction:   wm.Faction,
+		FactionID: wm.FactionID,
+		Model:     wm.Model,
+		ModelID:   wm.ModelID,
+		Skin:      wm.Skin,
+		SkinID:    wm.SkinID,
+		Tier:      wm.Tier,
+
+		Weapons: wm.Weapons,
+
+		Health:             wm.Health,
+		HealthMax:          wm.MaxHealth,
+		ShieldMax:          wm.MaxShield,
+		ShieldRechargeRate: wm.ShieldRechargeRate,
+
+		Speed: wm.Speed,
+
+		Stats: wm.Stats,
+	}
+}
+
 func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 	var weapons []*Weapon
 	for _, wpn := range wpns {
@@ -176,9 +279,12 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:                  weapon.ID,
-		Hash:                weapon.Hash,
-		Name:                weapon.Label,
+		ID:    weapon.ID,
+		Hash:  weapon.Hash,
+		Name:  weapon.Label,
+		Model: weapon.BlueprintID,
+		Skin:  weapon.WeaponSkin.BlueprintID,
+		//stats
 		Damage:              weapon.Damage,
 		DamageFalloff:       weapon.DamageFalloff.Int,
 		DamageFalloffRate:   weapon.DamageFalloffRate.Int,
@@ -189,8 +295,13 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo.Int,
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
 		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
-		//Model:               	weapon.Model, // TODO: weapon models
-		//Skin:              	weapon.Skin, // TODO: weapon skins
+		PowerCost:           weapon.PowerCost.Decimal.InexactFloat64(),
+		ProjectileAmount:    weapon.ProjectileAmount.Int,
+		DotTickDamage:       weapon.DotTickDamage.Decimal.InexactFloat64(),
+		DotMaxTicks:         weapon.DotMaxTicks.Int,
+		IsArced:             weapon.IsArced.Bool,
+		ChargeTimeSeconds:   weapon.ChargeTimeSeconds.Decimal.InexactFloat64(),
+		BurstRateOfFire:     weapon.BurstRateOfFire.Decimal.InexactFloat64(),
 	}
 }
 
@@ -275,7 +386,7 @@ func UtilityShieldFromServer(util *server.UtilityShield) *UtilityShield {
 		UtilityID:          util.UtilityID,
 		Hitpoints:          util.Hitpoints,
 		RechargeRate:       util.RechargeRate,
-		RechargeEnergyCost: util.RechargeEnergyCost,
+		RechargeEnergyCost: util.BoostedRechargeRate,
 	}
 }
 

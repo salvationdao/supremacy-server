@@ -10,7 +10,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -114,69 +113,141 @@ type MechCommandNotification struct {
 	FiredByUser  *UserBrief `json:"fired_by_user,omitempty"`
 }
 
-const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
-
 const HubKeyGameNotification = "GAME:NOTIFICATION"
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // BroadcastGameNotificationBattleZoneChange broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEvent) {
-	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/notification", arena.ID), HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeBattleZoneChange,
 		Data: data,
 	})
+
+	replaySession := arena.CurrentBattle().replaySession
+	if replaySession.ReplaySession != nil {
+		newEvent := &RecordingEvents{
+			Timestamp: time.Now(),
+			Notification: GameNotification{
+				Type: GameNotificationTypeText,
+				Data: data,
+			},
+		}
+
+		replaySession.Events = append(replaySession.Events, newEvent)
+	}
 }
 
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
-	q, err := db.LoadBattleQueue(context.Background(), 13)
+	q, err := db.LoadBattleQueue(context.Background(), 13, false)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
-
-	// broadcast system message to mech owners
-	system_messages.BroadcastMechQueueMessage(q)
 
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {
@@ -201,13 +272,18 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
+		warMachine, err := bq.Mech(
+			qm.Load(boiler.MechRels.BattleQueueNotifications),
+			qm.Load(boiler.MechRels.Blueprint),
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
 		}
-
-		wmName := fmt.Sprintf("(%s)", warMachine.Label)
+		wmName := ""
+		if warMachine.R != nil && warMachine.R.Blueprint != nil {
+			wmName = fmt.Sprintf("(%s)", warMachine.R.Blueprint.Label)
+		}
 		if warMachine.Name != "" {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}

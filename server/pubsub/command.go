@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/valyala/fastjson"
 	"go.uber.org/atomic"
 	"net/http"

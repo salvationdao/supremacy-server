@@ -73,20 +73,14 @@ func (u MarketplaceUser) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleCollectionItem struct {
-	Hash             string      `json:"hash" boil:"collection_items.hash"`
-	Tier             null.String `json:"tier,omitempty" boil:"collection_items.tier"`
-	ImageURL         null.String `json:"image_url,omitempty" boil:"collection_items.image_url"`
-	CardAnimationURL null.String `json:"card_animation,omitempty" boil:"collection_items.card_animation_url"`
-	AvatarURL        null.String `json:"avatar_url,omitempty" boil:"collection_items.avatar_url"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty" boil:"collection_items.large_image_url"`
-	BackgroundColor  null.String `json:"background_color,omitempty" boil:"collection_items.background_color"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty" boil:"collection_items.youtube_url"`
-	XsynLocked       bool        `json:"-" boil:"collection_items.xsyn_locked"`
-	MarketLocked     bool        `json:"-" boil:"collection_items.market_locked"`
+	Hash         string      `json:"hash" boil:"collection_items.hash"`
+	Tier         null.String `json:"tier,omitempty" boil:"collection_items.tier"`
+	XsynLocked   bool        `json:"-" boil:"collection_items.xsyn_locked"`
+	MarketLocked bool        `json:"-" boil:"collection_items.market_locked"`
 }
 
 func (b MarketplaceSaleCollectionItem) MarshalJSON() ([]byte, error) {
-	if !b.Tier.Valid && !b.ImageURL.Valid && !b.CardAnimationURL.Valid && !b.AvatarURL.Valid && !b.LargeImageURL.Valid && !b.BackgroundColor.Valid && !b.YoutubeURL.Valid {
+	if !b.Tier.Valid {
 		return null.NullBytes, nil
 	}
 	type localMarketplaceSaleCollectionItem MarketplaceSaleCollectionItem
@@ -109,9 +103,13 @@ func (b MarketplaceSaleItemMech) MarshalJSON() ([]byte, error) {
 }
 
 type MarketplaceSaleItemMysteryCrate struct {
-	ID          null.String `json:"id" boil:"mystery_crate.id"`
-	Label       null.String `json:"label" boil:"mystery_crate.label"`
-	Description null.String `json:"description" boil:"mystery_crate.description"`
+	ID               null.String `json:"id" boil:"mystery_crate.id"`
+	Label            null.String `json:"label" boil:"mystery_crate.label"`
+	Description      null.String `json:"description" boil:"mystery_crate.description"`
+	ImageURL         null.String `json:"image_url,omitempty" boil:"storefront_mystery_crates.image_url"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty" boil:"storefront_mystery_crates.card_animation_url"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty" boil:"storefront_mystery_crates.large_image_url"`
+	AnimationURL     null.String `json:"animation_url,omitempty" boil:"storefront_mystery_crates.animation_url"`
 }
 
 func (b MarketplaceSaleItemMysteryCrate) MarshalJSON() ([]byte, error) {
@@ -160,17 +158,19 @@ type MarketplaceSaleItem1155 struct {
 type MechArenaStatus string
 
 const (
-	MechArenaStatusQueue   MechArenaStatus = "QUEUE"
-	MechArenaStatusBattle  MechArenaStatus = "BATTLE"
-	MechArenaStatusMarket  MechArenaStatus = "MARKET"
-	MechArenaStatusIdle    MechArenaStatus = "IDLE"
-	MechArenaStatusSold    MechArenaStatus = "SOLD"
-	MechArenaStatusDamaged MechArenaStatus = "DAMAGED"
+	MechArenaStatusPendingQueue MechArenaStatus = "PENDING_QUEUE"
+	MechArenaStatusQueue        MechArenaStatus = "QUEUE"
+	MechArenaStatusBattle       MechArenaStatus = "BATTLE"
+	MechArenaStatusMarket       MechArenaStatus = "MARKET"
+	MechArenaStatusIdle         MechArenaStatus = "IDLE"
+	MechArenaStatusSold         MechArenaStatus = "SOLD"
+	MechArenaStatusDamaged      MechArenaStatus = "DAMAGED"
 )
 
 type MechArenaInfo struct {
-	Status        MechArenaStatus `json:"status"` // "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
-	QueuePosition int64           `json:"queue_position"`
+	Status           MechArenaStatus `json:"status"` // "PENDING_QUEUE" | "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
+	CanDeploy        bool            `json:"can_deploy"`
+	BattleETASeconds null.Int64      `json:"battle_eta_seconds"`
 }
 
 type MarketplaceEvent struct {

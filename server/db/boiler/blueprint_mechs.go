@@ -23,153 +23,161 @@ import (
 
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	WeaponHardpoints int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots     int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed            int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints     int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ModelID          string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	PowerCoreSize    string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	AvailabilityID   null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ID                   string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CreatedAt            time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultChassisSkinID string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
+	BrandID              string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	MechType             string      `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
+	RepairBlocks         int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
+	BoostStat            null.String `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
+	WeaponHardpoints     int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	PowerCoreSize        string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	UtilitySlots         int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints         int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Collection           string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	AvailabilityID       null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	Slug             string
-	WeaponHardpoints string
-	UtilitySlots     string
-	Speed            string
-	MaxHitpoints     string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	ModelID          string
-	Collection       string
-	PowerCoreSize    string
-	Tier             string
-	AvailabilityID   string
+	ID                   string
+	Label                string
+	CreatedAt            string
+	DefaultChassisSkinID string
+	BrandID              string
+	MechType             string
+	RepairBlocks         string
+	BoostStat            string
+	WeaponHardpoints     string
+	PowerCoreSize        string
+	UtilitySlots         string
+	Speed                string
+	MaxHitpoints         string
+	Collection           string
+	AvailabilityID       string
 }{
-	ID:               "id",
-	BrandID:          "brand_id",
-	Label:            "label",
-	Slug:             "slug",
-	WeaponHardpoints: "weapon_hardpoints",
-	UtilitySlots:     "utility_slots",
-	Speed:            "speed",
-	MaxHitpoints:     "max_hitpoints",
-	DeletedAt:        "deleted_at",
-	UpdatedAt:        "updated_at",
-	CreatedAt:        "created_at",
-	ModelID:          "model_id",
-	Collection:       "collection",
-	PowerCoreSize:    "power_core_size",
-	Tier:             "tier",
-	AvailabilityID:   "availability_id",
+	ID:                   "id",
+	Label:                "label",
+	CreatedAt:            "created_at",
+	DefaultChassisSkinID: "default_chassis_skin_id",
+	BrandID:              "brand_id",
+	MechType:             "mech_type",
+	RepairBlocks:         "repair_blocks",
+	BoostStat:            "boost_stat",
+	WeaponHardpoints:     "weapon_hardpoints",
+	PowerCoreSize:        "power_core_size",
+	UtilitySlots:         "utility_slots",
+	Speed:                "speed",
+	MaxHitpoints:         "max_hitpoints",
+	Collection:           "collection",
+	AvailabilityID:       "availability_id",
 }
 
 var BlueprintMechTableColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	Slug             string
-	WeaponHardpoints string
-	UtilitySlots     string
-	Speed            string
-	MaxHitpoints     string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	ModelID          string
-	Collection       string
-	PowerCoreSize    string
-	Tier             string
-	AvailabilityID   string
+	ID                   string
+	Label                string
+	CreatedAt            string
+	DefaultChassisSkinID string
+	BrandID              string
+	MechType             string
+	RepairBlocks         string
+	BoostStat            string
+	WeaponHardpoints     string
+	PowerCoreSize        string
+	UtilitySlots         string
+	Speed                string
+	MaxHitpoints         string
+	Collection           string
+	AvailabilityID       string
 }{
-	ID:               "blueprint_mechs.id",
-	BrandID:          "blueprint_mechs.brand_id",
-	Label:            "blueprint_mechs.label",
-	Slug:             "blueprint_mechs.slug",
-	WeaponHardpoints: "blueprint_mechs.weapon_hardpoints",
-	UtilitySlots:     "blueprint_mechs.utility_slots",
-	Speed:            "blueprint_mechs.speed",
-	MaxHitpoints:     "blueprint_mechs.max_hitpoints",
-	DeletedAt:        "blueprint_mechs.deleted_at",
-	UpdatedAt:        "blueprint_mechs.updated_at",
-	CreatedAt:        "blueprint_mechs.created_at",
-	ModelID:          "blueprint_mechs.model_id",
-	Collection:       "blueprint_mechs.collection",
-	PowerCoreSize:    "blueprint_mechs.power_core_size",
-	Tier:             "blueprint_mechs.tier",
-	AvailabilityID:   "blueprint_mechs.availability_id",
+	ID:                   "blueprint_mechs.id",
+	Label:                "blueprint_mechs.label",
+	CreatedAt:            "blueprint_mechs.created_at",
+	DefaultChassisSkinID: "blueprint_mechs.default_chassis_skin_id",
+	BrandID:              "blueprint_mechs.brand_id",
+	MechType:             "blueprint_mechs.mech_type",
+	RepairBlocks:         "blueprint_mechs.repair_blocks",
+	BoostStat:            "blueprint_mechs.boost_stat",
+	WeaponHardpoints:     "blueprint_mechs.weapon_hardpoints",
+	PowerCoreSize:        "blueprint_mechs.power_core_size",
+	UtilitySlots:         "blueprint_mechs.utility_slots",
+	Speed:                "blueprint_mechs.speed",
+	MaxHitpoints:         "blueprint_mechs.max_hitpoints",
+	Collection:           "blueprint_mechs.collection",
+	AvailabilityID:       "blueprint_mechs.availability_id",
 }
 
 // Generated where
 
 var BlueprintMechWhere = struct {
-	ID               whereHelperstring
-	BrandID          whereHelperstring
-	Label            whereHelperstring
-	Slug             whereHelperstring
-	WeaponHardpoints whereHelperint
-	UtilitySlots     whereHelperint
-	Speed            whereHelperint
-	MaxHitpoints     whereHelperint
-	DeletedAt        whereHelpernull_Time
-	UpdatedAt        whereHelpertime_Time
-	CreatedAt        whereHelpertime_Time
-	ModelID          whereHelperstring
-	Collection       whereHelperstring
-	PowerCoreSize    whereHelperstring
-	Tier             whereHelperstring
-	AvailabilityID   whereHelpernull_String
+	ID                   whereHelperstring
+	Label                whereHelperstring
+	CreatedAt            whereHelpertime_Time
+	DefaultChassisSkinID whereHelperstring
+	BrandID              whereHelperstring
+	MechType             whereHelperstring
+	RepairBlocks         whereHelperint
+	BoostStat            whereHelpernull_String
+	WeaponHardpoints     whereHelperint
+	PowerCoreSize        whereHelperstring
+	UtilitySlots         whereHelperint
+	Speed                whereHelperint
+	MaxHitpoints         whereHelperint
+	Collection           whereHelperstring
+	AvailabilityID       whereHelpernull_String
 }{
-	ID:               whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
-	BrandID:          whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
-	Label:            whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
-	Slug:             whereHelperstring{field: "\"blueprint_mechs\".\"slug\""},
-	WeaponHardpoints: whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
-	UtilitySlots:     whereHelperint{field: "\"blueprint_mechs\".\"utility_slots\""},
-	Speed:            whereHelperint{field: "\"blueprint_mechs\".\"speed\""},
-	MaxHitpoints:     whereHelperint{field: "\"blueprint_mechs\".\"max_hitpoints\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"blueprint_mechs\".\"deleted_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"blueprint_mechs\".\"updated_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_mechs\".\"created_at\""},
-	ModelID:          whereHelperstring{field: "\"blueprint_mechs\".\"model_id\""},
-	Collection:       whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
-	PowerCoreSize:    whereHelperstring{field: "\"blueprint_mechs\".\"power_core_size\""},
-	Tier:             whereHelperstring{field: "\"blueprint_mechs\".\"tier\""},
-	AvailabilityID:   whereHelpernull_String{field: "\"blueprint_mechs\".\"availability_id\""},
+	ID:                   whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
+	Label:                whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
+	CreatedAt:            whereHelpertime_Time{field: "\"blueprint_mechs\".\"created_at\""},
+	DefaultChassisSkinID: whereHelperstring{field: "\"blueprint_mechs\".\"default_chassis_skin_id\""},
+	BrandID:              whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
+	MechType:             whereHelperstring{field: "\"blueprint_mechs\".\"mech_type\""},
+	RepairBlocks:         whereHelperint{field: "\"blueprint_mechs\".\"repair_blocks\""},
+	BoostStat:            whereHelpernull_String{field: "\"blueprint_mechs\".\"boost_stat\""},
+	WeaponHardpoints:     whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
+	PowerCoreSize:        whereHelperstring{field: "\"blueprint_mechs\".\"power_core_size\""},
+	UtilitySlots:         whereHelperint{field: "\"blueprint_mechs\".\"utility_slots\""},
+	Speed:                whereHelperint{field: "\"blueprint_mechs\".\"speed\""},
+	MaxHitpoints:         whereHelperint{field: "\"blueprint_mechs\".\"max_hitpoints\""},
+	Collection:           whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
+	AvailabilityID:       whereHelpernull_String{field: "\"blueprint_mechs\".\"availability_id\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
 var BlueprintMechRels = struct {
-	Availability   string
-	Model          string
-	BlueprintMechs string
+	Availability                          string
+	DefaultChassisSkin                    string
+	ModelBlueprintChasses                 string
+	MechModelBlueprintMechAnimations      string
+	ModelBlueprintMechsOlds               string
+	MechModelMechAnimations               string
+	MechModelMechModelSkinCompatibilities string
+	BlueprintMechs                        string
 }{
-	Availability:   "Availability",
-	Model:          "Model",
-	BlueprintMechs: "BlueprintMechs",
+	Availability:                          "Availability",
+	DefaultChassisSkin:                    "DefaultChassisSkin",
+	ModelBlueprintChasses:                 "ModelBlueprintChasses",
+	MechModelBlueprintMechAnimations:      "MechModelBlueprintMechAnimations",
+	ModelBlueprintMechsOlds:               "ModelBlueprintMechsOlds",
+	MechModelMechAnimations:               "MechModelMechAnimations",
+	MechModelMechModelSkinCompatibilities: "MechModelMechModelSkinCompatibilities",
+	BlueprintMechs:                        "BlueprintMechs",
 }
 
 // blueprintMechR is where relationships are stored.
 type blueprintMechR struct {
-	Availability   *Availability `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
-	Model          *MechModel    `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
-	BlueprintMechs MechSlice     `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
+	Availability                          *Availability                   `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
+	DefaultChassisSkin                    *BlueprintMechSkin              `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
+	ModelBlueprintChasses                 BlueprintChassisSlice           `boiler:"ModelBlueprintChasses" boil:"ModelBlueprintChasses" json:"ModelBlueprintChasses" toml:"ModelBlueprintChasses" yaml:"ModelBlueprintChasses"`
+	MechModelBlueprintMechAnimations      BlueprintMechAnimationSlice     `boiler:"MechModelBlueprintMechAnimations" boil:"MechModelBlueprintMechAnimations" json:"MechModelBlueprintMechAnimations" toml:"MechModelBlueprintMechAnimations" yaml:"MechModelBlueprintMechAnimations"`
+	ModelBlueprintMechsOlds               BlueprintMechsOldSlice          `boiler:"ModelBlueprintMechsOlds" boil:"ModelBlueprintMechsOlds" json:"ModelBlueprintMechsOlds" toml:"ModelBlueprintMechsOlds" yaml:"ModelBlueprintMechsOlds"`
+	MechModelMechAnimations               MechAnimationSlice              `boiler:"MechModelMechAnimations" boil:"MechModelMechAnimations" json:"MechModelMechAnimations" toml:"MechModelMechAnimations" yaml:"MechModelMechAnimations"`
+	MechModelMechModelSkinCompatibilities MechModelSkinCompatibilitySlice `boiler:"MechModelMechModelSkinCompatibilities" boil:"MechModelMechModelSkinCompatibilities" json:"MechModelMechModelSkinCompatibilities" toml:"MechModelMechModelSkinCompatibilities" yaml:"MechModelMechModelSkinCompatibilities"`
+	BlueprintMechs                        MechSlice                       `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -181,9 +189,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier", "availability_id"}
-	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier", "availability_id"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id"}
+	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type"}
+	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )
@@ -444,16 +452,124 @@ func (o *BlueprintMech) Availability(mods ...qm.QueryMod) availabilityQuery {
 	return query
 }
 
-// Model pointed to by the foreign key.
-func (o *BlueprintMech) Model(mods ...qm.QueryMod) mechModelQuery {
+// DefaultChassisSkin pointed to by the foreign key.
+func (o *BlueprintMech) DefaultChassisSkin(mods ...qm.QueryMod) blueprintMechSkinQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.ModelID),
+		qm.Where("\"id\" = ?", o.DefaultChassisSkinID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_models\"")
+	query := BlueprintMechSkins(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mech_skin\"")
+
+	return query
+}
+
+// ModelBlueprintChasses retrieves all the blueprint_chassis's BlueprintChasses with an executor via model_id column.
+func (o *BlueprintMech) ModelBlueprintChasses(mods ...qm.QueryMod) blueprintChassisQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"blueprint_chassis\".\"model_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"blueprint_chassis\".\"deleted_at\""),
+	)
+
+	query := BlueprintChasses(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_chassis\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"blueprint_chassis\".*"})
+	}
+
+	return query
+}
+
+// MechModelBlueprintMechAnimations retrieves all the blueprint_mech_animation's BlueprintMechAnimations with an executor via mech_model column.
+func (o *BlueprintMech) MechModelBlueprintMechAnimations(mods ...qm.QueryMod) blueprintMechAnimationQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"blueprint_mech_animation\".\"mech_model\"=?", o.ID),
+	)
+
+	query := BlueprintMechAnimations(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mech_animation\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"blueprint_mech_animation\".*"})
+	}
+
+	return query
+}
+
+// ModelBlueprintMechsOlds retrieves all the blueprint_mechs_old's BlueprintMechsOlds with an executor via model_id column.
+func (o *BlueprintMech) ModelBlueprintMechsOlds(mods ...qm.QueryMod) blueprintMechsOldQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"blueprint_mechs_old\".\"model_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"blueprint_mechs_old\".\"deleted_at\""),
+	)
+
+	query := BlueprintMechsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_mechs_old\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"blueprint_mechs_old\".*"})
+	}
+
+	return query
+}
+
+// MechModelMechAnimations retrieves all the mech_animation's MechAnimations with an executor via mech_model column.
+func (o *BlueprintMech) MechModelMechAnimations(mods ...qm.QueryMod) mechAnimationQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mech_animation\".\"mech_model\"=?", o.ID),
+	)
+
+	query := MechAnimations(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_animation\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mech_animation\".*"})
+	}
+
+	return query
+}
+
+// MechModelMechModelSkinCompatibilities retrieves all the mech_model_skin_compatibility's MechModelSkinCompatibilities with an executor via mech_model_id column.
+func (o *BlueprintMech) MechModelMechModelSkinCompatibilities(mods ...qm.QueryMod) mechModelSkinCompatibilityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mech_model_skin_compatibilities\".\"mech_model_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mech_model_skin_compatibilities\".\"deleted_at\""),
+	)
+
+	query := MechModelSkinCompatibilities(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_model_skin_compatibilities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mech_model_skin_compatibilities\".*"})
+	}
 
 	return query
 }
@@ -588,9 +704,9 @@ func (blueprintMechL) LoadAvailability(e boil.Executor, singular bool, maybeBlue
 	return nil
 }
 
-// LoadModel allows an eager lookup of values, cached into the
+// LoadDefaultChassisSkin allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+func (blueprintMechL) LoadDefaultChassisSkin(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintMech
 	var object *BlueprintMech
 
@@ -605,7 +721,7 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 		if object.R == nil {
 			object.R = &blueprintMechR{}
 		}
-		args = append(args, object.ModelID)
+		args = append(args, object.DefaultChassisSkinID)
 
 	} else {
 	Outer:
@@ -615,12 +731,12 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 			}
 
 			for _, a := range args {
-				if a == obj.ModelID {
+				if a == obj.DefaultChassisSkinID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.ModelID)
+			args = append(args, obj.DefaultChassisSkinID)
 
 		}
 	}
@@ -630,8 +746,8 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 	}
 
 	query := NewQuery(
-		qm.From(`mech_models`),
-		qm.WhereIn(`mech_models.id in ?`, args...),
+		qm.From(`blueprint_mech_skin`),
+		qm.WhereIn(`blueprint_mech_skin.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -639,19 +755,19 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
+		return errors.Wrap(err, "failed to eager load BlueprintMechSkin")
 	}
 
-	var resultSlice []*MechModel
+	var resultSlice []*BlueprintMechSkin
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMechSkin")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_models")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_mech_skin")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_skin")
 	}
 
 	if len(blueprintMechAfterSelectHooks) != 0 {
@@ -668,22 +784,515 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Model = foreign
+		object.R.DefaultChassisSkin = foreign
 		if foreign.R == nil {
-			foreign.R = &mechModelR{}
+			foreign.R = &blueprintMechSkinR{}
 		}
-		foreign.R.ModelBlueprintMechs = append(foreign.R.ModelBlueprintMechs, object)
+		foreign.R.DefaultChassisSkinBlueprintMechs = append(foreign.R.DefaultChassisSkinBlueprintMechs, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ModelID == foreign.ID {
-				local.R.Model = foreign
+			if local.DefaultChassisSkinID == foreign.ID {
+				local.R.DefaultChassisSkin = foreign
 				if foreign.R == nil {
-					foreign.R = &mechModelR{}
+					foreign.R = &blueprintMechSkinR{}
 				}
-				foreign.R.ModelBlueprintMechs = append(foreign.R.ModelBlueprintMechs, local)
+				foreign.R.DefaultChassisSkinBlueprintMechs = append(foreign.R.DefaultChassisSkinBlueprintMechs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadModelBlueprintChasses allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadModelBlueprintChasses(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_chassis`),
+		qm.WhereIn(`blueprint_chassis.model_id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_chassis.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load blueprint_chassis")
+	}
+
+	var resultSlice []*BlueprintChassis
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis")
+	}
+
+	if len(blueprintChassisAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ModelBlueprintChasses = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &blueprintChassisR{}
+			}
+			foreign.R.Model = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ModelID {
+				local.R.ModelBlueprintChasses = append(local.R.ModelBlueprintChasses, foreign)
+				if foreign.R == nil {
+					foreign.R = &blueprintChassisR{}
+				}
+				foreign.R.Model = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechModelBlueprintMechAnimations allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadMechModelBlueprintMechAnimations(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_mech_animation`),
+		qm.WhereIn(`blueprint_mech_animation.mech_model in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load blueprint_mech_animation")
+	}
+
+	var resultSlice []*BlueprintMechAnimation
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_mech_animation")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on blueprint_mech_animation")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_animation")
+	}
+
+	if len(blueprintMechAnimationAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechModelBlueprintMechAnimations = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &blueprintMechAnimationR{}
+			}
+			foreign.R.MechModelBlueprintMech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechModel {
+				local.R.MechModelBlueprintMechAnimations = append(local.R.MechModelBlueprintMechAnimations, foreign)
+				if foreign.R == nil {
+					foreign.R = &blueprintMechAnimationR{}
+				}
+				foreign.R.MechModelBlueprintMech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadModelBlueprintMechsOlds allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadModelBlueprintMechsOlds(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_mechs_old`),
+		qm.WhereIn(`blueprint_mechs_old.model_id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_mechs_old.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load blueprint_mechs_old")
+	}
+
+	var resultSlice []*BlueprintMechsOld
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_mechs_old")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on blueprint_mechs_old")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mechs_old")
+	}
+
+	if len(blueprintMechsOldAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ModelBlueprintMechsOlds = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &blueprintMechsOldR{}
+			}
+			foreign.R.Model = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ModelID {
+				local.R.ModelBlueprintMechsOlds = append(local.R.ModelBlueprintMechsOlds, foreign)
+				if foreign.R == nil {
+					foreign.R = &blueprintMechsOldR{}
+				}
+				foreign.R.Model = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechModelMechAnimations allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadMechModelMechAnimations(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_animation`),
+		qm.WhereIn(`mech_animation.mech_model in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mech_animation")
+	}
+
+	var resultSlice []*MechAnimation
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_animation")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mech_animation")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_animation")
+	}
+
+	if len(mechAnimationAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechModelMechAnimations = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechAnimationR{}
+			}
+			foreign.R.MechModelBlueprintMech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechModel {
+				local.R.MechModelMechAnimations = append(local.R.MechModelMechAnimations, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechAnimationR{}
+				}
+				foreign.R.MechModelBlueprintMech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechModelMechModelSkinCompatibilities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintMechL) LoadMechModelMechModelSkinCompatibilities(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_model_skin_compatibilities`),
+		qm.WhereIn(`mech_model_skin_compatibilities.mech_model_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_model_skin_compatibilities.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mech_model_skin_compatibilities")
+	}
+
+	var resultSlice []*MechModelSkinCompatibility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_model_skin_compatibilities")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mech_model_skin_compatibilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model_skin_compatibilities")
+	}
+
+	if len(mechModelSkinCompatibilityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MechModelMechModelSkinCompatibilities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechModelSkinCompatibilityR{}
+			}
+			foreign.R.MechModel = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechModelID {
+				local.R.MechModelMechModelSkinCompatibilities = append(local.R.MechModelMechModelSkinCompatibilities, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechModelSkinCompatibilityR{}
+				}
+				foreign.R.MechModel = local
 				break
 			}
 		}
@@ -870,10 +1479,10 @@ func (o *BlueprintMech) RemoveAvailability(exec boil.Executor, related *Availabi
 	return nil
 }
 
-// SetModel of the blueprintMech to the related item.
-// Sets o.R.Model to related.
-// Adds o to related.R.ModelBlueprintMechs.
-func (o *BlueprintMech) SetModel(exec boil.Executor, insert bool, related *MechModel) error {
+// SetDefaultChassisSkin of the blueprintMech to the related item.
+// Sets o.R.DefaultChassisSkin to related.
+// Adds o to related.R.DefaultChassisSkinBlueprintMechs.
+func (o *BlueprintMech) SetDefaultChassisSkin(exec boil.Executor, insert bool, related *BlueprintMechSkin) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -883,7 +1492,7 @@ func (o *BlueprintMech) SetModel(exec boil.Executor, insert bool, related *MechM
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"blueprint_mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"model_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"default_chassis_skin_id"}),
 		strmangle.WhereClause("\"", "\"", 2, blueprintMechPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -896,23 +1505,283 @@ func (o *BlueprintMech) SetModel(exec boil.Executor, insert bool, related *MechM
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.ModelID = related.ID
+	o.DefaultChassisSkinID = related.ID
 	if o.R == nil {
 		o.R = &blueprintMechR{
-			Model: related,
+			DefaultChassisSkin: related,
 		}
 	} else {
-		o.R.Model = related
+		o.R.DefaultChassisSkin = related
 	}
 
 	if related.R == nil {
-		related.R = &mechModelR{
-			ModelBlueprintMechs: BlueprintMechSlice{o},
+		related.R = &blueprintMechSkinR{
+			DefaultChassisSkinBlueprintMechs: BlueprintMechSlice{o},
 		}
 	} else {
-		related.R.ModelBlueprintMechs = append(related.R.ModelBlueprintMechs, o)
+		related.R.DefaultChassisSkinBlueprintMechs = append(related.R.DefaultChassisSkinBlueprintMechs, o)
 	}
 
+	return nil
+}
+
+// AddModelBlueprintChasses adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.ModelBlueprintChasses.
+// Sets related.R.Model appropriately.
+func (o *BlueprintMech) AddModelBlueprintChasses(exec boil.Executor, insert bool, related ...*BlueprintChassis) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ModelID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"blueprint_chassis\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"model_id"}),
+				strmangle.WhereClause("\"", "\"", 2, blueprintChassisPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ModelID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			ModelBlueprintChasses: related,
+		}
+	} else {
+		o.R.ModelBlueprintChasses = append(o.R.ModelBlueprintChasses, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &blueprintChassisR{
+				Model: o,
+			}
+		} else {
+			rel.R.Model = o
+		}
+	}
+	return nil
+}
+
+// AddMechModelBlueprintMechAnimations adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.MechModelBlueprintMechAnimations.
+// Sets related.R.MechModelBlueprintMech appropriately.
+func (o *BlueprintMech) AddMechModelBlueprintMechAnimations(exec boil.Executor, insert bool, related ...*BlueprintMechAnimation) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechModel = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"blueprint_mech_animation\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
+				strmangle.WhereClause("\"", "\"", 2, blueprintMechAnimationPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechModel = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			MechModelBlueprintMechAnimations: related,
+		}
+	} else {
+		o.R.MechModelBlueprintMechAnimations = append(o.R.MechModelBlueprintMechAnimations, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &blueprintMechAnimationR{
+				MechModelBlueprintMech: o,
+			}
+		} else {
+			rel.R.MechModelBlueprintMech = o
+		}
+	}
+	return nil
+}
+
+// AddModelBlueprintMechsOlds adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.ModelBlueprintMechsOlds.
+// Sets related.R.Model appropriately.
+func (o *BlueprintMech) AddModelBlueprintMechsOlds(exec boil.Executor, insert bool, related ...*BlueprintMechsOld) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ModelID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"blueprint_mechs_old\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"model_id"}),
+				strmangle.WhereClause("\"", "\"", 2, blueprintMechsOldPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ModelID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			ModelBlueprintMechsOlds: related,
+		}
+	} else {
+		o.R.ModelBlueprintMechsOlds = append(o.R.ModelBlueprintMechsOlds, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &blueprintMechsOldR{
+				Model: o,
+			}
+		} else {
+			rel.R.Model = o
+		}
+	}
+	return nil
+}
+
+// AddMechModelMechAnimations adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.MechModelMechAnimations.
+// Sets related.R.MechModelBlueprintMech appropriately.
+func (o *BlueprintMech) AddMechModelMechAnimations(exec boil.Executor, insert bool, related ...*MechAnimation) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechModel = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mech_animation\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
+				strmangle.WhereClause("\"", "\"", 2, mechAnimationPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechModel = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			MechModelMechAnimations: related,
+		}
+	} else {
+		o.R.MechModelMechAnimations = append(o.R.MechModelMechAnimations, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechAnimationR{
+				MechModelBlueprintMech: o,
+			}
+		} else {
+			rel.R.MechModelBlueprintMech = o
+		}
+	}
+	return nil
+}
+
+// AddMechModelMechModelSkinCompatibilities adds the given related objects to the existing relationships
+// of the blueprint_mech, optionally inserting them as new records.
+// Appends related to o.R.MechModelMechModelSkinCompatibilities.
+// Sets related.R.MechModel appropriately.
+func (o *BlueprintMech) AddMechModelMechModelSkinCompatibilities(exec boil.Executor, insert bool, related ...*MechModelSkinCompatibility) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechModelID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mech_model_skin_compatibilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechModelSkinCompatibilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.BlueprintMechSkinID, rel.MechModelID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechModelID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			MechModelMechModelSkinCompatibilities: related,
+		}
+	} else {
+		o.R.MechModelMechModelSkinCompatibilities = append(o.R.MechModelMechModelSkinCompatibilities, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechModelSkinCompatibilityR{
+				MechModel: o,
+			}
+		} else {
+			rel.R.MechModel = o
+		}
+	}
 	return nil
 }
 
@@ -970,7 +1839,7 @@ func (o *BlueprintMech) AddBlueprintMechs(exec boil.Executor, insert bool, relat
 
 // BlueprintMechs retrieves all the records using an executor.
 func BlueprintMechs(mods ...qm.QueryMod) blueprintMechQuery {
-	mods = append(mods, qm.From("\"blueprint_mechs\""), qmhelper.WhereIsNull("\"blueprint_mechs\".\"deleted_at\""))
+	mods = append(mods, qm.From("\"blueprint_mechs\""))
 	return blueprintMechQuery{NewQuery(mods...)}
 }
 
@@ -984,7 +1853,7 @@ func FindBlueprintMech(exec boil.Executor, iD string, selectCols ...string) (*Bl
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"blueprint_mechs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"blueprint_mechs\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1014,9 +1883,6 @@ func (o *BlueprintMech) Insert(exec boil.Executor, columns boil.Columns) error {
 	var err error
 	currTime := time.Now().In(boil.GetLocation())
 
-	if o.UpdatedAt.IsZero() {
-		o.UpdatedAt = currTime
-	}
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -1094,10 +1960,6 @@ func (o *BlueprintMech) Insert(exec boil.Executor, columns boil.Columns) error {
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *BlueprintMech) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
-	currTime := time.Now().In(boil.GetLocation())
-
-	o.UpdatedAt = currTime
-
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -1228,7 +2090,6 @@ func (o *BlueprintMech) Upsert(exec boil.Executor, updateOnConflict bool, confli
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
-	o.UpdatedAt = currTime
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -1343,7 +2204,7 @@ func (o *BlueprintMech) Upsert(exec boil.Executor, updateOnConflict bool, confli
 
 // Delete deletes a single BlueprintMech record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BlueprintMech) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *BlueprintMech) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no BlueprintMech provided for delete")
 	}
@@ -1352,26 +2213,8 @@ func (o *BlueprintMech) Delete(exec boil.Executor, hardDelete bool) (int64, erro
 		return 0, err
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintMechPrimaryKeyMapping)
-		sql = "DELETE FROM \"blueprint_mechs\" WHERE \"id\"=$1"
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		o.DeletedAt = null.TimeFrom(currTime)
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"blueprint_mechs\" SET %s WHERE \"id\"=$2",
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		valueMapping, err := queries.BindMapping(blueprintMechType, blueprintMechMapping, append(wl, blueprintMechPrimaryKeyColumns...))
-		if err != nil {
-			return 0, err
-		}
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
-	}
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintMechPrimaryKeyMapping)
+	sql := "DELETE FROM \"blueprint_mechs\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1395,17 +2238,12 @@ func (o *BlueprintMech) Delete(exec boil.Executor, hardDelete bool) (int64, erro
 }
 
 // DeleteAll deletes all matching rows.
-func (q blueprintMechQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q blueprintMechQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no blueprintMechQuery provided for delete all")
 	}
 
-	if hardDelete {
-		queries.SetDelete(q.Query)
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
-	}
+	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1421,7 +2259,7 @@ func (q blueprintMechQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BlueprintMechSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o BlueprintMechSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1434,31 +2272,14 @@ func (o BlueprintMechSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int6
 		}
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintMechPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-		}
-		sql = "DELETE FROM \"blueprint_mechs\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintMechPrimaryKeyColumns, len(o))
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintMechPrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-			obj.DeletedAt = null.TimeFrom(currTime)
-		}
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"blueprint_mechs\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, blueprintMechPrimaryKeyColumns, len(o)),
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		args = append([]interface{}{currTime}, args...)
+	var args []interface{}
+	for _, obj := range o {
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintMechPrimaryKeyMapping)
+		args = append(args, pkeyArgs...)
 	}
+
+	sql := "DELETE FROM \"blueprint_mechs\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintMechPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1512,8 +2333,7 @@ func (o *BlueprintMechSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"blueprint_mechs\".* FROM \"blueprint_mechs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintMechPrimaryKeyColumns, len(*o)) +
-		"and \"deleted_at\" is null"
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintMechPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
@@ -1530,7 +2350,7 @@ func (o *BlueprintMechSlice) ReloadAll(exec boil.Executor) error {
 // BlueprintMechExists checks if the BlueprintMech row exists.
 func BlueprintMechExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"blueprint_mechs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"blueprint_mechs\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

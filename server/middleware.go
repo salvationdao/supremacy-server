@@ -6,6 +6,8 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"net/http"
 	"server/db/boiler"
 	"server/gamedb"
 )
@@ -42,7 +44,7 @@ func MustSecureFaction(fn SecureFactionCommandFunc) ws.CommandFunc {
 }
 
 func RetrieveUser(ctx context.Context) (*boiler.Player, error) {
-	userID, ok := ctx.Value("user_id").(string)
+	userID, ok := ctx.Value("auth_user_id").(string)
 
 	if !ok || userID == "" {
 		return nil, fmt.Errorf("can not retrieve user id")
@@ -91,5 +93,96 @@ func MustSecureFactionWithFeature(featureName string, fn SecureFactionCommandFun
 		}
 		return terror.Error(fmt.Errorf("player: %s does not have necessary feature", user.ID), "You do not have the necessary feature to perform this action, try again or contact support.")
 
+	}
+}
+
+// Tracer is a ws middleware used to implement datadog for WS Handlers.
+func Tracer(fn ws.CommandFunc, environment string) ws.CommandFunc {
+	return func(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+		requestUri, _ := ctx.Value("Origin").(string)
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+				tracer.Tag("origin", requestUri),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, key, payload, reply)
+	}
+}
+
+// SecureUserTracer is a ws middleware used to implement datadog for WS Handlers.
+func SecureUserTracer(fn SecureCommandFunc, environment string) SecureCommandFunc {
+	return func(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+		requestUri, _ := ctx.Value("Origin").(string)
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+				tracer.Tag("origin", requestUri),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, user, key, payload, reply)
+	}
+}
+
+// SecureFactionTracer is a ws middleware used to implement datadog for WS Handlers (factions).
+func SecureFactionTracer(fn SecureFactionCommandFunc, environment string) SecureFactionCommandFunc {
+	return func(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+		requestUri, _ := ctx.Value("Origin").(string)
+		if environment != "development" {
+			span, augmentedCtx := tracer.StartSpanFromContext(
+				ctx,
+				"ws_handler",
+				tracer.ResourceName(key),
+				tracer.Tag("ws_key", key),
+				tracer.Tag("env", environment),
+				tracer.Tag("origin", requestUri),
+			)
+			defer span.Finish()
+			ctx = augmentedCtx
+		}
+		return fn(ctx, user, user.FactionID.String, key, payload, reply)
+	}
+}
+
+func AddOriginToCtx() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "Origin", r.Header.Get("Origin"))))
+			return
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func RestDatadogTrace(environment string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			if environment != "development" {
+				span, augmentedCtx := tracer.StartSpanFromContext(
+					r.Context(),
+					"http_handler",
+					tracer.ResourceName(fmt.Sprintf("%s %s", r.Method, r.URL.Path)),
+					tracer.Tag("http.method", r.Method),
+					tracer.Tag("http.url", r.URL.Path),
+					tracer.Tag("origin", r.Header.Get("Origin")),
+				)
+				defer span.Finish()
+				r = r.WithContext(augmentedCtx)
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

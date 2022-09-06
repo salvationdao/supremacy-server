@@ -1,0 +1,29 @@
+digraph "weapons" {
+
+splines  = ortho;
+fontname = "Inconsolata";
+
+node [colorscheme = ylgnbu4];
+edge [colorscheme = dark28, dir = both];
+
+blueprint_weapon_skin             [shape = record, label = "{ blueprint_weapon_skin |  label : text\l  tier : text\l  created_at : timestamp with time zone\l  collection : text\l  stat_modifier : numeric(8)\l| id : uuid\l }"];
+blueprint_weapons                 [shape = record, label = "{ blueprint_weapons |  label : text\l  slug : text\l  damage : integer\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l  game_client_weapon_id : uuid\l  weapon_type : weapon_type\l  collection : collection\l  default_damage_type : damage_type\l  damage_falloff : integer\l  damage_falloff_rate : integer\l  radius : integer\l  radius_damage_falloff : integer\l  spread : numeric\l  rate_of_fire : numeric\l  projectile_speed : numeric\l  max_ammo : integer\l  is_melee : boolean\l  tier : text\l  energy_cost : numeric\l  weapon_model_id : uuid\l| id : uuid\l }"];
+brands                            [shape = record, label = "{ brands |  faction_id : uuid\l  label : text\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l| id : uuid\l }"];
+factions                          [shape = record, label = "{ factions |  vote_price : text\l  contract_reward : text\l  label : text\l  guild_id : uuid\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l  primary_color : text\l  secondary_color : text\l  background_color : text\l  logo_url : text\l  background_url : text\l  description : text\l  wallpaper_url : text\l| id : uuid\l }"];
+weapon_model_skin_compatibilities [shape = record, label = "{ weapon_model_skin_compatibilities |  image_url : text\l  card_animation_url : text\l  avatar_url : text\l  large_image_url : text\l  background_color : text\l  animation_url : text\l  youtube_url : text\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l| blueprint_weapon_skin_id : uuid\l  weapon_model_id : uuid\l }"];
+weapon_models                     [shape = record, label = "{ weapon_models |  brand_id : uuid\l  label : text\l  weapon_type : weapon_type\l  default_skin_id : uuid\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l  repair_blocks : integer\l| id : uuid\l }"];
+weapon_skin                       [shape = record, label = "{ weapon_skin |  blueprint_id : uuid\l  equipped_on : uuid\l  created_at : timestamp with time zone\l| id : uuid\l }"];
+weapons                           [shape = record, label = "{ weapons |  slug : text\l  damage : integer\l  deleted_at : timestamp with time zone\l  updated_at : timestamp with time zone\l  created_at : timestamp with time zone\l  blueprint_id : uuid\l  equipped_on : uuid\l  default_damage_type : damage_type\l  genesis_token_id : bigint\l  limited_release_token_id : bigint\l  damage_falloff : integer\l  damage_falloff_rate : integer\l  radius : integer\l  radius_damage_falloff : integer\l  spread : numeric\l  rate_of_fire : numeric\l  projectile_speed : numeric\l  energy_cost : numeric\l  is_melee : boolean\l  max_ammo : integer\l  locked_to_mech : boolean\l  equipped_weapon_skin_id : uuid\l| id : uuid\l }"];
+
+blueprint_weapons                 -> weapon_models                     [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "weapon_model_id:id", headlabel = ""];
+brands                            -> factions                          [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "faction_id:id", headlabel = ""];
+weapon_model_skin_compatibilities -> blueprint_weapon_skin             [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "blueprint_weapon_skin_id:id", headlabel = ""];
+weapon_model_skin_compatibilities -> weapon_models                     [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "weapon_model_id:id", headlabel = ""];
+weapon_models                     -> blueprint_weapon_skin             [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "default_skin_id:id", headlabel = ""];
+weapon_models                     -> brands                            [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "brand_id:id", headlabel = ""];
+weapon_skin                       -> blueprint_weapon_skin             [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "blueprint_id:id", headlabel = ""];
+weapon_skin                       -> weapons                           [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "equipped_on:id", headlabel = ""];
+weapons                           -> blueprint_weapons                 [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "blueprint_id:id", headlabel = ""];
+weapons                           -> weapon_skin                       [color = "#595959", style = solid , arrowtail = none    , arrowhead = normal  , taillabel = "", label = "equipped_weapon_skin_id:id", headlabel = ""];
+
+}

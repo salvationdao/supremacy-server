@@ -1,0 +1,1 @@
+update kv set value = '250000000000000000000' WHERE key = 'battle_queue_fee';

@@ -1,23 +1,20 @@
 package db
 
 import (
-	"context"
+	"database/sql"
+	_ "github.com/lib/pq"
 	"regexp"
 	"strings"
-
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
 )
 
 // SnakeCaseRegexp looks for snakecase words
 var SnakeCaseRegexp = regexp.MustCompile(`(^|[_-])([a-z])`)
 
 type Conn interface {
-	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
-	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...interface{}) pgx.Row
-	SendBatch(context.Context, *pgx.Batch) pgx.BatchResults
-	Begin(ctx context.Context) (pgx.Tx, error)
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Prepare(query string) (*sql.Stmt, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 func ParseQueryText(queryText string, matchAll bool) string {
@@ -60,9 +57,4 @@ func ParseQueryText(queryText string, matchAll bool) string {
 	}
 	xsearch := strings.Join(keywords2, " & ")
 	return xsearch
-}
-
-func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
-	_, err := conn.Exec(ctx, q)
-	return err
 }

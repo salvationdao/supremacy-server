@@ -51,6 +51,13 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for AbilityKillingPowerLevel
+const (
+	AbilityKillingPowerLevelDEADLY = "DEADLY"
+	AbilityKillingPowerLevelNORMAL = "NORMAL"
+	AbilityKillingPowerLevelNONE   = "NONE"
+)
+
 // Enum values for AbilityTypeEnum
 const (
 	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
@@ -64,6 +71,19 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for ArenaTypeEnum
+const (
+	ArenaTypeEnumSTORY      = "STORY"
+	ArenaTypeEnumEXPEDITION = "EXPEDITION"
+)
+
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"
@@ -71,6 +91,13 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 	BattleEventPickup           = "pickup"
+)
+
+// Enum values for RecordingStatus
+const (
+	RecordingStatusRECORDING = "RECORDING"
+	RecordingStatusSTOPPED   = "STOPPED"
+	RecordingStatusIDLE      = "IDLE"
 )
 
 // Enum values for WeaponType
@@ -103,17 +130,64 @@ const (
 	MechTypePLATFORM = "PLATFORM"
 )
 
+// Enum values for BoostStat
+const (
+	BoostStatMECH_HEALTH  = "MECH_HEALTH"
+	BoostStatMECH_SPEED   = "MECH_SPEED"
+	BoostStatSHIELD_REGEN = "SHIELD_REGEN"
+)
+
+// Enum values for PowercoreSize
+const (
+	PowercoreSizeSMALL  = "SMALL"
+	PowercoreSizeMEDIUM = "MEDIUM"
+	PowercoreSizeLARGE  = "LARGE"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for LocationSelectTypeEnum
 const (
-	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
-	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
-	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
-	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
+	LocationSelectTypeEnumLINE_SELECT          = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
+	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
+)
+
+// Enum values for MiniMapDisplayEffectType
+const (
+	MiniMapDisplayEffectTypeNONE        = "NONE"
+	MiniMapDisplayEffectTypeRANGE       = "RANGE"
+	MiniMapDisplayEffectTypeMECH_PULSE  = "MECH_PULSE"
+	MiniMapDisplayEffectTypeMECH_BORDER = "MECH_BORDER"
+	MiniMapDisplayEffectTypePULSE       = "PULSE"
+	MiniMapDisplayEffectTypeBORDER      = "BORDER"
+	MiniMapDisplayEffectTypeDROP        = "DROP"
+	MiniMapDisplayEffectTypeSHAKE       = "SHAKE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for QuestEventType
+const (
+	QuestEventTypeDailyQuest     = "daily_quest"
+	QuestEventTypeWeeklyQuest    = "weekly_quest"
+	QuestEventTypeMonthlyQuest   = "monthly_quest"
+	QuestEventTypeProvingGrounds = "proving_grounds"
+)
+
+// Enum values for QuestKey
+const (
+	QuestKeyAbilityKill                  = "ability_kill"
+	QuestKeyMechKill                     = "mech_kill"
+	QuestKeyTotalBattleUsedMechCommander = "total_battle_used_mech_commander"
+	QuestKeyRepairForOther               = "repair_for_other"
+	QuestKeyChatSent                     = "chat_sent"
+	QuestKeyMechJoinBattle               = "mech_join_battle"
+)
 
 // Enum values for UtilityType
 const (
@@ -133,6 +207,8 @@ const (
 	DamageTypeEnergy    = "Energy"
 	DamageTypeExplosive = "Explosive"
 )
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for ChatMSGTypeEnum
 const (
@@ -179,6 +255,16 @@ const (
 	AbilityLevelMECH    = "MECH"
 	AbilityLevelFACTION = "FACTION"
 	AbilityLevelPLAYER  = "PLAYER"
+)
+
+// Enum values for AvatarLayer
+const (
+	AvatarLayerHAIR      = "HAIR"
+	AvatarLayerFACE      = "FACE"
+	AvatarLayerBODY      = "BODY"
+	AvatarLayerACCESSORY = "ACCESSORY"
+	AvatarLayerEYEWEAR   = "EYEWEAR"
+	AvatarLayerHELMET    = "HELMET"
 )
 
 // Enum values for MarketplaceEvent
@@ -229,12 +315,27 @@ const (
 	BanFromTypePLAYER = "PLAYER"
 )
 
+// Enum values for RepairSlotStatus
+const (
+	RepairSlotStatusREPAIRING = "REPAIRING"
+	RepairSlotStatusPENDING   = "PENDING"
+	RepairSlotStatusDONE      = "DONE"
+)
+
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)
+
+// Enum values for QuestEventDurationType
+const (
+	QuestEventDurationTypeDaily   = "daily"
+	QuestEventDurationTypeWeekly  = "weekly"
+	QuestEventDurationTypeMonthly = "monthly"
+	QuestEventDurationTypeCustom  = "custom"
 )
 
 // Enum values for RepairTriggerWithType

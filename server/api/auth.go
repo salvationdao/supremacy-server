@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -471,4 +472,38 @@ func domain(host string) string {
 	parts := strings.Split(host, ".")
 	//this is rigid as fuck
 	return parts[len(parts)-2] + "." + parts[len(parts)-1]
+}
+
+// TokenLogin gets a user from the token
+func (api *API) TokenLogin(tokenBase64 string, ignoreErr ...bool) (*server.Player, error) {
+	ignoreError := len(ignoreErr) > 0 && ignoreErr[0] == true
+
+	userResp, err := api.Passport.TokenLogin(tokenBase64)
+	if err != nil {
+		if !ignoreError {
+			if err.Error() != "session is expired" && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Msg("Failed to login with token")
+			}
+			gamelog.L.Debug().Err(err).Msg("Failed to login with token")
+		}
+		return nil, err
+	}
+
+	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID, nil)
+	if err != nil {
+		if !ignoreError {
+			gamelog.L.Error().Err(err).Msg("Failed to update player detail")
+		}
+		return nil, err
+	}
+
+	serverPlayer, err := db.GetPlayer(userResp.ID)
+	if err != nil {
+		if !ignoreError {
+			gamelog.L.Error().Err(err).Msg("Failed to get player by ID")
+		}
+		return nil, err
+	}
+
+	return serverPlayer, nil
 }

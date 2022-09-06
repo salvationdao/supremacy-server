@@ -5,23 +5,24 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const GameClientTileSize = 2000
+const GameClientTileSize int64 = 2000
 
 // To get the location in game its
-//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
-//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + PixelLeft
+//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + PixelTop
 
 type GameMap struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	Name          string    `json:"name" db:"name"`
-	ImageUrl      string    `json:"image_url" db:"image_url"`
-	Width         int       `json:"width" db:"width"`
-	Height        int       `json:"height" db:"height"`
-	CellsX        int       `json:"cells_x" db:"cells_x"`
-	CellsY        int       `json:"cells_y" db:"cells_y"`
-	TopPixels     int       `json:"top_pixels" db:"top_pixels"`
-	LeftPixels    int       `json:"left_pixels" db:"left_pixels"`
-	DisabledCells []int64   `json:"disabled_cells" db:"disabled_cells"`
+	ID            uuid.UUID `json:"ID" db:"id"`
+	Name          string    `json:"Name" db:"name"`
+	ImageUrl      string    `json:"Image_Url" db:"image_url"`
+	BackgroundUrl string    `json:"Background_Url" db:"background_url"`
+	Width         int       `json:"Width" db:"width"`
+	Height        int       `json:"Height" db:"height"`
+	CellsX        int       `json:"Cells_X" db:"cells_x"`
+	CellsY        int       `json:"Cells_Y" db:"cells_y"`
+	PixelTop      int       `json:"Pixel_Top" db:"top_pixels"`
+	PixelLeft     int       `json:"Pixel_Left" db:"left_pixels"`
+	DisabledCells []int64   `json:"Disabled_Cells" db:"disabled_cells"`
 }
 
 type WarMachineMetadata struct {

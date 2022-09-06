@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -27,6 +28,7 @@ type Coupon struct {
 	Redeemed   bool      `boiler:"redeemed" boil:"redeemed" json:"redeemed" toml:"redeemed" yaml:"redeemed"`
 	ExpiryDate time.Time `boiler:"expiry_date" boil:"expiry_date" json:"expiry_date" toml:"expiry_date" yaml:"expiry_date"`
 	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	RedeemedAt null.Time `boiler:"redeemed_at" boil:"redeemed_at" json:"redeemed_at,omitempty" toml:"redeemed_at" yaml:"redeemed_at,omitempty"`
 
 	R *couponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L couponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -38,12 +40,14 @@ var CouponColumns = struct {
 	Redeemed   string
 	ExpiryDate string
 	CreatedAt  string
+	RedeemedAt string
 }{
 	ID:         "id",
 	Code:       "code",
 	Redeemed:   "redeemed",
 	ExpiryDate: "expiry_date",
 	CreatedAt:  "created_at",
+	RedeemedAt: "redeemed_at",
 }
 
 var CouponTableColumns = struct {
@@ -52,12 +56,14 @@ var CouponTableColumns = struct {
 	Redeemed   string
 	ExpiryDate string
 	CreatedAt  string
+	RedeemedAt string
 }{
 	ID:         "coupons.id",
 	Code:       "coupons.code",
 	Redeemed:   "coupons.redeemed",
 	ExpiryDate: "coupons.expiry_date",
 	CreatedAt:  "coupons.created_at",
+	RedeemedAt: "coupons.redeemed_at",
 }
 
 // Generated where
@@ -68,12 +74,14 @@ var CouponWhere = struct {
 	Redeemed   whereHelperbool
 	ExpiryDate whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
+	RedeemedAt whereHelpernull_Time
 }{
 	ID:         whereHelperstring{field: "\"coupons\".\"id\""},
 	Code:       whereHelperstring{field: "\"coupons\".\"code\""},
 	Redeemed:   whereHelperbool{field: "\"coupons\".\"redeemed\""},
 	ExpiryDate: whereHelpertime_Time{field: "\"coupons\".\"expiry_date\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"coupons\".\"created_at\""},
+	RedeemedAt: whereHelpernull_Time{field: "\"coupons\".\"redeemed_at\""},
 }
 
 // CouponRels is where relationship names are stored.
@@ -97,9 +105,9 @@ func (*couponR) NewStruct() *couponR {
 type couponL struct{}
 
 var (
-	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date", "created_at"}
+	couponAllColumns            = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at"}
 	couponColumnsWithoutDefault = []string{}
-	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date", "created_at"}
+	couponColumnsWithDefault    = []string{"id", "code", "redeemed", "expiry_date", "created_at", "redeemed_at"}
 	couponPrimaryKeyColumns     = []string{"id"}
 	couponGeneratedColumns      = []string{}
 )

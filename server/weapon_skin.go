@@ -13,14 +13,15 @@ import (
 // WeaponSkin is the struct that rpc expects for weapons skins
 type WeaponSkin struct {
 	*CollectionItem
-	ID            string      `json:"id"`
-	BlueprintID   string      `json:"blueprint_id"`
-	OwnerID       string      `json:"owner_id"`
-	Label         string      `json:"label"`
-	WeaponType    string      `json:"weapon_type"`
-	EquippedOn    null.String `json:"equipped_on,omitempty"`
-	Tier          string      `json:"tier"`
-	CreatedAt     time.Time   `json:"created_at"`
+	*Images
+	SkinSwatch  *Images
+	ID          string      `json:"id"`
+	BlueprintID string      `json:"blueprint_id"`
+	Label       string      `json:"label"`
+	WeaponType  string      `json:"weapon_type"`
+	EquippedOn  null.String `json:"equipped_on,omitempty"`
+	Tier        string      `json:"tier"`
+	CreatedAt   time.Time   `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails
 }
@@ -34,21 +35,16 @@ func (b *WeaponSkin) Scan(value interface{}) error {
 }
 
 type BlueprintWeaponSkin struct {
-	ID               string              `json:"id"`
-	Label            string              `json:"label"`
-	WeaponType       string              `json:"weapon_type"`
-	Tier             string              `json:"tier"`
-	CreatedAt        time.Time           `json:"created_at"`
-	ImageURL         null.String         `json:"image_url,omitempty"`
-	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `json:"large_image_url,omitempty"`
-	BackgroundColor  null.String         `json:"background_color,omitempty"`
-	AnimationURL     null.String         `json:"animation_url,omitempty"`
-	YoutubeURL       null.String         `json:"youtube_url,omitempty"`
-	Collection       string              `json:"collection"`
-	WeaponModelID    string              `json:"weapon_model_id"`
-	StatModifier     decimal.NullDecimal `json:"stat_modifier,omitempty"`
+	ID           string              `json:"id"`
+	Label        string              `json:"label"`
+	Tier         string              `json:"tier"`
+	Collection   string              `json:"collection"`
+	StatModifier decimal.NullDecimal `json:"stat_modifier,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
+
+	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintWeaponSkin) Scan(value interface{}) error {
@@ -74,52 +70,52 @@ func (b *WeaponSkinSlice) Scan(value interface{}) error {
 
 func BlueprintWeaponSkinFromBoiler(weaponSkin *boiler.BlueprintWeaponSkin) *BlueprintWeaponSkin {
 	return &BlueprintWeaponSkin{
-		ID:               weaponSkin.ID,
-		Label:            weaponSkin.Label,
-		WeaponType:       weaponSkin.WeaponType,
-		Tier:             weaponSkin.Tier,
-		CreatedAt:        weaponSkin.CreatedAt,
-		ImageURL:         weaponSkin.ImageURL,
-		CardAnimationURL: weaponSkin.CardAnimationURL,
-		AvatarURL:        weaponSkin.AvatarURL,
-		LargeImageURL:    weaponSkin.LargeImageURL,
-		BackgroundColor:  weaponSkin.BackgroundColor,
-		AnimationURL:     weaponSkin.AnimationURL,
-		YoutubeURL:       weaponSkin.YoutubeURL,
-		Collection:       weaponSkin.Collection,
-		WeaponModelID:    weaponSkin.WeaponModelID,
-		StatModifier:     weaponSkin.StatModifier,
+		ID:           weaponSkin.ID,
+		Label:        weaponSkin.Label,
+		Tier:         weaponSkin.Tier,
+		CreatedAt:    weaponSkin.CreatedAt,
+		Collection:   weaponSkin.Collection,
+		StatModifier: weaponSkin.StatModifier,
 	}
 }
 
-func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem) *WeaponSkin {
+func WeaponSkinFromBoiler(weaponSkin *boiler.WeaponSkin, collection *boiler.CollectionItem, weaponSkinCompatMatrix *boiler.WeaponModelSkinCompatibility, blueprintWeaponSkin *boiler.BlueprintWeaponSkin) *WeaponSkin {
 	return &WeaponSkin{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
-		ID:            weaponSkin.ID,
-		BlueprintID:   weaponSkin.BlueprintID,
-		OwnerID:       weaponSkin.OwnerID,
-		Label:         weaponSkin.Label,
-		WeaponType:    weaponSkin.WeaponType,
-		EquippedOn:    weaponSkin.EquippedOn,
-		Tier:          weaponSkin.Tier,
-		CreatedAt:     weaponSkin.CreatedAt,
+		Images: &Images{
+			ImageURL:         weaponSkinCompatMatrix.ImageURL,
+			CardAnimationURL: weaponSkinCompatMatrix.CardAnimationURL,
+			AvatarURL:        weaponSkinCompatMatrix.AvatarURL,
+			LargeImageURL:    weaponSkinCompatMatrix.LargeImageURL,
+			BackgroundColor:  weaponSkinCompatMatrix.BackgroundColor,
+			AnimationURL:     weaponSkinCompatMatrix.AnimationURL,
+			YoutubeURL:       weaponSkinCompatMatrix.YoutubeURL,
+		},
+		SkinSwatch: &Images{
+			ImageURL:         blueprintWeaponSkin.ImageURL,
+			CardAnimationURL: blueprintWeaponSkin.CardAnimationURL,
+			AvatarURL:        blueprintWeaponSkin.AvatarURL,
+			LargeImageURL:    blueprintWeaponSkin.LargeImageURL,
+			BackgroundColor:  blueprintWeaponSkin.BackgroundColor,
+			AnimationURL:     blueprintWeaponSkin.AnimationURL,
+			YoutubeURL:       blueprintWeaponSkin.YoutubeURL,
+		},
+		Label:       weaponSkin.R.Blueprint.Label,
+		Tier:        weaponSkin.R.Blueprint.Tier,
+		ID:          weaponSkin.ID,
+		BlueprintID: weaponSkin.BlueprintID,
+		EquippedOn:  weaponSkin.EquippedOn,
+		CreatedAt:   weaponSkin.CreatedAt,
 	}
 }

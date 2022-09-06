@@ -23,145 +23,204 @@ import (
 
 // GameAbility is an object representing the database table.
 type GameAbility struct {
-	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
-	FactionID           string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	BattleAbilityID     null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battle_ability_id,omitempty" toml:"battle_ability_id" yaml:"battle_ability_id,omitempty"`
-	Label               string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Colour              string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
-	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	SupsCost            string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
-	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	CurrentSups         string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
-	Level               string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
-	LocationSelectType  string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
-	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID                           string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameClientAbilityID          int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	FactionID                    string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	BattleAbilityID              null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battle_ability_id,omitempty" toml:"battle_ability_id" yaml:"battle_ability_id,omitempty"`
+	Label                        string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour                       string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL                     string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	SupsCost                     string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
+	Description                  string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour                   string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	CurrentSups                  string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
+	Level                        string      `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
+	LocationSelectType           string      `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
+	DeletedAt                    null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	LaunchingDelaySeconds        int         `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
+	DisplayOnMiniMap             bool        `boiler:"display_on_mini_map" boil:"display_on_mini_map" json:"display_on_mini_map" toml:"display_on_mini_map" yaml:"display_on_mini_map"`
+	MiniMapDisplayEffectType     string      `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
+	MechDisplayEffectType        string      `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
+	AnimationDurationSeconds     int         `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
+	ShouldCheckTeamKill          bool        `boiler:"should_check_team_kill" boil:"should_check_team_kill" json:"should_check_team_kill" toml:"should_check_team_kill" yaml:"should_check_team_kill"`
+	MaximumTeamKillTolerantCount int         `boiler:"maximum_team_kill_tolerant_count" boil:"maximum_team_kill_tolerant_count" json:"maximum_team_kill_tolerant_count" toml:"maximum_team_kill_tolerant_count" yaml:"maximum_team_kill_tolerant_count"`
+	IgnoreSelfKill               bool        `boiler:"ignore_self_kill" boil:"ignore_self_kill" json:"ignore_self_kill" toml:"ignore_self_kill" yaml:"ignore_self_kill"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var GameAbilityColumns = struct {
-	ID                  string
-	GameClientAbilityID string
-	FactionID           string
-	BattleAbilityID     string
-	Label               string
-	Colour              string
-	ImageURL            string
-	SupsCost            string
-	Description         string
-	TextColour          string
-	CurrentSups         string
-	Level               string
-	LocationSelectType  string
-	DeletedAt           string
+	ID                           string
+	GameClientAbilityID          string
+	FactionID                    string
+	BattleAbilityID              string
+	Label                        string
+	Colour                       string
+	ImageURL                     string
+	SupsCost                     string
+	Description                  string
+	TextColour                   string
+	CurrentSups                  string
+	Level                        string
+	LocationSelectType           string
+	DeletedAt                    string
+	LaunchingDelaySeconds        string
+	DisplayOnMiniMap             string
+	MiniMapDisplayEffectType     string
+	MechDisplayEffectType        string
+	AnimationDurationSeconds     string
+	ShouldCheckTeamKill          string
+	MaximumTeamKillTolerantCount string
+	IgnoreSelfKill               string
 }{
-	ID:                  "id",
-	GameClientAbilityID: "game_client_ability_id",
-	FactionID:           "faction_id",
-	BattleAbilityID:     "battle_ability_id",
-	Label:               "label",
-	Colour:              "colour",
-	ImageURL:            "image_url",
-	SupsCost:            "sups_cost",
-	Description:         "description",
-	TextColour:          "text_colour",
-	CurrentSups:         "current_sups",
-	Level:               "level",
-	LocationSelectType:  "location_select_type",
-	DeletedAt:           "deleted_at",
+	ID:                           "id",
+	GameClientAbilityID:          "game_client_ability_id",
+	FactionID:                    "faction_id",
+	BattleAbilityID:              "battle_ability_id",
+	Label:                        "label",
+	Colour:                       "colour",
+	ImageURL:                     "image_url",
+	SupsCost:                     "sups_cost",
+	Description:                  "description",
+	TextColour:                   "text_colour",
+	CurrentSups:                  "current_sups",
+	Level:                        "level",
+	LocationSelectType:           "location_select_type",
+	DeletedAt:                    "deleted_at",
+	LaunchingDelaySeconds:        "launching_delay_seconds",
+	DisplayOnMiniMap:             "display_on_mini_map",
+	MiniMapDisplayEffectType:     "mini_map_display_effect_type",
+	MechDisplayEffectType:        "mech_display_effect_type",
+	AnimationDurationSeconds:     "animation_duration_seconds",
+	ShouldCheckTeamKill:          "should_check_team_kill",
+	MaximumTeamKillTolerantCount: "maximum_team_kill_tolerant_count",
+	IgnoreSelfKill:               "ignore_self_kill",
 }
 
 var GameAbilityTableColumns = struct {
-	ID                  string
-	GameClientAbilityID string
-	FactionID           string
-	BattleAbilityID     string
-	Label               string
-	Colour              string
-	ImageURL            string
-	SupsCost            string
-	Description         string
-	TextColour          string
-	CurrentSups         string
-	Level               string
-	LocationSelectType  string
-	DeletedAt           string
+	ID                           string
+	GameClientAbilityID          string
+	FactionID                    string
+	BattleAbilityID              string
+	Label                        string
+	Colour                       string
+	ImageURL                     string
+	SupsCost                     string
+	Description                  string
+	TextColour                   string
+	CurrentSups                  string
+	Level                        string
+	LocationSelectType           string
+	DeletedAt                    string
+	LaunchingDelaySeconds        string
+	DisplayOnMiniMap             string
+	MiniMapDisplayEffectType     string
+	MechDisplayEffectType        string
+	AnimationDurationSeconds     string
+	ShouldCheckTeamKill          string
+	MaximumTeamKillTolerantCount string
+	IgnoreSelfKill               string
 }{
-	ID:                  "game_abilities.id",
-	GameClientAbilityID: "game_abilities.game_client_ability_id",
-	FactionID:           "game_abilities.faction_id",
-	BattleAbilityID:     "game_abilities.battle_ability_id",
-	Label:               "game_abilities.label",
-	Colour:              "game_abilities.colour",
-	ImageURL:            "game_abilities.image_url",
-	SupsCost:            "game_abilities.sups_cost",
-	Description:         "game_abilities.description",
-	TextColour:          "game_abilities.text_colour",
-	CurrentSups:         "game_abilities.current_sups",
-	Level:               "game_abilities.level",
-	LocationSelectType:  "game_abilities.location_select_type",
-	DeletedAt:           "game_abilities.deleted_at",
+	ID:                           "game_abilities.id",
+	GameClientAbilityID:          "game_abilities.game_client_ability_id",
+	FactionID:                    "game_abilities.faction_id",
+	BattleAbilityID:              "game_abilities.battle_ability_id",
+	Label:                        "game_abilities.label",
+	Colour:                       "game_abilities.colour",
+	ImageURL:                     "game_abilities.image_url",
+	SupsCost:                     "game_abilities.sups_cost",
+	Description:                  "game_abilities.description",
+	TextColour:                   "game_abilities.text_colour",
+	CurrentSups:                  "game_abilities.current_sups",
+	Level:                        "game_abilities.level",
+	LocationSelectType:           "game_abilities.location_select_type",
+	DeletedAt:                    "game_abilities.deleted_at",
+	LaunchingDelaySeconds:        "game_abilities.launching_delay_seconds",
+	DisplayOnMiniMap:             "game_abilities.display_on_mini_map",
+	MiniMapDisplayEffectType:     "game_abilities.mini_map_display_effect_type",
+	MechDisplayEffectType:        "game_abilities.mech_display_effect_type",
+	AnimationDurationSeconds:     "game_abilities.animation_duration_seconds",
+	ShouldCheckTeamKill:          "game_abilities.should_check_team_kill",
+	MaximumTeamKillTolerantCount: "game_abilities.maximum_team_kill_tolerant_count",
+	IgnoreSelfKill:               "game_abilities.ignore_self_kill",
 }
 
 // Generated where
 
 var GameAbilityWhere = struct {
-	ID                  whereHelperstring
-	GameClientAbilityID whereHelperint
-	FactionID           whereHelperstring
-	BattleAbilityID     whereHelpernull_String
-	Label               whereHelperstring
-	Colour              whereHelperstring
-	ImageURL            whereHelperstring
-	SupsCost            whereHelperstring
-	Description         whereHelperstring
-	TextColour          whereHelperstring
-	CurrentSups         whereHelperstring
-	Level               whereHelperstring
-	LocationSelectType  whereHelperstring
-	DeletedAt           whereHelpernull_Time
+	ID                           whereHelperstring
+	GameClientAbilityID          whereHelperint
+	FactionID                    whereHelperstring
+	BattleAbilityID              whereHelpernull_String
+	Label                        whereHelperstring
+	Colour                       whereHelperstring
+	ImageURL                     whereHelperstring
+	SupsCost                     whereHelperstring
+	Description                  whereHelperstring
+	TextColour                   whereHelperstring
+	CurrentSups                  whereHelperstring
+	Level                        whereHelperstring
+	LocationSelectType           whereHelperstring
+	DeletedAt                    whereHelpernull_Time
+	LaunchingDelaySeconds        whereHelperint
+	DisplayOnMiniMap             whereHelperbool
+	MiniMapDisplayEffectType     whereHelperstring
+	MechDisplayEffectType        whereHelperstring
+	AnimationDurationSeconds     whereHelperint
+	ShouldCheckTeamKill          whereHelperbool
+	MaximumTeamKillTolerantCount whereHelperint
+	IgnoreSelfKill               whereHelperbool
 }{
-	ID:                  whereHelperstring{field: "\"game_abilities\".\"id\""},
-	GameClientAbilityID: whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
-	FactionID:           whereHelperstring{field: "\"game_abilities\".\"faction_id\""},
-	BattleAbilityID:     whereHelpernull_String{field: "\"game_abilities\".\"battle_ability_id\""},
-	Label:               whereHelperstring{field: "\"game_abilities\".\"label\""},
-	Colour:              whereHelperstring{field: "\"game_abilities\".\"colour\""},
-	ImageURL:            whereHelperstring{field: "\"game_abilities\".\"image_url\""},
-	SupsCost:            whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
-	Description:         whereHelperstring{field: "\"game_abilities\".\"description\""},
-	TextColour:          whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
-	CurrentSups:         whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
-	Level:               whereHelperstring{field: "\"game_abilities\".\"level\""},
-	LocationSelectType:  whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
-	DeletedAt:           whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
+	ID:                           whereHelperstring{field: "\"game_abilities\".\"id\""},
+	GameClientAbilityID:          whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
+	FactionID:                    whereHelperstring{field: "\"game_abilities\".\"faction_id\""},
+	BattleAbilityID:              whereHelpernull_String{field: "\"game_abilities\".\"battle_ability_id\""},
+	Label:                        whereHelperstring{field: "\"game_abilities\".\"label\""},
+	Colour:                       whereHelperstring{field: "\"game_abilities\".\"colour\""},
+	ImageURL:                     whereHelperstring{field: "\"game_abilities\".\"image_url\""},
+	SupsCost:                     whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
+	Description:                  whereHelperstring{field: "\"game_abilities\".\"description\""},
+	TextColour:                   whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
+	CurrentSups:                  whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
+	Level:                        whereHelperstring{field: "\"game_abilities\".\"level\""},
+	LocationSelectType:           whereHelperstring{field: "\"game_abilities\".\"location_select_type\""},
+	DeletedAt:                    whereHelpernull_Time{field: "\"game_abilities\".\"deleted_at\""},
+	LaunchingDelaySeconds:        whereHelperint{field: "\"game_abilities\".\"launching_delay_seconds\""},
+	DisplayOnMiniMap:             whereHelperbool{field: "\"game_abilities\".\"display_on_mini_map\""},
+	MiniMapDisplayEffectType:     whereHelperstring{field: "\"game_abilities\".\"mini_map_display_effect_type\""},
+	MechDisplayEffectType:        whereHelperstring{field: "\"game_abilities\".\"mech_display_effect_type\""},
+	AnimationDurationSeconds:     whereHelperint{field: "\"game_abilities\".\"animation_duration_seconds\""},
+	ShouldCheckTeamKill:          whereHelperbool{field: "\"game_abilities\".\"should_check_team_kill\""},
+	MaximumTeamKillTolerantCount: whereHelperint{field: "\"game_abilities\".\"maximum_team_kill_tolerant_count\""},
+	IgnoreSelfKill:               whereHelperbool{field: "\"game_abilities\".\"ignore_self_kill\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
 var GameAbilityRels = struct {
-	BattleAbility             string
-	Faction                   string
-	BattleAbilityTriggers     string
-	BattleEventsGameAbilities string
-	MechAbilityTriggerLogs    string
+	BattleAbility              string
+	Faction                    string
+	BattleAbilityTriggers      string
+	BattleEventsGameAbilities  string
+	MechAbilityTriggerLogsOlds string
+	PlayerKillLogs             string
 }{
-	BattleAbility:             "BattleAbility",
-	Faction:                   "Faction",
-	BattleAbilityTriggers:     "BattleAbilityTriggers",
-	BattleEventsGameAbilities: "BattleEventsGameAbilities",
-	MechAbilityTriggerLogs:    "MechAbilityTriggerLogs",
+	BattleAbility:              "BattleAbility",
+	Faction:                    "Faction",
+	BattleAbilityTriggers:      "BattleAbilityTriggers",
+	BattleEventsGameAbilities:  "BattleEventsGameAbilities",
+	MechAbilityTriggerLogsOlds: "MechAbilityTriggerLogsOlds",
+	PlayerKillLogs:             "PlayerKillLogs",
 }
 
 // gameAbilityR is where relationships are stored.
 type gameAbilityR struct {
-	BattleAbility             *BattleAbility               `boiler:"BattleAbility" boil:"BattleAbility" json:"BattleAbility" toml:"BattleAbility" yaml:"BattleAbility"`
-	Faction                   *Faction                     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	BattleAbilityTriggers     BattleAbilityTriggerSlice    `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
-	BattleEventsGameAbilities BattleEventsGameAbilitySlice `boiler:"BattleEventsGameAbilities" boil:"BattleEventsGameAbilities" json:"BattleEventsGameAbilities" toml:"BattleEventsGameAbilities" yaml:"BattleEventsGameAbilities"`
-	MechAbilityTriggerLogs    MechAbilityTriggerLogSlice   `boiler:"MechAbilityTriggerLogs" boil:"MechAbilityTriggerLogs" json:"MechAbilityTriggerLogs" toml:"MechAbilityTriggerLogs" yaml:"MechAbilityTriggerLogs"`
+	BattleAbility              *BattleAbility                 `boiler:"BattleAbility" boil:"BattleAbility" json:"BattleAbility" toml:"BattleAbility" yaml:"BattleAbility"`
+	Faction                    *Faction                       `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	BattleAbilityTriggers      BattleAbilityTriggerSlice      `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
+	BattleEventsGameAbilities  BattleEventsGameAbilitySlice   `boiler:"BattleEventsGameAbilities" boil:"BattleEventsGameAbilities" json:"BattleEventsGameAbilities" toml:"BattleEventsGameAbilities" yaml:"BattleEventsGameAbilities"`
+	MechAbilityTriggerLogsOlds MechAbilityTriggerLogsOldSlice `boiler:"MechAbilityTriggerLogsOlds" boil:"MechAbilityTriggerLogsOlds" json:"MechAbilityTriggerLogsOlds" toml:"MechAbilityTriggerLogsOlds" yaml:"MechAbilityTriggerLogsOlds"`
+	PlayerKillLogs             PlayerKillLogSlice             `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -173,9 +232,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups", "level", "location_select_type", "deleted_at", "launching_delay_seconds", "display_on_mini_map", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "should_check_team_kill", "maximum_team_kill_tolerant_count", "ignore_self_kill"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
@@ -461,6 +520,7 @@ func (o *GameAbility) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTr
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_ability_triggers\".\"game_ability_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_ability_triggers\".\"deleted_at\""),
 	)
 
 	query := BattleAbilityTriggers(queryMods...)
@@ -494,23 +554,44 @@ func (o *GameAbility) BattleEventsGameAbilities(mods ...qm.QueryMod) battleEvent
 	return query
 }
 
-// MechAbilityTriggerLogs retrieves all the mech_ability_trigger_log's MechAbilityTriggerLogs with an executor.
-func (o *GameAbility) MechAbilityTriggerLogs(mods ...qm.QueryMod) mechAbilityTriggerLogQuery {
+// MechAbilityTriggerLogsOlds retrieves all the mech_ability_trigger_logs_old's MechAbilityTriggerLogsOlds with an executor.
+func (o *GameAbility) MechAbilityTriggerLogsOlds(mods ...qm.QueryMod) mechAbilityTriggerLogsOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mech_ability_trigger_logs\".\"game_ability_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mech_ability_trigger_logs\".\"deleted_at\""),
+		qm.Where("\"mech_ability_trigger_logs_old\".\"game_ability_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mech_ability_trigger_logs_old\".\"deleted_at\""),
 	)
 
-	query := MechAbilityTriggerLogs(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_ability_trigger_logs\"")
+	query := MechAbilityTriggerLogsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_ability_trigger_logs_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs\".*"})
+		queries.SetSelect(query.Query, []string{"\"mech_ability_trigger_logs_old\".*"})
+	}
+
+	return query
+}
+
+// PlayerKillLogs retrieves all the player_kill_log's PlayerKillLogs with an executor.
+func (o *GameAbility) PlayerKillLogs(mods ...qm.QueryMod) playerKillLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_kill_log\".\"game_ability_id\"=?", o.ID),
+	)
+
+	query := PlayerKillLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"player_kill_log\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_kill_log\".*"})
 	}
 
 	return query
@@ -772,6 +853,7 @@ func (gameAbilityL) LoadBattleAbilityTriggers(e boil.Executor, singular bool, ma
 	query := NewQuery(
 		qm.From(`battle_ability_triggers`),
 		qm.WhereIn(`battle_ability_triggers.game_ability_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_ability_triggers.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -926,9 +1008,9 @@ func (gameAbilityL) LoadBattleEventsGameAbilities(e boil.Executor, singular bool
 	return nil
 }
 
-// LoadMechAbilityTriggerLogs allows an eager lookup of values, cached into the
+// LoadMechAbilityTriggerLogsOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
+func (gameAbilityL) LoadMechAbilityTriggerLogsOlds(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
 	var slice []*GameAbility
 	var object *GameAbility
 
@@ -966,9 +1048,9 @@ func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, m
 	}
 
 	query := NewQuery(
-		qm.From(`mech_ability_trigger_logs`),
-		qm.WhereIn(`mech_ability_trigger_logs.game_ability_id in ?`, args...),
-		qmhelper.WhereIsNull(`mech_ability_trigger_logs.deleted_at`),
+		qm.From(`mech_ability_trigger_logs_old`),
+		qm.WhereIn(`mech_ability_trigger_logs_old.game_ability_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_ability_trigger_logs_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -976,22 +1058,22 @@ func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, m
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to eager load mech_ability_trigger_logs_old")
 	}
 
-	var resultSlice []*MechAbilityTriggerLog
+	var resultSlice []*MechAbilityTriggerLogsOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to bind eager loaded slice mech_ability_trigger_logs_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mech_ability_trigger_logs")
+		return errors.Wrap(err, "failed to close results in eager load on mech_ability_trigger_logs_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_ability_trigger_logs")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_ability_trigger_logs_old")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -999,10 +1081,10 @@ func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, m
 		}
 	}
 	if singular {
-		object.R.MechAbilityTriggerLogs = resultSlice
+		object.R.MechAbilityTriggerLogsOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &mechAbilityTriggerLogR{}
+				foreign.R = &mechAbilityTriggerLogsOldR{}
 			}
 			foreign.R.GameAbility = object
 		}
@@ -1012,9 +1094,107 @@ func (gameAbilityL) LoadMechAbilityTriggerLogs(e boil.Executor, singular bool, m
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.GameAbilityID {
-				local.R.MechAbilityTriggerLogs = append(local.R.MechAbilityTriggerLogs, foreign)
+				local.R.MechAbilityTriggerLogsOlds = append(local.R.MechAbilityTriggerLogsOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &mechAbilityTriggerLogR{}
+					foreign.R = &mechAbilityTriggerLogsOldR{}
+				}
+				foreign.R.GameAbility = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerKillLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (gameAbilityL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeGameAbility interface{}, mods queries.Applicator) error {
+	var slice []*GameAbility
+	var object *GameAbility
+
+	if singular {
+		object = maybeGameAbility.(*GameAbility)
+	} else {
+		slice = *maybeGameAbility.(*[]*GameAbility)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &gameAbilityR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &gameAbilityR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_kill_log`),
+		qm.WhereIn(`player_kill_log.game_ability_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_kill_log")
+	}
+
+	var resultSlice []*PlayerKillLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_kill_log")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_kill_log")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_kill_log")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerKillLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerKillLogR{}
+			}
+			foreign.R.GameAbility = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.GameAbilityID) {
+				local.R.PlayerKillLogs = append(local.R.PlayerKillLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerKillLogR{}
 				}
 				foreign.R.GameAbility = local
 				break
@@ -1327,11 +1507,11 @@ func (o *GameAbility) RemoveBattleEventsGameAbilities(exec boil.Executor, relate
 	return nil
 }
 
-// AddMechAbilityTriggerLogs adds the given related objects to the existing relationships
+// AddMechAbilityTriggerLogsOlds adds the given related objects to the existing relationships
 // of the game_ability, optionally inserting them as new records.
-// Appends related to o.R.MechAbilityTriggerLogs.
+// Appends related to o.R.MechAbilityTriggerLogsOlds.
 // Sets related.R.GameAbility appropriately.
-func (o *GameAbility) AddMechAbilityTriggerLogs(exec boil.Executor, insert bool, related ...*MechAbilityTriggerLog) error {
+func (o *GameAbility) AddMechAbilityTriggerLogsOlds(exec boil.Executor, insert bool, related ...*MechAbilityTriggerLogsOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1341,9 +1521,9 @@ func (o *GameAbility) AddMechAbilityTriggerLogs(exec boil.Executor, insert bool,
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+				"UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1361,21 +1541,146 @@ func (o *GameAbility) AddMechAbilityTriggerLogs(exec boil.Executor, insert bool,
 
 	if o.R == nil {
 		o.R = &gameAbilityR{
-			MechAbilityTriggerLogs: related,
+			MechAbilityTriggerLogsOlds: related,
 		}
 	} else {
-		o.R.MechAbilityTriggerLogs = append(o.R.MechAbilityTriggerLogs, related...)
+		o.R.MechAbilityTriggerLogsOlds = append(o.R.MechAbilityTriggerLogsOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &mechAbilityTriggerLogR{
+			rel.R = &mechAbilityTriggerLogsOldR{
 				GameAbility: o,
 			}
 		} else {
 			rel.R.GameAbility = o
 		}
 	}
+	return nil
+}
+
+// AddPlayerKillLogs adds the given related objects to the existing relationships
+// of the game_ability, optionally inserting them as new records.
+// Appends related to o.R.PlayerKillLogs.
+// Sets related.R.GameAbility appropriately.
+func (o *GameAbility) AddPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.GameAbilityID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_kill_log\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.GameAbilityID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &gameAbilityR{
+			PlayerKillLogs: related,
+		}
+	} else {
+		o.R.PlayerKillLogs = append(o.R.PlayerKillLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerKillLogR{
+				GameAbility: o,
+			}
+		} else {
+			rel.R.GameAbility = o
+		}
+	}
+	return nil
+}
+
+// SetPlayerKillLogs removes all previously related items of the
+// game_ability replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.GameAbility's PlayerKillLogs accordingly.
+// Replaces o.R.PlayerKillLogs with related.
+// Sets related.R.GameAbility's PlayerKillLogs accordingly.
+func (o *GameAbility) SetPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	query := "update \"player_kill_log\" set \"game_ability_id\" = null where \"game_ability_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PlayerKillLogs {
+			queries.SetScanner(&rel.GameAbilityID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.GameAbility = nil
+		}
+
+		o.R.PlayerKillLogs = nil
+	}
+	return o.AddPlayerKillLogs(exec, insert, related...)
+}
+
+// RemovePlayerKillLogs relationships from objects passed in.
+// Removes related items from R.PlayerKillLogs (uses pointer comparison, removal does not keep order)
+// Sets related.R.GameAbility.
+func (o *GameAbility) RemovePlayerKillLogs(exec boil.Executor, related ...*PlayerKillLog) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.GameAbilityID, nil)
+		if rel.R != nil {
+			rel.R.GameAbility = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("game_ability_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PlayerKillLogs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PlayerKillLogs)
+			if ln > 1 && i < ln-1 {
+				o.R.PlayerKillLogs[i] = o.R.PlayerKillLogs[ln-1]
+			}
+			o.R.PlayerKillLogs = o.R.PlayerKillLogs[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

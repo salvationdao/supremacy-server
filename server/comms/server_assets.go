@@ -13,8 +13,6 @@ import (
 	"server/xsyn_rpcclient"
 	"strings"
 
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/terror/v2"
@@ -71,7 +69,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerWeaponsToXsynAsset([]*server.Weapon{obj})[0]
 	case boiler.ItemTypeWeaponSkin:
-		obj, err := db.WeaponSkin(gamedb.StdConn, ci.ItemID)
+		obj, err := db.WeaponSkin(gamedb.StdConn, ci.ItemID, nil)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon skin in Asset rpc call ")
 			return terror.Error(err)
@@ -85,7 +83,7 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		}
 		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{obj})[0]
 	case boiler.ItemTypeMechSkin:
-		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID)
+		obj, err := db.MechSkin(gamedb.StdConn, ci.ItemID, nil)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)
@@ -109,62 +107,6 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		err := fmt.Errorf("invalid type")
 		gamelog.L.Error().Err(err).Interface("ci", ci).Msg("invalid item type in Asset rpc call ")
 		return terror.Error(err)
-	}
-
-	return nil
-}
-
-type GenesisOrLimitedMechReq struct {
-	CollectionSlug string
-	TokenID        int
-}
-
-type GenesisOrLimitedMechResp struct {
-	Asset *rpctypes.XsynAsset
-}
-
-func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *GenesisOrLimitedMechResp) error {
-	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMechHandler")
-
-	switch req.CollectionSlug {
-	case "supremacy-genesis":
-		mechBoiler, err := boiler.Mechs(
-			boiler.MechWhere.GenesisTokenID.EQ(null.Int64From(int64(req.TokenID))),
-			qm.Load(boiler.MechRels.Model),
-			qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
-			return err
-		}
-
-		mech, err := db.Mech(gamedb.StdConn, mechBoiler.ID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
-			return err
-		}
-		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
-	case "supremacy-limited-release":
-		mechBoiler, err := boiler.Mechs(
-			boiler.MechWhere.LimitedReleaseTokenID.EQ(null.Int64From(int64(req.TokenID))),
-			qm.Load(boiler.MechRels.Model),
-			qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find limited release mech")
-			return err
-		}
-
-		mech, err := db.Mech(gamedb.StdConn, mechBoiler.ID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
-			return err
-		}
-		resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
-	default:
-		err := fmt.Errorf("invalid collection slug")
-		gamelog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("collection slug is invalid")
-		return err
 	}
 
 	return nil

@@ -17,7 +17,7 @@ CREATE TABLE weapon_skin
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons(id),
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
     ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN genesis_token_id         BIGINT,
@@ -96,9 +96,42 @@ ALTER TABLE weapons
 -- insert weapon and join per mech
 WITH wm AS (
     WITH m AS (
-        SELECT c.id, 'Rocket Pod' AS label, 'rocket_pod' AS slug
+        SELECT c.id, 'ZAI Rocket Pod' AS label, 'rocket_pod' AS slug
         FROM mechs
                  INNER JOIN chassis c ON mechs.chassis_id = c.id
+        WHERE c.label ILIKE '%Zaibatsu%'
+        )
+        INSERT INTO weapons (label, slug, chassis_id, damage, weapon_type)
+            SELECT m.label, m.slug, m.id, -1, 'Missile Launcher'::WEAPON_TYPE
+            FROM m
+            RETURNING id, chassis_id)
+INSERT
+INTO chassis_weapons(chassis_id, weapon_id, slot_number, mount_location)
+SELECT wm.chassis_id, wm.id, 2, 'TURRET'
+FROM wm;
+
+WITH wm AS (
+    WITH m AS (
+        SELECT c.id, 'RMMC Rocket Pod' AS label, 'rocket_pod' AS slug
+        FROM mechs
+                 INNER JOIN chassis c ON mechs.chassis_id = c.id
+        WHERE c.label ILIKE '%Mountain%'
+        )
+        INSERT INTO weapons (label, slug, chassis_id, damage, weapon_type)
+            SELECT m.label, m.slug, m.id, -1, 'Missile Launcher'::WEAPON_TYPE
+            FROM m
+            RETURNING id, chassis_id)
+INSERT
+INTO chassis_weapons(chassis_id, weapon_id, slot_number, mount_location)
+SELECT wm.chassis_id, wm.id, 2, 'TURRET'
+FROM wm;
+
+WITH wm AS (
+    WITH m AS (
+        SELECT c.id, 'BC Rocket Pod' AS label, 'rocket_pod' AS slug
+        FROM mechs
+                 INNER JOIN chassis c ON mechs.chassis_id = c.id
+        WHERE c.label ILIKE '%Boston%'
         )
         INSERT INTO weapons (label, slug, chassis_id, damage, weapon_type)
             SELECT m.label, m.slug, m.id, -1, 'Missile Launcher'::WEAPON_TYPE
@@ -156,182 +189,6 @@ ALTER TABLE weapons
     ALTER COLUMN owner_id SET NOT NULL,
     ALTER COLUMN weapon_type SET NOT NULL;
 
-
--- update weapon stats
-UPDATE weapons
-SET damage                = 20,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 20,
-    spread                = 3,
-    rate_of_fire          = 0,
-    radius                = 100,
-    projectile_speed      = 48000,
-    radius_damage_falloff = 0,
-    energy_cost           = 10,
-    default_damage_type   = 'Energy'
-WHERE label ILIKE 'Plasma Rifle'
-   OR label ILIKE 'Boston Cybernetics Plasma Rifle';
-
-UPDATE weapons
-SET damage                = 12,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 4,
-    rate_of_fire          = 270,
-    radius                = 100,
-    projectile_speed      = 36000,
-    radius_damage_falloff = 0,
-    energy_cost           = 10,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Auto Cannon'
-   OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
-
-UPDATE weapons
-SET damage                = 130,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 3,
-    rate_of_fire          = 48,
-    radius                = 100,
-    projectile_speed      = 80000,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Sniper Rifle'
-   OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
-
-UPDATE weapons
-SET damage                = 70,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 3,
-    rate_of_fire          = 0,
-    radius                = 850,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Explosive'
-WHERE label ILIKE 'Rocket Pod'
-   OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
-   OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
-
-UPDATE weapons
-SET damage                = 80,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 0,
-    rate_of_fire          = 0,
-    radius                = 0,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Sword'
-   OR label ILIKE 'Boston Cybernetics Sword';
-
-UPDATE weapons
-SET damage                = 120,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 0,
-    rate_of_fire          = 0,
-    radius                = 0,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Energy'
-WHERE label ILIKE 'Laser Sword'
-   OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
-
---  blueprint weapons
--- update weapon stats
-UPDATE blueprint_weapons
-SET damage                = 20,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 3,
-    rate_of_fire          = 250,
-    radius                = 100,
-    projectile_speed      = 48000,
-    radius_damage_falloff = 0,
-    energy_cost           = 10,
-    default_damage_type   = 'Energy'
-WHERE label ILIKE 'Plasma Rifle'
-   OR label ILIKE 'Boston Cybernetics Plasma Rifle';
-
-UPDATE blueprint_weapons
-SET damage                = 12,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 4,
-    rate_of_fire          = 270,
-    radius                = 100,
-    projectile_speed      = 36000,
-    radius_damage_falloff = 0,
-    energy_cost           = 10,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Auto Cannon'
-   OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
-
-UPDATE blueprint_weapons
-SET damage                = 130,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 3,
-    rate_of_fire          = 48,
-    radius                = 100,
-    projectile_speed      = 80000,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Sniper Rifle'
-   OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
-
-UPDATE blueprint_weapons
-SET damage                = 70,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 3,
-    rate_of_fire          = 0,
-    radius                = 850,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Explosive'
-WHERE label ILIKE 'Rocket Pod'
-   OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
-   OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
-
-UPDATE blueprint_weapons
-SET damage                = 80,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 0,
-    rate_of_fire          = 0,
-    radius                = 0,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Kinetic'
-WHERE label ILIKE 'Sword'
-   OR label ILIKE 'Boston Cybernetics Sword';
-
-
-UPDATE blueprint_weapons
-SET damage                = 120,
-    damage_falloff        = 0,
-    damage_falloff_rate   = 0,
-    spread                = 0,
-    rate_of_fire          = 0,
-    radius                = 0,
-    projectile_speed      = 0,
-    radius_damage_falloff = 0,
-    energy_cost           = 15,
-    default_damage_type   = 'Energy'
-WHERE label ILIKE 'Laser Sword'
-   OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
-
-
 ALTER TABLE chassis_weapons
     DROP CONSTRAINT chassis_weapons_chassis_id_slot_number_mount_location_key;
 
@@ -364,14 +221,34 @@ SET weapon_hardpoints = 3;
 UPDATE blueprint_chassis bc
 SET weapon_hardpoints = 3;
 
+-- set equipped on
+WITH wsp AS (SELECT _w.id, mw.chassis_id
+             FROM weapons _w
+                      INNER JOIN chassis_weapons mw ON _w.id = mw.weapon_id)
+UPDATE weapons w
+SET equipped_on = wsp.chassis_id
+FROM wsp
+WHERE wsp.id = w.id;
 
 -- below adds the blueprint ids for the weapons
-UPDATE weapons w
-SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
+-- UPDATE weapons w
+-- SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
+WITH wpns AS (
+    SELECT w.id, w.label, w.equipped_on, mm.brand_id
+    FROM weapons w
+             INNER JOIN chassis m ON m.id = w.equipped_on
+             INNER JOIN blueprint_mechs mm ON mm.id = m.blueprint_id
+)
+UPDATE weapons w SET blueprint_id = (
+    SELECT bw.id
+    FROM blueprint_weapons bw
+    WHERE wpns.label = bw.label and wpns.brand_id = bw.brand_id
+)
+FROM wpns
+WHERE w.id = wpns.id;
 
 ALTER TABLE weapons
     ALTER COLUMN blueprint_id SET NOT NULL;
-
 
 -- update old blueprint chassis blueprint weapon joins
 WITH wep AS (SELECT cbcbw.blueprint_chassis_id, cbcbw.blueprint_weapon_id, bpw.label
@@ -383,20 +260,20 @@ FROM blueprint_chassis_blueprint_weapons bpcbpw
 WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
 
 
-WITH bpc AS (SELECT _bpc.id FROM blueprint_chassis _bpc)
+WITH bpc AS (
+    SELECT _bpc.id, mm.brand_id
+    FROM blueprint_chassis _bpc
+             INNER JOIN blueprint_mechs mm on _bpc.model_id = mm.id
+)
 INSERT
 INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
+SELECT (
+           SELECT bpw.id
+           FROM blueprint_weapons bpw
+           WHERE bpw.label ILIKE '%Rocket Pod%' and bpw.brand_id = bpc.brand_id
+       ),
        bpc.id,
        2,
        'TURRET'
 FROM bpc;
 
--- set equipped on
-WITH wsp AS (SELECT _w.id, mw.chassis_id
-             FROM weapons _w
-                      INNER JOIN chassis_weapons mw ON _w.id = mw.weapon_id)
-UPDATE weapons w
-SET equipped_on = wsp.chassis_id
-FROM wsp
-WHERE wsp.id = w.id;

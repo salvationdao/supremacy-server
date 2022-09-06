@@ -11,22 +11,34 @@ import (
 
 type MechSkin struct {
 	*CollectionItem
+	*Images
+	SkinSwatch            *Images
 	ID                    string      `json:"id"`
 	BlueprintID           string      `json:"blueprint_id"`
 	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
 	Label                 string      `json:"label"`
-	MechModelID           string      `json:"mech_model_id"`
-	MechModelName         string      `json:"mech_model_name"`
+	Level                 int         `json:"level"`
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
-	ImageURL              null.String `json:"image_url,omitempty"`
-	AnimationURL          null.String `json:"animation_url,omitempty"`
-	CardAnimationURL      null.String `json:"card_animation_url,omitempty"`
-	AvatarURL             null.String `json:"avatar_url,omitempty"`
-	LargeImageURL         null.String `json:"large_image_url,omitempty"`
+	LockedToMech          bool        `json:"locked_to_mech"`
 	CreatedAt             time.Time   `json:"created_at"`
 
 	EquippedOnDetails *EquippedOnDetails
+}
+
+func CollectionItemFromBoiler(ci *boiler.CollectionItem) *CollectionItem {
+	return &CollectionItem{
+		CollectionSlug: ci.CollectionSlug,
+		Hash:           ci.Hash,
+		TokenID:        ci.TokenID,
+		ItemType:       ci.ItemType,
+		ItemID:         ci.ItemID,
+		Tier:           ci.Tier,
+		OwnerID:        ci.OwnerID,
+		MarketLocked:   ci.MarketLocked,
+		XsynLocked:     ci.XsynLocked,
+		AssetHidden:    ci.AssetHidden,
+	}
 }
 
 func (b *MechSkin) Scan(value interface{}) error {
@@ -38,19 +50,12 @@ func (b *MechSkin) Scan(value interface{}) error {
 }
 
 type BlueprintMechSkin struct {
-	ID               string      `json:"id"`
-	Collection       string      `json:"collection"`
-	MechModel        string      `json:"mech_model"`
-	Label            string      `json:"label"`
-	Tier             string      `json:"tier,omitempty"`
-	ImageURL         null.String `json:"image_url,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
-	CreatedAt        time.Time   `json:"created_at"`
-	BackgroundColor  null.String `json:"background_color,omitempty"`
-	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+	ID           string    `json:"id"`
+	Collection   string    `json:"collection"`
+	Label        string    `json:"label"`
+	Tier         string    `json:"tier,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	DefaultLevel int       `json:"default_level"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -67,57 +72,53 @@ func (b *BlueprintMechSkin) Scan(value interface{}) error {
 
 func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintMechSkin {
 	return &BlueprintMechSkin{
-		ID:               mechSkin.ID,
-		Collection:       mechSkin.Collection,
-		MechModel:        mechSkin.MechModel,
-		Label:            mechSkin.Label,
-		Tier:             mechSkin.Tier,
-		ImageURL:         mechSkin.ImageURL,
-		AnimationURL:     mechSkin.AnimationURL,
-		CardAnimationURL: mechSkin.CardAnimationURL,
-		LargeImageURL:    mechSkin.LargeImageURL,
-		AvatarURL:        mechSkin.AvatarURL,
-		CreatedAt:        mechSkin.CreatedAt,
+		ID:           mechSkin.ID,
+		Collection:   mechSkin.Collection,
+		Label:        mechSkin.Label,
+		Tier:         mechSkin.Tier,
+		DefaultLevel: mechSkin.DefaultLevel,
+		CreatedAt:    mechSkin.CreatedAt,
 	}
 }
 
-func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
+func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem, skinDetails *boiler.MechModelSkinCompatibility, blueprintMechSkinDetails *boiler.BlueprintMechSkin) *MechSkin {
 	mskin := &MechSkin{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
-		ID:               skin.ID,
-		BlueprintID:      skin.BlueprintID,
-		GenesisTokenID:   skin.GenesisTokenID,
-		Label:            skin.Label,
-		MechModelID:      skin.MechModel,
-		EquippedOn:       skin.EquippedOn,
-		ImageURL:         skin.ImageURL,
-		AnimationURL:     skin.AnimationURL,
-		CardAnimationURL: skin.CardAnimationURL,
-		AvatarURL:        skin.AvatarURL,
-		LargeImageURL:    skin.LargeImageURL,
-		CreatedAt:        skin.CreatedAt,
-	}
-
-	if skin.R != nil && skin.R.MechSkinMechModel != nil {
-		mskin.MechModelName = skin.R.MechSkinMechModel.Label
+		Images: &Images{
+			ImageURL:         skinDetails.ImageURL,
+			CardAnimationURL: skinDetails.CardAnimationURL,
+			AvatarURL:        skinDetails.AvatarURL,
+			LargeImageURL:    skinDetails.LargeImageURL,
+			BackgroundColor:  skinDetails.BackgroundColor,
+			AnimationURL:     skinDetails.AnimationURL,
+			YoutubeURL:       skinDetails.YoutubeURL,
+		},
+		SkinSwatch: &Images{
+			ImageURL:         blueprintMechSkinDetails.ImageURL,
+			CardAnimationURL: blueprintMechSkinDetails.CardAnimationURL,
+			AvatarURL:        blueprintMechSkinDetails.AvatarURL,
+			LargeImageURL:    blueprintMechSkinDetails.LargeImageURL,
+			BackgroundColor:  blueprintMechSkinDetails.BackgroundColor,
+			AnimationURL:     blueprintMechSkinDetails.AnimationURL,
+			YoutubeURL:       blueprintMechSkinDetails.YoutubeURL,
+		},
+		Label:          skin.R.Blueprint.Label,
+		ID:             skin.ID,
+		BlueprintID:    skin.BlueprintID,
+		GenesisTokenID: skin.GenesisTokenID,
+		EquippedOn:     skin.EquippedOn,
+		CreatedAt:      skin.CreatedAt,
 	}
 
 	return mskin

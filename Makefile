@@ -104,6 +104,12 @@ db-migrate:
 db-migrate-sync:
 	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static up
 
+
+.PHONY: db-migrate-sync-down-one
+db-migrate-sync-down-one:
+	$(BIN)/migrate -database $(DB_STATIC_CONNECTION_STRING) -path $(SERVER)/db/static down 1
+
+
 .PHONY: db-migrate-down
 db-migrate-down:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations down
@@ -258,20 +264,16 @@ dev-give-mech-crates:
 
 .PHONY: sync-data
 sync-data:
-	cd ./server/synctool
-	mkdir temp-sync
-	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
-	cd ../../../
+	mkdir -p ./server/synctool/temp-sync
+	rm -rf ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make sync
 
 .PHONY: dev-sync-data
 dev-sync-data:
-	cd ./server/synctool
-	mkdir temp-sync
-	cd temp-sync
-	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop
-	cd ../../../
+	mkdir -p ./server/synctool/temp-sync
+	rm -rf ./server/synctool/temp-sync/supremacy-static-data
+	git clone git@github.com:ninja-syndicate/supremacy-static-data.git -b develop ./server/synctool/temp-sync/supremacy-static-data
 	make dev-sync
 
 .PHONY: mac-sync-data

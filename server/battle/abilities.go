@@ -5,18 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math/rand"
 	"server"
-	"server/benchmark"
+	"server/battle/player_abilities"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -31,11 +33,12 @@ import (
 type AbilityRadius int
 
 const (
-	NukeRadius     AbilityRadius = 5200
-	BlackoutRadius AbilityRadius = 20000
+	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 
 type AbilitiesSystem struct {
+	arenaID string
+
 	// faction unique abilities
 	_battle           *Battle
 	startedAt         time.Time
@@ -202,17 +205,6 @@ func (ld *LocationDeciders) maxSelectorCount() int {
 	return len(ld.currentDeciders)
 }
 
-func (ld *LocationDeciders) store(factionID string, userID string) {
-	ld.Lock()
-	defer ld.Unlock()
-
-	if _, ok := ld.m[factionID]; !ok {
-		return
-	}
-
-	ld.m[factionID] = append(ld.m[factionID], userID)
-}
-
 func (ld *LocationDeciders) length(factionID string) int {
 	ld.RLock()
 	defer ld.RUnlock()
@@ -223,9 +215,14 @@ func (ld *LocationDeciders) length(factionID string) int {
 	return 0
 }
 
-func (ld *LocationDeciders) setSelector(playerID string) {
+func (ld *LocationDeciders) setSelector(factionID string, playerID string) {
 	ld.Lock()
 	defer ld.Unlock()
+
+	if _, ok := ld.m[factionID]; !ok {
+		return
+	}
+	ld.m[factionID] = append(ld.m[factionID], playerID)
 
 	ld.currentDeciders[playerID] = true
 }
@@ -279,14 +276,14 @@ func (ld *LocationDeciders) hasSelector() bool {
 type AbilityConfig struct {
 	BattleAbilityOptInDuration          time.Duration
 	BattleAbilityLocationSelectDuration time.Duration
-	AdvanceAbilityShowUpUntilSeconds    int
-	AdvanceAbilityLabel                 string
+	DeadlyAbilityShowUpUntilSeconds     int
 	FirstAbilityLabel                   string
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// initialise new gabs ability pool
 	as := &AbilitiesSystem{
+		arenaID:   battle.ArenaID,
 		_battle:   battle,
 		startedAt: time.Now(),
 		BattleAbilityPool: &AbilityPool{
@@ -300,10 +297,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentDeciders: make(map[string]bool),
 			},
 			config: &AbilityConfig{
-				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
-				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
-				AdvanceAbilityShowUpUntilSeconds:    db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
-				AdvanceAbilityLabel:                 db.GetStrWithDefault(db.KeyAdvanceBattleAbilityLabel, "NUKE"),
+				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 20)) * time.Second,
+				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 20)) * time.Second,
+				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
 		},
@@ -355,7 +351,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		}
 
 		for _, ba := range bao {
-			ws.PublishMessage(fmt.Sprintf("/user/%s/battle_ability/check_opt_in", ba.PlayerID), HubKeyBattleAbilityOptInCheck, false)
+			ws.PublishMessage(fmt.Sprintf("/secure/user/%s/arena/%s/battle_ability/check_opt_in", ba.PlayerID, as.arenaID), HubKeyBattleAbilityOptInCheck, false)
 		}
 
 	}(offeringID)
@@ -368,14 +364,14 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		firstAbilityLabel = ""
 	}
 
-	excludedAbility := as.BattleAbilityPool.config.AdvanceAbilityLabel
-	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.AdvanceAbilityShowUpUntilSeconds {
+	includeDeadlyAbilities := false
+	if int(time.Now().Sub(as.startedAt).Seconds()) > as.BattleAbilityPool.config.DeadlyAbilityShowUpUntilSeconds {
 		// bring in advance battle ability
-		excludedAbility = ""
+		includeDeadlyAbilities = true
 	}
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, excludedAbility)
+	ba, err := db.BattleAbilityGetRandom(firstAbilityLabel, includeDeadlyAbilities)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get battle ability from db")
 		return 30, err
@@ -393,7 +389,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		return ba.CooldownDurationSecond, err
 	}
 
-	ws.PublishMessage("/public/battle_ability", HubKeyBattleAbilityUpdated, GameAbility{
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/battle_ability", as.arenaID), HubKeyBattleAbilityUpdated, GameAbility{
 		ID:                     ga.ID,
 		GameClientAbilityID:    byte(ga.GameClientAbilityID),
 		ImageUrl:               ga.ImageURL,
@@ -471,7 +467,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		}
 
 		as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSeconds) * time.Second))
-		ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+		ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	}
 
 	// initial a ticker for current battle
@@ -524,11 +520,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				bm := benchmark.New()
-				bm.Start("location select deciders")
 				as.locationDecidersSet()
-				bm.End("location select deciders")
-				bm.Alert(100)
 
 				// get another ability if no one opt in
 				if as.BattleAbilityPool.LocationDeciders.maxSelectorCount() == 0 {
@@ -541,7 +533,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 					as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 					// broadcast stage to frontend
-					ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+					ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 					continue
 				}
 
@@ -559,7 +551,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// assign ability user
 				as.BattleAbilityPool.LocationDeciders.rangeSelectors(func(playerID string) {
-					ws.PublishMessage(fmt.Sprintf("/user/%s", playerID), HubKeyBribingWinnerSubscribe, struct {
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s", playerID), HubKeyBribingWinnerSubscribe, struct {
 						GameAbility *boiler.GameAbility `json:"game_ability"`
 						EndTime     time.Time           `json:"end_time"`
 					}{
@@ -572,7 +564,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 				as.BattleAbilityPool.Stage.StoreEndTime(endTime)
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 			// at the end of location select phase
 			// pass the location select to next player
@@ -590,7 +582,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 				continue
 
 			// at the end of cooldown phase
@@ -601,7 +593,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageOptIn)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(as.BattleAbilityPool.config.BattleAbilityOptInDuration))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 
 				continue
 			default:
@@ -632,7 +624,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 
 			offeringID := uuid.Must(uuid.NewV4())
-			userUUID := uuid.FromStringOrNil(ls.userID)
 
 			// start ability trigger process
 			ba := as.BattleAbilityPool.BattleAbility.LoadBattleAbility()
@@ -657,23 +648,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				return
 			}
 
-			event := &server.GameAbilityEvent{
-				IsTriggered:         true,
-				GameClientAbilityID: byte(ga.GameClientAbilityID),
-				TriggeredByUserID:   &userUUID,
-				TriggeredByUsername: &player.Username.String,
-				EventID:             offeringID,
-				FactionID:           &ls.factionID,
-			}
-
-			event.GameLocation = btl.getGameWorldCoordinatesFromCellXY(&ls.startPoint)
-
-			if ga.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && ls.endPoint != nil {
-				event.GameLocationEnd = btl.getGameWorldCoordinatesFromCellXY(ls.endPoint)
-			}
-
-			// trigger location select
-			btl.arena.Message("BATTLE:ABILITY", event)
+			go as.launchAbility(ls, offeringID, ga, player, faction)
 
 			bat := boiler.BattleAbilityTrigger{
 				PlayerID:          null.StringFrom(ls.userID),
@@ -694,30 +669,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				gamelog.L.Error().Str("log_name", "battle arena").Str("player_id", ls.userID).Err(err).Msg("failed to update user ability triggered amount")
 			}
 
-			btl.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-				Type: LocationSelectTypeTrigger,
-				Ability: &AbilityBrief{
-					Label:    ga.Label,
-					ImageUrl: ga.ImageURL,
-					Colour:   ga.Colour,
-				},
-				CurrentUser: &UserBrief{
-					ID:        userUUID,
-					Username:  player.Username.String,
-					FactionID: player.FactionID.String,
-					Gid:       player.Gid,
-					Faction: &Faction{
-						ID:    faction.ID,
-						Label: faction.Label,
-						Theme: &Theme{
-							PrimaryColor:    faction.PrimaryColor,
-							SecondaryColor:  faction.SecondaryColor,
-							BackgroundColor: faction.BackgroundColor,
-						},
-					},
-				},
-			})
-
 			// enter cool down, when every selector fire the ability
 			if !as.BattleAbilityPool.LocationDeciders.hasSelector() {
 				// set new battle ability
@@ -729,11 +680,136 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.BattleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
 				as.BattleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 				// broadcast stage to frontend
-				ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+				ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 				continue
 			}
 		}
 	}
+}
+
+func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUID, gameAbility *boiler.GameAbility, player *boiler.Player, faction *boiler.Faction) {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at launching ability.", r)
+		}
+	}()
+
+	btl, ok := as.battle()
+	if !ok {
+		return
+	}
+
+	if gameAbility.DisplayOnMiniMap {
+		mma := &MiniMapAbilityContent{
+			OfferingID: offeringID.String(),
+			Location: server.CellLocation{
+				X: ls.startPoint.X,
+				Y: ls.startPoint.Y,
+			},
+			LocationSelectType:       gameAbility.LocationSelectType,
+			ImageUrl:                 gameAbility.ImageURL,
+			Colour:                   gameAbility.Colour,
+			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
+			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
+		}
+
+		// if delay second is greater than zero
+		if gameAbility.LaunchingDelaySeconds > 0 {
+			duration := time.Duration(gameAbility.LaunchingDelaySeconds) * time.Second
+
+			mma.LaunchingAt = null.TimeFrom(time.Now().Add(duration))
+
+			// add ability onto pending list, and broadcast
+			ws.PublishMessage(
+				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+				server.HubKeyMiniMapAbilityDisplayList,
+				btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+			)
+
+			// time sleep
+			time.Sleep(duration)
+
+			// check ability system and battle are still available after time sleep
+			if !AbilitySystemIsAvailable(as) {
+				return
+			}
+			btl, ok = as.battle()
+			if !ok {
+				return
+			}
+		}
+
+		mma.LaunchingAt = null.TimeFromPtr(nil)
+		if ability := btl.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+			mma.Radius = null.IntFrom(ability.Radius)
+		}
+		// broadcast changes
+		ws.PublishMessage(
+			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			server.HubKeyMiniMapAbilityDisplayList,
+			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+		)
+
+		if gameAbility.AnimationDurationSeconds > 0 {
+			go func(battle *Battle, abilityContent *MiniMapAbilityContent, animationSeconds int) {
+				time.Sleep(time.Duration(animationSeconds) * time.Second)
+
+				if battle != nil && battle.stage.Load() == BattleStageStart {
+					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+						)
+					}
+				}
+			}(btl, mma, gameAbility.AnimationDurationSeconds)
+		}
+	}
+
+	userUUID := uuid.FromStringOrNil(ls.userID)
+
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: byte(gameAbility.GameClientAbilityID),
+		TriggeredByUserID:   &userUUID,
+		TriggeredByUsername: &player.Username.String,
+		EventID:             offeringID,
+		FactionID:           &ls.factionID,
+	}
+
+	event.GameLocation = btl.getGameWorldCoordinatesFromCellXY(&ls.startPoint)
+
+	if gameAbility.LocationSelectType == boiler.LocationSelectTypeEnumLINE_SELECT && ls.endPoint != nil {
+		event.GameLocationEnd = btl.getGameWorldCoordinatesFromCellXY(ls.endPoint)
+	}
+
+	// trigger location select
+	btl.arena.Message("BATTLE:ABILITY", event)
+
+	btl.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+		Type: LocationSelectTypeTrigger,
+		Ability: &AbilityBrief{
+			Label:    gameAbility.Label,
+			ImageUrl: gameAbility.ImageURL,
+			Colour:   gameAbility.Colour,
+		},
+		CurrentUser: &UserBrief{
+			ID:        userUUID,
+			Username:  player.Username.String,
+			FactionID: player.FactionID.String,
+			Gid:       player.Gid,
+			Faction: &Faction{
+				ID:    faction.ID,
+				Label: faction.Label,
+				Theme: &Theme{
+					PrimaryColor:    faction.PrimaryColor,
+					SecondaryColor:  faction.SecondaryColor,
+					BackgroundColor: faction.BackgroundColor,
+				},
+			},
+		},
+	})
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
@@ -798,41 +874,22 @@ func (as *AbilitiesSystem) locationDecidersSet() {
 					continue
 				}
 
-				// check user is banned
-				isBanned := false
-				for _, pb := range pbs {
-					if pb.BannedPlayerID == ba.PlayerID {
-						isBanned = true
-						break
-					}
-				}
-
 				// skip, if player is banned
-				if isBanned {
+				if slices.IndexFunc(pbs, func(pb *boiler.PlayerBan) bool { return pb.BannedPlayerID == ba.PlayerID }) >= 0 {
 					continue
 				}
 
 				// check player is inactive (no mouse movement)
-				exist := false
-				for _, ap := range aps {
-					if ap.PlayerID == ba.PlayerID {
-						exist = true
-						break
-					}
-				}
-
-				// skip, if player is inactive
-				if !exist {
+				if slices.IndexFunc(aps, func(ap *boiler.PlayerActiveLog) bool { return ap.PlayerID == ba.PlayerID }) == -1 {
 					continue
 				}
 
 				// set location decider list
-				as.BattleAbilityPool.LocationDeciders.setSelector(ba.PlayerID)
+				as.BattleAbilityPool.LocationDeciders.setSelector(ba.FactionID, ba.PlayerID)
 
-				// check limit is reached
-				as.BattleAbilityPool.LocationDeciders.store(ba.FactionID, ba.PlayerID)
+				// exit, if maximum reached
 				if as.BattleAbilityPool.LocationDeciders.length(ba.FactionID) >= maximumCommanderCount {
-					continue
+					break
 				}
 			}
 
@@ -887,7 +944,7 @@ func (as *AbilitiesSystem) End() {
 	as.BattleAbilityPool.Stage.Phase.Store(BribeStageHold)
 	as.BattleAbilityPool.Stage.StoreEndTime(time.Now().AddDate(1, 0, 0))
 	// broadcast stage to frontend
-	ws.PublishMessage("/public/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
+	ws.PublishMessage(fmt.Sprintf("/public/arena/%s/bribe_stage", as.arenaID), HubKeyBribeStageUpdateSubscribe, as.BattleAbilityPool.Stage)
 	as.isClosed.Store(true)
 
 	as.storeBattle(nil)

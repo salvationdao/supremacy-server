@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os/signal"
 	"runtime"
 	"server"
 	"server/api"
@@ -18,10 +19,13 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/profanities"
+	"server/quest"
+	"server/replay"
 	"server/sms"
 	"server/synctool"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"server/zendesk"
 
 	"github.com/volatiletech/null/v8"
 
@@ -162,6 +166,15 @@ func main() {
 
 					&cli.StringFlag{Name: "captcha_site_key", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SITE_KEY", "CAPTCHA_SITE_KEY"}, Usage: "Captcha site key"},
 					&cli.StringFlag{Name: "captcha_secret", Value: "", EnvVars: []string{envPrefix + "_CAPTCHA_SECRET", "CAPTCHA_SECRET"}, Usage: "Captcha secret"},
+
+					&cli.StringFlag{Name: "zendesk_token", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_TOKEN"}, Usage: "Zendesk token to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_email", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_EMAIL"}, Usage: "Zendesk email to write tickets/requests"},
+					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
+
+					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
+
+					// Crypto signatures for battle histories
+					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -185,6 +198,10 @@ func main() {
 					smsFromNumber := c.String("sms_from_number")
 					githubToken := c.String("github_token")
 
+					zendeskToken := c.String("zendesk_token")
+					zendeskEmail := c.String("zendesk_email")
+					zendeskUrl := c.String("zendesk_url")
+
 					telegramBotToken := c.String("telegram_bot_token")
 
 					passportAddr := c.String("passport_addr")
@@ -196,6 +213,8 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
+
+					replay.OvenMediaAuthKey = c.String("ovenmedia_auth_key")
 
 					server.SetEnv(environment)
 
@@ -318,7 +337,7 @@ func main() {
 					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						ws.PublishMessage(fmt.Sprintf("/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
+						ws.PublishMessage(fmt.Sprintf("/secure/user/%s/telegram_shortcode_register", owner), server.HubKeyTelegramShortcodeRegistered, success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
@@ -364,23 +383,44 @@ func main() {
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
 					start = time.Now()
+					// initialise quest manager
+					qm, err := quest.New()
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+					gamelog.L.Info().Msgf("Quest manager took %s", time.Since(start))
+
+					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
-					ba := battle.NewArena(&battle.Opts{
+
+					arenaManager, err := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
+						QuestManager:             qm,
 					})
+					if err != nil {
+						return terror.Error(err, "Arena Manager init failed")
+					}
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
+					gamelog.L.Info().Msg("Setting up Zendesk")
+					zendesk, err := zendesk.NewZendesk(zendeskToken, zendeskEmail, zendeskUrl, environment)
+					if err != nil {
+						return terror.Error(err, "Zendesk init failed")
+					}
+					gamelog.L.Info().Msgf("Zendesk took %s", time.Since(start))
+
 					gamelog.L.Info().Msg("Setting up API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, twilio, telebot, detector, pm, staticDataURL)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), arenaManager, rpcClient, twilio, telebot, zendesk, detector, pm, staticDataURL, qm)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -413,12 +453,25 @@ func main() {
 					asset.SyncAssetOwners(rpcClient)
 					gamelog.L.Info().Msgf("Asset transfers took %s", time.Since(start))
 
+					// stops all battle replay recordings when server goes down
+					go func() {
+						stop := make(chan os.Signal)
+						signal.Notify(stop, os.Interrupt)
+						<-stop
+						err := replay.StopAllActiveRecording()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
+						}
+						os.Exit(2)
+					}()
+
 					gamelog.L.Info().Msg("Running API")
 					err = api.Run(ctx)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
 					return nil
 				},
@@ -430,7 +483,7 @@ func main() {
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
@@ -499,10 +552,9 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
-			FROM templates_old tpo
-			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
-			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+				SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
+				FROM templates_old tpo
+				INNER JOIN template_blueprints tpbp ON tpo.blueprint_chassis_id =  tpbp.blueprint_id_old; `
 		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue getting template ids")
@@ -721,13 +773,15 @@ func SetupAPI(
 	ctxCLI *cli.Context,
 	ctx context.Context,
 	log *zerolog.Logger,
-	battleArenaClient *battle.Arena,
+	arenaManager *battle.ArenaManager,
 	passport *xsyn_rpcclient.XsynXrpcClient,
 	sms server.SMS,
 	telegram server.Telegram,
+	zendesk *zendesk.Zendesk,
 	languageDetector lingua.LanguageDetector,
 	pm *profanities.ProfanityManager,
 	staticSyncURL string,
+	questManager *quest.System,
 ) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
@@ -785,7 +839,8 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, sms, telegram, languageDetector, pm, syncConfig)
+	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}

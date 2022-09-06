@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/player_abilities"
+	"server/sale_player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -35,11 +35,12 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
+	api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityClaim, pac.SaleAbilityClaimHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
-	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.BattleArena.MechAbilityTriggerHandler)
-	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.BattleArena.BattleAbilityOptIn)
+	api.SecureUserFactionCommand(battle.HubKeyWarMachineAbilityTrigger, api.ArenaManager.MechAbilityTriggerHandler)
+	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityOptIn, api.ArenaManager.BattleAbilityOptIn)
 
 	return pac
 }
@@ -62,19 +63,32 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 }
 
 type SaleAbilitiesListResponse struct {
-	NextRefreshTime              *time.Time                `json:"next_refresh_time"`
-	RefreshPeriodDurationSeconds int                       `json:"refresh_period_duration_seconds"`
-	SaleAbilities                []*db.SaleAbilityDetailed `json:"sale_abilities"`
+	NextRefreshTime *time.Time                `json:"next_refresh_time"`
+	TimeLeftSeconds int                       `json:"time_left_seconds"`
+	SaleAbilities   []*db.SaleAbilityDetailed `json:"sale_abilities"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
 
-	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
 	reply(&SaleAbilitiesListResponse{
-		NextRefreshTime:              &nextRefresh,
-		RefreshPeriodDurationSeconds: pac.API.SalePlayerAbilityManager.TimeBetweenRefreshSeconds,
-		SaleAbilities:                dpas,
+		NextRefreshTime: &nextRefresh,
+		TimeLeftSeconds: pac.API.SalePlayerAbilityManager.NextRefreshInSeconds(),
+		SaleAbilities:   dpas,
+	})
+
+	return nil
+}
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	dpas := pac.API.SalePlayerAbilityManager.CurrentSaleList()
+
+	nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
+	reply(&SaleAbilitiesListResponse{
+		NextRefreshTime: &nextRefresh,
+		TimeLeftSeconds: pac.API.SalePlayerAbilityManager.NextRefreshInSeconds(),
+		SaleAbilities:   dpas,
 	})
 	return nil
 }
@@ -120,7 +134,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	// Check if user has hit their claim limit
 	canPurchase := pac.API.SalePlayerAbilityManager.CanUserClaim(userID.String())
 	if !canPurchase {
-		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
 		minutes := int(time.Until(nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
@@ -177,7 +191,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 	err = pac.API.SalePlayerAbilityManager.AddToUserClaimCount(userID.String())
 	if err != nil {
 		l.Warn().Err(err).Msg("failed to add to user's claim count")
-		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh()).Minutes())))
+		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh().Client).Minutes())))
 	}
 
 	err = tx.Commit()
@@ -193,10 +207,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityClaimHandler(ctx context.Cont
 		l.Error().Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Claim <- &player_abilities.Claim{
+	pac.API.SalePlayerAbilityManager.Claim <- &sale_player_abilities.Claim{
 		SaleID: spa.ID,
 	}
 	return nil
@@ -243,7 +257,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	// Check if user has hit their purchase limit
 	canPurchase := pac.API.SalePlayerAbilityManager.CanUserPurchase(userID.String())
 	if !canPurchase {
-		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh()
+		nextRefresh := pac.API.SalePlayerAbilityManager.NextRefresh().Client
 		minutes := int(time.Until(nextRefresh).Minutes())
 		msg := fmt.Sprintf("Please try again in %d minutes.", minutes)
 		if minutes < 1 {
@@ -346,7 +360,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if err != nil {
 		refundFunc()
 		l.Warn().Err(err).Msg("failed to add to user's purchase count")
-		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh()).Minutes())))
+		return terror.Error(err, fmt.Sprintf("You have reached your claim limit during this sale period. Please try again in %d minutes.", int(time.Until(pac.API.SalePlayerAbilityManager.NextRefresh().Client).Minutes())))
 	}
 
 	err = tx.Commit()
@@ -363,10 +377,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		l.Error().Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
-	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
+	ws.PublishMessage(fmt.Sprintf("/secure/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesList, pas)
 
 	// Update price of sale ability
-	pac.API.SalePlayerAbilityManager.Purchase <- &player_abilities.Purchase{
+	pac.API.SalePlayerAbilityManager.Purchase <- &sale_player_abilities.Purchase{
 		SaleID: spa.ID,
 	}
 	return nil

@@ -13,11 +13,10 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionItem
+	*Images
 	CollectionItemID      string              `json:"collection_item_id"`
 	ID                    string              `json:"id"`
-	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
-	Slug                  string              `json:"slug"`
 	Damage                int                 `json:"damage"`
 	BlueprintID           string              `json:"blueprint_id"`
 	EquippedOn            null.String         `json:"equipped_on,omitempty"`
@@ -32,13 +31,19 @@ type Weapon struct {
 	Radius                null.Int            `json:"radius,omitempty"`
 	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
 	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
-	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
+	PowerCost             decimal.NullDecimal `json:"power_cost,omitempty"`
 	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
-	EquippedWeaponSkinID  null.String         `json:"equipped_weapon_skin_id,omitempty"`
-	WeaponSkin            *WeaponSkin         `json:"weapon_skin,omitempty"`
+	EquippedWeaponSkinID  string              `json:"equipped_weapon_skin_id,omitempty"`
 	ItemSaleID            null.String         `json:"item_sale_id,omitempty"`
-	WeaponModelID         null.String         `json:"weapon_model_id,omitempty"`
+	IsMelee               bool                `json:"is_melee"`
+	ProjectileAmount      null.Int            `json:"projectile_amount,omitempty"`
+	DotTickDamage         decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
+	DotMaxTicks           null.Int            `json:"dot_max_ticks,omitempty"`
+	IsArced               null.Bool           `json:"is_arced,omitempty"`
+	ChargeTimeSeconds     decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
+	BurstRateOfFire       decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
 
+	WeaponSkin *WeaponSkin `json:"weapon_skin,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
 	EquippedOnDetails *EquippedOnDetails
 
@@ -56,9 +61,7 @@ func (b *Weapon) Scan(value interface{}) error {
 
 type BlueprintWeapon struct {
 	ID                  string              `json:"id"`
-	BrandID             null.String         `json:"brand_id,omitempty"`
 	Label               string              `json:"label"`
-	Slug                string              `json:"slug"`
 	Damage              int                 `json:"damage"`
 	UpdatedAt           time.Time           `json:"updated_at"`
 	CreatedAt           time.Time           `json:"created_at"`
@@ -73,10 +76,17 @@ type BlueprintWeapon struct {
 	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
 	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
-	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
+	PowerCost           decimal.NullDecimal `json:"power_cost,omitempty"`
 	Collection          string              `json:"collection"`
-	Tier                string              `json:"tier,omitempty"`
-	WeaponModelID       string              `json:"weapon_model_id"`
+	BrandID             null.String         `json:"brand_id,omitempty"`
+	DefaultSkinID       string              `json:"default_skin_id"`
+	IsMelee             bool                `json:"is_melee"`
+	ProjectileAmount    null.Int            `json:"projectile_amount,omitempty"`
+	DotTickDamage       decimal.NullDecimal `json:"dot_tick_damage,omitempty"`
+	DotMaxTicks         null.Int            `json:"dot_max_ticks,omitempty"`
+	IsArced             null.Bool           `json:"is_arced,omitempty"`
+	ChargeTimeSeconds   decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
+	BurstRateOfFire     decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -107,9 +117,7 @@ func (b *WeaponSlice) Scan(value interface{}) error {
 func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon {
 	return &BlueprintWeapon{
 		ID:                  weapon.ID,
-		BrandID:             weapon.BrandID,
 		Label:               weapon.Label,
-		Slug:                weapon.Slug,
 		UpdatedAt:           weapon.UpdatedAt,
 		CreatedAt:           weapon.CreatedAt,
 		Damage:              weapon.Damage,
@@ -124,53 +132,61 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		RadiusDamageFalloff: weapon.RadiusDamageFalloff,
 		ProjectileSpeed:     weapon.ProjectileSpeed,
 		MaxAmmo:             weapon.MaxAmmo,
-		EnergyCost:          weapon.EnergyCost,
+		PowerCost:           weapon.PowerCost,
 		Collection:          weapon.Collection,
-		Tier:                weapon.Tier,
-		WeaponModelID:       weapon.WeaponModelID,
+		BrandID:             weapon.BrandID,
+		DefaultSkinID:       weapon.DefaultSkinID,
+		IsMelee:             weapon.IsMelee,
+		ProjectileAmount:    weapon.ProjectileAmount,
+		DotTickDamage:       weapon.DotTickDamage,
+		DotMaxTicks:         weapon.DotMaxTicks,
+		IsArced:             weapon.IsArced,
+		ChargeTimeSeconds:   weapon.ChargeTimeSeconds,
+		BurstRateOfFire:     weapon.BurstRateOfFire,
 	}
 }
 
 func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, weaponSkin *WeaponSkin, itemSaleID null.String) *Weapon {
 	return &Weapon{
 		CollectionItem: &CollectionItem{
-			CollectionSlug:   collection.CollectionSlug,
-			Hash:             collection.Hash,
-			TokenID:          collection.TokenID,
-			ItemType:         collection.ItemType,
-			ItemID:           collection.ItemID,
-			Tier:             collection.Tier,
-			OwnerID:          collection.OwnerID,
-			MarketLocked:     collection.MarketLocked,
-			XsynLocked:       collection.XsynLocked,
-			AssetHidden:      collection.AssetHidden,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
+			AssetHidden:    collection.AssetHidden,
 		},
-		CollectionItemID:     collection.ID,
-		ID:                   weapon.ID,
-		BrandID:              weapon.BrandID,
-		Label:                weapon.Label,
-		Slug:                 weapon.Slug,
-		Damage:               weapon.Damage,
-		BlueprintID:          weapon.BlueprintID,
-		DefaultDamageType:    weapon.DefaultDamageType,
-		GenesisTokenID:       weapon.GenesisTokenID,
-		WeaponType:           weapon.WeaponType,
-		DamageFalloff:        weapon.DamageFalloff,
-		DamageFalloffRate:    weapon.DamageFalloffRate,
-		Spread:               weapon.Spread,
-		RateOfFire:           weapon.RateOfFire,
-		Radius:               weapon.Radius,
-		RadiusDamageFalloff:  weapon.RadiusDamageFalloff,
-		ProjectileSpeed:      weapon.ProjectileSpeed,
-		EnergyCost:           weapon.EnergyCost,
-		MaxAmmo:              weapon.MaxAmmo,
+		Images: &Images{
+			ImageURL:         weaponSkin.ImageURL,
+			CardAnimationURL: weaponSkin.CardAnimationURL,
+			AvatarURL:        weaponSkin.AvatarURL,
+			LargeImageURL:    weaponSkin.LargeImageURL,
+			BackgroundColor:  weaponSkin.BackgroundColor,
+			AnimationURL:     weaponSkin.AnimationURL,
+			YoutubeURL:       weaponSkin.YoutubeURL,
+		},
+		CollectionItemID:    collection.ID,
+		ID:                  weapon.ID,
+		Label:               weapon.R.Blueprint.Label,
+		Damage:              weapon.R.Blueprint.Damage,
+		BlueprintID:         weapon.BlueprintID,
+		DefaultDamageType:   weapon.R.Blueprint.DefaultDamageType,
+		GenesisTokenID:      weapon.GenesisTokenID,
+		WeaponType:          weapon.R.Blueprint.WeaponType,
+		DamageFalloff:       weapon.R.Blueprint.DamageFalloff,
+		DamageFalloffRate:   weapon.R.Blueprint.DamageFalloffRate,
+		Spread:              weapon.R.Blueprint.Spread,
+		RateOfFire:          weapon.R.Blueprint.RateOfFire,
+		Radius:              weapon.R.Blueprint.Radius,
+		RadiusDamageFalloff: weapon.R.Blueprint.RadiusDamageFalloff,
+		ProjectileSpeed:     weapon.R.Blueprint.ProjectileSpeed,
+		PowerCost:           weapon.R.Blueprint.PowerCost,
+		MaxAmmo:             weapon.R.Blueprint.MaxAmmo,
+
 		UpdatedAt:            weapon.UpdatedAt,
 		CreatedAt:            weapon.CreatedAt,
 		EquippedOn:           weapon.EquippedOn,
@@ -178,4 +194,14 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem, 
 		WeaponSkin:           weaponSkin,
 		ItemSaleID:           itemSaleID,
 	}
+}
+
+type WeaponModel struct {
+	ID            string      `json:"id"`
+	Label         string      `json:"label"`
+	BrandID       null.String `json:"brand_id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	DefaultSkinID string      `json:"default_skin_id"`
+	WeaponType    string      `json:"weapon_type"`
+	RepairBlocks  int         `json:"repair_blocks"`
 }

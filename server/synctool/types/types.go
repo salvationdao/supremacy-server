@@ -8,8 +8,16 @@ type MechModel struct {
 	ID                   string      `json:"id"`
 	Label                string      `json:"label"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	BrandID              null.String `json:"brand_id"`
+	BrandID              string      `json:"brand_id"`
 	MechType             string      `json:"mech_type"`
+	BoostStat            string      `json:"boost_stat"`
+	WeaponHardpoints     string      `json:"weapon_hardpoints"`
+	UtilitySlots         string      `json:"utility_slots"`
+	Speed                string      `json:"speed"`
+	MaxHitpoints         string      `json:"max_hitpoints"`
+	PowerCoreSize        string      `json:"power_core_size"`
+	Collection           string      `json:"collection"`
+	AvailabilityID       null.String `json:"availability_id"`
 }
 
 type Brands struct {
@@ -38,18 +46,28 @@ type Faction struct {
 type MechSkin struct {
 	ID               string      `json:"id"`
 	Collection       string      `json:"collection"`
-	MechModel        string      `json:"mech_model"`
 	Label            string      `json:"label"`
 	Tier             string      `json:"tier"`
+	DefaultLevel     string      `json:"default_level"`
 	ImageUrl         null.String `json:"image_url"`
 	AnimationUrl     null.String `json:"animation_url"`
 	CardAnimationUrl null.String `json:"card_animation_url"`
 	LargeImageUrl    null.String `json:"large_image_url"`
 	AvatarUrl        null.String `json:"avatar_url"`
-	BackgroundColor  string      `json:"background_color"`
-	YoutubeURL       string      `json:"youtube_url"`
-	StatModifier     string      `json:"stat_modifier"`
-	MechType         string      `json:"mech_type"`
+	BackgroundColor  null.String `json:"background_color"`
+	YoutubeUrl       null.String `json:"youtube_url"`
+}
+
+type MechModelSkinCompatibility struct {
+	MechSkinID       string `json:"mech_skin_id"`
+	MechModelID      string `json:"mech_model_id"`
+	ImageUrl         string `json:"image_url"`
+	AnimationUrl     string `json:"animation_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	BackgroundColor  string `json:"background_color"`
+	YoutubeUrl       string `json:"youtube_url"`
 }
 
 type MysteryCrate struct {
@@ -67,32 +85,61 @@ type MysteryCrate struct {
 	YoutubeUrl       string `json:"youtube_url"`
 }
 
-type WeaponModel struct {
-	ID            string `json:"id"`
-	BrandID       string `json:"brand_id"`
-	Label         string `json:"label"`
-	WeaponType    string `json:"weapon_type"`
-	DefaultSkinID string `json:"default_skin_id"`
-	DeletedAt     string `json:"deleted_at"`
-	UpdatedAt     string `json:"updated_at"`
+type Weapon struct {
+	ID                  string      `json:"id"`
+	BrandID             string      `json:"brand_id"`
+	Label               string      `json:"label"`
+	WeaponType          string      `json:"weapon_type"`
+	DefaultSkinID       string      `json:"default_skin_id"`
+	Damage              string      `json:"damage"`
+	DamageFallOff       string      `json:"damage_falloff"`
+	DamageFalloffRate   string      `json:"damage_falloff_rate"`
+	Radius              string      `json:"radius"`
+	RadiusDamageFalloff string      `json:"radius_damage_falloff"`
+	Spread              string      `json:"spread"`
+	RateOfFire          string      `json:"rate_of_fire"`
+	ProjectileSpeed     string      `json:"projectile_speed"`
+	MaxAmmo             string      `json:"max_ammo"`
+	IsMelee             string      `json:"is_melee"`
+	PowerCost           string      `json:"power_cost"`
+	GameClientWeaponID  null.String `json:"game_client_weapon_id"`
+	Collection          string      `json:"collection"`
+	DefaultDamageType   string      `json:"default_damage_type"`
+	ProjectileAmount    string      `json:"projectile_amount"`
+	DotTickDamage       string      `json:"dot_tick_damage"`
+	DotMaxTicks         string      `json:"dot_max_ticks"`
+	IsArced             string      `json:"is_arced"`
+	ChargeTimeSeconds   string      `json:"charge_time_seconds"`
+	BurstRateOfFire     string      `json:"burst_rate_of_fire"`
+	PowerInstantDrain   string      `json:"power_instant_drain"`
 }
 
 type WeaponSkin struct {
-	ID               string `json:"id"`
-	Label            string `json:"label"`
-	WeaponType       string `json:"weapon_typep"`
-	Tier             string `json:"tier"`
-	ImageUrl         string `json:"image_url"`
-	CreatedAt        string `json:"created_at"`
-	CardAnimationUrl string `json:"card_animation_url"`
-	AvatarUrl        string `json:"avatar_url"`
-	LargeImageUrl    string `json:"large_image_url"`
-	BackgroundColor  string `json:"background_color"`
-	AnimationUrl     string `json:"animation_url"`
-	YoutubeUrl       string `json:"youtube_url"`
-	Collection       string `json:"collection"`
+	ID               string      `json:"id"`
+	Label            string      `json:"label"`
+	Tier             string      `json:"tier"`
+	CreatedAt        string      `json:"created_at"`
+	Collection       string      `json:"collection"`
+	StatModifier     string      `json:"stat_modifier"`
+	ImageUrl         null.String `json:"image_url"`
+	AnimationUrl     null.String `json:"animation_url"`
+	CardAnimationUrl null.String `json:"card_animation_url"`
+	LargeImageUrl    null.String `json:"large_image_url"`
+	AvatarUrl        null.String `json:"avatar_url"`
+	BackgroundColor  null.String `json:"background_color"`
+	YoutubeUrl       null.String `json:"youtube_url"`
+}
+
+type WeaponModelSkinCompatibility struct {
+	WeaponSkinID     string `json:"weapon_skin_id"`
 	WeaponModelID    string `json:"weapon_model_id"`
-	StatModifier     string `json:"stat_modifier"`
+	ImageUrl         string `json:"image_url"`
+	AnimationUrl     string `json:"animation_url"`
+	CardAnimationUrl string `json:"card_animation_url"`
+	LargeImageUrl    string `json:"large_image_url"`
+	AvatarUrl        string `json:"avatar_url"`
+	BackgroundColor  string `json:"background_color"`
+	YoutubeUrl       string `json:"youtube_url"`
 }
 
 type BattleAbility struct {
@@ -139,7 +186,6 @@ type PowerCores struct {
 
 type BlueprintWeapons struct {
 	ID                  string `json:"id"`
-	BrandID             string `json:"brand_id"`
 	Label               string `json:"label"`
 	Slug                string `json:"slug"`
 	Damage              string `json:"damage"`
@@ -166,7 +212,6 @@ type BlueprintWeapons struct {
 
 type BlueprintMechs struct {
 	ID               string `json:"id"`
-	BrandID          string `json:"brand_id"`
 	Label            string `json:"label"`
 	Slug             string `json:"slug"`
 	WeaponHardpoints string `json:"weapon_hardpoints"`
