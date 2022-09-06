@@ -1034,7 +1034,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.inserted_at) AS queue_position
 						from battle_queue _bq
 						where _bq.faction_id = ?
-							AND _bq.battle_id IS NULL
 					) _bq ON _bq.mech_id = %s`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				),
