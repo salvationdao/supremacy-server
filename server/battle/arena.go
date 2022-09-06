@@ -944,7 +944,6 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 
 	minimapUpdates := []MinimapEvent{}
 	if btl := arena.CurrentBattle(); btl != nil {
-		btl.RLock()
 		if pam := arena.CurrentBattle().playerAbilityManager(); pam != nil {
 			for id, b := range pam.Blackouts() {
 				minimapUpdates = append(minimapUpdates, MinimapEvent{
@@ -956,7 +955,6 @@ func (am *ArenaManager) MinimapUpdatesSubscribeHandler(ctx context.Context, key 
 				})
 			}
 		}
-		btl.RUnlock()
 	}
 	reply(minimapUpdates)
 	return nil
