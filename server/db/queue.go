@@ -131,6 +131,28 @@ func GetBattleETASecondsFromMechID(mechID string, factionID string) (int64, erro
 	return int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs, nil
 }
 
+func GetBattleBacklogETASecondsFromMechID(mechID string, factionID string) (int64, error) {
+	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
+	if err != nil {
+		return -1, err
+	}
+
+	minWaitSeconds, err := GetMinimumQueueWaitTimeSecondsFromFactionID(factionID)
+	if err != nil {
+		return -1, err
+	}
+
+	queuePosition, err := MechBacklogQueuePosition(mechID, factionID)
+	if err != nil {
+		return -1, err
+	}
+	if queuePosition.QueuePosition == 0 {
+		return 0, err
+	}
+
+	return (int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs) + minWaitSeconds, nil
+}
+
 func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
 	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
 	if err != nil {
@@ -245,16 +267,23 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 	}
 
 	if pendingQueue {
-		eta, err := GetMinimumQueueWaitTimeSecondsFromFactionID(owner.FactionID.String)
-		if err != nil {
-			l.Error().Err(err).Msg("failed to get faction queue eta")
-			return nil, err
+		if owner != nil && owner.FactionID.Valid {
+			eta, err := GetBattleBacklogETASecondsFromMechID(mechID, owner.FactionID.String)
+			if err != nil {
+				l.Error().Err(err).Msg("failed to get faction queue eta")
+				return nil, err
+			}
+
+			return &server.MechArenaInfo{
+				Status:           server.MechArenaStatusPendingQueue,
+				CanDeploy:        false,
+				BattleETASeconds: null.Int64From(eta),
+			}, nil
 		}
 
 		return &server.MechArenaInfo{
-			Status:           server.MechArenaStatusPendingQueue,
-			CanDeploy:        false,
-			BattleETASeconds: null.Int64From(eta),
+			Status:    server.MechArenaStatusPendingQueue,
+			CanDeploy: false,
 		}, nil
 	}
 
@@ -333,6 +362,43 @@ func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, e
 	WHERE
 		bq.mech_id = $2
 	`
+	qp := &BattleQueuePosition{}
+	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
+	if err != nil {
+		return nil, err
+	}
+
+	return qp, nil
+}
+
+func MechBacklogQueuePosition(mechID string, factionID string) (*BattleQueuePosition, error) {
+	q := fmt.Sprintf(`
+	SELECT
+		%s,
+		COALESCE(_bq.queue_position, 0) AS queue_position
+	FROM
+		%s
+		LEFT OUTER JOIN (
+		SELECT
+			_bq.%s,
+			ROW_NUMBER() OVER (ORDER BY _bq.%s) AS queue_position
+		FROM
+			%s _bq
+		WHERE
+			_bq.%s = $1) _bq ON _bq.%s = %s
+	WHERE
+		%s = $2
+	`,
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+		boiler.TableNames.BattleQueueBacklog,
+		boiler.BattleQueueBacklogColumns.MechID,
+		boiler.BattleQueueBacklogColumns.QueuedAt,
+		boiler.TableNames.BattleQueueBacklog,
+		boiler.BattleQueueBacklogColumns.FactionID,
+		boiler.BattleQueueBacklogColumns.MechID,
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+	)
 	qp := &BattleQueuePosition{}
 	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
 	if err != nil {
