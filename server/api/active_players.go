@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"github.com/sasha-s/go-deadlock"
+	"golang.org/x/exp/slices"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -124,7 +125,27 @@ func (ap *ActivePlayers) CheckExpiry() {
 	// collect active player list for broadcast
 	var players []server.PublicPlayer
 
+	// update player username
+	ids := []string{}
+	for playerID := range ap.Map {
+		ids = append(ids, playerID)
+	}
+
+	if len(ids) == 0 {
+		return
+	}
+
+	ps, err := boiler.Players(boiler.PlayerWhere.ID.IN(ids)).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Strs("player id list", ids).Err(err).Msg("Failed to get players")
+		return
+	}
+
 	for playerID, activeStat := range ap.Map {
+		// update player detail
+		if idx := slices.IndexFunc(ps, func(p *boiler.Player) bool { return p.ID == playerID }); idx != -1 {
+			activeStat.Player = server.PublicPlayerFromBoiler(ps[idx])
+		}
 
 		// skip, if active stat is not expired
 		if activeStat.ExpiredAt.After(now) {
