@@ -1,8 +1,5 @@
 -- Update player ability tables to include the rarity weight of the ability
-ALTER TABLE
-    blueprint_player_abilities
-ADD
-    COLUMN rarity_weight INT NOT NULL DEFAULT -1;
+
 
 ALTER TABLE
     consumed_abilities
@@ -34,13 +31,7 @@ CREATE TRIGGER "t_sale_player_abilities_insert" BEFORE
 INSERT
     ON "sale_player_abilities" FOR EACH ROW EXECUTE PROCEDURE set_rarity_weight();
 
--- Update rarities of all player abilities (except for landmines, 11; is a rarer ability)
-UPDATE
-    blueprint_player_abilities
-SET
-    rarity_weight = 30
-WHERE
-    game_client_ability_id IN (10, 12, 13, 14, 15, 16);
+
 
 UPDATE
     consumed_abilities ca
@@ -49,13 +40,7 @@ SET
 WHERE
     game_client_ability_id IN (10, 12, 13, 14, 15, 16);
 
--- Update rarity of Landmine player ability
-UPDATE
-    blueprint_player_abilities
-SET
-    rarity_weight = 10
-WHERE
-    game_client_ability_id IN (11);
+
 
 UPDATE
     consumed_abilities
@@ -63,40 +48,6 @@ SET
     rarity_weight = 10
 WHERE
     game_client_ability_id IN (11);
-
--- Add nuke and airstrike as player abilities
-INSERT INTO
-    blueprint_player_abilities (
-        game_client_ability_id,
-        label,
-        colour,
-        image_url,
-        description,
-        text_colour,
-        location_select_type,
-        rarity_weight
-    )
-VALUES
-    (
-        1,
-        'Nuke',
-        '#E86621',
-        'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-nuke.jpg',
-        'The show-stopper. A tactical nuke at your fingertips.',
-        '#FFFFFF',
-        'LOCATION_SELECT',
-        5
-    ),
-    (
-        0,
-        'Airstrike',
-        '#173DD1',
-        'https://afiles.ninja-cdn.com/supremacy-stream-site/assets/img/ability-airstrike.jpg',
-        'Rain fury on the arena with a targeted airstrike.',
-        '#FFFFFF',
-        'LOCATION_SELECT',
-        10
-    );
 
 -- Add nuke and airstrike as sale player abilities
 INSERT INTO

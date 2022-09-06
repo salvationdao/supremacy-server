@@ -35,20 +35,18 @@ const BostonShortcode FactionShortcode = "BC"
 
 type CurrentBattle struct {
 	Number    int    `json:"number"`
+	StartedAt int64  `json:"started_at"`
 	ExpiresAt int64  `json:"expires_at"`
 	Signature string `json:"signature"`
 }
 type BattleHistoryRecord struct {
-	Number            int              `json:"number"`
-	StartedAt         int64            `json:"started_at"`
-	EndedAt           *int64           `json:"ended_at"`
-	Winner            int64            `json:"winner"`
-	RunnerUp          int64            `json:"runner_up"`
-	Loser             int64            `json:"loser"`
-	WinnerShortcode   FactionShortcode `json:"winner_shortcode"`
-	RunnerUpShortcode FactionShortcode `json:"runner_up_shortcode"`
-	LoserShortcode    FactionShortcode `json:"loser_shortcode"`
-	Signature         string           `json:"signature"`
+	Number    int    `json:"number"`
+	StartedAt int64  `json:"started_at"`
+	EndedAt   *int64 `json:"ended_at"`
+	Winner    int64  `json:"winner"`
+	RunnerUp  int64  `json:"runner_up"`
+	Loser     int64  `json:"loser"`
+	Signature string `json:"signature"`
 }
 
 // BattleHistoryController holds handlers for battle history requests
@@ -105,6 +103,7 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 	signer := bridge.NewSigner(c.signerPrivateKeyHex)
 	_, sig, err := signer.GenerateCurrentBattleSignature(
 		int64(curr.BattleNumber),
+		curr.StartedAt.Unix(),
 		expiry,
 	)
 	if err != nil {
@@ -113,6 +112,7 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 
 	currentBattleRecord := &CurrentBattle{
 		Number:    curr.BattleNumber,
+		StartedAt: curr.StartedAt.Unix(),
 		ExpiresAt: expiry,
 		Signature: hexutil.Encode(sig),
 	}
@@ -240,26 +240,23 @@ func BattleRecord(b *boiler.Battle, signerPrivateKeyHex string) (*BattleHistoryR
 	}
 
 	result := &BattleHistoryRecord{
-		Number:            b.BattleNumber,
-		StartedAt:         b.StartedAt.Unix(),
-		EndedAt:           endUnix,
-		Winner:            int64(FactionMap[winner]),
-		RunnerUp:          int64(FactionMap[runnerUp]),
-		Loser:             int64(FactionMap[loser]),
-		WinnerShortcode:   winner,
-		RunnerUpShortcode: runnerUp,
-		LoserShortcode:    loser,
+		Number:    b.BattleNumber,
+		StartedAt: b.StartedAt.Unix(),
+		EndedAt:   endUnix,
+		Winner:    int64(FactionMap[winner]),
+		RunnerUp:  int64(FactionMap[runnerUp]),
+		Loser:     int64(FactionMap[loser]),
 	}
 
-	if result.WinnerShortcode != NoneShortcode && result.RunnerUpShortcode != NoneShortcode && result.LoserShortcode != NoneShortcode {
+	if winner != NoneShortcode && runnerUp != NoneShortcode && loser != NoneShortcode {
 		signer := bridge.NewSigner(signerPrivateKeyHex)
 		_, sig, err := signer.GenerateBattleRecordSignature(
 			int64(b.BattleNumber),
 			b.StartedAt.Unix(),
 			b.EndedAt.Time.Unix(),
-			int64(FactionMap[result.WinnerShortcode]),
-			int64(FactionMap[result.RunnerUpShortcode]),
-			int64(FactionMap[result.LoserShortcode]),
+			int64(FactionMap[winner]),
+			int64(FactionMap[runnerUp]),
+			int64(FactionMap[loser]),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("generate signature: %w", err)

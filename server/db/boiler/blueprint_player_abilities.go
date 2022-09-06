@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -39,6 +40,7 @@ type BlueprintPlayerAbility struct {
 	MiniMapDisplayEffectType string    `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
 	MechDisplayEffectType    string    `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
 	AnimationDurationSeconds int       `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
+	DeletedAt                null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -62,6 +64,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	MiniMapDisplayEffectType string
 	MechDisplayEffectType    string
 	AnimationDurationSeconds string
+	DeletedAt                string
 }{
 	ID:                       "id",
 	GameClientAbilityID:      "game_client_ability_id",
@@ -80,6 +83,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	MiniMapDisplayEffectType: "mini_map_display_effect_type",
 	MechDisplayEffectType:    "mech_display_effect_type",
 	AnimationDurationSeconds: "animation_duration_seconds",
+	DeletedAt:                "deleted_at",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -100,6 +104,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	MiniMapDisplayEffectType string
 	MechDisplayEffectType    string
 	AnimationDurationSeconds string
+	DeletedAt                string
 }{
 	ID:                       "blueprint_player_abilities.id",
 	GameClientAbilityID:      "blueprint_player_abilities.game_client_ability_id",
@@ -118,6 +123,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	MiniMapDisplayEffectType: "blueprint_player_abilities.mini_map_display_effect_type",
 	MechDisplayEffectType:    "blueprint_player_abilities.mech_display_effect_type",
 	AnimationDurationSeconds: "blueprint_player_abilities.animation_duration_seconds",
+	DeletedAt:                "blueprint_player_abilities.deleted_at",
 }
 
 // Generated where
@@ -140,6 +146,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	MiniMapDisplayEffectType whereHelperstring
 	MechDisplayEffectType    whereHelperstring
 	AnimationDurationSeconds whereHelperint
+	DeletedAt                whereHelpernull_Time
 }{
 	ID:                       whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID:      whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -158,6 +165,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	MiniMapDisplayEffectType: whereHelperstring{field: "\"blueprint_player_abilities\".\"mini_map_display_effect_type\""},
 	MechDisplayEffectType:    whereHelperstring{field: "\"blueprint_player_abilities\".\"mech_display_effect_type\""},
 	AnimationDurationSeconds: whereHelperint{field: "\"blueprint_player_abilities\".\"animation_duration_seconds\""},
+	DeletedAt:                whereHelpernull_Time{field: "\"blueprint_player_abilities\".\"deleted_at\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -187,9 +195,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "deleted_at"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "deleted_at"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )
@@ -953,7 +961,7 @@ func (o *BlueprintPlayerAbility) AddBlueprintSalePlayerAbilities(exec boil.Execu
 
 // BlueprintPlayerAbilities retrieves all the records using an executor.
 func BlueprintPlayerAbilities(mods ...qm.QueryMod) blueprintPlayerAbilityQuery {
-	mods = append(mods, qm.From("\"blueprint_player_abilities\""))
+	mods = append(mods, qm.From("\"blueprint_player_abilities\""), qmhelper.WhereIsNull("\"blueprint_player_abilities\".\"deleted_at\""))
 	return blueprintPlayerAbilityQuery{NewQuery(mods...)}
 }
 
@@ -967,7 +975,7 @@ func FindBlueprintPlayerAbility(exec boil.Executor, iD string, selectCols ...str
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"blueprint_player_abilities\" where \"id\"=$1", sel,
+		"select %s from \"blueprint_player_abilities\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1318,7 +1326,7 @@ func (o *BlueprintPlayerAbility) Upsert(exec boil.Executor, updateOnConflict boo
 
 // Delete deletes a single BlueprintPlayerAbility record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BlueprintPlayerAbility) Delete(exec boil.Executor) (int64, error) {
+func (o *BlueprintPlayerAbility) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no BlueprintPlayerAbility provided for delete")
 	}
@@ -1327,8 +1335,26 @@ func (o *BlueprintPlayerAbility) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintPlayerAbilityPrimaryKeyMapping)
-	sql := "DELETE FROM \"blueprint_player_abilities\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintPlayerAbilityPrimaryKeyMapping)
+		sql = "DELETE FROM \"blueprint_player_abilities\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"blueprint_player_abilities\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(blueprintPlayerAbilityType, blueprintPlayerAbilityMapping, append(wl, blueprintPlayerAbilityPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1352,12 +1378,17 @@ func (o *BlueprintPlayerAbility) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q blueprintPlayerAbilityQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q blueprintPlayerAbilityQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no blueprintPlayerAbilityQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1373,7 +1404,7 @@ func (q blueprintPlayerAbilityQuery) DeleteAll(exec boil.Executor) (int64, error
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BlueprintPlayerAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BlueprintPlayerAbilitySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1386,14 +1417,31 @@ func (o BlueprintPlayerAbilitySlice) DeleteAll(exec boil.Executor) (int64, error
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPlayerAbilityPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPlayerAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"blueprint_player_abilities\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPlayerAbilityPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPlayerAbilityPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"blueprint_player_abilities\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, blueprintPlayerAbilityPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"blueprint_player_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPlayerAbilityPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1447,7 +1495,8 @@ func (o *BlueprintPlayerAbilitySlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"blueprint_player_abilities\".* FROM \"blueprint_player_abilities\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPlayerAbilityPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPlayerAbilityPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1464,7 +1513,7 @@ func (o *BlueprintPlayerAbilitySlice) ReloadAll(exec boil.Executor) error {
 // BlueprintPlayerAbilityExists checks if the BlueprintPlayerAbility row exists.
 func BlueprintPlayerAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"blueprint_player_abilities\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"blueprint_player_abilities\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

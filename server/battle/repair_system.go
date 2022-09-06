@@ -3,14 +3,6 @@ package battle
 import (
 	"database/sql"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -19,6 +11,15 @@ import (
 	"server/xsyn_rpcclient"
 	"sync"
 	"time"
+
+	"github.com/friendsofgo/errors"
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 func (am *ArenaManager) SendRepairFunc(fn func() error) error {
@@ -327,7 +328,17 @@ func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.Repa
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load owner")
 		}
 
-		queueDetails, err := db.MechArenaStatus(owner.ID, pmrs.MechID, owner.FactionID.String)
+		collectionItem, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.OwnerID.EQ(owner.ID),
+			boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+			boiler.CollectionItemWhere.ItemID.EQ(pmrs.MechID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load mech collection item")
+			return
+		}
+
+		queueDetails, err := db.GetCollectionItemStatus(*collectionItem)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return
