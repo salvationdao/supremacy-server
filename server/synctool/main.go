@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"server/db/boiler"
-	"server/gamedb"
 	"server/synctool/types"
 	"strconv"
 	"strings"
@@ -1326,7 +1325,7 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 		existingPlayerAbilities, err := boiler.BlueprintPlayerAbilities(
 			boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(playerAbility.GameClientAbilityID),
 			boiler.BlueprintPlayerAbilityWhere.ID.NEQ(playerAbility.ID),
-		).All(gamedb.StdConn)
+		).All(db)
 		if err != nil {
 			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
 		}
@@ -1336,7 +1335,7 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 			playerAbility.ID = bpa.ID
 
 			// update everything
-			_, err := playerAbility.Update(gamedb.StdConn, boil.Whitelist(
+			_, err := playerAbility.Update(db, boil.Whitelist(
 				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
 				boiler.BlueprintPlayerAbilityColumns.Label,
 				boiler.BlueprintPlayerAbilityColumns.Colour,
