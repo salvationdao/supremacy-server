@@ -147,6 +147,16 @@ func (am *ArenaManager) GetArena(arenaID string) (*Arena, error) {
 	return arena, nil
 }
 
+func (am *ArenaManager) EachArena(fn func(arena *Arena) bool) {
+	am.RLock()
+	defer am.RUnlock()
+	for _, a := range am.arenas {
+		if !fn(a) {
+			return
+		}
+	}
+}
+
 func (am *ArenaManager) IdleArenas() []*Arena {
 	am.RLock()
 	defer am.RUnlock()
@@ -1896,6 +1906,11 @@ func (arena *Arena) BeginBattle() {
 	err = btl.Load()
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
+	}
+
+	// skip, if idle
+	if arena.isIdle.Load() {
+		return
 	}
 
 	// then set battle queue
