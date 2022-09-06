@@ -28,14 +28,7 @@ func GetPlayerQueueCount(playerID string) (int64, error) {
 		return -1, err
 	}
 
-	count2, err := boiler.BattleQueueBacklogs(
-		boiler.BattleQueueBacklogWhere.OwnerID.EQ(playerID),
-	).Count(gamedb.StdConn)
-	if err != nil {
-		return -1, err
-	}
-
-	return count + count2, nil
+	return count, nil
 }
 
 func GetPreviousBattleOwnerIDs() ([]string, error) {
@@ -52,7 +45,7 @@ func GetPreviousBattleOwnerIDs() ([]string, error) {
 		LIMIT %d
 		`,
 			boiler.TableNames.BattleQueue,
-			boiler.BattleQueueColumns.InsertedAt,
+			boiler.BattleQueueColumns.QueuedAt,
 			FACTION_MECH_LIMIT*3),
 		),
 	).Bind(nil, gamedb.StdConn, &oids)
@@ -83,37 +76,6 @@ func GetNumberOfMechsInQueueFromFactionID(factionID string) (int64, error) {
 	return count, nil
 }
 
-// GetPendingMechsFromFactionID returns the next 3 (or less) mechs in backlog that belong to the specified faction.
-// By default, it excludes mechs with the same owner ID (i.e. no two mechs with the same owner ID will be returned).
-// However, if 3 backlogged faction mechs with unique owner IDs does not currently exist, GetPendingMechsFromFactionID may return
-// mechs with the same owner ID.
-func GetPendingMechsFromFactionID(factionID string, excludeOwnerIDs []string, limit int) (boiler.BattleQueueBacklogSlice, error) {
-	pendingMechs, err := boiler.BattleQueueBacklogs(
-		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
-		boiler.BattleQueueBacklogWhere.OwnerID.NIN(excludeOwnerIDs),
-		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
-		qm.Limit(limit),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(pendingMechs) == limit {
-		return pendingMechs, nil
-	}
-
-	pendingMechs, err = boiler.BattleQueueBacklogs(
-		boiler.BattleQueueBacklogWhere.FactionID.EQ(factionID),
-		qm.OrderBy(fmt.Sprintf("%s, %s asc", boiler.BattleQueueBacklogColumns.OwnerID, boiler.BattleQueueBacklogColumns.QueuedAt)),
-		qm.Limit(limit),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	return pendingMechs, nil
-}
-
 func GetBattleETASecondsFromMechID(mechID string, factionID string) (int64, error) {
 	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
 	if err != nil {
@@ -132,25 +94,6 @@ func GetBattleETASecondsFromMechID(mechID string, factionID string) (int64, erro
 	}
 
 	return int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs, nil
-}
-
-func GetBattleBacklogETASecondsFromMechID(mechID string, factionID string) (int64, error) {
-	averageBattleLengthSecs, err := GetAverageBattleLengthSeconds()
-	if err != nil {
-		return -1, err
-	}
-
-	minWaitSeconds, err := GetMinimumQueueWaitTimeSecondsFromFactionID(factionID)
-	if err != nil {
-		return -1, err
-	}
-
-	queuePosition, err := MechBacklogQueuePosition(mechID, factionID)
-	if err != nil {
-		return -1, err
-	}
-
-	return (int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs) + minWaitSeconds, nil
 }
 
 func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error) {
@@ -172,7 +115,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 			%s = $1
 			AND %s IS NULL
 		`,
-			boiler.BattleQueueColumns.InsertedAt,
+			boiler.BattleQueueColumns.QueuedAt,
 			boiler.TableNames.BattleQueue,
 			boiler.BattleQueueColumns.FactionID,
 			boiler.BattleQueueColumns.BattleID),
@@ -253,38 +196,10 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		}, nil
 	}
 
-	// Check in battle queue backlog
-	pendingQueue, err := boiler.BattleQueueBacklogExists(gamedb.StdConn, mechID)
-	if err != nil {
-		l.Error().Err(err).Msg("failed to check in queue backlog")
-		return nil, err
-	}
-
 	owner, err := collectionItem.Owner().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		l.Error().Err(err).Msg("failed to get owner of collection item")
 		return nil, err
-	}
-
-	if pendingQueue {
-		if owner != nil && owner.FactionID.Valid {
-			eta, err := GetBattleBacklogETASecondsFromMechID(mechID, owner.FactionID.String)
-			if err != nil {
-				l.Error().Err(err).Msg("failed to get faction queue eta")
-				return nil, err
-			}
-
-			return &server.MechArenaInfo{
-				Status:           server.MechArenaStatusPendingQueue,
-				CanDeploy:        false,
-				BattleETASeconds: null.Int64From(eta),
-			}, nil
-		}
-
-		return &server.MechArenaInfo{
-			Status:    server.MechArenaStatusPendingQueue,
-			CanDeploy: false,
-		}, nil
 	}
 
 	if owner != nil && owner.FactionID.Valid {
@@ -296,15 +211,15 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		}
 
 		if exists {
-			eta, err := GetBattleETASecondsFromMechID(mechID, owner.FactionID.String)
+			pos, err := MechQueuePosition(mechID, owner.FactionID.String)
 			if err != nil {
 				l.Error().Err(err).Msg("failed to get battle eta for mech")
 				return nil, err
 			}
 			return &server.MechArenaInfo{
-				Status:           server.MechArenaStatusQueue,
-				CanDeploy:        false,
-				BattleETASeconds: null.Int64From(eta),
+				Status:        server.MechArenaStatusQueue,
+				CanDeploy:     false,
+				QueuePosition: null.Int64From(pos.QueuePosition),
 			}, nil
 		}
 	}
@@ -371,41 +286,16 @@ func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, e
 	return qp, nil
 }
 
-func MechBacklogQueuePosition(mechID string, factionID string) (*BattleQueuePosition, error) {
-	q := fmt.Sprintf(`
-	SELECT
-		%s,
-		COALESCE(_bq.queue_position, 0) AS queue_position
-	FROM
-		%s
-		LEFT OUTER JOIN (
-		SELECT
-			_bq.%s,
-			ROW_NUMBER() OVER (ORDER BY _bq.%s) AS queue_position
-		FROM
-			%s _bq
-		WHERE
-			_bq.%s = $1) _bq ON _bq.%s = %s
-	WHERE
-		%s = $2
-	`,
-		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
-		boiler.TableNames.BattleQueueBacklog,
-		boiler.BattleQueueBacklogColumns.MechID,
-		boiler.BattleQueueBacklogColumns.QueuedAt,
-		boiler.TableNames.BattleQueueBacklog,
-		boiler.BattleQueueBacklogColumns.FactionID,
-		boiler.BattleQueueBacklogColumns.MechID,
-		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
-		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
-	)
-	qp := &BattleQueuePosition{}
-	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
+func GetFactionQueueLength(factionID string) (int64, error) {
+	count, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.FactionID.EQ(factionID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).Count(gamedb.StdConn)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 
-	return qp, nil
+	return count, nil
 }
 
 func FactionQueue(factionID string) ([]*BattleQueuePosition, error) {

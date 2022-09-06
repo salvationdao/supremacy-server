@@ -45,12 +45,11 @@ type Mech struct {
 	BoostedStat         string `json:"boosted_stat"`
 
 	// state
-	QueuePosition   null.Int    `json:"queue_position"`
-	BacklogPosition null.Int    `json:"backlog_position"`
-	BattleReady     bool        `json:"battle_ready"`
-	IsDefault       bool        `json:"is_default"`
-	IsInsured       bool        `json:"is_insured"`
-	ItemSaleID      null.String `json:"item_sale_id"`
+	QueuePosition null.Int    `json:"queue_position"`
+	BattleReady   bool        `json:"battle_ready"`
+	IsDefault     bool        `json:"is_default"`
+	IsInsured     bool        `json:"is_insured"`
+	ItemSaleID    null.String `json:"item_sale_id"`
 
 	// Connected objects
 	Owner            *User          `json:"user"`

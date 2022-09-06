@@ -37,7 +37,6 @@ type BattleQueue struct {
 	MechID                         string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	FeeID                          null.String `boiler:"fee_id" boil:"fee_id" json:"fee_id,omitempty" toml:"fee_id" yaml:"fee_id,omitempty"`
 	SystemMessageNotified          bool        `boiler:"system_message_notified" boil:"system_message_notified" json:"system_message_notified" toml:"system_message_notified" yaml:"system_message_notified"`
-	InsertedAt                     time.Time   `boiler:"inserted_at" boil:"inserted_at" json:"inserted_at" toml:"inserted_at" yaml:"inserted_at"`
 
 	R *battleQueueR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -58,7 +57,6 @@ var BattleQueueColumns = struct {
 	MechID                         string
 	FeeID                          string
 	SystemMessageNotified          string
-	InsertedAt                     string
 }{
 	QueuedAt:                       "queued_at",
 	FactionID:                      "faction_id",
@@ -74,7 +72,6 @@ var BattleQueueColumns = struct {
 	MechID:                         "mech_id",
 	FeeID:                          "fee_id",
 	SystemMessageNotified:          "system_message_notified",
-	InsertedAt:                     "inserted_at",
 }
 
 var BattleQueueTableColumns = struct {
@@ -92,7 +89,6 @@ var BattleQueueTableColumns = struct {
 	MechID                         string
 	FeeID                          string
 	SystemMessageNotified          string
-	InsertedAt                     string
 }{
 	QueuedAt:                       "battle_queue.queued_at",
 	FactionID:                      "battle_queue.faction_id",
@@ -108,7 +104,6 @@ var BattleQueueTableColumns = struct {
 	MechID:                         "battle_queue.mech_id",
 	FeeID:                          "battle_queue.fee_id",
 	SystemMessageNotified:          "battle_queue.system_message_notified",
-	InsertedAt:                     "battle_queue.inserted_at",
 }
 
 // Generated where
@@ -128,7 +123,6 @@ var BattleQueueWhere = struct {
 	MechID                         whereHelperstring
 	FeeID                          whereHelpernull_String
 	SystemMessageNotified          whereHelperbool
-	InsertedAt                     whereHelpertime_Time
 }{
 	QueuedAt:                       whereHelpertime_Time{field: "\"battle_queue\".\"queued_at\""},
 	FactionID:                      whereHelperstring{field: "\"battle_queue\".\"faction_id\""},
@@ -144,7 +138,6 @@ var BattleQueueWhere = struct {
 	MechID:                         whereHelperstring{field: "\"battle_queue\".\"mech_id\""},
 	FeeID:                          whereHelpernull_String{field: "\"battle_queue\".\"fee_id\""},
 	SystemMessageNotified:          whereHelperbool{field: "\"battle_queue\".\"system_message_notified\""},
-	InsertedAt:                     whereHelpertime_Time{field: "\"battle_queue\".\"inserted_at\""},
 }
 
 // BattleQueueRels is where relationship names are stored.
@@ -183,9 +176,9 @@ func (*battleQueueR) NewStruct() *battleQueueR {
 type battleQueueL struct{}
 
 var (
-	battleQueueAllColumns            = []string{"queued_at", "faction_id", "owner_id", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "mech_id", "fee_id", "system_message_notified", "inserted_at"}
+	battleQueueAllColumns            = []string{"queued_at", "faction_id", "owner_id", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "mech_id", "fee_id", "system_message_notified"}
 	battleQueueColumnsWithoutDefault = []string{"faction_id", "owner_id", "mech_id"}
-	battleQueueColumnsWithDefault    = []string{"queued_at", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "fee_id", "system_message_notified", "inserted_at"}
+	battleQueueColumnsWithDefault    = []string{"queued_at", "battle_id", "notified", "queue_fee_tx_id", "queue_notification_fee_tx_id", "queue_fee_tx_id_refund", "queue_notification_fee_tx_id_refund", "id", "updated_at", "fee_id", "system_message_notified"}
 	battleQueuePrimaryKeyColumns     = []string{"mech_id"}
 	battleQueueGeneratedColumns      = []string{}
 )

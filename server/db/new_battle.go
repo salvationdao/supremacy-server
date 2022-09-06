@@ -251,7 +251,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 	}
 
 	query := fmt.Sprintf(`
-		SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s
+		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY %s ASC) AS r, t.*
 			FROM battle_queue t
@@ -266,8 +266,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
-		boiler.BattleQueueColumns.InsertedAt,
-		boiler.BattleQueueColumns.InsertedAt,
+		boiler.BattleQueueColumns.QueuedAt,
 		inBattle,
 	)
 
@@ -282,7 +281,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 
 	for result.Next() {
 		mc := &boiler.BattleQueue{}
-		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified, &mc.SystemMessageNotified, &mc.InsertedAt)
+		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified, &mc.SystemMessageNotified)
 		if err != nil {
 			return nil, err
 		}
@@ -487,39 +486,6 @@ func GetNextBattle(ctx context.Context) (*NextBattle, error) {
 
 		if q.FactionID == server.BostonCyberneticsFactionID {
 			bcMechIDs = append(bcMechIDs, q.MechID)
-		}
-	}
-
-	if len(rmMechIDs) < FACTION_MECH_LIMIT {
-		limit := FACTION_MECH_LIMIT - len(rmMechIDs)
-		extra, err := GetPendingMechsFromFactionID(server.RedMountainFactionID, []string{}, limit)
-		if err != nil {
-			return nil, err
-		}
-		for _, m := range extra {
-			rmMechIDs = append(rmMechIDs, m.MechID)
-		}
-	}
-
-	if len(zhiMechIDs) < FACTION_MECH_LIMIT {
-		limit := FACTION_MECH_LIMIT - len(zhiMechIDs)
-		extra, err := GetPendingMechsFromFactionID(server.ZaibatsuFactionID, []string{}, limit)
-		if err != nil {
-			return nil, err
-		}
-		for _, m := range extra {
-			zhiMechIDs = append(zhiMechIDs, m.MechID)
-		}
-	}
-
-	if len(bcMechIDs) < FACTION_MECH_LIMIT {
-		limit := FACTION_MECH_LIMIT - len(bcMechIDs)
-		extra, err := GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, []string{}, limit)
-		if err != nil {
-			return nil, err
-		}
-		for _, m := range extra {
-			bcMechIDs = append(bcMechIDs, m.MechID)
 		}
 	}
 
