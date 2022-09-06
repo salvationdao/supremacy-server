@@ -19,6 +19,25 @@ import (
 
 const FACTION_MECH_LIMIT = 3
 
+func GetPlayerQueueCount(playerID string) (int64, error) {
+	count, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.OwnerID.EQ(playerID),
+		boiler.BattleQueueWhere.BattleID.IsNull(),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return -1, err
+	}
+
+	count2, err := boiler.BattleQueueBacklogs(
+		boiler.BattleQueueBacklogWhere.OwnerID.EQ(playerID),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return -1, err
+	}
+
+	return count + count2, nil
+}
+
 func GetPreviousBattleOwnerIDs() ([]string, error) {
 	var oids []*struct {
 		OwnerID string `json:"owner_id"`

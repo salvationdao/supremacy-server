@@ -28,6 +28,8 @@ const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
+const KeyPlayerQueueLimit KVKey = "player_queue_limit"
+
 const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
