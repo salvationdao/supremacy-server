@@ -2114,8 +2114,7 @@ func (btl *Battle) Load() error {
 			return btl.Load()
 		} else {
 			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-			btl.arena.UpdateArenaStatus(true)
-			return nil
+			return btl.Load()
 		}
 	}
 
