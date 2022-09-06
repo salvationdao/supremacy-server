@@ -2090,6 +2090,16 @@ func (btl *Battle) Load() error {
 		return err
 	}
 
+	reopeningDate, err := time.Parse(time.RFC3339, "2021-09-08T08:00:00+08:00")
+	if err != nil {
+		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
+		return err
+	}
+	kvReopeningDate := db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)
+	if server.IsProductionEnv() && time.Now().UTC().Before(kvReopeningDate.UTC()) {
+		return btl.Load()
+	}
+
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		if server.IsDevelopmentEnv() {
 			// build the mechs
@@ -2102,16 +2112,6 @@ func (btl *Battle) Load() error {
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return btl.Load()
 		} else {
-			longForm := "Jan 2, 2006 at 3:04pm (MST)"
-			reopeningDate, err := time.Parse(longForm, "Sep 8, 2022 at 8:00am (AWST)")
-			if err != nil {
-				gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
-				return err
-			}
-			kvReopeningDate := db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)
-			if server.IsProductionEnv() && time.Now().Before(kvReopeningDate) {
-				return btl.Load()
-			}
 			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 			btl.arena.UpdateArenaStatus(true)
 			return nil
