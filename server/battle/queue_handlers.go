@@ -444,7 +444,8 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 	idleArenas := am.IdleArenas()
 	if len(idleArenas) > 0 {
 		for _, arena := range idleArenas {
-			arena.CurrentBattle().Load()
+			// start new battle if arena is idle
+			arena.BeginBattle()
 		}
 	}
 

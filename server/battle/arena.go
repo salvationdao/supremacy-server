@@ -1739,8 +1739,25 @@ func (arena *Arena) BeginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
+	// check battle queue amount before create new battle
+	q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
+		return
+	}
+
+	// set arena to idle if not enough mech
+	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
+		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		arena.UpdateArenaStatus(true)
+		return
+	}
+
+	arena.UpdateArenaStatus(false)
+
 	// delete all the unfinished mech command
-	_, err := boiler.MechMoveCommandLogs(
+	_, err = boiler.MechMoveCommandLogs(
+		boiler.MechMoveCommandLogWhere.ArenaID.EQ(arena.ID),
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.DeletedAt.IsNull(),
