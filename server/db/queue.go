@@ -125,7 +125,10 @@ func GetBattleETASecondsFromMechID(mechID string, factionID string) (int64, erro
 		return -1, err
 	}
 	if queuePosition.QueuePosition == 0 {
-		return 0, err
+		return -1, fmt.Errorf("Mech is in battle")
+	}
+	if queuePosition.QueuePosition <= FACTION_MECH_LIMIT {
+		return 0, nil
 	}
 
 	return int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs, nil
@@ -145,9 +148,6 @@ func GetBattleBacklogETASecondsFromMechID(mechID string, factionID string) (int6
 	queuePosition, err := MechBacklogQueuePosition(mechID, factionID)
 	if err != nil {
 		return -1, err
-	}
-	if queuePosition.QueuePosition == 0 {
-		return 0, err
 	}
 
 	return (int64(math.Ceil(float64(queuePosition.QueuePosition)/float64(FACTION_MECH_LIMIT))) * averageBattleLengthSecs) + minWaitSeconds, nil
