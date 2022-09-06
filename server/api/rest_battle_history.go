@@ -112,6 +112,7 @@ func (c *BattleHistoryController) BattleHistoryCurrent(w http.ResponseWriter, r 
 
 	currentBattleRecord := &CurrentBattle{
 		Number:    curr.BattleNumber,
+		StartedAt: curr.StartedAt.Unix(),
 		ExpiresAt: expiry,
 		Signature: hexutil.Encode(sig),
 	}
