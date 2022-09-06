@@ -1322,7 +1322,7 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 
 		fmt.Println("UPDATED: "+playerAbility.ID, playerAbility.GameClientAbilityID, playerAbility.Label)
 
-		// record update existing blueprint player ability
+		// get all the existing blueprint player abilities and update their details
 		existingPlayerAbilities, err := boiler.BlueprintPlayerAbilities(
 			boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(playerAbility.GameClientAbilityID),
 			boiler.BlueprintPlayerAbilityWhere.ID.NEQ(playerAbility.ID),
@@ -1336,13 +1336,28 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 			playerAbility.ID = bpa.ID
 
 			// update everything
-			_, err := playerAbility.Update(gamedb.StdConn, boil.Infer())
+			_, err := playerAbility.Update(gamedb.StdConn, boil.Whitelist(
+				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+				boiler.BlueprintPlayerAbilityColumns.Label,
+				boiler.BlueprintPlayerAbilityColumns.Colour,
+				boiler.BlueprintPlayerAbilityColumns.ImageURL,
+				boiler.BlueprintPlayerAbilityColumns.Description,
+				boiler.BlueprintPlayerAbilityColumns.TextColour,
+				boiler.BlueprintPlayerAbilityColumns.LocationSelectType,
+				boiler.BlueprintPlayerAbilityColumns.RarityWeight,
+				boiler.BlueprintPlayerAbilityColumns.InventoryLimit,
+				boiler.BlueprintPlayerAbilityColumns.CooldownSeconds,
+				boiler.BlueprintPlayerAbilityColumns.DisplayOnMiniMap,
+				boiler.BlueprintPlayerAbilityColumns.LaunchingDelaySeconds,
+				boiler.BlueprintPlayerAbilityColumns.MiniMapDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.MechDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.AnimationDurationSeconds,
+			))
 			if err != nil {
 				fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
 				break
 			}
 		}
-
 	}
 
 	fmt.Println("Finish syncing game abilities")
