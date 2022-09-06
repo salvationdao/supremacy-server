@@ -182,6 +182,24 @@ func (ap *ActivePlayers) CheckExpiry() {
 	}
 }
 
+func (ap *ActivePlayers) activePlayerUpdate(p *boiler.Player) {
+	ap.Lock()
+	defer ap.Unlock()
+
+	var players []server.PublicPlayer
+	for playerID, activeStat := range ap.Map {
+		if playerID == p.ID {
+			activeStat.Player = server.PublicPlayerFromBoiler(p)
+		}
+		players = append(players, *activeStat.Player)
+	}
+
+	// broadcast current online player
+	ap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: players,
+	}
+}
+
 func (ap *ActivePlayers) Set(playerID string, isActive bool) error {
 	ap.Lock()
 	defer ap.Unlock()

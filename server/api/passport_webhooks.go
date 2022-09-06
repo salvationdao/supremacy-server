@@ -93,6 +93,11 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 
 	ws.PublishMessage(fmt.Sprintf("/secure/user/%s", player.ID), server.HubKeyUserSubscribe, req.User)
 
+	// update active player list
+	if fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]; ok {
+		fap.activePlayerUpdate(player)
+	}
+
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
 	}{
