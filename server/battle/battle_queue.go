@@ -122,7 +122,7 @@ func NewBattleQueueSystem(rpc *xsyn_rpcclient.XsynXrpcClient) (*BattleQueueManag
 
 	qs := &BattleQueueManager{
 		blacklistedOwnerIDs:        []string{},
-		QueueTickerIntervalSeconds: db.GetIntWithDefault(db.KeyQueueTickerIntervalSeconds, 10),
+		QueueTickerIntervalSeconds: db.GetIntWithDefault(db.KeyQueueTickerIntervalSeconds, 1),
 	}
 
 	go qs.BattleQueueUpdater()

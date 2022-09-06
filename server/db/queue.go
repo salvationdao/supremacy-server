@@ -48,7 +48,7 @@ func GetPreviousBattleOwnerIDs() ([]string, error) {
 			owner_id
 		FROM
 			%s
-		ORDER BY %s desc
+		ORDER BY %s DESC
 		LIMIT %d
 		`,
 			boiler.TableNames.BattleQueue,
@@ -143,7 +143,7 @@ func GetMinimumQueueWaitTimeSecondsFromFactionID(factionID string) (int64, error
 	err = boiler.NewQuery(
 		qm.SQL(fmt.Sprintf(`
 		SELECT
-			row_number() OVER (ORDER BY %s) AS queue_position
+			ROW_NUMBER() OVER (ORDER BY %s) AS queue_position
 		FROM
 			%s
 		WHERE
@@ -173,9 +173,9 @@ func GetAverageBattleLengthSeconds() (int64, error) {
 	}
 	err := boiler.NewQuery(
 		qm.SQL(fmt.Sprintf(`
-		SELECT coalesce(avg(battle_length.length), 0)::numeric::integer as ave_length_seconds
+		SELECT COALESCE(AVG(battle_length.length), 0)::NUMERIC::INTEGER AS ave_length_seconds
 		FROM (
-			SELECT extract(EPOCH FROM ended_at - started_at) AS length
+			SELECT EXTRACT(EPOCH FROM ended_at - started_at) AS length
 			FROM %s
 			WHERE %s IS NOT NULL
 			ORDER BY %s DESC
@@ -318,13 +318,13 @@ func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, e
 	q := `
 	SELECT
 		bq.mech_id,
-		coalesce(_bq.queue_position, 0) AS queue_position
+		COALESCE(_bq.queue_position, 0) AS queue_position
 	FROM
 		battle_queue bq
 		LEFT OUTER JOIN (
 		SELECT
 			_bq.mech_id,
-			row_number() OVER (ORDER BY _bq.queued_at) AS queue_position
+			ROW_NUMBER() OVER (ORDER BY _bq.queued_at) AS queue_position
 		FROM
 			battle_queue _bq
 		WHERE
@@ -346,15 +346,15 @@ func FactionQueue(factionID string) ([]*BattleQueuePosition, error) {
 	q := `
 		SELECT
 			bq.mech_id,
-			coalesce(_bq.queue_position, 0) AS queue_position
+			COALESCE(_bq.queue_position, 0) AS queue_position
 		FROM battle_queue bq
 		LEFT OUTER JOIN (SELECT
 							 _bq.mech_id,
-							 row_number () over (ORDER BY _bq.queued_at) AS queue_position
+							 ROW_NUMBER () OVER (ORDER BY _bq.queued_at) AS queue_position
 						 FROM
 							 battle_queue _bq
 						 WHERE
-								 _bq.faction_id = $1 AND _bq.battle_id isnull) _bq ON _bq.mech_id = bq.mech_id
+								 _bq.faction_id = $1 AND _bq.battle_id ISNULL) _bq ON _bq.mech_id = bq.mech_id
 		WHERE bq.faction_id = $1
 	`
 
