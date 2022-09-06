@@ -205,6 +205,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.Lock()
 	defer btl.Unlock()
 
+	btl.gameMap.Name = gm.Name
 	btl.gameMap.ImageUrl = gm.ImageUrl
 	btl.gameMap.Width = gm.Width
 	btl.gameMap.Height = gm.Height

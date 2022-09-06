@@ -1012,39 +1012,20 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	// Sort
 	if opts.QueueSort != nil {
-		orderBy := qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, backlog_position %s NULLS LAST, %s, %s",
-			opts.QueueSort.SortDir,
+		orderBy := qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, %s, %s",
 			opts.QueueSort.SortDir,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 		))
-		if opts.QueueSort.SortDir == SortByDirDesc {
-			orderBy = qm.OrderBy(fmt.Sprintf("backlog_position %s NULLS LAST, queue_position %s NULLS LAST, %s, %s",
-				opts.QueueSort.SortDir,
-				opts.QueueSort.SortDir,
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			))
-		}
 
 		queryMods = append(queryMods,
-			qm.Select("_bq.queue_position AS queue_position, _bqb.queue_position AS backlog_position"),
+			qm.Select("_bq.queue_position AS queue_position"),
 			qm.LeftOuterJoin(
 				fmt.Sprintf(`(
-					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.inserted_at) AS queue_position
+					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
 						from battle_queue _bq
 						where _bq.faction_id = ?
 					) _bq ON _bq.mech_id = %s`,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-				),
-				opts.QueueSort.FactionID,
-			),
-			qm.LeftOuterJoin(
-				fmt.Sprintf(`(
-					SELECT  _bqb.mech_id, row_number () OVER (ORDER BY _bqb.queued_at) AS queue_position
-						from battle_queue_backlog _bqb
-						where _bqb.faction_id = ?
-					) _bqb ON _bqb.mech_id = %s`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				),
 				opts.QueueSort.FactionID,
@@ -1119,7 +1100,7 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.OutroAnimationID,
 		}
 		if opts.QueueSort != nil {
-			scanArgs = append(scanArgs, &mc.QueuePosition, &mc.BacklogPosition)
+			scanArgs = append(scanArgs, &mc.QueuePosition)
 		}
 		err = rows.Scan(scanArgs...)
 		if err != nil {

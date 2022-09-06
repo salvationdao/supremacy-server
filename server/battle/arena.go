@@ -62,7 +62,6 @@ type ArenaManager struct {
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
 	QuestManager             *quest.System
-	BattleQueueManager       *BattleQueueManager
 
 	arenas           map[string]*Arena
 	deadlock.RWMutex // lock for arena
@@ -82,12 +81,6 @@ type Opts struct {
 }
 
 func NewArenaManager(opts *Opts) (*ArenaManager, error) {
-	// Initialise battle queue manager
-	bqm, err := NewBattleQueueSystem(opts.RPCClient)
-	if err != nil {
-		return nil, terror.Error(err, "Battle Queue manager init failed")
-	}
-
 	am := &ArenaManager{
 		Addr:                     opts.Addr,
 		timeout:                  opts.Timeout,
@@ -103,10 +96,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		arenas:                   make(map[string]*Arena),
 
 		ChallengeFundUpdateChan: make(chan bool),
-		BattleQueueManager:      bqm,
 	}
-
-	bqm.arenaManager = am
 
 	am.server = &http.Server{
 		Handler:      am,
@@ -359,7 +349,6 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		NewBattleChan:            am.NewBattleChan,
 		QuestManager:             am.QuestManager,
 		ChallengeFundUpdateChan:  am.ChallengeFundUpdateChan,
-		BattleQueueManager:       am.BattleQueueManager,
 		isIdle:                   atomic.Bool{},
 	}
 
@@ -401,8 +390,7 @@ type Arena struct {
 
 	QuestManager *quest.System
 
-	isIdle             atomic.Bool
-	BattleQueueManager *BattleQueueManager
+	isIdle atomic.Bool
 
 	gameClientJsonDataChan chan []byte
 
@@ -1757,7 +1745,7 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT * 3) {
+	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
 		arena.UpdateArenaStatus(true)
 		return
@@ -1961,12 +1949,6 @@ func (arena *Arena) BeginBattle() {
 	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
-
-	ownerBlacklist := []string{}
-	for _, m := range btl.WarMachines {
-		ownerBlacklist = append(ownerBlacklist, m.OwnedByID)
-	}
-	arena.BattleQueueManager.SetMechOwnerBlacklist(ownerBlacklist)
 
 	arena.Message(BATTLEINIT, &struct {
 		BattleID     string                  `json:"battle_id"`
