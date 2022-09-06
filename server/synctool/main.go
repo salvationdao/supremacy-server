@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/synctool/types"
 	"strconv"
 	"strings"
@@ -1238,7 +1239,6 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
-	ids := []string{}
 	for _, record := range records {
 		playerAbility := &boiler.BlueprintPlayerAbility{
 			ID:                       record[0],
@@ -1322,16 +1322,42 @@ func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
 
 		fmt.Println("UPDATED: "+playerAbility.ID, playerAbility.GameClientAbilityID, playerAbility.Label)
 
-		// record id list
-		ids = append(ids, playerAbility.ID)
-	}
+		// get all the existing blueprint player abilities and update their details
+		existingPlayerAbilities, err := boiler.BlueprintPlayerAbilities(
+			boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(playerAbility.GameClientAbilityID),
+			boiler.BlueprintPlayerAbilityWhere.ID.NEQ(playerAbility.ID),
+		).All(gamedb.StdConn)
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+		}
 
-	// soft delete any row that is not on the list
-	_, err = boiler.BlueprintPlayerAbilities(
-		boiler.BlueprintPlayerAbilityWhere.ID.NIN(ids),
-	).UpdateAll(db, boiler.M{boiler.BlueprintPlayerAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
-	if err != nil {
-		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
+		for _, bpa := range existingPlayerAbilities {
+			// swap id
+			playerAbility.ID = bpa.ID
+
+			// update everything
+			_, err := playerAbility.Update(gamedb.StdConn, boil.Whitelist(
+				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+				boiler.BlueprintPlayerAbilityColumns.Label,
+				boiler.BlueprintPlayerAbilityColumns.Colour,
+				boiler.BlueprintPlayerAbilityColumns.ImageURL,
+				boiler.BlueprintPlayerAbilityColumns.Description,
+				boiler.BlueprintPlayerAbilityColumns.TextColour,
+				boiler.BlueprintPlayerAbilityColumns.LocationSelectType,
+				boiler.BlueprintPlayerAbilityColumns.RarityWeight,
+				boiler.BlueprintPlayerAbilityColumns.InventoryLimit,
+				boiler.BlueprintPlayerAbilityColumns.CooldownSeconds,
+				boiler.BlueprintPlayerAbilityColumns.DisplayOnMiniMap,
+				boiler.BlueprintPlayerAbilityColumns.LaunchingDelaySeconds,
+				boiler.BlueprintPlayerAbilityColumns.MiniMapDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.MechDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.AnimationDurationSeconds,
+			))
+			if err != nil {
+				fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+				break
+			}
+		}
 	}
 
 	fmt.Println("Finish syncing game abilities")
