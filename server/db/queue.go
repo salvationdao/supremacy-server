@@ -372,23 +372,33 @@ func MechQueuePosition(mechID string, factionID string) (*BattleQueuePosition, e
 }
 
 func MechBacklogQueuePosition(mechID string, factionID string) (*BattleQueuePosition, error) {
-	q := `
+	q := fmt.Sprintf(`
 	SELECT
-		bq.mech_id,
+		%s,
 		COALESCE(_bq.queue_position, 0) AS queue_position
 	FROM
-		battle_queue_backlog bq
+		%s
 		LEFT OUTER JOIN (
 		SELECT
-			_bq.mech_id,
-			ROW_NUMBER() OVER (ORDER BY _bq.queued_at) AS queue_position
+			_bq.%s,
+			ROW_NUMBER() OVER (ORDER BY _bq.%s) AS queue_position
 		FROM
-			battle_queue_backlog _bq
+			%s _bq
 		WHERE
-			_bq.faction_id = $1) _bq ON _bq.mech_id = bq.mech_id
+			_bq.%s = $1) _bq ON _bq.%s = %s
 	WHERE
-		bq.mech_id = $2
-	`
+		%s = $2
+	`,
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+		boiler.TableNames.BattleQueueBacklog,
+		boiler.BattleQueueBacklogColumns.MechID,
+		boiler.BattleQueueBacklogColumns.QueuedAt,
+		boiler.TableNames.BattleQueueBacklog,
+		boiler.BattleQueueBacklogColumns.FactionID,
+		boiler.BattleQueueBacklogColumns.MechID,
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+		qm.Rels(boiler.TableNames.BattleQueueBacklog, boiler.BattleQueueBacklogColumns.MechID),
+	)
 	qp := &BattleQueuePosition{}
 	err := gamedb.StdConn.QueryRow(q, factionID, mechID).Scan(&qp.MechID, &qp.QueuePosition)
 	if err != nil {
