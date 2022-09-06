@@ -2113,7 +2113,8 @@ func (btl *Battle) Load() error {
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return btl.Load()
 		} else {
-			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+			gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+			time.Sleep(1 * time.Second)
 			return btl.Load()
 		}
 	}
