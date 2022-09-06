@@ -263,14 +263,7 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-var playerAbilityBucket = leakybucket.NewCollector(2, 2, true)
-
 func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	b := playerAbilityBucket.Add(user.ID, 1)
-	if b == 0 {
-		return terror.Error(fmt.Errorf("too many executions"), "Too many executions. Please wait a bit before trying again.")
-	}
-
 	// check player is banned
 	isBanned, err := boiler.PlayerBans(
 		boiler.PlayerBanWhere.BannedPlayerID.EQ(user.ID),

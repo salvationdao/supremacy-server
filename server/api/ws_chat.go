@@ -219,10 +219,15 @@ func NewChatroom(factionID string) *Chatroom {
 				continue
 			}
 			playerStat, err := db.UserStatsGet(player.ID)
-			if err != nil {
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Warn().Err(err).Interface("player.ID", player.ID).Msg("issue UserStatsGet")
 				continue
 			}
+
+			if playerStat == nil {
+				continue
+			}
+
 			stats[player.ID] = playerStat
 		}
 		stat := stats[player.ID]
