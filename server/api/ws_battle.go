@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -60,6 +61,7 @@ type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
 	BattleReplayID *string         `json:"battle_replay,omitempty"`
+	ArenaGID       null.Int        `json:"arena_gid,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -107,12 +109,16 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
 				qm.Select(boiler.BattleReplayColumns.ID),
+				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
 				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
 			}
 		}
 
@@ -180,12 +186,16 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
 				qm.Select(boiler.BattleReplayColumns.ID),
+				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
 				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
 			}
 		}
 
