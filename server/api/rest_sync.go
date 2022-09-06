@@ -99,17 +99,6 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
 
-	url = fmt.Sprintf("%s/%s/game_abilities.csv", api.SyncConfig.FilePath, branch)
-	f, err = synctool.DownloadFile(api.ctx, url, timeout)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
-	}
-	err = synctool.SyncGameAbilities(f, gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
-	}
-
-	url = fmt.Sprintf("%s/%s/power_cores.csv", api.SyncConfig.FilePath, branch)
 	url = fmt.Sprintf("%s/%s/battle_abilities.csv", api.SyncConfig.FilePath, branch)
 	f, err = synctool.DownloadFile(api.ctx, url, timeout)
 	if err != nil {
@@ -126,6 +115,16 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
 	}
 	err = synctool.SyncGameAbilities(f, gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
+	}
+
+	url = fmt.Sprintf("%s/%s/player_abilities.csv", api.SyncConfig.FilePath, branch)
+	f, err = synctool.DownloadFile(api.ctx, url, timeout)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
+	}
+	err = synctool.SyncPlayerAbilities(f, gamedb.StdConn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
