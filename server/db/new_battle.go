@@ -301,7 +301,7 @@ func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 	q := `
 		SELECT q.mech_id, q.position
 		FROM (
-			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS position, _q.owner_id
+			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS POSITION, _q.owner_id
 			FROM battle_queue _q
 			WHERE _q.faction_id = (
 				SELECT _p.faction_id 
@@ -435,7 +435,6 @@ func BattleViewerUpsert(battleID string, userID string) error {
 	_, err = gamedb.StdConn.Exec(q, battleID, userID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("unable to upsert battle views")
-		return err
 	}
 
 	// increase battle count
