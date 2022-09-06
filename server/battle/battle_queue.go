@@ -176,7 +176,6 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				continue
 			}
 			if len(_zaiPendingMechs) < db.FACTION_MECH_LIMIT {
-				l.Warn().Err(err).Msg("len(_zaiPendingMechs) < db.FACTION_MECH_LIMIT")
 				continue
 			}
 			_rmPendingMechs, err := db.GetPendingMechsFromFactionID(server.RedMountainFactionID, blacklisted, db.FACTION_MECH_LIMIT)
@@ -185,7 +184,6 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				continue
 			}
 			if len(_rmPendingMechs) < db.FACTION_MECH_LIMIT {
-				l.Warn().Err(err).Msg("len(_rmPendingMechs) < db.FACTION_MECH_LIMIT ")
 				continue
 			}
 			_bcPendingMechs, err := db.GetPendingMechsFromFactionID(server.BostonCyberneticsFactionID, blacklisted, db.FACTION_MECH_LIMIT)
@@ -194,7 +192,6 @@ func (qs *BattleQueueManager) BattleQueueUpdater() {
 				continue
 			}
 			if len(_bcPendingMechs) < db.FACTION_MECH_LIMIT {
-				l.Warn().Err(err).Msg("len(_bcPendingMechs) < db.FACTION_MECH_LIMIT ")
 				continue
 			}
 
