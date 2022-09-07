@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,7 +16,8 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/supremacy-bridge/bridge"
-
+	cache "github.com/victorspringer/http-cache"
+	"github.com/victorspringer/http-cache/adapter/memory"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -55,10 +57,44 @@ type BattleHistoryController struct {
 }
 
 func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
+	quick, err := memory.NewAdapter(
+		memory.AdapterWithAlgorithm(memory.LRU),
+		memory.AdapterWithCapacity(10000000),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	short, err := memory.NewAdapter(
+		memory.AdapterWithAlgorithm(memory.LRU),
+		memory.AdapterWithCapacity(10000000),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	quickCache, err := cache.NewClient(
+		cache.ClientWithAdapter(quick),
+		cache.ClientWithTTL(5*time.Second),
+		cache.ClientWithRefreshKey("opn"),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	longCache, err := cache.NewClient(
+		cache.ClientWithAdapter(short),
+		cache.ClientWithTTL(10*time.Minute),
+		cache.ClientWithRefreshKey("opn"),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	c := &BattleHistoryController{signerPrivateKeyHex}
 	r := chi.NewRouter()
-	r.Get("/", WithError(c.BattleHistoryCurrent))
-	r.Get("/{battle_number}", WithError(c.BattleHistory))
+	r.Get("/", quickCache.Middleware(http.HandlerFunc(WithError(c.BattleHistoryCurrent))).ServeHTTP)
+	r.Get("/{battle_number}", longCache.Middleware(http.HandlerFunc(WithError(c.BattleHistory))).ServeHTTP)
 
 	return r
 }
