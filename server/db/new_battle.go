@@ -253,7 +253,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 	query := fmt.Sprintf(`
 		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
-			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
+			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY %s ASC) AS r, t.*
 			FROM battle_queue t
 		) x
 		WHERE x.r <= $1 %s
@@ -266,6 +266,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle 
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
+		boiler.BattleQueueColumns.QueuedAt,
 		inBattle,
 	)
 
@@ -295,27 +296,12 @@ type MechAndPosition struct {
 	QueuePosition int64     `db:"queue_position"`
 }
 
-func QueueLength(factionID uuid.UUID) (int64, error) {
-	bqs, err := boiler.BattleQueues(
-		qm.Select(
-			boiler.BattleQueueColumns.ID,
-		),
-		boiler.BattleQueueWhere.FactionID.EQ(factionID.String()),
-		boiler.BattleQueueWhere.BattleID.IsNull(), // only count the mech that is not in battle
-	).All(gamedb.StdConn)
-	if err != nil {
-		return -1, err
-	}
-
-	return int64(len(bqs)), nil
-}
-
 // QueueOwnerList returns the mech's in queue from an owner.
 func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 	q := `
 		SELECT q.mech_id, q.position
 		FROM (
-			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS position, _q.owner_id
+			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS POSITION, _q.owner_id
 			FROM battle_queue _q
 			WHERE _q.faction_id = (
 				SELECT _p.faction_id 
@@ -449,7 +435,6 @@ func BattleViewerUpsert(battleID string, userID string) error {
 	_, err = gamedb.StdConn.Exec(q, battleID, userID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("unable to upsert battle views")
-		return err
 	}
 
 	// increase battle count

@@ -37,8 +37,8 @@ func (c *captcha) verify(token string) error {
 	}
 
 	type captchaResp struct {
-		Success   bool   `json:"success"`
-		ErrorCode string `json:"error-codes"`
+		Success   bool     `json:"success"`
+		ErrorCode []string `json:"error-codes"`
 	}
 
 	cr := &captchaResp{}
@@ -47,8 +47,8 @@ func (c *captcha) verify(token string) error {
 		return terror.Error(err, "Failed to read captcha response")
 	}
 
-	if cr.ErrorCode != "" {
-		gamelog.L.Debug().Msg(cr.ErrorCode)
+	if cr.ErrorCode != nil && len(cr.ErrorCode) > 0 {
+		gamelog.L.Debug().Msg(cr.ErrorCode[0])
 	}
 
 	if !cr.Success {

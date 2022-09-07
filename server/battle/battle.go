@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"math/rand"
 	"server"
 	"server/db"
@@ -20,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -44,6 +45,7 @@ const (
 type Battle struct {
 	arena                  *Arena
 	stage                  *atomic.Int32
+	qWaitChan              chan byte
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
@@ -204,6 +206,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.Lock()
 	defer btl.Unlock()
 
+	btl.gameMap.Name = gm.Name
 	btl.gameMap.ImageUrl = gm.ImageUrl
 	btl.gameMap.Width = gm.Width
 	btl.gameMap.Height = gm.Height
@@ -1469,6 +1472,11 @@ func (btl *Battle) Tick(payload []byte) {
 		participantID := payload[offset]
 		offset++
 
+		// Get Sync byte (tells us which data was updated for this warmachine)
+		syncByte := payload[offset]
+		booleans := helpers.UnpackBooleansFromByte(syncByte)
+		offset++
+
 		// Get Warmachine Index
 		warMachineIndex := -1
 		var warmachine *WarMachine
@@ -1486,6 +1494,8 @@ func (btl *Battle) Tick(payload []byte) {
 			if warMachineIndex == -1 {
 				gamelog.L.Warn().Err(fmt.Errorf("aiSpawnedIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID for Spawned AI")
+
+				tickSkipToWarmachineEnd(&offset, booleans)
 				continue
 			}
 			warmachine = btl.SpawnedAI[warMachineIndex]
@@ -1500,14 +1510,14 @@ func (btl *Battle) Tick(payload []byte) {
 			if warMachineIndex == -1 {
 				gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
 					Str("participantID", fmt.Sprintf("%d", participantID)).Msg("unable to find warmachine participant ID war machine - returning")
-				return
+
+				tickSkipToWarmachineEnd(&offset, booleans)
+				continue
 			}
 			warmachine = btl.WarMachines[warMachineIndex]
 		}
-		// Get Sync byte (tells us which data was updated for this warmachine)
-		syncByte := payload[offset]
-		booleans := helpers.UnpackBooleansFromByte(syncByte)
-		offset++
+
+		// Get Current Mech State
 		warmachine.Lock()
 		wms := WarMachineStat{
 			ParticipantID: int(warmachine.ParticipantID),
@@ -1609,7 +1619,7 @@ func (btl *Battle) Tick(payload []byte) {
 
 	// Map Events
 	if len(payload) > offset {
-		mapEventCount := payload[offset]
+		mapEventCount := int(payload[offset])
 		if mapEventCount > 0 {
 			// Pass map events straight to frontend clients
 			mapEvents := payload[offset:]
@@ -1618,6 +1628,21 @@ func (btl *Battle) Tick(payload []byte) {
 			// Unpack and save static events for sending to newly joined frontend clients (ie: landmine, pickup locations and the hive status)
 			btl.MapEventList.MapEventsUnpack(mapEvents)
 		}
+	}
+}
+
+func tickSkipToWarmachineEnd(offset *int, booleans []bool) {
+	if booleans[0] {
+		*offset += 12
+	}
+	if booleans[1] {
+		*offset += 4
+	}
+	if booleans[2] {
+		*offset += 4
+	}
+	if booleans[3] {
+		*offset += 4
 	}
 }
 
@@ -2067,19 +2092,23 @@ func (btl *Battle) Load() error {
 		return err
 	}
 
-	if len(q) < 9 {
-		gamelog.L.Warn().Msg("not enough mechs to field a battle. replacing with default battle.")
-
-		// build the mechs
-		err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
-		if err != nil {
-			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
+		if server.IsDevelopmentEnv() {
+			// build the mechs
+			err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
+			if err != nil {
+				gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
+				gamelog.L.Trace().Str("func", "Load").Msg("end")
+				return err
+			}
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
-			return err
+			return btl.Load()
 		}
 
-		gamelog.L.Trace().Str("func", "Load").Msg("end")
-		return btl.Load()
+		// mark the arena as idle
+		gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		btl.arena.UpdateArenaStatus(true)
+		return nil
 	}
 
 	for i, bq := range q {

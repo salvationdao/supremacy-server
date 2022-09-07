@@ -35,12 +35,13 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/ninja-syndicate/hub v1.9.2
-	github.com/ninja-syndicate/supremacy-bridge v0.1.48
+	github.com/ninja-syndicate/supremacy-bridge v0.1.49
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
 	github.com/valyala/fastjson v1.6.3
+	github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2

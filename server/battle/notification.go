@@ -121,18 +121,6 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
-	replaySession := arena.CurrentBattle().replaySession
-	if replaySession.ReplaySession != nil {
-		newEvent := &RecordingEvents{
-			Timestamp: time.Now(),
-			Notification: GameNotification{
-				Type: GameNotificationTypeText,
-				Data: data,
-			},
-		}
-
-		replaySession.Events = append(replaySession.Events, newEvent)
-	}
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
@@ -147,7 +135,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeLocationSelect,
 				Data: data,
 			},
 		}
@@ -168,7 +156,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: notificationType,
 				Data: data,
 			},
 		}
@@ -189,7 +177,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeWarMachineAbility,
 				Data: data,
 			},
 		}
@@ -210,7 +198,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeWarMachineDestroyed,
 				Data: data,
 			},
 		}
@@ -231,7 +219,7 @@ func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEv
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeBattleZoneChange,
 				Data: data,
 			},
 		}

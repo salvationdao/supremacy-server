@@ -5,6 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"server"
+	"server/battle"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"server/xsyn_rpcclient"
+	"time"
+
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
@@ -16,14 +25,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
-	"server"
-	"server/battle"
-	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"server/xsyn_rpcclient"
-	"time"
 )
 
 func NewMechRepairController(api *API) {
@@ -842,7 +843,7 @@ func BroadcastMechQueueStat(mechID string) {
 
 	if ci != nil && ci.R != nil && ci.R.Owner != nil && ci.R.Owner.FactionID.Valid {
 		owner := ci.R.Owner
-		queueDetails, err := db.MechArenaStatus(owner.ID, mechID, owner.FactionID.String)
+		queueDetails, err := db.GetCollectionItemStatus(*ci)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
 			return

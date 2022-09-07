@@ -1,5 +1,10 @@
 package db
 
+import (
+	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+)
+
 type SortByDir string
 
 const (
@@ -20,4 +25,12 @@ func (s SortByDir) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+func (ls *ListSortRequest) IsValid() bool {
+	return ls.Table != "" && ls.Column != "" && ls.Direction.IsValid()
+}
+
+func (ls *ListSortRequest) GenQueryMod() qm.QueryMod {
+	return qm.OrderBy(fmt.Sprintf("%s.%s %s", ls.Table, ls.Column, ls.Direction))
 }

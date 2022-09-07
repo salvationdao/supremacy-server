@@ -3,17 +3,18 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/benchmark"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type MechColumns string
@@ -1011,6 +1012,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	// Sort
 	if opts.QueueSort != nil {
+		orderBy := qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, %s, %s",
+			opts.QueueSort.SortDir,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+		))
+
 		queryMods = append(queryMods,
 			qm.Select("_bq.queue_position AS queue_position"),
 			qm.LeftOuterJoin(
@@ -1018,17 +1025,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					SELECT  _bq.mech_id, row_number () OVER (ORDER BY _bq.queued_at) AS queue_position
 						from battle_queue _bq
 						where _bq.faction_id = ?
-							AND _bq.battle_id IS NULL
 					) _bq ON _bq.mech_id = %s`,
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 				),
 				opts.QueueSort.FactionID,
 			),
-			qm.OrderBy(fmt.Sprintf("queue_position %s NULLS LAST, %s, %s",
-				opts.QueueSort.SortDir,
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-			)),
+			orderBy,
 		)
 	} else if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))

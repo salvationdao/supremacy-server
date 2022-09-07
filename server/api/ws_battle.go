@@ -12,8 +12,9 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
@@ -61,6 +62,7 @@ type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
 	BattleReplayID *string         `json:"battle_replay,omitempty"`
+	ArenaGID       null.Int        `json:"arena_gid,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -107,13 +109,16 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
-				qm.Select(boiler.BattleReplayColumns.ID),
+				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
 				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
 			}
 		}
 
@@ -180,13 +185,16 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
 				boiler.BattleReplayWhere.StreamID.IsNotNull(),
-				qm.Select(boiler.BattleReplayColumns.ID),
+				qm.Load(boiler.BattleReplayRels.Arena),
 			).One(gamedb.StdConn)
 			if err != nil && err != sql.ErrNoRows {
 				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
 			}
 			if replay != nil {
 				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
 			}
 		}
 
@@ -287,15 +295,17 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
+
+	pos, err := db.GetFactionQueueLength(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
-		return err
+		l.Error().Err(err).Msg("unable to retrieve faction queue length")
+		return terror.Error(err, "Could not get faction queue length.")
 	}
 
 	reply(battle.QueueStatusResponse{
-		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
+		QueuePosition: pos + 1,
+		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 	return nil
 }
@@ -303,12 +313,21 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	reply(queueDetails)
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	reply(mechStatus)
 	return nil
 }
 
