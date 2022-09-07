@@ -1764,7 +1764,8 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	interval := 250 * time.Millisecond
+	// set timer to wait until battle arena reopen
+	interval := 100 * time.Millisecond
 	reopeningDate, err := time.Parse(time.RFC3339, "2021-09-08T08:00:00+08:00")
 	if err != nil {
 		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
