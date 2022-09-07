@@ -1884,6 +1884,7 @@ func (arena *Arena) BeginBattle() {
 		go func(battleID, arenaID string) {
 			reRunBattle, err := boiler.FindBattle(gamedb.StdConn, battleID)
 			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to get battle while stopping recording")
 				return
 			}
 			prevReplay, err := boiler.BattleReplays(
@@ -1892,13 +1893,14 @@ func (arena *Arena) BeginBattle() {
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
 			).One(gamedb.StdConn)
 			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to find previous replay")
 				return
 			}
 			// url request
 			err = replay.RecordReplayRequest(reRunBattle, prevReplay.ID, replay.StopRecording)
 			if err != nil {
 				if err != replay.ErrDontLogRecordingStatus {
-					gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to start recording")
+					gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to stop recording")
 					return
 				}
 				return
