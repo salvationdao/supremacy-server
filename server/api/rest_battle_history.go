@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"server/helpers"
 	"strconv"
 	"time"
@@ -62,15 +63,15 @@ func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
 		memory.AdapterWithCapacity(10000000),
 	)
 	if err != nil {
-		fmt.Println(err)
+		gamelog.L.Error().Err(err).Msg("quick adaptor: failed to create")
 		os.Exit(1)
 	}
-	short, err := memory.NewAdapter(
+	long, err := memory.NewAdapter(
 		memory.AdapterWithAlgorithm(memory.LRU),
 		memory.AdapterWithCapacity(10000000),
 	)
 	if err != nil {
-		fmt.Println(err)
+		gamelog.L.Error().Err(err).Msg("long adaptor: failed to create")
 		os.Exit(1)
 	}
 	quickCache, err := cache.NewClient(
@@ -79,16 +80,16 @@ func BattleHistoryRouter(signerPrivateKeyHex string) chi.Router {
 		cache.ClientWithRefreshKey("opn"),
 	)
 	if err != nil {
-		fmt.Println(err)
+		gamelog.L.Error().Err(err).Msg("quick cache: failed to initialise")
 		os.Exit(1)
 	}
 	longCache, err := cache.NewClient(
-		cache.ClientWithAdapter(short),
+		cache.ClientWithAdapter(long),
 		cache.ClientWithTTL(10*time.Minute),
 		cache.ClientWithRefreshKey("opn"),
 	)
 	if err != nil {
-		fmt.Println(err)
+		gamelog.L.Error().Err(err).Msg("long cache: failed to initialise")
 		os.Exit(1)
 	}
 	c := &BattleHistoryController{signerPrivateKeyHex}
