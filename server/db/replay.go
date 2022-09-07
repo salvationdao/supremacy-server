@@ -29,9 +29,13 @@ func ReplayList(
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.CreatedAt),
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.StoppedAt),
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.StartedAt),
+			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.DisabledAt),
 		),
 		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 		boiler.BattleReplayWhere.StreamID.IsNotNull(),
+		boiler.BattleReplayWhere.DisabledAt.IsNull(),
+		qm.Load(boiler.BattleReplayRels.Battle),
+		boiler.BattleWhere.BattleNumber.GT(0),
 	)
 
 	if Search != "" {

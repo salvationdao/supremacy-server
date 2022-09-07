@@ -1558,6 +1558,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			arena.BeginBattle()
 
 		case "BATTLE:INTRO_FINISHED":
+			if btl.replaySession.ReplaySession != nil {
+				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
+			}
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
@@ -1876,6 +1879,37 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
 		gameMap.Name = lastBattle.R.GameMap.Name
+
+		// stops recording for already running previous recording
+		go func() {
+			prevReplay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(arena.ID),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
+			).One(gamedb.StdConn)
+			if err != nil {
+				return
+			}
+
+			// url request
+			err = replay.RecordReplayRequest(battle, prevReplay.ID, replay.StopRecording)
+			if err != nil {
+				if err != replay.ErrDontLogRecordingStatus {
+					gamelog.L.Error().Err(err).Str("battle_id", battle.ID).Str("replay_id", prevReplay.ID).Msg("Failed to start recording")
+					return
+				}
+				return
+			}
+
+			// update start time
+			prevReplay.StoppedAt = null.TimeFrom(time.Now())
+			prevReplay.RecordingStatus = boiler.RecordingStatusSTOPPED
+			_, err = prevReplay.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", prevReplay.BattleID).Str("replay_id", prevReplay.ID).Err(err).Msg("Failed to update recording status to STOPPED while starting battle")
+				return
+			}
+		}()
 
 		inserted = true
 	}

@@ -18,6 +18,7 @@ type BattleReplay struct {
 	StartedAt        null.Time           `json:"started_at,omitempty"`
 	StoppedAt        null.Time           `json:"stopped_at,omitempty"`
 	Events           null.JSON           `json:"events"`
+	IntroEndedAt     null.Time           `json:"intro_ended_at"`
 }
 
 func BattleReplayFromBoilerWithEvent(replay *boiler.BattleReplay) *BattleReplay {
@@ -31,6 +32,7 @@ func BattleReplayFromBoilerWithEvent(replay *boiler.BattleReplay) *BattleReplay 
 		StartedAt:        replay.StartedAt,
 		StoppedAt:        replay.StoppedAt,
 		Events:           replay.BattleEvents,
+		IntroEndedAt:     replay.IntroEndedAt,
 	}
 
 	if replay.R != nil && replay.R.Battle != nil {
@@ -66,6 +68,7 @@ func BattleReplayFromBoilerNoEvent(replay *boiler.BattleReplay) *BattleReplay {
 		RecordingStatus:  replay.RecordingStatus,
 		StartedAt:        replay.StartedAt,
 		StoppedAt:        replay.StoppedAt,
+		IntroEndedAt:     replay.IntroEndedAt,
 	}
 
 	if replay.R != nil && replay.R.Battle != nil {
