@@ -16,6 +16,8 @@ import (
 
 type KVKey string
 
+const KeyProdReopeningDate = "prod_reopening_date"
+
 const KeyQueueTickerIntervalSeconds = "queue_ticker_interval_seconds"
 
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
@@ -27,6 +29,8 @@ const KeySaleAbilityPurchaseLimit KVKey = "sale_ability_purchase_limit"
 const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
+
+const KeyPlayerQueueLimit KVKey = "player_queue_limit"
 
 const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"

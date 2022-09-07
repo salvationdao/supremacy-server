@@ -66,6 +66,8 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyGameUserOnline, pc.UserOnline)
 
+	api.SecureUserCommand(HubKeyPlayerQueueStatus, pc.PlayerQueueStatusHandler)
+
 	// user profile commands
 	api.Command(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
 	api.SecureUserCommand(HubKeyPlayerUpdateUsername, pc.PlayerUpdateUsernameHandler)
@@ -83,6 +85,26 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyGenOneTimeToken, pc.GenOneTimeToken)
 
 	return pc
+}
+
+type PlayerQueueStatus struct {
+	TotalQueued int64 `json:"total_queued"`
+	QueueLimit  int64 `json:"queue_limit"`
+}
+
+const HubKeyPlayerQueueStatus = "PLAYER:QUEUE:STATUS"
+
+func (pc *PlayerController) PlayerQueueStatusHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	queued, err := db.GetPlayerQueueCount(user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get player queue status.")
+	}
+
+	reply(&PlayerQueueStatus{
+		TotalQueued: queued,
+		QueueLimit:  int64(db.GetIntWithDefault(db.KeyPlayerQueueLimit, 10)),
+	})
+	return nil
 }
 
 type UserUpdatedRequest struct {

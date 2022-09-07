@@ -58,6 +58,8 @@ const HubKeyPlayerQuestProgressions = "PLAYER:QUEST:PROGRESSIONS"
 
 // battle arena
 
+const HubKeyArenaStatusSubscribe = "ARENA:STATUS:UPDATED"
+
 const HubKeyChallengeFundSubscribe = "CHALLENGE:FUND"
 
 const HubKeyBattleArenaListSubscribe = "BATTLE:ARENA:LIST"

@@ -1279,10 +1279,10 @@ github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3Q
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.9.2 h1:eM3BPPxipuQaAoWLkLk98s8BpseA6RiXZN++kpPBv40=
 github.com/ninja-syndicate/hub v1.9.2/go.mod h1:1nWmVtwMNyHwQqDc8q3+N3FxvGD8LKOLtNWztCErgTo=
-github.com/ninja-syndicate/supremacy-bridge v0.1.48 h1:C0oH6BH6ScDrBmm8mtUT2WIaiOHcuyiZ/t6hDa9Y+k4=
-github.com/ninja-syndicate/supremacy-bridge v0.1.48/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/ws v0.17.3 h1:1Ss0vV9oT3tipQlt+lwfl48G3mMvdUi+yIW/AWP60rQ=
-github.com/ninja-syndicate/ws v0.17.3/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
+github.com/ninja-syndicate/supremacy-bridge v0.1.49 h1:yG3mlRL5ws03flnZeiMHhKmfkxe4ehT1G6lKqVUZ4V0=
+github.com/ninja-syndicate/supremacy-bridge v0.1.49/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
+github.com/ninja-syndicate/ws v0.17.4 h1:OayODkpVVkrfrjkCm0z4H7tksWR9eZZq1Iix5q3ESKg=
+github.com/ninja-syndicate/ws v0.17.4/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
@@ -1619,6 +1619,8 @@ github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPU
 github.com/valyala/fasttemplate v1.2.1/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=
 github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a/go.mod h1:v3UYOV9WzVtRmSR+PDvWpU/qWl4Wa5LApYYX4ZtKbio=
 github.com/valyala/tcplisten v1.0.0/go.mod h1:T0xQ8SeCZGxckz9qRXTfG43PvQ/mcWh7FwZEA7Ioqkc=
+github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f h1:Ms+JI9ztNft5uu+SDZq4mWjVkJwrVInU6HxP3y4TovU=
+github.com/victorspringer/http-cache v0.0.0-20220131145941-ef3624e6666f/go.mod h1:V7CEaXWuLs0tH3DNWqJO+GVr8YgiAwRgBh76T4LNSPU=
 github.com/vishvananda/netlink v0.0.0-20181108222139-023a6dafdcdf/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
 github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhgX83tXhKS2B/PRMpOho=

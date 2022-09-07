@@ -45,6 +45,7 @@ const (
 type Battle struct {
 	arena                  *Arena
 	stage                  *atomic.Int32
+	qWaitChan              chan byte
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`
@@ -205,6 +206,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap, battleZones []server.BattleZo
 	btl.Lock()
 	defer btl.Unlock()
 
+	btl.gameMap.Name = gm.Name
 	btl.gameMap.ImageUrl = gm.ImageUrl
 	btl.gameMap.Width = gm.Width
 	btl.gameMap.Height = gm.Height
@@ -2091,11 +2093,7 @@ func (btl *Battle) Load() error {
 	}
 
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
-		if !server.IsDevelopmentEnv() {
-			gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-			btl.arena.isIdle.Store(true)
-			return nil
-		} else {
+		if server.IsDevelopmentEnv() {
 			// build the mechs
 			err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
 			if err != nil {
@@ -2106,6 +2104,11 @@ func (btl *Battle) Load() error {
 			gamelog.L.Trace().Str("func", "Load").Msg("end")
 			return btl.Load()
 		}
+
+		// mark the arena as idle
+		gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+		btl.arena.UpdateArenaStatus(true)
+		return nil
 	}
 
 	for i, bq := range q {
