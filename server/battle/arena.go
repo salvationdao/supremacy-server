@@ -1764,6 +1764,20 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
+	interval := 250 * time.Millisecond
+	reopeningDate, err := time.Parse(time.RFC3339, "2021-09-08T08:00:00+08:00")
+	if err != nil {
+		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
+		return
+	}
+	kvReopeningDate := db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)
+	if server.IsProductionEnv() && time.Now().Before(kvReopeningDate) {
+		interval = kvReopeningDate.Sub(time.Now())
+	}
+
+	// wait until the time is up
+	<-time.NewTimer(interval).C
+
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
