@@ -1,6 +1,8 @@
 -- rename battle columns that are no longer used
-ALTER TABLE battles RENAME COLUMN started_battle_seconds TO started_battle_seconds_old;
-ALTER TABLE battles RENAME COLUMN ended_battle_seconds TO ended_battle_seconds_old;
+ALTER TABLE battles
+    RENAME COLUMN started_battle_seconds TO started_battle_seconds_old;
+ALTER TABLE battles
+    RENAME COLUMN ended_battle_seconds TO ended_battle_seconds_old;
 
 CREATE TABLE battle_lobbies
 (
@@ -11,6 +13,7 @@ CREATE TABLE battle_lobbies
     second_faction_cut       DECIMAL     NOT NULL DEFAULT 0,
     third_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     each_faction_mech_amount INT         NOT NULL DEFAULT 3,
+    password                 TEXT,
 
     -- battle queue
     ready_at                 TIMESTAMPTZ,                  -- order of the battle lobby get in battle arena
@@ -28,6 +31,8 @@ CREATE TABLE battle_lobbies_mechs
     mech_id         UUID        NOT NULL REFERENCES mechs (id),
     PRIMARY KEY (battle_lobby_id, mech_id),
 
+    paid_tx_id      TEXT,
+    refund_tx_id    TEXT,
     owner_id        UUID        NOT NULL REFERENCES players (id),
     faction_id      UUID        NOT NULL REFERENCES factions (id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -41,7 +46,7 @@ CREATE TABLE battle_lobby_bounties
     PRIMARY KEY (battle_lobby_id, offered_by_id, target_mech_id),
 
     amount          NUMERIC(28) NOT NULL DEFAULT 0,
-    payoff_tx_id    TEXT,
+    paid_tx_id      TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at      TIMESTAMPTZ

@@ -28,7 +28,7 @@ type BattleLobbyBounty struct {
 	OfferedByID   string          `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id" toml:"offered_by_id" yaml:"offered_by_id"`
 	TargetMechID  string          `boiler:"target_mech_id" boil:"target_mech_id" json:"target_mech_id" toml:"target_mech_id" yaml:"target_mech_id"`
 	Amount        decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	PayoffTXID    null.String     `boiler:"payoff_tx_id" boil:"payoff_tx_id" json:"payoff_tx_id,omitempty" toml:"payoff_tx_id" yaml:"payoff_tx_id,omitempty"`
+	PaidTXID      null.String     `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
 	CreatedAt     time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt     time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt     null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -42,7 +42,7 @@ var BattleLobbyBountyColumns = struct {
 	OfferedByID   string
 	TargetMechID  string
 	Amount        string
-	PayoffTXID    string
+	PaidTXID      string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
@@ -51,7 +51,7 @@ var BattleLobbyBountyColumns = struct {
 	OfferedByID:   "offered_by_id",
 	TargetMechID:  "target_mech_id",
 	Amount:        "amount",
-	PayoffTXID:    "payoff_tx_id",
+	PaidTXID:      "paid_tx_id",
 	CreatedAt:     "created_at",
 	UpdatedAt:     "updated_at",
 	DeletedAt:     "deleted_at",
@@ -62,7 +62,7 @@ var BattleLobbyBountyTableColumns = struct {
 	OfferedByID   string
 	TargetMechID  string
 	Amount        string
-	PayoffTXID    string
+	PaidTXID      string
 	CreatedAt     string
 	UpdatedAt     string
 	DeletedAt     string
@@ -71,7 +71,7 @@ var BattleLobbyBountyTableColumns = struct {
 	OfferedByID:   "battle_lobby_bounties.offered_by_id",
 	TargetMechID:  "battle_lobby_bounties.target_mech_id",
 	Amount:        "battle_lobby_bounties.amount",
-	PayoffTXID:    "battle_lobby_bounties.payoff_tx_id",
+	PaidTXID:      "battle_lobby_bounties.paid_tx_id",
 	CreatedAt:     "battle_lobby_bounties.created_at",
 	UpdatedAt:     "battle_lobby_bounties.updated_at",
 	DeletedAt:     "battle_lobby_bounties.deleted_at",
@@ -84,7 +84,7 @@ var BattleLobbyBountyWhere = struct {
 	OfferedByID   whereHelperstring
 	TargetMechID  whereHelperstring
 	Amount        whereHelperdecimal_Decimal
-	PayoffTXID    whereHelpernull_String
+	PaidTXID      whereHelpernull_String
 	CreatedAt     whereHelpertime_Time
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
@@ -93,7 +93,7 @@ var BattleLobbyBountyWhere = struct {
 	OfferedByID:   whereHelperstring{field: "\"battle_lobby_bounties\".\"offered_by_id\""},
 	TargetMechID:  whereHelperstring{field: "\"battle_lobby_bounties\".\"target_mech_id\""},
 	Amount:        whereHelperdecimal_Decimal{field: "\"battle_lobby_bounties\".\"amount\""},
-	PayoffTXID:    whereHelpernull_String{field: "\"battle_lobby_bounties\".\"payoff_tx_id\""},
+	PaidTXID:      whereHelpernull_String{field: "\"battle_lobby_bounties\".\"paid_tx_id\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobby_bounties\".\"created_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"battle_lobby_bounties\".\"updated_at\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobby_bounties\".\"deleted_at\""},
@@ -126,9 +126,9 @@ func (*battleLobbyBountyR) NewStruct() *battleLobbyBountyR {
 type battleLobbyBountyL struct{}
 
 var (
-	battleLobbyBountyAllColumns            = []string{"battle_lobby_id", "offered_by_id", "target_mech_id", "amount", "payoff_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyBountyAllColumns            = []string{"battle_lobby_id", "offered_by_id", "target_mech_id", "amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbyBountyColumnsWithoutDefault = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
-	battleLobbyBountyColumnsWithDefault    = []string{"amount", "payoff_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbyBountyColumnsWithDefault    = []string{"amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbyBountyPrimaryKeyColumns     = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
 	battleLobbyBountyGeneratedColumns      = []string{}
 )

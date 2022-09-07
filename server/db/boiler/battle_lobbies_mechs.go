@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,11 +23,13 @@ import (
 
 // BattleLobbiesMech is an object representing the database table.
 type BattleLobbiesMech struct {
-	BattleLobbyID string    `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
-	MechID        string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	OwnerID       string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	FactionID     string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BattleLobbyID string      `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
+	MechID        string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	PaidTXID      null.String `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
+	RefundTXID    null.String `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
+	OwnerID       string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	FactionID     string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battleLobbiesMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleLobbiesMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -35,12 +38,16 @@ type BattleLobbiesMech struct {
 var BattleLobbiesMechColumns = struct {
 	BattleLobbyID string
 	MechID        string
+	PaidTXID      string
+	RefundTXID    string
 	OwnerID       string
 	FactionID     string
 	CreatedAt     string
 }{
 	BattleLobbyID: "battle_lobby_id",
 	MechID:        "mech_id",
+	PaidTXID:      "paid_tx_id",
+	RefundTXID:    "refund_tx_id",
 	OwnerID:       "owner_id",
 	FactionID:     "faction_id",
 	CreatedAt:     "created_at",
@@ -49,12 +56,16 @@ var BattleLobbiesMechColumns = struct {
 var BattleLobbiesMechTableColumns = struct {
 	BattleLobbyID string
 	MechID        string
+	PaidTXID      string
+	RefundTXID    string
 	OwnerID       string
 	FactionID     string
 	CreatedAt     string
 }{
 	BattleLobbyID: "battle_lobbies_mechs.battle_lobby_id",
 	MechID:        "battle_lobbies_mechs.mech_id",
+	PaidTXID:      "battle_lobbies_mechs.paid_tx_id",
+	RefundTXID:    "battle_lobbies_mechs.refund_tx_id",
 	OwnerID:       "battle_lobbies_mechs.owner_id",
 	FactionID:     "battle_lobbies_mechs.faction_id",
 	CreatedAt:     "battle_lobbies_mechs.created_at",
@@ -65,12 +76,16 @@ var BattleLobbiesMechTableColumns = struct {
 var BattleLobbiesMechWhere = struct {
 	BattleLobbyID whereHelperstring
 	MechID        whereHelperstring
+	PaidTXID      whereHelpernull_String
+	RefundTXID    whereHelpernull_String
 	OwnerID       whereHelperstring
 	FactionID     whereHelperstring
 	CreatedAt     whereHelpertime_Time
 }{
 	BattleLobbyID: whereHelperstring{field: "\"battle_lobbies_mechs\".\"battle_lobby_id\""},
 	MechID:        whereHelperstring{field: "\"battle_lobbies_mechs\".\"mech_id\""},
+	PaidTXID:      whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"paid_tx_id\""},
+	RefundTXID:    whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"refund_tx_id\""},
 	OwnerID:       whereHelperstring{field: "\"battle_lobbies_mechs\".\"owner_id\""},
 	FactionID:     whereHelperstring{field: "\"battle_lobbies_mechs\".\"faction_id\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobbies_mechs\".\"created_at\""},
@@ -106,9 +121,9 @@ func (*battleLobbiesMechR) NewStruct() *battleLobbiesMechR {
 type battleLobbiesMechL struct{}
 
 var (
-	battleLobbiesMechAllColumns            = []string{"battle_lobby_id", "mech_id", "owner_id", "faction_id", "created_at"}
+	battleLobbiesMechAllColumns            = []string{"battle_lobby_id", "mech_id", "paid_tx_id", "refund_tx_id", "owner_id", "faction_id", "created_at"}
 	battleLobbiesMechColumnsWithoutDefault = []string{"battle_lobby_id", "mech_id", "owner_id", "faction_id"}
-	battleLobbiesMechColumnsWithDefault    = []string{"created_at"}
+	battleLobbiesMechColumnsWithDefault    = []string{"paid_tx_id", "refund_tx_id", "created_at"}
 	battleLobbiesMechPrimaryKeyColumns     = []string{"battle_lobby_id", "mech_id"}
 	battleLobbiesMechGeneratedColumns      = []string{}
 )

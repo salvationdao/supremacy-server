@@ -31,6 +31,7 @@ type BattleLobby struct {
 	SecondFactionCut      decimal.Decimal `boiler:"second_faction_cut" boil:"second_faction_cut" json:"second_faction_cut" toml:"second_faction_cut" yaml:"second_faction_cut"`
 	ThirdFactionCut       decimal.Decimal `boiler:"third_faction_cut" boil:"third_faction_cut" json:"third_faction_cut" toml:"third_faction_cut" yaml:"third_faction_cut"`
 	EachFactionMechAmount int             `boiler:"each_faction_mech_amount" boil:"each_faction_mech_amount" json:"each_faction_mech_amount" toml:"each_faction_mech_amount" yaml:"each_faction_mech_amount"`
+	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
 	JoinedBattleID        null.String     `boiler:"joined_battle_id" boil:"joined_battle_id" json:"joined_battle_id,omitempty" toml:"joined_battle_id" yaml:"joined_battle_id,omitempty"`
 	FinishedAt            null.Time       `boiler:"finished_at" boil:"finished_at" json:"finished_at,omitempty" toml:"finished_at" yaml:"finished_at,omitempty"`
@@ -50,6 +51,7 @@ var BattleLobbyColumns = struct {
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
+	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
 	FinishedAt            string
@@ -64,6 +66,7 @@ var BattleLobbyColumns = struct {
 	SecondFactionCut:      "second_faction_cut",
 	ThirdFactionCut:       "third_faction_cut",
 	EachFactionMechAmount: "each_faction_mech_amount",
+	Password:              "password",
 	ReadyAt:               "ready_at",
 	JoinedBattleID:        "joined_battle_id",
 	FinishedAt:            "finished_at",
@@ -80,6 +83,7 @@ var BattleLobbyTableColumns = struct {
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
+	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
 	FinishedAt            string
@@ -94,6 +98,7 @@ var BattleLobbyTableColumns = struct {
 	SecondFactionCut:      "battle_lobbies.second_faction_cut",
 	ThirdFactionCut:       "battle_lobbies.third_faction_cut",
 	EachFactionMechAmount: "battle_lobbies.each_faction_mech_amount",
+	Password:              "battle_lobbies.password",
 	ReadyAt:               "battle_lobbies.ready_at",
 	JoinedBattleID:        "battle_lobbies.joined_battle_id",
 	FinishedAt:            "battle_lobbies.finished_at",
@@ -112,6 +117,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut      whereHelperdecimal_Decimal
 	ThirdFactionCut       whereHelperdecimal_Decimal
 	EachFactionMechAmount whereHelperint
+	Password              whereHelpernull_String
 	ReadyAt               whereHelpernull_Time
 	JoinedBattleID        whereHelpernull_String
 	FinishedAt            whereHelpernull_Time
@@ -126,6 +132,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut:      whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"second_faction_cut\""},
 	ThirdFactionCut:       whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"third_faction_cut\""},
 	EachFactionMechAmount: whereHelperint{field: "\"battle_lobbies\".\"each_faction_mech_amount\""},
+	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
 	JoinedBattleID:        whereHelpernull_String{field: "\"battle_lobbies\".\"joined_battle_id\""},
 	FinishedAt:            whereHelpernull_Time{field: "\"battle_lobbies\".\"finished_at\""},
@@ -164,9 +171,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )

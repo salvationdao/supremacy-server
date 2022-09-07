@@ -4,14 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
+	"time"
 )
 
 func BattleLobbyController(api *API) {
@@ -131,20 +135,58 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			return terror.Error(err, "Failed to create battle lobby")
 		}
 
-		// insert battle mechs
-		for _, mechID := range req.Payload.MechIDs {
-			blm := boiler.BattleLobbiesMech{
-				BattleLobbyID: bl.ID,
-				MechID:        mechID,
-				OwnerID:       user.ID,
-				FactionID:     factionID,
+		if len(req.Payload.MechIDs) > 0 {
+			refundFuncs := []func(){}
+
+			// check user balance
+			userBalance := api.Passport.UserBalanceGet(uuid.FromStringOrNil(user.ID))
+			if userBalance.LessThan(bl.EntryFee.Mul(decimal.NewFromInt(int64(len(req.Payload.MechIDs))))) {
+				return terror.Error(fmt.Errorf("not enough fund"), "Not enough fund to queue the mechs")
 			}
 
-			err = blm.Insert(tx, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to insert battle lobbies mech")
-				return terror.Error(err, "Failed to insert mechs into battle lobby.")
+			// insert battle mechs
+			for _, mechID := range req.Payload.MechIDs {
+				blm := boiler.BattleLobbiesMech{
+					BattleLobbyID: bl.ID,
+					MechID:        mechID,
+					OwnerID:       user.ID,
+					FactionID:     factionID,
+				}
+
+				if bl.EntryFee.GreaterThan(decimal.Zero) {
+					entryTxID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+						FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+						ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+						Amount:               bl.EntryFee.StringFixed(0),
+						TransactionReference: server.TransactionReference(fmt.Sprintf("enter_battle_lobby_fee|%s|%s|%d", mechID, bl.ID, time.Now().UnixNano())),
+						Group:                string(server.TransactionGroupSupremacy),
+						SubGroup:             string(server.TransactionGroupBattle),
+						Description:          "entry fee of joining battle lobby.",
+					})
+					if err != nil {
+						gamelog.L.Error().
+							Str("player_id", user.ID).
+							Str("mech id", mechID).
+							Str("amount", bl.EntryFee.StringFixed(0)).
+							Err(err).Msg("Failed to pay sups on entering battle lobby.")
+						return terror.Error(err, "Failed to pay sups on entering battle lobby.")
+					}
+					blm.PaidTXID = entryTxID
+
+					// append refund func
+					refundFuncs = append(refundFuncs, func() {
+						// TODO: refund function
+					})
+				}
+
+				err = blm.Insert(tx, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to insert battle lobbies mech")
+					return terror.Error(err, "Failed to insert mechs into battle lobby.")
+				}
+
 			}
+
 		}
 
 		err = tx.Commit()
