@@ -35,12 +35,12 @@ type BlueprintPlayerAbility struct {
 	RarityWeight             int       `boiler:"rarity_weight" boil:"rarity_weight" json:"rarity_weight" toml:"rarity_weight" yaml:"rarity_weight"`
 	InventoryLimit           int       `boiler:"inventory_limit" boil:"inventory_limit" json:"inventory_limit" toml:"inventory_limit" yaml:"inventory_limit"`
 	CooldownSeconds          int       `boiler:"cooldown_seconds" boil:"cooldown_seconds" json:"cooldown_seconds" toml:"cooldown_seconds" yaml:"cooldown_seconds"`
+	DeletedAt                null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	DisplayOnMiniMap         bool      `boiler:"display_on_mini_map" boil:"display_on_mini_map" json:"display_on_mini_map" toml:"display_on_mini_map" yaml:"display_on_mini_map"`
 	LaunchingDelaySeconds    int       `boiler:"launching_delay_seconds" boil:"launching_delay_seconds" json:"launching_delay_seconds" toml:"launching_delay_seconds" yaml:"launching_delay_seconds"`
 	MiniMapDisplayEffectType string    `boiler:"mini_map_display_effect_type" boil:"mini_map_display_effect_type" json:"mini_map_display_effect_type" toml:"mini_map_display_effect_type" yaml:"mini_map_display_effect_type"`
 	MechDisplayEffectType    string    `boiler:"mech_display_effect_type" boil:"mech_display_effect_type" json:"mech_display_effect_type" toml:"mech_display_effect_type" yaml:"mech_display_effect_type"`
 	AnimationDurationSeconds int       `boiler:"animation_duration_seconds" boil:"animation_duration_seconds" json:"animation_duration_seconds" toml:"animation_duration_seconds" yaml:"animation_duration_seconds"`
-	DeletedAt                null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -59,12 +59,12 @@ var BlueprintPlayerAbilityColumns = struct {
 	RarityWeight             string
 	InventoryLimit           string
 	CooldownSeconds          string
+	DeletedAt                string
 	DisplayOnMiniMap         string
 	LaunchingDelaySeconds    string
 	MiniMapDisplayEffectType string
 	MechDisplayEffectType    string
 	AnimationDurationSeconds string
-	DeletedAt                string
 }{
 	ID:                       "id",
 	GameClientAbilityID:      "game_client_ability_id",
@@ -78,12 +78,12 @@ var BlueprintPlayerAbilityColumns = struct {
 	RarityWeight:             "rarity_weight",
 	InventoryLimit:           "inventory_limit",
 	CooldownSeconds:          "cooldown_seconds",
+	DeletedAt:                "deleted_at",
 	DisplayOnMiniMap:         "display_on_mini_map",
 	LaunchingDelaySeconds:    "launching_delay_seconds",
 	MiniMapDisplayEffectType: "mini_map_display_effect_type",
 	MechDisplayEffectType:    "mech_display_effect_type",
 	AnimationDurationSeconds: "animation_duration_seconds",
-	DeletedAt:                "deleted_at",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -99,12 +99,12 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	RarityWeight             string
 	InventoryLimit           string
 	CooldownSeconds          string
+	DeletedAt                string
 	DisplayOnMiniMap         string
 	LaunchingDelaySeconds    string
 	MiniMapDisplayEffectType string
 	MechDisplayEffectType    string
 	AnimationDurationSeconds string
-	DeletedAt                string
 }{
 	ID:                       "blueprint_player_abilities.id",
 	GameClientAbilityID:      "blueprint_player_abilities.game_client_ability_id",
@@ -118,12 +118,12 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	RarityWeight:             "blueprint_player_abilities.rarity_weight",
 	InventoryLimit:           "blueprint_player_abilities.inventory_limit",
 	CooldownSeconds:          "blueprint_player_abilities.cooldown_seconds",
+	DeletedAt:                "blueprint_player_abilities.deleted_at",
 	DisplayOnMiniMap:         "blueprint_player_abilities.display_on_mini_map",
 	LaunchingDelaySeconds:    "blueprint_player_abilities.launching_delay_seconds",
 	MiniMapDisplayEffectType: "blueprint_player_abilities.mini_map_display_effect_type",
 	MechDisplayEffectType:    "blueprint_player_abilities.mech_display_effect_type",
 	AnimationDurationSeconds: "blueprint_player_abilities.animation_duration_seconds",
-	DeletedAt:                "blueprint_player_abilities.deleted_at",
 }
 
 // Generated where
@@ -141,12 +141,12 @@ var BlueprintPlayerAbilityWhere = struct {
 	RarityWeight             whereHelperint
 	InventoryLimit           whereHelperint
 	CooldownSeconds          whereHelperint
+	DeletedAt                whereHelpernull_Time
 	DisplayOnMiniMap         whereHelperbool
 	LaunchingDelaySeconds    whereHelperint
 	MiniMapDisplayEffectType whereHelperstring
 	MechDisplayEffectType    whereHelperstring
 	AnimationDurationSeconds whereHelperint
-	DeletedAt                whereHelpernull_Time
 }{
 	ID:                       whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID:      whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -160,12 +160,12 @@ var BlueprintPlayerAbilityWhere = struct {
 	RarityWeight:             whereHelperint{field: "\"blueprint_player_abilities\".\"rarity_weight\""},
 	InventoryLimit:           whereHelperint{field: "\"blueprint_player_abilities\".\"inventory_limit\""},
 	CooldownSeconds:          whereHelperint{field: "\"blueprint_player_abilities\".\"cooldown_seconds\""},
+	DeletedAt:                whereHelpernull_Time{field: "\"blueprint_player_abilities\".\"deleted_at\""},
 	DisplayOnMiniMap:         whereHelperbool{field: "\"blueprint_player_abilities\".\"display_on_mini_map\""},
 	LaunchingDelaySeconds:    whereHelperint{field: "\"blueprint_player_abilities\".\"launching_delay_seconds\""},
 	MiniMapDisplayEffectType: whereHelperstring{field: "\"blueprint_player_abilities\".\"mini_map_display_effect_type\""},
 	MechDisplayEffectType:    whereHelperstring{field: "\"blueprint_player_abilities\".\"mech_display_effect_type\""},
 	AnimationDurationSeconds: whereHelperint{field: "\"blueprint_player_abilities\".\"animation_duration_seconds\""},
-	DeletedAt:                whereHelpernull_Time{field: "\"blueprint_player_abilities\".\"deleted_at\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
@@ -195,9 +195,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "deleted_at"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "deleted_at", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds", "deleted_at"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at", "rarity_weight", "inventory_limit", "cooldown_seconds", "deleted_at", "display_on_mini_map", "launching_delay_seconds", "mini_map_display_effect_type", "mech_display_effect_type", "animation_duration_seconds"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )
