@@ -1281,8 +1281,8 @@ github.com/ninja-syndicate/hub v1.9.2 h1:eM3BPPxipuQaAoWLkLk98s8BpseA6RiXZN++kpP
 github.com/ninja-syndicate/hub v1.9.2/go.mod h1:1nWmVtwMNyHwQqDc8q3+N3FxvGD8LKOLtNWztCErgTo=
 github.com/ninja-syndicate/supremacy-bridge v0.1.49 h1:yG3mlRL5ws03flnZeiMHhKmfkxe4ehT1G6lKqVUZ4V0=
 github.com/ninja-syndicate/supremacy-bridge v0.1.49/go.mod h1:Oq2bsCSyiza9gAg/D542GVkAfW4vSMn29SV/4mi1MWA=
-github.com/ninja-syndicate/ws v0.17.3 h1:1Ss0vV9oT3tipQlt+lwfl48G3mMvdUi+yIW/AWP60rQ=
-github.com/ninja-syndicate/ws v0.17.3/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
+github.com/ninja-syndicate/ws v0.17.4 h1:OayODkpVVkrfrjkCm0z4H7tksWR9eZZq1Iix5q3ESKg=
+github.com/ninja-syndicate/ws v0.17.4/go.mod h1:KmSuZ77eYtaByuCBV3bDQ7y97CPuQ0ayW+uQIeDpE7o=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
