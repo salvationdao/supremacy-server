@@ -33,44 +33,6 @@ CREATE TABLE battle_lobbies_mechs
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- lobby mech trigger
-CREATE OR REPLACE FUNCTION check_lobby_mech() RETURNS TRIGGER AS
-$check_lobby_mech$
-DECLARE
-    already_join_lobby BOOLEAN DEFAULT FALSE;
-    no_vacancy      BOOLEAN DEFAULT FALSE;
-BEGIN
-
-    -- check already join lobby
-    SELECT (COALESCE((SELECT TRUE
-                      FROM battle_lobbies_mechs blm
-                               INNER JOIN battle_lobbies bl ON bl.id = blm.battle_lobby_id AND bl.finished_at ISNULL
-                      WHERE blm.mech_id = new.mech_id), FALSE))
-    INTO already_join_lobby;
-    IF already_join_lobby THEN RAISE EXCEPTION 'already join another lobby'; END IF;
-
-    -- check if there is vacancy left
-    SELECT (SELECT lb.each_faction_mech_amount = COALESCE((SELECT COUNT(*)
-                                                           FROM battle_lobbies_mechs blm
-                                                           WHERE blm.battle_lobby_id = new.battle_lobby_id
-                                                             AND blm.faction_id = new.faction_id), 0)
-            FROM battle_lobbies lb
-            WHERE lb.id = new.battle_lobby_id)
-    INTO no_vacancy;
-    IF no_vacancy THEN RAISE EXCEPTION 'no vacancy'; END IF;
-
-    RETURN new;
-END;
-$check_lobby_mech$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_check_lobby_mech ON battle_lobbies_mechs;
-
-CREATE TRIGGER trigger_check_lobby_mech
-    BEFORE INSERT
-    ON battle_lobbies_mechs
-    FOR EACH ROW
-EXECUTE PROCEDURE check_lobby_mech();
-
 CREATE TABLE battle_lobby_bounties
 (
     battle_lobby_id UUID        NOT NULL REFERENCES battle_lobbies (id),
