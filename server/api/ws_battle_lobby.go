@@ -7,6 +7,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -44,7 +45,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	}
 
 	// NOTE: three mech per faction by default
-	if len(req.Payload.MechIDs) > 3 {
+	if len(req.Payload.MechIDs) > db.FACTION_MECH_LIMIT {
 		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
 	}
 
@@ -107,6 +108,50 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 	// start process
 	err = api.ArenaManager.SendBattleLobbyFunc(func() error {
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+			return terror.Error(err, "Failed to create battle lobby.")
+		}
+
+		defer tx.Rollback()
+
+		bl := boiler.BattleLobby{
+			HostByID:              user.ID,
+			EntryFee:              req.Payload.EntryFee,
+			FirstFactionCut:       req.Payload.FirstFactionCut,
+			SecondFactionCut:      req.Payload.SecondFactionCut,
+			ThirdFactionCut:       req.Payload.ThirdFactionCut,
+			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
+		}
+
+		err = bl.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby", bl).Msg("Failed to insert battle lobby")
+			return terror.Error(err, "Failed to create battle lobby")
+		}
+
+		// insert battle mechs
+		for _, mechID := range req.Payload.MechIDs {
+			blm := boiler.BattleLobbiesMech{
+				BattleLobbyID: bl.ID,
+				MechID:        mechID,
+				OwnerID:       user.ID,
+				FactionID:     factionID,
+			}
+
+			err = blm.Insert(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to insert battle lobbies mech")
+				return terror.Error(err, "Failed to insert mechs into battle lobby.")
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+			return terror.Error(err, "Failed to create battle lobby.")
+		}
 
 		return nil
 	})
