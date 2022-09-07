@@ -441,6 +441,14 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}(user.ID, deployedMechIDs)
 	}
 
+	idleArenas := am.IdleArenas()
+	if len(idleArenas) > 0 {
+		for _, arena := range idleArenas {
+			// start new battle if arena is idle
+			arena.BeginBattle()
+		}
+	}
+
 	// Send updated battle queue status to all subscribers
 	go CalcNextQueueStatus(factionID)
 
