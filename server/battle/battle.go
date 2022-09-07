@@ -2092,16 +2092,6 @@ func (btl *Battle) Load() error {
 		return err
 	}
 
-	reopeningDate, err := time.Parse(time.RFC3339, "2021-09-08T08:00:00+08:00")
-	if err != nil {
-		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
-		return err
-	}
-	kvReopeningDate := db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)
-	if server.IsProductionEnv() && time.Now().UTC().Before(kvReopeningDate.UTC()) {
-		return btl.Load()
-	}
-
 	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
 		if server.IsDevelopmentEnv() {
 			// build the mechs
