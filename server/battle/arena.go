@@ -1881,21 +1881,24 @@ func (arena *Arena) BeginBattle() {
 		gameMap.Name = lastBattle.R.GameMap.Name
 
 		// stops recording for already running previous recording
-		go func() {
+		go func(battleID, arenaID string) {
+			reRunBattle, err := boiler.FindBattle(gamedb.StdConn, battleID)
+			if err != nil {
+				return
+			}
 			prevReplay, err := boiler.BattleReplays(
-				boiler.BattleReplayWhere.BattleID.EQ(battle.ID),
-				boiler.BattleReplayWhere.ArenaID.EQ(arena.ID),
+				boiler.BattleReplayWhere.BattleID.EQ(battleID),
+				boiler.BattleReplayWhere.ArenaID.EQ(arenaID),
 				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
 			).One(gamedb.StdConn)
 			if err != nil {
 				return
 			}
-
 			// url request
-			err = replay.RecordReplayRequest(battle, prevReplay.ID, replay.StopRecording)
+			err = replay.RecordReplayRequest(reRunBattle, prevReplay.ID, replay.StopRecording)
 			if err != nil {
 				if err != replay.ErrDontLogRecordingStatus {
-					gamelog.L.Error().Err(err).Str("battle_id", battle.ID).Str("replay_id", prevReplay.ID).Msg("Failed to start recording")
+					gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to start recording")
 					return
 				}
 				return
@@ -1909,7 +1912,7 @@ func (arena *Arena) BeginBattle() {
 				gamelog.L.Error().Str("battle_id", prevReplay.BattleID).Str("replay_id", prevReplay.ID).Err(err).Msg("Failed to update recording status to STOPPED while starting battle")
 				return
 			}
-		}()
+		}(battle.ID, arena.ID)
 
 		inserted = true
 	}
