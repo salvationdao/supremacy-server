@@ -33,6 +33,8 @@ type BattleReplay struct {
 	StoppedAt        null.Time   `boiler:"stopped_at" boil:"stopped_at" json:"stopped_at,omitempty" toml:"stopped_at" yaml:"stopped_at,omitempty"`
 	BattleEvents     null.JSON   `boiler:"battle_events" boil:"battle_events" json:"battle_events,omitempty" toml:"battle_events" yaml:"battle_events,omitempty"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IntroEndedAt     null.Time   `boiler:"intro_ended_at" boil:"intro_ended_at" json:"intro_ended_at,omitempty" toml:"intro_ended_at" yaml:"intro_ended_at,omitempty"`
+	DisabledAt       null.Time   `boiler:"disabled_at" boil:"disabled_at" json:"disabled_at,omitempty" toml:"disabled_at" yaml:"disabled_at,omitempty"`
 
 	R *battleReplayR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleReplayL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +51,8 @@ var BattleReplayColumns = struct {
 	StoppedAt        string
 	BattleEvents     string
 	CreatedAt        string
+	IntroEndedAt     string
+	DisabledAt       string
 }{
 	ID:               "id",
 	StreamID:         "stream_id",
@@ -60,6 +64,8 @@ var BattleReplayColumns = struct {
 	StoppedAt:        "stopped_at",
 	BattleEvents:     "battle_events",
 	CreatedAt:        "created_at",
+	IntroEndedAt:     "intro_ended_at",
+	DisabledAt:       "disabled_at",
 }
 
 var BattleReplayTableColumns = struct {
@@ -73,6 +79,8 @@ var BattleReplayTableColumns = struct {
 	StoppedAt        string
 	BattleEvents     string
 	CreatedAt        string
+	IntroEndedAt     string
+	DisabledAt       string
 }{
 	ID:               "battle_replays.id",
 	StreamID:         "battle_replays.stream_id",
@@ -84,6 +92,8 @@ var BattleReplayTableColumns = struct {
 	StoppedAt:        "battle_replays.stopped_at",
 	BattleEvents:     "battle_replays.battle_events",
 	CreatedAt:        "battle_replays.created_at",
+	IntroEndedAt:     "battle_replays.intro_ended_at",
+	DisabledAt:       "battle_replays.disabled_at",
 }
 
 // Generated where
@@ -123,6 +133,8 @@ var BattleReplayWhere = struct {
 	StoppedAt        whereHelpernull_Time
 	BattleEvents     whereHelpernull_JSON
 	CreatedAt        whereHelpertime_Time
+	IntroEndedAt     whereHelpernull_Time
+	DisabledAt       whereHelpernull_Time
 }{
 	ID:               whereHelperstring{field: "\"battle_replays\".\"id\""},
 	StreamID:         whereHelpernull_String{field: "\"battle_replays\".\"stream_id\""},
@@ -134,6 +146,8 @@ var BattleReplayWhere = struct {
 	StoppedAt:        whereHelpernull_Time{field: "\"battle_replays\".\"stopped_at\""},
 	BattleEvents:     whereHelpernull_JSON{field: "\"battle_replays\".\"battle_events\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"battle_replays\".\"created_at\""},
+	IntroEndedAt:     whereHelpernull_Time{field: "\"battle_replays\".\"intro_ended_at\""},
+	DisabledAt:       whereHelpernull_Time{field: "\"battle_replays\".\"disabled_at\""},
 }
 
 // BattleReplayRels is where relationship names are stored.
@@ -160,9 +174,9 @@ func (*battleReplayR) NewStruct() *battleReplayR {
 type battleReplayL struct{}
 
 var (
-	battleReplayAllColumns            = []string{"id", "stream_id", "arena_id", "battle_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at"}
+	battleReplayAllColumns            = []string{"id", "stream_id", "arena_id", "battle_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at", "intro_ended_at", "disabled_at"}
 	battleReplayColumnsWithoutDefault = []string{"arena_id", "battle_id"}
-	battleReplayColumnsWithDefault    = []string{"id", "stream_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at"}
+	battleReplayColumnsWithDefault    = []string{"id", "stream_id", "is_complete_battle", "recording_status", "started_at", "stopped_at", "battle_events", "created_at", "intro_ended_at", "disabled_at"}
 	battleReplayPrimaryKeyColumns     = []string{"id"}
 	battleReplayGeneratedColumns      = []string{}
 )

@@ -29,21 +29,24 @@ func ReplayList(
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.CreatedAt),
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.StoppedAt),
 			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.StartedAt),
+			qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.DisabledAt),
 		),
 		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
 		boiler.BattleReplayWhere.StreamID.IsNotNull(),
+		boiler.BattleReplayWhere.DisabledAt.IsNull(),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s ON %s = %s AND %s > 0",
+				boiler.TableNames.Battles,
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.ID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.BattleNumber),
+			),
+		),
 	)
 
 	if Search != "" {
 		queryMods = append(queryMods,
-			qm.InnerJoin(
-				fmt.Sprintf(
-					"%s ON %s = %s",
-					boiler.TableNames.Battles,
-					qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.ID),
-					qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
-				),
-			),
 			qm.Where(
 				fmt.Sprintf(
 					"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s||%s::TEXT ILIKE ?)",

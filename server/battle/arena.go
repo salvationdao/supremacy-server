@@ -1558,6 +1558,9 @@ func (arena *Arena) GameClientJsonDataParser() {
 			arena.BeginBattle()
 
 		case "BATTLE:INTRO_FINISHED":
+			if btl.replaySession.ReplaySession != nil {
+				btl.replaySession.ReplaySession.IntroEndedAt = null.TimeFrom(time.Now())
+			}
 			btl.start()
 		case "BATTLE:WAR_MACHINE_DESTROYED":
 			// do not process, if battle already ended
@@ -1891,6 +1894,42 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
 		gameMap.Name = lastBattle.R.GameMap.Name
+
+		// stops recording for already running previous recording
+		go func(battleID, arenaID string) {
+			reRunBattle, err := boiler.FindBattle(gamedb.StdConn, battleID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to get battle while stopping recording")
+				return
+			}
+			prevReplay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(battleID),
+				boiler.BattleReplayWhere.ArenaID.EQ(arenaID),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
+			).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to find previous replay")
+				return
+			}
+			// url request
+			err = replay.RecordReplayRequest(reRunBattle, prevReplay.ID, replay.StopRecording)
+			if err != nil {
+				if err != replay.ErrDontLogRecordingStatus {
+					gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to stop recording")
+					return
+				}
+				return
+			}
+
+			// update start time
+			prevReplay.StoppedAt = null.TimeFrom(time.Now())
+			prevReplay.RecordingStatus = boiler.RecordingStatusSTOPPED
+			_, err = prevReplay.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", prevReplay.BattleID).Str("replay_id", prevReplay.ID).Err(err).Msg("Failed to update recording status to STOPPED while starting battle")
+				return
+			}
+		}(battle.ID, arena.ID)
 
 		inserted = true
 	}
