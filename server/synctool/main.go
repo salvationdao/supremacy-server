@@ -1146,8 +1146,6 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			continue
 		}
 
-		fmt.Println(record[13])
-
 		if record[13] != "" {
 			gameAbility.DeletedAt = null.TimeFrom(time.Now())
 		}

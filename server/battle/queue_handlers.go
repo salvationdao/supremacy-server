@@ -441,6 +441,19 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		}(user.ID, deployedMechIDs)
 	}
 
+	reopeningDate, err := time.Parse(time.RFC3339, "2022-09-08T08:00:00+08:00")
+	if err != nil {
+		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
+		return terror.Error(err, "Failed to parse reopen date.")
+	}
+	// restart idle arenas, if it is not prod env or the time has passed reopen date
+	if !server.IsProductionEnv() || time.Now().After(db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)) {
+		for _, arena := range am.IdleArenas() {
+			// trigger begin battle when arena is idle
+			go arena.BeginBattle()
+		}
+	}
+
 	// Send updated battle queue status to all subscribers
 	go CalcNextQueueStatus(factionID)
 
