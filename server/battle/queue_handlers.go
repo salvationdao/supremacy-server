@@ -446,7 +446,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		gamelog.L.Error().Str("func", "Load").Msg("failed to get reopening date time")
 		return terror.Error(err, "Failed to parse reopen date.")
 	}
-	//restart idle arenas it is not prod env or time has passed reopen date
+	// restart idle arenas, if it is not prod env or the time has passed reopen date
 	if !server.IsProductionEnv() || time.Now().After(db.GetTimeWithDefault(db.KeyProdReopeningDate, reopeningDate)) {
 		for _, arena := range am.IdleArenas() {
 			// trigger begin battle when arena is idle
