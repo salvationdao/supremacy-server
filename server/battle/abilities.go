@@ -393,7 +393,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		ID:                     ga.ID,
 		GameClientAbilityID:    byte(ga.GameClientAbilityID),
 		ImageUrl:               ga.ImageURL,
-		Description:            ga.Description,
+		Description:            ba.Description,
 		FactionID:              ga.FactionID,
 		Label:                  ga.Label,
 		Colour:                 ga.Colour,
