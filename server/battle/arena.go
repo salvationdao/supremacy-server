@@ -1008,7 +1008,7 @@ func (am *ArenaManager) PublicBattleAbilityUpdateSubscribeHandler(ctx context.Co
 				ID:                     ga.ID,
 				GameClientAbilityID:    byte(ga.GameClientAbilityID),
 				ImageUrl:               ga.ImageURL,
-				Description:            ga.Description,
+				Description:            ba.Description,
 				FactionID:              ga.FactionID,
 				Label:                  ga.Label,
 				Colour:                 ga.Colour,
