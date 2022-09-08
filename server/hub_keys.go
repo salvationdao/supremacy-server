@@ -68,3 +68,7 @@ const HubKeyBattleArenaClosedSubscribe = "BATTLE:ARENA:CLOSED"
 // battle abilities
 
 const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
+
+// battle lobby
+
+const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"

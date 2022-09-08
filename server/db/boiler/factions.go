@@ -592,6 +592,7 @@ func (o *Faction) BattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_lobbies_mechs\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobbies_mechs\".\"deleted_at\""),
 	)
 
 	query := BattleLobbiesMechs(queryMods...)
@@ -1508,6 +1509,7 @@ func (factionL) LoadBattleLobbiesMechs(e boil.Executor, singular bool, maybeFact
 	query := NewQuery(
 		qm.From(`battle_lobbies_mechs`),
 		qm.WhereIn(`battle_lobbies_mechs.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobbies_mechs.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

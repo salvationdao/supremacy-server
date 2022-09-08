@@ -75,8 +75,6 @@ func (am *ArenaManager) RepairOfferCleaner() {
 			}
 
 		case <-repairBayTicker.C:
-			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
-
 			now := time.Now()
 			pms, err := boiler.PlayerMechRepairSlots(
 				boiler.PlayerMechRepairSlotWhere.Status.EQ(boiler.RepairSlotStatusREPAIRING),
@@ -88,6 +86,12 @@ func (am *ArenaManager) RepairOfferCleaner() {
 				continue
 			}
 
+			// skip, if there is no completed repair slot
+			if pms == nil {
+				continue
+			}
+
+			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 			wg := sync.WaitGroup{}
 			for _, pm := range pms {
 				wg.Add(1)

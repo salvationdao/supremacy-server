@@ -61,7 +61,8 @@ type ArenaManager struct {
 	NewBattleChan            chan *NewBattleChan
 	SystemMessagingManager   *system_messages.SystemMessagingManager
 	RepairOfferFuncChan      chan func()
-	BattleLobbyFuncMx        sync.Mutex
+	RepairFuncMx             sync.Mutex
+	BattleQueueFuncMx        sync.Mutex
 	QuestManager             *quest.System
 
 	arenas           map[string]*Arena
@@ -93,7 +94,7 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 		NewBattleChan:            make(chan *NewBattleChan),
 		SystemMessagingManager:   opts.SystemMessagingManager,
 		RepairOfferFuncChan:      make(chan func()),
-		BattleLobbyFuncMx:        sync.Mutex{},
+		BattleQueueFuncMx:        sync.Mutex{},
 		QuestManager:             opts.QuestManager,
 		arenas:                   make(map[string]*Arena),
 
