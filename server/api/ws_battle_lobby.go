@@ -405,6 +405,112 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		// broadcast battle lobby
 		go api.ArenaManager.BroadcastBattleLobbyUpdate(bl.ID)
 
+		// clean up repair slots, if any mechs are successfully deployed and in the bay
+		go func(playerID string, mechID string) {
+			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
+			now := time.Now()
+			_ = api.ArenaManager.SendRepairFunc(func() error {
+				tx, err = gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
+					return terror.Error(err, "Failed to start db transaction")
+				}
+
+				defer tx.Rollback()
+
+				count, err := boiler.PlayerMechRepairSlots(
+					boiler.PlayerMechRepairSlotWhere.MechID.EQ(mechID),
+					boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+				).UpdateAll(
+					tx,
+					boiler.M{
+						boiler.PlayerMechRepairSlotColumns.Status:         boiler.RepairSlotStatusDONE,
+						boiler.PlayerMechRepairSlotColumns.SlotNumber:     0,
+						boiler.PlayerMechRepairSlotColumns.NextRepairTime: null.TimeFromPtr(nil),
+					},
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("mech id list", mechID).Msg("Failed to update repair slot.")
+					return terror.Error(err, "Failed to update repair slot")
+				}
+
+				// update remain slots and broadcast
+				resp := []*boiler.PlayerMechRepairSlot{}
+				if count > 0 {
+					pms, err := boiler.PlayerMechRepairSlots(
+						boiler.PlayerMechRepairSlotWhere.PlayerID.EQ(playerID),
+						boiler.PlayerMechRepairSlotWhere.Status.NEQ(boiler.RepairSlotStatusDONE),
+						qm.OrderBy(boiler.PlayerMechRepairSlotColumns.SlotNumber),
+					).All(tx)
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to load player mech repair slots.")
+						return terror.Error(err, "Failed to load repair slots")
+					}
+
+					for i, pm := range pms {
+						shouldUpdate := false
+
+						// check slot number
+						if pm.SlotNumber != i+1 {
+							pm.SlotNumber = i + 1
+							shouldUpdate = true
+						}
+
+						if pm.SlotNumber == 1 {
+							if pm.Status != boiler.RepairSlotStatusREPAIRING {
+								pm.Status = boiler.RepairSlotStatusREPAIRING
+								shouldUpdate = true
+							}
+
+							if !pm.NextRepairTime.Valid {
+								pm.NextRepairTime = null.TimeFrom(now.Add(time.Duration(nextRepairDurationSeconds) * time.Second))
+								shouldUpdate = true
+							}
+						} else {
+							if pm.Status != boiler.RepairSlotStatusPENDING {
+								pm.Status = boiler.RepairSlotStatusPENDING
+								shouldUpdate = true
+							}
+
+							if pm.NextRepairTime.Valid {
+								pm.NextRepairTime = null.TimeFromPtr(nil)
+								shouldUpdate = true
+							}
+						}
+
+						if shouldUpdate {
+							_, err = pm.Update(tx,
+								boil.Whitelist(
+									boiler.PlayerMechRepairSlotColumns.SlotNumber,
+									boiler.PlayerMechRepairSlotColumns.Status,
+									boiler.PlayerMechRepairSlotColumns.NextRepairTime,
+								),
+							)
+							if err != nil {
+								gamelog.L.Error().Err(err).Interface("repair slot", pm).Msg("Failed to update repair slot.")
+								return terror.Error(err, "Failed to update repair slot")
+							}
+						}
+
+						resp = append(resp, pm)
+					}
+				}
+
+				err = tx.Commit()
+				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
+					return terror.Error(err, "Failed to commit db transaction.")
+				}
+
+				// broadcast new list, if changed
+				if count > 0 {
+					ws.PublishMessage(fmt.Sprintf("/secure/user/%s/repair_bay", playerID), server.HubKeyMechRepairSlots, resp)
+				}
+
+				return nil
+			})
+		}(user.ID, req.Payload.MechID)
+
 		return nil
 	})
 	if err != nil {

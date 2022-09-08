@@ -87,7 +87,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 	deployedMechIDs := []string{}
 	now := time.Now()
-	nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 
 	err = am.SendBattleQueueFunc(func() error {
 		// check mech already in queue
@@ -253,6 +252,7 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 		// clean up repair slots, if any mechs are successfully deployed and in the bay
 		if len(deployedMechIDs) > 0 {
+			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
 			// wrap it in go routine, the channel will not slow down the deployment process
 			go func(playerID string, mechIDs []string) {
 				_ = am.SendRepairFunc(func() error {
