@@ -15,11 +15,11 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) []*BattleLobby {
 	resp := []*BattleLobby{}
 
 	for _, bl := range bls {
-		copiedBL := *bl
+		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
-			BattleLobby: &copiedBL,
+			BattleLobby: &copiedBattleLobby,
 			Mechs:       []*boiler.BattleLobbiesMech{},
-			IsPrivate:   copiedBL.Password.Valid,
+			IsPrivate:   copiedBattleLobby.Password.Valid,
 		}
 
 		// omit password
