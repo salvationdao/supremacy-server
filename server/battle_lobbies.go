@@ -7,6 +7,8 @@ import (
 
 type BattleLobby struct {
 	*boiler.BattleLobby
+	HostBy    *boiler.Player
+	GameMap   *boiler.GameMap
 	Mechs     []*boiler.BattleLobbiesMech `json:"mechs"`
 	IsPrivate bool                        `json:"is_private"`
 }
@@ -28,6 +30,22 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) []*BattleLobby {
 		if bl.R != nil {
 			for _, blm := range bl.R.BattleLobbiesMechs {
 				sbl.Mechs = append(sbl.Mechs, blm)
+			}
+
+			if bl.R.HostBy != nil {
+				host := bl.R.HostBy
+				// trim info
+				sbl.HostBy = &boiler.Player{
+					ID:        host.ID,
+					Username:  host.Username,
+					FactionID: host.FactionID,
+					Gid:       host.Gid,
+					Rank:      host.Rank,
+				}
+			}
+
+			if bl.R.GameMap != nil {
+				sbl.GameMap = bl.R.GameMap
 			}
 		}
 

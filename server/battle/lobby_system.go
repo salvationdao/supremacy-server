@@ -29,6 +29,8 @@ func (am *ArenaManager) BroadcastBattleLobbyUpdate(battleLobbyID string) {
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
 		),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Str("battle lobby id", battleLobbyID).Msg("Failed to query battle lobby")

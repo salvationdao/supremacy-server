@@ -31,6 +31,7 @@ type BattleLobby struct {
 	SecondFactionCut      decimal.Decimal `boiler:"second_faction_cut" boil:"second_faction_cut" json:"second_faction_cut" toml:"second_faction_cut" yaml:"second_faction_cut"`
 	ThirdFactionCut       decimal.Decimal `boiler:"third_faction_cut" boil:"third_faction_cut" json:"third_faction_cut" toml:"third_faction_cut" yaml:"third_faction_cut"`
 	EachFactionMechAmount int             `boiler:"each_faction_mech_amount" boil:"each_faction_mech_amount" json:"each_faction_mech_amount" toml:"each_faction_mech_amount" yaml:"each_faction_mech_amount"`
+	GameMapID             string          `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
 	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
 	JoinedBattleID        null.String     `boiler:"joined_battle_id" boil:"joined_battle_id" json:"joined_battle_id,omitempty" toml:"joined_battle_id" yaml:"joined_battle_id,omitempty"`
@@ -51,6 +52,7 @@ var BattleLobbyColumns = struct {
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
+	GameMapID             string
 	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
@@ -66,6 +68,7 @@ var BattleLobbyColumns = struct {
 	SecondFactionCut:      "second_faction_cut",
 	ThirdFactionCut:       "third_faction_cut",
 	EachFactionMechAmount: "each_faction_mech_amount",
+	GameMapID:             "game_map_id",
 	Password:              "password",
 	ReadyAt:               "ready_at",
 	JoinedBattleID:        "joined_battle_id",
@@ -83,6 +86,7 @@ var BattleLobbyTableColumns = struct {
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
+	GameMapID             string
 	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
@@ -98,6 +102,7 @@ var BattleLobbyTableColumns = struct {
 	SecondFactionCut:      "battle_lobbies.second_faction_cut",
 	ThirdFactionCut:       "battle_lobbies.third_faction_cut",
 	EachFactionMechAmount: "battle_lobbies.each_faction_mech_amount",
+	GameMapID:             "battle_lobbies.game_map_id",
 	Password:              "battle_lobbies.password",
 	ReadyAt:               "battle_lobbies.ready_at",
 	JoinedBattleID:        "battle_lobbies.joined_battle_id",
@@ -117,6 +122,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut      whereHelperdecimal_Decimal
 	ThirdFactionCut       whereHelperdecimal_Decimal
 	EachFactionMechAmount whereHelperint
+	GameMapID             whereHelperstring
 	Password              whereHelpernull_String
 	ReadyAt               whereHelpernull_Time
 	JoinedBattleID        whereHelpernull_String
@@ -132,6 +138,7 @@ var BattleLobbyWhere = struct {
 	SecondFactionCut:      whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"second_faction_cut\""},
 	ThirdFactionCut:       whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"third_faction_cut\""},
 	EachFactionMechAmount: whereHelperint{field: "\"battle_lobbies\".\"each_faction_mech_amount\""},
+	GameMapID:             whereHelperstring{field: "\"battle_lobbies\".\"game_map_id\""},
 	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
 	JoinedBattleID:        whereHelpernull_String{field: "\"battle_lobbies\".\"joined_battle_id\""},
@@ -143,11 +150,13 @@ var BattleLobbyWhere = struct {
 
 // BattleLobbyRels is where relationship names are stored.
 var BattleLobbyRels = struct {
+	GameMap             string
 	HostBy              string
 	JoinedBattle        string
 	BattleLobbiesMechs  string
 	BattleLobbyBounties string
 }{
+	GameMap:             "GameMap",
 	HostBy:              "HostBy",
 	JoinedBattle:        "JoinedBattle",
 	BattleLobbiesMechs:  "BattleLobbiesMechs",
@@ -156,6 +165,7 @@ var BattleLobbyRels = struct {
 
 // battleLobbyR is where relationships are stored.
 type battleLobbyR struct {
+	GameMap             *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
 	HostBy              *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
 	JoinedBattle        *Battle                `boiler:"JoinedBattle" boil:"JoinedBattle" json:"JoinedBattle" toml:"JoinedBattle" yaml:"JoinedBattle"`
 	BattleLobbiesMechs  BattleLobbiesMechSlice `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
@@ -171,8 +181,8 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
-	battleLobbyColumnsWithoutDefault = []string{"host_by_id"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithoutDefault = []string{"host_by_id", "game_map_id"}
 	battleLobbyColumnsWithDefault    = []string{"id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
@@ -420,6 +430,20 @@ func (q battleLobbyQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// GameMap pointed to by the foreign key.
+func (o *BattleLobby) GameMap(mods ...qm.QueryMod) gameMapQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.GameMapID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := GameMaps(queryMods...)
+	queries.SetFrom(query.Query, "\"game_maps\"")
+
+	return query
+}
+
 // HostBy pointed to by the foreign key.
 func (o *BattleLobby) HostBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -491,6 +515,110 @@ func (o *BattleLobby) BattleLobbyBounties(mods ...qm.QueryMod) battleLobbyBounty
 	}
 
 	return query
+}
+
+// LoadGameMap allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleLobbyL) LoadGameMap(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobby
+	var object *BattleLobby
+
+	if singular {
+		object = maybeBattleLobby.(*BattleLobby)
+	} else {
+		slice = *maybeBattleLobby.(*[]*BattleLobby)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbyR{}
+		}
+		args = append(args, object.GameMapID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbyR{}
+			}
+
+			for _, a := range args {
+				if a == obj.GameMapID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.GameMapID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`game_maps`),
+		qm.WhereIn(`game_maps.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load GameMap")
+	}
+
+	var resultSlice []*GameMap
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice GameMap")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for game_maps")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for game_maps")
+	}
+
+	if len(battleLobbyAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.GameMap = foreign
+		if foreign.R == nil {
+			foreign.R = &gameMapR{}
+		}
+		foreign.R.BattleLobbies = append(foreign.R.BattleLobbies, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.GameMapID == foreign.ID {
+				local.R.GameMap = foreign
+				if foreign.R == nil {
+					foreign.R = &gameMapR{}
+				}
+				foreign.R.BattleLobbies = append(foreign.R.BattleLobbies, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadHostBy allows an eager lookup of values, cached into the
@@ -899,6 +1027,52 @@ func (battleLobbyL) LoadBattleLobbyBounties(e boil.Executor, singular bool, mayb
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetGameMap of the battleLobby to the related item.
+// Sets o.R.GameMap to related.
+// Adds o to related.R.BattleLobbies.
+func (o *BattleLobby) SetGameMap(exec boil.Executor, insert bool, related *GameMap) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_lobbies\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"game_map_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbyPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.GameMapID = related.ID
+	if o.R == nil {
+		o.R = &battleLobbyR{
+			GameMap: related,
+		}
+	} else {
+		o.R.GameMap = related
+	}
+
+	if related.R == nil {
+		related.R = &gameMapR{
+			BattleLobbies: BattleLobbySlice{o},
+		}
+	} else {
+		related.R.BattleLobbies = append(related.R.BattleLobbies, o)
 	}
 
 	return nil

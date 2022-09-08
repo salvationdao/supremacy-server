@@ -13,6 +13,7 @@ CREATE TABLE battle_lobbies
     second_faction_cut       DECIMAL     NOT NULL DEFAULT 0,
     third_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     each_faction_mech_amount INT         NOT NULL DEFAULT 3,
+    game_map_id              UUID        NOT NULL REFERENCES game_maps (id),
     password                 TEXT,
 
     -- battle queue
@@ -25,8 +26,8 @@ CREATE TABLE battle_lobbies
     deleted_at               TIMESTAMPTZ
 );
 
-CREATE INDEX idx_battle_lobby_complete_check ON battle_lobbies(finished_at,deleted_at);
-CREATE INDEX idx_battle_lobby_queue_available_check ON battle_lobbies(ready_at,deleted_at);
+CREATE INDEX idx_battle_lobby_complete_check ON battle_lobbies (finished_at, deleted_at);
+CREATE INDEX idx_battle_lobby_queue_available_check ON battle_lobbies (ready_at, deleted_at);
 
 
 CREATE TABLE battle_lobbies_mechs
@@ -43,8 +44,8 @@ CREATE TABLE battle_lobbies_mechs
     deleted_at      TIMESTAMPTZ
 );
 
-CREATE INDEX idx_battle_lobbies_mechs_queue_check ON battle_lobbies_mechs(mech_id, refund_tx_id,deleted_at);
-CREATE INDEX idx_battle_lobbies_mechs_lobby_queue_check ON battle_lobbies_mechs(battle_lobby_id, refund_tx_id,deleted_at);
+CREATE INDEX idx_battle_lobbies_mechs_queue_check ON battle_lobbies_mechs (mech_id, refund_tx_id, deleted_at);
+CREATE INDEX idx_battle_lobbies_mechs_lobby_queue_check ON battle_lobbies_mechs (battle_lobby_id, refund_tx_id, deleted_at);
 
 -- only able to set bounties when lobby is ready
 CREATE TABLE battle_lobby_bounties

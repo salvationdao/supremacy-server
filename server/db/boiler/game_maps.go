@@ -93,15 +93,18 @@ var GameMapWhere = struct {
 
 // GameMapRels is where relationship names are stored.
 var GameMapRels = struct {
+	BattleLobbies      string
 	MapBattleMapQueues string
 	Battles            string
 }{
+	BattleLobbies:      "BattleLobbies",
 	MapBattleMapQueues: "MapBattleMapQueues",
 	Battles:            "Battles",
 }
 
 // gameMapR is where relationships are stored.
 type gameMapR struct {
+	BattleLobbies      BattleLobbySlice    `boiler:"BattleLobbies" boil:"BattleLobbies" json:"BattleLobbies" toml:"BattleLobbies" yaml:"BattleLobbies"`
 	MapBattleMapQueues BattleMapQueueSlice `boiler:"MapBattleMapQueues" boil:"MapBattleMapQueues" json:"MapBattleMapQueues" toml:"MapBattleMapQueues" yaml:"MapBattleMapQueues"`
 	Battles            BattleSlice         `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
 }
@@ -364,6 +367,28 @@ func (q gameMapQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// BattleLobbies retrieves all the battle_lobby's BattleLobbies with an executor.
+func (o *GameMap) BattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobbies\".\"game_map_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobbies\".\"deleted_at\""),
+	)
+
+	query := BattleLobbies(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobbies\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobbies\".*"})
+	}
+
+	return query
+}
+
 // MapBattleMapQueues retrieves all the battle_map_queue's BattleMapQueues with an executor via map_id column.
 func (o *GameMap) MapBattleMapQueues(mods ...qm.QueryMod) battleMapQueueQuery {
 	var queryMods []qm.QueryMod
@@ -404,6 +429,105 @@ func (o *GameMap) Battles(mods ...qm.QueryMod) battleQuery {
 	}
 
 	return query
+}
+
+// LoadBattleLobbies allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (gameMapL) LoadBattleLobbies(e boil.Executor, singular bool, maybeGameMap interface{}, mods queries.Applicator) error {
+	var slice []*GameMap
+	var object *GameMap
+
+	if singular {
+		object = maybeGameMap.(*GameMap)
+	} else {
+		slice = *maybeGameMap.(*[]*GameMap)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &gameMapR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &gameMapR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobbies`),
+		qm.WhereIn(`battle_lobbies.game_map_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobbies.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobbies")
+	}
+
+	var resultSlice []*BattleLobby
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobbies")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobbies")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies")
+	}
+
+	if len(battleLobbyAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleLobbies = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbyR{}
+			}
+			foreign.R.GameMap = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.GameMapID {
+				local.R.BattleLobbies = append(local.R.BattleLobbies, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbyR{}
+				}
+				foreign.R.GameMap = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadMapBattleMapQueues allows an eager lookup of values, cached into the
@@ -599,6 +723,58 @@ func (gameMapL) LoadBattles(e boil.Executor, singular bool, maybeGameMap interfa
 		}
 	}
 
+	return nil
+}
+
+// AddBattleLobbies adds the given related objects to the existing relationships
+// of the game_map, optionally inserting them as new records.
+// Appends related to o.R.BattleLobbies.
+// Sets related.R.GameMap appropriately.
+func (o *GameMap) AddBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.GameMapID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobbies\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"game_map_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbyPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.GameMapID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &gameMapR{
+			BattleLobbies: related,
+		}
+	} else {
+		o.R.BattleLobbies = append(o.R.BattleLobbies, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbyR{
+				GameMap: o,
+			}
+		} else {
+			rel.R.GameMap = o
+		}
+	}
 	return nil
 }
 

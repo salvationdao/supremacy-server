@@ -36,6 +36,7 @@ type BattleLobbyCreateRequest struct {
 		SecondFactionCut decimal.Decimal `json:"second_faction_cut"`
 		ThirdFactionCut  decimal.Decimal `json:"third_faction_cut"`
 		Password         string          `json:"password"`
+		GameMapID        string          `json:"game_map_id"`
 	} `json:"payload"`
 }
 
@@ -58,47 +59,9 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
 	}
 
-	// ownership check
-	mcis, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.IN(req.Payload.MechIDs),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).All(gamedb.StdConn)
+	relatedRepairCases, err := api.ArenaManager.CheckMechCanQueue(user.ID, req.Payload.MechIDs)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Strs("mech ids", req.Payload.MechIDs).Err(err).Msg("unable to retrieve mech collection item from hash")
 		return err
-	}
-
-	if len(mcis) != len(req.Payload.MechIDs) {
-		return terror.Error(fmt.Errorf("contain non-mech assest"), "The list contains non-mech asset.")
-	}
-
-	for _, mci := range mcis {
-		if mci.XsynLocked {
-			err := fmt.Errorf("mech is locked to xsyn locked")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is xsyn locked")
-			return err
-		}
-
-		if mci.LockedToMarketplace {
-			err := fmt.Errorf("mech is listed in marketplace")
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is listed in marketplace")
-			return err
-		}
-
-		battleReady, err := db.MechBattleReady(mci.ItemID)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to load battle ready status")
-			return err
-		}
-
-		if !battleReady {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mci.ItemID).Err(err).Msg("war machine is not available for queuing")
-			return fmt.Errorf("mech is cannot be used")
-		}
-
-		if mci.OwnerID != user.ID {
-			return terror.Error(fmt.Errorf("does not own the mech"), "This mech is not owned by you")
-		}
 	}
 
 	// entry fee check
@@ -117,41 +80,10 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		// check any mechs is already queued
-		blm, err := boiler.BattleLobbiesMechs(
-			boiler.BattleLobbiesMechWhere.MechID.IN(req.Payload.MechIDs),
-			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			qm.Where(
-				fmt.Sprintf(
-					"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
-					boiler.TableNames.BattleLobbies,
-					boiler.BattleLobbyTableColumns.ID,
-					boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
-					boiler.BattleLobbyTableColumns.FinishedAt,
-				),
-			),
-		).All(gamedb.StdConn)
+		// check mech in queue
+		err = api.ArenaManager.CheckMechAlreadyInQueue(req.Payload.MechIDs)
 		if err != nil {
-			gamelog.L.Error().Err(err).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to check mech queue.")
-			return terror.Error(err, "Failed to check mech queue.")
-		}
-
-		// return error, if any mech is in queue
-		if blm != nil {
-			return terror.Error(fmt.Errorf("mech already in queue"), "Your mech is already in queue.")
-		}
-
-		// check battle queue
-		bqs, err := boiler.BattleQueues(
-			boiler.BattleQueueWhere.MechID.IN(req.Payload.MechIDs),
-		).All(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Strs("mech id list", req.Payload.MechIDs).Msg("Failed to check mech queue.")
-			return terror.Error(err, "Failed to check mech queue.")
-		}
-
-		if bqs != nil {
-			return terror.Error(fmt.Errorf("mech already in queue"), "Your mech is already in queue.")
+			return err
 		}
 
 		tx, err := gamedb.StdConn.Begin()
@@ -246,6 +178,31 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 				refund(refundFuncList)
 				gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to insert battle lobbies mech")
 				return terror.Error(err, "Failed to insert mechs into battle lobby.")
+			}
+
+			// stop repair offers, if there is any
+			if index := slices.IndexFunc(relatedRepairCases, func(rc *boiler.RepairCase) bool { return rc.MechID == mechID }); index != -1 {
+				rc := relatedRepairCases[index]
+				// cancel all the existing offer
+				if rc.R != nil && rc.R.RepairOffers != nil {
+					ids := []string{}
+					for _, ro := range rc.R.RepairOffers {
+						ids = append(ids, ro.ID)
+					}
+
+					err = api.ArenaManager.SendRepairFunc(func() error {
+						err = api.ArenaManager.CloseRepairOffers(ids, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
+						if err != nil {
+							return err
+						}
+
+						return nil
+					})
+					if err != nil {
+						refund(refundFuncList)
+						return err
+					}
+				}
 			}
 
 		}
@@ -468,6 +425,8 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
 		),
+		qm.Load(boiler.BattleLobbyRels.HostBy),
+		qm.Load(boiler.BattleLobbyRels.GameMap),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load battle lobbies.")
