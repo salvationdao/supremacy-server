@@ -2269,7 +2269,8 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				BattlesSurvived: mech.Stats.BattlesSurvived,
 				TotalLosses:     mech.Stats.TotalLosses,
 			},
-			Status: &Status{},
+			Status:   &Status{},
+			Position: &server.Vector3{},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
