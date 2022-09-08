@@ -66,7 +66,7 @@ func New() (*System, error) {
 	}
 
 	// check test quests exists
-	r, err = boiler.QuestEvents(
+	r, err := boiler.QuestEvents(
 		boiler.QuestEventWhere.Name.EQ(QuestEventNameDaily),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
