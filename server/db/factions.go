@@ -138,7 +138,7 @@ func FactionMechDestroyedOrderGet(battleID string) ([]string, error) {
 	ids := []string{}
 	q := `
 		SELECT bm.faction_id FROM battle_history bh
-		INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id
+		INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id AND bm.battle_id = bh.battle_id
 		WHERE bh.battle_id = $1
 		ORDER BY bh.created_at DESC
 	`
