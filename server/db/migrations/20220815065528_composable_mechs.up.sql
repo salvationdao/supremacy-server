@@ -21,12 +21,24 @@ CREATE OR REPLACE FUNCTION create_mech_slots ()
     RETURNS TRIGGER
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    weapon_hardpoints int4;
+    utility_slots int4;
 BEGIN
-    FOR i IN 0..NEW.weapon_hardpoints - 1 LOOP
+    SELECT
+        bpm.weapon_hardpoints,
+        bpm.utility_slots INTO weapon_hardpoints,
+        utility_slots
+    FROM
+        mechs m
+        INNER JOIN blueprint_mechs bpm ON bpm.id = NEW.blueprint_id
+    WHERE
+        m.id = NEW.id;
+    FOR i IN 0..weapon_hardpoints - 1 LOOP
         INSERT INTO mech_weapons (chassis_id, slot_number)
             VALUES (NEW.id, i);
     END LOOP;
-    FOR i IN 0..NEW.utility_slots - 1 LOOP
+    FOR i IN 0..utility_slots - 1 LOOP
         INSERT INTO mech_utility (chassis_id, slot_number)
             VALUES (NEW.id, i);
     END LOOP;
@@ -40,5 +52,4 @@ CREATE TRIGGER "t_mech_insert"
     AFTER INSERT ON "mechs"
     FOR EACH ROW
     EXECUTE PROCEDURE create_mech_slots ();
-
 
