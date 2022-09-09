@@ -1268,6 +1268,28 @@ func (o *Utility) SetMechUtility(exec boil.Executor, insert bool, related *MechU
 	return nil
 }
 
+// RemoveMechUtility relationship.
+// Sets o.R.MechUtility to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Utility) RemoveMechUtility(exec boil.Executor, related *MechUtility) error {
+	var err error
+
+	queries.SetScanner(&related.UtilityID, nil)
+	if _, err = related.Update(exec, boil.Whitelist("utility_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MechUtility = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	related.R.Utility = nil
+	return nil
+}
+
 // SetUtilityShieldDontUse of the utility to the related item.
 // Sets o.R.UtilityShieldDontUse to related.
 // Adds o to related.R.Utility.
