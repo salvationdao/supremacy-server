@@ -33,6 +33,19 @@ SET blueprint_id = 'e9fc2417-6a5b-489d-b82e-42942535af90' -- bc rocket pod
 FROM update_templates
 WHERE _tbp.id = template_blueprint_id;
 
+-- below we select all the template blueprints that are rm and rocket pods and then update them to rm rocket pods
+WITH update_templates AS (SELECT tbp.id AS template_blueprint_id, t.label, tbp.type, blueprint_id, bw.label
+                          FROM template_blueprints tbp
+                                   INNER JOIN templates t ON t.id = tbp.template_id
+                                   INNER JOIN blueprint_weapons bw ON tbp.blueprint_id = bw.id
+                          WHERE tbp.type = 'WEAPON'
+                            AND t.label ILIKE '%red mou%'
+                            AND bw.label ILIKE '%rocket pod%')
+UPDATE template_blueprints _tbp
+SET blueprint_id = '41099781-8586-4783-9d1c-b515a386fe9f' -- rm rocket pod
+FROM update_templates
+WHERE _tbp.id = template_blueprint_id;
+
 -- update rm mech rocket pods to have the correct weapon blueprint id
 WITH to_update AS (SELECT _w.id AS weapon_id
                    FROM mechs m
