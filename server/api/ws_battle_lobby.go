@@ -86,7 +86,9 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			return err
 		}
 
-		tx, err := gamedb.StdConn.Begin()
+		var tx *sql.Tx
+
+		tx, err = gamedb.StdConn.Begin()
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
 			return terror.Error(err, "Failed to create battle lobby.")
@@ -144,7 +146,9 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 			}
 
 			if bl.EntryFee.GreaterThan(decimal.Zero) {
-				entryTxID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+				var entryTxID string
+
+				entryTxID, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 					ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 					Amount:               bl.EntryFee.StringFixed(0),
@@ -166,7 +170,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 
 				// append refund func
 				refundFuncList = append(refundFuncList, func() {
-					_, err := api.Passport.RefundSupsMessage(entryTxID)
+					_, err = api.Passport.RefundSupsMessage(entryTxID)
 					if err != nil {
 						gamelog.L.Error().Err(err).Str("entry tx id", entryTxID).Msg("Failed to refund transaction id")
 					}
@@ -306,7 +310,8 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}
 
 		// queue mech
-		tx, err := gamedb.StdConn.Begin()
+		var tx *sql.Tx
+		tx, err = gamedb.StdConn.Begin()
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to start db transaction.")
 			return terror.Error(err, "Failed to queue your mech.")
@@ -325,7 +330,8 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}
 
 		if bl.EntryFee.GreaterThan(decimal.Zero) {
-			entryTxID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			var entryTxID string
+			entryTxID, err = api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           uuid.Must(uuid.FromString(user.ID)),
 				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
 				Amount:               bl.EntryFee.StringFixed(0),

@@ -31,6 +31,7 @@ type RepairCase struct {
 	CreatedAt            time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt            time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt            null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	PausedAt             null.Time `boiler:"paused_at" boil:"paused_at" json:"paused_at,omitempty" toml:"paused_at" yaml:"paused_at,omitempty"`
 
 	R *repairCaseR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L repairCaseL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,6 +46,7 @@ var RepairCaseColumns = struct {
 	CreatedAt            string
 	UpdatedAt            string
 	DeletedAt            string
+	PausedAt             string
 }{
 	ID:                   "id",
 	MechID:               "mech_id",
@@ -54,6 +56,7 @@ var RepairCaseColumns = struct {
 	CreatedAt:            "created_at",
 	UpdatedAt:            "updated_at",
 	DeletedAt:            "deleted_at",
+	PausedAt:             "paused_at",
 }
 
 var RepairCaseTableColumns = struct {
@@ -65,6 +68,7 @@ var RepairCaseTableColumns = struct {
 	CreatedAt            string
 	UpdatedAt            string
 	DeletedAt            string
+	PausedAt             string
 }{
 	ID:                   "repair_cases.id",
 	MechID:               "repair_cases.mech_id",
@@ -74,6 +78,7 @@ var RepairCaseTableColumns = struct {
 	CreatedAt:            "repair_cases.created_at",
 	UpdatedAt:            "repair_cases.updated_at",
 	DeletedAt:            "repair_cases.deleted_at",
+	PausedAt:             "repair_cases.paused_at",
 }
 
 // Generated where
@@ -87,6 +92,7 @@ var RepairCaseWhere = struct {
 	CreatedAt            whereHelpertime_Time
 	UpdatedAt            whereHelpertime_Time
 	DeletedAt            whereHelpernull_Time
+	PausedAt             whereHelpernull_Time
 }{
 	ID:                   whereHelperstring{field: "\"repair_cases\".\"id\""},
 	MechID:               whereHelperstring{field: "\"repair_cases\".\"mech_id\""},
@@ -96,6 +102,7 @@ var RepairCaseWhere = struct {
 	CreatedAt:            whereHelpertime_Time{field: "\"repair_cases\".\"created_at\""},
 	UpdatedAt:            whereHelpertime_Time{field: "\"repair_cases\".\"updated_at\""},
 	DeletedAt:            whereHelpernull_Time{field: "\"repair_cases\".\"deleted_at\""},
+	PausedAt:             whereHelpernull_Time{field: "\"repair_cases\".\"paused_at\""},
 }
 
 // RepairCaseRels is where relationship names are stored.
@@ -131,9 +138,9 @@ func (*repairCaseR) NewStruct() *repairCaseR {
 type repairCaseL struct{}
 
 var (
-	repairCaseAllColumns            = []string{"id", "mech_id", "blocks_required_repair", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at"}
+	repairCaseAllColumns            = []string{"id", "mech_id", "blocks_required_repair", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at", "paused_at"}
 	repairCaseColumnsWithoutDefault = []string{"mech_id", "blocks_required_repair"}
-	repairCaseColumnsWithDefault    = []string{"id", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at"}
+	repairCaseColumnsWithDefault    = []string{"id", "blocks_repaired", "completed_at", "created_at", "updated_at", "deleted_at", "paused_at"}
 	repairCasePrimaryKeyColumns     = []string{"id"}
 	repairCaseGeneratedColumns      = []string{}
 )

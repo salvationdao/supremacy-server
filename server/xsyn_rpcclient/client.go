@@ -97,7 +97,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 
 		if !errors.Is(err, rpc.ErrShutdown) {
 			// TODO: create a error type to check
-			if !strings.Contains(err.Error(), "not enough funds") {
+			if !strings.Contains(err.Error(), "not enough funds") && !strings.Contains(err.Error(), "sql: no rows in result set") {
 				gamelog.L.Error().Err(err).Msg("RPC call has failed.")
 			}
 			return err

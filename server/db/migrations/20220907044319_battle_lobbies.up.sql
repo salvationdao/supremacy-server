@@ -4,6 +4,9 @@ ALTER TABLE battles
 ALTER TABLE battles
     RENAME COLUMN ended_battle_seconds TO ended_battle_seconds_old;
 
+ALTER TABLE repair_cases
+    ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+
 CREATE TABLE battle_lobbies
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
