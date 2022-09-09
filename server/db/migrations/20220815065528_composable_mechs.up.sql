@@ -30,10 +30,9 @@ BEGIN
         bpm.utility_slots INTO weapon_hardpoints,
         utility_slots
     FROM
-        mechs m
-        INNER JOIN blueprint_mechs bpm ON bpm.id = NEW.blueprint_id
+        blueprint_mechs bpm
     WHERE
-        m.id = NEW.id;
+        bpm.id = NEW.blueprint_id;
     FOR i IN 0..weapon_hardpoints - 1 LOOP
         INSERT INTO mech_weapons (chassis_id, slot_number)
             VALUES (NEW.id, i);
