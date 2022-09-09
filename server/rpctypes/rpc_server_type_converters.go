@@ -106,7 +106,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 
 		if i.ChassisSkin == nil {
-			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.ModelID)
+			i.ChassisSkin, err = db.MechSkin(gamedb.StdConn, i.ChassisSkinID, &i.BlueprintID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID).Msg("failed to get mech skin item")
 				continue
@@ -252,7 +252,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -271,7 +271,19 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if i.SkinSwatch != nil {
+			asset.ImageURL = i.SkinSwatch.ImageURL
+			asset.AnimationURL = i.SkinSwatch.AnimationURL
+			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			asset.AvatarURL = i.SkinSwatch.AvatarURL
+			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -450,11 +462,11 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			})
 		}
 
-		if i.EnergyCost.Valid && !i.EnergyCost.Decimal.IsZero() {
+		if i.PowerCost.Valid && !i.PowerCost.Decimal.IsZero() {
 			attributes = append(attributes, &Attribute{
 				DisplayType: BoostNumber,
 				TraitType:   "Energy Cost",
-				Value:       i.EnergyCost.Decimal.InexactFloat64(),
+				Value:       i.PowerCost.Decimal.InexactFloat64(),
 			})
 		}
 
@@ -501,7 +513,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		if i.WeaponSkin == nil {
-			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID, &i.WeaponModelID)
+			i.WeaponSkin, err = db.WeaponSkin(gamedb.StdConn, i.EquippedWeaponSkinID, &i.BlueprintID)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("i.EquippedWeaponSkinID.String", i.EquippedWeaponSkinID).Msg("failed to get weapon skin item")
 				continue
@@ -523,7 +535,6 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			asset.BackgroundColor = i.Images.BackgroundColor
 			asset.YoutubeURL = i.Images.YoutubeURL
 		}
-
 
 		asset.Attributes = append(asset.Attributes,
 			&Attribute{
@@ -599,7 +610,7 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			gamelog.L.Error().Err(err).Msg("invalid asset attributes")
 		}
 
-		assets = append(assets, &XsynAsset{
+		asset := &XsynAsset{
 			ID:               i.ID,
 			CollectionSlug:   i.CollectionSlug,
 			TokenID:          i.TokenID,
@@ -618,7 +629,19 @@ func ServerWeaponSkinsToXsynAsset(weaponSkins []*server.WeaponSkin) []*XsynAsset
 			AvatarURL:        i.Images.AvatarURL,
 			BackgroundColor:  i.Images.BackgroundColor,
 			YoutubeURL:       i.Images.YoutubeURL,
-		})
+		}
+
+		if i.SkinSwatch != nil {
+			asset.ImageURL = i.SkinSwatch.ImageURL
+			asset.AnimationURL = i.SkinSwatch.AnimationURL
+			asset.LargeImageURL = i.SkinSwatch.LargeImageURL
+			asset.CardAnimationURL = i.SkinSwatch.CardAnimationURL
+			asset.AvatarURL = i.SkinSwatch.AvatarURL
+			asset.BackgroundColor = i.SkinSwatch.BackgroundColor
+			asset.YoutubeURL = i.SkinSwatch.YoutubeURL
+		}
+
+		assets = append(assets, asset)
 	}
 
 	return assets

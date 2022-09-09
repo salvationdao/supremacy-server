@@ -7,10 +7,14 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
+	"strconv"
 )
 
 type BattleReplayController struct {
@@ -22,6 +26,7 @@ func BattleReplayRouter(api *API) chi.Router {
 
 	r := chi.NewRouter()
 	r.Post("/create", WithToken(api.Config.ServerStreamKey, WithError(br.AddNewReplay)))
+	r.Get("/get/{arena-gid}/{battle-number}", WithError(br.GetReplayDetails))
 
 	return r
 }
@@ -53,4 +58,47 @@ func (br *BattleReplayController) AddNewReplay(w http.ResponseWriter, r *http.Re
 	}
 
 	return http.StatusOK, nil
+}
+
+func (br *BattleReplayController) GetReplayDetails(w http.ResponseWriter, r *http.Request) (int, error) {
+	battleNumber, err := strconv.Atoi(chi.URLParam(r, "battle-number"))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get battle number")
+	}
+	arenaGID, err := strconv.Atoi(chi.URLParam(r, "arena-gid"))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get battle number")
+	}
+
+	battleReplay, err := boiler.BattleReplays(
+		boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+		qm.Where(
+			fmt.Sprintf(
+				"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s = ? )",
+				boiler.TableNames.Battles,
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.ID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.BattleID),
+				qm.Rels(boiler.TableNames.Battles, boiler.BattleColumns.BattleNumber),
+			),
+			battleNumber,
+		),
+		qm.Load(boiler.BattleReplayRels.Battle),
+		qm.Load(qm.Rels(boiler.BattleReplayRels.Battle, boiler.BattleRels.GameMap)),
+		qm.Where(
+			fmt.Sprintf(
+				"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s = ? )",
+				boiler.TableNames.BattleArena,
+				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.ID),
+				qm.Rels(boiler.TableNames.BattleReplays, boiler.BattleReplayColumns.ArenaID),
+				qm.Rels(boiler.TableNames.BattleArena, boiler.BattleArenaColumns.Gid),
+			),
+			arenaGID,
+		),
+		qm.Load(boiler.BattleReplayRels.Arena),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, fmt.Sprintf("Failed find replay with battle number of %d", battleNumber))
+	}
+
+	return helpers.EncodeJSON(w, server.BattleReplayFromBoilerWithEvent(battleReplay))
 }

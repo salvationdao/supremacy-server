@@ -14,6 +14,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+type KVKey string
+
+const KeyProdReopeningDate = "prod_reopening_date"
+
+const KeyQueueTickerIntervalSeconds = "queue_ticker_interval_seconds"
+
 const KeySaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
 const KeySaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
 const KeySaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
@@ -24,11 +30,11 @@ const KeySaleAbilityClaimLimit KVKey = "sale_ability_claim_limit"
 const KeySaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
 const KeySaleAbilityLimit KVKey = "sale_ability_limit"
 
+const KeyPlayerQueueLimit KVKey = "player_queue_limit"
+
 const KeyPlayerAbilityMechMoveCommandCooldownSeconds KVKey = "player_ability_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityMiniMechMoveCommandCooldownSeconds KVKey = "player_ability_mini_mech_move_command_cooldown_seconds"
 const KeyPlayerAbilityIncognitoDurationSeconds KVKey = "player_ability_ability_incognito_duration_seconds"
-
-type KVKey string
 
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
 const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
@@ -60,6 +66,7 @@ const KeyBattleRewardTaxRatio KVKey = "battle_reward_tax_ratio"
 const KeyFirstRankFactionRewardRatio KVKey = "first_rank_faction_reward_ratio"
 const KeySecondRankFactionRewardRatio KVKey = "second_rank_faction_reward_ratio"
 const KeyThirdRankFactionRewardRatio KVKey = "third_rank_faction_reward_ratio"
+const KeyBattleSupsRewardBonus KVKey = "battle_sups_reward_bonus"
 const KeyCanDeployDamagedRatio KVKey = "can_deploy_damaged_ratio"
 
 const KeyDecentralisedAutonomousSyndicateTax KVKey = "decentralised_autonomous_syndicate_tax"
@@ -67,6 +74,9 @@ const KeyCorporationSyndicateTax KVKey = "corporation_syndicate_tax"
 
 const KeyOvenmediaAPIBaseUrl KVKey = "ovenmedia_api_base_url"
 const KeyCanRecordReplayStatus KVKey = "can_record_replay"
+
+const KeyAutoRepairSlotCount KVKey = "auto_repair_slot_count"
+const KeyAutoRepairDurationSeconds KVKey = "auto_repair_duration_seconds"
 
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)

@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// MechAbilityTriggerLog is an object representing the database table.
-type MechAbilityTriggerLog struct {
+// MechAbilityTriggerLogsOld is an object representing the database table.
+type MechAbilityTriggerLogsOld struct {
 	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	TriggeredByID string    `boiler:"triggered_by_id" boil:"triggered_by_id" json:"triggered_by_id" toml:"triggered_by_id" yaml:"triggered_by_id"`
 	MechID        string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
@@ -32,11 +32,11 @@ type MechAbilityTriggerLog struct {
 	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	BattleNumber  int       `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
 
-	R *mechAbilityTriggerLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L mechAbilityTriggerLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *mechAbilityTriggerLogsOldR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L mechAbilityTriggerLogsOldL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var MechAbilityTriggerLogColumns = struct {
+var MechAbilityTriggerLogsOldColumns = struct {
 	ID            string
 	TriggeredByID string
 	MechID        string
@@ -56,7 +56,7 @@ var MechAbilityTriggerLogColumns = struct {
 	BattleNumber:  "battle_number",
 }
 
-var MechAbilityTriggerLogTableColumns = struct {
+var MechAbilityTriggerLogsOldTableColumns = struct {
 	ID            string
 	TriggeredByID string
 	MechID        string
@@ -66,19 +66,19 @@ var MechAbilityTriggerLogTableColumns = struct {
 	DeletedAt     string
 	BattleNumber  string
 }{
-	ID:            "mech_ability_trigger_logs.id",
-	TriggeredByID: "mech_ability_trigger_logs.triggered_by_id",
-	MechID:        "mech_ability_trigger_logs.mech_id",
-	GameAbilityID: "mech_ability_trigger_logs.game_ability_id",
-	CreatedAt:     "mech_ability_trigger_logs.created_at",
-	UpdatedAt:     "mech_ability_trigger_logs.updated_at",
-	DeletedAt:     "mech_ability_trigger_logs.deleted_at",
-	BattleNumber:  "mech_ability_trigger_logs.battle_number",
+	ID:            "mech_ability_trigger_logs_old.id",
+	TriggeredByID: "mech_ability_trigger_logs_old.triggered_by_id",
+	MechID:        "mech_ability_trigger_logs_old.mech_id",
+	GameAbilityID: "mech_ability_trigger_logs_old.game_ability_id",
+	CreatedAt:     "mech_ability_trigger_logs_old.created_at",
+	UpdatedAt:     "mech_ability_trigger_logs_old.updated_at",
+	DeletedAt:     "mech_ability_trigger_logs_old.deleted_at",
+	BattleNumber:  "mech_ability_trigger_logs_old.battle_number",
 }
 
 // Generated where
 
-var MechAbilityTriggerLogWhere = struct {
+var MechAbilityTriggerLogsOldWhere = struct {
 	ID            whereHelperstring
 	TriggeredByID whereHelperstring
 	MechID        whereHelperstring
@@ -88,18 +88,18 @@ var MechAbilityTriggerLogWhere = struct {
 	DeletedAt     whereHelpernull_Time
 	BattleNumber  whereHelperint
 }{
-	ID:            whereHelperstring{field: "\"mech_ability_trigger_logs\".\"id\""},
-	TriggeredByID: whereHelperstring{field: "\"mech_ability_trigger_logs\".\"triggered_by_id\""},
-	MechID:        whereHelperstring{field: "\"mech_ability_trigger_logs\".\"mech_id\""},
-	GameAbilityID: whereHelperstring{field: "\"mech_ability_trigger_logs\".\"game_ability_id\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs\".\"created_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs\".\"updated_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"mech_ability_trigger_logs\".\"deleted_at\""},
-	BattleNumber:  whereHelperint{field: "\"mech_ability_trigger_logs\".\"battle_number\""},
+	ID:            whereHelperstring{field: "\"mech_ability_trigger_logs_old\".\"id\""},
+	TriggeredByID: whereHelperstring{field: "\"mech_ability_trigger_logs_old\".\"triggered_by_id\""},
+	MechID:        whereHelperstring{field: "\"mech_ability_trigger_logs_old\".\"mech_id\""},
+	GameAbilityID: whereHelperstring{field: "\"mech_ability_trigger_logs_old\".\"game_ability_id\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs_old\".\"created_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"mech_ability_trigger_logs_old\".\"updated_at\""},
+	DeletedAt:     whereHelpernull_Time{field: "\"mech_ability_trigger_logs_old\".\"deleted_at\""},
+	BattleNumber:  whereHelperint{field: "\"mech_ability_trigger_logs_old\".\"battle_number\""},
 }
 
-// MechAbilityTriggerLogRels is where relationship names are stored.
-var MechAbilityTriggerLogRels = struct {
+// MechAbilityTriggerLogsOldRels is where relationship names are stored.
+var MechAbilityTriggerLogsOldRels = struct {
 	GameAbility string
 	Mech        string
 	TriggeredBy string
@@ -109,52 +109,52 @@ var MechAbilityTriggerLogRels = struct {
 	TriggeredBy: "TriggeredBy",
 }
 
-// mechAbilityTriggerLogR is where relationships are stored.
-type mechAbilityTriggerLogR struct {
+// mechAbilityTriggerLogsOldR is where relationships are stored.
+type mechAbilityTriggerLogsOldR struct {
 	GameAbility *GameAbility `boiler:"GameAbility" boil:"GameAbility" json:"GameAbility" toml:"GameAbility" yaml:"GameAbility"`
 	Mech        *Mech        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	TriggeredBy *Player      `boiler:"TriggeredBy" boil:"TriggeredBy" json:"TriggeredBy" toml:"TriggeredBy" yaml:"TriggeredBy"`
 }
 
 // NewStruct creates a new relationship struct
-func (*mechAbilityTriggerLogR) NewStruct() *mechAbilityTriggerLogR {
-	return &mechAbilityTriggerLogR{}
+func (*mechAbilityTriggerLogsOldR) NewStruct() *mechAbilityTriggerLogsOldR {
+	return &mechAbilityTriggerLogsOldR{}
 }
 
-// mechAbilityTriggerLogL is where Load methods for each relationship are stored.
-type mechAbilityTriggerLogL struct{}
+// mechAbilityTriggerLogsOldL is where Load methods for each relationship are stored.
+type mechAbilityTriggerLogsOldL struct{}
 
 var (
-	mechAbilityTriggerLogAllColumns            = []string{"id", "triggered_by_id", "mech_id", "game_ability_id", "created_at", "updated_at", "deleted_at", "battle_number"}
-	mechAbilityTriggerLogColumnsWithoutDefault = []string{"triggered_by_id", "mech_id", "game_ability_id"}
-	mechAbilityTriggerLogColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at", "battle_number"}
-	mechAbilityTriggerLogPrimaryKeyColumns     = []string{"id"}
-	mechAbilityTriggerLogGeneratedColumns      = []string{}
+	mechAbilityTriggerLogsOldAllColumns            = []string{"id", "triggered_by_id", "mech_id", "game_ability_id", "created_at", "updated_at", "deleted_at", "battle_number"}
+	mechAbilityTriggerLogsOldColumnsWithoutDefault = []string{"triggered_by_id", "mech_id", "game_ability_id"}
+	mechAbilityTriggerLogsOldColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at", "battle_number"}
+	mechAbilityTriggerLogsOldPrimaryKeyColumns     = []string{"id"}
+	mechAbilityTriggerLogsOldGeneratedColumns      = []string{}
 )
 
 type (
-	// MechAbilityTriggerLogSlice is an alias for a slice of pointers to MechAbilityTriggerLog.
-	// This should almost always be used instead of []MechAbilityTriggerLog.
-	MechAbilityTriggerLogSlice []*MechAbilityTriggerLog
-	// MechAbilityTriggerLogHook is the signature for custom MechAbilityTriggerLog hook methods
-	MechAbilityTriggerLogHook func(boil.Executor, *MechAbilityTriggerLog) error
+	// MechAbilityTriggerLogsOldSlice is an alias for a slice of pointers to MechAbilityTriggerLogsOld.
+	// This should almost always be used instead of []MechAbilityTriggerLogsOld.
+	MechAbilityTriggerLogsOldSlice []*MechAbilityTriggerLogsOld
+	// MechAbilityTriggerLogsOldHook is the signature for custom MechAbilityTriggerLogsOld hook methods
+	MechAbilityTriggerLogsOldHook func(boil.Executor, *MechAbilityTriggerLogsOld) error
 
-	mechAbilityTriggerLogQuery struct {
+	mechAbilityTriggerLogsOldQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	mechAbilityTriggerLogType                 = reflect.TypeOf(&MechAbilityTriggerLog{})
-	mechAbilityTriggerLogMapping              = queries.MakeStructMapping(mechAbilityTriggerLogType)
-	mechAbilityTriggerLogPrimaryKeyMapping, _ = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, mechAbilityTriggerLogPrimaryKeyColumns)
-	mechAbilityTriggerLogInsertCacheMut       sync.RWMutex
-	mechAbilityTriggerLogInsertCache          = make(map[string]insertCache)
-	mechAbilityTriggerLogUpdateCacheMut       sync.RWMutex
-	mechAbilityTriggerLogUpdateCache          = make(map[string]updateCache)
-	mechAbilityTriggerLogUpsertCacheMut       sync.RWMutex
-	mechAbilityTriggerLogUpsertCache          = make(map[string]insertCache)
+	mechAbilityTriggerLogsOldType                 = reflect.TypeOf(&MechAbilityTriggerLogsOld{})
+	mechAbilityTriggerLogsOldMapping              = queries.MakeStructMapping(mechAbilityTriggerLogsOldType)
+	mechAbilityTriggerLogsOldPrimaryKeyMapping, _ = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, mechAbilityTriggerLogsOldPrimaryKeyColumns)
+	mechAbilityTriggerLogsOldInsertCacheMut       sync.RWMutex
+	mechAbilityTriggerLogsOldInsertCache          = make(map[string]insertCache)
+	mechAbilityTriggerLogsOldUpdateCacheMut       sync.RWMutex
+	mechAbilityTriggerLogsOldUpdateCache          = make(map[string]updateCache)
+	mechAbilityTriggerLogsOldUpsertCacheMut       sync.RWMutex
+	mechAbilityTriggerLogsOldUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -165,23 +165,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var mechAbilityTriggerLogAfterSelectHooks []MechAbilityTriggerLogHook
+var mechAbilityTriggerLogsOldAfterSelectHooks []MechAbilityTriggerLogsOldHook
 
-var mechAbilityTriggerLogBeforeInsertHooks []MechAbilityTriggerLogHook
-var mechAbilityTriggerLogAfterInsertHooks []MechAbilityTriggerLogHook
+var mechAbilityTriggerLogsOldBeforeInsertHooks []MechAbilityTriggerLogsOldHook
+var mechAbilityTriggerLogsOldAfterInsertHooks []MechAbilityTriggerLogsOldHook
 
-var mechAbilityTriggerLogBeforeUpdateHooks []MechAbilityTriggerLogHook
-var mechAbilityTriggerLogAfterUpdateHooks []MechAbilityTriggerLogHook
+var mechAbilityTriggerLogsOldBeforeUpdateHooks []MechAbilityTriggerLogsOldHook
+var mechAbilityTriggerLogsOldAfterUpdateHooks []MechAbilityTriggerLogsOldHook
 
-var mechAbilityTriggerLogBeforeDeleteHooks []MechAbilityTriggerLogHook
-var mechAbilityTriggerLogAfterDeleteHooks []MechAbilityTriggerLogHook
+var mechAbilityTriggerLogsOldBeforeDeleteHooks []MechAbilityTriggerLogsOldHook
+var mechAbilityTriggerLogsOldAfterDeleteHooks []MechAbilityTriggerLogsOldHook
 
-var mechAbilityTriggerLogBeforeUpsertHooks []MechAbilityTriggerLogHook
-var mechAbilityTriggerLogAfterUpsertHooks []MechAbilityTriggerLogHook
+var mechAbilityTriggerLogsOldBeforeUpsertHooks []MechAbilityTriggerLogsOldHook
+var mechAbilityTriggerLogsOldAfterUpsertHooks []MechAbilityTriggerLogsOldHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *MechAbilityTriggerLog) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogAfterSelectHooks {
+func (o *MechAbilityTriggerLogsOld) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -191,8 +191,8 @@ func (o *MechAbilityTriggerLog) doAfterSelectHooks(exec boil.Executor) (err erro
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *MechAbilityTriggerLog) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogBeforeInsertHooks {
+func (o *MechAbilityTriggerLogsOld) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -202,8 +202,8 @@ func (o *MechAbilityTriggerLog) doBeforeInsertHooks(exec boil.Executor) (err err
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *MechAbilityTriggerLog) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogAfterInsertHooks {
+func (o *MechAbilityTriggerLogsOld) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -213,8 +213,8 @@ func (o *MechAbilityTriggerLog) doAfterInsertHooks(exec boil.Executor) (err erro
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *MechAbilityTriggerLog) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogBeforeUpdateHooks {
+func (o *MechAbilityTriggerLogsOld) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -224,8 +224,8 @@ func (o *MechAbilityTriggerLog) doBeforeUpdateHooks(exec boil.Executor) (err err
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *MechAbilityTriggerLog) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogAfterUpdateHooks {
+func (o *MechAbilityTriggerLogsOld) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -235,8 +235,8 @@ func (o *MechAbilityTriggerLog) doAfterUpdateHooks(exec boil.Executor) (err erro
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *MechAbilityTriggerLog) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogBeforeDeleteHooks {
+func (o *MechAbilityTriggerLogsOld) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -246,8 +246,8 @@ func (o *MechAbilityTriggerLog) doBeforeDeleteHooks(exec boil.Executor) (err err
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *MechAbilityTriggerLog) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogAfterDeleteHooks {
+func (o *MechAbilityTriggerLogsOld) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -257,8 +257,8 @@ func (o *MechAbilityTriggerLog) doAfterDeleteHooks(exec boil.Executor) (err erro
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *MechAbilityTriggerLog) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogBeforeUpsertHooks {
+func (o *MechAbilityTriggerLogsOld) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -268,8 +268,8 @@ func (o *MechAbilityTriggerLog) doBeforeUpsertHooks(exec boil.Executor) (err err
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *MechAbilityTriggerLog) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range mechAbilityTriggerLogAfterUpsertHooks {
+func (o *MechAbilityTriggerLogsOld) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range mechAbilityTriggerLogsOldAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -278,33 +278,33 @@ func (o *MechAbilityTriggerLog) doAfterUpsertHooks(exec boil.Executor) (err erro
 	return nil
 }
 
-// AddMechAbilityTriggerLogHook registers your hook function for all future operations.
-func AddMechAbilityTriggerLogHook(hookPoint boil.HookPoint, mechAbilityTriggerLogHook MechAbilityTriggerLogHook) {
+// AddMechAbilityTriggerLogsOldHook registers your hook function for all future operations.
+func AddMechAbilityTriggerLogsOldHook(hookPoint boil.HookPoint, mechAbilityTriggerLogsOldHook MechAbilityTriggerLogsOldHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		mechAbilityTriggerLogAfterSelectHooks = append(mechAbilityTriggerLogAfterSelectHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldAfterSelectHooks = append(mechAbilityTriggerLogsOldAfterSelectHooks, mechAbilityTriggerLogsOldHook)
 	case boil.BeforeInsertHook:
-		mechAbilityTriggerLogBeforeInsertHooks = append(mechAbilityTriggerLogBeforeInsertHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldBeforeInsertHooks = append(mechAbilityTriggerLogsOldBeforeInsertHooks, mechAbilityTriggerLogsOldHook)
 	case boil.AfterInsertHook:
-		mechAbilityTriggerLogAfterInsertHooks = append(mechAbilityTriggerLogAfterInsertHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldAfterInsertHooks = append(mechAbilityTriggerLogsOldAfterInsertHooks, mechAbilityTriggerLogsOldHook)
 	case boil.BeforeUpdateHook:
-		mechAbilityTriggerLogBeforeUpdateHooks = append(mechAbilityTriggerLogBeforeUpdateHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldBeforeUpdateHooks = append(mechAbilityTriggerLogsOldBeforeUpdateHooks, mechAbilityTriggerLogsOldHook)
 	case boil.AfterUpdateHook:
-		mechAbilityTriggerLogAfterUpdateHooks = append(mechAbilityTriggerLogAfterUpdateHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldAfterUpdateHooks = append(mechAbilityTriggerLogsOldAfterUpdateHooks, mechAbilityTriggerLogsOldHook)
 	case boil.BeforeDeleteHook:
-		mechAbilityTriggerLogBeforeDeleteHooks = append(mechAbilityTriggerLogBeforeDeleteHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldBeforeDeleteHooks = append(mechAbilityTriggerLogsOldBeforeDeleteHooks, mechAbilityTriggerLogsOldHook)
 	case boil.AfterDeleteHook:
-		mechAbilityTriggerLogAfterDeleteHooks = append(mechAbilityTriggerLogAfterDeleteHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldAfterDeleteHooks = append(mechAbilityTriggerLogsOldAfterDeleteHooks, mechAbilityTriggerLogsOldHook)
 	case boil.BeforeUpsertHook:
-		mechAbilityTriggerLogBeforeUpsertHooks = append(mechAbilityTriggerLogBeforeUpsertHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldBeforeUpsertHooks = append(mechAbilityTriggerLogsOldBeforeUpsertHooks, mechAbilityTriggerLogsOldHook)
 	case boil.AfterUpsertHook:
-		mechAbilityTriggerLogAfterUpsertHooks = append(mechAbilityTriggerLogAfterUpsertHooks, mechAbilityTriggerLogHook)
+		mechAbilityTriggerLogsOldAfterUpsertHooks = append(mechAbilityTriggerLogsOldAfterUpsertHooks, mechAbilityTriggerLogsOldHook)
 	}
 }
 
-// One returns a single mechAbilityTriggerLog record from the query.
-func (q mechAbilityTriggerLogQuery) One(exec boil.Executor) (*MechAbilityTriggerLog, error) {
-	o := &MechAbilityTriggerLog{}
+// One returns a single mechAbilityTriggerLogsOld record from the query.
+func (q mechAbilityTriggerLogsOldQuery) One(exec boil.Executor) (*MechAbilityTriggerLogsOld, error) {
+	o := &MechAbilityTriggerLogsOld{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -313,7 +313,7 @@ func (q mechAbilityTriggerLogQuery) One(exec boil.Executor) (*MechAbilityTrigger
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for mech_ability_trigger_logs")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for mech_ability_trigger_logs_old")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -323,16 +323,16 @@ func (q mechAbilityTriggerLogQuery) One(exec boil.Executor) (*MechAbilityTrigger
 	return o, nil
 }
 
-// All returns all MechAbilityTriggerLog records from the query.
-func (q mechAbilityTriggerLogQuery) All(exec boil.Executor) (MechAbilityTriggerLogSlice, error) {
-	var o []*MechAbilityTriggerLog
+// All returns all MechAbilityTriggerLogsOld records from the query.
+func (q mechAbilityTriggerLogsOldQuery) All(exec boil.Executor) (MechAbilityTriggerLogsOldSlice, error) {
+	var o []*MechAbilityTriggerLogsOld
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to MechAbilityTriggerLog slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to MechAbilityTriggerLogsOld slice")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -343,8 +343,8 @@ func (q mechAbilityTriggerLogQuery) All(exec boil.Executor) (MechAbilityTriggerL
 	return o, nil
 }
 
-// Count returns the count of all MechAbilityTriggerLog records in the query.
-func (q mechAbilityTriggerLogQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all MechAbilityTriggerLogsOld records in the query.
+func (q mechAbilityTriggerLogsOldQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -352,14 +352,14 @@ func (q mechAbilityTriggerLogQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count mech_ability_trigger_logs rows")
+		return 0, errors.Wrap(err, "boiler: failed to count mech_ability_trigger_logs_old rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q mechAbilityTriggerLogQuery) Exists(exec boil.Executor) (bool, error) {
+func (q mechAbilityTriggerLogsOldQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -368,14 +368,14 @@ func (q mechAbilityTriggerLogQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if mech_ability_trigger_logs exists")
+		return false, errors.Wrap(err, "boiler: failed to check if mech_ability_trigger_logs_old exists")
 	}
 
 	return count > 0, nil
 }
 
 // GameAbility pointed to by the foreign key.
-func (o *MechAbilityTriggerLog) GameAbility(mods ...qm.QueryMod) gameAbilityQuery {
+func (o *MechAbilityTriggerLogsOld) GameAbility(mods ...qm.QueryMod) gameAbilityQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.GameAbilityID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -390,7 +390,7 @@ func (o *MechAbilityTriggerLog) GameAbility(mods ...qm.QueryMod) gameAbilityQuer
 }
 
 // Mech pointed to by the foreign key.
-func (o *MechAbilityTriggerLog) Mech(mods ...qm.QueryMod) mechQuery {
+func (o *MechAbilityTriggerLogsOld) Mech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -405,7 +405,7 @@ func (o *MechAbilityTriggerLog) Mech(mods ...qm.QueryMod) mechQuery {
 }
 
 // TriggeredBy pointed to by the foreign key.
-func (o *MechAbilityTriggerLog) TriggeredBy(mods ...qm.QueryMod) playerQuery {
+func (o *MechAbilityTriggerLogsOld) TriggeredBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.TriggeredByID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -421,20 +421,20 @@ func (o *MechAbilityTriggerLog) TriggeredBy(mods ...qm.QueryMod) playerQuery {
 
 // LoadGameAbility allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, maybeMechAbilityTriggerLog interface{}, mods queries.Applicator) error {
-	var slice []*MechAbilityTriggerLog
-	var object *MechAbilityTriggerLog
+func (mechAbilityTriggerLogsOldL) LoadGameAbility(e boil.Executor, singular bool, maybeMechAbilityTriggerLogsOld interface{}, mods queries.Applicator) error {
+	var slice []*MechAbilityTriggerLogsOld
+	var object *MechAbilityTriggerLogsOld
 
 	if singular {
-		object = maybeMechAbilityTriggerLog.(*MechAbilityTriggerLog)
+		object = maybeMechAbilityTriggerLogsOld.(*MechAbilityTriggerLogsOld)
 	} else {
-		slice = *maybeMechAbilityTriggerLog.(*[]*MechAbilityTriggerLog)
+		slice = *maybeMechAbilityTriggerLogsOld.(*[]*MechAbilityTriggerLogsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &mechAbilityTriggerLogR{}
+			object.R = &mechAbilityTriggerLogsOldR{}
 		}
 		args = append(args, object.GameAbilityID)
 
@@ -442,7 +442,7 @@ func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, ma
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &mechAbilityTriggerLogR{}
+				obj.R = &mechAbilityTriggerLogsOldR{}
 			}
 
 			for _, a := range args {
@@ -486,7 +486,7 @@ func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, ma
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for game_abilities")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -504,7 +504,7 @@ func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, ma
 		if foreign.R == nil {
 			foreign.R = &gameAbilityR{}
 		}
-		foreign.R.MechAbilityTriggerLogs = append(foreign.R.MechAbilityTriggerLogs, object)
+		foreign.R.MechAbilityTriggerLogsOlds = append(foreign.R.MechAbilityTriggerLogsOlds, object)
 		return nil
 	}
 
@@ -515,7 +515,7 @@ func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, ma
 				if foreign.R == nil {
 					foreign.R = &gameAbilityR{}
 				}
-				foreign.R.MechAbilityTriggerLogs = append(foreign.R.MechAbilityTriggerLogs, local)
+				foreign.R.MechAbilityTriggerLogsOlds = append(foreign.R.MechAbilityTriggerLogsOlds, local)
 				break
 			}
 		}
@@ -526,20 +526,20 @@ func (mechAbilityTriggerLogL) LoadGameAbility(e boil.Executor, singular bool, ma
 
 // LoadMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMechAbilityTriggerLog interface{}, mods queries.Applicator) error {
-	var slice []*MechAbilityTriggerLog
-	var object *MechAbilityTriggerLog
+func (mechAbilityTriggerLogsOldL) LoadMech(e boil.Executor, singular bool, maybeMechAbilityTriggerLogsOld interface{}, mods queries.Applicator) error {
+	var slice []*MechAbilityTriggerLogsOld
+	var object *MechAbilityTriggerLogsOld
 
 	if singular {
-		object = maybeMechAbilityTriggerLog.(*MechAbilityTriggerLog)
+		object = maybeMechAbilityTriggerLogsOld.(*MechAbilityTriggerLogsOld)
 	} else {
-		slice = *maybeMechAbilityTriggerLog.(*[]*MechAbilityTriggerLog)
+		slice = *maybeMechAbilityTriggerLogsOld.(*[]*MechAbilityTriggerLogsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &mechAbilityTriggerLogR{}
+			object.R = &mechAbilityTriggerLogsOldR{}
 		}
 		args = append(args, object.MechID)
 
@@ -547,7 +547,7 @@ func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMech
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &mechAbilityTriggerLogR{}
+				obj.R = &mechAbilityTriggerLogsOldR{}
 			}
 
 			for _, a := range args {
@@ -591,7 +591,7 @@ func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMech
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -609,7 +609,7 @@ func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMech
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.MechAbilityTriggerLogs = append(foreign.R.MechAbilityTriggerLogs, object)
+		foreign.R.MechAbilityTriggerLogsOlds = append(foreign.R.MechAbilityTriggerLogsOlds, object)
 		return nil
 	}
 
@@ -620,7 +620,7 @@ func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMech
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.MechAbilityTriggerLogs = append(foreign.R.MechAbilityTriggerLogs, local)
+				foreign.R.MechAbilityTriggerLogsOlds = append(foreign.R.MechAbilityTriggerLogsOlds, local)
 				break
 			}
 		}
@@ -631,20 +631,20 @@ func (mechAbilityTriggerLogL) LoadMech(e boil.Executor, singular bool, maybeMech
 
 // LoadTriggeredBy allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, maybeMechAbilityTriggerLog interface{}, mods queries.Applicator) error {
-	var slice []*MechAbilityTriggerLog
-	var object *MechAbilityTriggerLog
+func (mechAbilityTriggerLogsOldL) LoadTriggeredBy(e boil.Executor, singular bool, maybeMechAbilityTriggerLogsOld interface{}, mods queries.Applicator) error {
+	var slice []*MechAbilityTriggerLogsOld
+	var object *MechAbilityTriggerLogsOld
 
 	if singular {
-		object = maybeMechAbilityTriggerLog.(*MechAbilityTriggerLog)
+		object = maybeMechAbilityTriggerLogsOld.(*MechAbilityTriggerLogsOld)
 	} else {
-		slice = *maybeMechAbilityTriggerLog.(*[]*MechAbilityTriggerLog)
+		slice = *maybeMechAbilityTriggerLogsOld.(*[]*MechAbilityTriggerLogsOld)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &mechAbilityTriggerLogR{}
+			object.R = &mechAbilityTriggerLogsOldR{}
 		}
 		args = append(args, object.TriggeredByID)
 
@@ -652,7 +652,7 @@ func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, ma
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &mechAbilityTriggerLogR{}
+				obj.R = &mechAbilityTriggerLogsOldR{}
 			}
 
 			for _, a := range args {
@@ -696,7 +696,7 @@ func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, ma
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(mechAbilityTriggerLogAfterSelectHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -714,7 +714,7 @@ func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, ma
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.TriggeredByMechAbilityTriggerLogs = append(foreign.R.TriggeredByMechAbilityTriggerLogs, object)
+		foreign.R.TriggeredByMechAbilityTriggerLogsOlds = append(foreign.R.TriggeredByMechAbilityTriggerLogsOlds, object)
 		return nil
 	}
 
@@ -725,7 +725,7 @@ func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, ma
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.TriggeredByMechAbilityTriggerLogs = append(foreign.R.TriggeredByMechAbilityTriggerLogs, local)
+				foreign.R.TriggeredByMechAbilityTriggerLogsOlds = append(foreign.R.TriggeredByMechAbilityTriggerLogsOlds, local)
 				break
 			}
 		}
@@ -734,10 +734,10 @@ func (mechAbilityTriggerLogL) LoadTriggeredBy(e boil.Executor, singular bool, ma
 	return nil
 }
 
-// SetGameAbility of the mechAbilityTriggerLog to the related item.
+// SetGameAbility of the mechAbilityTriggerLogsOld to the related item.
 // Sets o.R.GameAbility to related.
-// Adds o to related.R.MechAbilityTriggerLogs.
-func (o *MechAbilityTriggerLog) SetGameAbility(exec boil.Executor, insert bool, related *GameAbility) error {
+// Adds o to related.R.MechAbilityTriggerLogsOlds.
+func (o *MechAbilityTriggerLogsOld) SetGameAbility(exec boil.Executor, insert bool, related *GameAbility) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -746,9 +746,9 @@ func (o *MechAbilityTriggerLog) SetGameAbility(exec boil.Executor, insert bool, 
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+		"UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"game_ability_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -762,7 +762,7 @@ func (o *MechAbilityTriggerLog) SetGameAbility(exec boil.Executor, insert bool, 
 
 	o.GameAbilityID = related.ID
 	if o.R == nil {
-		o.R = &mechAbilityTriggerLogR{
+		o.R = &mechAbilityTriggerLogsOldR{
 			GameAbility: related,
 		}
 	} else {
@@ -771,19 +771,19 @@ func (o *MechAbilityTriggerLog) SetGameAbility(exec boil.Executor, insert bool, 
 
 	if related.R == nil {
 		related.R = &gameAbilityR{
-			MechAbilityTriggerLogs: MechAbilityTriggerLogSlice{o},
+			MechAbilityTriggerLogsOlds: MechAbilityTriggerLogsOldSlice{o},
 		}
 	} else {
-		related.R.MechAbilityTriggerLogs = append(related.R.MechAbilityTriggerLogs, o)
+		related.R.MechAbilityTriggerLogsOlds = append(related.R.MechAbilityTriggerLogsOlds, o)
 	}
 
 	return nil
 }
 
-// SetMech of the mechAbilityTriggerLog to the related item.
+// SetMech of the mechAbilityTriggerLogsOld to the related item.
 // Sets o.R.Mech to related.
-// Adds o to related.R.MechAbilityTriggerLogs.
-func (o *MechAbilityTriggerLog) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.MechAbilityTriggerLogsOlds.
+func (o *MechAbilityTriggerLogsOld) SetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -792,9 +792,9 @@ func (o *MechAbilityTriggerLog) SetMech(exec boil.Executor, insert bool, related
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+		"UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -808,7 +808,7 @@ func (o *MechAbilityTriggerLog) SetMech(exec boil.Executor, insert bool, related
 
 	o.MechID = related.ID
 	if o.R == nil {
-		o.R = &mechAbilityTriggerLogR{
+		o.R = &mechAbilityTriggerLogsOldR{
 			Mech: related,
 		}
 	} else {
@@ -817,19 +817,19 @@ func (o *MechAbilityTriggerLog) SetMech(exec boil.Executor, insert bool, related
 
 	if related.R == nil {
 		related.R = &mechR{
-			MechAbilityTriggerLogs: MechAbilityTriggerLogSlice{o},
+			MechAbilityTriggerLogsOlds: MechAbilityTriggerLogsOldSlice{o},
 		}
 	} else {
-		related.R.MechAbilityTriggerLogs = append(related.R.MechAbilityTriggerLogs, o)
+		related.R.MechAbilityTriggerLogsOlds = append(related.R.MechAbilityTriggerLogsOlds, o)
 	}
 
 	return nil
 }
 
-// SetTriggeredBy of the mechAbilityTriggerLog to the related item.
+// SetTriggeredBy of the mechAbilityTriggerLogsOld to the related item.
 // Sets o.R.TriggeredBy to related.
-// Adds o to related.R.TriggeredByMechAbilityTriggerLogs.
-func (o *MechAbilityTriggerLog) SetTriggeredBy(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.TriggeredByMechAbilityTriggerLogsOlds.
+func (o *MechAbilityTriggerLogsOld) SetTriggeredBy(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -838,9 +838,9 @@ func (o *MechAbilityTriggerLog) SetTriggeredBy(exec boil.Executor, insert bool, 
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+		"UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"triggered_by_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -854,7 +854,7 @@ func (o *MechAbilityTriggerLog) SetTriggeredBy(exec boil.Executor, insert bool, 
 
 	o.TriggeredByID = related.ID
 	if o.R == nil {
-		o.R = &mechAbilityTriggerLogR{
+		o.R = &mechAbilityTriggerLogsOldR{
 			TriggeredBy: related,
 		}
 	} else {
@@ -863,56 +863,56 @@ func (o *MechAbilityTriggerLog) SetTriggeredBy(exec boil.Executor, insert bool, 
 
 	if related.R == nil {
 		related.R = &playerR{
-			TriggeredByMechAbilityTriggerLogs: MechAbilityTriggerLogSlice{o},
+			TriggeredByMechAbilityTriggerLogsOlds: MechAbilityTriggerLogsOldSlice{o},
 		}
 	} else {
-		related.R.TriggeredByMechAbilityTriggerLogs = append(related.R.TriggeredByMechAbilityTriggerLogs, o)
+		related.R.TriggeredByMechAbilityTriggerLogsOlds = append(related.R.TriggeredByMechAbilityTriggerLogsOlds, o)
 	}
 
 	return nil
 }
 
-// MechAbilityTriggerLogs retrieves all the records using an executor.
-func MechAbilityTriggerLogs(mods ...qm.QueryMod) mechAbilityTriggerLogQuery {
-	mods = append(mods, qm.From("\"mech_ability_trigger_logs\""), qmhelper.WhereIsNull("\"mech_ability_trigger_logs\".\"deleted_at\""))
-	return mechAbilityTriggerLogQuery{NewQuery(mods...)}
+// MechAbilityTriggerLogsOlds retrieves all the records using an executor.
+func MechAbilityTriggerLogsOlds(mods ...qm.QueryMod) mechAbilityTriggerLogsOldQuery {
+	mods = append(mods, qm.From("\"mech_ability_trigger_logs_old\""), qmhelper.WhereIsNull("\"mech_ability_trigger_logs_old\".\"deleted_at\""))
+	return mechAbilityTriggerLogsOldQuery{NewQuery(mods...)}
 }
 
-// FindMechAbilityTriggerLog retrieves a single record by ID with an executor.
+// FindMechAbilityTriggerLogsOld retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindMechAbilityTriggerLog(exec boil.Executor, iD string, selectCols ...string) (*MechAbilityTriggerLog, error) {
-	mechAbilityTriggerLogObj := &MechAbilityTriggerLog{}
+func FindMechAbilityTriggerLogsOld(exec boil.Executor, iD string, selectCols ...string) (*MechAbilityTriggerLogsOld, error) {
+	mechAbilityTriggerLogsOldObj := &MechAbilityTriggerLogsOld{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mech_ability_trigger_logs\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"mech_ability_trigger_logs_old\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, mechAbilityTriggerLogObj)
+	err := q.Bind(nil, exec, mechAbilityTriggerLogsOldObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from mech_ability_trigger_logs")
+		return nil, errors.Wrap(err, "boiler: unable to select from mech_ability_trigger_logs_old")
 	}
 
-	if err = mechAbilityTriggerLogObj.doAfterSelectHooks(exec); err != nil {
-		return mechAbilityTriggerLogObj, err
+	if err = mechAbilityTriggerLogsOldObj.doAfterSelectHooks(exec); err != nil {
+		return mechAbilityTriggerLogsOldObj, err
 	}
 
-	return mechAbilityTriggerLogObj, nil
+	return mechAbilityTriggerLogsOldObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *MechAbilityTriggerLog) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *MechAbilityTriggerLogsOld) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no mech_ability_trigger_logs provided for insertion")
+		return errors.New("boiler: no mech_ability_trigger_logs_old provided for insertion")
 	}
 
 	var err error
@@ -929,33 +929,33 @@ func (o *MechAbilityTriggerLog) Insert(exec boil.Executor, columns boil.Columns)
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(mechAbilityTriggerLogColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(mechAbilityTriggerLogsOldColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	mechAbilityTriggerLogInsertCacheMut.RLock()
-	cache, cached := mechAbilityTriggerLogInsertCache[key]
-	mechAbilityTriggerLogInsertCacheMut.RUnlock()
+	mechAbilityTriggerLogsOldInsertCacheMut.RLock()
+	cache, cached := mechAbilityTriggerLogsOldInsertCache[key]
+	mechAbilityTriggerLogsOldInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			mechAbilityTriggerLogAllColumns,
-			mechAbilityTriggerLogColumnsWithDefault,
-			mechAbilityTriggerLogColumnsWithoutDefault,
+			mechAbilityTriggerLogsOldAllColumns,
+			mechAbilityTriggerLogsOldColumnsWithDefault,
+			mechAbilityTriggerLogsOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"mech_ability_trigger_logs\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"mech_ability_trigger_logs_old\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"mech_ability_trigger_logs\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"mech_ability_trigger_logs_old\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -982,22 +982,22 @@ func (o *MechAbilityTriggerLog) Insert(exec boil.Executor, columns boil.Columns)
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into mech_ability_trigger_logs")
+		return errors.Wrap(err, "boiler: unable to insert into mech_ability_trigger_logs_old")
 	}
 
 	if !cached {
-		mechAbilityTriggerLogInsertCacheMut.Lock()
-		mechAbilityTriggerLogInsertCache[key] = cache
-		mechAbilityTriggerLogInsertCacheMut.Unlock()
+		mechAbilityTriggerLogsOldInsertCacheMut.Lock()
+		mechAbilityTriggerLogsOldInsertCache[key] = cache
+		mechAbilityTriggerLogsOldInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the MechAbilityTriggerLog.
+// Update uses an executor to update the MechAbilityTriggerLogsOld.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *MechAbilityTriggerLog) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *MechAbilityTriggerLogsOld) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1007,28 +1007,28 @@ func (o *MechAbilityTriggerLog) Update(exec boil.Executor, columns boil.Columns)
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	mechAbilityTriggerLogUpdateCacheMut.RLock()
-	cache, cached := mechAbilityTriggerLogUpdateCache[key]
-	mechAbilityTriggerLogUpdateCacheMut.RUnlock()
+	mechAbilityTriggerLogsOldUpdateCacheMut.RLock()
+	cache, cached := mechAbilityTriggerLogsOldUpdateCache[key]
+	mechAbilityTriggerLogsOldUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			mechAbilityTriggerLogAllColumns,
-			mechAbilityTriggerLogPrimaryKeyColumns,
+			mechAbilityTriggerLogsOldAllColumns,
+			mechAbilityTriggerLogsOldPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update mech_ability_trigger_logs, could not build whitelist")
+			return 0, errors.New("boiler: unable to update mech_ability_trigger_logs_old, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, mechAbilityTriggerLogPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, mechAbilityTriggerLogsOldPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, append(wl, mechAbilityTriggerLogPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, append(wl, mechAbilityTriggerLogsOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1043,42 +1043,42 @@ func (o *MechAbilityTriggerLog) Update(exec boil.Executor, columns boil.Columns)
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update mech_ability_trigger_logs row")
+		return 0, errors.Wrap(err, "boiler: unable to update mech_ability_trigger_logs_old row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for mech_ability_trigger_logs_old")
 	}
 
 	if !cached {
-		mechAbilityTriggerLogUpdateCacheMut.Lock()
-		mechAbilityTriggerLogUpdateCache[key] = cache
-		mechAbilityTriggerLogUpdateCacheMut.Unlock()
+		mechAbilityTriggerLogsOldUpdateCacheMut.Lock()
+		mechAbilityTriggerLogsOldUpdateCache[key] = cache
+		mechAbilityTriggerLogsOldUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q mechAbilityTriggerLogQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q mechAbilityTriggerLogsOldQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: unable to update all for mech_ability_trigger_logs_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for mech_ability_trigger_logs_old")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o MechAbilityTriggerLogSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o MechAbilityTriggerLogsOldSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1100,13 +1100,13 @@ func (o MechAbilityTriggerLogSlice) UpdateAll(exec boil.Executor, cols M) (int64
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogsOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"mech_ability_trigger_logs\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, mechAbilityTriggerLogPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, mechAbilityTriggerLogsOldPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1114,21 +1114,21 @@ func (o MechAbilityTriggerLogSlice) UpdateAll(exec boil.Executor, cols M) (int64
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in mechAbilityTriggerLog slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in mechAbilityTriggerLogsOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all mechAbilityTriggerLog")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all mechAbilityTriggerLogsOld")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *MechAbilityTriggerLog) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *MechAbilityTriggerLogsOld) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no mech_ability_trigger_logs provided for upsert")
+		return errors.New("boiler: no mech_ability_trigger_logs_old provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1141,7 +1141,7 @@ func (o *MechAbilityTriggerLog) Upsert(exec boil.Executor, updateOnConflict bool
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(mechAbilityTriggerLogColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(mechAbilityTriggerLogsOldColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1171,42 +1171,42 @@ func (o *MechAbilityTriggerLog) Upsert(exec boil.Executor, updateOnConflict bool
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	mechAbilityTriggerLogUpsertCacheMut.RLock()
-	cache, cached := mechAbilityTriggerLogUpsertCache[key]
-	mechAbilityTriggerLogUpsertCacheMut.RUnlock()
+	mechAbilityTriggerLogsOldUpsertCacheMut.RLock()
+	cache, cached := mechAbilityTriggerLogsOldUpsertCache[key]
+	mechAbilityTriggerLogsOldUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			mechAbilityTriggerLogAllColumns,
-			mechAbilityTriggerLogColumnsWithDefault,
-			mechAbilityTriggerLogColumnsWithoutDefault,
+			mechAbilityTriggerLogsOldAllColumns,
+			mechAbilityTriggerLogsOldColumnsWithDefault,
+			mechAbilityTriggerLogsOldColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			mechAbilityTriggerLogAllColumns,
-			mechAbilityTriggerLogPrimaryKeyColumns,
+			mechAbilityTriggerLogsOldAllColumns,
+			mechAbilityTriggerLogsOldPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert mech_ability_trigger_logs, could not build update column list")
+			return errors.New("boiler: unable to upsert mech_ability_trigger_logs_old, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(mechAbilityTriggerLogPrimaryKeyColumns))
-			copy(conflict, mechAbilityTriggerLogPrimaryKeyColumns)
+			conflict = make([]string, len(mechAbilityTriggerLogsOldPrimaryKeyColumns))
+			copy(conflict, mechAbilityTriggerLogsOldPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"mech_ability_trigger_logs\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"mech_ability_trigger_logs_old\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, ret)
+			cache.retMapping, err = queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1233,23 +1233,23 @@ func (o *MechAbilityTriggerLog) Upsert(exec boil.Executor, updateOnConflict bool
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert mech_ability_trigger_logs")
+		return errors.Wrap(err, "boiler: unable to upsert mech_ability_trigger_logs_old")
 	}
 
 	if !cached {
-		mechAbilityTriggerLogUpsertCacheMut.Lock()
-		mechAbilityTriggerLogUpsertCache[key] = cache
-		mechAbilityTriggerLogUpsertCacheMut.Unlock()
+		mechAbilityTriggerLogsOldUpsertCacheMut.Lock()
+		mechAbilityTriggerLogsOldUpsertCache[key] = cache
+		mechAbilityTriggerLogsOldUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single MechAbilityTriggerLog record with an executor.
+// Delete deletes a single MechAbilityTriggerLogsOld record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *MechAbilityTriggerLog) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *MechAbilityTriggerLogsOld) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no MechAbilityTriggerLog provided for delete")
+		return 0, errors.New("boiler: no MechAbilityTriggerLogsOld provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1261,16 +1261,16 @@ func (o *MechAbilityTriggerLog) Delete(exec boil.Executor, hardDelete bool) (int
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechAbilityTriggerLogPrimaryKeyMapping)
-		sql = "DELETE FROM \"mech_ability_trigger_logs\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mechAbilityTriggerLogsOldPrimaryKeyMapping)
+		sql = "DELETE FROM \"mech_ability_trigger_logs_old\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(mechAbilityTriggerLogType, mechAbilityTriggerLogMapping, append(wl, mechAbilityTriggerLogPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(mechAbilityTriggerLogsOldType, mechAbilityTriggerLogsOldMapping, append(wl, mechAbilityTriggerLogsOldPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1283,12 +1283,12 @@ func (o *MechAbilityTriggerLog) Delete(exec boil.Executor, hardDelete bool) (int
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: unable to delete from mech_ability_trigger_logs_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for mech_ability_trigger_logs_old")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1299,9 +1299,9 @@ func (o *MechAbilityTriggerLog) Delete(exec boil.Executor, hardDelete bool) (int
 }
 
 // DeleteAll deletes all matching rows.
-func (q mechAbilityTriggerLogQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q mechAbilityTriggerLogsOldQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no mechAbilityTriggerLogQuery provided for delete all")
+		return 0, errors.New("boiler: no mechAbilityTriggerLogsOldQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1313,24 +1313,24 @@ func (q mechAbilityTriggerLogQuery) DeleteAll(exec boil.Executor, hardDelete boo
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from mech_ability_trigger_logs_old")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for mech_ability_trigger_logs_old")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o MechAbilityTriggerLogSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o MechAbilityTriggerLogsOldSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(mechAbilityTriggerLogBeforeDeleteHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1344,21 +1344,21 @@ func (o MechAbilityTriggerLogSlice) DeleteAll(exec boil.Executor, hardDelete boo
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogsOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"mech_ability_trigger_logs\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechAbilityTriggerLogPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"mech_ability_trigger_logs_old\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechAbilityTriggerLogsOldPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogsOldPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, mechAbilityTriggerLogPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"mech_ability_trigger_logs_old\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, mechAbilityTriggerLogsOldPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1370,15 +1370,15 @@ func (o MechAbilityTriggerLogSlice) DeleteAll(exec boil.Executor, hardDelete boo
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from mechAbilityTriggerLog slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from mechAbilityTriggerLogsOld slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for mech_ability_trigger_logs")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for mech_ability_trigger_logs_old")
 	}
 
-	if len(mechAbilityTriggerLogAfterDeleteHooks) != 0 {
+	if len(mechAbilityTriggerLogsOldAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1391,8 +1391,8 @@ func (o MechAbilityTriggerLogSlice) DeleteAll(exec boil.Executor, hardDelete boo
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *MechAbilityTriggerLog) Reload(exec boil.Executor) error {
-	ret, err := FindMechAbilityTriggerLog(exec, o.ID)
+func (o *MechAbilityTriggerLogsOld) Reload(exec boil.Executor) error {
+	ret, err := FindMechAbilityTriggerLogsOld(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1403,27 +1403,27 @@ func (o *MechAbilityTriggerLog) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *MechAbilityTriggerLogSlice) ReloadAll(exec boil.Executor) error {
+func (o *MechAbilityTriggerLogsOldSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := MechAbilityTriggerLogSlice{}
+	slice := MechAbilityTriggerLogsOldSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mechAbilityTriggerLogsOldPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"mech_ability_trigger_logs\".* FROM \"mech_ability_trigger_logs\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechAbilityTriggerLogPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"mech_ability_trigger_logs_old\".* FROM \"mech_ability_trigger_logs_old\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mechAbilityTriggerLogsOldPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in MechAbilityTriggerLogSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in MechAbilityTriggerLogsOldSlice")
 	}
 
 	*o = slice
@@ -1431,10 +1431,10 @@ func (o *MechAbilityTriggerLogSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// MechAbilityTriggerLogExists checks if the MechAbilityTriggerLog row exists.
-func MechAbilityTriggerLogExists(exec boil.Executor, iD string) (bool, error) {
+// MechAbilityTriggerLogsOldExists checks if the MechAbilityTriggerLogsOld row exists.
+func MechAbilityTriggerLogsOldExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mech_ability_trigger_logs\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"mech_ability_trigger_logs_old\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1444,7 +1444,7 @@ func MechAbilityTriggerLogExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if mech_ability_trigger_logs exists")
+		return false, errors.Wrap(err, "boiler: unable to check if mech_ability_trigger_logs_old exists")
 	}
 
 	return exists, nil

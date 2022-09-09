@@ -33,7 +33,6 @@ import (
 type AbilityRadius int
 
 const (
-	NukeRadius     AbilityRadius = 5200
 	BlackoutRadius AbilityRadius = player_abilities.BlackoutRadius
 )
 
@@ -298,8 +297,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentDeciders: make(map[string]bool),
 			},
 			config: &AbilityConfig{
-				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 5)) * time.Second,
-				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 15)) * time.Second,
+				BattleAbilityOptInDuration:          time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityBribeDuration, 20)) * time.Second,
+				BattleAbilityLocationSelectDuration: time.Duration(db.GetIntWithDefault(db.KeyBattleAbilityLocationSelectDuration, 20)) * time.Second,
 				DeadlyAbilityShowUpUntilSeconds:     db.GetIntWithDefault(db.KeyAdvanceBattleAbilityShowUpUntilSeconds, 300),
 				FirstAbilityLabel:                   db.GetStrWithDefault(db.KeyFirstBattleAbilityLabel, "LANDMINE"),
 			},
@@ -394,7 +393,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirst bool) (int, error) {
 		ID:                     ga.ID,
 		GameClientAbilityID:    byte(ga.GameClientAbilityID),
 		ImageUrl:               ga.ImageURL,
-		Description:            ga.Description,
+		Description:            ba.Description,
 		FactionID:              ga.FactionID,
 		Label:                  ga.Label,
 		Colour:                 ga.Colour,
@@ -707,11 +706,11 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 				X: ls.startPoint.X,
 				Y: ls.startPoint.Y,
 			},
-			LocationSelectType: gameAbility.LocationSelectType,
-			ImageUrl:           gameAbility.ImageURL,
-			Colour:             gameAbility.Colour,
-			DisplayEffectType:  gameAbility.MiniMapDisplayEffectType,
-			clearByPickUp:      gameAbility.GameClientAbilityID == 0,
+			LocationSelectType:       gameAbility.LocationSelectType,
+			ImageUrl:                 gameAbility.ImageURL,
+			Colour:                   gameAbility.Colour,
+			MiniMapDisplayEffectType: gameAbility.MiniMapDisplayEffectType,
+			MechDisplayEffectType:    gameAbility.MechDisplayEffectType,
 		}
 
 		// if delay second is greater than zero
@@ -740,23 +739,32 @@ func (as *AbilitiesSystem) launchAbility(ls *locationSelect, offeringID uuid.UUI
 			}
 		}
 
-		go func(battle *Battle, abilityContent *MiniMapAbilityContent) {
-			// Hack: delay 1 second for game client animation
-			time.Sleep(1 * time.Second)
+		mma.LaunchingAt = null.TimeFromPtr(nil)
+		if ability := btl.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
+			mma.Radius = null.IntFrom(ability.Radius)
+		}
+		// broadcast changes
+		ws.PublishMessage(
+			fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
+			server.HubKeyMiniMapAbilityDisplayList,
+			btl.MiniMapAbilityDisplayList.Add(offeringID.String(), mma),
+		)
 
-			abilityContent.LaunchingAt = null.TimeFromPtr(nil)
-			if ability := battle.abilityDetails[gameAbility.GameClientAbilityID]; ability != nil && ability.Radius > 0 {
-				abilityContent.Radius = null.IntFrom(ability.Radius)
-			}
+		if gameAbility.AnimationDurationSeconds > 0 {
+			go func(battle *Battle, abilityContent *MiniMapAbilityContent, animationSeconds int) {
+				time.Sleep(time.Duration(animationSeconds) * time.Second)
 
-			// broadcast changes
-			ws.PublishMessage(
-				fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", as.arenaID),
-				server.HubKeyMiniMapAbilityDisplayList,
-				battle.MiniMapAbilityDisplayList.Add(offeringID.String(), abilityContent),
-			)
-		}(btl, mma)
-
+				if battle != nil && battle.stage.Load() == BattleStageStart {
+					if ab := battle.MiniMapAbilityDisplayList.Get(offeringID.String()); ab != nil {
+						ws.PublishMessage(
+							fmt.Sprintf("/public/arena/%s/mini_map_ability_display_list", battle.ArenaID),
+							server.HubKeyMiniMapAbilityDisplayList,
+							battle.MiniMapAbilityDisplayList.Remove(offeringID.String()),
+						)
+					}
+				}
+			}(btl, mma, gameAbility.AnimationDurationSeconds)
+		}
 	}
 
 	userUUID := uuid.FromStringOrNil(ls.userID)

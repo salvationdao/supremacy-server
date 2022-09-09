@@ -26,77 +26,71 @@ type Mech struct {
 	*CollectionItem
 	*Stats
 	*Images
-
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
-	WeaponHardpoints      int        `json:"weapon_hardpoints"`
-	UtilitySlots          int        `json:"utility_slots"`
-	Speed                 int        `json:"speed"`
-	MaxHitpoints          int        `json:"max_hitpoints"`
-	IsDefault             bool       `json:"is_default"`
-	IsInsured             bool       `json:"is_insured"`
 	Name                  string     `json:"name"`
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string     `json:"power_core_size"`
 	CollectionItemID      string     `json:"-"`
-	QueuePosition         null.Int   `json:"queue_position"`
-	BattleReady           bool       `json:"battle_ready"`
 
-	BlueprintID string         `json:"blueprint_id"`
-	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
+	// stats
+	Speed               int    `json:"speed"`
+	BoostedSpeed        int    `json:"boosted_speed"`
+	MaxHitpoints        int    `json:"max_hitpoints"`
+	BoostedMaxHitpoints int    `json:"boosted_max_hitpoints"`
+	WeaponHardpoints    int    `json:"weapon_hardpoints"`
+	UtilitySlots        int    `json:"utility_slots"`
+	RepairBlocks        int    `json:"repair_blocks"`
+	PowerCoreSize       string `json:"power_core_size"`
+	BoostedStat         string `json:"boosted_stat"`
 
-	BrandID string `json:"brand_id"`
-	Brand   *Brand `json:"brand"`
-
-	Owner *User `json:"user"`
-
-	FactionID null.String `json:"faction_id"`
-	Faction   *Faction    `json:"faction,omitempty"`
-
-	ModelID string     `json:"model_id"`
-	Model   *MechModel `json:"model"`
+	// state
+	QueuePosition null.Int    `json:"queue_position"`
+	BattleReady   bool        `json:"battle_ready"`
+	IsDefault     bool        `json:"is_default"`
+	IsInsured     bool        `json:"is_insured"`
+	ItemSaleID    null.String `json:"item_sale_id"`
 
 	// Connected objects
-	ChassisSkinID string    `json:"chassis_skin_id,omitempty"`
-	ChassisSkin   *MechSkin `json:"chassis_skin,omitempty"`
-
-	IntroAnimationID null.String    `json:"intro_animation_id,omitempty"`
-	IntroAnimation   *MechAnimation `json:"intro_animation,omitempty"`
-
-	OutroAnimationID null.String    `json:"outro_animation_id,omitempty"`
-	OutroAnimation   *MechAnimation `json:"outro_animation,omitempty"`
-
-	PowerCoreID null.String `json:"power_core_id,omitempty"`
-	PowerCore   *PowerCore  `json:"power_core,omitempty"`
-
-	Weapons WeaponSlice  `json:"weapons"`
-	Utility UtilitySlice `json:"utility"`
-
-	ItemSaleID null.String `json:"item_sale_id"`
-
-	BlueprintWeaponIDsWithSkinInheritance []string `json:"blueprint_weapon_ids_with_skin_inheritance"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Owner                                 *User          `json:"user"`
+	FactionID                             null.String    `json:"faction_id"`
+	Faction                               *Faction       `json:"faction,omitempty"`
+	BlueprintID                           string         `json:"blueprint_id"`
+	Blueprint                             *BlueprintMech `json:"blueprint_mech,omitempty"`
+	BrandID                               string         `json:"brand_id"`
+	Brand                                 *Brand         `json:"brand"`
+	ChassisSkinID                         string         `json:"chassis_skin_id,omitempty"`
+	ChassisSkin                           *MechSkin      `json:"chassis_skin,omitempty"`
+	IntroAnimationID                      null.String    `json:"intro_animation_id,omitempty"`
+	IntroAnimation                        *MechAnimation `json:"intro_animation,omitempty"`
+	OutroAnimationID                      null.String    `json:"outro_animation_id,omitempty"`
+	OutroAnimation                        *MechAnimation `json:"outro_animation,omitempty"`
+	PowerCoreID                           null.String    `json:"power_core_id,omitempty"`
+	PowerCore                             *PowerCore     `json:"power_core,omitempty"`
+	Weapons                               WeaponSlice    `json:"weapons"`
+	Utility                               UtilitySlice   `json:"utility"`
+	UpdatedAt                             time.Time      `json:"updated_at"`
+	CreatedAt                             time.Time      `json:"created_at"`
+	BlueprintWeaponIDsWithSkinInheritance []string       `json:"blueprint_weapon_ids_with_skin_inheritance"`
 }
 
 type BlueprintMech struct {
 	ID                   string    `json:"id"`
 	Label                string    `json:"label"`
-	Slug                 string    `json:"slug"`
-	Skin                 string    `json:"skin"`
 	WeaponHardpoints     int       `json:"weapon_hardpoints"`
 	UtilitySlots         int       `json:"utility_slots"`
 	Speed                int       `json:"speed"`
 	MaxHitpoints         int       `json:"max_hitpoints"`
-	UpdatedAt            time.Time `json:"updated_at"`
 	CreatedAt            time.Time `json:"created_at"`
 	PowerCoreSize        string    `json:"power_core_size,omitempty"`
-	Tier                 string    `json:"tier,omitempty"`
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
 	Collection           string    `json:"collection"`
-	ModelID              string    `json:"model_id"`
+
+	BrandID        string      `json:"brand_id"`
+	MechType       string      `json:"mech_type"`
+	RepairBlocks   int         `json:"repair_blocks"`
+	BoostStat      string      `json:"boost_stat"`
+	AvailabilityID null.String `json:"availability_id"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -115,17 +109,13 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
 		ID:               mech.ID,
 		Label:            mech.Label,
-		Slug:             mech.Slug,
 		WeaponHardpoints: mech.WeaponHardpoints,
 		UtilitySlots:     mech.UtilitySlots,
 		Speed:            mech.Speed,
 		MaxHitpoints:     mech.MaxHitpoints,
-		UpdatedAt:        mech.UpdatedAt,
 		CreatedAt:        mech.CreatedAt,
 		PowerCoreSize:    mech.PowerCoreSize,
-		Tier:             mech.Tier,
 		Collection:       mech.Collection,
-		ModelID:          mech.ModelID,
 	}
 }
 
@@ -155,24 +145,6 @@ type BlueprintUtility struct {
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-}
-
-type MechModel struct {
-	ID                   string      `json:"id"`
-	Label                string      `json:"label"`
-	CreatedAt            time.Time   `json:"created_at"`
-	DefaultChassisSkinID null.String `json:"default_chassis_skin_id,omitempty"`
-	BrandID              null.String `json:"brand_id"`
-	MechType             null.String `json:"mech_type"`
-	RepairBlocks         int         `json:"repair_blocks"`
-}
-
-func (b *MechModel) Scan(value interface{}) error {
-	v, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("unable to scan value into byte array")
-	}
-	return json.Unmarshal(v, b)
 }
 
 // IsBattleReady checks if a mech has the minimum it needs for battle
@@ -251,23 +223,38 @@ func (m *Mech) IsCompleteLimited() bool {
 	return true
 }
 
-func MechToGenesisOrLimited() {
+// SetBoostedStats takes the attached skin level and sets the boosted stats depending on the mechs boosted stat
+func (m *Mech) SetBoostedStats() error {
+	if m.ChassisSkin == nil {
+		return fmt.Errorf("missing mech skin object")
+	}
+	// get the % increase
+	boostPercent := (float32(m.ChassisSkin.Level) / 100) + 1
 
+	if m.BoostedStat == boiler.BoostStatMECH_SPEED {
+		m.BoostedSpeed = int(boostPercent * float32(m.Speed)) // set the boosted stat
+	} else {
+		m.BoostedSpeed = m.Speed // set boosted speed to the speed, means we can always just use boosted stat instead of figuring out which one is better down the line
+	}
+	if m.BoostedStat == boiler.BoostStatMECH_HEALTH {
+		m.BoostedMaxHitpoints = int(boostPercent * float32(m.MaxHitpoints))
+	} else {
+		m.BoostedMaxHitpoints = m.MaxHitpoints
+	}
+
+	for _, util := range m.Utility {
+		if util.Shield != nil {
+			if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
+				util.Shield.BoostedRechargeRate = int(boostPercent * float32(util.Shield.RechargeRate))
+			} else {
+				util.Shield.BoostedRechargeRate = util.Shield.RechargeRate
+			}
+		}
+	}
+
+	return nil
 }
 
-func MechModelsFromBoiler(mechModel []*boiler.MechModel) []*MechModel {
-	var smm []*MechModel
+func MechToGenesisOrLimited() {
 
-	for _, mm := range mechModel {
-		smm = append(smm, &MechModel{
-			ID:                   mm.ID,
-			Label:                mm.Label,
-			CreatedAt:            mm.CreatedAt,
-			DefaultChassisSkinID: null.StringFrom(mm.DefaultChassisSkinID),
-			BrandID:              mm.BrandID,
-			MechType:             mm.MechType,
-			RepairBlocks:         mm.RepairBlocks,
-		})
-	}
-	return smm
 }

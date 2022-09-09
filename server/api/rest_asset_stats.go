@@ -53,10 +53,10 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 
 	// validate stat column
 	switch stat {
-	case boiler.MechColumns.WeaponHardpoints,
-		boiler.MechColumns.UtilitySlots,
-		boiler.MechColumns.Speed,
-		boiler.MechColumns.MaxHitpoints:
+	case boiler.BlueprintMechColumns.WeaponHardpoints,
+		boiler.BlueprintMechColumns.UtilitySlots,
+		boiler.BlueprintMechColumns.Speed,
+		boiler.BlueprintMechColumns.MaxHitpoints:
 		break
 	default:
 		gamelog.L.Error().Str("stat", stat).Msg("invalid mech stat identifier")
@@ -65,21 +65,22 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 
 	var args []interface{}
 
-	modelCondition := ""
-
-	// here we get the model ID
-	if model != "" {
-		mechModel, err := boiler.MechModels(
-			boiler.MechModelWhere.Label.EQ(model),
-		).One(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Err(err).Str("model", model).Msg("invalid model provided")
-			return http.StatusBadRequest, terror.Error(err, "Invalid model provided.")
-		}
-
-		args = append(args, mechModel.ID)
-		modelCondition = fmt.Sprintf(`WHERE model_id = $%d`, len(args))
-	}
+	// Currently all models are the same, so comparing it against the same model is pointless
+	//modelCondition := ""
+	//
+	//// here we get the model ID
+	//if model != "" {
+	//	mechModel, err := boiler.BlueprintMechs(
+	//		boiler.BlueprintMechWhere.Label.EQ(model),
+	//	).One(gamedb.StdConn)
+	//	if err != nil {
+	//		gamelog.L.Error().Err(err).Str("model", model).Msg("invalid model provided")
+	//		return http.StatusBadRequest, terror.Error(err, "Invalid model provided.")
+	//	}
+	//
+	//	args = append(args, mechModel.ID)
+	//	modelCondition = fmt.Sprintf(`WHERE id = $%d`, len(args))
+	//}
 
 	var total int
 	var max int
@@ -90,9 +91,8 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 	    		count(id),
 	    		max("%[1]s"),
 	    		min("%[1]s")
-	    	FROM mechs
-			%s
-	    `, stat, modelCondition)
+	    	FROM blueprint_mechs
+	    `, stat)
 
 	err = gamedb.StdConn.QueryRow(q, args...).Scan(&total, &max, &min)
 	if err != nil {

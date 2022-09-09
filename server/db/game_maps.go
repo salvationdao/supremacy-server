@@ -1,65 +1,15 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"math/rand"
-	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"time"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
-
-// GameMapCreate create a new game map
-func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) error {
-	q := `
-		INSERT INTO 
-			game_maps (
-				name, 
-				image_url, 
-				width, 
-				height, 
-				cells_x, 
-				cells_y, 
-				top_pixels, 
-				left_pixels, 
-				disabled_cells,
-			)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		RETURNING 
-			id,
-			name, 
-			image_url, 
-			width, 
-			height, 
-			cells_x, 
-			cells_y, 
-			top_pixels, 
-			left_pixels, 
-			disabled_cells,
-		
-	`
-	err := pgxscan.Get(ctx, conn, gameMap, q,
-		gameMap.Name,
-		gameMap.ImageUrl,
-		gameMap.Width,
-		gameMap.Height,
-		gameMap.CellsX,
-		gameMap.CellsY,
-		gameMap.PixelTop,
-		gameMap.PixelLeft,
-		gameMap.DisabledCells,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // GameMapGetRandom return a game map by given id
 func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
@@ -68,6 +18,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 		qm.Select(
 			boiler.GameMapColumns.ID,
 			boiler.GameMapColumns.Name,
+			boiler.GameMapColumns.BackgroundURL,
 		),
 		boiler.GameMapWhere.DisabledAt.IsNull(),
 	}
@@ -111,6 +62,27 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 
 	rand.Seed(time.Now().UnixNano())
 	gameMap := maps[rand.Intn(len(maps))]
+
+	return gameMap, nil
+}
+
+// GameMapGetRandom return a game map by given id
+func GameMapGetByID(id string) (*boiler.GameMap, error) {
+
+	mapQueries := []qm.QueryMod{
+		boiler.GameMapWhere.ID.EQ(id),
+		qm.Select(
+			boiler.GameMapColumns.ID,
+			boiler.GameMapColumns.Name,
+			boiler.GameMapColumns.BackgroundURL,
+		),
+		boiler.GameMapWhere.DisabledAt.IsNull(),
+	}
+
+	gameMap, err := boiler.GameMaps(mapQueries...).One(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
 
 	return gameMap, nil
 }

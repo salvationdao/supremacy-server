@@ -6,14 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/volatiletech/null/v8"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -59,6 +61,8 @@ type BattleMechHistoryRequest struct {
 type BattleDetailed struct {
 	*boiler.Battle `json:"battle"`
 	GameMap        *boiler.GameMap `json:"game_map"`
+	BattleReplayID *string         `json:"battle_replay,omitempty"`
+	ArenaGID       null.Int        `json:"arena_gid,omitempty"`
 }
 
 type BattleMechDetailed struct {
@@ -91,13 +95,34 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
-		output = append(output, BattleMechDetailed{
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
+		}
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
-			},
-		})
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Load(boiler.BattleReplayRels.Arena),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
+			}
+		}
+
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
@@ -138,18 +163,42 @@ func (bc *BattleControllerWS) PlayerBattleMechHistoryListHandler(ctx context.Con
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
+
 		var mech *boiler.Mech
 		if o.R != nil && o.R.Mech != nil {
 			mech = o.R.Mech
 		}
-		output = append(output, BattleMechDetailed{
+
+		battleMechDetail := BattleMechDetailed{
 			BattleMech: o,
-			Battle: &BattleDetailed{
+			Mech:       mech,
+		}
+
+		if o.R != nil && o.R.Battle != nil {
+			battleMechDetail.Battle = &BattleDetailed{
 				Battle:  o.R.Battle,
 				GameMap: o.R.Battle.R.GameMap,
-			},
-			Mech: mech,
-		})
+			}
+			replay, err := boiler.BattleReplays(
+				boiler.BattleReplayWhere.BattleID.EQ(o.R.Battle.ID),
+				boiler.BattleReplayWhere.ArenaID.EQ(o.R.Battle.ArenaID),
+				boiler.BattleReplayWhere.IsCompleteBattle.EQ(true),
+				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusSTOPPED),
+				boiler.BattleReplayWhere.StreamID.IsNotNull(),
+				qm.Load(boiler.BattleReplayRels.Arena),
+			).One(gamedb.StdConn)
+			if err != nil && err != sql.ErrNoRows {
+				gamelog.L.Error().Err(err).Msg("Failed to get battle replay")
+			}
+			if replay != nil {
+				battleMechDetail.Battle.BattleReplayID = &replay.ID
+				if replay.R != nil && replay.R.Arena != nil {
+					battleMechDetail.Battle.ArenaGID = replay.R.Arena.Gid
+				}
+			}
+		}
+
+		output = append(output, battleMechDetail)
 	}
 
 	reply(BattleMechHistoryResponse{
@@ -246,15 +295,17 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 }
 
 func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	queueLength, err := db.QueueLength(uuid.FromStringOrNil(factionID))
+	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
+
+	pos, err := db.GetFactionQueueLength(factionID)
 	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
-		return err
+		l.Error().Err(err).Msg("unable to retrieve faction queue length")
+		return terror.Error(err, "Could not get faction queue length.")
 	}
 
 	reply(battle.QueueStatusResponse{
-		QueueLength: queueLength, // return the current queue length
-		QueueCost:   db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(250, 18)),
+		QueuePosition: pos + 1,
+		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
 	})
 	return nil
 }
@@ -262,12 +313,21 @@ func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Pl
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
-	queueDetails, err := db.MechArenaStatus(user.ID, mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Invalid request received.")
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(mechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
 	}
 
-	reply(queueDetails)
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	reply(mechStatus)
 	return nil
 }
 
@@ -299,6 +359,18 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
+func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+
+	// details
+	resp, err := db.GetNextBattle(ctx)
+	if err != nil {
+		return terror.Error(err, "failed getting uppcoming battle details")
+	}
+
+	reply(resp)
+
+	return nil
+}
 
 func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	arena, err := api.ArenaManager.GetArenaFromContext(ctx)
@@ -312,6 +384,10 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 	if btl != nil {
 		reply(btl.MiniMapAbilityDisplayList.List())
 	}
+	return nil
+}
 
+func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	reply(api.ChallengeFund)
 	return nil
 }

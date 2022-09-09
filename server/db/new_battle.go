@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
@@ -205,37 +207,6 @@ func (ev EventType) String() string {
 	return [...]string{"killed", "kill", "spawned_ai", "ability_triggered"}[ev]
 }
 
-type MechWithOwner struct {
-	OwnerID   uuid.UUID
-	MechID    uuid.UUID
-	FactionID uuid.UUID
-}
-
-func WinBattle(battleID string, winCondition string, mechs ...*MechWithOwner) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "WinBattle").Err(err).Msg("unable to begin tx")
-		return err
-	}
-	defer tx.Rollback()
-	for _, m := range mechs {
-		mw := &boiler.BattleWin{
-			BattleID:     battleID,
-			WinCondition: winCondition,
-			MechID:       m.MechID.String(),
-			OwnerID:      m.OwnerID.String(),
-			FactionID:    m.FactionID.String(),
-		}
-		err = mw.Insert(tx, boil.Infer())
-	}
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "WinBattle").Err(err).Msg("unable to commit tx")
-		return err
-	}
-	return err
-}
-
 //DefaultFactionPlayers return default mech players
 func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	players, err := boiler.Players(qm.Where("is_ai = true"), boiler.PlayerWhere.FactionID.IsNotNull()).All(gamedb.StdConn)
@@ -272,14 +243,20 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	return result, err
 }
 
-func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
+func LoadBattleQueue(ctx context.Context, lengthPerFaction int, excludeInBattle bool) ([]*boiler.BattleQueue, error) {
+
+	inBattle := ""
+	if excludeInBattle {
+		inBattle = "AND  x.battle_id IS NULL"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT %s, %s, %s, %s, %s, %s, %s, %s
 		FROM (
-			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
+			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY %s ASC) AS r, t.*
 			FROM battle_queue t
 		) x
-		WHERE x.r <= $1
+		WHERE x.r <= $1 %s
 	`,
 		boiler.BattleQueueColumns.ID,
 		boiler.BattleQueueColumns.MechID,
@@ -289,6 +266,8 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		boiler.BattleQueueColumns.BattleID,
 		boiler.BattleQueueColumns.Notified,
 		boiler.BattleQueueColumns.SystemMessageNotified,
+		boiler.BattleQueueColumns.QueuedAt,
+		inBattle,
 	)
 
 	result, err := gamedb.StdConn.Query(query, lengthPerFaction)
@@ -306,9 +285,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		if err != nil {
 			return nil, err
 		}
+
 		queue = append(queue, mc)
 	}
-
 	return queue, nil
 }
 
@@ -317,27 +296,12 @@ type MechAndPosition struct {
 	QueuePosition int64     `db:"queue_position"`
 }
 
-func QueueLength(factionID uuid.UUID) (int64, error) {
-	bqs, err := boiler.BattleQueues(
-		qm.Select(
-			boiler.BattleQueueColumns.ID,
-		),
-		boiler.BattleQueueWhere.FactionID.EQ(factionID.String()),
-		boiler.BattleQueueWhere.BattleID.IsNull(), // only count the mech that is not in battle
-	).All(gamedb.StdConn)
-	if err != nil {
-		return -1, err
-	}
-
-	return int64(len(bqs)), nil
-}
-
 // QueueOwnerList returns the mech's in queue from an owner.
 func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 	q := `
 		SELECT q.mech_id, q.position
 		FROM (
-			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS position, _q.owner_id
+			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS POSITION, _q.owner_id
 			FROM battle_queue _q
 			WHERE _q.faction_id = (
 				SELECT _p.faction_id 
@@ -471,7 +435,6 @@ func BattleViewerUpsert(battleID string, userID string) error {
 	_, err = gamedb.StdConn.Exec(q, battleID, userID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("unable to upsert battle views")
-		return err
 	}
 
 	// increase battle count
@@ -482,4 +445,70 @@ func BattleViewerUpsert(battleID string, userID string) error {
 	}
 
 	return nil
+}
+
+type BattleMap struct {
+	Name          string `json:"name,omitempty"`
+	BackgroundURL string `json:"background_url,omitempty"`
+	LogoURL       string `json:"logo_url,omitempty"`
+}
+type NextBattle struct {
+	Map   *BattleMap `json:"map,omitempty"`
+	BcID  string     `json:"bc_id,omitempty"`
+	ZhiID string     `json:"zhi_id,omitempty"`
+	RmID  string     `json:"rm_id,omitempty"`
+
+	BCMechIDs  []string `json:"bc_mech_ids,omitempty"`
+	ZHIMechIDs []string `json:"zhi_mech_ids,omitempty"`
+	RMMechIDs  []string `json:"rm_mech_ids,omitempty"`
+}
+
+func GetNextBattle(ctx context.Context) (*NextBattle, error) {
+	// get next 6 mechs for each faction (the first 3 might be in battle)
+	queue, err := LoadBattleQueue(context.Background(), 6, true)
+	if err != nil {
+		return nil, err
+	}
+
+	rmMechIDs := []string{}
+	zhiMechIDs := []string{}
+	bcMechIDs := []string{}
+
+	for _, q := range queue {
+		if q.FactionID == server.RedMountainFactionID {
+			rmMechIDs = append(rmMechIDs, q.MechID)
+		}
+
+		if q.FactionID == server.ZaibatsuFactionID {
+			zhiMechIDs = append(zhiMechIDs, q.MechID)
+		}
+
+		if q.FactionID == server.BostonCyberneticsFactionID {
+			bcMechIDs = append(bcMechIDs, q.MechID)
+		}
+	}
+
+	// get map details
+	bMap := &BattleMap{}
+	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt+" ASC"), qm.Load(boiler.BattleMapQueueRels.Map)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "failed getting next map in queue")
+	}
+
+	if mapInQueue != nil && mapInQueue.R != nil {
+		bMap.LogoURL = mapInQueue.R.Map.LogoURL
+		bMap.BackgroundURL = mapInQueue.R.Map.BackgroundURL
+		bMap.Name = mapInQueue.R.Map.Name
+	}
+
+	resp := &NextBattle{
+		BCMechIDs:  bcMechIDs,
+		ZHIMechIDs: zhiMechIDs,
+		RMMechIDs:  rmMechIDs,
+		BcID:       server.BostonCyberneticsFactionID,
+		ZhiID:      server.ZaibatsuFactionID,
+		RmID:       server.RedMountainFactionID,
+		Map:        bMap,
+	}
+	return resp, nil
 }

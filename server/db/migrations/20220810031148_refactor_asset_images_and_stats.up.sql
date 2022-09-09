@@ -119,14 +119,14 @@ UPDATE template_blueprints SET blueprint_id = '0dd0559f-ac63-424d-b714-af32af65e
 -- region -- update currently owned weapon skins to use the right weapon skin blueprint id
 UPDATE weapon_skin SET blueprint_id = 'f6b4a628-78e5-47d1-9f75-c95d70b3472e'
 WHERE blueprint_id IN (
-                        '6bee4231-85d3-4b0d-91d3-dba759d8fb4f',
-                        'a40d9c2c-812f-45f9-a059-f52dc7980982',
-                        '22c26dc4-2107-4a0b-ab9b-c8da99e9abfb',
-                        '561960ca-bb1f-4349-ad1e-33484be8dec0',
-                        '2f2cbac4-8c40-43ef-ba9c-d91f91cd355a',
-                        '9845bf88-f9b2-4c07-ac62-54accc1d4bc4',
-                        '77cc363f-ac45-4545-af4a-3c9dfb704789',
-                        '2e20cb8a-b40a-4b64-b21c-16fa94a9392e'
+                       '6bee4231-85d3-4b0d-91d3-dba759d8fb4f',
+                       'a40d9c2c-812f-45f9-a059-f52dc7980982',
+                       '22c26dc4-2107-4a0b-ab9b-c8da99e9abfb',
+                       '561960ca-bb1f-4349-ad1e-33484be8dec0',
+                       '2f2cbac4-8c40-43ef-ba9c-d91f91cd355a',
+                       '9845bf88-f9b2-4c07-ac62-54accc1d4bc4',
+                       '77cc363f-ac45-4545-af4a-3c9dfb704789',
+                       '2e20cb8a-b40a-4b64-b21c-16fa94a9392e'
     );
 UPDATE weapon_skin SET blueprint_id = 'e9886f77-1ed9-4aed-8f5a-abd3e6275464'
 WHERE blueprint_id IN (
@@ -324,7 +324,7 @@ WHERE blueprint_id IN (
                        '149fd8d0-459b-4516-9056-f8ffd9779d60',
                        'c0385acf-73f2-441f-b6ad-e1f622f4dd53',
                        '01259820-acd4-481a-9413-06aede2c4926'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '4fa842e9-9261-4153-a695-142c57155248'
 WHERE blueprint_id IN (
                        '8e5dd2c1-b52e-48cd-8539-aed12feae5d8',
@@ -335,7 +335,7 @@ WHERE blueprint_id IN (
                        '6e897de9-f333-4a15-aeda-86c6eecc8a4e',
                        '244c979d-87de-4af7-a3a7-196a3d4c815a',
                        'f654b52b-ebea-4edf-abc9-b9431d7c299b'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'd2a5d45a-eca3-49c0-8c66-bda97626cd2d'
 WHERE blueprint_id IN (
                        '98bc7460-2f0b-479b-befe-de663cc3a8f0',
@@ -346,7 +346,7 @@ WHERE blueprint_id IN (
                        'c4935402-4b1d-401f-996e-77876a97761c',
                        'e6769598-b69e-448b-abeb-20222208bb34',
                        'a91491fa-4bd0-49b1-8aff-fe35d1a3c20f'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '3029890f-5336-464b-ba0e-d701eb20a360'
 WHERE blueprint_id IN (
                        'c5cf853c-758a-4169-ba05-866548b86a59',
@@ -357,7 +357,7 @@ WHERE blueprint_id IN (
                        '98899681-ba45-4fa6-a8c1-00f279531f1d',
                        '693adb11-2b9d-4921-ba04-93eb7aa744e3',
                        '7ff51d7a-8753-458c-953a-8b382fc98e51'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '9c20c27c-e0ed-406a-ad02-0ab05ba10364'
 WHERE blueprint_id IN (
                        'c4ec30b1-3301-4bf6-ad94-a91c306df5ca',
@@ -368,7 +368,7 @@ WHERE blueprint_id IN (
                        '71b85a94-b35d-464a-8e37-0eed8f2e4c22',
                        '5b038029-6684-410b-8438-d0da29f929cb',
                        '66285093-fb4d-4bcc-a7b9-15b5c1fdb821'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '1eb3a17c-d157-4bb1-a6dc-7cd3fe7ab7b9'
 WHERE blueprint_id IN (
                        '3dbe2090-064f-4430-bcdf-12d017689181',
@@ -379,7 +379,7 @@ WHERE blueprint_id IN (
                        'd4f65a17-991c-41e9-ac6e-9c28375660bc',
                        '53f57c4f-e8b5-45c7-b1c6-0ccce0e52ba1',
                        'b252c620-20c6-4465-a683-82956d41fec1'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '06e1894d-3872-49cd-a4cf-0c42ee4cedf0'
 WHERE blueprint_id IN (
                        '555503c1-3086-42cf-a967-01e40b521897',
@@ -390,7 +390,7 @@ WHERE blueprint_id IN (
                        'ef7f0181-f36f-4622-9993-746ac90d50b7',
                        '6b4a8dfb-77dd-45ab-b2c3-bfcf01f54ce0',
                        '0d367f31-b3e2-4b53-960d-5200fe53bb22'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'c609283d-82bd-4a04-8e80-450ec5c64a56'
 WHERE blueprint_id IN (
                        '8142a60a-ecb4-4f99-9a34-9936478370e4',
@@ -401,7 +401,7 @@ WHERE blueprint_id IN (
                        '0cc56beb-b5bb-4a47-92bc-3a386ba0b9f1',
                        '6e72ff2d-4a23-4145-b8d9-8decbc9967b2',
                        'fbf3074c-e516-459d-af56-08149ff20615'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'fb11780c-c6f7-43a8-a5fe-62e77add9e9d'
 WHERE blueprint_id IN (
                        '2b09d985-085b-440e-a0d1-752b1f5e0a2b',
@@ -412,7 +412,7 @@ WHERE blueprint_id IN (
                        '1a388404-8811-47b8-8c67-f5c21fb2cbed',
                        '09ecb2e8-3783-4639-ae5d-8e584d346f48',
                        '393c003a-d23d-4f82-a93b-fbaa8a9d9dfe'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '3df394d1-3f01-45fb-a2c7-1bdecbbc90a6'
 WHERE blueprint_id IN (
                        '492e22c6-ba3e-47d6-955e-53e362ea0f20',
@@ -423,7 +423,7 @@ WHERE blueprint_id IN (
                        'b0261840-d31a-491d-9591-9167f0f2720c',
                        '4e458fb4-01e8-4770-9574-45ea996acb95',
                        '2fafd818-95ad-4eaf-a744-c9a09f82535b'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '5c0b5d6b-1300-4727-af15-9c68c377554f'
 WHERE blueprint_id IN (
                        '205b3a4e-e192-430c-b83f-7182c5e5aea8',
@@ -434,7 +434,7 @@ WHERE blueprint_id IN (
                        '65b44826-d66a-456a-850b-348686bba714',
                        '805ab241-7f31-4673-b4cd-5cb26d4f440c',
                        'f7f9a1a9-1b5d-4207-a90b-89811ed58351'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '21eccaa7-fa81-4aab-837e-f17ce627b399'
 WHERE blueprint_id IN (
                        'df77a278-0daf-46ad-8433-79e3efd63fff',
@@ -445,7 +445,7 @@ WHERE blueprint_id IN (
                        '858f7dac-8b53-47ca-96e5-d5ed2ce4e4d7',
                        '54d6ea9f-c896-4463-8def-ccc958f925c4',
                        'd61026b5-941c-4fa4-9b08-3ddfbdf1d131'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'c49ddbb9-ee57-4209-9956-7d605717f19f'
 WHERE blueprint_id IN (
                        '2a5a359f-4159-4862-8ca6-16aa51f30e3d',
@@ -456,7 +456,7 @@ WHERE blueprint_id IN (
                        '8370fe8c-6fa8-48df-a56e-0b716955b80f',
                        'caf52fae-438e-42d2-b616-36d74f375134',
                        '636437a4-8bba-4f92-9901-4cf9837e1cb3'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '03693e90-ece4-40f2-bb22-35dc32ed02ea'
 WHERE blueprint_id IN (
                        'ea105045-cc90-4191-94f1-303d548fe7fb',
@@ -467,7 +467,7 @@ WHERE blueprint_id IN (
                        '897aaf4d-2a6c-4ac8-882f-65b531c42d63',
                        '72ed0bb9-8aca-4746-9637-fe1a661483e6',
                        'a6944388-1cf1-4b42-b532-58e20307e75b'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '00fb66a4-c081-46cc-aa62-0bcc05f416e4'
 WHERE blueprint_id IN (
                        '9ae03bae-d22c-419d-8968-cbb138d47754',
@@ -478,7 +478,7 @@ WHERE blueprint_id IN (
                        '2d37aa18-4405-491d-9dec-e5a2defa6a89',
                        '8fde9903-578e-401d-a9e2-7cca9f11a9bf',
                        '37bd7ab2-e045-4256-8928-e7759d61e62c'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'abac4eb4-95e5-4399-947f-54612024aefb'
 WHERE blueprint_id IN (
                        'caebda72-7514-45da-96b4-9f0dc15e808a',
@@ -489,7 +489,7 @@ WHERE blueprint_id IN (
                        'b43a5d0c-fbe2-4d67-830f-7b650e031676',
                        '10dbe0d7-51a4-4f68-9a62-95af6637a979',
                        '17f32e78-729b-4dad-a644-eb7781f8616b'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = 'c8cee447-30df-4c66-a779-7ed61098d768'
 WHERE blueprint_id IN (
                        '3c6e4453-da0f-4caa-b71c-3069c294a4ad',
@@ -500,7 +500,7 @@ WHERE blueprint_id IN (
                        'c2d4ac29-1504-4d51-883b-4299f89db8cd',
                        'e2033c92-0f21-4909-b581-807fd90dc683',
                        'c47882d6-decc-42c1-afbc-5113ca42a9fc'
-);
+    );
 UPDATE weapon_skin SET blueprint_id = '65ff58c7-ec00-4695-81cc-8c04c167e6e6'
 WHERE blueprint_id IN (
                        '3be26aa4-e7e6-4a7f-9d2e-b0a9f04329f6',
@@ -511,7 +511,7 @@ WHERE blueprint_id IN (
                        '8bec27c3-21a2-49aa-815e-e839c889627a',
                        '8eb2a7ec-450a-49f9-a695-b977c383eab9',
                        'b32ffd15-6376-44a3-8b31-472b70e7df3f'
-);
+    );
 -- endregion
 
 -- region -- update mystery crates ------
@@ -1313,26 +1313,41 @@ WHERE blueprint_id IN (
 -- create the new weapon skin objects
 WITH wps AS (
 --     this returns a weapon id and the default skin blueprint id for each weapon without an equipped skin (genesis weapons)
-    SELECT _w.id, _wm.default_skin_id
+    SELECT _w.id, _bpw.default_skin_id
     FROM weapons _w
-    INNER JOIN collection_items _ci ON _ci.item_id = _w.id
-    INNER JOIN blueprint_weapons _bpw ON _bpw.id = _w.blueprint_id
-    INNER JOIN weapon_models _wm ON _wm.id = _bpw.weapon_model_id
+             INNER JOIN collection_items _ci ON _ci.item_id = _w.id
+             INNER JOIN blueprint_weapons _bpw ON _bpw.id = _w.blueprint_id
     WHERE _w.equipped_weapon_skin_id is null
 )
 INSERT INTO weapon_skin(blueprint_id, equipped_on)
 SELECT wps.default_skin_id, wps.id
 FROM wps;
 
+
+-- ere we run it with blueprint_weapons_old
+WITH wps AS (
+--     this returns a weapon id and the default skin blueprint id for each weapon without an equipped skin (genesis weapons)
+    SELECT _w.id, _bpw.default_skin_id
+    FROM weapons _w
+     INNER JOIN collection_items _ci ON _ci.item_id = _w.id
+     INNER JOIN blueprint_weapons_old _bpwo ON _bpwo.id = _w.blueprint_id
+     INNER JOIN blueprint_weapons _bpw ON _bpw.id = _bpwo.weapon_model_id
+    WHERE _w.equipped_weapon_skin_id is null
+)
+INSERT INTO weapon_skin(blueprint_id, equipped_on)
+SELECT wps.default_skin_id, wps.id
+FROM wps;
+
+
 -- insert the collection_items or these weapons
 WITH wps_skin AS (
     SELECT 'weapon_skin' AS item_type, ws.id, bpws.tier, ci.owner_id
     FROM weapon_skin ws
-    INNER JOIN blueprint_weapon_skin bpws ON bpws.id = ws.blueprint_id
-    INNER JOIN weapons w ON w.id = ws.equipped_on
-    INNER JOIN collection_items ci ON ci.item_id = w.id
+             INNER JOIN blueprint_weapon_skin bpws ON bpws.id = ws.blueprint_id
+             INNER JOIN weapons w ON w.id = ws.equipped_on
+             INNER JOIN collection_items ci ON ci.item_id = w.id
     WHERE equipped_weapon_skin_id IS NULL
-    )
+)
 INSERT
 INTO collection_items (token_id, item_type, item_id, tier, owner_id)
 SELECT NEXTVAL('collection_general'),

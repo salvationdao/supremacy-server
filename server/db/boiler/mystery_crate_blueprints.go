@@ -23,13 +23,14 @@ import (
 
 // MysteryCrateBlueprint is an object representing the database table.
 type MysteryCrateBlueprint struct {
-	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MysteryCrateID string    `boiler:"mystery_crate_id" boil:"mystery_crate_id" json:"mystery_crate_id" toml:"mystery_crate_id" yaml:"mystery_crate_id"`
-	BlueprintType  string    `boiler:"blueprint_type" boil:"blueprint_type" json:"blueprint_type" toml:"blueprint_type" yaml:"blueprint_type"`
-	BlueprintID    string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MysteryCrateID string      `boiler:"mystery_crate_id" boil:"mystery_crate_id" json:"mystery_crate_id" toml:"mystery_crate_id" yaml:"mystery_crate_id"`
+	BlueprintType  string      `boiler:"blueprint_type" boil:"blueprint_type" json:"blueprint_type" toml:"blueprint_type" yaml:"blueprint_type"`
+	BlueprintID    string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintIDOld null.String `boiler:"blueprint_id_old" boil:"blueprint_id_old" json:"blueprint_id_old,omitempty" toml:"blueprint_id_old" yaml:"blueprint_id_old,omitempty"`
 
 	R *mysteryCrateBlueprintR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mysteryCrateBlueprintL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +44,7 @@ var MysteryCrateBlueprintColumns = struct {
 	DeletedAt      string
 	UpdatedAt      string
 	CreatedAt      string
+	BlueprintIDOld string
 }{
 	ID:             "id",
 	MysteryCrateID: "mystery_crate_id",
@@ -51,6 +53,7 @@ var MysteryCrateBlueprintColumns = struct {
 	DeletedAt:      "deleted_at",
 	UpdatedAt:      "updated_at",
 	CreatedAt:      "created_at",
+	BlueprintIDOld: "blueprint_id_old",
 }
 
 var MysteryCrateBlueprintTableColumns = struct {
@@ -61,6 +64,7 @@ var MysteryCrateBlueprintTableColumns = struct {
 	DeletedAt      string
 	UpdatedAt      string
 	CreatedAt      string
+	BlueprintIDOld string
 }{
 	ID:             "mystery_crate_blueprints.id",
 	MysteryCrateID: "mystery_crate_blueprints.mystery_crate_id",
@@ -69,6 +73,7 @@ var MysteryCrateBlueprintTableColumns = struct {
 	DeletedAt:      "mystery_crate_blueprints.deleted_at",
 	UpdatedAt:      "mystery_crate_blueprints.updated_at",
 	CreatedAt:      "mystery_crate_blueprints.created_at",
+	BlueprintIDOld: "mystery_crate_blueprints.blueprint_id_old",
 }
 
 // Generated where
@@ -81,6 +86,7 @@ var MysteryCrateBlueprintWhere = struct {
 	DeletedAt      whereHelpernull_Time
 	UpdatedAt      whereHelpertime_Time
 	CreatedAt      whereHelpertime_Time
+	BlueprintIDOld whereHelpernull_String
 }{
 	ID:             whereHelperstring{field: "\"mystery_crate_blueprints\".\"id\""},
 	MysteryCrateID: whereHelperstring{field: "\"mystery_crate_blueprints\".\"mystery_crate_id\""},
@@ -89,6 +95,7 @@ var MysteryCrateBlueprintWhere = struct {
 	DeletedAt:      whereHelpernull_Time{field: "\"mystery_crate_blueprints\".\"deleted_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"mystery_crate_blueprints\".\"updated_at\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"mystery_crate_blueprints\".\"created_at\""},
+	BlueprintIDOld: whereHelpernull_String{field: "\"mystery_crate_blueprints\".\"blueprint_id_old\""},
 }
 
 // MysteryCrateBlueprintRels is where relationship names are stored.
@@ -112,9 +119,9 @@ func (*mysteryCrateBlueprintR) NewStruct() *mysteryCrateBlueprintR {
 type mysteryCrateBlueprintL struct{}
 
 var (
-	mysteryCrateBlueprintAllColumns            = []string{"id", "mystery_crate_id", "blueprint_type", "blueprint_id", "deleted_at", "updated_at", "created_at"}
+	mysteryCrateBlueprintAllColumns            = []string{"id", "mystery_crate_id", "blueprint_type", "blueprint_id", "deleted_at", "updated_at", "created_at", "blueprint_id_old"}
 	mysteryCrateBlueprintColumnsWithoutDefault = []string{"mystery_crate_id", "blueprint_type", "blueprint_id"}
-	mysteryCrateBlueprintColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	mysteryCrateBlueprintColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "blueprint_id_old"}
 	mysteryCrateBlueprintPrimaryKeyColumns     = []string{"id"}
 	mysteryCrateBlueprintGeneratedColumns      = []string{}
 )

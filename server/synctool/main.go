@@ -67,7 +67,7 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	f, err = readFile(fmt.Sprintf("%smech_models.csv", dt.FilePath))
+	f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,17 @@ func SyncTool(dt *StaticSyncTool) error {
 	//	return err
 	//}
 
-	f, err = readFile(fmt.Sprintf("%sweapon_models.csv", dt.FilePath))
+	f, err = readFile(fmt.Sprintf("%sweapon_skins.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncWeaponSkins(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
@@ -132,6 +142,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%splayer_abilities.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncPlayerAbilities(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%spower_cores.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -142,31 +162,21 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
-	f, err = readFile(fmt.Sprintf("%smechs.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncStaticMech(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
-	f, err = readFile(fmt.Sprintf("%sweapons.csv", dt.FilePath))
-	if err != nil {
-		return err
-	}
-	err = SyncStaticWeapon(f, dt.DB)
-	if err != nil {
-		return err
-	}
-	f.Close()
-
 	f, err = readFile(fmt.Sprintf("%squests.csv", dt.FilePath))
 	if err != nil {
 		return err
 	}
 	err = SyncStaticQuest(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	f, err = readFile(fmt.Sprintf("%sutility_shields.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncStaticUtilityShields(f, dt.DB)
 	if err != nil {
 		return err
 	}
@@ -281,8 +291,16 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ID:                   record[0],
 			Label:                record[1],
 			DefaultChassisSkinID: record[3],
-			BrandID:              null.StringFrom(record[4]),
+			BrandID:              record[4],
 			MechType:             record[5],
+			BoostStat:            record[6],
+			WeaponHardpoints:     record[7],
+			UtilitySlots:         record[8],
+			Speed:                record[9],
+			MaxHitpoints:         record[10],
+			PowerCoreSize:        record[11],
+			Collection:           record[12],
+			AvailabilityID:       null.NewString(record[13], record[13] != ""),
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -291,21 +309,57 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 	count := 0
 
 	for _, mechModel := range MechModels {
-		brandID := &mechModel.BrandID.String
-		if mechModel.BrandID.String == "" || !mechModel.BrandID.Valid {
-			brandID = nil
-		}
-
 		_, err = db.Exec(`
-			INSERT INTO mech_models (id, label, default_chassis_skin_id, brand_id, mech_type)
-			VALUES ($1,$2,$3,$4,$5)
+			INSERT INTO blueprint_mechs (
+			                                   id, 
+			                                   label, 
+			                                   default_chassis_skin_id, 
+			                                   brand_id, 
+			                                   mech_type,
+												boost_stat,
+												weapon_hardpoints,
+												utility_slots,
+												speed,
+												max_hitpoints,
+												power_core_size,
+			                             		collection,
+			                             		availability_id
+			                                   )
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 			ON CONFLICT (id)
 			DO
-				UPDATE SET id=$1, label=$2, default_chassis_skin_id=$3, brand_id=$4, mech_type=$5;
-		`, mechModel.ID, mechModel.Label, mechModel.DefaultChassisSkinID, brandID, mechModel.MechType)
+				UPDATE SET 
+				           id=$1, 
+				           label=$2, 
+				           default_chassis_skin_id=$3, 
+				           brand_id=$4, 
+				           mech_type=$5,
+							boost_stat=$6,
+							weapon_hardpoints=$7,
+							utility_slots=$8,
+							speed=$9,
+							max_hitpoints=$10,
+							power_core_size=$11,
+							collection=$12,
+							availability_id=$13;
+		`,
+			mechModel.ID,
+			mechModel.Label,
+			mechModel.DefaultChassisSkinID,
+			mechModel.BrandID,
+			mechModel.MechType,
+			mechModel.BoostStat,
+			mechModel.WeaponHardpoints,
+			mechModel.UtilitySlots,
+			mechModel.Speed,
+			mechModel.MaxHitpoints,
+			mechModel.PowerCoreSize,
+			mechModel.Collection,
+			mechModel.AvailabilityID,
+		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Println("UPDATED: " + mechModel.Label)
@@ -386,7 +440,7 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Printf("UPDATED: %s:%s \n", mechModelSkinCompat.MechSkinID, mechModelSkinCompat.MechModelID)
@@ -412,18 +466,25 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 	var MechSkins []types.MechSkin
 	for _, record := range records {
 		mechModel := &types.MechSkin{
-			ID:           record[0],
-			Collection:   record[1],
-			Label:        record[2],
-			Tier:         record[3],
-			StatModifier: record[5],
+			ID:               record[0],
+			Collection:       record[1],
+			Label:            record[2],
+			Tier:             record[3],
+			DefaultLevel:     record[5],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		MechSkins = append(MechSkins, *mechModel)
 	}
 
 	for _, mechSkin := range MechSkins {
-		statModifier := null.NewString(mechSkin.StatModifier, mechSkin.StatModifier != "")
+		defaultLevel := null.NewString(mechSkin.DefaultLevel, mechSkin.DefaultLevel != "")
 
 		_, err = db.Exec(`
 			INSERT INTO blueprint_mech_skin(
@@ -431,28 +492,47 @@ func SyncMechSkins(f io.Reader, db *sql.DB) error {
 			                                collection,
 			                                label,
 			                                tier,
-			                                stat_modifier,
-											blueprint_weapon_skin_id
+			                                default_level,
+			                                image_url,
+			                                animation_url,
+			                                card_animation_url,
+			                                large_image_url,
+			                                avatar_url,
+			                                background_color,
+			                                youtube_url
 			                                )
-			VALUES ($1,$2,$3,$4,$5,(SELECT id FROM blueprint_weapon_skin bws WHERE $3 = bws.label))
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO
 			    UPDATE SET id=$1,
 			               collection=$2,
 			               label=$3,
 			               tier=$4,
-			               stat_modifier=$5,
-						   blueprint_weapon_skin_id=(SELECT bws.id FROM blueprint_weapon_skin bws WHERE label = bws.label);
+			               default_level=$5,
+			               image_url=$6,
+			               animation_url=$7,
+			               card_animation_url=$8,
+			               large_image_url=$9,
+			               avatar_url=$10,
+			               background_color=$11,
+			               youtube_url=$12;
 		`,
 			mechSkin.ID,
 			mechSkin.Collection,
 			mechSkin.Label,
 			mechSkin.Tier,
-			statModifier,
+			defaultLevel,
+			mechSkin.ImageUrl,
+			mechSkin.AnimationUrl,
+			mechSkin.CardAnimationUrl,
+			mechSkin.LargeImageUrl,
+			mechSkin.AvatarUrl,
+			mechSkin.BackgroundColor,
+			mechSkin.YoutubeUrl,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+mechSkin.ID, mechSkin.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+mechSkin.ID, mechSkin.Label, mechSkin.Tier, mechSkin.Collection, mechSkin.Label)
@@ -512,10 +592,10 @@ func SyncFactions(f io.Reader, db *sql.DB) error {
 		`, faction.ID, faction.Label, guildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
 		if err != nil {
 			fmt.Println(err.Error()+faction.ID, faction.Label)
-			continue
+			return err
 		}
 
-		fmt.Println("UPDATED: "+faction.ID, faction.Label, faction.GuildID, faction.PrimaryColor, faction.SecondaryColor, faction.BackgroundColor, faction.LogoURL, faction.BackgroundURL, faction.Description)
+		fmt.Println("UPDATED: "+faction.ID, faction.Label)
 	}
 
 	fmt.Println("Finish syncing Factions")
@@ -556,7 +636,7 @@ func SyncBrands(f io.Reader, db *sql.DB) error {
 		`, brand.ID, brand.Label, brand.FactionID)
 		if err != nil {
 			fmt.Println(err.Error()+brand.ID, brand.Label, brand.FactionID)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+brand.ID, brand.Label, brand.FactionID)
@@ -638,7 +718,7 @@ func SyncMysteryCrates(f io.Reader, db *sql.DB) error {
 		`, mysteryCrate.ID, mysteryCrate.MysteryCrateType, mysteryCrate.FactionID, mysteryCrate.Label, mysteryCrate.Description, imageURL, cardAnimationURL, avatarURL, largeImageURL, mysteryCrate.BackgroundColor, animationURL, youtubeURL)
 		if err != nil {
 			fmt.Println(err.Error()+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+mysteryCrate.ID, mysteryCrate.Label, mysteryCrate.MysteryCrateType)
@@ -660,47 +740,132 @@ func SyncWeaponModel(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
-	var WeaponModels []types.WeaponModel
+	var WeaponModels []types.Weapon
 	for _, record := range records {
-		weaponModel := &types.WeaponModel{
-			ID:            record[0],
-			BrandID:       record[1],
-			Label:         record[2],
-			WeaponType:    record[3],
-			DefaultSkinID: record[4],
-			DeletedAt:     record[5],
-			UpdatedAt:     record[6],
+		weaponModel := &types.Weapon{
+			ID:                  record[0],
+			BrandID:             record[1],
+			Label:               record[2],
+			WeaponType:          record[3],
+			DefaultSkinID:       record[4],
+			Damage:              record[5],
+			DamageFallOff:       record[6],
+			DamageFalloffRate:   record[7],
+			Radius:              record[8],
+			RadiusDamageFalloff: record[9],
+			Spread:              record[10],
+			RateOfFire:          record[11],
+			ProjectileSpeed:     record[12],
+			MaxAmmo:             record[13],
+			IsMelee:             record[14],
+			PowerCost:           record[15],
+			GameClientWeaponID:  null.NewString(record[16], record[16] != ""),
+			Collection:          record[17],
+			DefaultDamageType:   record[18],
+			ProjectileAmount:    record[19],
+			DotTickDamage:       record[20],
+			DotMaxTicks:         record[21],
+			IsArced:             record[22],
+			ChargeTimeSeconds:   record[23],
+			BurstRateOfFire:     record[24],
+			PowerInstantDrain:   record[25],
 		}
 
 		WeaponModels = append(WeaponModels, *weaponModel)
 	}
 
 	for _, weaponModel := range WeaponModels {
-		deletedAt := &weaponModel.DeletedAt
-		if weaponModel.DeletedAt == "" {
-			deletedAt = nil
-		}
-
-		brandID := &weaponModel.BrandID
-		if weaponModel.BrandID == "" {
-			brandID = nil
-		}
-
-		defaultSkinID := &weaponModel.DefaultSkinID
-		if weaponModel.DefaultSkinID == "" {
-			defaultSkinID = nil
-		}
 
 		_, err = db.Exec(`
-			INSERT INTO weapon_models(id, brand_id, label, weapon_type, default_skin_id, deleted_at)
-			VALUES ($1,$2,$3,$4,$5,$6)
+			INSERT INTO blueprint_weapons(
+			                          id, 
+			                          brand_id, 
+			                          label, 
+			                          weapon_type, 
+			                          default_skin_id, 
+										damage,
+										damage_falloff,
+										damage_falloff_rate,
+										radius,
+										radius_damage_falloff,
+										spread,
+										rate_of_fire,
+										projectile_speed,
+										max_ammo,
+										is_melee,
+										power_cost,
+										game_client_weapon_id,
+										collection,
+										default_damage_type,
+									    projectile_amount,
+			                            dot_tick_damage,
+			                            dot_max_ticks,
+			                            is_arced,
+			                            charge_time_seconds,
+			                            burst_rate_of_fire,
+									  	power_instant_drain
+			                          )
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 			ON CONFLICT (id)
 			DO 
-			    UPDATE SET id=$1, brand_id=$2, label=$3, weapon_type=$4, default_skin_id=$5, deleted_at=$6;
-		`, weaponModel.ID, brandID, weaponModel.Label, weaponModel.WeaponType, defaultSkinID, deletedAt)
+			    UPDATE SET 
+			               id=$1, 
+			               brand_id=$2, 
+			               label=$3, 
+			               weapon_type=$4, 
+			               default_skin_id=$5, 
+							damage=$6,
+							damage_falloff=$7,
+							damage_falloff_rate=$8,
+							radius=$9,
+							radius_damage_falloff=$10,
+							spread=$11,
+							rate_of_fire=$12,
+							projectile_speed=$13,
+							max_ammo=$14,
+							is_melee=$15,
+							power_cost=$16,
+							game_client_weapon_id=$17,
+							collection=$18,
+							default_damage_type=$19,
+							projectile_amount=$20,
+							dot_tick_damage=$21,
+							dot_max_ticks=$22,
+							is_arced=$23,
+							charge_time_seconds=$24,
+							burst_rate_of_fire=$25,
+							power_instant_drain=$26;
+		`,
+			weaponModel.ID,
+			weaponModel.BrandID,
+			weaponModel.Label,
+			weaponModel.WeaponType,
+			weaponModel.DefaultSkinID,
+			weaponModel.Damage,
+			weaponModel.DamageFallOff,
+			weaponModel.DamageFalloffRate,
+			weaponModel.Radius,
+			weaponModel.RadiusDamageFalloff,
+			weaponModel.Spread,
+			weaponModel.RateOfFire,
+			weaponModel.ProjectileSpeed,
+			weaponModel.MaxAmmo,
+			weaponModel.IsMelee,
+			weaponModel.PowerCost,
+			weaponModel.GameClientWeaponID,
+			weaponModel.Collection,
+			weaponModel.DefaultDamageType,
+			weaponModel.ProjectileAmount,
+			weaponModel.DotTickDamage,
+			weaponModel.DotMaxTicks,
+			weaponModel.IsArced,
+			weaponModel.ChargeTimeSeconds,
+			weaponModel.BurstRateOfFire,
+			weaponModel.PowerInstantDrain,
+		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+weaponModel.ID, weaponModel.Label, weaponModel.WeaponType)
@@ -725,11 +890,18 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 	var WeaponSkins []types.WeaponSkin
 	for _, record := range records {
 		weaponSkin := &types.WeaponSkin{
-			ID:           record[0],
-			Label:        record[1],
-			Tier:         record[2],
-			Collection:   record[4],
-			StatModifier: record[5],
+			ID:               record[0],
+			Label:            record[1],
+			Tier:             record[2],
+			Collection:       record[4],
+			StatModifier:     record[5],
+			ImageUrl:         null.NewString(record[6], record[6] != ""),
+			AnimationUrl:     null.NewString(record[7], record[7] != ""),
+			CardAnimationUrl: null.NewString(record[8], record[8] != ""),
+			LargeImageUrl:    null.NewString(record[9], record[9] != ""),
+			AvatarUrl:        null.NewString(record[10], record[10] != ""),
+			BackgroundColor:  null.NewString(record[11], record[11] != ""),
+			YoutubeUrl:       null.NewString(record[12], record[12] != ""),
 		}
 
 		WeaponSkins = append(WeaponSkins, *weaponSkin)
@@ -742,9 +914,16 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			                                  label,
 			                                  tier,
 			                                  collection,
-			                                  stat_modifier
+			                                  stat_modifier,
+			                                  image_url,
+			                                  animation_url,
+			                                  card_animation_url,
+			                                  large_image_url,
+			                                  avatar_url,
+			                                  background_color,
+			                                  youtube_url
 			                                  )
-			VALUES ($1,$2,$3,$4,$5)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 			ON CONFLICT (id)
 			DO 
 			    UPDATE SET 
@@ -752,17 +931,31 @@ func SyncWeaponSkins(f io.Reader, db *sql.DB) error {
 			               label=$2,
 			               tier=$3,
 			               collection=$4,
-			               stat_modifier=$5;
+			               stat_modifier=$5,
+			               image_url=$6,
+			               animation_url=$7,
+			               card_animation_url=$8,
+			               large_image_url=$9,
+			               avatar_url=$10,
+			               background_color=$11,
+			               youtube_url=$12;
 		`,
 			weaponSkin.ID,
 			weaponSkin.Label,
 			weaponSkin.Tier,
 			weaponSkin.Collection,
 			null.NewString(weaponSkin.StatModifier, weaponSkin.StatModifier != ""),
+			weaponSkin.ImageUrl,
+			weaponSkin.AnimationUrl,
+			weaponSkin.CardAnimationUrl,
+			weaponSkin.LargeImageUrl,
+			weaponSkin.AvatarUrl,
+			weaponSkin.BackgroundColor,
+			weaponSkin.YoutubeUrl,
 		)
 		if err != nil {
 			fmt.Println(err.Error()+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+weaponSkin.ID, weaponSkin.Label, weaponSkin.Tier)
@@ -841,7 +1034,7 @@ func SyncWeaponModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
-			continue
+			return err
 		}
 		count++
 		fmt.Printf("UPDATED: %s:%s \n", weaponModelSkinCompat.WeaponSkinID, weaponModelSkinCompat.WeaponModelID)
@@ -864,6 +1057,7 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
+	ids := []string{}
 	for _, record := range records {
 		battleAbility := &boiler.BattleAbility{
 			ID:                record[0],
@@ -901,10 +1095,21 @@ func SyncBattleAbilities(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println(err.Error()+battleAbility.ID, battleAbility.Label, battleAbility.Description)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+battleAbility.ID, battleAbility.Label)
+
+		// record id list
+		ids = append(ids, battleAbility.ID)
+	}
+
+	// soft delete any row that is not on the list
+	_, err = boiler.BattleAbilities(
+		boiler.BattleAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.BattleAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static battle abilities data.")
 	}
 
 	fmt.Println("Finish syncing battle abilities")
@@ -924,6 +1129,7 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		return err
 	}
 
+	ids := []string{}
 	for _, record := range records {
 		gameAbility := &boiler.GameAbility{
 			ID:                       record[0],
@@ -940,6 +1146,9 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 			LocationSelectType:       record[12],
 			DisplayOnMiniMap:         strings.ToLower(record[15]) == "true",
 			MiniMapDisplayEffectType: record[16],
+			MechDisplayEffectType:    record[17],
+			ShouldCheckTeamKill:      strings.ToLower(record[19]) == "true",
+			IgnoreSelfKill:           strings.ToLower(record[21]) == "true",
 		}
 
 		gameAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
@@ -953,6 +1162,18 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 		}
 
 		gameAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[14])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.AnimationDurationSeconds, err = strconv.Atoi(record[18])
+		if err != nil {
+			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
+			continue
+		}
+
+		gameAbility.MaximumTeamKillTolerantCount, err = strconv.Atoi(record[20])
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
 			continue
@@ -978,20 +1199,176 @@ func SyncGameAbilities(f io.Reader, db *sql.DB) error {
 				boiler.GameAbilityColumns.CurrentSups,
 				boiler.GameAbilityColumns.Level,
 				boiler.GameAbilityColumns.LocationSelectType,
+				boiler.GameAbilityColumns.DeletedAt,
 				boiler.GameAbilityColumns.LaunchingDelaySeconds,
 				boiler.GameAbilityColumns.DisplayOnMiniMap,
+				boiler.GameAbilityColumns.MiniMapDisplayEffectType,
+				boiler.GameAbilityColumns.MechDisplayEffectType,
+				boiler.GameAbilityColumns.AnimationDurationSeconds,
+				boiler.GameAbilityColumns.ShouldCheckTeamKill,
+				boiler.GameAbilityColumns.MaximumTeamKillTolerantCount,
+				boiler.GameAbilityColumns.IgnoreSelfKill,
 			),
 			boil.Infer(),
 		)
 		if err != nil {
 			fmt.Println(err.Error()+gameAbility.ID, gameAbility.Label, gameAbility.Description)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+gameAbility.ID, gameAbility.GameClientAbilityID, gameAbility.Label)
+
+		// record id list
+		ids = append(ids, gameAbility.ID)
 	}
 
-	fmt.Println("Finish syncing battle abilities")
+	// soft delete any row that is not on the list
+	_, err = boiler.GameAbilities(
+		boiler.GameAbilityWhere.ID.NIN(ids),
+	).UpdateAll(db, boiler.M{boiler.GameAbilityColumns.DeletedAt: null.TimeFrom(time.Now())})
+	if err != nil {
+		fmt.Println(err.Error(), "Failed to archive rows that are not in the static game abilities data.")
+	}
+
+	fmt.Println("Finish syncing game abilities")
+
+	return nil
+}
+
+func SyncPlayerAbilities(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		playerAbility := &boiler.BlueprintPlayerAbility{
+			ID:                       record[0],
+			Label:                    record[2],
+			Colour:                   record[3],
+			ImageURL:                 record[4],
+			Description:              record[5],
+			TextColour:               record[6],
+			LocationSelectType:       record[7],
+			DisplayOnMiniMap:         strings.ToLower(record[12]) == "true",
+			MiniMapDisplayEffectType: record[14],
+			MechDisplayEffectType:    record[15],
+		}
+
+		playerAbility.GameClientAbilityID, err = strconv.Atoi(record[1])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.RarityWeight, err = strconv.Atoi(record[9])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.InventoryLimit, err = strconv.Atoi(record[10])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.CooldownSeconds, err = strconv.Atoi(record[11])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.LaunchingDelaySeconds, err = strconv.Atoi(record[13])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		playerAbility.AnimationDurationSeconds, err = strconv.Atoi(record[16])
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			continue
+		}
+
+		// upsert game ability
+		err = playerAbility.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintPlayerAbilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+				boiler.BlueprintPlayerAbilityColumns.Label,
+				boiler.BlueprintPlayerAbilityColumns.Colour,
+				boiler.BlueprintPlayerAbilityColumns.ImageURL,
+				boiler.BlueprintPlayerAbilityColumns.Description,
+				boiler.BlueprintPlayerAbilityColumns.TextColour,
+				boiler.BlueprintPlayerAbilityColumns.LocationSelectType,
+				boiler.BlueprintPlayerAbilityColumns.RarityWeight,
+				boiler.BlueprintPlayerAbilityColumns.InventoryLimit,
+				boiler.BlueprintPlayerAbilityColumns.CooldownSeconds,
+				boiler.BlueprintPlayerAbilityColumns.DisplayOnMiniMap,
+				boiler.BlueprintPlayerAbilityColumns.LaunchingDelaySeconds,
+				boiler.BlueprintPlayerAbilityColumns.MiniMapDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.MechDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.AnimationDurationSeconds,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+			return err
+		}
+
+		fmt.Println("UPDATED: "+playerAbility.ID, playerAbility.GameClientAbilityID, playerAbility.Label)
+
+		// get all the existing blueprint player abilities and update their details
+		existingPlayerAbilities, err := boiler.BlueprintPlayerAbilities(
+			boiler.BlueprintPlayerAbilityWhere.GameClientAbilityID.EQ(playerAbility.GameClientAbilityID),
+			boiler.BlueprintPlayerAbilityWhere.ID.NEQ(playerAbility.ID),
+		).All(db)
+		if err != nil {
+			fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+		}
+
+		for _, bpa := range existingPlayerAbilities {
+			// swap id
+			playerAbility.ID = bpa.ID
+
+			// update everything
+			_, err := playerAbility.Update(db, boil.Whitelist(
+				boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+				boiler.BlueprintPlayerAbilityColumns.Label,
+				boiler.BlueprintPlayerAbilityColumns.Colour,
+				boiler.BlueprintPlayerAbilityColumns.ImageURL,
+				boiler.BlueprintPlayerAbilityColumns.Description,
+				boiler.BlueprintPlayerAbilityColumns.TextColour,
+				boiler.BlueprintPlayerAbilityColumns.LocationSelectType,
+				boiler.BlueprintPlayerAbilityColumns.RarityWeight,
+				boiler.BlueprintPlayerAbilityColumns.InventoryLimit,
+				boiler.BlueprintPlayerAbilityColumns.CooldownSeconds,
+				boiler.BlueprintPlayerAbilityColumns.DisplayOnMiniMap,
+				boiler.BlueprintPlayerAbilityColumns.LaunchingDelaySeconds,
+				boiler.BlueprintPlayerAbilityColumns.MiniMapDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.MechDisplayEffectType,
+				boiler.BlueprintPlayerAbilityColumns.AnimationDurationSeconds,
+			))
+			if err != nil {
+				fmt.Println(err.Error()+playerAbility.ID, playerAbility.Label, playerAbility.Description)
+				break
+			}
+		}
+	}
+
+	fmt.Println("Finish syncing game abilities")
 
 	return nil
 }
@@ -1078,7 +1455,7 @@ func SyncPowerCores(f io.Reader, db *sql.DB) error {
 		`, powerCore.ID, powerCore.Collection, powerCore.Label, powerCore.Size, powerCore.Capacity, powerCore.MaxDrawRate, powerCore.RechargeRate, powerCore.Armour, powerCore.MaxHitpoints, powerCore.Tier, imageURL, cardAnimationURL, avatarURL, largeImageURL, backgroundColor, animationURL, youtubeURL)
 		if err != nil {
 			fmt.Println(err.Error()+powerCore.ID, powerCore.Collection, powerCore.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+powerCore.ID, powerCore.Collection, powerCore.Label)
@@ -1180,132 +1557,13 @@ func SyncStaticMech(f io.Reader, db *sql.DB) error {
 			blueprintMech.Tier)
 		if err != nil {
 			fmt.Println(err.Error()+blueprintMech.ID, blueprintMech.Label)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+blueprintMech.ID, blueprintMech.Label)
 	}
 
 	fmt.Println("Finish syncing static mech")
-
-	return nil
-}
-
-func SyncStaticWeapon(f io.Reader, db *sql.DB) error {
-	r := csv.NewReader(f)
-
-	if _, err := r.Read(); err != nil {
-		return err
-	}
-
-	records, err := r.ReadAll()
-	if err != nil {
-		return err
-	}
-
-	var BlueprintWeapons []types.BlueprintWeapons
-	for _, record := range records {
-		blueprintWeapon := &types.BlueprintWeapons{
-			ID:                  record[0],
-			Label:               record[1],
-			Slug:                record[2],
-			Damage:              record[3],
-			DeletedAt:           record[4],
-			UpdatedAt:           record[5],
-			CreatedAt:           record[6],
-			GameClientWeaponID:  record[7],
-			WeaponType:          record[8],
-			Collection:          record[9],
-			DefaultDamageType:   record[10],
-			DamageFalloff:       record[11],
-			DamageFalloffRate:   record[12],
-			Radius:              record[13],
-			RadiusDamageFalloff: record[14],
-			Spread:              record[15],
-			RateOfFire:          record[16],
-			ProjectileSpeed:     record[17],
-			MaxAmmo:             record[18],
-			IsMelee:             record[19],
-			Tier:                record[20],
-			EnergyCost:          record[21],
-			WeaponModelID:       record[22],
-		}
-
-		BlueprintWeapons = append(BlueprintWeapons, *blueprintWeapon)
-	}
-
-	for _, blueprintWeapon := range BlueprintWeapons {
-		deletedAt := &blueprintWeapon.DeletedAt
-		if blueprintWeapon.DeletedAt == "" {
-			deletedAt = nil
-		}
-
-		gameClientID := &blueprintWeapon.GameClientWeaponID
-		if blueprintWeapon.GameClientWeaponID == "" {
-			gameClientID = nil
-		}
-
-		_, err = db.Exec(`
-			INSERT INTO blueprint_weapons(
-			                              id, 
-			                              label, 
-			                              slug, 
-			                              damage, 
-			                              deleted_at, 
-			                              updated_at, 
-			                              created_at, 
-			                              game_client_weapon_id, 
-			                              weapon_type, 
-			                              collection, 
-			                              default_damage_type, 
-			                              damage_falloff, 
-			                              damage_falloff_rate, 
-			                              radius, 
-			                              radius_damage_falloff, 
-			                              spread, 
-			                              rate_of_fire, 
-			                              projectile_speed, 
-			                              max_ammo, 
-			                              is_melee, 
-			                              tier, 
-			                              energy_cost, 
-			                              weapon_model_id)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
-			ON CONFLICT (id)
-			DO 
-			    UPDATE SET id=$1,
-			               label=$2,
-			               slug=$3,
-			               damage=$4,
-			               deleted_at=$5,
-			               updated_at=$6,
-			               created_at=$7,
-			               game_client_weapon_id=$8,
-			               weapon_type=$9,
-			               collection=$10,
-			               default_damage_type=$11,
-			               damage_falloff=$12,
-			               damage_falloff_rate=$13,
-			               radius=$14,
-			               radius_damage_falloff=$15,
-			               spread=$16,
-			               rate_of_fire=$17,
-			               projectile_speed=$18,
-			               max_ammo=$19,
-			               is_melee=$20,
-			               tier=$21,
-			               energy_cost=$22,
-			               weapon_model_id=$23;
-		`, blueprintWeapon.ID, blueprintWeapon.Label, blueprintWeapon.Slug, blueprintWeapon.Damage, deletedAt, blueprintWeapon.UpdatedAt, blueprintWeapon.CreatedAt, gameClientID, blueprintWeapon.WeaponType, blueprintWeapon.Collection, blueprintWeapon.DefaultDamageType, blueprintWeapon.DamageFalloff, blueprintWeapon.DamageFalloffRate, blueprintWeapon.Radius, blueprintWeapon.RadiusDamageFalloff, blueprintWeapon.Spread, blueprintWeapon.RateOfFire, blueprintWeapon.ProjectileSpeed, blueprintWeapon.MaxAmmo, blueprintWeapon.IsMelee, blueprintWeapon.Tier, blueprintWeapon.EnergyCost, blueprintWeapon.WeaponModelID)
-		if err != nil {
-			fmt.Println(err.Error()+blueprintWeapon.ID, blueprintWeapon.Label)
-			continue
-		}
-
-		fmt.Println("UPDATED: "+blueprintWeapon.ID, blueprintWeapon.Label)
-	}
-
-	fmt.Println("Finish syncing weapon")
 
 	return nil
 }
@@ -1335,7 +1593,7 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 		blueprintQuest.RequestAmount, err = strconv.Atoi(record[5])
 		if err != nil {
 			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
-			continue
+			return err
 		}
 
 		// upsert blueprint quest
@@ -1356,7 +1614,7 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 		)
 		if err != nil {
 			fmt.Println(err.Error(), blueprintQuest.ID, blueprintQuest.Name)
-			continue
+			return err
 		}
 
 		fmt.Println("UPDATED: "+blueprintQuest.ID, blueprintQuest.Name)
@@ -1364,6 +1622,88 @@ func SyncStaticQuest(f io.Reader, db *sql.DB) error {
 	}
 
 	fmt.Println("Finish syncing static quest")
+
+	return nil
+}
+
+func SyncStaticUtilityShields(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		blueprintUtil := &boiler.BlueprintUtility{
+			ID:         record[0],
+			Label:      record[4],
+			Collection: record[5],
+			Type:       boiler.UtilityTypeSHIELD,
+			AvatarURL:  null.NewString(record[6], record[6] != ""),
+		}
+		blueprintUtilShield := &boiler.BlueprintUtilityShield{
+			BlueprintUtilityID: record[0],
+		}
+		blueprintUtilShield.Hitpoints, err = strconv.Atoi(record[1])
+		if err != nil {
+			return err
+		}
+		blueprintUtilShield.RechargeRate, err = strconv.Atoi(record[2])
+		if err != nil {
+			return err
+		}
+		blueprintUtilShield.RechargeEnergyCost, err = strconv.Atoi(record[3])
+		if err != nil {
+			return err
+		}
+
+		// upsert blueprint quest
+		err = blueprintUtil.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintUtilityColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintUtilityColumns.Label,
+				boiler.BlueprintUtilityColumns.Collection,
+				boiler.BlueprintUtilityColumns.AvatarURL,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error(), blueprintUtil.ID, blueprintUtil.Label)
+			return err
+		}
+		// upsert blueprint quest
+		err = blueprintUtilShield.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintUtilityShieldColumns.BlueprintUtilityID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintUtilityShieldColumns.Hitpoints,
+				boiler.BlueprintUtilityShieldColumns.RechargeRate,
+				boiler.BlueprintUtilityShieldColumns.RechargeEnergyCost,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Println(err.Error(), blueprintUtilShield.ID)
+			return err
+		}
+
+		fmt.Println("UPDATED: "+blueprintUtil.ID, blueprintUtil.Label)
+
+	}
+
+	fmt.Println("Finish syncing static utilities")
 
 	return nil
 }

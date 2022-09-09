@@ -172,6 +172,9 @@ func main() {
 					&cli.StringFlag{Name: "zendesk_url", Value: "", EnvVars: []string{envPrefix + "_ZENDESK_URL"}, Usage: "Zendesk url to write tickets/requests"},
 
 					&cli.StringFlag{Name: "ovenmedia_auth_key", Value: "test", EnvVars: []string{envPrefix + "_OVENMEDIA_AUTH_KEY"}, Usage: "Auth key for ovenmedia"},
+
+					// Crypto signatures for battle histories
+					&cli.StringFlag{Name: "private_key_signer_hex", Value: "0x5f3b57101caf01c3d91e50809e70d84fcc404dd108aa8a9aa3e1a6c482267f48", EnvVars: []string{envPrefix + "_PRIVATE_KEY_SIGNER_HEX"}, Usage: "Private key for signing battle records (default is testnet dev private key)"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -379,17 +382,20 @@ func main() {
 					}
 					gamelog.L.Info().Msgf("Profanity manager took %s", time.Since(start))
 
+					start = time.Now()
+					// initialise quest manager
 					qm, err := quest.New()
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+					gamelog.L.Info().Msgf("Quest manager took %s", time.Since(start))
 
 					start = time.Now()
 					// initialise battle arena
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena")
 
-					arenaManager := battle.NewArenaManager(&battle.Opts{
+					arenaManager, err := battle.NewArenaManager(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
@@ -397,10 +403,13 @@ func main() {
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 						QuestManager:             qm,
 					})
+					if err != nil {
+						return terror.Error(err, "Arena Manager init failed")
+					}
 
 					gamelog.L.Info().Msgf("Battle arena took %s", time.Since(start))
-					start = time.Now()
 
+					start = time.Now()
 					staticDataURL := fmt.Sprintf("https://%s@raw.githubusercontent.com/ninja-syndicate/supremacy-static-data", githubToken)
 
 					gamelog.L.Info().Msg("Setting up Zendesk")
@@ -446,13 +455,14 @@ func main() {
 
 					// stops all battle replay recordings when server goes down
 					go func() {
-						stop := make(chan os.Signal, 1)
+						stop := make(chan os.Signal)
 						signal.Notify(stop, os.Interrupt)
 						<-stop
 						err := replay.StopAllActiveRecording()
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to stop all active recordings")
 						}
+						os.Exit(2)
 					}()
 
 					gamelog.L.Info().Msg("Running API")
@@ -473,7 +483,7 @@ func main() {
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_port", Value: "5432", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Sync", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 					&cli.StringFlag{Name: "static_path", Value: "./synctool/temp-sync/supremacy-static-data/", EnvVars: []string{envPrefix + "_STATIC_PATH"}, Usage: "Static path to file"},
@@ -542,10 +552,9 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	if !updated {
 		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
-			SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
-			FROM templates_old tpo
-			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
-			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+				SELECT tpo.id AS old_template_id, tpbp.template_id AS new_template_id
+				FROM templates_old tpo
+				INNER JOIN template_blueprints tpbp ON tpo.blueprint_chassis_id =  tpbp.blueprint_id_old; `
 		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("issue getting template ids")
@@ -830,7 +839,8 @@ func SetupAPI(
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager)
+	privateKeySignerHex := ctxCLI.String("private_key_signer_hex")
+	serverAPI, err := api.NewAPI(ctx, arenaManager, passport, HTMLSanitizePolicy, config, sms, telegram, zendesk, languageDetector, pm, syncConfig, questManager, privateKeySignerHex)
 	if err != nil {
 		return nil, err
 	}

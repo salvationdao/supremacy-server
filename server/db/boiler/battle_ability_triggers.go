@@ -32,6 +32,9 @@ type BattleAbilityTrigger struct {
 	AbilityLabel      string      `boiler:"ability_label" boil:"ability_label" json:"ability_label" toml:"ability_label" yaml:"ability_label"`
 	AbilityOfferingID string      `boiler:"ability_offering_id" boil:"ability_offering_id" json:"ability_offering_id" toml:"ability_offering_id" yaml:"ability_offering_id"`
 	GameAbilityID     string      `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id" toml:"game_ability_id" yaml:"game_ability_id"`
+	OnMechID          null.String `boiler:"on_mech_id" boil:"on_mech_id" json:"on_mech_id,omitempty" toml:"on_mech_id" yaml:"on_mech_id,omitempty"`
+	TriggerType       string      `boiler:"trigger_type" boil:"trigger_type" json:"trigger_type" toml:"trigger_type" yaml:"trigger_type"`
+	DeletedAt         null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *battleAbilityTriggerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleAbilityTriggerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -47,6 +50,9 @@ var BattleAbilityTriggerColumns = struct {
 	AbilityLabel      string
 	AbilityOfferingID string
 	GameAbilityID     string
+	OnMechID          string
+	TriggerType       string
+	DeletedAt         string
 }{
 	ID:                "id",
 	PlayerID:          "player_id",
@@ -57,6 +63,9 @@ var BattleAbilityTriggerColumns = struct {
 	AbilityLabel:      "ability_label",
 	AbilityOfferingID: "ability_offering_id",
 	GameAbilityID:     "game_ability_id",
+	OnMechID:          "on_mech_id",
+	TriggerType:       "trigger_type",
+	DeletedAt:         "deleted_at",
 }
 
 var BattleAbilityTriggerTableColumns = struct {
@@ -69,6 +78,9 @@ var BattleAbilityTriggerTableColumns = struct {
 	AbilityLabel      string
 	AbilityOfferingID string
 	GameAbilityID     string
+	OnMechID          string
+	TriggerType       string
+	DeletedAt         string
 }{
 	ID:                "battle_ability_triggers.id",
 	PlayerID:          "battle_ability_triggers.player_id",
@@ -79,6 +91,9 @@ var BattleAbilityTriggerTableColumns = struct {
 	AbilityLabel:      "battle_ability_triggers.ability_label",
 	AbilityOfferingID: "battle_ability_triggers.ability_offering_id",
 	GameAbilityID:     "battle_ability_triggers.game_ability_id",
+	OnMechID:          "battle_ability_triggers.on_mech_id",
+	TriggerType:       "battle_ability_triggers.trigger_type",
+	DeletedAt:         "battle_ability_triggers.deleted_at",
 }
 
 // Generated where
@@ -117,6 +132,9 @@ var BattleAbilityTriggerWhere = struct {
 	AbilityLabel      whereHelperstring
 	AbilityOfferingID whereHelperstring
 	GameAbilityID     whereHelperstring
+	OnMechID          whereHelpernull_String
+	TriggerType       whereHelperstring
+	DeletedAt         whereHelpernull_Time
 }{
 	ID:                whereHelperstring{field: "\"battle_ability_triggers\".\"id\""},
 	PlayerID:          whereHelpernull_String{field: "\"battle_ability_triggers\".\"player_id\""},
@@ -127,6 +145,9 @@ var BattleAbilityTriggerWhere = struct {
 	AbilityLabel:      whereHelperstring{field: "\"battle_ability_triggers\".\"ability_label\""},
 	AbilityOfferingID: whereHelperstring{field: "\"battle_ability_triggers\".\"ability_offering_id\""},
 	GameAbilityID:     whereHelperstring{field: "\"battle_ability_triggers\".\"game_ability_id\""},
+	OnMechID:          whereHelpernull_String{field: "\"battle_ability_triggers\".\"on_mech_id\""},
+	TriggerType:       whereHelperstring{field: "\"battle_ability_triggers\".\"trigger_type\""},
+	DeletedAt:         whereHelpernull_Time{field: "\"battle_ability_triggers\".\"deleted_at\""},
 }
 
 // BattleAbilityTriggerRels is where relationship names are stored.
@@ -134,11 +155,13 @@ var BattleAbilityTriggerRels = struct {
 	Battle      string
 	Faction     string
 	GameAbility string
+	OnMech      string
 	Player      string
 }{
 	Battle:      "Battle",
 	Faction:     "Faction",
 	GameAbility: "GameAbility",
+	OnMech:      "OnMech",
 	Player:      "Player",
 }
 
@@ -147,6 +170,7 @@ type battleAbilityTriggerR struct {
 	Battle      *Battle      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Faction     *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	GameAbility *GameAbility `boiler:"GameAbility" boil:"GameAbility" json:"GameAbility" toml:"GameAbility" yaml:"GameAbility"`
+	OnMech      *Mech        `boiler:"OnMech" boil:"OnMech" json:"OnMech" toml:"OnMech" yaml:"OnMech"`
 	Player      *Player      `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
@@ -159,9 +183,9 @@ func (*battleAbilityTriggerR) NewStruct() *battleAbilityTriggerR {
 type battleAbilityTriggerL struct{}
 
 var (
-	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "is_all_syndicates", "triggered_at", "ability_label", "ability_offering_id", "game_ability_id"}
+	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "is_all_syndicates", "triggered_at", "ability_label", "ability_offering_id", "game_ability_id", "on_mech_id", "trigger_type", "deleted_at"}
 	battleAbilityTriggerColumnsWithoutDefault = []string{"battle_id", "faction_id", "ability_label", "ability_offering_id", "game_ability_id"}
-	battleAbilityTriggerColumnsWithDefault    = []string{"id", "player_id", "is_all_syndicates", "triggered_at"}
+	battleAbilityTriggerColumnsWithDefault    = []string{"id", "player_id", "is_all_syndicates", "triggered_at", "on_mech_id", "trigger_type", "deleted_at"}
 	battleAbilityTriggerPrimaryKeyColumns     = []string{"id"}
 	battleAbilityTriggerGeneratedColumns      = []string{}
 )
@@ -448,6 +472,21 @@ func (o *BattleAbilityTrigger) GameAbility(mods ...qm.QueryMod) gameAbilityQuery
 
 	query := GameAbilities(queryMods...)
 	queries.SetFrom(query.Query, "\"game_abilities\"")
+
+	return query
+}
+
+// OnMech pointed to by the foreign key.
+func (o *BattleAbilityTrigger) OnMech(mods ...qm.QueryMod) mechQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OnMechID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
 
 	return query
 }
@@ -781,6 +820,115 @@ func (battleAbilityTriggerL) LoadGameAbility(e boil.Executor, singular bool, may
 	return nil
 }
 
+// LoadOnMech allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleAbilityTriggerL) LoadOnMech(e boil.Executor, singular bool, maybeBattleAbilityTrigger interface{}, mods queries.Applicator) error {
+	var slice []*BattleAbilityTrigger
+	var object *BattleAbilityTrigger
+
+	if singular {
+		object = maybeBattleAbilityTrigger.(*BattleAbilityTrigger)
+	} else {
+		slice = *maybeBattleAbilityTrigger.(*[]*BattleAbilityTrigger)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleAbilityTriggerR{}
+		}
+		if !queries.IsNil(object.OnMechID) {
+			args = append(args, object.OnMechID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleAbilityTriggerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.OnMechID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.OnMechID) {
+				args = append(args, obj.OnMechID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Mech")
+	}
+
+	var resultSlice []*Mech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
+	}
+
+	if len(battleAbilityTriggerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.OnMech = foreign
+		if foreign.R == nil {
+			foreign.R = &mechR{}
+		}
+		foreign.R.OnMechBattleAbilityTriggers = append(foreign.R.OnMechBattleAbilityTriggers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.OnMechID, foreign.ID) {
+				local.R.OnMech = foreign
+				if foreign.R == nil {
+					foreign.R = &mechR{}
+				}
+				foreign.R.OnMechBattleAbilityTriggers = append(foreign.R.OnMechBattleAbilityTriggers, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (battleAbilityTriggerL) LoadPlayer(e boil.Executor, singular bool, maybeBattleAbilityTrigger interface{}, mods queries.Applicator) error {
@@ -1028,6 +1176,85 @@ func (o *BattleAbilityTrigger) SetGameAbility(exec boil.Executor, insert bool, r
 	return nil
 }
 
+// SetOnMech of the battleAbilityTrigger to the related item.
+// Sets o.R.OnMech to related.
+// Adds o to related.R.OnMechBattleAbilityTriggers.
+func (o *BattleAbilityTrigger) SetOnMech(exec boil.Executor, insert bool, related *Mech) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_ability_triggers\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"on_mech_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleAbilityTriggerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.OnMechID, related.ID)
+	if o.R == nil {
+		o.R = &battleAbilityTriggerR{
+			OnMech: related,
+		}
+	} else {
+		o.R.OnMech = related
+	}
+
+	if related.R == nil {
+		related.R = &mechR{
+			OnMechBattleAbilityTriggers: BattleAbilityTriggerSlice{o},
+		}
+	} else {
+		related.R.OnMechBattleAbilityTriggers = append(related.R.OnMechBattleAbilityTriggers, o)
+	}
+
+	return nil
+}
+
+// RemoveOnMech relationship.
+// Sets o.R.OnMech to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleAbilityTrigger) RemoveOnMech(exec boil.Executor, related *Mech) error {
+	var err error
+
+	queries.SetScanner(&o.OnMechID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("on_mech_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.OnMech = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.OnMechBattleAbilityTriggers {
+		if queries.Equal(o.OnMechID, ri.OnMechID) {
+			continue
+		}
+
+		ln := len(related.R.OnMechBattleAbilityTriggers)
+		if ln > 1 && i < ln-1 {
+			related.R.OnMechBattleAbilityTriggers[i] = related.R.OnMechBattleAbilityTriggers[ln-1]
+		}
+		related.R.OnMechBattleAbilityTriggers = related.R.OnMechBattleAbilityTriggers[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetPlayer of the battleAbilityTrigger to the related item.
 // Sets o.R.Player to related.
 // Adds o to related.R.BattleAbilityTriggers.
@@ -1109,7 +1336,7 @@ func (o *BattleAbilityTrigger) RemovePlayer(exec boil.Executor, related *Player)
 
 // BattleAbilityTriggers retrieves all the records using an executor.
 func BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTriggerQuery {
-	mods = append(mods, qm.From("\"battle_ability_triggers\""))
+	mods = append(mods, qm.From("\"battle_ability_triggers\""), qmhelper.WhereIsNull("\"battle_ability_triggers\".\"deleted_at\""))
 	return battleAbilityTriggerQuery{NewQuery(mods...)}
 }
 
@@ -1123,7 +1350,7 @@ func FindBattleAbilityTrigger(exec boil.Executor, iD string, selectCols ...strin
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_ability_triggers\" where \"id\"=$1", sel,
+		"select %s from \"battle_ability_triggers\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1464,7 +1691,7 @@ func (o *BattleAbilityTrigger) Upsert(exec boil.Executor, updateOnConflict bool,
 
 // Delete deletes a single BattleAbilityTrigger record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleAbilityTrigger) Delete(exec boil.Executor) (int64, error) {
+func (o *BattleAbilityTrigger) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no BattleAbilityTrigger provided for delete")
 	}
@@ -1473,8 +1700,26 @@ func (o *BattleAbilityTrigger) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleAbilityTriggerPrimaryKeyMapping)
-	sql := "DELETE FROM \"battle_ability_triggers\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleAbilityTriggerPrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_ability_triggers\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_ability_triggers\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(battleAbilityTriggerType, battleAbilityTriggerMapping, append(wl, battleAbilityTriggerPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1498,12 +1743,17 @@ func (o *BattleAbilityTrigger) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleAbilityTriggerQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q battleAbilityTriggerQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no battleAbilityTriggerQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1519,7 +1769,7 @@ func (q battleAbilityTriggerQuery) DeleteAll(exec boil.Executor) (int64, error) 
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleAbilityTriggerSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BattleAbilityTriggerSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1532,14 +1782,31 @@ func (o BattleAbilityTriggerSlice) DeleteAll(exec boil.Executor) (int64, error) 
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityTriggerPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityTriggerPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"battle_ability_triggers\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityTriggerPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleAbilityTriggerPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_ability_triggers\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleAbilityTriggerPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"battle_ability_triggers\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityTriggerPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1593,7 +1860,8 @@ func (o *BattleAbilityTriggerSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"battle_ability_triggers\".* FROM \"battle_ability_triggers\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityTriggerPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleAbilityTriggerPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1610,7 +1878,7 @@ func (o *BattleAbilityTriggerSlice) ReloadAll(exec boil.Executor) error {
 // BattleAbilityTriggerExists checks if the BattleAbilityTrigger row exists.
 func BattleAbilityTriggerExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_ability_triggers\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"battle_ability_triggers\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

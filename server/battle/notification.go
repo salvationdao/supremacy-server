@@ -10,7 +10,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/system_messages"
 	"server/xsyn_rpcclient"
 	"time"
 
@@ -122,18 +121,6 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
-	replaySession := arena.CurrentBattle().replaySession
-	if replaySession.ReplaySession != nil {
-		newEvent := &RecordingEvents{
-			Timestamp: time.Now(),
-			Notification: GameNotification{
-				Type: GameNotificationTypeText,
-				Data: data,
-			},
-		}
-
-		replaySession.Events = append(replaySession.Events, newEvent)
-	}
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
@@ -148,7 +135,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeLocationSelect,
 				Data: data,
 			},
 		}
@@ -169,7 +156,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: notificationType,
 				Data: data,
 			},
 		}
@@ -190,7 +177,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeWarMachineAbility,
 				Data: data,
 			},
 		}
@@ -211,7 +198,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeWarMachineDestroyed,
 				Data: data,
 			},
 		}
@@ -232,7 +219,7 @@ func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEv
 		newEvent := &RecordingEvents{
 			Timestamp: time.Now(),
 			Notification: GameNotification{
-				Type: GameNotificationTypeText,
+				Type: GameNotificationTypeBattleZoneChange,
 				Data: data,
 			},
 		}
@@ -244,14 +231,11 @@ func (arena *Arena) BroadcastGameNotificationBattleZoneChange(data *ZoneChangeEv
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
-	q, err := db.LoadBattleQueue(context.Background(), 13)
+	q, err := db.LoadBattleQueue(context.Background(), 13, false)
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
-
-	// broadcast system message to mech owners
-	system_messages.BroadcastMechQueueMessage(q)
 
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {

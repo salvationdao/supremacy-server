@@ -30,6 +30,7 @@ type MechSkin struct {
 	EquippedOn            null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LockedToMech          bool        `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
+	Level                 int         `boiler:"level" boil:"level" json:"level" toml:"level" yaml:"level"`
 
 	R *mechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +44,7 @@ var MechSkinColumns = struct {
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
+	Level                 string
 }{
 	ID:                    "id",
 	BlueprintID:           "blueprint_id",
@@ -51,6 +53,7 @@ var MechSkinColumns = struct {
 	EquippedOn:            "equipped_on",
 	CreatedAt:             "created_at",
 	LockedToMech:          "locked_to_mech",
+	Level:                 "level",
 }
 
 var MechSkinTableColumns = struct {
@@ -61,6 +64,7 @@ var MechSkinTableColumns = struct {
 	EquippedOn            string
 	CreatedAt             string
 	LockedToMech          string
+	Level                 string
 }{
 	ID:                    "mech_skin.id",
 	BlueprintID:           "mech_skin.blueprint_id",
@@ -69,6 +73,7 @@ var MechSkinTableColumns = struct {
 	EquippedOn:            "mech_skin.equipped_on",
 	CreatedAt:             "mech_skin.created_at",
 	LockedToMech:          "mech_skin.locked_to_mech",
+	Level:                 "mech_skin.level",
 }
 
 // Generated where
@@ -105,6 +110,7 @@ var MechSkinWhere = struct {
 	EquippedOn            whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
 	LockedToMech          whereHelperbool
+	Level                 whereHelperint
 }{
 	ID:                    whereHelperstring{field: "\"mech_skin\".\"id\""},
 	BlueprintID:           whereHelperstring{field: "\"mech_skin\".\"blueprint_id\""},
@@ -113,6 +119,7 @@ var MechSkinWhere = struct {
 	EquippedOn:            whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
 	LockedToMech:          whereHelperbool{field: "\"mech_skin\".\"locked_to_mech\""},
+	Level:                 whereHelperint{field: "\"mech_skin\".\"level\""},
 }
 
 // MechSkinRels is where relationship names are stored.
@@ -142,9 +149,9 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech", "level"}
 	mechSkinColumnsWithoutDefault = []string{"blueprint_id"}
-	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech"}
+	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "created_at", "locked_to_mech", "level"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}
 )

@@ -71,21 +71,6 @@ CREATE TABLE templates
 --     created_at  TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 -- );
 
-CREATE TABLE blueprint_modules
-(
-    id                UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    brand_id          UUID REFERENCES brands (id),
-
-    slug              TEXT UNIQUE      NOT NULL,
-    label             TEXT UNIQUE      NOT NULL,
-    hitpoint_modifier INTEGER          NOT NULL,
-    shield_modifier   INTEGER          NOT NULL,
-
-    deleted_at        TIMESTAMPTZ,
-    updated_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
-    created_at        TIMESTAMPTZ      NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE blueprint_chassis_blueprint_weapons
 (
     id                   UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
@@ -271,17 +256,17 @@ VALUES ('ad124964-e062-4ab8-9cce-e0309fd6b31d', '009f71fc-3594-4d24-a6e2-f05070d
 -- Default weapons
 -- 6 Weapons
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
+-- VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'Sniper Rifle', 'sniper_rifle', -1, 'ARM');
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'Laser Sword', 'laser_sword', -1, 'ARM');
+-- VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'Laser Sword', 'laser_sword', -1, 'ARM');
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
+-- VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'Rocket Pod', 'rocket_pod', -1, 'TURRET');
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
+-- VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'Auto Cannon', 'auto_cannon', -1, 'ARM');
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
+-- VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'Plasma Rifle', 'plasma_rifle', -1, 'ARM');
 -- INSERT INTO blueprint_weapons (id, label, slug, damage, weapon_type)
--- VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'Sword', 'sword', -1, 'ARM');
+-- VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'Sword', 'sword', -1, 'ARM');
 
 -- Default modules
 -- Shield only
@@ -343,41 +328,41 @@ VALUES ('2c5acb39-9ae3-4755-a689-a8ec1b202c16', 'ad124964-e062-4ab8-9cce-e0309fd
 -- RM auto auto rocket rocket
 -- BC plasma, sword
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '17a1426a-b17e-4734-b845-588a87b6d8cd', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '17a1426a-b17e-4734-b845-588a87b6d8cd', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '17a1426a-b17e-4734-b845-588a87b6d8cd', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '17a1426a-b17e-4734-b845-588a87b6d8cd', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '17a1426a-b17e-4734-b845-588a87b6d8cd', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '17a1426a-b17e-4734-b845-588a87b6d8cd', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '17a1426a-b17e-4734-b845-588a87b6d8cd', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '17a1426a-b17e-4734-b845-588a87b6d8cd', 1, 'TURRET');
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '9bc4611a-0da2-4b07-bab6-7f15b1c97f90', 1, 'TURRET');
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a5806303-f397-44d5-b9d8-f435500362e6', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a5806303-f397-44d5-b9d8-f435500362e6', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a5806303-f397-44d5-b9d8-f435500362e6', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a5806303-f397-44d5-b9d8-f435500362e6', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a5806303-f397-44d5-b9d8-f435500362e6', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a5806303-f397-44d5-b9d8-f435500362e6', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a5806303-f397-44d5-b9d8-f435500362e6', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a5806303-f397-44d5-b9d8-f435500362e6', 1, 'TURRET');
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'cfb96c42-873d-43e8-9060-ae107f18037a', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'cfb96c42-873d-43e8-9060-ae107f18037a', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'cfb96c42-873d-43e8-9060-ae107f18037a', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'cfb96c42-873d-43e8-9060-ae107f18037a', 1, 'ARM');
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'ad124964-e062-4ab8-9cce-e0309fd6b31d', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'ad124964-e062-4ab8-9cce-e0309fd6b31d', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'ad124964-e062-4ab8-9cce-e0309fd6b31d', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'ad124964-e062-4ab8-9cce-e0309fd6b31d', 1, 'ARM');
 
 -- Module Joins
 -- ZHI 1 shield
@@ -997,61 +982,61 @@ INSERT INTO blueprint_chassis_blueprint_modules (blueprint_module_id, blueprint_
 VALUES ('6537f960-aa85-4e68-80b1-fe6e754a1436', 'd5c07ee1-8213-43bf-bd65-bbacb442d4ff', 0);
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '76a60a59-291a-49e2-b7d4-d7cbfa2a3feb', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '76a60a59-291a-49e2-b7d4-d7cbfa2a3feb', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '76a60a59-291a-49e2-b7d4-d7cbfa2a3feb', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '76a60a59-291a-49e2-b7d4-d7cbfa2a3feb', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '8b98d84c-48ad-481b-bc86-d1d02822f16c', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '8b98d84c-48ad-481b-bc86-d1d02822f16c', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '8b98d84c-48ad-481b-bc86-d1d02822f16c', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '8b98d84c-48ad-481b-bc86-d1d02822f16c', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '74e3bd32-4b27-4038-8338-f4f60db4be71', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '74e3bd32-4b27-4038-8338-f4f60db4be71', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '74e3bd32-4b27-4038-8338-f4f60db4be71', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '74e3bd32-4b27-4038-8338-f4f60db4be71', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '8dd45a32-c201-41d4-a134-4b5a50419a6e', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '8dd45a32-c201-41d4-a134-4b5a50419a6e', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '8dd45a32-c201-41d4-a134-4b5a50419a6e', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '8dd45a32-c201-41d4-a134-4b5a50419a6e', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'cc0de847-24a3-4764-bbbd-78304e79150e', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'cc0de847-24a3-4764-bbbd-78304e79150e', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'cc0de847-24a3-4764-bbbd-78304e79150e', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'cc0de847-24a3-4764-bbbd-78304e79150e', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '014371f7-bca3-4a1c-992e-f55ac5721de1', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '014371f7-bca3-4a1c-992e-f55ac5721de1', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '014371f7-bca3-4a1c-992e-f55ac5721de1', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '014371f7-bca3-4a1c-992e-f55ac5721de1', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '3e469099-7fba-4a17-a392-8fd850d35c28', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '3e469099-7fba-4a17-a392-8fd850d35c28', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '3e469099-7fba-4a17-a392-8fd850d35c28', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '3e469099-7fba-4a17-a392-8fd850d35c28', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '12ab349f-0831-4f3f-9aa1-f3aade13abb3', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '12ab349f-0831-4f3f-9aa1-f3aade13abb3', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '12ab349f-0831-4f3f-9aa1-f3aade13abb3', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '12ab349f-0831-4f3f-9aa1-f3aade13abb3', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '2b0df453-a9ac-4a43-967e-ed7a1cdaecf1', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '2b0df453-a9ac-4a43-967e-ed7a1cdaecf1', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '2b0df453-a9ac-4a43-967e-ed7a1cdaecf1', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '2b0df453-a9ac-4a43-967e-ed7a1cdaecf1', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '0dd254a6-edd6-481b-b3d7-36c57a9836de', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '0dd254a6-edd6-481b-b3d7-36c57a9836de', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '0dd254a6-edd6-481b-b3d7-36c57a9836de', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '0dd254a6-edd6-481b-b3d7-36c57a9836de', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '11d09723-a9e2-4c57-bb01-5291be841cb7', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '11d09723-a9e2-4c57-bb01-5291be841cb7', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '11d09723-a9e2-4c57-bb01-5291be841cb7', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '11d09723-a9e2-4c57-bb01-5291be841cb7', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', '3e710f5f-1290-428d-a6c1-1acc08f98837', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', '3e710f5f-1290-428d-a6c1-1acc08f98837', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', '3e710f5f-1290-428d-a6c1-1acc08f98837', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', '3e710f5f-1290-428d-a6c1-1acc08f98837', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'd041e6dc-0ed5-4294-8fdc-f49707e1a854', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'd041e6dc-0ed5-4294-8fdc-f49707e1a854', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'd041e6dc-0ed5-4294-8fdc-f49707e1a854', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'd041e6dc-0ed5-4294-8fdc-f49707e1a854', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('ba29ce67-4738-4a66-81dc-932a2ccf6cd7', 'd5c07ee1-8213-43bf-bd65-bbacb442d4ff', 0, 'ARM');
+VALUES ('260370f6-aaef-4dcb-a75a-c4642ba89dfb', 'd5c07ee1-8213-43bf-bd65-bbacb442d4ff', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('26cccb14-5e61-4b3b-a522-b3b82b1ee511', 'd5c07ee1-8213-43bf-bd65-bbacb442d4ff', 1, 'ARM');
+VALUES ('d831dea7-e598-47af-b4e3-3c37b5eb969a', 'd5c07ee1-8213-43bf-bd65-bbacb442d4ff', 1, 'ARM');
 
 -- XSYN Existing RM Items
 
@@ -1285,117 +1270,117 @@ INSERT INTO blueprint_chassis_blueprint_modules (blueprint_module_id, blueprint_
 VALUES ('6537f960-aa85-4e68-80b1-fe6e754a1436', '1ca58e88-6280-427c-b6d2-25928e7bd292', 0);
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a5966250-4972-425f-b2d4-433e3820741a', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a5966250-4972-425f-b2d4-433e3820741a', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a5966250-4972-425f-b2d4-433e3820741a', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a5966250-4972-425f-b2d4-433e3820741a', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a5966250-4972-425f-b2d4-433e3820741a', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a5966250-4972-425f-b2d4-433e3820741a', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a5966250-4972-425f-b2d4-433e3820741a', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a5966250-4972-425f-b2d4-433e3820741a', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '24a4ebc1-e785-4b72-83e8-c8cf624801d0', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '93a65506-44aa-4d93-b184-7d72b8cf5d9b', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '30b40880-ffa3-4a17-883d-08de0bf1b479', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '30b40880-ffa3-4a17-883d-08de0bf1b479', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '30b40880-ffa3-4a17-883d-08de0bf1b479', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '30b40880-ffa3-4a17-883d-08de0bf1b479', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '30b40880-ffa3-4a17-883d-08de0bf1b479', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '30b40880-ffa3-4a17-883d-08de0bf1b479', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '30b40880-ffa3-4a17-883d-08de0bf1b479', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '30b40880-ffa3-4a17-883d-08de0bf1b479', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'bd283770-0d77-45ea-b4d2-6286351eecc7', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '337b3c82-61ae-4959-bcf0-50f0985f8ed6', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '0a5b3678-f6c0-4f53-8a1c-e3c29f3a1632', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '5d213b5d-5d29-4e3d-bdf8-d9867c574d7f', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'beb40230-580e-4aa0-87c9-0aac27edcbb6', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'a8e507cd-f874-4e6a-a321-a4b04e171ba9', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '500128ca-7544-4250-aad4-aa1ae8a8ad1a', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '683c4461-a291-4245-9120-56c67f091fba', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '683c4461-a291-4245-9120-56c67f091fba', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '683c4461-a291-4245-9120-56c67f091fba', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '683c4461-a291-4245-9120-56c67f091fba', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '683c4461-a291-4245-9120-56c67f091fba', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '683c4461-a291-4245-9120-56c67f091fba', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '683c4461-a291-4245-9120-56c67f091fba', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '683c4461-a291-4245-9120-56c67f091fba', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '35deaa58-d05d-4a8c-8a84-178358c46647', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '35deaa58-d05d-4a8c-8a84-178358c46647', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '35deaa58-d05d-4a8c-8a84-178358c46647', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '35deaa58-d05d-4a8c-8a84-178358c46647', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '35deaa58-d05d-4a8c-8a84-178358c46647', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '35deaa58-d05d-4a8c-8a84-178358c46647', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '35deaa58-d05d-4a8c-8a84-178358c46647', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '35deaa58-d05d-4a8c-8a84-178358c46647', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '1ca58e88-6280-427c-b6d2-25928e7bd292', 0, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '1ca58e88-6280-427c-b6d2-25928e7bd292', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('daa6c1b0-e6ae-409a-a544-bfe7212d6f45', '1ca58e88-6280-427c-b6d2-25928e7bd292', 1, 'ARM');
+VALUES ('74005f3b-a6e2-4e4b-a59c-e07ff42cb800', '1ca58e88-6280-427c-b6d2-25928e7bd292', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '1ca58e88-6280-427c-b6d2-25928e7bd292', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '1ca58e88-6280-427c-b6d2-25928e7bd292', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '1ca58e88-6280-427c-b6d2-25928e7bd292', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '1ca58e88-6280-427c-b6d2-25928e7bd292', 1, 'TURRET');
 
 -- XSYN Existing ZHI Items
 INSERT INTO blueprint_chassis (id, brand_id, label, slug, skin, model, shield_recharge_rate, weapon_hardpoints,
@@ -1628,114 +1613,114 @@ INSERT INTO blueprint_chassis_blueprint_modules (blueprint_module_id, blueprint_
 VALUES ('6537f960-aa85-4e68-80b1-fe6e754a1436', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 0);
 
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '9c4cd43d-35ed-4d3a-860c-d7ff00093dd6', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'f4da1432-0618-47c2-9337-9cda3e8125ba', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'bc19d28d-3fa4-45e5-86dd-1cf69bc3daee', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '0b297a84-0a07-4e09-87ba-ed2a877d7c4f', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '81f1fd1b-458c-499b-bbec-7560f8bea842', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '81f1fd1b-458c-499b-bbec-7560f8bea842', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '81f1fd1b-458c-499b-bbec-7560f8bea842', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '81f1fd1b-458c-499b-bbec-7560f8bea842', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '81f1fd1b-458c-499b-bbec-7560f8bea842', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '81f1fd1b-458c-499b-bbec-7560f8bea842', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '81f1fd1b-458c-499b-bbec-7560f8bea842', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '81f1fd1b-458c-499b-bbec-7560f8bea842', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'b2c43cd1-86ce-4154-b3d5-22776ed3a727', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'e1dc2da7-78c4-400e-a302-a40b2d27a3c8', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'f9cfa25b-02bc-4a3a-9a31-9a8a4a073714', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '8a49a4ca-4a61-4f51-b296-b421c951c1f5', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '276f62c9-23f3-443c-8fad-90fc4d074009', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '276f62c9-23f3-443c-8fad-90fc4d074009', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '276f62c9-23f3-443c-8fad-90fc4d074009', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '276f62c9-23f3-443c-8fad-90fc4d074009', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '276f62c9-23f3-443c-8fad-90fc4d074009', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '276f62c9-23f3-443c-8fad-90fc4d074009', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '276f62c9-23f3-443c-8fad-90fc4d074009', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '276f62c9-23f3-443c-8fad-90fc4d074009', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '4f6180a5-4d0c-44ca-9422-a4d28c3b863a', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', '1d76a559-3c6d-4f26-a108-a3b5549e35ab', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'd0c291de-1edb-4b54-9559-ed3587034051', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'd0c291de-1edb-4b54-9559-ed3587034051', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'd0c291de-1edb-4b54-9559-ed3587034051', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'd0c291de-1edb-4b54-9559-ed3587034051', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'd0c291de-1edb-4b54-9559-ed3587034051', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'd0c291de-1edb-4b54-9559-ed3587034051', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'd0c291de-1edb-4b54-9559-ed3587034051', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'd0c291de-1edb-4b54-9559-ed3587034051', 1, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('06216d51-e57f-4f60-adee-24d817a397ab', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 0, 'ARM');
+VALUES ('8c3cbbc7-eae8-4ca8-9811-663de0e73eb6', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 0, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('1b8a0178-b7ab-4016-b203-6ba557107a97', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 1, 'ARM');
+VALUES ('0612fbda-3967-456b-86cb-1fb6eb03829d', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 1, 'ARM');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 0, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 0, 'TURRET');
 INSERT INTO blueprint_chassis_blueprint_weapons (blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
-VALUES ('347cdf83-a245-4552-94b3-68faa88fbf79', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 1, 'TURRET');
+VALUES ('c1c78867-9de7-43d3-97e9-91381800f38e', 'ac408b39-ba91-4a0e-9414-a37af0ea6314', 1, 'TURRET');

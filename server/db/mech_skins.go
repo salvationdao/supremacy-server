@@ -2,16 +2,14 @@ package db
 
 import (
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-
-	"github.com/gofrs/uuid"
 )
 
 // InsertNewMechSkin if modelID is nil it will return images of a random mech in this skin
@@ -21,6 +19,7 @@ func InsertNewMechSkin(tx boil.Executor, ownerID uuid.UUID, skin *server.Bluepri
 		BlueprintID:           skin.ID,
 		GenesisTokenID:        skin.GenesisTokenID,
 		LimitedReleaseTokenID: skin.LimitedReleaseTokenID,
+		Level:                 skin.DefaultLevel,
 	}
 
 	err := newSkin.Insert(tx, boil.Infer())
@@ -76,12 +75,15 @@ func MechSkin(trx boil.Executor, id string, modelID *string) (*server.MechSkin, 
 		return nil, err
 	}
 
-	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails, mechSkinCompatabilityMatrix), nil
+	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails, mechSkinCompatabilityMatrix, boilerMech.R.Blueprint), nil
 }
 
 func MechSkins(id ...string) ([]*server.MechSkin, error) {
 	var skins []*server.MechSkin
-	boilerMechSkins, err := boiler.MechSkins(boiler.MechSkinWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerMechSkins, err := boiler.MechSkins(
+		boiler.MechSkinWhere.ID.IN(id),
+		qm.Load(boiler.MechSkinRels.Blueprint),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,8 @@ func MechSkins(id ...string) ([]*server.MechSkin, error) {
 		if err != nil {
 			return nil, err
 		}
-		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails, nil))
+
+		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails, nil, ms.R.Blueprint))
 	}
 	return skins, nil
 }
@@ -161,14 +164,44 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.BlueprintID),
 		)),
-		// inner join mech model
-		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+		qm.InnerJoin(fmt.Sprintf("LATERAL (SELECT * FROM %s _wmsc WHERE _wmsc.%s = %s LIMIT 1) %s ON %s = %s",
+			boiler.TableNames.MechModelSkinCompatibilities,
+			boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			boiler.TableNames.MechModelSkinCompatibilities,
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 		)),
 	)
 
+	if len(opts.FilterSkinCompatibility) > 0 {
+		var args []interface{}
+		whereClause := fmt.Sprintf("WHERE %s IN (", qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID))
+		//// inner join mech model
+		for i, r := range opts.FilterSkinCompatibility {
+			args = append(args, r)
+			if i+1 == len(opts.FilterSkinCompatibility) {
+				whereClause = whereClause + "?)"
+				continue
+			}
+			whereClause = whereClause + fmt.Sprintf("?,")
+		}
+
+		queryMods = append(queryMods,
+			qm.InnerJoin(fmt.Sprintf("(SELECT %s, JSONB_AGG(%s) as models FROM %s %s GROUP BY %s) sq on sq.%s = %s",
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				boiler.MechModelSkinCompatibilityColumns.MechModelID,
+				boiler.TableNames.MechModelSkinCompatibilities,
+				whereClause,
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				boiler.MechModelSkinCompatibilityColumns.BlueprintMechSkinID,
+				qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
+			),
+				args...,
+			),
+		)
+	}
+	
 	if !opts.DisplayXsyn || !opts.IncludeMarketListed {
 		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
 			Table:    boiler.TableNames.CollectionItems,
@@ -224,13 +257,6 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			}, 0, ""))
 		}
 	}
-	if len(opts.FilterSkinCompatibility) > 0 {
-		vals := []interface{}{}
-		for _, sc := range opts.FilterSkinCompatibility {
-			vals = append(vals, sc)
-		}
-		queryMods = append(queryMods, qm.AndIn(fmt.Sprintf("%s IN ?", qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.MechModelID)), vals...))
-	}
 
 	//Search
 	if opts.Search != "" {
@@ -245,14 +271,12 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 				))
 		}
 	}
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, err
 	}
-
 	// Limit/Offset
 	if opts.PageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(opts.PageSize))
@@ -278,9 +302,17 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LockedToMech),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.GenesisTokenID),
 			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.LimitedReleaseTokenID),
+			qm.Rels(boiler.TableNames.MechSkin, boiler.MechSkinColumns.Level),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Label),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.Tier),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.ImageURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.CardAnimationURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AvatarURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.LargeImageURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.AnimationURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.YoutubeURL),
+			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BackgroundColor),
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.ImageURL),
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.CardAnimationURL),
 			qm.Rels(boiler.TableNames.MechModelSkinCompatibilities, boiler.MechModelSkinCompatibilityColumns.AvatarURL),
@@ -326,6 +358,7 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 		mc := &server.MechSkin{
 			CollectionItem: &server.CollectionItem{},
 			Images:         &server.Images{},
+			SkinSwatch:     &server.Images{},
 		}
 
 		scanArgs := []interface{}{
@@ -343,9 +376,17 @@ func MechSkinList(opts *MechSkinListOpts) (int64, []*server.MechSkin, error) {
 			&mc.LockedToMech,
 			&mc.GenesisTokenID,
 			&mc.LimitedReleaseTokenID,
+			&mc.Level,
 			&mc.BlueprintID,
 			&mc.Label,
 			&mc.Tier,
+			&mc.SkinSwatch.ImageURL,
+			&mc.SkinSwatch.CardAnimationURL,
+			&mc.SkinSwatch.AvatarURL,
+			&mc.SkinSwatch.LargeImageURL,
+			&mc.SkinSwatch.AnimationURL,
+			&mc.SkinSwatch.YoutubeURL,
+			&mc.SkinSwatch.BackgroundColor,
 			&mc.Images.ImageURL,
 			&mc.Images.CardAnimationURL,
 			&mc.Images.AvatarURL,

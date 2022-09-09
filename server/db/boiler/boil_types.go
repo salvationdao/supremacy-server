@@ -71,6 +71,13 @@ const (
 	AbilityTypeEnumLANDMINE       = "LANDMINE"
 )
 
+// Enum values for AbilityTriggerType
+const (
+	AbilityTriggerTypeBATTLE_ABILITY = "BATTLE_ABILITY"
+	AbilityTriggerTypeMECH_ABILITY   = "MECH_ABILITY"
+	AbilityTriggerTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
 // Enum values for ArenaTypeEnum
 const (
 	ArenaTypeEnumSTORY      = "STORY"
@@ -116,6 +123,28 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
+)
+
+// Enum values for BoostStat
+const (
+	BoostStatMECH_HEALTH  = "MECH_HEALTH"
+	BoostStatMECH_SPEED   = "MECH_SPEED"
+	BoostStatSHIELD_REGEN = "SHIELD_REGEN"
+)
+
+// Enum values for PowercoreSize
+const (
+	PowercoreSizeSMALL  = "SMALL"
+	PowercoreSizeMEDIUM = "MEDIUM"
+	PowercoreSizeLARGE  = "LARGE"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for LocationSelectTypeEnum
@@ -124,11 +153,8 @@ const (
 	LocationSelectTypeEnumMECH_SELECT          = "MECH_SELECT"
 	LocationSelectTypeEnumLOCATION_SELECT      = "LOCATION_SELECT"
 	LocationSelectTypeEnumGLOBAL               = "GLOBAL"
-	LocationSelectTypeEnumALLY_MECH_SELECT     = "ALLY_MECH_SELECT"
-	LocationSelectTypeEnumOPPONENT_MECH_SELECT = "OPPONENT_MECH_SELECT"
-	LocationSelectTypeEnumMECH_SELECT_ALLY     = "MECH_SELECT_ALLY"
-	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
 	LocationSelectTypeEnumMECH_SELECT_ALLIED   = "MECH_SELECT_ALLIED"
+	LocationSelectTypeEnumMECH_SELECT_OPPONENT = "MECH_SELECT_OPPONENT"
 )
 
 // Enum values for MiniMapDisplayEffectType
@@ -137,6 +163,10 @@ const (
 	MiniMapDisplayEffectTypeRANGE       = "RANGE"
 	MiniMapDisplayEffectTypeMECH_PULSE  = "MECH_PULSE"
 	MiniMapDisplayEffectTypeMECH_BORDER = "MECH_BORDER"
+	MiniMapDisplayEffectTypePULSE       = "PULSE"
+	MiniMapDisplayEffectTypeBORDER      = "BORDER"
+	MiniMapDisplayEffectTypeDROP        = "DROP"
+	MiniMapDisplayEffectTypeSHAKE       = "SHAKE"
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
@@ -177,6 +207,8 @@ const (
 	DamageTypeEnergy    = "Energy"
 	DamageTypeExplosive = "Explosive"
 )
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for ChatMSGTypeEnum
 const (
@@ -245,12 +277,6 @@ const (
 	MarketplaceEventCancelled = "cancelled"
 )
 
-// Enum values for MechType
-const (
-	MechTypeHUMANOID = "HUMANOID"
-	MechTypePLATFORM = "PLATFORM"
-)
-
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"
@@ -287,6 +313,13 @@ const (
 	BanFromTypeSYSTEM = "SYSTEM"
 	BanFromTypeADMIN  = "ADMIN"
 	BanFromTypePLAYER = "PLAYER"
+)
+
+// Enum values for RepairSlotStatus
+const (
+	RepairSlotStatusREPAIRING = "REPAIRING"
+	RepairSlotStatusPENDING   = "PENDING"
+	RepairSlotStatusDONE      = "DONE"
 )
 
 // Enum values for PlayerRankEnum

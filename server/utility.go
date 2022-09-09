@@ -24,7 +24,7 @@ type Utility struct {
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	Type                  string      `json:"type"`
 	LockedToMech          bool        `json:"locked_to_mech"`
-	SlotNumber            *int        `json:"slot_number,omitempty"`
+	SlotNumber            null.Int    `json:"slot_number,omitempty"`
 
 	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
@@ -78,10 +78,12 @@ func (b *UtilityAttackDrone) Scan(value interface{}) error {
 }
 
 type UtilityShield struct {
-	UtilityID          string `json:"utility_id"`
-	Hitpoints          int    `json:"hitpoints"`
-	RechargeRate       int    `json:"recharge_rate"`
-	RechargeEnergyCost int    `json:"recharge_energy_cost"`
+	UtilityID           string `json:"utility_id"`
+	Hitpoints           int    `json:"hitpoints"`
+	BoostedHitpoints    int    `json:"boosted_hitpoints"`
+	RechargeRate        int    `json:"recharge_rate"`
+	BoostedRechargeRate int    `json:"boosted_recharge_rate"`
+	RechargeEnergyCost  int    `json:"recharge_energy_cost"`
 }
 
 func (b *UtilityShield) Scan(value interface{}) error {
@@ -250,113 +252,7 @@ func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *
 	}
 }
 
-func BlueprintUtilityAttackDroneFromBoiler(utility *boiler.BlueprintUtility, drone *boiler.BlueprintUtilityAttackDrone) *BlueprintUtility {
-	return &BlueprintUtility{
-		ID:         utility.ID,
-		BrandID:    utility.BrandID,
-		Label:      utility.Label,
-		UpdatedAt:  utility.UpdatedAt,
-		CreatedAt:  utility.CreatedAt,
-		Type:       utility.Type,
-		Collection: utility.Collection,
-		Tier:       utility.Tier,
-		AttackDroneBlueprint: &BlueprintUtilityAttackDrone{
-			ID:                 drone.ID,
-			BlueprintUtilityID: drone.BlueprintUtilityID,
-			Damage:             drone.Damage,
-			RateOfFire:         drone.RateOfFire,
-			Hitpoints:          drone.Hitpoints,
-			LifespanSeconds:    drone.LifespanSeconds,
-			DeployEnergyCost:   drone.DeployEnergyCost,
-			CreatedAt:          drone.CreatedAt,
-		},
-		ImageURL:         utility.ImageURL,
-		AnimationURL:     utility.AnimationURL,
-		CardAnimationURL: utility.CardAnimationURL,
-		LargeImageURL:    utility.LargeImageURL,
-		AvatarURL:        utility.AvatarURL,
-	}
-}
-
-func BlueprintUtilityRepairDroneFromBoiler(utility *boiler.BlueprintUtility, drone *boiler.BlueprintUtilityRepairDrone) *BlueprintUtility {
-	return &BlueprintUtility{
-		ID:         utility.ID,
-		BrandID:    utility.BrandID,
-		Label:      utility.Label,
-		UpdatedAt:  utility.UpdatedAt,
-		CreatedAt:  utility.CreatedAt,
-		Type:       utility.Type,
-		Collection: utility.Collection,
-		Tier:       utility.Tier,
-		RepairDroneBlueprint: &BlueprintUtilityRepairDrone{
-			ID:                 drone.ID,
-			BlueprintUtilityID: drone.BlueprintUtilityID,
-			RepairType:         drone.RepairType,
-			RepairAmount:       drone.RepairAmount,
-			DeployEnergyCost:   drone.DeployEnergyCost,
-			LifespanSeconds:    drone.LifespanSeconds,
-			CreatedAt:          drone.CreatedAt,
-		},
-		ImageURL:         utility.ImageURL,
-		AnimationURL:     utility.AnimationURL,
-		CardAnimationURL: utility.CardAnimationURL,
-		LargeImageURL:    utility.LargeImageURL,
-		AvatarURL:        utility.AvatarURL,
-	}
-}
-
-func BlueprintUtilityAntiMissileFromBoiler(utility *boiler.BlueprintUtility, anti *boiler.BlueprintUtilityAntiMissile) *BlueprintUtility {
-	return &BlueprintUtility{
-		ID:         utility.ID,
-		BrandID:    utility.BrandID,
-		Label:      utility.Label,
-		UpdatedAt:  utility.UpdatedAt,
-		CreatedAt:  utility.CreatedAt,
-		Type:       utility.Type,
-		Collection: utility.Collection,
-		Tier:       utility.Tier,
-		AntiMissileBlueprint: &BlueprintUtilityAntiMissile{
-			ID:                 anti.ID,
-			BlueprintUtilityID: anti.BlueprintUtilityID,
-			RateOfFire:         anti.RateOfFire,
-			FireEnergyCost:     anti.FireEnergyCost,
-			CreatedAt:          anti.CreatedAt,
-		},
-		ImageURL:         utility.ImageURL,
-		AnimationURL:     utility.AnimationURL,
-		CardAnimationURL: utility.CardAnimationURL,
-		LargeImageURL:    utility.LargeImageURL,
-		AvatarURL:        utility.AvatarURL,
-	}
-}
-
-func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, anti *boiler.BlueprintUtilityAccelerator) *BlueprintUtility {
-	return &BlueprintUtility{
-		ID:         utility.ID,
-		BrandID:    utility.BrandID,
-		Label:      utility.Label,
-		UpdatedAt:  utility.UpdatedAt,
-		CreatedAt:  utility.CreatedAt,
-		Type:       utility.Type,
-		Collection: utility.Collection,
-		Tier:       utility.Tier,
-		AcceleratorBlueprint: &BlueprintUtilityAccelerator{
-			ID:                 anti.ID,
-			BlueprintUtilityID: anti.BlueprintUtilityID,
-			EnergyCost:         anti.EnergyCost,
-			BoostSeconds:       anti.BoostSeconds,
-			BoostAmount:        anti.BoostAmount,
-			CreatedAt:          anti.CreatedAt,
-		},
-		ImageURL:         utility.ImageURL,
-		AnimationURL:     utility.AnimationURL,
-		CardAnimationURL: utility.CardAnimationURL,
-		LargeImageURL:    utility.LargeImageURL,
-		AvatarURL:        utility.AvatarURL,
-	}
-}
-
-func UtilityShieldFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
+func UtilityShieldFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, shield *boiler.BlueprintUtilityShield, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
 		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
@@ -380,8 +276,8 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, blueprint *boiler.Blueprin
 			YoutubeURL:       blueprint.YoutubeURL,
 		},
 		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
+		BrandID:        utility.R.Blueprint.BrandID,
+		Label:          utility.R.Blueprint.Label,
 		UpdatedAt:      utility.UpdatedAt,
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
@@ -390,180 +286,10 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, blueprint *boiler.Blueprin
 		Type:           utility.Type,
 		LockedToMech:   utility.LockedToMech,
 		Shield: &UtilityShield{
-			UtilityID:          shield.UtilityID,
+			UtilityID:          utility.ID,
 			Hitpoints:          shield.Hitpoints,
 			RechargeRate:       shield.RechargeRate,
 			RechargeEnergyCost: shield.RechargeEnergyCost,
-		},
-	}
-}
-
-func UtilityAttackDroneFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, drone *boiler.UtilityAttackDrone, collection *boiler.CollectionItem) *Utility {
-	return &Utility{
-		CollectionItem: &CollectionItem{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			MarketLocked:   collection.MarketLocked,
-			XsynLocked:     collection.XsynLocked,
-			AssetHidden:    collection.AssetHidden,
-		},
-		Images: &Images{
-			ImageURL:         blueprint.ImageURL,
-			CardAnimationURL: blueprint.CardAnimationURL,
-			AvatarURL:        blueprint.AvatarURL,
-			LargeImageURL:    blueprint.LargeImageURL,
-			BackgroundColor:  blueprint.BackgroundColor,
-			AnimationURL:     blueprint.AnimationURL,
-			YoutubeURL:       blueprint.YoutubeURL,
-		},
-		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
-		UpdatedAt:      utility.UpdatedAt,
-		CreatedAt:      utility.CreatedAt,
-		BlueprintID:    utility.BlueprintID,
-		GenesisTokenID: utility.GenesisTokenID,
-		EquippedOn:     utility.EquippedOn,
-		Type:           utility.Type,
-		LockedToMech:   utility.LockedToMech,
-		AttackDrone: &UtilityAttackDrone{
-			UtilityID:        drone.UtilityID,
-			Damage:           drone.Damage,
-			RateOfFire:       drone.RateOfFire,
-			Hitpoints:        drone.Hitpoints,
-			LifespanSeconds:  drone.LifespanSeconds,
-			DeployEnergyCost: drone.DeployEnergyCost,
-		},
-	}
-}
-
-func UtilityRepairDroneFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, drone *boiler.UtilityRepairDrone, collection *boiler.CollectionItem) *Utility {
-	return &Utility{
-		CollectionItem: &CollectionItem{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			MarketLocked:   collection.MarketLocked,
-			XsynLocked:     collection.XsynLocked,
-			AssetHidden:    collection.AssetHidden,
-		},
-		Images: &Images{
-			ImageURL:         blueprint.ImageURL,
-			CardAnimationURL: blueprint.CardAnimationURL,
-			AvatarURL:        blueprint.AvatarURL,
-			LargeImageURL:    blueprint.LargeImageURL,
-			BackgroundColor:  blueprint.BackgroundColor,
-			AnimationURL:     blueprint.AnimationURL,
-			YoutubeURL:       blueprint.YoutubeURL,
-		},
-		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
-		UpdatedAt:      utility.UpdatedAt,
-		CreatedAt:      utility.CreatedAt,
-		BlueprintID:    utility.BlueprintID,
-		GenesisTokenID: utility.GenesisTokenID,
-		EquippedOn:     utility.EquippedOn,
-		Type:           utility.Type,
-		LockedToMech:   utility.LockedToMech,
-		RepairDrone: &UtilityRepairDrone{
-			UtilityID:        drone.UtilityID,
-			RepairType:       drone.RepairType,
-			RepairAmount:     drone.RepairAmount,
-			DeployEnergyCost: drone.DeployEnergyCost,
-			LifespanSeconds:  drone.LifespanSeconds,
-		},
-	}
-}
-
-func UtilityAntiMissileFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, anti *boiler.UtilityAntiMissile, collection *boiler.CollectionItem) *Utility {
-	return &Utility{
-		CollectionItem: &CollectionItem{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			MarketLocked:   collection.MarketLocked,
-			XsynLocked:     collection.XsynLocked,
-			AssetHidden:    collection.AssetHidden,
-		},
-		Images: &Images{
-			ImageURL:         blueprint.ImageURL,
-			CardAnimationURL: blueprint.CardAnimationURL,
-			AvatarURL:        blueprint.AvatarURL,
-			LargeImageURL:    blueprint.LargeImageURL,
-			BackgroundColor:  blueprint.BackgroundColor,
-			AnimationURL:     blueprint.AnimationURL,
-			YoutubeURL:       blueprint.YoutubeURL,
-		},
-		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
-		UpdatedAt:      utility.UpdatedAt,
-		CreatedAt:      utility.CreatedAt,
-		BlueprintID:    utility.BlueprintID,
-		GenesisTokenID: utility.GenesisTokenID,
-		EquippedOn:     utility.EquippedOn,
-		Type:           utility.Type,
-		LockedToMech:   utility.LockedToMech,
-		AntiMissile: &UtilityAntiMissile{
-			UtilityID:      anti.UtilityID,
-			RateOfFire:     anti.RateOfFire,
-			FireEnergyCost: anti.FireEnergyCost,
-		},
-	}
-}
-
-func UtilityAcceleratorFromBoiler(utility *boiler.Utility, blueprint *boiler.BlueprintUtility, anti *boiler.UtilityAccelerator, collection *boiler.CollectionItem) *Utility {
-	return &Utility{
-		CollectionItem: &CollectionItem{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			MarketLocked:   collection.MarketLocked,
-			XsynLocked:     collection.XsynLocked,
-			AssetHidden:    collection.AssetHidden,
-		},
-		Images: &Images{
-			ImageURL:         blueprint.ImageURL,
-			CardAnimationURL: blueprint.CardAnimationURL,
-			AvatarURL:        blueprint.AvatarURL,
-			LargeImageURL:    blueprint.LargeImageURL,
-			BackgroundColor:  blueprint.BackgroundColor,
-			AnimationURL:     blueprint.AnimationURL,
-			YoutubeURL:       blueprint.YoutubeURL,
-		},
-		ID:             utility.ID,
-		BrandID:        utility.BrandID,
-		Label:          utility.Label,
-		UpdatedAt:      utility.UpdatedAt,
-		CreatedAt:      utility.CreatedAt,
-		BlueprintID:    utility.BlueprintID,
-		GenesisTokenID: utility.GenesisTokenID,
-		EquippedOn:     utility.EquippedOn,
-		Type:           utility.Type,
-		LockedToMech:   utility.LockedToMech,
-		Accelerator: &UtilityAccelerator{
-			UtilityID:    anti.UtilityID,
-			EnergyCost:   anti.EnergyCost,
-			BoostSeconds: anti.BoostSeconds,
-			BoostAmount:  anti.BoostAmount,
 		},
 	}
 }

@@ -219,10 +219,15 @@ func NewChatroom(factionID string) *Chatroom {
 				continue
 			}
 			playerStat, err := db.UserStatsGet(player.ID)
-			if err != nil {
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Warn().Err(err).Interface("player.ID", player.ID).Msg("issue UserStatsGet")
 				continue
 			}
+
+			if playerStat == nil {
+				continue
+			}
+
 			stats[player.ID] = playerStat
 		}
 		stat := stats[player.ID]
@@ -447,15 +452,13 @@ func firstN(s string, n int) string {
 	return s
 }
 
-var bucket = leakybucket.NewCollector(1, 2, true)
-var minuteBucket = leakybucket.NewCollector(0.5, 1, true)
+var bucket = leakybucket.NewCollector(4, 1, true) // 4 msg per second
 
 // ChatMessageHandler sends chat message from player
 func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	b1 := bucket.Add(user.ID, 1)
-	b2 := minuteBucket.Add(user.ID, 1)
 
-	if b1 == 0 || b2 == 0 {
+	if b1 == 0 {
 		return terror.Warn(fmt.Errorf("too many messages"), "Too many messages.")
 	}
 
