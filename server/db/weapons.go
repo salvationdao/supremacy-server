@@ -321,28 +321,29 @@ func IsWeaponColumn(col string) bool {
 	switch col {
 	case
 		boiler.WeaponColumns.ID,
-		boiler.WeaponColumns.Slug,
-		boiler.WeaponColumns.Damage,
+		boiler.WeaponColumns.SlugDontUse,
+		boiler.WeaponColumns.DamageDontUse,
 		boiler.WeaponColumns.DeletedAt,
 		boiler.WeaponColumns.UpdatedAt,
 		boiler.WeaponColumns.CreatedAt,
 		boiler.WeaponColumns.BlueprintID,
 		boiler.WeaponColumns.EquippedOn,
-		boiler.WeaponColumns.DefaultDamageType,
+		boiler.WeaponColumns.DefaultDamageTypeDontUse,
 		boiler.WeaponColumns.GenesisTokenID,
 		boiler.WeaponColumns.LimitedReleaseTokenID,
-		boiler.WeaponColumns.DamageFalloff,
-		boiler.WeaponColumns.DamageFalloffRate,
-		boiler.WeaponColumns.Radius,
-		boiler.WeaponColumns.RadiusDamageFalloff,
-		boiler.WeaponColumns.Spread,
-		boiler.WeaponColumns.RateOfFire,
-		boiler.WeaponColumns.ProjectileSpeed,
-		boiler.WeaponColumns.EnergyCost,
-		boiler.WeaponColumns.IsMelee,
-		boiler.WeaponColumns.MaxAmmo,
+		boiler.WeaponColumns.DamageFalloffDontUse,
+		boiler.WeaponColumns.DamageFalloffRateDontUse,
+		boiler.WeaponColumns.RadiusDontUse,
+		boiler.WeaponColumns.RadiusDamageFalloffDontUse,
+		boiler.WeaponColumns.SpreadDontUse,
+		boiler.WeaponColumns.RateOfFireDontUse,
+		boiler.WeaponColumns.ProjectileSpeedDontUse,
+		boiler.WeaponColumns.EnergyCostDontUse,
+		boiler.WeaponColumns.IsMeleeDontUse,
+		boiler.WeaponColumns.MaxAmmoDontUse,
 		boiler.WeaponColumns.LockedToMech,
-		boiler.WeaponColumns.EquippedWeaponSkinID:
+		boiler.WeaponColumns.EquippedWeaponSkinID,
+		boiler.WeaponColumns.BlueprintIDOld:
 		return true
 	default:
 		return false

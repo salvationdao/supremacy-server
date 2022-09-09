@@ -1380,11 +1380,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		equipped := []string{}
 		for _, u := range utilities {
 			if u.EquippedOn.Valid {
-				equipped = append(equipped, u.Label)
+				equipped = append(equipped, u.ID)
 			}
 		}
 		if len(equipped) > 0 {
-			return terror.Error(terror.ErrForbidden, fmt.Sprintf("One or more of the selected utilities is already equipped on a mech (%v). Please remove them from your selection and try again.", equipped))
+			return terror.Error(terror.ErrForbidden, "One or more of the selected utilities is already equipped on a mech. Please remove them from your selection and try again.")
 		}
 
 		// Check ownership of utilities
@@ -1392,6 +1392,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			boiler.CollectionItemWhere.ItemID.IN(ids),
 			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		).Count(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
 		if ownershipCount != int64(len(req.Payload.EquipUtility)) {
 			return terror.Error(terror.ErrUnauthorised, errorMsg)
 		}
@@ -1400,7 +1403,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		for _, u := range mech.Utility {
 			isSlotOccupied := false
 			for _, s := range slots {
-				if u.SlotNumber != nil && s == *u.SlotNumber {
+				if u.SlotNumber.Valid && s == u.SlotNumber.Int {
 					isSlotOccupied = true
 					break
 				}
@@ -1415,12 +1418,12 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 		for _, eu := range req.Payload.EquipUtility {
 			if eu.SlotNumber < 0 {
-				return terror.Error(terror.ErrInvalidInput, fmt.Sprintf("This mech does not have the utility slot specified to equip the utility on."))
+				return terror.Error(terror.ErrInvalidInput, "This mech does not have the utility slot specified to equip the utility on.")
 			}
 
 			// Slot number specified does not exist on mech
 			if eu.SlotNumber > mech.UtilitySlots-1 {
-				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified utilities on the mech as it does not have enough utility slots."))
+				return terror.Error(terror.ErrForbidden, "You cannot equip the specified utilities on the mech as it does not have enough utility slots.")
 			}
 
 			mu, err := boiler.FindMechUtility(tx, mech.ID, eu.SlotNumber)
@@ -1506,6 +1509,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			boiler.CollectionItemWhere.ItemID.IN(ids),
 			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		).Count(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
 		if ownershipCount != int64(len(req.Payload.EquipWeapons)) {
 			return terror.Error(terror.ErrUnauthorised, errorMsg)
 		}
@@ -1514,7 +1520,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		for _, w := range mech.Weapons {
 			isSlotOccupied := false
 			for _, s := range slots {
-				if w.SlotNumber != nil && s == *w.SlotNumber {
+				if w.SlotNumber.Valid && s == w.SlotNumber.Int {
 					isSlotOccupied = true
 					break
 				}
@@ -1529,12 +1535,12 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 		for _, ew := range req.Payload.EquipWeapons {
 			if ew.SlotNumber < 0 {
-				return terror.Error(terror.ErrInvalidInput, fmt.Sprintf("This mech does not have the weapon slot specified to equip the weapon on."))
+				return terror.Error(terror.ErrInvalidInput, "This mech does not have the weapon slot specified to equip the weapon on.")
 			}
 
 			// Slot number specified does not exist on mech
 			if ew.SlotNumber > mech.WeaponHardpoints-1 {
-				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot equip the specified weapons on the mech as it does not have enough weapon slots."))
+				return terror.Error(terror.ErrForbidden, "You cannot equip the specified weapons on the mech as it does not have enough weapon slots.")
 			}
 
 			mw, err := boiler.FindMechWeapon(tx, mech.ID, ew.SlotNumber)
@@ -1566,7 +1572,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				}
 			}
 
-			weapon, err := boiler.FindWeapon(tx, ew.WeaponID)
+			weapon, err := boiler.Weapons(
+				boiler.WeaponWhere.ID.EQ(ew.WeaponID),
+				qm.Load(boiler.WeaponRels.Blueprint),
+			).One(tx)
 			if err != nil {
 				return terror.Error(err, errorMsg)
 			}
@@ -1579,7 +1588,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 			mw.WeaponID = null.StringFrom(ew.WeaponID)
 			mw.IsSkinInherited = ew.InheritSkin
-			mw.AllowMelee = weapon.IsMelee
+			mw.AllowMelee = weapon.R.Blueprint.IsMelee
 			_, err = mw.Update(tx, boil.Infer())
 			if err != nil {
 				return terror.Error(err, errorMsg)

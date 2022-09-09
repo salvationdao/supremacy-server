@@ -43,7 +43,7 @@ type Weapon struct {
 	ChargeTimeSeconds     decimal.NullDecimal `json:"charge_time_seconds,omitempty"`
 	BurstRateOfFire       decimal.NullDecimal `json:"burst_rate_of_fire,omitempty"`
 	LockedToMech          bool                `json:"locked_to_mech"`
-	SlotNumber            *int                `json:"slot_number,omitempty"`
+	SlotNumber            null.Int            `json:"slot_number,omitempty"`
 
 	WeaponSkin *WeaponSkin `json:"weapon_skin,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
