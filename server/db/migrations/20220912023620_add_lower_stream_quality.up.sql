@@ -1,0 +1,1 @@
+UPDATE oven_streams SET available_resolutions='{240,360,480,720,1080,1080_60}' WHERE name='Stream 1';
