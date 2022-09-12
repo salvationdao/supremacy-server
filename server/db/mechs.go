@@ -332,6 +332,7 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 	var result []struct {
 		ID string `boil:"id"`
 	}
+	boil.DebugMode = true
 	err := boiler.NewQuery(
 		qm.Select(fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID))),
 		qm.From(boiler.TableNames.Mechs),
@@ -350,10 +351,16 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.BlueprintWeaponSkinID),
 			qm.Rels(boiler.TableNames.BlueprintMechSkin, boiler.BlueprintMechSkinColumns.BlueprintWeaponSkinID),
 		)),
+		qm.InnerJoin(fmt.Sprintf("%s on %s = %s",
+			boiler.TableNames.BlueprintWeapons,
+			qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID),
+			qm.Rels(boiler.TableNames.WeaponModelSkinCompatibilities, boiler.WeaponModelSkinCompatibilityColumns.WeaponModelID),
+		)),
 		qm.Where(fmt.Sprintf("%s = ?", qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID)),
 			mechID,
 		),
 	).Bind(nil, conn, &result)
+	boil.DebugMode = false
 	if err != nil {
 		return []string{}, err
 	}
