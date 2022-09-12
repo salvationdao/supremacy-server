@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/helpers"
 	"time"
 
 	"github.com/sasha-s/go-deadlock"
@@ -662,7 +661,7 @@ func (arena *Arena) BroadcastFactionMechCommands(factionID string) error {
 	}
 
 	logs, err := boiler.MechMoveCommandLogs(
-		boiler.MechMoveCommandLogWhere.MechID.IN(helpers.UUIDArray2StrArray(ids)),
+		boiler.MechMoveCommandLogWhere.MechID.IN(ids),
 		boiler.MechMoveCommandLogWhere.BattleID.EQ(arena.CurrentBattle().ID),
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),

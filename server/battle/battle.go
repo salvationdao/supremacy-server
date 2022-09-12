@@ -1,12 +1,12 @@
 package battle
 
 import (
-	"context"
 	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"math/rand"
 	"server"
 	"server/db"
@@ -50,8 +50,9 @@ type Battle struct {
 	WarMachines            []*WarMachine `json:"warMachines"`
 	spawnedAIMux           deadlock.RWMutex
 	SpawnedAI              []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs          []uuid.UUID
+	warMachineIDs          []string
 	lastTick               *[]byte
+	lobby                  *boiler.BattleLobby
 	gameMap                *server.GameMap
 	battleZones            []server.BattleZone
 	currentBattleZoneIndex int
@@ -268,18 +269,28 @@ func (btl *Battle) setBattleQueue() error {
 		return err
 	}
 
+	// insert battle lobby
+	btl.lobby.JoinedBattleID = null.StringFrom(btl.Battle.ID)
+	_, err = btl.lobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.JoinedBattleID))
+	if err != nil {
+		l.Error().Err(err).Interface("battle lobby", btl.lobby).Msg("unable to update battle lobby")
+		return terror.Error(err, "Failed to update battle lobby.")
+	}
+
 	gamelog.L.Debug().Msg("Inserted battle into db")
 	btl.inserted = true
 
-	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
-	if err != nil {
-		l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
-		return err
-	}
+	// TODO: broadcast battle lobby change
 
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	//err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
+	//if err != nil {
+	//	l.Error().Interface("mechs_ids", btl.warMachineIDs).Err(err).Msg("failed to set battle id in queue")
+	//	return err
+	//}
+
+	//ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.RedMountainFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	//ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.BostonCyberneticsFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+	//ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", server.ZaibatsuFactionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
 
 	return nil
 }
@@ -515,7 +526,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	}
 
 	// load all the mech stats
-	mechStats, err := boiler.MechStats(boiler.MechStatWhere.MechID.IN(helpers.UUIDArray2StrArray(btl.warMachineIDs))).All(gamedb.StdConn)
+	mechStats, err := boiler.MechStats(boiler.MechStatWhere.MechID.IN(btl.warMachineIDs)).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Str("log_name", "battle arena").
 			Interface("mech id list", btl.warMachineIDs).
@@ -2091,75 +2102,29 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	}
 }
 
-func (btl *Battle) Load() error {
-	gamelog.L.Trace().Str("func", "Load").Msg("start")
-	q, err := db.LoadBattleQueue(context.Background(), 3, false)
-	ids := make([]string, len(q))
+func (btl *Battle) Load(battleLobby *boiler.BattleLobby) error {
+	lms, err := battleLobby.BattleLobbiesMechs().All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
-		gamelog.L.Trace().Str("func", "Load").Msg("end")
-		return err
+		gamelog.L.Error().Err(err).Str("battle lobby id", battleLobby.ID).Msg("Failed to load mechs from battle lobby")
+		return terror.Error(err, "Failed to load mech from battle lobby")
 	}
 
-	if len(q) < (db.FACTION_MECH_LIMIT * 3) {
-		if server.IsDevelopmentEnv() {
-			// build the mechs
-			err = btl.QueueDefaultMechs(btl.GenerateDefaultQueueRequest(q))
-			if err != nil {
-				gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
-				gamelog.L.Trace().Str("func", "Load").Msg("end")
-				return err
-			}
-			gamelog.L.Trace().Str("func", "Load").Msg("end")
-			return btl.Load()
-		}
-
-		// mark the arena as idle
-		gamelog.L.Debug().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-		btl.arena.UpdateArenaStatus(true)
-		return nil
+	mechIDs := []string{}
+	for _, lm := range lms {
+		mechIDs = append(mechIDs, lm.MechID)
 	}
 
-	for i, bq := range q {
-		ids[i] = bq.MechID
+	mechs, err := db.Mechs(mechIDs...)
+	if err != nil {
+		gamelog.L.Error().Strs("mech ids", mechIDs).Err(err).Msg("Failed to load mech detail")
+		return terror.Error(err, "Failed to load mech details")
 	}
-
-	mechs, err := db.Mechs(ids...)
-	if errors.Is(err, db.ErrNotAllMechsReturned) || len(mechs) != len(ids) {
-		for _, m := range mechs {
-			for i, v := range ids {
-				if v == m.ID {
-					ids = append(ids[:i], ids[i+1:]...)
-					break
-				}
-			}
-		}
-		_, err = boiler.BattleQueues(boiler.BattleQueueWhere.MechID.IN(ids)).DeleteAll(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Panic().Strs("mechIDs", ids).Err(err).Msg("unable to delete mech from queue")
-		}
-
-		gamelog.L.Trace().Str("func", "Load").Msg("end")
-		return btl.Load()
-	}
-
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
 		gamelog.L.Trace().Str("func", "Load").Msg("end")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
-	uuids := make([]uuid.UUID, len(q))
-	mechIDs := make([]string, len(q))
-	for i, bq := range q {
-		mechIDs[i] = bq.MechID
-		uuids[i], err = uuid.FromString(bq.MechID)
-		if err != nil {
-			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
-			gamelog.L.Trace().Str("func", "Load").Msg("end")
-			return err
-		}
-	}
 
 	// set mechs current health
 	rcs, err := boiler.RepairCases(
@@ -2188,7 +2153,7 @@ func (btl *Battle) Load() error {
 		}
 	}
 
-	btl.warMachineIDs = uuids
+	btl.warMachineIDs = mechIDs
 	gamelog.L.Trace().Str("func", "Load").Msg("end")
 	return nil
 }

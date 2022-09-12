@@ -501,11 +501,11 @@ func (arena *Arena) currentBattleNumber() int {
 	return arena._currentBattle.BattleNumber
 }
 
-func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID {
+func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []string {
 	arena.RLock()
 	defer arena.RUnlock()
 
-	ids := []uuid.UUID{}
+	ids := []string{}
 
 	if arena._currentBattle == nil {
 		return ids
@@ -515,13 +515,12 @@ func (arena *Arena) currentBattleWarMachineIDs(factionIDs ...string) []uuid.UUID
 		// only return war machines' id from the faction
 		for _, wm := range arena._currentBattle.WarMachines {
 			if wm.FactionID == factionIDs[0] {
-				ids = append(ids, uuid.FromStringOrNil(wm.ID))
+				ids = append(ids, wm.ID)
 			}
 		}
 	} else {
 		// return all the war machines' id
 		ids = arena._currentBattle.warMachineIDs
-
 	}
 
 	return ids
@@ -1776,27 +1775,8 @@ func (arena *Arena) BeginBattle() {
 		return
 	}
 
-	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
-	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
-
-	// check battle queue amount before create new battle
-	q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out queue")
-		return
-	}
-
-	// set arena to idle if not enough mech
-	if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
-		gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-		arena.UpdateArenaStatus(true)
-		return
-	}
-
-	arena.UpdateArenaStatus(false)
-
 	// delete all the unfinished mech command
-	_, err = boiler.MechMoveCommandLogs(
+	_, err := boiler.MechMoveCommandLogs(
 		boiler.MechMoveCommandLogWhere.ArenaID.EQ(arena.ID),
 		boiler.MechMoveCommandLogWhere.ReachedAt.IsNull(),
 		boiler.MechMoveCommandLogWhere.CancelledAt.IsNull(),
@@ -1806,48 +1786,70 @@ func (arena *Arena) BeginBattle() {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up unfinished mech move command")
 	}
 
-	// get next map in battle queue
-	var gm *boiler.GameMap
-	mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
-	}
+	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
+	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
-	// if no map get random
-	if mapInQueue == nil {
-		gm, err = db.GameMapGetRandom(false)
-		if err != nil {
-			gamelog.L.Err(err).Msg("unable to get random map")
-			return
-		}
-	} else {
-		gm, err = db.GameMapGetByID(mapInQueue.MapID)
-		if err != nil {
-			gamelog.L.Err(err).Str("MapID", gm.ID).Msg("unable to get map by id")
-			return
-		}
-	}
+	//// check battle queue amount before create new battle
+	//q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
+	//if err != nil {
+	//	gamelog.L.Warn().Err(err).Msg("unable to load out queue")
+	//	return
+	//}
+	//
+	//// set arena to idle if not enough mech
+	//if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
+	//	gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
+	//	arena.UpdateArenaStatus(true)
+	//	return
+	//}
+	//
+	//arena.UpdateArenaStatus(false)
 
-	// insert next battle map
-	nextMap, err := db.GameMapGetRandom(false)
-	if err != nil {
-		gamelog.L.Err(err).Msg("unable to get random map")
-	}
-
-	nbmq := boiler.BattleMapQueue{MapID: nextMap.ID, CreatedAt: time.Now()}
-	err = nbmq.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Err(err).Msg("unable to get random map")
-	}
-
-	gameMap := &server.GameMap{
-		ID:            uuid.Must(uuid.FromString(gm.ID)),
-		Name:          gm.Name,
-		BackgroundUrl: gm.BackgroundURL,
-	}
+	//// get next map in battle queue
+	//var gm *boiler.GameMap
+	//mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
+	//if err != nil {
+	//	gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
+	//}
+	//
+	//// if no map get random
+	//if mapInQueue == nil {
+	//	gm, err = db.GameMapGetRandom(false)
+	//	if err != nil {
+	//		gamelog.L.Err(err).Msg("unable to get random map")
+	//		return
+	//	}
+	//} else {
+	//	gm, err = db.GameMapGetByID(mapInQueue.MapID)
+	//	if err != nil {
+	//		gamelog.L.Err(err).Str("MapID", gm.ID).Msg("unable to get map by id")
+	//		return
+	//	}
+	//}
+	//
+	//// insert next battle map
+	//nextMap, err := db.GameMapGetRandom(false)
+	//if err != nil {
+	//	gamelog.L.Err(err).Msg("unable to get random map")
+	//}
+	//
+	//nbmq := boiler.BattleMapQueue{MapID: nextMap.ID, CreatedAt: time.Now()}
+	//err = nbmq.Insert(gamedb.StdConn, boil.Infer())
+	//if err != nil {
+	//	gamelog.L.Err(err).Msg("unable to get random map")
+	//}
+	//
+	//gameMap := &server.GameMap{
+	//	ID:            uuid.Must(uuid.FromString(gm.ID)),
+	//	Name:          gm.Name,
+	//	BackgroundUrl: gm.BackgroundURL,
+	//}
 
 	var battle *boiler.Battle
+	var battleLobby *boiler.BattleLobby
 	inserted := false
+
+	// TODO: check available battle lobby
 
 	// query last battle
 	lastBattle, err := boiler.Battles(
@@ -1864,30 +1866,31 @@ func (arena *Arena) BeginBattle() {
 
 	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
+		// load new battle lobby
+		battleLobby, err = boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.JoinedBattleID.IsNull(),
+			boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+			boiler.BattleLobbyWhere.FinishedAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load new battle lobby.")
+			return
+		}
+
+		if battleLobby == nil {
+			arena.UpdateArenaStatus(true)
+			return
+		}
+
 		battle = &boiler.Battle{
 			ID:        uuid.Must(uuid.NewV4()).String(),
-			GameMapID: gameMap.ID.String(),
+			GameMapID: battleLobby.GameMapID,
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
 	} else {
 		// refund abilities
 		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
-
-		// soft delete all the ability triggers in the unfinished battle
-		_, err = boiler.BattleAbilityTriggers(
-			boiler.BattleAbilityTriggerWhere.BattleID.EQ(lastBattle.ID),
-		).UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleAbilityTriggerColumns.DeletedAt: null.TimeFrom(time.Now())})
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
-		}
-
-		// if there is an unfinished battle
-		battle = lastBattle
-
-		gamelog.L.Info().Msg("Running unfinished battle map")
-		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
-		gameMap.Name = lastBattle.R.GameMap.Name
 
 		// stops recording for already running previous recording
 		go func(battleID, arenaID string) {
@@ -1925,15 +1928,49 @@ func (arena *Arena) BeginBattle() {
 			}
 		}(battle.ID, arena.ID)
 
+		// soft delete all the ability triggers in the unfinished battle
+		_, err = boiler.BattleAbilityTriggers(
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(lastBattle.ID),
+		).UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleAbilityTriggerColumns.DeletedAt: null.TimeFrom(time.Now())})
+		if err != nil {
+			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
+		}
+
+		// if there is an unfinished battle
+		battle = lastBattle
+
+		// load battle lobby of the last battle
+		battleLobby, err = boiler.BattleLobbies(
+			boiler.BattleLobbyWhere.JoinedBattleID.EQ(null.StringFrom(lastBattle.ID)),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Str("battle id", lastBattle.ID).Msg("Failed to load battle lobby of the last battle")
+			return
+		}
+
+		gamelog.L.Info().Msg("Running unfinished battle map")
+
 		inserted = true
+	}
+
+	gameMap, err := battleLobby.GameMap().One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("Failed to load game map from battle lobby")
+		arena.UpdateArenaStatus(true)
+		return
 	}
 
 	events := []*RecordingEvents{}
 
 	btl := &Battle{
-		arena:                  arena,
-		MapName:                gameMap.Name,
-		gameMap:                gameMap,
+		arena:   arena,
+		MapName: gameMap.Name,
+		lobby:   battleLobby,
+		gameMap: &server.GameMap{
+			ID:            uuid.FromStringOrNil(gameMap.ID),
+			Name:          gameMap.Name,
+			BackgroundUrl: gameMap.BackgroundURL,
+		},
 		BattleID:               battle.ID,
 		Battle:                 battle,
 		inserted:               inserted,
@@ -1954,13 +1991,9 @@ func (arena *Arena) BeginBattle() {
 	}
 
 	// load war machines first
-	err = btl.Load()
+	err = btl.Load(battleLobby)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
-
-	// skip, if idle
-	if arena.isIdle.Load() {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle mechs")
 		return
 	}
 
