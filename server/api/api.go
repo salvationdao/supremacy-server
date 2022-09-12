@@ -183,6 +183,7 @@ func NewAPI(
 	_ = NewSystemMessagesController(api)
 	NewMechRepairController(api)
 	_ = NewReplayController(api)
+	BattleQueueController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

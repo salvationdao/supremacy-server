@@ -11,12 +11,14 @@ CREATE TABLE battle_lobbies
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     host_by_id               UUID        NOT NULL REFERENCES players (id),
+    number                   SERIAL,
     entry_fee                NUMERIC(28) NOT NULL DEFAULT 0,
     first_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     second_faction_cut       DECIMAL     NOT NULL DEFAULT 0,
     third_faction_cut        DECIMAL     NOT NULL DEFAULT 0,
     each_faction_mech_amount INT         NOT NULL DEFAULT 3,
     game_map_id              UUID        NOT NULL REFERENCES game_maps (id),
+    generated_by_system                BOOL        NOT NULL DEFAULT FALSE,
     password                 TEXT,
 
     -- battle queue

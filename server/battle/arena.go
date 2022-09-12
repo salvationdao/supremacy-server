@@ -107,6 +107,14 @@ func NewArenaManager(opts *Opts) (*ArenaManager, error) {
 
 	// start player rank updater
 	am.PlayerRankUpdater()
+
+	// check default battle lobbies
+	err := am.SetDefaultPublicBattleLobbies()
+	if err != nil {
+		return nil, err
+	}
+
+	// start repair offer cleaner
 	go am.RepairOfferCleaner()
 
 	return am, nil

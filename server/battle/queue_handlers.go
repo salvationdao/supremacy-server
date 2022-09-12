@@ -6,6 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
 	"server/db"
@@ -14,15 +20,6 @@ import (
 	"server/gamelog"
 	"server/xsyn_rpcclient"
 	"time"
-
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"golang.org/x/exp/slices"
-
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type QueueJoinHandlerResponse struct {
@@ -77,9 +74,18 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 		return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot have more than %d mechs in queue at the same time. You currently have %d mechs in queue. Please remove at least %d mechs from your selection and try again.", queueLimit, queueCount, len(req.Payload.MechIDs)-(queueLimit-int(queueCount))))
 	}
 
-	relatedRepairCases, err := am.CheckMechCanQueue(user.ID, req.Payload.MechIDs)
+	err = am.CheckMechOwnership(user.ID, req.Payload.MechIDs)
 	if err != nil {
 		return err
+	}
+
+	availableMechIDs, err := am.FilterCanDeployMechIDs(req.Payload.MechIDs)
+	if err != nil {
+		return err
+	}
+
+	if len(availableMechIDs) == 0 {
+		return terror.Error(err, "The provided mechs are still under repair.")
 	}
 
 	var tx *sql.Tx
@@ -90,13 +96,17 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 	err = am.SendBattleQueueFunc(func() error {
 		// check mech already in queue
-		err = am.CheckMechAlreadyInQueue(req.Payload.MechIDs)
+		availableMechIDs, err = am.FilterOutMechAlreadyInQueue(availableMechIDs)
 		if err != nil {
 			return err
 		}
 
+		if len(availableMechIDs) == 0 {
+			return terror.Error(fmt.Errorf("no mech available"), "All the mechs are already in queue.")
+		}
+
 		// insert mech from the input order
-		for _, mechID := range req.Payload.MechIDs {
+		for _, mechID := range availableMechIDs {
 			err = func() error {
 				tx, err = gamedb.StdConn.Begin()
 				if err != nil {
@@ -167,31 +177,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					return terror.Error(err, "Failed to update queue fee transaction id")
 				}
 
-				// stop repair offers, if there is any
-				if index := slices.IndexFunc(relatedRepairCases, func(rc *boiler.RepairCase) bool { return rc.MechID == mechID }); index != -1 {
-					rc := relatedRepairCases[index]
-					// cancel all the existing offer
-					if rc.R != nil && rc.R.RepairOffers != nil {
-						ids := []string{}
-						for _, ro := range rc.R.RepairOffers {
-							ids = append(ids, ro.ID)
-						}
-
-						err = am.SendRepairFunc(func() error {
-							err = am.CloseRepairOffers(ids, boiler.RepairFinishReasonSTOPPED, boiler.RepairAgentFinishReasonEXPIRED)
-							if err != nil {
-								return err
-							}
-
-							return nil
-						})
-						if err != nil {
-							refundFunc()
-							return err
-						}
-					}
-				}
-
 				// Commit transaction
 				err = tx.Commit()
 				if err != nil {
@@ -227,7 +212,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 
 				return nil
 			}()
-
 			// broadcast queue detail
 			go func() {
 				qs, err := db.GetNextBattle(ctx)
@@ -249,7 +233,6 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 				break
 			}
 		}
-
 		// clean up repair slots, if any mechs are successfully deployed and in the bay
 		if len(deployedMechIDs) > 0 {
 			nextRepairDurationSeconds := db.GetIntWithDefault(db.KeyAutoRepairDurationSeconds, 600)
@@ -356,8 +339,12 @@ func (am *ArenaManager) QueueJoinHandler(ctx context.Context, user *boiler.Playe
 					return nil
 				})
 			}(user.ID, deployedMechIDs)
-		}
 
+			err = am.PauseRepairCases(deployedMechIDs)
+			if err != nil {
+				return terror.Error(err, "Failed to pause mechs repair cases.")
+			}
+		}
 		return nil
 	})
 

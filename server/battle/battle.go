@@ -45,7 +45,6 @@ const (
 type Battle struct {
 	arena                  *Arena
 	stage                  *atomic.Int32
-	qWaitChan              chan byte
 	BattleID               string        `json:"battleID"`
 	MapName                string        `json:"mapName"`
 	WarMachines            []*WarMachine `json:"warMachines"`

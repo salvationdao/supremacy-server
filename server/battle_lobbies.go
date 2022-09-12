@@ -7,8 +7,8 @@ import (
 
 type BattleLobby struct {
 	*boiler.BattleLobby
-	HostBy    *boiler.Player
-	GameMap   *boiler.GameMap
+	HostBy    *boiler.Player              `json:"host_by"`
+	GameMap   *boiler.GameMap             `json:"game_map"`
 	Mechs     []*boiler.BattleLobbiesMech `json:"mechs"`
 	IsPrivate bool                        `json:"is_private"`
 }

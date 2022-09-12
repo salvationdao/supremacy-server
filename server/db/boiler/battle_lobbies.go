@@ -26,12 +26,14 @@ import (
 type BattleLobby struct {
 	ID                    string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	HostByID              string          `boiler:"host_by_id" boil:"host_by_id" json:"host_by_id" toml:"host_by_id" yaml:"host_by_id"`
+	Number                int             `boiler:"number" boil:"number" json:"number" toml:"number" yaml:"number"`
 	EntryFee              decimal.Decimal `boiler:"entry_fee" boil:"entry_fee" json:"entry_fee" toml:"entry_fee" yaml:"entry_fee"`
 	FirstFactionCut       decimal.Decimal `boiler:"first_faction_cut" boil:"first_faction_cut" json:"first_faction_cut" toml:"first_faction_cut" yaml:"first_faction_cut"`
 	SecondFactionCut      decimal.Decimal `boiler:"second_faction_cut" boil:"second_faction_cut" json:"second_faction_cut" toml:"second_faction_cut" yaml:"second_faction_cut"`
 	ThirdFactionCut       decimal.Decimal `boiler:"third_faction_cut" boil:"third_faction_cut" json:"third_faction_cut" toml:"third_faction_cut" yaml:"third_faction_cut"`
 	EachFactionMechAmount int             `boiler:"each_faction_mech_amount" boil:"each_faction_mech_amount" json:"each_faction_mech_amount" toml:"each_faction_mech_amount" yaml:"each_faction_mech_amount"`
 	GameMapID             string          `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
+	IsPublic              bool            `boiler:"is_public" boil:"is_public" json:"is_public" toml:"is_public" yaml:"is_public"`
 	Password              null.String     `boiler:"password" boil:"password" json:"password,omitempty" toml:"password" yaml:"password,omitempty"`
 	ReadyAt               null.Time       `boiler:"ready_at" boil:"ready_at" json:"ready_at,omitempty" toml:"ready_at" yaml:"ready_at,omitempty"`
 	JoinedBattleID        null.String     `boiler:"joined_battle_id" boil:"joined_battle_id" json:"joined_battle_id,omitempty" toml:"joined_battle_id" yaml:"joined_battle_id,omitempty"`
@@ -47,12 +49,14 @@ type BattleLobby struct {
 var BattleLobbyColumns = struct {
 	ID                    string
 	HostByID              string
+	Number                string
 	EntryFee              string
 	FirstFactionCut       string
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
 	GameMapID             string
+	IsPublic              string
 	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
@@ -63,12 +67,14 @@ var BattleLobbyColumns = struct {
 }{
 	ID:                    "id",
 	HostByID:              "host_by_id",
+	Number:                "number",
 	EntryFee:              "entry_fee",
 	FirstFactionCut:       "first_faction_cut",
 	SecondFactionCut:      "second_faction_cut",
 	ThirdFactionCut:       "third_faction_cut",
 	EachFactionMechAmount: "each_faction_mech_amount",
 	GameMapID:             "game_map_id",
+	IsPublic:              "is_public",
 	Password:              "password",
 	ReadyAt:               "ready_at",
 	JoinedBattleID:        "joined_battle_id",
@@ -81,12 +87,14 @@ var BattleLobbyColumns = struct {
 var BattleLobbyTableColumns = struct {
 	ID                    string
 	HostByID              string
+	Number                string
 	EntryFee              string
 	FirstFactionCut       string
 	SecondFactionCut      string
 	ThirdFactionCut       string
 	EachFactionMechAmount string
 	GameMapID             string
+	IsPublic              string
 	Password              string
 	ReadyAt               string
 	JoinedBattleID        string
@@ -97,12 +105,14 @@ var BattleLobbyTableColumns = struct {
 }{
 	ID:                    "battle_lobbies.id",
 	HostByID:              "battle_lobbies.host_by_id",
+	Number:                "battle_lobbies.number",
 	EntryFee:              "battle_lobbies.entry_fee",
 	FirstFactionCut:       "battle_lobbies.first_faction_cut",
 	SecondFactionCut:      "battle_lobbies.second_faction_cut",
 	ThirdFactionCut:       "battle_lobbies.third_faction_cut",
 	EachFactionMechAmount: "battle_lobbies.each_faction_mech_amount",
 	GameMapID:             "battle_lobbies.game_map_id",
+	IsPublic:              "battle_lobbies.is_public",
 	Password:              "battle_lobbies.password",
 	ReadyAt:               "battle_lobbies.ready_at",
 	JoinedBattleID:        "battle_lobbies.joined_battle_id",
@@ -117,12 +127,14 @@ var BattleLobbyTableColumns = struct {
 var BattleLobbyWhere = struct {
 	ID                    whereHelperstring
 	HostByID              whereHelperstring
+	Number                whereHelperint
 	EntryFee              whereHelperdecimal_Decimal
 	FirstFactionCut       whereHelperdecimal_Decimal
 	SecondFactionCut      whereHelperdecimal_Decimal
 	ThirdFactionCut       whereHelperdecimal_Decimal
 	EachFactionMechAmount whereHelperint
 	GameMapID             whereHelperstring
+	IsPublic              whereHelperbool
 	Password              whereHelpernull_String
 	ReadyAt               whereHelpernull_Time
 	JoinedBattleID        whereHelpernull_String
@@ -133,12 +145,14 @@ var BattleLobbyWhere = struct {
 }{
 	ID:                    whereHelperstring{field: "\"battle_lobbies\".\"id\""},
 	HostByID:              whereHelperstring{field: "\"battle_lobbies\".\"host_by_id\""},
+	Number:                whereHelperint{field: "\"battle_lobbies\".\"number\""},
 	EntryFee:              whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"entry_fee\""},
 	FirstFactionCut:       whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"first_faction_cut\""},
 	SecondFactionCut:      whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"second_faction_cut\""},
 	ThirdFactionCut:       whereHelperdecimal_Decimal{field: "\"battle_lobbies\".\"third_faction_cut\""},
 	EachFactionMechAmount: whereHelperint{field: "\"battle_lobbies\".\"each_faction_mech_amount\""},
 	GameMapID:             whereHelperstring{field: "\"battle_lobbies\".\"game_map_id\""},
+	IsPublic:              whereHelperbool{field: "\"battle_lobbies\".\"is_public\""},
 	Password:              whereHelpernull_String{field: "\"battle_lobbies\".\"password\""},
 	ReadyAt:               whereHelpernull_Time{field: "\"battle_lobbies\".\"ready_at\""},
 	JoinedBattleID:        whereHelpernull_String{field: "\"battle_lobbies\".\"joined_battle_id\""},
@@ -181,9 +195,9 @@ func (*battleLobbyR) NewStruct() *battleLobbyR {
 type battleLobbyL struct{}
 
 var (
-	battleLobbyAllColumns            = []string{"id", "host_by_id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyAllColumns            = []string{"id", "host_by_id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "game_map_id", "is_public", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyColumnsWithoutDefault = []string{"host_by_id", "game_map_id"}
-	battleLobbyColumnsWithDefault    = []string{"id", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
+	battleLobbyColumnsWithDefault    = []string{"id", "number", "entry_fee", "first_faction_cut", "second_faction_cut", "third_faction_cut", "each_faction_mech_amount", "is_public", "password", "ready_at", "joined_battle_id", "finished_at", "created_at", "updated_at", "deleted_at"}
 	battleLobbyPrimaryKeyColumns     = []string{"id"}
 	battleLobbyGeneratedColumns      = []string{}
 )
