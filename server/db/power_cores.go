@@ -46,6 +46,7 @@ type PowerCoreListOpts struct {
 	DisplayHidden          bool
 	ExcludeMarketLocked    bool
 	IncludeMarketListed    bool
+	ExcludeIDs             []string                  `json:"exclude_ids"`
 	FilterRarities         []string                  `json:"rarities"`
 	FilterSizes            []string                  `json:"sizes"`
 	FilterEquippedStatuses []string                  `json:"equipped_statuses"`
@@ -103,6 +104,10 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
 			}
 		}
+	}
+
+	if len(opts.ExcludeIDs) > 0 {
+		queryMods = append(queryMods, boiler.PowerCoreWhere.ID.NIN(opts.ExcludeIDs))
 	}
 
 	if len(opts.FilterRarities) > 0 {

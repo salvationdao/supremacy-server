@@ -1355,7 +1355,70 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	defer tx.Rollback()
 
 	if req.Payload.EquipPowerCore != "" {
-		//
+		// Check if specified power core exists
+		powerCore, err := boiler.PowerCores(
+			boiler.PowerCoreWhere.ID.EQ(req.Payload.EquipPowerCore),
+		).One(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+
+		// Check ownership of power core
+		ownerShipExists, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.EQ(powerCore.ID),
+		).Exists(tx)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+		if !ownerShipExists {
+			return terror.Error(terror.ErrUnauthorised, errorMsg)
+		}
+
+		if powerCore.EquippedOn.Valid {
+			// If power core is equipped on another mech, remove it from that mech
+			unequipMech, err := boiler.FindMech(tx, powerCore.EquippedOn.String)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			unequipMech.PowerCoreID = null.String{}
+			_, err = unequipMech.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+		}
+
+		if mech.PowerCoreID.Valid {
+			// Remove previous power core
+			powerCoreToReplace, err := boiler.FindPowerCore(tx, mech.PowerCoreID.String)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			powerCoreToReplace.EquippedOn = null.String{}
+			_, err = powerCoreToReplace.Update(tx, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+		}
+
+		// Equip power core to mech
+		equipMech, err := boiler.FindMech(tx, mech.ID)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+
+		equipMech.PowerCoreID = null.StringFrom(powerCore.ID)
+		_, err = equipMech.Update(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+
+		powerCore.EquippedOn = null.StringFrom(mech.ID)
+		_, err = powerCore.Update(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
 	}
 	if len(req.Payload.EquipUtility) != 0 {
 		ids := []string{}
@@ -2094,6 +2157,7 @@ type PlayerAssetPowerCoreListRequest struct {
 		DisplayXsynLocked      bool                         `json:"display_xsyn_locked"`
 		ExcludeMarketLocked    bool                         `json:"exclude_market_locked"`
 		IncludeMarketListed    bool                         `json:"include_market_listed"`
+		ExcludeIDs             []string                     `json:"exclude_ids"`
 		FilterRarities         []string                     `json:"rarities"`
 		FilterSizes            []string                     `json:"sizes"`
 		FilterEquippedStatuses []string                     `json:"equipped_statuses"`
@@ -2132,6 +2196,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetPowerCoreListHandler(ctx context
 		DisplayXsynLocked:      req.Payload.DisplayXsynLocked,
 		ExcludeMarketLocked:    req.Payload.ExcludeMarketLocked,
 		IncludeMarketListed:    req.Payload.IncludeMarketListed,
+		ExcludeIDs:             req.Payload.ExcludeIDs,
 		FilterRarities:         req.Payload.FilterRarities,
 		FilterSizes:            req.Payload.FilterSizes,
 		FilterEquippedStatuses: req.Payload.FilterEquippedStatuses,
