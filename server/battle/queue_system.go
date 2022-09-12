@@ -82,7 +82,7 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ReadyAt.IsNull(),
-		boiler.BattleLobbyWhere.IsPublic.EQ(true),
+		boiler.BattleLobbyWhere.GeneratedBySystem.EQ(true),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load active public battle lobbies.")
@@ -108,13 +108,13 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 
 		bl := &boiler.BattleLobby{
 			HostByID:              server.SupremacyBattleUserID,
-			EntryFee:              decimal.New(100, 18),
+			EntryFee:              decimal.Zero, // free to join
 			FirstFactionCut:       decimal.NewFromInt(75),
 			SecondFactionCut:      decimal.NewFromInt(25),
 			ThirdFactionCut:       decimal.NewFromInt(0),
 			EachFactionMechAmount: 3,
 			GameMapID:             gameMap.ID,
-			IsPublic:              true,
+			GeneratedBySystem:     true,
 		}
 
 		err = bl.Insert(gamedb.StdConn, boil.Infer())

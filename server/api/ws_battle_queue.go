@@ -414,6 +414,28 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				gamelog.L.Error().Err(err).Msg("Failed to update battle lobby.")
 				return terror.Error(err, "Failed to mark battle lobby to ready.")
 			}
+
+			// generate another system lobby
+			if bl.GeneratedBySystem {
+				newBattleLobby := &boiler.BattleLobby{
+					HostByID:              bl.HostByID,
+					EntryFee:              bl.EntryFee, // free to join
+					FirstFactionCut:       bl.FirstFactionCut,
+					SecondFactionCut:      bl.SecondFactionCut,
+					ThirdFactionCut:       bl.ThirdFactionCut,
+					EachFactionMechAmount: bl.EachFactionMechAmount,
+					GameMapID:             bl.GameMapID,
+					GeneratedBySystem:     true,
+				}
+
+				err = newBattleLobby.Insert(tx, boil.Infer())
+				if err != nil {
+					refund(refundFns)
+					gamelog.L.Error().Err(err).Msg("Failed to insert public battle lobbies.")
+					return terror.Error(err, "Failed to insert new system battle lobby.")
+				}
+			}
+
 		}
 
 		err = tx.Commit()
@@ -692,7 +714,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 
 		for _, bl := range bls {
 			// broadcast new battle lobby status
-			if bl.IsPublic || (bl.R != nil && bl.R.BattleLobbiesMechs != nil && len(bl.R.BattleLobbiesMechs) > 0) {
+			if bl.GeneratedBySystem || (bl.R != nil && bl.R.BattleLobbiesMechs != nil && len(bl.R.BattleLobbiesMechs) > 0) {
 				go api.ArenaManager.BroadcastBattleLobbyUpdate(bl.ID)
 				continue
 			}
