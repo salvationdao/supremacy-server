@@ -1366,6 +1366,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		// Check ownership of power core
 		ownerShipExists, err := boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.EQ(powerCore.ID),
+			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
 		).Exists(tx)
 		if err != nil {
 			return terror.Error(err, errorMsg)
