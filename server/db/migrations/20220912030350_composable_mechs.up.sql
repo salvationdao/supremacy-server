@@ -1,3 +1,20 @@
+ALTER TABLE power_cores RENAME COLUMN label TO label_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN size TO size_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN capacity TO capacity_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN max_draw_rate TO max_draw_rate_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN recharge_rate TO recharge_rate_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN armour TO armour_dont_use;
+
+ALTER TABLE power_cores RENAME COLUMN max_hitpoints TO max_hitpoints_dont_use;
+
+ALTER TABLE blueprint_mech_skin
+    ADD COLUMN IF NOT EXISTS blueprint_weapon_skin_id UUID REFERENCES blueprint_weapon_skin (id);
+
 ALTER TABLE mech_weapons
     ALTER COLUMN weapon_id DROP NOT NULL,
     DROP CONSTRAINT IF EXISTS chassis_weapons_chassis_id_slot_number_key,

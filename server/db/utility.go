@@ -155,11 +155,9 @@ func UtilityList(opts *UtilityListOpts) (int64, []*server.Utility, error) {
 				))
 		}
 	}
-	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, err
 	}

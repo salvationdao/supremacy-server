@@ -152,11 +152,28 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 		)),
 		// outer join power cores
 		qm.LeftOuterJoin(fmt.Sprintf(`(
-					SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id, _bppc.image_url as image_url, _bppc.avatar_url as avatar_url, _bppc.card_animation_url as card_animation_url, _bppc.animation_url as animation_url
-					FROM power_cores _pc
-					INNER JOIN collection_items _ci on _ci.item_id = _pc.id
-					INNER JOIN blueprint_power_cores _bppc on _pc.blueprint_id = _bppc.id
-					) %s ON %s = %s`, // TODO: make this boiler/typesafe
+				SELECT
+				_pc.*,
+				_ci.hash,
+				_ci.token_id,
+				_ci.tier,
+				_ci.owner_id,
+				_bppc.label,
+				_bppc.size,
+				_bppc.capacity,
+				_bppc.max_draw_rate,
+				_bppc.recharge_rate,
+				_bppc.armour,
+				_bppc.max_hitpoints,
+				_bppc.image_url AS image_url,
+				_bppc.avatar_url AS avatar_url,
+				_bppc.card_animation_url AS card_animation_url,
+				_bppc.animation_url AS animation_url
+			FROM
+				power_cores _pc
+				INNER JOIN collection_items _ci ON _ci.item_id = _pc.id
+				INNER JOIN blueprint_power_cores _bppc ON _pc.blueprint_id = _bppc.id		
+			) %s ON %s = %s`, // TODO: make this boiler/typesafe
 			boiler.TableNames.PowerCores,
 			qm.Rels(boiler.TableNames.PowerCores, boiler.PowerCoreColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
@@ -353,7 +370,6 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 	var result []struct {
 		ID string `boil:"id"`
 	}
-	boil.DebugMode = true
 	err := boiler.NewQuery(
 		qm.Select(fmt.Sprintf("%s as id", qm.Rels(boiler.TableNames.BlueprintWeapons, boiler.BlueprintWeaponColumns.ID))),
 		qm.From(boiler.TableNames.Mechs),
@@ -381,7 +397,6 @@ func GetBlueprintWeaponsIDsWithCompatibleSkinInheritanceFromMechID(conn boil.Exe
 			mechID,
 		),
 	).Bind(nil, conn, &result)
-	boil.DebugMode = false
 	if err != nil {
 		return []string{}, err
 	}

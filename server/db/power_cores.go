@@ -67,10 +67,10 @@ func GeneratePowerCoreStatFilterQueryMods(column string, filter *PowerCoreStatFi
 		return output
 	}
 	if filter.Min.Valid {
-		output = append(output, qm.Where(qm.Rels(boiler.TableNames.PowerCores, column)+" >= ?", filter.Min))
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.BlueprintPowerCores, column)+" >= ?", filter.Min))
 	}
 	if filter.Max.Valid {
-		output = append(output, qm.Where(qm.Rels(boiler.TableNames.PowerCores, column)+" <= ?", filter.Max))
+		output = append(output, qm.Where(qm.Rels(boiler.TableNames.BlueprintPowerCores, column)+" <= ?", filter.Max))
 	}
 	return output
 }
@@ -136,19 +136,19 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 
 	// Filter - Weapon Stats
 	if opts.FilterStatCapacity != nil {
-		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.PowerCoreColumns.Capacity, opts.FilterStatCapacity)...)
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.Capacity, opts.FilterStatCapacity)...)
 	}
 	if opts.FilterStatMaxDrawRate != nil {
-		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.PowerCoreColumns.MaxDrawRate, opts.FilterStatMaxDrawRate)...)
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.MaxDrawRate, opts.FilterStatMaxDrawRate)...)
 	}
 	if opts.FilterStatRechargeRate != nil {
-		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.PowerCoreColumns.RechargeRate, opts.FilterStatRechargeRate)...)
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.RechargeRate, opts.FilterStatRechargeRate)...)
 	}
 	if opts.FilterStatArmour != nil {
-		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.PowerCoreColumns.Armour, opts.FilterStatArmour)...)
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.Armour, opts.FilterStatArmour)...)
 	}
 	if opts.FilterStatMaxHitpoints != nil {
-		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.PowerCoreColumns.MaxHitpoints, opts.FilterStatMaxHitpoints)...)
+		queryMods = append(queryMods, GeneratePowerCoreStatFilterQueryMods(boiler.BlueprintPowerCoreColumns.MaxHitpoints, opts.FilterStatMaxHitpoints)...)
 	}
 
 	// Search
@@ -249,13 +249,6 @@ func PowerCoreList(opts *PowerCoreListOpts) (int64, []*server.PowerCore, error) 
 func InsertNewPowerCore(tx boil.Executor, ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	newPowerCore := boiler.PowerCore{
 		BlueprintID:           null.StringFrom(ec.ID),
-		Label:                 ec.Label,
-		Size:                  ec.Size,
-		Capacity:              ec.Capacity,
-		MaxDrawRate:           ec.MaxDrawRate,
-		RechargeRate:          ec.RechargeRate,
-		Armour:                ec.Armour,
-		MaxHitpoints:          ec.MaxHitpoints,
 		GenesisTokenID:        ec.GenesisTokenID,
 		LimitedReleaseTokenID: ec.LimitedReleaseTokenID,
 	}
@@ -297,7 +290,10 @@ func PowerCore(tx boil.Executor, id string) (*server.PowerCore, error) {
 
 func PowerCores(id ...string) ([]*server.PowerCore, error) {
 	var powerCores []*server.PowerCore
-	boilerPowerCores, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.IN(id)).All(gamedb.StdConn)
+	boilerPowerCores, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.ID.IN(id),
+		qm.Load(boiler.PowerCoreRels.Blueprint),
+	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
@@ -354,23 +350,26 @@ func AttachPowerCoreToMech(trx *sql.Tx, ownerID, mechID, powerCoreID string) err
 	mech, err := boiler.Mechs(
 		boiler.MechWhere.ID.EQ(mechID),
 		qm.Load(boiler.MechRels.Blueprint),
-		).One(tx)
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get power core
-	powerCore, err := boiler.FindPowerCore(tx, powerCoreID)
+	powerCore, err := boiler.PowerCores(
+		boiler.PowerCoreWhere.ID.EQ(powerCoreID),
+		qm.Load(boiler.PowerCoreRels.Blueprint),
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("powerCoreID", powerCoreID).Msg("failed to find power core")
 		return terror.Error(err)
 	}
 
 	// wrong size
-	if mech.R.Blueprint.PowerCoreSize != powerCore.Size {
+	if mech.R.Blueprint.PowerCoreSize != powerCore.R.Blueprint.Size {
 		err := fmt.Errorf("powercore size mismatch")
-		gamelog.L.Error().Err(err).Str("mech.PowerCoreSize", mech.R.Blueprint.PowerCoreSize).Str("powerCore.Size", powerCore.Size).Msg("this powercore doesn't fit")
+		gamelog.L.Error().Err(err).Str("mech.PowerCoreSize", mech.R.Blueprint.PowerCoreSize).Str("powerCore.Size", powerCore.R.Blueprint.Size).Msg("this powercore doesn't fit")
 		return terror.Error(err, "This power core doesn't fit this war machine.")
 	}
 
