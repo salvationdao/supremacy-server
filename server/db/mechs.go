@@ -212,9 +212,9 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			fmt.Sprintf(`
 					(
 						SELECT 
-								mw.chassis_id, 
+								mw.%s, 
 								json_agg(w2) as weapons
-						FROM mech_weapons mw
+						FROM %s mw
 						INNER JOIN
 							(
 								SELECT 	
@@ -225,6 +225,25 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 										_ci.owner_id,
 										to_json(_ws) as weapon_skin,
 										_bpw.label,
+										_bpw.weapon_type,
+										_bpw.damage,
+										_bpw.default_damage_type,
+										_bpw.damage_falloff,
+										_bpw.damage_falloff_rate,
+										_bpw.spread,
+										_bpw.rate_of_fire,
+										_bpw.radius,
+										_bpw.radius_damage_falloff,
+										_bpw.projectile_speed,
+										_bpw.power_cost,
+										_bpw.max_ammo,
+										_bpw.is_melee,
+										_bpw.projectile_amount,
+										_bpw.dot_tick_damage,
+										_bpw.dot_max_ticks,
+										_bpw.is_arced,
+										_bpw.charge_time_seconds,
+										_bpw.burst_rate_of_fire,
 										_wmsc.image_url as image_url,
 										_wmsc.avatar_url as avatar_url,
 										_wmsc.card_animation_url as card_animation_url,
@@ -248,6 +267,8 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 							) w2 ON mw.weapon_id = w2.id
 						GROUP BY mw.chassis_id
 				) %s on %s = %s `,
+				boiler.MechWeaponColumns.ChassisID,
+				boiler.TableNames.MechWeapons,
 				weaponsTableName,
 				qm.Rels(weaponsTableName, boiler.MechWeaponColumns.ChassisID),
 				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
@@ -258,10 +279,10 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 			fmt.Sprintf(`
 				(
 					SELECT
-						mw.chassis_id,
+						mu.chassis_id,
 						json_agg(_u) AS utility
 					FROM
-						mech_utility mw
+						mech_utility mu
 						INNER JOIN (
 							SELECT
 								_u.*,
@@ -281,9 +302,9 @@ func getDefaultMechQueryMods() []qm.QueryMod {
 						INNER JOIN blueprint_utility _bpu on _bpu.id = _u.blueprint_id
 						INNER JOIN blueprint_utility_shield _us ON _us.blueprint_utility_id = _u.blueprint_id
 						INNER JOIN mech_utility _mu ON _mu.utility_id = _u.id
-					) _u ON mw.utility_id = _u.id
+					) _u ON mu.utility_id = _u.id
 					GROUP BY
-						mw.chassis_id
+						mu.chassis_id
 				) %s on %s = %s `,
 				utilityTableName,
 				qm.Rels(utilityTableName, boiler.MechUtilityColumns.ChassisID),
