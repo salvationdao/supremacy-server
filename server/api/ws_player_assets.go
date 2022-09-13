@@ -1350,6 +1350,29 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently on the marketplace.")
 	}
 
+	if mech.XsynLocked {
+		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is not in Supremacy.")
+	}
+
+	mechCI, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(mech.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+
+	mechStatus, err := db.GetCollectionItemStatus(*mechCI)
+	if err != nil {
+		return terror.Error(err, errorMsg)
+	}
+	if mechStatus.Status == server.MechArenaStatusBattle {
+		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently in battle.")
+	}
+	if mechStatus.Status == server.MechArenaStatusQueue {
+		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently in the battle queue.")
+	}
+
 	spew.Dump(req.Payload)
 
 	tx, err := gamedb.StdConn.Begin()
