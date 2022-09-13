@@ -834,7 +834,7 @@ func (pac *PlayerAssetsControllerWS) OpenCrateHandler(ctx context.Context, user 
 	if collectionItem.OwnerID != user.ID {
 		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s belonging to owner: %s", user.ID, req.Payload.Id, collectionItem.OwnerID), "This crate does not belong to this user, try again or contact support.")
 	}
-	if collectionItem.MarketLocked {
+	if collectionItem.LockedToMarketplace {
 		return terror.Error(fmt.Errorf("user: %s attempted to open crate: %s while market locked", user.ID, req.Payload.Id), "This crate is still on Marketplace, try again or contact support.")
 	}
 	if collectionItem.XsynLocked {

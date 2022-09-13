@@ -115,6 +115,7 @@ type MiniMapAbilityContent struct {
 	LocationSelectType       string              `json:"location_select_type"`
 	Radius                   null.Int            `json:"radius,omitempty"`
 	LaunchingAt              null.Time           `json:"launching_at,omitempty"`
+	UpdatedAt                time.Time           `json:"updated_at"`
 }
 
 // Add new pending ability and return a copy of current list
@@ -122,12 +123,17 @@ func (dap *MiniMapAbilityDisplayList) Add(offeringID string, dac *MiniMapAbility
 	dap.Lock()
 	defer dap.Unlock()
 
+	// change updated at
+	dac.UpdatedAt = time.Now()
+
 	dap.m[offeringID] = dac
 
 	result := []MiniMapAbilityContent{}
 	for _, d := range dap.m {
 		result = append(result, *d)
 	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
 	return result
 }
@@ -143,6 +149,8 @@ func (dap *MiniMapAbilityDisplayList) Remove(offeringID string) []MiniMapAbility
 	for _, dac := range dap.m {
 		result = append(result, *dac)
 	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
 	return result
 }
@@ -168,6 +176,8 @@ func (dap *MiniMapAbilityDisplayList) List() []MiniMapAbilityContent {
 	for _, dac := range dap.m {
 		result = append(result, *dac)
 	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 
 	return result
 }
@@ -2269,7 +2279,8 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				BattlesSurvived: mech.Stats.BattlesSurvived,
 				TotalLosses:     mech.Stats.TotalLosses,
 			},
-			Status: &Status{},
+			Status:   &Status{},
+			Position: &server.Vector3{},
 		}
 		// set shield (assume for frontend, not game client)
 		for _, utl := range mech.Utility {
