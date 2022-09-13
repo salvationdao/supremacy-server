@@ -1440,17 +1440,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			return terror.Error(fmt.Errorf("could not find all specified utilities to equip"), errorMsg)
 		}
 
-		// Check if utilities can be equipped
-		equipped := []string{}
-		for _, u := range utilities {
-			if u.EquippedOn.Valid {
-				equipped = append(equipped, u.ID)
-			}
-		}
-		if len(equipped) > 0 {
-			return terror.Error(terror.ErrForbidden, "One or more of the selected utilities is already equipped on a mech. Please remove them from your selection and try again.")
-		}
-
 		// Check ownership of utilities
 		ownershipCount, err := boiler.CollectionItems(
 			boiler.CollectionItemWhere.ItemID.IN(ids),
@@ -1490,6 +1479,31 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified utilities on the mech as it does not have enough utility slots.")
 			}
 
+			utility, err := boiler.FindUtility(tx, eu.UtilityID)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			if utility.EquippedOn.Valid {
+				// If utility is equipped on another mech, remove it from that mech
+				unequipMechUtility, err := boiler.MechUtilities(
+					boiler.MechUtilityWhere.ChassisID.EQ(utility.EquippedOn.String),
+					boiler.MechUtilityWhere.UtilityID.EQ(null.StringFrom(utility.ID)),
+				).One(tx)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+
+				unequipMechUtility.UtilityID = null.String{}
+				updated, err := unequipMechUtility.Update(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+				if updated < 1 {
+					return terror.Error(fmt.Errorf("failed to remove selected utility from mech"), errorMsg)
+				}
+			}
+
 			mu, err := boiler.FindMechUtility(tx, mech.ID, eu.SlotNumber)
 			if errors.Is(err, sql.ErrNoRows) {
 				// Create mech_utility entry
@@ -1507,21 +1521,20 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			}
 
 			if mu.UtilityID.Valid {
-				utilityToReplace, err := boiler.FindUtility(tx, mu.UtilityID.String)
+				// Remove previous utility from mech
+				previousUtility, err := boiler.FindUtility(tx, mu.UtilityID.String)
 				if err != nil {
 					return terror.Error(err, errorMsg)
 				}
 
-				utilityToReplace.EquippedOn = null.String{}
-				_, err = utilityToReplace.Update(tx, boil.Infer())
+				previousUtility.EquippedOn = null.String{}
+				updated, err := previousUtility.Update(tx, boil.Infer())
 				if err != nil {
 					return terror.Error(err, errorMsg)
 				}
-			}
-
-			utility, err := boiler.FindUtility(tx, eu.UtilityID)
-			if err != nil {
-				return terror.Error(err, errorMsg)
+				if updated < 1 {
+					return terror.Error(fmt.Errorf("failed to remove previous utility from mech"))
+				}
 			}
 
 			utility.EquippedOn = null.StringFrom(mech.ID)
@@ -1555,17 +1568,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		}
 		if len(weapons) != len(req.Payload.EquipWeapons) {
 			return terror.Error(fmt.Errorf("could not find all specified weapons to equip"), errorMsg)
-		}
-
-		// Check if weapons can be equipped
-		equipped := []string{}
-		for _, w := range weapons {
-			if w.EquippedOn.Valid {
-				equipped = append(equipped, w.R.Blueprint.Label)
-			}
-		}
-		if len(equipped) > 0 {
-			return terror.Error(terror.ErrForbidden, fmt.Sprintf("One or more of the selected weapons is already equipped on a mech (%v). Please remove them from your selection and try again.", equipped))
 		}
 
 		// Check ownership of weapons
@@ -1607,6 +1609,34 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified weapons on the mech as it does not have enough weapon slots.")
 			}
 
+			weapon, err := boiler.Weapons(
+				boiler.WeaponWhere.ID.EQ(ew.WeaponID),
+				qm.Load(boiler.WeaponRels.Blueprint),
+			).One(tx)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+
+			if weapon.EquippedOn.Valid {
+				// If weapon is equipped on another mech, remove it from that mech
+				unequipMechWeapon, err := boiler.MechWeapons(
+					boiler.MechWeaponWhere.ChassisID.EQ(weapon.EquippedOn.String),
+					boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weapon.ID)),
+				).One(tx)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+
+				unequipMechWeapon.WeaponID = null.String{}
+				updated, err := unequipMechWeapon.Update(tx, boil.Infer())
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+				if updated < 1 {
+					return terror.Error(fmt.Errorf("failed to remove selected weapon from mech"), errorMsg)
+				}
+			}
+
 			mw, err := boiler.FindMechWeapon(tx, mech.ID, ew.SlotNumber)
 			if errors.Is(err, sql.ErrNoRows) {
 				// Create mech_weapon entry
@@ -1624,24 +1654,20 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			}
 
 			if mw.WeaponID.Valid {
-				weaponToReplace, err := boiler.FindWeapon(tx, mw.WeaponID.String)
+				// Remove previous weapon from mech
+				previousWeapon, err := boiler.FindWeapon(tx, mw.WeaponID.String)
 				if err != nil {
 					return terror.Error(err, errorMsg)
 				}
 
-				weaponToReplace.EquippedOn = null.String{}
-				_, err = weaponToReplace.Update(tx, boil.Infer())
+				previousWeapon.EquippedOn = null.String{}
+				updated, err := previousWeapon.Update(tx, boil.Infer())
 				if err != nil {
 					return terror.Error(err, errorMsg)
 				}
-			}
-
-			weapon, err := boiler.Weapons(
-				boiler.WeaponWhere.ID.EQ(ew.WeaponID),
-				qm.Load(boiler.WeaponRels.Blueprint),
-			).One(tx)
-			if err != nil {
-				return terror.Error(err, errorMsg)
+				if updated < 1 {
+					return terror.Error(fmt.Errorf("failed to remove previous weapon from mech"))
+				}
 			}
 
 			weapon.EquippedOn = null.StringFrom(mech.ID)
