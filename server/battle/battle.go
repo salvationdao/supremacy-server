@@ -425,8 +425,6 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the creation of ending info: handleBattleEnd!", r)
-
-			// TODO: refund all the rewards
 		}
 	}()
 
