@@ -23,6 +23,22 @@ const (
 	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
 )
 
+func (f ForbiddenAssetModificationReason) String() string {
+	switch f {
+	case ForbiddenAssetModificationReasonMarketplace:
+		return "The asset is currently being listed on the marketplace."
+	case ForbiddenAssetModificationReasonXsyn:
+		return "The asset is currently locked to the XSYN ecosystem."
+	case ForbiddenAssetModificationReasonQueue:
+		return "The asset is currently in the battle queue."
+	case ForbiddenAssetModificationReasonBattle:
+		return "The asset is currently in a battle."
+	case ForbiddenAssetModificationReasonOwner:
+		return "You do not own this asset."
+	}
+	return "The asset cannot be modified, unequipped, or equipped."
+}
+
 func IsValidCollectionItemType(itemType string) bool {
 	switch itemType {
 	case boiler.ItemTypeUtility,
