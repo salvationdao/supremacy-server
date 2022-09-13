@@ -2246,18 +2246,22 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(fmt.Errorf("mech without a faction"))
 		}
 		newWarMachine := &WarMachine{
-			ID:          mech.ID,
-			Hash:        mech.Hash,
-			OwnedByID:   mech.OwnerID,
-			Name:        TruncateString(mech.Name, 20),
-			Label:       mech.Label,
-			FactionID:   mech.FactionID.String,
-			MaxHealth:   uint32(mech.BoostedMaxHitpoints),
-			Health:      uint32(mech.BoostedMaxHitpoints),
-			Speed:       mech.BoostedSpeed,
-			Tier:        mech.Tier,
-			Image:       mech.ImageURL.String,
-			ImageAvatar: mech.AvatarURL.String,
+			ID:                      mech.ID,
+			Hash:                    mech.Hash,
+			OwnedByID:               mech.OwnerID,
+			Name:                    TruncateString(mech.Name, 20),
+			Label:                   mech.Label,
+			FactionID:               mech.FactionID.String,
+			MaxHealth:               uint32(mech.BoostedMaxHitpoints),
+			Health:                  uint32(mech.BoostedMaxHitpoints),
+			Speed:                   mech.BoostedSpeed,
+			Tier:                    mech.Tier,
+			Image:                   mech.ImageURL.String,
+			ImageAvatar:             mech.AvatarURL.String,
+			Shield:                  uint32(mech.Shield),
+			MaxShield:               uint32(mech.Shield),
+			ShieldRechargeRate:      uint32(mech.BoostedShieldRechargeRate),
+			ShieldRechargePowerCost: uint32(mech.ShieldRechargePowerCost),
 
 			Faction: &Faction{
 				ID:    mech.Faction.ID,
@@ -2281,14 +2285,6 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			},
 			Status:   &Status{},
 			Position: &server.Vector3{},
-		}
-		// set shield (assume for frontend, not game client)
-		for _, utl := range mech.Utility {
-			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
-				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
-				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
-				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.BoostedRechargeRate)
-			}
 		}
 
 		// add owner username

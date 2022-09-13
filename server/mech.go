@@ -34,15 +34,19 @@ type Mech struct {
 	CollectionItemID      string     `json:"-"`
 
 	// stats
-	Speed               int    `json:"speed"`
-	BoostedSpeed        int    `json:"boosted_speed"`
-	MaxHitpoints        int    `json:"max_hitpoints"`
-	BoostedMaxHitpoints int    `json:"boosted_max_hitpoints"`
-	WeaponHardpoints    int    `json:"weapon_hardpoints"`
-	UtilitySlots        int    `json:"utility_slots"`
-	RepairBlocks        int    `json:"repair_blocks"`
-	PowerCoreSize       string `json:"power_core_size"`
-	BoostedStat         string `json:"boosted_stat"`
+	Speed                     int    `json:"speed"`
+	BoostedSpeed              int    `json:"boosted_speed"`
+	MaxHitpoints              int    `json:"max_hitpoints"`
+	BoostedMaxHitpoints       int    `json:"boosted_max_hitpoints"`
+	Shield                    int    `json:"shield"`
+	ShieldRechargeRate        int    `json:"shield_recharge_rate"`
+	BoostedShieldRechargeRate int    `json:"boosted_shield_recharge_rate"`
+	ShieldRechargePowerCost   int    `json:"shieldRechargePowerCost"`
+	WeaponHardpoints          int    `json:"weapon_hardpoints"`
+	UtilitySlots              int    `json:"utility_slots"`
+	RepairBlocks              int    `json:"repair_blocks"`
+	PowerCoreSize             string `json:"power_core_size"`
+	BoostedStat               string `json:"boosted_stat"`
 
 	// state
 	QueuePosition null.Int    `json:"queue_position"`
@@ -240,15 +244,10 @@ func (m *Mech) SetBoostedStats() error {
 	} else {
 		m.BoostedMaxHitpoints = m.MaxHitpoints
 	}
-
-	for _, util := range m.Utility {
-		if util.Shield != nil {
-			if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
-				util.Shield.BoostedRechargeRate = int(boostPercent * float32(util.Shield.RechargeRate))
-			} else {
-				util.Shield.BoostedRechargeRate = util.Shield.RechargeRate
-			}
-		}
+	if m.BoostedStat == boiler.BoostStatSHIELD_REGEN {
+		m.BoostedShieldRechargeRate = int(boostPercent * float32(m.ShieldRechargeRate))
+	} else {
+		m.BoostedShieldRechargeRate = m.ShieldRechargeRate
 	}
 
 	return nil

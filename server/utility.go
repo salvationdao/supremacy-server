@@ -23,7 +23,6 @@ type Utility struct {
 	EquippedOn            null.String `json:"equipped_on,omitempty"`
 	Type                  string      `json:"type"`
 
-	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
 	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
 	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
