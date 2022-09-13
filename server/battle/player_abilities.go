@@ -496,7 +496,7 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
-		BattleID:            arena.CurrentBattle().BattleID,
+		BattleID:            arena.CurrentBattle().ID,
 		ConsumedBy:          player.ID,
 		BlueprintID:         pa.BlueprintID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
@@ -841,7 +841,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		lastTrigger, err := boiler.BattleAbilityTriggers(
 			boiler.BattleAbilityTriggerWhere.OnMechID.EQ(null.StringFrom(wm.ID)),
 			boiler.BattleAbilityTriggerWhere.GameAbilityID.EQ(req.Payload.GameAbilityID),
-			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.BattleID),
+			boiler.BattleAbilityTriggerWhere.BattleID.EQ(btl.ID),
 			boiler.BattleAbilityTriggerWhere.TriggerType.EQ(boiler.AbilityTriggerTypeMECH_ABILITY),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -931,7 +931,7 @@ func (am *ArenaManager) MechAbilityTriggerHandler(ctx context.Context, user *boi
 		AbilityLabel:      ga.Label,
 		IsAllSyndicates:   false,
 		FactionID:         factionID,
-		BattleID:          btl.BattleID,
+		BattleID:          btl.ID,
 		AbilityOfferingID: offeringID.String(),
 		TriggeredAt:       now,
 		TriggerType:       boiler.AbilityTriggerTypeMECH_ABILITY,
@@ -1345,7 +1345,7 @@ func (am *ArenaManager) BattleAbilityOptIn(ctx context.Context, user *boiler.Pla
 	offeringID := as.BattleAbilityPool.BattleAbility.LoadOfferingID()
 
 	bao := boiler.BattleAbilityOptInLog{
-		BattleID:                btl.BattleID,
+		BattleID:                btl.ID,
 		PlayerID:                user.ID,
 		BattleAbilityOfferingID: offeringID,
 		FactionID:               factionID,

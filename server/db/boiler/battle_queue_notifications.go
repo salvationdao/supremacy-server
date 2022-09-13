@@ -144,7 +144,7 @@ var BattleQueueNotificationRels = struct {
 type battleQueueNotificationR struct {
 	Battle               *Battle               `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Mech                 *Mech                 `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	QueueMech            *BattleQueue          `boiler:"QueueMech" boil:"QueueMech" json:"QueueMech" toml:"QueueMech" yaml:"QueueMech"`
+	QueueMech            *BattleQueueOld       `boiler:"QueueMech" boil:"QueueMech" json:"QueueMech" toml:"QueueMech" yaml:"QueueMech"`
 	TelegramNotification *TelegramNotification `boiler:"TelegramNotification" boil:"TelegramNotification" json:"TelegramNotification" toml:"TelegramNotification" yaml:"TelegramNotification"`
 }
 
@@ -436,15 +436,15 @@ func (o *BattleQueueNotification) Mech(mods ...qm.QueryMod) mechQuery {
 }
 
 // QueueMech pointed to by the foreign key.
-func (o *BattleQueueNotification) QueueMech(mods ...qm.QueryMod) battleQueueQuery {
+func (o *BattleQueueNotification) QueueMech(mods ...qm.QueryMod) battleQueueOldQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"mech_id\" = ?", o.QueueMechID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := BattleQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue\"")
+	query := BattleQueueOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_old\"")
 
 	return query
 }
@@ -722,8 +722,8 @@ func (battleQueueNotificationL) LoadQueueMech(e boil.Executor, singular bool, ma
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue`),
-		qm.WhereIn(`battle_queue.mech_id in ?`, args...),
+		qm.From(`battle_queue_old`),
+		qm.WhereIn(`battle_queue_old.mech_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -731,19 +731,19 @@ func (battleQueueNotificationL) LoadQueueMech(e boil.Executor, singular bool, ma
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load BattleQueue")
+		return errors.Wrap(err, "failed to eager load BattleQueueOld")
 	}
 
-	var resultSlice []*BattleQueue
+	var resultSlice []*BattleQueueOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueue")
+		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueueOld")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battle_queue")
+		return errors.Wrap(err, "failed to close results of eager load for battle_queue_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_old")
 	}
 
 	if len(battleQueueNotificationAfterSelectHooks) != 0 {
@@ -762,7 +762,7 @@ func (battleQueueNotificationL) LoadQueueMech(e boil.Executor, singular bool, ma
 		foreign := resultSlice[0]
 		object.R.QueueMech = foreign
 		if foreign.R == nil {
-			foreign.R = &battleQueueR{}
+			foreign.R = &battleQueueOldR{}
 		}
 		foreign.R.QueueMechBattleQueueNotifications = append(foreign.R.QueueMechBattleQueueNotifications, object)
 		return nil
@@ -773,7 +773,7 @@ func (battleQueueNotificationL) LoadQueueMech(e boil.Executor, singular bool, ma
 			if queries.Equal(local.QueueMechID, foreign.MechID) {
 				local.R.QueueMech = foreign
 				if foreign.R == nil {
-					foreign.R = &battleQueueR{}
+					foreign.R = &battleQueueOldR{}
 				}
 				foreign.R.QueueMechBattleQueueNotifications = append(foreign.R.QueueMechBattleQueueNotifications, local)
 				break
@@ -1020,7 +1020,7 @@ func (o *BattleQueueNotification) SetMech(exec boil.Executor, insert bool, relat
 // SetQueueMech of the battleQueueNotification to the related item.
 // Sets o.R.QueueMech to related.
 // Adds o to related.R.QueueMechBattleQueueNotifications.
-func (o *BattleQueueNotification) SetQueueMech(exec boil.Executor, insert bool, related *BattleQueue) error {
+func (o *BattleQueueNotification) SetQueueMech(exec boil.Executor, insert bool, related *BattleQueueOld) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -1053,7 +1053,7 @@ func (o *BattleQueueNotification) SetQueueMech(exec boil.Executor, insert bool, 
 	}
 
 	if related.R == nil {
-		related.R = &battleQueueR{
+		related.R = &battleQueueOldR{
 			QueueMechBattleQueueNotifications: BattleQueueNotificationSlice{o},
 		}
 	} else {
@@ -1066,7 +1066,7 @@ func (o *BattleQueueNotification) SetQueueMech(exec boil.Executor, insert bool, 
 // RemoveQueueMech relationship.
 // Sets o.R.QueueMech to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *BattleQueueNotification) RemoveQueueMech(exec boil.Executor, related *BattleQueue) error {
+func (o *BattleQueueNotification) RemoveQueueMech(exec boil.Executor, related *BattleQueueOld) error {
 	var err error
 
 	queries.SetScanner(&o.QueueMechID, nil)

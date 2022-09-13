@@ -23,100 +23,173 @@ import (
 
 // BattleLobbiesMech is an object representing the database table.
 type BattleLobbiesMech struct {
-	BattleLobbyID string      `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
-	MechID        string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	PaidTXID      null.String `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
-	RefundTXID    null.String `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
-	OwnerID       string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	FactionID     string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	BattleLobbyID      string      `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
+	MechID             string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	PaidTXID           null.String `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
+	RefundTXID         null.String `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
+	OwnerID            string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	FactionID          string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	IsNotified         bool        `boiler:"is_notified" boil:"is_notified" json:"is_notified" toml:"is_notified" yaml:"is_notified"`
+	NotifiedTXID       null.String `boiler:"notified_tx_id" boil:"notified_tx_id" json:"notified_tx_id,omitempty" toml:"notified_tx_id" yaml:"notified_tx_id,omitempty"`
+	BonusSupsTXID      null.String `boiler:"bonus_sups_tx_id" boil:"bonus_sups_tx_id" json:"bonus_sups_tx_id,omitempty" toml:"bonus_sups_tx_id" yaml:"bonus_sups_tx_id,omitempty"`
+	PayoutTXID         null.String `boiler:"payout_tx_id" boil:"payout_tx_id" json:"payout_tx_id,omitempty" toml:"payout_tx_id" yaml:"payout_tx_id,omitempty"`
+	TaxTXID            null.String `boiler:"tax_tx_id" boil:"tax_tx_id" json:"tax_tx_id,omitempty" toml:"tax_tx_id" yaml:"tax_tx_id,omitempty"`
+	ChallengeFundTXID  null.String `boiler:"challenge_fund_tx_id" boil:"challenge_fund_tx_id" json:"challenge_fund_tx_id,omitempty" toml:"challenge_fund_tx_id" yaml:"challenge_fund_tx_id,omitempty"`
+	LockedAt           null.Time   `boiler:"locked_at" boil:"locked_at" json:"locked_at,omitempty" toml:"locked_at" yaml:"locked_at,omitempty"`
+	EndedAt            null.Time   `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
+	AssignedToBattleID null.String `boiler:"assigned_to_battle_id" boil:"assigned_to_battle_id" json:"assigned_to_battle_id,omitempty" toml:"assigned_to_battle_id" yaml:"assigned_to_battle_id,omitempty"`
+	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *battleLobbiesMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleLobbiesMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleLobbiesMechColumns = struct {
-	BattleLobbyID string
-	MechID        string
-	PaidTXID      string
-	RefundTXID    string
-	OwnerID       string
-	FactionID     string
-	CreatedAt     string
-	DeletedAt     string
+	BattleLobbyID      string
+	MechID             string
+	PaidTXID           string
+	RefundTXID         string
+	OwnerID            string
+	FactionID          string
+	IsNotified         string
+	NotifiedTXID       string
+	BonusSupsTXID      string
+	PayoutTXID         string
+	TaxTXID            string
+	ChallengeFundTXID  string
+	LockedAt           string
+	EndedAt            string
+	AssignedToBattleID string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	BattleLobbyID: "battle_lobby_id",
-	MechID:        "mech_id",
-	PaidTXID:      "paid_tx_id",
-	RefundTXID:    "refund_tx_id",
-	OwnerID:       "owner_id",
-	FactionID:     "faction_id",
-	CreatedAt:     "created_at",
-	DeletedAt:     "deleted_at",
+	BattleLobbyID:      "battle_lobby_id",
+	MechID:             "mech_id",
+	PaidTXID:           "paid_tx_id",
+	RefundTXID:         "refund_tx_id",
+	OwnerID:            "owner_id",
+	FactionID:          "faction_id",
+	IsNotified:         "is_notified",
+	NotifiedTXID:       "notified_tx_id",
+	BonusSupsTXID:      "bonus_sups_tx_id",
+	PayoutTXID:         "payout_tx_id",
+	TaxTXID:            "tax_tx_id",
+	ChallengeFundTXID:  "challenge_fund_tx_id",
+	LockedAt:           "locked_at",
+	EndedAt:            "ended_at",
+	AssignedToBattleID: "assigned_to_battle_id",
+	CreatedAt:          "created_at",
+	UpdatedAt:          "updated_at",
+	DeletedAt:          "deleted_at",
 }
 
 var BattleLobbiesMechTableColumns = struct {
-	BattleLobbyID string
-	MechID        string
-	PaidTXID      string
-	RefundTXID    string
-	OwnerID       string
-	FactionID     string
-	CreatedAt     string
-	DeletedAt     string
+	BattleLobbyID      string
+	MechID             string
+	PaidTXID           string
+	RefundTXID         string
+	OwnerID            string
+	FactionID          string
+	IsNotified         string
+	NotifiedTXID       string
+	BonusSupsTXID      string
+	PayoutTXID         string
+	TaxTXID            string
+	ChallengeFundTXID  string
+	LockedAt           string
+	EndedAt            string
+	AssignedToBattleID string
+	CreatedAt          string
+	UpdatedAt          string
+	DeletedAt          string
 }{
-	BattleLobbyID: "battle_lobbies_mechs.battle_lobby_id",
-	MechID:        "battle_lobbies_mechs.mech_id",
-	PaidTXID:      "battle_lobbies_mechs.paid_tx_id",
-	RefundTXID:    "battle_lobbies_mechs.refund_tx_id",
-	OwnerID:       "battle_lobbies_mechs.owner_id",
-	FactionID:     "battle_lobbies_mechs.faction_id",
-	CreatedAt:     "battle_lobbies_mechs.created_at",
-	DeletedAt:     "battle_lobbies_mechs.deleted_at",
+	BattleLobbyID:      "battle_lobbies_mechs.battle_lobby_id",
+	MechID:             "battle_lobbies_mechs.mech_id",
+	PaidTXID:           "battle_lobbies_mechs.paid_tx_id",
+	RefundTXID:         "battle_lobbies_mechs.refund_tx_id",
+	OwnerID:            "battle_lobbies_mechs.owner_id",
+	FactionID:          "battle_lobbies_mechs.faction_id",
+	IsNotified:         "battle_lobbies_mechs.is_notified",
+	NotifiedTXID:       "battle_lobbies_mechs.notified_tx_id",
+	BonusSupsTXID:      "battle_lobbies_mechs.bonus_sups_tx_id",
+	PayoutTXID:         "battle_lobbies_mechs.payout_tx_id",
+	TaxTXID:            "battle_lobbies_mechs.tax_tx_id",
+	ChallengeFundTXID:  "battle_lobbies_mechs.challenge_fund_tx_id",
+	LockedAt:           "battle_lobbies_mechs.locked_at",
+	EndedAt:            "battle_lobbies_mechs.ended_at",
+	AssignedToBattleID: "battle_lobbies_mechs.assigned_to_battle_id",
+	CreatedAt:          "battle_lobbies_mechs.created_at",
+	UpdatedAt:          "battle_lobbies_mechs.updated_at",
+	DeletedAt:          "battle_lobbies_mechs.deleted_at",
 }
 
 // Generated where
 
 var BattleLobbiesMechWhere = struct {
-	BattleLobbyID whereHelperstring
-	MechID        whereHelperstring
-	PaidTXID      whereHelpernull_String
-	RefundTXID    whereHelpernull_String
-	OwnerID       whereHelperstring
-	FactionID     whereHelperstring
-	CreatedAt     whereHelpertime_Time
-	DeletedAt     whereHelpernull_Time
+	BattleLobbyID      whereHelperstring
+	MechID             whereHelperstring
+	PaidTXID           whereHelpernull_String
+	RefundTXID         whereHelpernull_String
+	OwnerID            whereHelperstring
+	FactionID          whereHelperstring
+	IsNotified         whereHelperbool
+	NotifiedTXID       whereHelpernull_String
+	BonusSupsTXID      whereHelpernull_String
+	PayoutTXID         whereHelpernull_String
+	TaxTXID            whereHelpernull_String
+	ChallengeFundTXID  whereHelpernull_String
+	LockedAt           whereHelpernull_Time
+	EndedAt            whereHelpernull_Time
+	AssignedToBattleID whereHelpernull_String
+	CreatedAt          whereHelpertime_Time
+	UpdatedAt          whereHelpertime_Time
+	DeletedAt          whereHelpernull_Time
 }{
-	BattleLobbyID: whereHelperstring{field: "\"battle_lobbies_mechs\".\"battle_lobby_id\""},
-	MechID:        whereHelperstring{field: "\"battle_lobbies_mechs\".\"mech_id\""},
-	PaidTXID:      whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"paid_tx_id\""},
-	RefundTXID:    whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"refund_tx_id\""},
-	OwnerID:       whereHelperstring{field: "\"battle_lobbies_mechs\".\"owner_id\""},
-	FactionID:     whereHelperstring{field: "\"battle_lobbies_mechs\".\"faction_id\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobbies_mechs\".\"created_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobbies_mechs\".\"deleted_at\""},
+	BattleLobbyID:      whereHelperstring{field: "\"battle_lobbies_mechs\".\"battle_lobby_id\""},
+	MechID:             whereHelperstring{field: "\"battle_lobbies_mechs\".\"mech_id\""},
+	PaidTXID:           whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"paid_tx_id\""},
+	RefundTXID:         whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"refund_tx_id\""},
+	OwnerID:            whereHelperstring{field: "\"battle_lobbies_mechs\".\"owner_id\""},
+	FactionID:          whereHelperstring{field: "\"battle_lobbies_mechs\".\"faction_id\""},
+	IsNotified:         whereHelperbool{field: "\"battle_lobbies_mechs\".\"is_notified\""},
+	NotifiedTXID:       whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"notified_tx_id\""},
+	BonusSupsTXID:      whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"bonus_sups_tx_id\""},
+	PayoutTXID:         whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"payout_tx_id\""},
+	TaxTXID:            whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"tax_tx_id\""},
+	ChallengeFundTXID:  whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"challenge_fund_tx_id\""},
+	LockedAt:           whereHelpernull_Time{field: "\"battle_lobbies_mechs\".\"locked_at\""},
+	EndedAt:            whereHelpernull_Time{field: "\"battle_lobbies_mechs\".\"ended_at\""},
+	AssignedToBattleID: whereHelpernull_String{field: "\"battle_lobbies_mechs\".\"assigned_to_battle_id\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"battle_lobbies_mechs\".\"created_at\""},
+	UpdatedAt:          whereHelpertime_Time{field: "\"battle_lobbies_mechs\".\"updated_at\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"battle_lobbies_mechs\".\"deleted_at\""},
 }
 
 // BattleLobbiesMechRels is where relationship names are stored.
 var BattleLobbiesMechRels = struct {
-	BattleLobby string
-	Faction     string
-	Mech        string
-	Owner       string
+	AssignedToBattle string
+	BattleLobby      string
+	Faction          string
+	Mech             string
+	Owner            string
 }{
-	BattleLobby: "BattleLobby",
-	Faction:     "Faction",
-	Mech:        "Mech",
-	Owner:       "Owner",
+	AssignedToBattle: "AssignedToBattle",
+	BattleLobby:      "BattleLobby",
+	Faction:          "Faction",
+	Mech:             "Mech",
+	Owner:            "Owner",
 }
 
 // battleLobbiesMechR is where relationships are stored.
 type battleLobbiesMechR struct {
-	BattleLobby *BattleLobby `boiler:"BattleLobby" boil:"BattleLobby" json:"BattleLobby" toml:"BattleLobby" yaml:"BattleLobby"`
-	Faction     *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Mech        *Mech        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
-	Owner       *Player      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	AssignedToBattle *Battle      `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
+	BattleLobby      *BattleLobby `boiler:"BattleLobby" boil:"BattleLobby" json:"BattleLobby" toml:"BattleLobby" yaml:"BattleLobby"`
+	Faction          *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Mech             *Mech        `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	Owner            *Player      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 }
 
 // NewStruct creates a new relationship struct
@@ -128,9 +201,9 @@ func (*battleLobbiesMechR) NewStruct() *battleLobbiesMechR {
 type battleLobbiesMechL struct{}
 
 var (
-	battleLobbiesMechAllColumns            = []string{"battle_lobby_id", "mech_id", "paid_tx_id", "refund_tx_id", "owner_id", "faction_id", "created_at", "deleted_at"}
+	battleLobbiesMechAllColumns            = []string{"battle_lobby_id", "mech_id", "paid_tx_id", "refund_tx_id", "owner_id", "faction_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbiesMechColumnsWithoutDefault = []string{"battle_lobby_id", "mech_id", "owner_id", "faction_id"}
-	battleLobbiesMechColumnsWithDefault    = []string{"paid_tx_id", "refund_tx_id", "created_at", "deleted_at"}
+	battleLobbiesMechColumnsWithDefault    = []string{"paid_tx_id", "refund_tx_id", "is_notified", "notified_tx_id", "bonus_sups_tx_id", "payout_tx_id", "tax_tx_id", "challenge_fund_tx_id", "locked_at", "ended_at", "assigned_to_battle_id", "created_at", "updated_at", "deleted_at"}
 	battleLobbiesMechPrimaryKeyColumns     = []string{"battle_lobby_id", "mech_id"}
 	battleLobbiesMechGeneratedColumns      = []string{}
 )
@@ -377,6 +450,20 @@ func (q battleLobbiesMechQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// AssignedToBattle pointed to by the foreign key.
+func (o *BattleLobbiesMech) AssignedToBattle(mods ...qm.QueryMod) battleQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.AssignedToBattleID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Battles(queryMods...)
+	queries.SetFrom(query.Query, "\"battles\"")
+
+	return query
+}
+
 // BattleLobby pointed to by the foreign key.
 func (o *BattleLobbiesMech) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
 	queryMods := []qm.QueryMod{
@@ -435,6 +522,114 @@ func (o *BattleLobbiesMech) Owner(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadAssignedToBattle allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleLobbiesMechL) LoadAssignedToBattle(e boil.Executor, singular bool, maybeBattleLobbiesMech interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbiesMech
+	var object *BattleLobbiesMech
+
+	if singular {
+		object = maybeBattleLobbiesMech.(*BattleLobbiesMech)
+	} else {
+		slice = *maybeBattleLobbiesMech.(*[]*BattleLobbiesMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleLobbiesMechR{}
+		}
+		if !queries.IsNil(object.AssignedToBattleID) {
+			args = append(args, object.AssignedToBattleID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleLobbiesMechR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.AssignedToBattleID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.AssignedToBattleID) {
+				args = append(args, obj.AssignedToBattleID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battles`),
+		qm.WhereIn(`battles.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Battle")
+	}
+
+	var resultSlice []*Battle
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for battles")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
+	}
+
+	if len(battleLobbiesMechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.AssignedToBattle = foreign
+		if foreign.R == nil {
+			foreign.R = &battleR{}
+		}
+		foreign.R.AssignedToBattleBattleLobbiesMechs = append(foreign.R.AssignedToBattleBattleLobbiesMechs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.AssignedToBattleID, foreign.ID) {
+				local.R.AssignedToBattle = foreign
+				if foreign.R == nil {
+					foreign.R = &battleR{}
+				}
+				foreign.R.AssignedToBattleBattleLobbiesMechs = append(foreign.R.AssignedToBattleBattleLobbiesMechs, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBattleLobby allows an eager lookup of values, cached into the
@@ -857,6 +1052,85 @@ func (battleLobbiesMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleL
 	return nil
 }
 
+// SetAssignedToBattle of the battleLobbiesMech to the related item.
+// Sets o.R.AssignedToBattle to related.
+// Adds o to related.R.AssignedToBattleBattleLobbiesMechs.
+func (o *BattleLobbiesMech) SetAssignedToBattle(exec boil.Executor, insert bool, related *Battle) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_lobbies_mechs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_battle_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.BattleLobbyID, o.MechID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.AssignedToBattleID, related.ID)
+	if o.R == nil {
+		o.R = &battleLobbiesMechR{
+			AssignedToBattle: related,
+		}
+	} else {
+		o.R.AssignedToBattle = related
+	}
+
+	if related.R == nil {
+		related.R = &battleR{
+			AssignedToBattleBattleLobbiesMechs: BattleLobbiesMechSlice{o},
+		}
+	} else {
+		related.R.AssignedToBattleBattleLobbiesMechs = append(related.R.AssignedToBattleBattleLobbiesMechs, o)
+	}
+
+	return nil
+}
+
+// RemoveAssignedToBattle relationship.
+// Sets o.R.AssignedToBattle to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleLobbiesMech) RemoveAssignedToBattle(exec boil.Executor, related *Battle) error {
+	var err error
+
+	queries.SetScanner(&o.AssignedToBattleID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("assigned_to_battle_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.AssignedToBattle = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.AssignedToBattleBattleLobbiesMechs {
+		if queries.Equal(o.AssignedToBattleID, ri.AssignedToBattleID) {
+			continue
+		}
+
+		ln := len(related.R.AssignedToBattleBattleLobbiesMechs)
+		if ln > 1 && i < ln-1 {
+			related.R.AssignedToBattleBattleLobbiesMechs[i] = related.R.AssignedToBattleBattleLobbiesMechs[ln-1]
+		}
+		related.R.AssignedToBattleBattleLobbiesMechs = related.R.AssignedToBattleBattleLobbiesMechs[:ln-1]
+		break
+	}
+	return nil
+}
+
 // SetBattleLobby of the battleLobbiesMech to the related item.
 // Sets o.R.BattleLobby to related.
 // Adds o to related.R.BattleLobbiesMechs.
@@ -1090,6 +1364,9 @@ func (o *BattleLobbiesMech) Insert(exec boil.Executor, columns boil.Columns) err
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
+	if o.UpdatedAt.IsZero() {
+		o.UpdatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -1164,6 +1441,10 @@ func (o *BattleLobbiesMech) Insert(exec boil.Executor, columns boil.Columns) err
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *BattleLobbiesMech) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -1297,6 +1578,7 @@ func (o *BattleLobbiesMech) Upsert(exec boil.Executor, updateOnConflict bool, co
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
+	o.UpdatedAt = currTime
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err

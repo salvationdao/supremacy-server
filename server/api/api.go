@@ -314,8 +314,6 @@ func NewAPI(
 				s.WS("/weapon/{weapon_id}/details", HubKeyPlayerAssetWeaponDetail, server.MustSecureFaction(pasc.PlayerAssetWeaponDetail))
 
 				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
-				s.WS("/queue-update", battle.WSPlayerAssetMechQueueUpdateSubscribe, nil)
-				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(api.QueueStatusSubscribeHandler))
 				s.WS("/queue/{mech_id}", battle.WSPlayerAssetMechQueueSubscribe, server.MustSecureFaction(api.PlayerAssetMechQueueSubscribeHandler))
 
 				// subscription from battle

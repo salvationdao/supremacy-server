@@ -502,18 +502,18 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// check if queue
 	if collectionItem.ItemType == boiler.ItemTypeMech {
-		position, err := db.MechQueuePosition(collectionItem.ItemID, user.FactionID.String)
+		blm, err := boiler.BattleLobbiesMechs(
+			boiler.BattleLobbiesMechWhere.MechID.EQ(collectionItem.ItemID),
+			boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().
-				Str("user_id", user.ID).
-				Str("item_id", req.Payload.ItemID.String()).
-				Str("item_type", req.Payload.ItemType).
-				Err(err).
-				Msg("unable to get queue pos")
-			return err
+			gamelog.L.Error().Err(err).Str("mech id", collectionItem.ItemID).Msg("Failed to check mech queue.")
+			return terror.Error(err, "Failed to check mech queue.")
 		}
-		if position != nil && position.QueuePosition >= 0 {
-			return fmt.Errorf("cannot sell war machine in battle queue")
+
+		if blm != nil {
+			return fmt.Errorf("cannot sell war machine which is already in battle lobby")
 		}
 	}
 

@@ -830,43 +830,54 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 		statusFilters := []qm.QueryMod{}
 
 		for _, s := range opts.FilterStatuses {
-			if s == "IDLE" {
+			switch s {
+			case "IDLE":
 				if hasIdleToggled {
 					continue
 				}
 				hasIdleToggled = true
 				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
 					`NOT EXISTS (
-						SELECT _bq.%s
+						SELECT 1
 						FROM %s _bq
-						WHERE _bq.%s = %s
+						WHERE _bq.%s = %s 
+							AND _bq.%s ISNULL 
+							AND _bq.%s ISNULL 
+							AND _bq.%s ISNULL
 						LIMIT 1
 					)`,
-					boiler.BattleQueueColumns.ID,
-					boiler.TableNames.BattleQueue,
-					boiler.BattleQueueColumns.MechID,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+					boiler.TableNames.BattleLobbiesMechs,
+					boiler.BattleLobbiesMechColumns.MechID,
+					boiler.MechTableColumns.ID,
+					boiler.BattleLobbiesMechColumns.EndedAt,
+					boiler.BattleLobbiesMechColumns.RefundTXID,
+					boiler.BattleLobbiesMechColumns.DeletedAt,
 				)))
-			} else if s == "BATTLE" {
+			case "BATTLE":
 				if hasInBattleToggled {
 					continue
 				}
 				hasInBattleToggled = true
 				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
 					`EXISTS (
-						SELECT _bq.%s
+						SELECT 1
 						FROM %s _bq
 						WHERE _bq.%s = %s
+							AND _bq.%s IS NULL
 							AND _bq.%s IS NOT NULL
+							AND _bq.%s IS NULL
+							AND _bq.%s IS NULL
 						LIMIT 1
 					)`,
-					boiler.BattleQueueColumns.ID,
-					boiler.TableNames.BattleQueue,
-					boiler.BattleQueueColumns.MechID,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-					boiler.BattleQueueColumns.BattleID,
+					boiler.TableNames.BattleLobbiesMechs,
+					boiler.BattleLobbiesMechColumns.MechID,
+					boiler.MechTableColumns.ID,
+					boiler.BattleLobbiesMechColumns.EndedAt,
+					boiler.BattleLobbiesMechColumns.AssignedToBattleID,
+					boiler.BattleLobbiesMechColumns.RefundTXID,
+					boiler.BattleLobbiesMechColumns.DeletedAt,
 				)))
-			} else if s == "MARKET" {
+			case "MARKET":
 				if hasMarketplaceToggled {
 					continue
 				}
@@ -889,26 +900,31 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 					boiler.ItemSaleColumns.DeletedAt,
 					boiler.ItemSaleColumns.EndAt,
 				)))
-			} else if s == "QUEUE" {
+			case "QUEUE":
 				if hasInQueueToggled {
 					continue
 				}
 				hasInQueueToggled = true
 				statusFilters = append(statusFilters, qm.Or(fmt.Sprintf(
 					`EXISTS (
-						SELECT _bq.%s
+						SELECT 1
 						FROM %s _bq
 						WHERE _bq.%s = %s
 							AND _bq.%s IS NULL
+							AND _bq.%s IS NULL
+							AND _bq.%s IS NULL
+							AND _bq.%s IS NULL
 						LIMIT 1
 					)`,
-					boiler.BattleQueueColumns.ID,
-					boiler.TableNames.BattleQueue,
-					boiler.BattleQueueColumns.MechID,
-					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-					boiler.BattleQueueColumns.BattleID,
+					boiler.TableNames.BattleLobbiesMechs,
+					boiler.BattleLobbiesMechColumns.MechID,
+					boiler.MechTableColumns.ID,
+					boiler.BattleLobbiesMechColumns.EndedAt,
+					boiler.BattleLobbiesMechColumns.AssignedToBattleID,
+					boiler.BattleLobbiesMechColumns.RefundTXID,
+					boiler.BattleLobbiesMechColumns.DeletedAt,
 				)))
-			} else if s == "BATTLE_READY" {
+			case "BATTLE_READY":
 				if hasBattleReadyToggled {
 					continue
 				}

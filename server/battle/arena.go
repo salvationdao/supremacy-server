@@ -12,7 +12,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/helpers"
 	"server/quest"
 	"server/replay"
 	"server/system_messages"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/sasha-s/go-deadlock"
 
-	"github.com/shopspring/decimal"
 	"golang.org/x/exp/slices"
 
 	"github.com/go-chi/chi/v5"
@@ -253,7 +251,6 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			for _, a := range am.arenas {
 				if a.connected.Load() {
 					arenaList = append(arenaList, a.BattleArena)
-					fmt.Println(a.BattleArena.Type)
 				}
 			}
 
@@ -281,13 +278,13 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				go func(battle boiler.Battle, replayID string) {
 					err = replay.RecordReplayRequest(&battle, replayID, replay.StopRecording)
 					if err != nil {
-						gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+						gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 					}
 				}(battle, btl.replaySession.ReplaySession.ID)
 
 				eventByte, err := json.Marshal(btl.replaySession.Events)
 				if err != nil {
-					gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+					gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
 				} else {
 					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
 				}
@@ -301,7 +298,7 @@ func (am *ArenaManager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					),
 				)
 				if err != nil {
-					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 				}
 			}
 		}
@@ -331,11 +328,11 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 		if btl := a.CurrentBattle(); btl != nil && btl.replaySession.ReplaySession != nil {
 			err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 			if err != nil {
-				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
+				gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("failed to stop recording during game client disconnection")
 			}
 			eventByte, err := json.Marshal(btl.replaySession.Events)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+				gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
 			} else {
 				btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
 			}
@@ -343,7 +340,7 @@ func (am *ArenaManager) NewArena(wsConn *websocket.Conn) (*Arena, error) {
 			btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusSTOPPED
 			_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
+				gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update replay session")
 			}
 		}
 	}
@@ -686,177 +683,6 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		return
 	}
 	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
-}
-
-type QueueDefaultMechReq struct {
-	factionID string    // faction of the mech
-	queuedAt  time.Time // the time of queue
-	amount    int       // amount of mechs should queue
-}
-
-func (btl *Battle) GenerateDefaultQueueRequest(bqs []*boiler.BattleQueue) map[string]*QueueDefaultMechReq {
-	reqMap := make(map[string]*QueueDefaultMechReq)
-	reqMap[server.RedMountainFactionID] = &QueueDefaultMechReq{
-		factionID: server.RedMountainFactionID,
-		queuedAt:  time.Now(),
-		amount:    3,
-	}
-	reqMap[server.BostonCyberneticsFactionID] = &QueueDefaultMechReq{
-		factionID: server.BostonCyberneticsFactionID,
-		queuedAt:  time.Now(),
-		amount:    3,
-	}
-	reqMap[server.ZaibatsuFactionID] = &QueueDefaultMechReq{
-		factionID: server.ZaibatsuFactionID,
-		queuedAt:  time.Now(),
-		amount:    3,
-	}
-
-	for _, bq := range bqs {
-		req, ok := reqMap[bq.FactionID]
-		if ok {
-			req.amount -= 1
-			if bq.QueuedAt.Before(req.queuedAt) {
-				req.queuedAt = bq.QueuedAt.Add(-1 * time.Second)
-			}
-		}
-	}
-
-	if server.IsProductionEnv() {
-		// get maximum queue number
-		maxNum := 0
-		for _, req := range reqMap {
-			if req.amount > maxNum {
-				maxNum = req.amount
-			}
-		}
-
-		// set max amount default mech to all the factions
-		for _, req := range reqMap {
-			req.amount = maxNum
-		}
-	}
-
-	return reqMap
-}
-
-func (btl *Battle) QueueDefaultMechs(queueReqMap map[string]*QueueDefaultMechReq) error {
-	defMechs, err := db.DefaultMechs()
-	if err != nil {
-		return err
-	}
-
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
-		return fmt.Errorf(terror.Echo(err))
-	}
-
-	defer tx.Rollback()
-
-	for _, mech := range defMechs {
-		qr, ok := queueReqMap[mech.FactionID.String]
-		if !ok || qr.amount == 0 {
-			continue
-		}
-
-		mech.Name = helpers.GenerateStupidName()
-		mechToUpdate := boiler.Mech{
-			ID:   mech.ID,
-			Name: mech.Name,
-		}
-		_, _ = mechToUpdate.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
-
-		existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mech.ID)).One(tx)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Str("log_name", "battle arena").Str("mech_id", mech.ID).Err(err).Msg("check mech exists in queue")
-			return terror.Error(err, "Failed to check whether mech is in the battle queue")
-		}
-
-		if existMech != nil {
-			continue
-		}
-
-		bq := &boiler.BattleQueue{
-			MechID:    mech.ID,
-			QueuedAt:  qr.queuedAt,
-			FactionID: qr.factionID,
-			OwnerID:   mech.OwnerID,
-		}
-
-		err = bq.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").
-				Interface("mech", mech).
-				Err(err).Msg("unable to insert mech into queue")
-			return terror.Error(err, "Unable to join queue, contact support or try again.")
-		}
-
-		qr.amount -= 1
-
-		// pay queue fee from treasury when it is not in production
-		if !server.IsProductionEnv() {
-			amount := db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18))
-
-			bqf := &boiler.BattleQueueFee{
-				MechID:   mech.ID,
-				PaidByID: mech.OwnerID,
-				Amount:   amount,
-			}
-
-			err = bqf.Insert(tx, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Failed to insert battle queue fee.")
-			}
-
-			paidTxID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
-				FromUserID:           uuid.UUID(server.XsynTreasuryUserID), // paid from treasury fund
-				ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
-				Amount:               amount.StringFixed(0),
-				TransactionReference: server.TransactionReference(fmt.Sprintf("battle_queue_fee|%s|%d", mech.ID, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupSupremacy),
-				SubGroup:             string(server.TransactionGroupBattle),
-				Description:          "queue mech to join the battle arena.",
-			})
-			if err != nil {
-				gamelog.L.Error().
-					Str("faction_user_id", mech.OwnerID).
-					Str("mech id", mech.ID).
-					Str("amount", amount.StringFixed(0)).
-					Err(err).Msg("Failed to pay sups on queuing default mech.")
-				return terror.Error(err, "Failed to pay sups on queuing mech.")
-			}
-
-			refundFunc := func() {
-				_, err = btl.arena.RPCClient.RefundSupsMessage(paidTxID)
-				if err != nil {
-					gamelog.L.Error().
-						Str("player_id", server.XsynTreasuryUserID.String()).
-						Str("mech id", mech.ID).
-						Str("amount", amount.StringFixed(0)).
-						Err(err).Msg("Failed to refund sups on queuing default mech.")
-				}
-			}
-
-			bq.QueueFeeTXID = null.StringFrom(paidTxID)
-			bq.FeeID = null.StringFrom(bqf.ID)
-			_, err = bq.Update(tx, boil.Whitelist(boiler.BattleQueueColumns.QueueFeeTXID, boiler.BattleQueueColumns.FeeID))
-			if err != nil {
-				refundFunc() // refund player
-				gamelog.L.Error().Err(err).Msg("Failed to record queue fee tx id")
-				return terror.Error(err, "Failed to update battle queue")
-			}
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").
-			Err(err).Msg("unable to commit mech insertion into queue")
-		return terror.Error(err, "Unable to join queue, contact support or try again.")
-	}
-
-	return nil
 }
 
 type ArenaStatus struct {
@@ -1533,19 +1359,20 @@ func (arena *Arena) GameClientJsonDataParser() {
 				L.Error().Msg("battle start load out has failed")
 				return
 			}
+
 			arena.NewBattleChan <- &NewBattleChan{btl.ID, btl.BattleNumber}
 		case "BATTLE:OUTRO_FINISHED":
 			if btl.replaySession.ReplaySession != nil {
 				err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StopRecording)
 				if err != nil {
 					if err != replay.ErrDontLogRecordingStatus {
-						gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
+						gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
 					}
 				}
 
 				eventByte, err := json.Marshal(btl.replaySession.Events)
 				if err != nil {
-					gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
+					gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Interface("Events", btl.replaySession.Events).Msg("Failed to marshal json into battle replay")
 				} else {
 					btl.replaySession.ReplaySession.BattleEvents = null.JSONFrom(eventByte)
 				}
@@ -1555,7 +1382,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 				btl.replaySession.ReplaySession.IsCompleteBattle = true
 				_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+					gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 				}
 			}
 
@@ -1789,76 +1616,13 @@ func (arena *Arena) BeginBattle() {
 	gamelog.L.Trace().Str("func", "beginBattle").Msg("start")
 	defer gamelog.L.Trace().Str("func", "beginBattle").Msg("end")
 
-	//// check battle queue amount before create new battle
-	//q, err := db.LoadBattleQueue(context.Background(), db.FACTION_MECH_LIMIT, false)
-	//if err != nil {
-	//	gamelog.L.Warn().Err(err).Msg("unable to load out queue")
-	//	return
-	//}
-	//
-	//// set arena to idle if not enough mech
-	//if !server.IsDevelopmentEnv() && len(q) < (db.FACTION_MECH_LIMIT*3) {
-	//	gamelog.L.Warn().Msg("not enough mechs to field a battle. waiting for more mechs to be placed in queue before starting next battle.")
-	//	arena.UpdateArenaStatus(true)
-	//	return
-	//}
-	//
-	//arena.UpdateArenaStatus(false)
-
-	//// get next map in battle queue
-	//var gm *boiler.GameMap
-	//mapInQueue, err := boiler.BattleMapQueues(qm.OrderBy(boiler.BattleMapQueueColumns.CreatedAt + " ASC")).One(gamedb.StdConn)
-	//if err != nil {
-	//	gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get map from battle map queue")
-	//}
-	//
-	//// if no map get random
-	//if mapInQueue == nil {
-	//	gm, err = db.GameMapGetRandom(false)
-	//	if err != nil {
-	//		gamelog.L.Err(err).Msg("unable to get random map")
-	//		return
-	//	}
-	//} else {
-	//	gm, err = db.GameMapGetByID(mapInQueue.MapID)
-	//	if err != nil {
-	//		gamelog.L.Err(err).Str("MapID", gm.ID).Msg("unable to get map by id")
-	//		return
-	//	}
-	//}
-	//
-	//// insert next battle map
-	//nextMap, err := db.GameMapGetRandom(false)
-	//if err != nil {
-	//	gamelog.L.Err(err).Msg("unable to get random map")
-	//}
-	//
-	//nbmq := boiler.BattleMapQueue{MapID: nextMap.ID, CreatedAt: time.Now()}
-	//err = nbmq.Insert(gamedb.StdConn, boil.Infer())
-	//if err != nil {
-	//	gamelog.L.Err(err).Msg("unable to get random map")
-	//}
-	//
-	//gameMap := &server.GameMap{
-	//	ID:            uuid.Must(uuid.FromString(gm.ID)),
-	//	Name:          gm.Name,
-	//	BackgroundUrl: gm.BackgroundURL,
-	//}
-
 	var battle *boiler.Battle
 	var battleLobby *boiler.BattleLobby
-	inserted := false
-
-	// TODO: check available battle lobby
 
 	// query last battle
 	lastBattle, err := boiler.Battles(
 		boiler.BattleWhere.ArenaID.EQ(arena.ID),
 		qm.OrderBy("battle_number DESC"), qm.Limit(1),
-		qm.Load(
-			boiler.BattleRels.GameMap,
-			qm.Select(boiler.GameMapColumns.Name),
-		),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("not able to load previous battle")
@@ -1868,91 +1632,63 @@ func (arena *Arena) BeginBattle() {
 	if lastBattle == nil || lastBattle.EndedAt.Valid {
 		// load new battle lobby
 		battleLobby, err = boiler.BattleLobbies(
-			boiler.BattleLobbyWhere.JoinedBattleID.IsNull(),
+			boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
 			boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
-			boiler.BattleLobbyWhere.FinishedAt.IsNull(),
+			boiler.BattleLobbyWhere.EndedAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to load new battle lobby.")
 			return
 		}
 
+		// set arena to idle, if there is no battle lobby available
 		if battleLobby == nil {
 			arena.UpdateArenaStatus(true)
 			return
 		}
 
+		// insert new battle
 		battle = &boiler.Battle{
 			ID:        uuid.Must(uuid.NewV4()).String(),
 			GameMapID: battleLobby.GameMapID,
 			StartedAt: time.Now(),
 			ArenaID:   arena.ID,
 		}
-	} else {
-		// refund abilities
-		go ReversePlayerAbilities(lastBattle.ID, lastBattle.BattleNumber)
-
-		// stops recording for already running previous recording
-		go func(battleID, arenaID string) {
-			reRunBattle, err := boiler.FindBattle(gamedb.StdConn, battleID)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to get battle while stopping recording")
-				return
-			}
-			prevReplay, err := boiler.BattleReplays(
-				boiler.BattleReplayWhere.BattleID.EQ(battleID),
-				boiler.BattleReplayWhere.ArenaID.EQ(arenaID),
-				boiler.BattleReplayWhere.RecordingStatus.EQ(boiler.RecordingStatusRECORDING),
-			).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle_id", battleID).Msg("Failed to find previous replay")
-				return
-			}
-			// url request
-			err = replay.RecordReplayRequest(reRunBattle, prevReplay.ID, replay.StopRecording)
-			if err != nil {
-				if err != replay.ErrDontLogRecordingStatus {
-					gamelog.L.Error().Err(err).Str("battle_id", battleID).Str("replay_id", prevReplay.ID).Msg("Failed to stop recording")
-					return
-				}
-				return
-			}
-
-			// update start time
-			prevReplay.StoppedAt = null.TimeFrom(time.Now())
-			prevReplay.RecordingStatus = boiler.RecordingStatusSTOPPED
-			_, err = prevReplay.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Str("battle_id", prevReplay.BattleID).Str("replay_id", prevReplay.ID).Err(err).Msg("Failed to update recording status to STOPPED while starting battle")
-				return
-			}
-		}(battle.ID, arena.ID)
-
-		// soft delete all the ability triggers in the unfinished battle
-		_, err = boiler.BattleAbilityTriggers(
-			boiler.BattleAbilityTriggerWhere.BattleID.EQ(lastBattle.ID),
-		).UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleAbilityTriggerColumns.DeletedAt: null.TimeFrom(time.Now())})
+		err := battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to clean up mech ability trigger logs.")
+			gamelog.L.Error().Err(err).Interface("battle", battle).Msg("unable to insert Battle into database")
+			return
 		}
 
-		// if there is an unfinished battle
+		// insert battle lobby
+		battleLobby.AssignedToBattleID = null.StringFrom(battle.ID)
+		_, err = battleLobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.AssignedToBattleID))
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("unable to update battle lobby")
+			return
+		}
+
+		// broadcast battle lobby change
+		go BroadcastBattleLobbyUpdate(battleLobby.ID)
+
+	} else {
+		// reset previous battle
+		battleRecordReset(lastBattle)
+
+		// restart the previous battle
 		battle = lastBattle
 
-		// load battle lobby of the last battle
-		battleLobby, err = boiler.BattleLobbies(
-			boiler.BattleLobbyWhere.JoinedBattleID.EQ(null.StringFrom(lastBattle.ID)),
-		).One(gamedb.StdConn)
+		// load the lobby of the previous battle
+		battleLobby, err = lastBattle.AssignedToBattleBattleLobbies().One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Str("battle id", lastBattle.ID).Msg("Failed to load battle lobby of the last battle")
 			return
 		}
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
-
-		inserted = true
 	}
 
+	// load game map from battle lobby
 	gameMap, err := battleLobby.GameMap().One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("battle lobby", battleLobby).Msg("Failed to load game map from battle lobby")
@@ -1964,6 +1700,7 @@ func (arena *Arena) BeginBattle() {
 
 	btl := &Battle{
 		arena:   arena,
+		Battle:  battle,
 		MapName: gameMap.Name,
 		lobby:   battleLobby,
 		gameMap: &server.GameMap{
@@ -1971,9 +1708,6 @@ func (arena *Arena) BeginBattle() {
 			Name:          gameMap.Name,
 			BackgroundUrl: gameMap.BackgroundURL,
 		},
-		BattleID:               battle.ID,
-		Battle:                 battle,
-		inserted:               inserted,
 		stage:                  atomic.NewInt32(BattleStageStart),
 		destroyedWarMachineMap: make(map[string]*WMDestroyedRecord),
 		MiniMapAbilityDisplayList: &MiniMapAbilityDisplayList{
@@ -1990,18 +1724,16 @@ func (arena *Arena) BeginBattle() {
 		},
 	}
 
-	// load war machines first
+	// load war machines
 	err = btl.Load(battleLobby)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to load battle mechs")
 		return
 	}
 
-	// then set battle queue
-	err = btl.setBattleQueue()
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("battle start load out has failed")
-		return
+	// check mech join battle quest for each mech owner
+	for _, wm := range btl.WarMachines {
+		arena.QuestManager.MechJoinBattleQuestCheck(wm.OwnedByID)
 	}
 
 	al, err := db.AbilityLabelList()
@@ -2044,7 +1776,7 @@ func (arena *Arena) BeginBattle() {
 		err = replay.RecordReplayRequest(btl.Battle, btl.replaySession.ReplaySession.ID, replay.StartRecording)
 		if err != nil {
 			if err != replay.ErrDontLogRecordingStatus {
-				gamelog.L.Error().Err(err).Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
+				gamelog.L.Error().Err(err).Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Msg("Failed to start recording")
 				return
 			}
 			return
@@ -2055,15 +1787,13 @@ func (arena *Arena) BeginBattle() {
 		btl.replaySession.ReplaySession.RecordingStatus = boiler.RecordingStatusRECORDING
 		_, err = btl.replaySession.ReplaySession.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", btl.BattleID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
+			gamelog.L.Error().Str("battle_id", btl.ID).Str("replay_id", btl.replaySession.ReplaySession.ID).Err(err).Msg("Failed to update recording status to RECORDING while starting battle")
 			return
 		}
 	}()
 
 	gamelog.L.Debug().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up incognito manager")
 	btl.storePlayerAbilityManager(NewPlayerAbilityManager())
-
-	// order the mechs by faction id
 
 	arena.storeCurrentBattle(btl)
 
@@ -2214,8 +1944,8 @@ func (btl *Battle) IsMechOfType(participantID int, aiType AIType) bool {
 
 func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 	// check battle id
-	if payload.BattleID != btl.BattleID {
-		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	if payload.BattleID != btl.ID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.ID, payload.BattleID))
 	}
 
 	// get spawned AI
@@ -2257,8 +1987,8 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 	gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("start")
 	defer gamelog.L.Trace().Str("func", "UpdateWarMachineMoveCommand").Msg("end")
 
-	if payload.BattleID != btl.BattleID {
-		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	if payload.BattleID != btl.ID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.ID, payload.BattleID))
 	}
 
 	// check battle state
@@ -2325,8 +2055,8 @@ func (btl *Battle) CompleteWarMachineMoveCommand(payload *AbilityMoveCommandComp
 
 func (btl *Battle) ZoneChange(payload *ZoneChangePayload) error {
 	// check battle id
-	if payload.BattleID != btl.BattleID {
-		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.BattleID, payload.BattleID))
+	if payload.BattleID != btl.ID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", btl.ID, payload.BattleID))
 	}
 
 	if btl.battleZones == nil {

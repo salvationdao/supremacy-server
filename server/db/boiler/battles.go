@@ -127,83 +127,86 @@ var BattleWhere = struct {
 
 // BattleRels is where relationship names are stored.
 var BattleRels = struct {
-	Arena                     string
-	GameMap                   string
-	SpoilsOfWar               string
-	BattleNumberSpoilsOfWar   string
-	BattleAbilityOptInLogs    string
-	BattleAbilityTriggers     string
-	BattleContracts           string
-	BattleContributions       string
-	BattleEvents              string
-	BattleHistories           string
-	BattleKills               string
-	JoinedBattleBattleLobbies string
-	BattleMechs               string
-	BattleQueues              string
-	BattleQueueNotifications  string
-	BattleReplays             string
-	Players                   string
-	BattleWins                string
-	ChatHistories             string
-	ConsumedAbilities         string
-	MechMoveCommandLogs       string
-	BattleNumberPlayerBans    string
-	PlayerKillLogs            string
-	PlayerSpoilsOfWars        string
+	Arena                              string
+	GameMap                            string
+	SpoilsOfWar                        string
+	BattleNumberSpoilsOfWar            string
+	BattleAbilityOptInLogs             string
+	BattleAbilityTriggers              string
+	BattleContracts                    string
+	BattleContributions                string
+	BattleEvents                       string
+	BattleHistories                    string
+	BattleKills                        string
+	AssignedToBattleBattleLobbies      string
+	AssignedToBattleBattleLobbiesMechs string
+	BattleMechs                        string
+	BattleQueueNotifications           string
+	BattleQueueOlds                    string
+	BattleReplays                      string
+	Players                            string
+	BattleWins                         string
+	ChatHistories                      string
+	ConsumedAbilities                  string
+	MechMoveCommandLogs                string
+	BattleNumberPlayerBans             string
+	PlayerKillLogs                     string
+	PlayerSpoilsOfWars                 string
 }{
-	Arena:                     "Arena",
-	GameMap:                   "GameMap",
-	SpoilsOfWar:               "SpoilsOfWar",
-	BattleNumberSpoilsOfWar:   "BattleNumberSpoilsOfWar",
-	BattleAbilityOptInLogs:    "BattleAbilityOptInLogs",
-	BattleAbilityTriggers:     "BattleAbilityTriggers",
-	BattleContracts:           "BattleContracts",
-	BattleContributions:       "BattleContributions",
-	BattleEvents:              "BattleEvents",
-	BattleHistories:           "BattleHistories",
-	BattleKills:               "BattleKills",
-	JoinedBattleBattleLobbies: "JoinedBattleBattleLobbies",
-	BattleMechs:               "BattleMechs",
-	BattleQueues:              "BattleQueues",
-	BattleQueueNotifications:  "BattleQueueNotifications",
-	BattleReplays:             "BattleReplays",
-	Players:                   "Players",
-	BattleWins:                "BattleWins",
-	ChatHistories:             "ChatHistories",
-	ConsumedAbilities:         "ConsumedAbilities",
-	MechMoveCommandLogs:       "MechMoveCommandLogs",
-	BattleNumberPlayerBans:    "BattleNumberPlayerBans",
-	PlayerKillLogs:            "PlayerKillLogs",
-	PlayerSpoilsOfWars:        "PlayerSpoilsOfWars",
+	Arena:                              "Arena",
+	GameMap:                            "GameMap",
+	SpoilsOfWar:                        "SpoilsOfWar",
+	BattleNumberSpoilsOfWar:            "BattleNumberSpoilsOfWar",
+	BattleAbilityOptInLogs:             "BattleAbilityOptInLogs",
+	BattleAbilityTriggers:              "BattleAbilityTriggers",
+	BattleContracts:                    "BattleContracts",
+	BattleContributions:                "BattleContributions",
+	BattleEvents:                       "BattleEvents",
+	BattleHistories:                    "BattleHistories",
+	BattleKills:                        "BattleKills",
+	AssignedToBattleBattleLobbies:      "AssignedToBattleBattleLobbies",
+	AssignedToBattleBattleLobbiesMechs: "AssignedToBattleBattleLobbiesMechs",
+	BattleMechs:                        "BattleMechs",
+	BattleQueueNotifications:           "BattleQueueNotifications",
+	BattleQueueOlds:                    "BattleQueueOlds",
+	BattleReplays:                      "BattleReplays",
+	Players:                            "Players",
+	BattleWins:                         "BattleWins",
+	ChatHistories:                      "ChatHistories",
+	ConsumedAbilities:                  "ConsumedAbilities",
+	MechMoveCommandLogs:                "MechMoveCommandLogs",
+	BattleNumberPlayerBans:             "BattleNumberPlayerBans",
+	PlayerKillLogs:                     "PlayerKillLogs",
+	PlayerSpoilsOfWars:                 "PlayerSpoilsOfWars",
 }
 
 // battleR is where relationships are stored.
 type battleR struct {
-	Arena                     *BattleArena                 `boiler:"Arena" boil:"Arena" json:"Arena" toml:"Arena" yaml:"Arena"`
-	GameMap                   *GameMap                     `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
-	SpoilsOfWar               *SpoilsOfWar                 `boiler:"SpoilsOfWar" boil:"SpoilsOfWar" json:"SpoilsOfWar" toml:"SpoilsOfWar" yaml:"SpoilsOfWar"`
-	BattleNumberSpoilsOfWar   *SpoilsOfWar                 `boiler:"BattleNumberSpoilsOfWar" boil:"BattleNumberSpoilsOfWar" json:"BattleNumberSpoilsOfWar" toml:"BattleNumberSpoilsOfWar" yaml:"BattleNumberSpoilsOfWar"`
-	BattleAbilityOptInLogs    BattleAbilityOptInLogSlice   `boiler:"BattleAbilityOptInLogs" boil:"BattleAbilityOptInLogs" json:"BattleAbilityOptInLogs" toml:"BattleAbilityOptInLogs" yaml:"BattleAbilityOptInLogs"`
-	BattleAbilityTriggers     BattleAbilityTriggerSlice    `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
-	BattleContracts           BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	BattleContributions       BattleContributionSlice      `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
-	BattleEvents              BattleEventSlice             `boiler:"BattleEvents" boil:"BattleEvents" json:"BattleEvents" toml:"BattleEvents" yaml:"BattleEvents"`
-	BattleHistories           BattleHistorySlice           `boiler:"BattleHistories" boil:"BattleHistories" json:"BattleHistories" toml:"BattleHistories" yaml:"BattleHistories"`
-	BattleKills               BattleKillSlice              `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
-	JoinedBattleBattleLobbies BattleLobbySlice             `boiler:"JoinedBattleBattleLobbies" boil:"JoinedBattleBattleLobbies" json:"JoinedBattleBattleLobbies" toml:"JoinedBattleBattleLobbies" yaml:"JoinedBattleBattleLobbies"`
-	BattleMechs               BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	BattleQueues              BattleQueueSlice             `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
-	BattleQueueNotifications  BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
-	BattleReplays             BattleReplaySlice            `boiler:"BattleReplays" boil:"BattleReplays" json:"BattleReplays" toml:"BattleReplays" yaml:"BattleReplays"`
-	Players                   PlayerSlice                  `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
-	BattleWins                BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
-	ChatHistories             ChatHistorySlice             `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
-	ConsumedAbilities         ConsumedAbilitySlice         `boiler:"ConsumedAbilities" boil:"ConsumedAbilities" json:"ConsumedAbilities" toml:"ConsumedAbilities" yaml:"ConsumedAbilities"`
-	MechMoveCommandLogs       MechMoveCommandLogSlice      `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
-	BattleNumberPlayerBans    PlayerBanSlice               `boiler:"BattleNumberPlayerBans" boil:"BattleNumberPlayerBans" json:"BattleNumberPlayerBans" toml:"BattleNumberPlayerBans" yaml:"BattleNumberPlayerBans"`
-	PlayerKillLogs            PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
-	PlayerSpoilsOfWars        PlayerSpoilsOfWarSlice       `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
+	Arena                              *BattleArena                 `boiler:"Arena" boil:"Arena" json:"Arena" toml:"Arena" yaml:"Arena"`
+	GameMap                            *GameMap                     `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
+	SpoilsOfWar                        *SpoilsOfWar                 `boiler:"SpoilsOfWar" boil:"SpoilsOfWar" json:"SpoilsOfWar" toml:"SpoilsOfWar" yaml:"SpoilsOfWar"`
+	BattleNumberSpoilsOfWar            *SpoilsOfWar                 `boiler:"BattleNumberSpoilsOfWar" boil:"BattleNumberSpoilsOfWar" json:"BattleNumberSpoilsOfWar" toml:"BattleNumberSpoilsOfWar" yaml:"BattleNumberSpoilsOfWar"`
+	BattleAbilityOptInLogs             BattleAbilityOptInLogSlice   `boiler:"BattleAbilityOptInLogs" boil:"BattleAbilityOptInLogs" json:"BattleAbilityOptInLogs" toml:"BattleAbilityOptInLogs" yaml:"BattleAbilityOptInLogs"`
+	BattleAbilityTriggers              BattleAbilityTriggerSlice    `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
+	BattleContracts                    BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	BattleContributions                BattleContributionSlice      `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
+	BattleEvents                       BattleEventSlice             `boiler:"BattleEvents" boil:"BattleEvents" json:"BattleEvents" toml:"BattleEvents" yaml:"BattleEvents"`
+	BattleHistories                    BattleHistorySlice           `boiler:"BattleHistories" boil:"BattleHistories" json:"BattleHistories" toml:"BattleHistories" yaml:"BattleHistories"`
+	BattleKills                        BattleKillSlice              `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
+	AssignedToBattleBattleLobbies      BattleLobbySlice             `boiler:"AssignedToBattleBattleLobbies" boil:"AssignedToBattleBattleLobbies" json:"AssignedToBattleBattleLobbies" toml:"AssignedToBattleBattleLobbies" yaml:"AssignedToBattleBattleLobbies"`
+	AssignedToBattleBattleLobbiesMechs BattleLobbiesMechSlice       `boiler:"AssignedToBattleBattleLobbiesMechs" boil:"AssignedToBattleBattleLobbiesMechs" json:"AssignedToBattleBattleLobbiesMechs" toml:"AssignedToBattleBattleLobbiesMechs" yaml:"AssignedToBattleBattleLobbiesMechs"`
+	BattleMechs                        BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	BattleQueueNotifications           BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
+	BattleQueueOlds                    BattleQueueOldSlice          `boiler:"BattleQueueOlds" boil:"BattleQueueOlds" json:"BattleQueueOlds" toml:"BattleQueueOlds" yaml:"BattleQueueOlds"`
+	BattleReplays                      BattleReplaySlice            `boiler:"BattleReplays" boil:"BattleReplays" json:"BattleReplays" toml:"BattleReplays" yaml:"BattleReplays"`
+	Players                            PlayerSlice                  `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	BattleWins                         BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	ChatHistories                      ChatHistorySlice             `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
+	ConsumedAbilities                  ConsumedAbilitySlice         `boiler:"ConsumedAbilities" boil:"ConsumedAbilities" json:"ConsumedAbilities" toml:"ConsumedAbilities" yaml:"ConsumedAbilities"`
+	MechMoveCommandLogs                MechMoveCommandLogSlice      `boiler:"MechMoveCommandLogs" boil:"MechMoveCommandLogs" json:"MechMoveCommandLogs" toml:"MechMoveCommandLogs" yaml:"MechMoveCommandLogs"`
+	BattleNumberPlayerBans             PlayerBanSlice               `boiler:"BattleNumberPlayerBans" boil:"BattleNumberPlayerBans" json:"BattleNumberPlayerBans" toml:"BattleNumberPlayerBans" yaml:"BattleNumberPlayerBans"`
+	PlayerKillLogs                     PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
+	PlayerSpoilsOfWars                 PlayerSpoilsOfWarSlice       `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 }
 
 // NewStruct creates a new relationship struct
@@ -670,15 +673,15 @@ func (o *Battle) BattleKills(mods ...qm.QueryMod) battleKillQuery {
 	return query
 }
 
-// JoinedBattleBattleLobbies retrieves all the battle_lobby's BattleLobbies with an executor via joined_battle_id column.
-func (o *Battle) JoinedBattleBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
+// AssignedToBattleBattleLobbies retrieves all the battle_lobby's BattleLobbies with an executor via assigned_to_battle_id column.
+func (o *Battle) AssignedToBattleBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_lobbies\".\"joined_battle_id\"=?", o.ID),
+		qm.Where("\"battle_lobbies\".\"assigned_to_battle_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"battle_lobbies\".\"deleted_at\""),
 	)
 
@@ -687,6 +690,28 @@ func (o *Battle) JoinedBattleBattleLobbies(mods ...qm.QueryMod) battleLobbyQuery
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_lobbies\".*"})
+	}
+
+	return query
+}
+
+// AssignedToBattleBattleLobbiesMechs retrieves all the battle_lobbies_mech's BattleLobbiesMechs with an executor via assigned_to_battle_id column.
+func (o *Battle) AssignedToBattleBattleLobbiesMechs(mods ...qm.QueryMod) battleLobbiesMechQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_lobbies_mechs\".\"assigned_to_battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_lobbies_mechs\".\"deleted_at\""),
+	)
+
+	query := BattleLobbiesMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_lobbies_mechs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_lobbies_mechs\".*"})
 	}
 
 	return query
@@ -713,27 +738,6 @@ func (o *Battle) BattleMechs(mods ...qm.QueryMod) battleMechQuery {
 	return query
 }
 
-// BattleQueues retrieves all the battle_queue's BattleQueues with an executor.
-func (o *Battle) BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"battle_queue\".\"battle_id\"=?", o.ID),
-	)
-
-	query := BattleQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_queue\".*"})
-	}
-
-	return query
-}
-
 // BattleQueueNotifications retrieves all the battle_queue_notification's BattleQueueNotifications with an executor.
 func (o *Battle) BattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotificationQuery {
 	var queryMods []qm.QueryMod
@@ -750,6 +754,27 @@ func (o *Battle) BattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotifi
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_queue_notifications\".*"})
+	}
+
+	return query
+}
+
+// BattleQueueOlds retrieves all the battle_queue_old's BattleQueueOlds with an executor.
+func (o *Battle) BattleQueueOlds(mods ...qm.QueryMod) battleQueueOldQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_queue_old\".\"battle_id\"=?", o.ID),
+	)
+
+	query := BattleQueueOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue_old\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_queue_old\".*"})
 	}
 
 	return query
@@ -2047,9 +2072,9 @@ func (battleL) LoadBattleKills(e boil.Executor, singular bool, maybeBattle inter
 	return nil
 }
 
-// LoadJoinedBattleBattleLobbies allows an eager lookup of values, cached into the
+// LoadAssignedToBattleBattleLobbies allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleL) LoadJoinedBattleBattleLobbies(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+func (battleL) LoadAssignedToBattleBattleLobbies(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
 	var slice []*Battle
 	var object *Battle
 
@@ -2088,7 +2113,7 @@ func (battleL) LoadJoinedBattleBattleLobbies(e boil.Executor, singular bool, may
 
 	query := NewQuery(
 		qm.From(`battle_lobbies`),
-		qm.WhereIn(`battle_lobbies.joined_battle_id in ?`, args...),
+		qm.WhereIn(`battle_lobbies.assigned_to_battle_id in ?`, args...),
 		qmhelper.WhereIsNull(`battle_lobbies.deleted_at`),
 	)
 	if mods != nil {
@@ -2120,24 +2145,123 @@ func (battleL) LoadJoinedBattleBattleLobbies(e boil.Executor, singular bool, may
 		}
 	}
 	if singular {
-		object.R.JoinedBattleBattleLobbies = resultSlice
+		object.R.AssignedToBattleBattleLobbies = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &battleLobbyR{}
 			}
-			foreign.R.JoinedBattle = object
+			foreign.R.AssignedToBattle = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.JoinedBattleID) {
-				local.R.JoinedBattleBattleLobbies = append(local.R.JoinedBattleBattleLobbies, foreign)
+			if queries.Equal(local.ID, foreign.AssignedToBattleID) {
+				local.R.AssignedToBattleBattleLobbies = append(local.R.AssignedToBattleBattleLobbies, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleLobbyR{}
 				}
-				foreign.R.JoinedBattle = local
+				foreign.R.AssignedToBattle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAssignedToBattleBattleLobbiesMechs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadAssignedToBattleBattleLobbiesMechs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_lobbies_mechs`),
+		qm.WhereIn(`battle_lobbies_mechs.assigned_to_battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_lobbies_mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_lobbies_mechs")
+	}
+
+	var resultSlice []*BattleLobbiesMech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobbies_mechs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_lobbies_mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies_mechs")
+	}
+
+	if len(battleLobbiesMechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssignedToBattleBattleLobbiesMechs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleLobbiesMechR{}
+			}
+			foreign.R.AssignedToBattle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.AssignedToBattleID) {
+				local.R.AssignedToBattleBattleLobbiesMechs = append(local.R.AssignedToBattleBattleLobbiesMechs, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleLobbiesMechR{}
+				}
+				foreign.R.AssignedToBattle = local
 				break
 			}
 		}
@@ -2244,104 +2368,6 @@ func (battleL) LoadBattleMechs(e boil.Executor, singular bool, maybeBattle inter
 	return nil
 }
 
-// LoadBattleQueues allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleL) LoadBattleQueues(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
-	var slice []*Battle
-	var object *Battle
-
-	if singular {
-		object = maybeBattle.(*Battle)
-	} else {
-		slice = *maybeBattle.(*[]*Battle)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_queue`),
-		qm.WhereIn(`battle_queue.battle_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_queue")
-	}
-
-	var resultSlice []*BattleQueue
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_queue")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
-	}
-
-	if len(battleQueueAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BattleQueues = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &battleQueueR{}
-			}
-			foreign.R.Battle = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.BattleID) {
-				local.R.BattleQueues = append(local.R.BattleQueues, foreign)
-				if foreign.R == nil {
-					foreign.R = &battleQueueR{}
-				}
-				foreign.R.Battle = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadBattleQueueNotifications allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (battleL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
@@ -2430,6 +2456,104 @@ func (battleL) LoadBattleQueueNotifications(e boil.Executor, singular bool, mayb
 				local.R.BattleQueueNotifications = append(local.R.BattleQueueNotifications, foreign)
 				if foreign.R == nil {
 					foreign.R = &battleQueueNotificationR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleQueueOlds allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadBattleQueueOlds(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_queue_old`),
+		qm.WhereIn(`battle_queue_old.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_queue_old")
+	}
+
+	var resultSlice []*BattleQueueOld
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_old")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue_old")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_old")
+	}
+
+	if len(battleQueueOldAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleQueueOlds = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleQueueOldR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.BattleID) {
+				local.R.BattleQueueOlds = append(local.R.BattleQueueOlds, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleQueueOldR{}
 				}
 				foreign.R.Battle = local
 				break
@@ -4045,22 +4169,22 @@ func (o *Battle) AddBattleKills(exec boil.Executor, insert bool, related ...*Bat
 	return nil
 }
 
-// AddJoinedBattleBattleLobbies adds the given related objects to the existing relationships
+// AddAssignedToBattleBattleLobbies adds the given related objects to the existing relationships
 // of the battle, optionally inserting them as new records.
-// Appends related to o.R.JoinedBattleBattleLobbies.
-// Sets related.R.JoinedBattle appropriately.
-func (o *Battle) AddJoinedBattleBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+// Appends related to o.R.AssignedToBattleBattleLobbies.
+// Sets related.R.AssignedToBattle appropriately.
+func (o *Battle) AddAssignedToBattleBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.JoinedBattleID, o.ID)
+			queries.Assign(&rel.AssignedToBattleID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"battle_lobbies\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"joined_battle_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_battle_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleLobbyPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -4073,38 +4197,38 @@ func (o *Battle) AddJoinedBattleBattleLobbies(exec boil.Executor, insert bool, r
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.JoinedBattleID, o.ID)
+			queries.Assign(&rel.AssignedToBattleID, o.ID)
 		}
 	}
 
 	if o.R == nil {
 		o.R = &battleR{
-			JoinedBattleBattleLobbies: related,
+			AssignedToBattleBattleLobbies: related,
 		}
 	} else {
-		o.R.JoinedBattleBattleLobbies = append(o.R.JoinedBattleBattleLobbies, related...)
+		o.R.AssignedToBattleBattleLobbies = append(o.R.AssignedToBattleBattleLobbies, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &battleLobbyR{
-				JoinedBattle: o,
+				AssignedToBattle: o,
 			}
 		} else {
-			rel.R.JoinedBattle = o
+			rel.R.AssignedToBattle = o
 		}
 	}
 	return nil
 }
 
-// SetJoinedBattleBattleLobbies removes all previously related items of the
+// SetAssignedToBattleBattleLobbies removes all previously related items of the
 // battle replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.JoinedBattle's JoinedBattleBattleLobbies accordingly.
-// Replaces o.R.JoinedBattleBattleLobbies with related.
-// Sets related.R.JoinedBattle's JoinedBattleBattleLobbies accordingly.
-func (o *Battle) SetJoinedBattleBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
-	query := "update \"battle_lobbies\" set \"joined_battle_id\" = null where \"joined_battle_id\" = $1"
+// Sets o.R.AssignedToBattle's AssignedToBattleBattleLobbies accordingly.
+// Replaces o.R.AssignedToBattleBattleLobbies with related.
+// Sets related.R.AssignedToBattle's AssignedToBattleBattleLobbies accordingly.
+func (o *Battle) SetAssignedToBattleBattleLobbies(exec boil.Executor, insert bool, related ...*BattleLobby) error {
+	query := "update \"battle_lobbies\" set \"assigned_to_battle_id\" = null where \"assigned_to_battle_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -4116,35 +4240,35 @@ func (o *Battle) SetJoinedBattleBattleLobbies(exec boil.Executor, insert bool, r
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.JoinedBattleBattleLobbies {
-			queries.SetScanner(&rel.JoinedBattleID, nil)
+		for _, rel := range o.R.AssignedToBattleBattleLobbies {
+			queries.SetScanner(&rel.AssignedToBattleID, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.JoinedBattle = nil
+			rel.R.AssignedToBattle = nil
 		}
 
-		o.R.JoinedBattleBattleLobbies = nil
+		o.R.AssignedToBattleBattleLobbies = nil
 	}
-	return o.AddJoinedBattleBattleLobbies(exec, insert, related...)
+	return o.AddAssignedToBattleBattleLobbies(exec, insert, related...)
 }
 
-// RemoveJoinedBattleBattleLobbies relationships from objects passed in.
-// Removes related items from R.JoinedBattleBattleLobbies (uses pointer comparison, removal does not keep order)
-// Sets related.R.JoinedBattle.
-func (o *Battle) RemoveJoinedBattleBattleLobbies(exec boil.Executor, related ...*BattleLobby) error {
+// RemoveAssignedToBattleBattleLobbies relationships from objects passed in.
+// Removes related items from R.AssignedToBattleBattleLobbies (uses pointer comparison, removal does not keep order)
+// Sets related.R.AssignedToBattle.
+func (o *Battle) RemoveAssignedToBattleBattleLobbies(exec boil.Executor, related ...*BattleLobby) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.JoinedBattleID, nil)
+		queries.SetScanner(&rel.AssignedToBattleID, nil)
 		if rel.R != nil {
-			rel.R.JoinedBattle = nil
+			rel.R.AssignedToBattle = nil
 		}
-		if _, err = rel.Update(exec, boil.Whitelist("joined_battle_id")); err != nil {
+		if _, err = rel.Update(exec, boil.Whitelist("assigned_to_battle_id")); err != nil {
 			return err
 		}
 	}
@@ -4153,16 +4277,141 @@ func (o *Battle) RemoveJoinedBattleBattleLobbies(exec boil.Executor, related ...
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.JoinedBattleBattleLobbies {
+		for i, ri := range o.R.AssignedToBattleBattleLobbies {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.JoinedBattleBattleLobbies)
+			ln := len(o.R.AssignedToBattleBattleLobbies)
 			if ln > 1 && i < ln-1 {
-				o.R.JoinedBattleBattleLobbies[i] = o.R.JoinedBattleBattleLobbies[ln-1]
+				o.R.AssignedToBattleBattleLobbies[i] = o.R.AssignedToBattleBattleLobbies[ln-1]
 			}
-			o.R.JoinedBattleBattleLobbies = o.R.JoinedBattleBattleLobbies[:ln-1]
+			o.R.AssignedToBattleBattleLobbies = o.R.AssignedToBattleBattleLobbies[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddAssignedToBattleBattleLobbiesMechs adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.AssignedToBattleBattleLobbiesMechs.
+// Sets related.R.AssignedToBattle appropriately.
+func (o *Battle) AddAssignedToBattleBattleLobbiesMechs(exec boil.Executor, insert bool, related ...*BattleLobbiesMech) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.AssignedToBattleID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_lobbies_mechs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"assigned_to_battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleLobbiesMechPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.BattleLobbyID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.AssignedToBattleID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			AssignedToBattleBattleLobbiesMechs: related,
+		}
+	} else {
+		o.R.AssignedToBattleBattleLobbiesMechs = append(o.R.AssignedToBattleBattleLobbiesMechs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleLobbiesMechR{
+				AssignedToBattle: o,
+			}
+		} else {
+			rel.R.AssignedToBattle = o
+		}
+	}
+	return nil
+}
+
+// SetAssignedToBattleBattleLobbiesMechs removes all previously related items of the
+// battle replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.AssignedToBattle's AssignedToBattleBattleLobbiesMechs accordingly.
+// Replaces o.R.AssignedToBattleBattleLobbiesMechs with related.
+// Sets related.R.AssignedToBattle's AssignedToBattleBattleLobbiesMechs accordingly.
+func (o *Battle) SetAssignedToBattleBattleLobbiesMechs(exec boil.Executor, insert bool, related ...*BattleLobbiesMech) error {
+	query := "update \"battle_lobbies_mechs\" set \"assigned_to_battle_id\" = null where \"assigned_to_battle_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.AssignedToBattleBattleLobbiesMechs {
+			queries.SetScanner(&rel.AssignedToBattleID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.AssignedToBattle = nil
+		}
+
+		o.R.AssignedToBattleBattleLobbiesMechs = nil
+	}
+	return o.AddAssignedToBattleBattleLobbiesMechs(exec, insert, related...)
+}
+
+// RemoveAssignedToBattleBattleLobbiesMechs relationships from objects passed in.
+// Removes related items from R.AssignedToBattleBattleLobbiesMechs (uses pointer comparison, removal does not keep order)
+// Sets related.R.AssignedToBattle.
+func (o *Battle) RemoveAssignedToBattleBattleLobbiesMechs(exec boil.Executor, related ...*BattleLobbiesMech) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.AssignedToBattleID, nil)
+		if rel.R != nil {
+			rel.R.AssignedToBattle = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("assigned_to_battle_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.AssignedToBattleBattleLobbiesMechs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.AssignedToBattleBattleLobbiesMechs)
+			if ln > 1 && i < ln-1 {
+				o.R.AssignedToBattleBattleLobbiesMechs[i] = o.R.AssignedToBattleBattleLobbiesMechs[ln-1]
+			}
+			o.R.AssignedToBattleBattleLobbiesMechs = o.R.AssignedToBattleBattleLobbiesMechs[:ln-1]
 			break
 		}
 	}
@@ -4219,131 +4468,6 @@ func (o *Battle) AddBattleMechs(exec boil.Executor, insert bool, related ...*Bat
 			rel.R.Battle = o
 		}
 	}
-	return nil
-}
-
-// AddBattleQueues adds the given related objects to the existing relationships
-// of the battle, optionally inserting them as new records.
-// Appends related to o.R.BattleQueues.
-// Sets related.R.Battle appropriately.
-func (o *Battle) AddBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.BattleID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_queue\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.MechID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.BattleID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &battleR{
-			BattleQueues: related,
-		}
-	} else {
-		o.R.BattleQueues = append(o.R.BattleQueues, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &battleQueueR{
-				Battle: o,
-			}
-		} else {
-			rel.R.Battle = o
-		}
-	}
-	return nil
-}
-
-// SetBattleQueues removes all previously related items of the
-// battle replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Battle's BattleQueues accordingly.
-// Replaces o.R.BattleQueues with related.
-// Sets related.R.Battle's BattleQueues accordingly.
-func (o *Battle) SetBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
-	query := "update \"battle_queue\" set \"battle_id\" = null where \"battle_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.BattleQueues {
-			queries.SetScanner(&rel.BattleID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Battle = nil
-		}
-
-		o.R.BattleQueues = nil
-	}
-	return o.AddBattleQueues(exec, insert, related...)
-}
-
-// RemoveBattleQueues relationships from objects passed in.
-// Removes related items from R.BattleQueues (uses pointer comparison, removal does not keep order)
-// Sets related.R.Battle.
-func (o *Battle) RemoveBattleQueues(exec boil.Executor, related ...*BattleQueue) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.BattleID, nil)
-		if rel.R != nil {
-			rel.R.Battle = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("battle_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.BattleQueues {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.BattleQueues)
-			if ln > 1 && i < ln-1 {
-				o.R.BattleQueues[i] = o.R.BattleQueues[ln-1]
-			}
-			o.R.BattleQueues = o.R.BattleQueues[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -4465,6 +4589,131 @@ func (o *Battle) RemoveBattleQueueNotifications(exec boil.Executor, related ...*
 				o.R.BattleQueueNotifications[i] = o.R.BattleQueueNotifications[ln-1]
 			}
 			o.R.BattleQueueNotifications = o.R.BattleQueueNotifications[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddBattleQueueOlds adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.BattleQueueOlds.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddBattleQueueOlds(exec boil.Executor, insert bool, related ...*BattleQueueOld) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.BattleID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_queue_old\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleQueueOldPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.BattleID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			BattleQueueOlds: related,
+		}
+	} else {
+		o.R.BattleQueueOlds = append(o.R.BattleQueueOlds, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleQueueOldR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// SetBattleQueueOlds removes all previously related items of the
+// battle replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Battle's BattleQueueOlds accordingly.
+// Replaces o.R.BattleQueueOlds with related.
+// Sets related.R.Battle's BattleQueueOlds accordingly.
+func (o *Battle) SetBattleQueueOlds(exec boil.Executor, insert bool, related ...*BattleQueueOld) error {
+	query := "update \"battle_queue_old\" set \"battle_id\" = null where \"battle_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.BattleQueueOlds {
+			queries.SetScanner(&rel.BattleID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Battle = nil
+		}
+
+		o.R.BattleQueueOlds = nil
+	}
+	return o.AddBattleQueueOlds(exec, insert, related...)
+}
+
+// RemoveBattleQueueOlds relationships from objects passed in.
+// Removes related items from R.BattleQueueOlds (uses pointer comparison, removal does not keep order)
+// Sets related.R.Battle.
+func (o *Battle) RemoveBattleQueueOlds(exec boil.Executor, related ...*BattleQueueOld) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BattleID, nil)
+		if rel.R != nil {
+			rel.R.Battle = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("battle_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.BattleQueueOlds {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.BattleQueueOlds)
+			if ln > 1 && i < ln-1 {
+				o.R.BattleQueueOlds[i] = o.R.BattleQueueOlds[ln-1]
+			}
+			o.R.BattleQueueOlds = o.R.BattleQueueOlds[:ln-1]
 			break
 		}
 	}

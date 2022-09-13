@@ -15,8 +15,6 @@ import (
 	"github.com/volatiletech/null/v8"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/shopspring/decimal"
-
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
@@ -39,7 +37,6 @@ func NewBattleController(api *API) *BattleControllerWS {
 	// commands from battle
 
 	// faction queue
-	api.SecureUserFactionCommand(battle.WSQueueJoin, api.ArenaManager.QueueJoinHandler)
 	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
@@ -294,22 +291,6 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key st
 	return nil
 }
 
-func (api *API) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	l := gamelog.L.With().Str("func", "QueueStatusSubscribeHandler").Str("factionID", factionID).Logger()
-
-	pos, err := db.GetFactionQueueLength(factionID)
-	if err != nil {
-		l.Error().Err(err).Msg("unable to retrieve faction queue length")
-		return terror.Error(err, "Could not get faction queue length.")
-	}
-
-	reply(battle.QueueStatusResponse{
-		QueuePosition: pos + 1,
-		QueueCost:     db.GetDecimalWithDefault(db.KeyBattleQueueFee, decimal.New(100, 18)),
-	})
-	return nil
-}
-
 func (api *API) PlayerAssetMechQueueSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	mechID := chi.RouteContext(ctx).URLParam("mech_id")
 
@@ -359,15 +340,9 @@ func (api *API) BattleEndDetail(ctx context.Context, key string, payload []byte,
 	reply(arena.LastBattleResult)
 	return nil
 }
+
 func (api *API) NextBattleDetails(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-
-	// details
-	resp, err := db.GetNextBattle(ctx)
-	if err != nil {
-		return terror.Error(err, "failed getting uppcoming battle details")
-	}
-
-	reply(resp)
+	// TODO: create next battle detail
 
 	return nil
 }

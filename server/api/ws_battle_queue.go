@@ -15,6 +15,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/exp/slices"
 	"server"
+	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -60,12 +61,12 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		return terror.Error(fmt.Errorf("mech more than 3"), "Maximum 3 mech per faction.")
 	}
 
-	err = api.ArenaManager.CheckMechOwnership(user.ID, req.Payload.MechIDs)
+	err = db.CheckMechOwnership(user.ID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
 
-	availableMechIDs, err := api.ArenaManager.FilterCanDeployMechIDs(req.Payload.MechIDs)
+	availableMechIDs, err := db.FilterCanDeployMechIDs(req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 	// start process
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
 		// check mech in queue
-		availableMechIDs, err = api.ArenaManager.FilterOutMechAlreadyInQueue(availableMechIDs)
+		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
 		if err != nil {
 			return err
 		}
@@ -131,16 +132,16 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		bl := &boiler.BattleLobby{
 			HostByID:              user.ID,
 			EntryFee:              req.Payload.EntryFee,
-			FirstFactionCut:       req.Payload.FirstFactionCut,
-			SecondFactionCut:      req.Payload.SecondFactionCut,
-			ThirdFactionCut:       req.Payload.ThirdFactionCut,
+			FirstFactionCut:       req.Payload.FirstFactionCut.Div(decimal.NewFromInt(100)),
+			SecondFactionCut:      req.Payload.SecondFactionCut.Div(decimal.NewFromInt(100)),
+			ThirdFactionCut:       req.Payload.ThirdFactionCut.Div(decimal.NewFromInt(100)),
 			EachFactionMechAmount: db.FACTION_MECH_LIMIT,
 		}
 
 		if req.Payload.Password != "" {
 			bl.Password = null.StringFrom(req.Payload.Password)
 
-			// TODO: pay sups for private room??
+			// TODO: pay sups for creating private room??
 
 		}
 
@@ -221,7 +222,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 
 		// broadcast lobby
-		go api.ArenaManager.BroadcastBattleLobbyUpdate(bl.ID)
+		go battle.BroadcastBattleLobbyUpdate(bl.ID)
 
 		return nil
 	})
@@ -251,12 +252,12 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	err = api.ArenaManager.CheckMechOwnership(user.ID, req.Payload.MechIDs)
+	err = db.CheckMechOwnership(user.ID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
 
-	availableMechIDs, err := api.ArenaManager.FilterCanDeployMechIDs(req.Payload.MechIDs)
+	availableMechIDs, err := db.FilterCanDeployMechIDs(req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -281,8 +282,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 	}
 
 	err = api.ArenaManager.SendBattleQueueFunc(func() error {
-		// check mech already in queue
-		availableMechIDs, err = api.ArenaManager.FilterOutMechAlreadyInQueue(availableMechIDs)
+		now := time.Now()
+		// filter out mechs which are already in queue
+		availableMechIDs, err = db.FilterOutMechAlreadyInQueue(availableMechIDs)
 		if err != nil {
 			return err
 		}
@@ -309,7 +311,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(fmt.Errorf("battle lobby not exist"), "Battle lobby does not exist.")
 		}
 
-		if bl.ReadyAt.Valid || bl.FinishedAt.Valid {
+		if bl.ReadyAt.Valid {
 			return terror.Error(fmt.Errorf("battle lobby is already full"), "The battle lobby is already full.")
 		}
 
@@ -411,8 +413,17 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt))
 			if err != nil {
 				refund(refundFns)
-				gamelog.L.Error().Err(err).Msg("Failed to update battle lobby.")
+				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to update battle lobby.")
 				return terror.Error(err, "Failed to mark battle lobby to ready.")
+			}
+
+			_, err := bl.BattleLobbiesMechs(
+				boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+			).UpdateAll(tx, boiler.M{boiler.BattleLobbiesMechColumns.LockedAt: null.TimeFrom(now)})
+			if err != nil {
+				refund(refundFns)
+				gamelog.L.Error().Interface("battle lobby", bl).Err(err).Msg("Failed to lock battle lobby mechs.")
+				return terror.Error(err, "Failed to lock mechs in the battle lobby.")
 			}
 
 			// generate another system lobby
@@ -446,7 +457,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		}
 
 		// broadcast battle lobby
-		go api.ArenaManager.BroadcastBattleLobbyUpdate(bl.ID)
+		go battle.BroadcastBattleLobbyUpdate(bl.ID)
 
 		// pause mechs repair case
 		err = api.ArenaManager.PauseRepairCases(deployedMechIDs)
@@ -590,7 +601,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	err = api.ArenaManager.CheckMechOwnership(user.ID, req.Payload.MechIDs)
+	err = db.CheckMechOwnership(user.ID, req.Payload.MechIDs)
 	if err != nil {
 		return err
 	}
@@ -601,16 +612,8 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		var blms boiler.BattleLobbiesMechSlice
 		blms, err = boiler.BattleLobbiesMechs(
 			boiler.BattleLobbiesMechWhere.MechID.IN(req.Payload.MechIDs),
+			boiler.BattleLobbiesMechWhere.LockedAt.IsNull(),
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			qm.Where(
-				fmt.Sprintf(
-					"EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL)",
-					boiler.TableNames.BattleLobbies,
-					boiler.BattleLobbyTableColumns.ID,
-					boiler.BattleLobbiesMechTableColumns.BattleLobbyID,
-					boiler.BattleLobbyTableColumns.ReadyAt,
-				),
-			),
 			qm.Load(boiler.BattleLobbiesMechRels.BattleLobby),
 		).All(gamedb.StdConn)
 		if err != nil {
@@ -715,7 +718,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		for _, bl := range bls {
 			// broadcast new battle lobby status
 			if bl.GeneratedBySystem || (bl.R != nil && bl.R.BattleLobbiesMechs != nil && len(bl.R.BattleLobbiesMechs) > 0) {
-				go api.ArenaManager.BroadcastBattleLobbyUpdate(bl.ID)
+				go battle.BroadcastBattleLobbyUpdate(bl.ID)
 				continue
 			}
 
@@ -757,7 +760,7 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	// return all the unfinished lobbies
 	bls, err := boiler.BattleLobbies(
-		boiler.BattleLobbyWhere.FinishedAt.IsNull(),
+		boiler.BattleLobbyWhere.EndedAt.IsNull(),
 		qm.Load(
 			boiler.BattleLobbyRels.BattleLobbiesMechs,
 			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),

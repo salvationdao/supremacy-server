@@ -1058,13 +1058,16 @@ func (api *API) MechRepairSlotInsert(ctx context.Context, user *boiler.Player, k
 			boiler.RepairCaseWhere.MechID.IN(req.Payload.MechIDs),
 			boiler.RepairCaseWhere.CompletedAt.IsNull(),
 
-			// filter out mechs which are in queue
+			// filter out mechs which are in battle lobbies
 			qm.Where(
 				fmt.Sprintf(
-					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s )",
-					boiler.TableNames.BattleQueue,
-					qm.Rels(boiler.TableNames.BattleQueue, boiler.BattleQueueColumns.MechID),
-					qm.Rels(boiler.TableNames.RepairCases, boiler.RepairCaseColumns.MechID),
+					"NOT EXISTS ( SELECT 1 FROM %s WHERE %s = %s AND %s ISNULL AND %s ISNULL AND %s ISNULL)",
+					boiler.TableNames.BattleLobbiesMechs,
+					boiler.BattleLobbiesMechTableColumns.MechID,
+					boiler.RepairCaseTableColumns.MechID,
+					boiler.BattleLobbiesMechTableColumns.EndedAt,
+					boiler.BattleLobbiesMechTableColumns.RefundTXID,
+					boiler.BattleLobbiesMechTableColumns.DeletedAt,
 				),
 			),
 

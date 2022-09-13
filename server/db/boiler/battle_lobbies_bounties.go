@@ -22,8 +22,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// BattleLobbyBounty is an object representing the database table.
-type BattleLobbyBounty struct {
+// BattleLobbiesBounty is an object representing the database table.
+type BattleLobbiesBounty struct {
 	BattleLobbyID string          `boiler:"battle_lobby_id" boil:"battle_lobby_id" json:"battle_lobby_id" toml:"battle_lobby_id" yaml:"battle_lobby_id"`
 	OfferedByID   string          `boiler:"offered_by_id" boil:"offered_by_id" json:"offered_by_id" toml:"offered_by_id" yaml:"offered_by_id"`
 	TargetMechID  string          `boiler:"target_mech_id" boil:"target_mech_id" json:"target_mech_id" toml:"target_mech_id" yaml:"target_mech_id"`
@@ -33,11 +33,11 @@ type BattleLobbyBounty struct {
 	UpdatedAt     time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt     null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
-	R *battleLobbyBountyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L battleLobbyBountyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *battleLobbiesBountyR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L battleLobbiesBountyL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var BattleLobbyBountyColumns = struct {
+var BattleLobbiesBountyColumns = struct {
 	BattleLobbyID string
 	OfferedByID   string
 	TargetMechID  string
@@ -57,7 +57,7 @@ var BattleLobbyBountyColumns = struct {
 	DeletedAt:     "deleted_at",
 }
 
-var BattleLobbyBountyTableColumns = struct {
+var BattleLobbiesBountyTableColumns = struct {
 	BattleLobbyID string
 	OfferedByID   string
 	TargetMechID  string
@@ -67,19 +67,19 @@ var BattleLobbyBountyTableColumns = struct {
 	UpdatedAt     string
 	DeletedAt     string
 }{
-	BattleLobbyID: "battle_lobby_bounties.battle_lobby_id",
-	OfferedByID:   "battle_lobby_bounties.offered_by_id",
-	TargetMechID:  "battle_lobby_bounties.target_mech_id",
-	Amount:        "battle_lobby_bounties.amount",
-	PaidTXID:      "battle_lobby_bounties.paid_tx_id",
-	CreatedAt:     "battle_lobby_bounties.created_at",
-	UpdatedAt:     "battle_lobby_bounties.updated_at",
-	DeletedAt:     "battle_lobby_bounties.deleted_at",
+	BattleLobbyID: "battle_lobbies_bounties.battle_lobby_id",
+	OfferedByID:   "battle_lobbies_bounties.offered_by_id",
+	TargetMechID:  "battle_lobbies_bounties.target_mech_id",
+	Amount:        "battle_lobbies_bounties.amount",
+	PaidTXID:      "battle_lobbies_bounties.paid_tx_id",
+	CreatedAt:     "battle_lobbies_bounties.created_at",
+	UpdatedAt:     "battle_lobbies_bounties.updated_at",
+	DeletedAt:     "battle_lobbies_bounties.deleted_at",
 }
 
 // Generated where
 
-var BattleLobbyBountyWhere = struct {
+var BattleLobbiesBountyWhere = struct {
 	BattleLobbyID whereHelperstring
 	OfferedByID   whereHelperstring
 	TargetMechID  whereHelperstring
@@ -89,18 +89,18 @@ var BattleLobbyBountyWhere = struct {
 	UpdatedAt     whereHelpertime_Time
 	DeletedAt     whereHelpernull_Time
 }{
-	BattleLobbyID: whereHelperstring{field: "\"battle_lobby_bounties\".\"battle_lobby_id\""},
-	OfferedByID:   whereHelperstring{field: "\"battle_lobby_bounties\".\"offered_by_id\""},
-	TargetMechID:  whereHelperstring{field: "\"battle_lobby_bounties\".\"target_mech_id\""},
-	Amount:        whereHelperdecimal_Decimal{field: "\"battle_lobby_bounties\".\"amount\""},
-	PaidTXID:      whereHelpernull_String{field: "\"battle_lobby_bounties\".\"paid_tx_id\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobby_bounties\".\"created_at\""},
-	UpdatedAt:     whereHelpertime_Time{field: "\"battle_lobby_bounties\".\"updated_at\""},
-	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobby_bounties\".\"deleted_at\""},
+	BattleLobbyID: whereHelperstring{field: "\"battle_lobbies_bounties\".\"battle_lobby_id\""},
+	OfferedByID:   whereHelperstring{field: "\"battle_lobbies_bounties\".\"offered_by_id\""},
+	TargetMechID:  whereHelperstring{field: "\"battle_lobbies_bounties\".\"target_mech_id\""},
+	Amount:        whereHelperdecimal_Decimal{field: "\"battle_lobbies_bounties\".\"amount\""},
+	PaidTXID:      whereHelpernull_String{field: "\"battle_lobbies_bounties\".\"paid_tx_id\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"battle_lobbies_bounties\".\"created_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"battle_lobbies_bounties\".\"updated_at\""},
+	DeletedAt:     whereHelpernull_Time{field: "\"battle_lobbies_bounties\".\"deleted_at\""},
 }
 
-// BattleLobbyBountyRels is where relationship names are stored.
-var BattleLobbyBountyRels = struct {
+// BattleLobbiesBountyRels is where relationship names are stored.
+var BattleLobbiesBountyRels = struct {
 	BattleLobby string
 	OfferedBy   string
 	TargetMech  string
@@ -110,52 +110,52 @@ var BattleLobbyBountyRels = struct {
 	TargetMech:  "TargetMech",
 }
 
-// battleLobbyBountyR is where relationships are stored.
-type battleLobbyBountyR struct {
+// battleLobbiesBountyR is where relationships are stored.
+type battleLobbiesBountyR struct {
 	BattleLobby *BattleLobby `boiler:"BattleLobby" boil:"BattleLobby" json:"BattleLobby" toml:"BattleLobby" yaml:"BattleLobby"`
 	OfferedBy   *Player      `boiler:"OfferedBy" boil:"OfferedBy" json:"OfferedBy" toml:"OfferedBy" yaml:"OfferedBy"`
 	TargetMech  *Mech        `boiler:"TargetMech" boil:"TargetMech" json:"TargetMech" toml:"TargetMech" yaml:"TargetMech"`
 }
 
 // NewStruct creates a new relationship struct
-func (*battleLobbyBountyR) NewStruct() *battleLobbyBountyR {
-	return &battleLobbyBountyR{}
+func (*battleLobbiesBountyR) NewStruct() *battleLobbiesBountyR {
+	return &battleLobbiesBountyR{}
 }
 
-// battleLobbyBountyL is where Load methods for each relationship are stored.
-type battleLobbyBountyL struct{}
+// battleLobbiesBountyL is where Load methods for each relationship are stored.
+type battleLobbiesBountyL struct{}
 
 var (
-	battleLobbyBountyAllColumns            = []string{"battle_lobby_id", "offered_by_id", "target_mech_id", "amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
-	battleLobbyBountyColumnsWithoutDefault = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
-	battleLobbyBountyColumnsWithDefault    = []string{"amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
-	battleLobbyBountyPrimaryKeyColumns     = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
-	battleLobbyBountyGeneratedColumns      = []string{}
+	battleLobbiesBountyAllColumns            = []string{"battle_lobby_id", "offered_by_id", "target_mech_id", "amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbiesBountyColumnsWithoutDefault = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
+	battleLobbiesBountyColumnsWithDefault    = []string{"amount", "paid_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleLobbiesBountyPrimaryKeyColumns     = []string{"battle_lobby_id", "offered_by_id", "target_mech_id"}
+	battleLobbiesBountyGeneratedColumns      = []string{}
 )
 
 type (
-	// BattleLobbyBountySlice is an alias for a slice of pointers to BattleLobbyBounty.
-	// This should almost always be used instead of []BattleLobbyBounty.
-	BattleLobbyBountySlice []*BattleLobbyBounty
-	// BattleLobbyBountyHook is the signature for custom BattleLobbyBounty hook methods
-	BattleLobbyBountyHook func(boil.Executor, *BattleLobbyBounty) error
+	// BattleLobbiesBountySlice is an alias for a slice of pointers to BattleLobbiesBounty.
+	// This should almost always be used instead of []BattleLobbiesBounty.
+	BattleLobbiesBountySlice []*BattleLobbiesBounty
+	// BattleLobbiesBountyHook is the signature for custom BattleLobbiesBounty hook methods
+	BattleLobbiesBountyHook func(boil.Executor, *BattleLobbiesBounty) error
 
-	battleLobbyBountyQuery struct {
+	battleLobbiesBountyQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	battleLobbyBountyType                 = reflect.TypeOf(&BattleLobbyBounty{})
-	battleLobbyBountyMapping              = queries.MakeStructMapping(battleLobbyBountyType)
-	battleLobbyBountyPrimaryKeyMapping, _ = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, battleLobbyBountyPrimaryKeyColumns)
-	battleLobbyBountyInsertCacheMut       sync.RWMutex
-	battleLobbyBountyInsertCache          = make(map[string]insertCache)
-	battleLobbyBountyUpdateCacheMut       sync.RWMutex
-	battleLobbyBountyUpdateCache          = make(map[string]updateCache)
-	battleLobbyBountyUpsertCacheMut       sync.RWMutex
-	battleLobbyBountyUpsertCache          = make(map[string]insertCache)
+	battleLobbiesBountyType                 = reflect.TypeOf(&BattleLobbiesBounty{})
+	battleLobbiesBountyMapping              = queries.MakeStructMapping(battleLobbiesBountyType)
+	battleLobbiesBountyPrimaryKeyMapping, _ = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, battleLobbiesBountyPrimaryKeyColumns)
+	battleLobbiesBountyInsertCacheMut       sync.RWMutex
+	battleLobbiesBountyInsertCache          = make(map[string]insertCache)
+	battleLobbiesBountyUpdateCacheMut       sync.RWMutex
+	battleLobbiesBountyUpdateCache          = make(map[string]updateCache)
+	battleLobbiesBountyUpsertCacheMut       sync.RWMutex
+	battleLobbiesBountyUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -166,23 +166,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var battleLobbyBountyAfterSelectHooks []BattleLobbyBountyHook
+var battleLobbiesBountyAfterSelectHooks []BattleLobbiesBountyHook
 
-var battleLobbyBountyBeforeInsertHooks []BattleLobbyBountyHook
-var battleLobbyBountyAfterInsertHooks []BattleLobbyBountyHook
+var battleLobbiesBountyBeforeInsertHooks []BattleLobbiesBountyHook
+var battleLobbiesBountyAfterInsertHooks []BattleLobbiesBountyHook
 
-var battleLobbyBountyBeforeUpdateHooks []BattleLobbyBountyHook
-var battleLobbyBountyAfterUpdateHooks []BattleLobbyBountyHook
+var battleLobbiesBountyBeforeUpdateHooks []BattleLobbiesBountyHook
+var battleLobbiesBountyAfterUpdateHooks []BattleLobbiesBountyHook
 
-var battleLobbyBountyBeforeDeleteHooks []BattleLobbyBountyHook
-var battleLobbyBountyAfterDeleteHooks []BattleLobbyBountyHook
+var battleLobbiesBountyBeforeDeleteHooks []BattleLobbiesBountyHook
+var battleLobbiesBountyAfterDeleteHooks []BattleLobbiesBountyHook
 
-var battleLobbyBountyBeforeUpsertHooks []BattleLobbyBountyHook
-var battleLobbyBountyAfterUpsertHooks []BattleLobbyBountyHook
+var battleLobbiesBountyBeforeUpsertHooks []BattleLobbiesBountyHook
+var battleLobbiesBountyAfterUpsertHooks []BattleLobbiesBountyHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *BattleLobbyBounty) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyAfterSelectHooks {
+func (o *BattleLobbiesBounty) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -192,8 +192,8 @@ func (o *BattleLobbyBounty) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *BattleLobbyBounty) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyBeforeInsertHooks {
+func (o *BattleLobbiesBounty) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -203,8 +203,8 @@ func (o *BattleLobbyBounty) doBeforeInsertHooks(exec boil.Executor) (err error) 
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *BattleLobbyBounty) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyAfterInsertHooks {
+func (o *BattleLobbiesBounty) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -214,8 +214,8 @@ func (o *BattleLobbyBounty) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *BattleLobbyBounty) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyBeforeUpdateHooks {
+func (o *BattleLobbiesBounty) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -225,8 +225,8 @@ func (o *BattleLobbyBounty) doBeforeUpdateHooks(exec boil.Executor) (err error) 
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *BattleLobbyBounty) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyAfterUpdateHooks {
+func (o *BattleLobbiesBounty) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -236,8 +236,8 @@ func (o *BattleLobbyBounty) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *BattleLobbyBounty) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyBeforeDeleteHooks {
+func (o *BattleLobbiesBounty) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -247,8 +247,8 @@ func (o *BattleLobbyBounty) doBeforeDeleteHooks(exec boil.Executor) (err error) 
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *BattleLobbyBounty) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyAfterDeleteHooks {
+func (o *BattleLobbiesBounty) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -258,8 +258,8 @@ func (o *BattleLobbyBounty) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *BattleLobbyBounty) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyBeforeUpsertHooks {
+func (o *BattleLobbiesBounty) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -269,8 +269,8 @@ func (o *BattleLobbyBounty) doBeforeUpsertHooks(exec boil.Executor) (err error) 
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *BattleLobbyBounty) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range battleLobbyBountyAfterUpsertHooks {
+func (o *BattleLobbiesBounty) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range battleLobbiesBountyAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -279,33 +279,33 @@ func (o *BattleLobbyBounty) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddBattleLobbyBountyHook registers your hook function for all future operations.
-func AddBattleLobbyBountyHook(hookPoint boil.HookPoint, battleLobbyBountyHook BattleLobbyBountyHook) {
+// AddBattleLobbiesBountyHook registers your hook function for all future operations.
+func AddBattleLobbiesBountyHook(hookPoint boil.HookPoint, battleLobbiesBountyHook BattleLobbiesBountyHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		battleLobbyBountyAfterSelectHooks = append(battleLobbyBountyAfterSelectHooks, battleLobbyBountyHook)
+		battleLobbiesBountyAfterSelectHooks = append(battleLobbiesBountyAfterSelectHooks, battleLobbiesBountyHook)
 	case boil.BeforeInsertHook:
-		battleLobbyBountyBeforeInsertHooks = append(battleLobbyBountyBeforeInsertHooks, battleLobbyBountyHook)
+		battleLobbiesBountyBeforeInsertHooks = append(battleLobbiesBountyBeforeInsertHooks, battleLobbiesBountyHook)
 	case boil.AfterInsertHook:
-		battleLobbyBountyAfterInsertHooks = append(battleLobbyBountyAfterInsertHooks, battleLobbyBountyHook)
+		battleLobbiesBountyAfterInsertHooks = append(battleLobbiesBountyAfterInsertHooks, battleLobbiesBountyHook)
 	case boil.BeforeUpdateHook:
-		battleLobbyBountyBeforeUpdateHooks = append(battleLobbyBountyBeforeUpdateHooks, battleLobbyBountyHook)
+		battleLobbiesBountyBeforeUpdateHooks = append(battleLobbiesBountyBeforeUpdateHooks, battleLobbiesBountyHook)
 	case boil.AfterUpdateHook:
-		battleLobbyBountyAfterUpdateHooks = append(battleLobbyBountyAfterUpdateHooks, battleLobbyBountyHook)
+		battleLobbiesBountyAfterUpdateHooks = append(battleLobbiesBountyAfterUpdateHooks, battleLobbiesBountyHook)
 	case boil.BeforeDeleteHook:
-		battleLobbyBountyBeforeDeleteHooks = append(battleLobbyBountyBeforeDeleteHooks, battleLobbyBountyHook)
+		battleLobbiesBountyBeforeDeleteHooks = append(battleLobbiesBountyBeforeDeleteHooks, battleLobbiesBountyHook)
 	case boil.AfterDeleteHook:
-		battleLobbyBountyAfterDeleteHooks = append(battleLobbyBountyAfterDeleteHooks, battleLobbyBountyHook)
+		battleLobbiesBountyAfterDeleteHooks = append(battleLobbiesBountyAfterDeleteHooks, battleLobbiesBountyHook)
 	case boil.BeforeUpsertHook:
-		battleLobbyBountyBeforeUpsertHooks = append(battleLobbyBountyBeforeUpsertHooks, battleLobbyBountyHook)
+		battleLobbiesBountyBeforeUpsertHooks = append(battleLobbiesBountyBeforeUpsertHooks, battleLobbiesBountyHook)
 	case boil.AfterUpsertHook:
-		battleLobbyBountyAfterUpsertHooks = append(battleLobbyBountyAfterUpsertHooks, battleLobbyBountyHook)
+		battleLobbiesBountyAfterUpsertHooks = append(battleLobbiesBountyAfterUpsertHooks, battleLobbiesBountyHook)
 	}
 }
 
-// One returns a single battleLobbyBounty record from the query.
-func (q battleLobbyBountyQuery) One(exec boil.Executor) (*BattleLobbyBounty, error) {
-	o := &BattleLobbyBounty{}
+// One returns a single battleLobbiesBounty record from the query.
+func (q battleLobbiesBountyQuery) One(exec boil.Executor) (*BattleLobbiesBounty, error) {
+	o := &BattleLobbiesBounty{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -314,7 +314,7 @@ func (q battleLobbyBountyQuery) One(exec boil.Executor) (*BattleLobbyBounty, err
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_lobby_bounties")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for battle_lobbies_bounties")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -324,16 +324,16 @@ func (q battleLobbyBountyQuery) One(exec boil.Executor) (*BattleLobbyBounty, err
 	return o, nil
 }
 
-// All returns all BattleLobbyBounty records from the query.
-func (q battleLobbyBountyQuery) All(exec boil.Executor) (BattleLobbyBountySlice, error) {
-	var o []*BattleLobbyBounty
+// All returns all BattleLobbiesBounty records from the query.
+func (q battleLobbiesBountyQuery) All(exec boil.Executor) (BattleLobbiesBountySlice, error) {
+	var o []*BattleLobbiesBounty
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleLobbyBounty slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BattleLobbiesBounty slice")
 	}
 
-	if len(battleLobbyBountyAfterSelectHooks) != 0 {
+	if len(battleLobbiesBountyAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -344,8 +344,8 @@ func (q battleLobbyBountyQuery) All(exec boil.Executor) (BattleLobbyBountySlice,
 	return o, nil
 }
 
-// Count returns the count of all BattleLobbyBounty records in the query.
-func (q battleLobbyBountyQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BattleLobbiesBounty records in the query.
+func (q battleLobbiesBountyQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -353,14 +353,14 @@ func (q battleLobbyBountyQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count battle_lobby_bounties rows")
+		return 0, errors.Wrap(err, "boiler: failed to count battle_lobbies_bounties rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q battleLobbyBountyQuery) Exists(exec boil.Executor) (bool, error) {
+func (q battleLobbiesBountyQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -369,14 +369,14 @@ func (q battleLobbyBountyQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if battle_lobby_bounties exists")
+		return false, errors.Wrap(err, "boiler: failed to check if battle_lobbies_bounties exists")
 	}
 
 	return count > 0, nil
 }
 
 // BattleLobby pointed to by the foreign key.
-func (o *BattleLobbyBounty) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
+func (o *BattleLobbiesBounty) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleLobbyID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -391,7 +391,7 @@ func (o *BattleLobbyBounty) BattleLobby(mods ...qm.QueryMod) battleLobbyQuery {
 }
 
 // OfferedBy pointed to by the foreign key.
-func (o *BattleLobbyBounty) OfferedBy(mods ...qm.QueryMod) playerQuery {
+func (o *BattleLobbiesBounty) OfferedBy(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.OfferedByID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -406,7 +406,7 @@ func (o *BattleLobbyBounty) OfferedBy(mods ...qm.QueryMod) playerQuery {
 }
 
 // TargetMech pointed to by the foreign key.
-func (o *BattleLobbyBounty) TargetMech(mods ...qm.QueryMod) mechQuery {
+func (o *BattleLobbiesBounty) TargetMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.TargetMechID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -422,20 +422,20 @@ func (o *BattleLobbyBounty) TargetMech(mods ...qm.QueryMod) mechQuery {
 
 // LoadBattleLobby allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeBattleLobbyBounty interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbyBounty
-	var object *BattleLobbyBounty
+func (battleLobbiesBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeBattleLobbiesBounty interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbiesBounty
+	var object *BattleLobbiesBounty
 
 	if singular {
-		object = maybeBattleLobbyBounty.(*BattleLobbyBounty)
+		object = maybeBattleLobbiesBounty.(*BattleLobbiesBounty)
 	} else {
-		slice = *maybeBattleLobbyBounty.(*[]*BattleLobbyBounty)
+		slice = *maybeBattleLobbiesBounty.(*[]*BattleLobbiesBounty)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbyBountyR{}
+			object.R = &battleLobbiesBountyR{}
 		}
 		args = append(args, object.BattleLobbyID)
 
@@ -443,7 +443,7 @@ func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeB
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbyBountyR{}
+				obj.R = &battleLobbiesBountyR{}
 			}
 
 			for _, a := range args {
@@ -487,7 +487,7 @@ func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeB
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies")
 	}
 
-	if len(battleLobbyBountyAfterSelectHooks) != 0 {
+	if len(battleLobbiesBountyAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -505,7 +505,7 @@ func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeB
 		if foreign.R == nil {
 			foreign.R = &battleLobbyR{}
 		}
-		foreign.R.BattleLobbyBounties = append(foreign.R.BattleLobbyBounties, object)
+		foreign.R.BattleLobbiesBounties = append(foreign.R.BattleLobbiesBounties, object)
 		return nil
 	}
 
@@ -516,7 +516,7 @@ func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeB
 				if foreign.R == nil {
 					foreign.R = &battleLobbyR{}
 				}
-				foreign.R.BattleLobbyBounties = append(foreign.R.BattleLobbyBounties, local)
+				foreign.R.BattleLobbiesBounties = append(foreign.R.BattleLobbiesBounties, local)
 				break
 			}
 		}
@@ -527,20 +527,20 @@ func (battleLobbyBountyL) LoadBattleLobby(e boil.Executor, singular bool, maybeB
 
 // LoadOfferedBy allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBattleLobbyBounty interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbyBounty
-	var object *BattleLobbyBounty
+func (battleLobbiesBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBattleLobbiesBounty interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbiesBounty
+	var object *BattleLobbiesBounty
 
 	if singular {
-		object = maybeBattleLobbyBounty.(*BattleLobbyBounty)
+		object = maybeBattleLobbiesBounty.(*BattleLobbiesBounty)
 	} else {
-		slice = *maybeBattleLobbyBounty.(*[]*BattleLobbyBounty)
+		slice = *maybeBattleLobbiesBounty.(*[]*BattleLobbiesBounty)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbyBountyR{}
+			object.R = &battleLobbiesBountyR{}
 		}
 		args = append(args, object.OfferedByID)
 
@@ -548,7 +548,7 @@ func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBat
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbyBountyR{}
+				obj.R = &battleLobbiesBountyR{}
 			}
 
 			for _, a := range args {
@@ -592,7 +592,7 @@ func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBat
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(battleLobbyBountyAfterSelectHooks) != 0 {
+	if len(battleLobbiesBountyAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -610,7 +610,7 @@ func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBat
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.OfferedByBattleLobbyBounties = append(foreign.R.OfferedByBattleLobbyBounties, object)
+		foreign.R.OfferedByBattleLobbiesBounties = append(foreign.R.OfferedByBattleLobbiesBounties, object)
 		return nil
 	}
 
@@ -621,7 +621,7 @@ func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBat
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.OfferedByBattleLobbyBounties = append(foreign.R.OfferedByBattleLobbyBounties, local)
+				foreign.R.OfferedByBattleLobbiesBounties = append(foreign.R.OfferedByBattleLobbiesBounties, local)
 				break
 			}
 		}
@@ -632,20 +632,20 @@ func (battleLobbyBountyL) LoadOfferedBy(e boil.Executor, singular bool, maybeBat
 
 // LoadTargetMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBattleLobbyBounty interface{}, mods queries.Applicator) error {
-	var slice []*BattleLobbyBounty
-	var object *BattleLobbyBounty
+func (battleLobbiesBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBattleLobbiesBounty interface{}, mods queries.Applicator) error {
+	var slice []*BattleLobbiesBounty
+	var object *BattleLobbiesBounty
 
 	if singular {
-		object = maybeBattleLobbyBounty.(*BattleLobbyBounty)
+		object = maybeBattleLobbiesBounty.(*BattleLobbiesBounty)
 	} else {
-		slice = *maybeBattleLobbyBounty.(*[]*BattleLobbyBounty)
+		slice = *maybeBattleLobbiesBounty.(*[]*BattleLobbiesBounty)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &battleLobbyBountyR{}
+			object.R = &battleLobbiesBountyR{}
 		}
 		args = append(args, object.TargetMechID)
 
@@ -653,7 +653,7 @@ func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBa
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &battleLobbyBountyR{}
+				obj.R = &battleLobbiesBountyR{}
 			}
 
 			for _, a := range args {
@@ -697,7 +697,7 @@ func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBa
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(battleLobbyBountyAfterSelectHooks) != 0 {
+	if len(battleLobbiesBountyAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -715,7 +715,7 @@ func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBa
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.TargetMechBattleLobbyBounties = append(foreign.R.TargetMechBattleLobbyBounties, object)
+		foreign.R.TargetMechBattleLobbiesBounties = append(foreign.R.TargetMechBattleLobbiesBounties, object)
 		return nil
 	}
 
@@ -726,7 +726,7 @@ func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBa
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.TargetMechBattleLobbyBounties = append(foreign.R.TargetMechBattleLobbyBounties, local)
+				foreign.R.TargetMechBattleLobbiesBounties = append(foreign.R.TargetMechBattleLobbiesBounties, local)
 				break
 			}
 		}
@@ -735,10 +735,10 @@ func (battleLobbyBountyL) LoadTargetMech(e boil.Executor, singular bool, maybeBa
 	return nil
 }
 
-// SetBattleLobby of the battleLobbyBounty to the related item.
+// SetBattleLobby of the battleLobbiesBounty to the related item.
 // Sets o.R.BattleLobby to related.
-// Adds o to related.R.BattleLobbyBounties.
-func (o *BattleLobbyBounty) SetBattleLobby(exec boil.Executor, insert bool, related *BattleLobby) error {
+// Adds o to related.R.BattleLobbiesBounties.
+func (o *BattleLobbiesBounty) SetBattleLobby(exec boil.Executor, insert bool, related *BattleLobby) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -747,9 +747,9 @@ func (o *BattleLobbyBounty) SetBattleLobby(exec boil.Executor, insert bool, rela
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_bounties\" SET %s WHERE %s",
+		"UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbyBountyPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbiesBountyPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.BattleLobbyID, o.OfferedByID, o.TargetMechID}
 
@@ -763,7 +763,7 @@ func (o *BattleLobbyBounty) SetBattleLobby(exec boil.Executor, insert bool, rela
 
 	o.BattleLobbyID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbyBountyR{
+		o.R = &battleLobbiesBountyR{
 			BattleLobby: related,
 		}
 	} else {
@@ -772,19 +772,19 @@ func (o *BattleLobbyBounty) SetBattleLobby(exec boil.Executor, insert bool, rela
 
 	if related.R == nil {
 		related.R = &battleLobbyR{
-			BattleLobbyBounties: BattleLobbyBountySlice{o},
+			BattleLobbiesBounties: BattleLobbiesBountySlice{o},
 		}
 	} else {
-		related.R.BattleLobbyBounties = append(related.R.BattleLobbyBounties, o)
+		related.R.BattleLobbiesBounties = append(related.R.BattleLobbiesBounties, o)
 	}
 
 	return nil
 }
 
-// SetOfferedBy of the battleLobbyBounty to the related item.
+// SetOfferedBy of the battleLobbiesBounty to the related item.
 // Sets o.R.OfferedBy to related.
-// Adds o to related.R.OfferedByBattleLobbyBounties.
-func (o *BattleLobbyBounty) SetOfferedBy(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.OfferedByBattleLobbiesBounties.
+func (o *BattleLobbiesBounty) SetOfferedBy(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -793,9 +793,9 @@ func (o *BattleLobbyBounty) SetOfferedBy(exec boil.Executor, insert bool, relate
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_bounties\" SET %s WHERE %s",
+		"UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"offered_by_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbyBountyPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbiesBountyPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.BattleLobbyID, o.OfferedByID, o.TargetMechID}
 
@@ -809,7 +809,7 @@ func (o *BattleLobbyBounty) SetOfferedBy(exec boil.Executor, insert bool, relate
 
 	o.OfferedByID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbyBountyR{
+		o.R = &battleLobbiesBountyR{
 			OfferedBy: related,
 		}
 	} else {
@@ -818,19 +818,19 @@ func (o *BattleLobbyBounty) SetOfferedBy(exec boil.Executor, insert bool, relate
 
 	if related.R == nil {
 		related.R = &playerR{
-			OfferedByBattleLobbyBounties: BattleLobbyBountySlice{o},
+			OfferedByBattleLobbiesBounties: BattleLobbiesBountySlice{o},
 		}
 	} else {
-		related.R.OfferedByBattleLobbyBounties = append(related.R.OfferedByBattleLobbyBounties, o)
+		related.R.OfferedByBattleLobbiesBounties = append(related.R.OfferedByBattleLobbiesBounties, o)
 	}
 
 	return nil
 }
 
-// SetTargetMech of the battleLobbyBounty to the related item.
+// SetTargetMech of the battleLobbiesBounty to the related item.
 // Sets o.R.TargetMech to related.
-// Adds o to related.R.TargetMechBattleLobbyBounties.
-func (o *BattleLobbyBounty) SetTargetMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.TargetMechBattleLobbiesBounties.
+func (o *BattleLobbiesBounty) SetTargetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -839,9 +839,9 @@ func (o *BattleLobbyBounty) SetTargetMech(exec boil.Executor, insert bool, relat
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_lobby_bounties\" SET %s WHERE %s",
+		"UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"target_mech_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleLobbyBountyPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, battleLobbiesBountyPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.BattleLobbyID, o.OfferedByID, o.TargetMechID}
 
@@ -855,7 +855,7 @@ func (o *BattleLobbyBounty) SetTargetMech(exec boil.Executor, insert bool, relat
 
 	o.TargetMechID = related.ID
 	if o.R == nil {
-		o.R = &battleLobbyBountyR{
+		o.R = &battleLobbiesBountyR{
 			TargetMech: related,
 		}
 	} else {
@@ -864,56 +864,56 @@ func (o *BattleLobbyBounty) SetTargetMech(exec boil.Executor, insert bool, relat
 
 	if related.R == nil {
 		related.R = &mechR{
-			TargetMechBattleLobbyBounties: BattleLobbyBountySlice{o},
+			TargetMechBattleLobbiesBounties: BattleLobbiesBountySlice{o},
 		}
 	} else {
-		related.R.TargetMechBattleLobbyBounties = append(related.R.TargetMechBattleLobbyBounties, o)
+		related.R.TargetMechBattleLobbiesBounties = append(related.R.TargetMechBattleLobbiesBounties, o)
 	}
 
 	return nil
 }
 
-// BattleLobbyBounties retrieves all the records using an executor.
-func BattleLobbyBounties(mods ...qm.QueryMod) battleLobbyBountyQuery {
-	mods = append(mods, qm.From("\"battle_lobby_bounties\""), qmhelper.WhereIsNull("\"battle_lobby_bounties\".\"deleted_at\""))
-	return battleLobbyBountyQuery{NewQuery(mods...)}
+// BattleLobbiesBounties retrieves all the records using an executor.
+func BattleLobbiesBounties(mods ...qm.QueryMod) battleLobbiesBountyQuery {
+	mods = append(mods, qm.From("\"battle_lobbies_bounties\""), qmhelper.WhereIsNull("\"battle_lobbies_bounties\".\"deleted_at\""))
+	return battleLobbiesBountyQuery{NewQuery(mods...)}
 }
 
-// FindBattleLobbyBounty retrieves a single record by ID with an executor.
+// FindBattleLobbiesBounty retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBattleLobbyBounty(exec boil.Executor, battleLobbyID string, offeredByID string, targetMechID string, selectCols ...string) (*BattleLobbyBounty, error) {
-	battleLobbyBountyObj := &BattleLobbyBounty{}
+func FindBattleLobbiesBounty(exec boil.Executor, battleLobbyID string, offeredByID string, targetMechID string, selectCols ...string) (*BattleLobbiesBounty, error) {
+	battleLobbiesBountyObj := &BattleLobbiesBounty{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_lobby_bounties\" where \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3 and \"deleted_at\" is null", sel,
+		"select %s from \"battle_lobbies_bounties\" where \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, battleLobbyID, offeredByID, targetMechID)
 
-	err := q.Bind(nil, exec, battleLobbyBountyObj)
+	err := q.Bind(nil, exec, battleLobbiesBountyObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from battle_lobby_bounties")
+		return nil, errors.Wrap(err, "boiler: unable to select from battle_lobbies_bounties")
 	}
 
-	if err = battleLobbyBountyObj.doAfterSelectHooks(exec); err != nil {
-		return battleLobbyBountyObj, err
+	if err = battleLobbiesBountyObj.doAfterSelectHooks(exec); err != nil {
+		return battleLobbiesBountyObj, err
 	}
 
-	return battleLobbyBountyObj, nil
+	return battleLobbiesBountyObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *BattleLobbyBounty) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BattleLobbiesBounty) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_lobby_bounties provided for insertion")
+		return errors.New("boiler: no battle_lobbies_bounties provided for insertion")
 	}
 
 	var err error
@@ -930,33 +930,33 @@ func (o *BattleLobbyBounty) Insert(exec boil.Executor, columns boil.Columns) err
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleLobbyBountyColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleLobbiesBountyColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	battleLobbyBountyInsertCacheMut.RLock()
-	cache, cached := battleLobbyBountyInsertCache[key]
-	battleLobbyBountyInsertCacheMut.RUnlock()
+	battleLobbiesBountyInsertCacheMut.RLock()
+	cache, cached := battleLobbiesBountyInsertCache[key]
+	battleLobbiesBountyInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			battleLobbyBountyAllColumns,
-			battleLobbyBountyColumnsWithDefault,
-			battleLobbyBountyColumnsWithoutDefault,
+			battleLobbiesBountyAllColumns,
+			battleLobbiesBountyColumnsWithDefault,
+			battleLobbiesBountyColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"battle_lobby_bounties\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"battle_lobbies_bounties\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"battle_lobby_bounties\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"battle_lobbies_bounties\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -983,22 +983,22 @@ func (o *BattleLobbyBounty) Insert(exec boil.Executor, columns boil.Columns) err
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into battle_lobby_bounties")
+		return errors.Wrap(err, "boiler: unable to insert into battle_lobbies_bounties")
 	}
 
 	if !cached {
-		battleLobbyBountyInsertCacheMut.Lock()
-		battleLobbyBountyInsertCache[key] = cache
-		battleLobbyBountyInsertCacheMut.Unlock()
+		battleLobbiesBountyInsertCacheMut.Lock()
+		battleLobbiesBountyInsertCache[key] = cache
+		battleLobbiesBountyInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the BattleLobbyBounty.
+// Update uses an executor to update the BattleLobbiesBounty.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *BattleLobbyBounty) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BattleLobbiesBounty) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -1008,28 +1008,28 @@ func (o *BattleLobbyBounty) Update(exec boil.Executor, columns boil.Columns) (in
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	battleLobbyBountyUpdateCacheMut.RLock()
-	cache, cached := battleLobbyBountyUpdateCache[key]
-	battleLobbyBountyUpdateCacheMut.RUnlock()
+	battleLobbiesBountyUpdateCacheMut.RLock()
+	cache, cached := battleLobbiesBountyUpdateCache[key]
+	battleLobbiesBountyUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			battleLobbyBountyAllColumns,
-			battleLobbyBountyPrimaryKeyColumns,
+			battleLobbiesBountyAllColumns,
+			battleLobbiesBountyPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update battle_lobby_bounties, could not build whitelist")
+			return 0, errors.New("boiler: unable to update battle_lobbies_bounties, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"battle_lobby_bounties\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, battleLobbyBountyPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, battleLobbiesBountyPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, append(wl, battleLobbyBountyPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, append(wl, battleLobbiesBountyPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1044,42 +1044,42 @@ func (o *BattleLobbyBounty) Update(exec boil.Executor, columns boil.Columns) (in
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update battle_lobby_bounties row")
+		return 0, errors.Wrap(err, "boiler: unable to update battle_lobbies_bounties row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for battle_lobbies_bounties")
 	}
 
 	if !cached {
-		battleLobbyBountyUpdateCacheMut.Lock()
-		battleLobbyBountyUpdateCache[key] = cache
-		battleLobbyBountyUpdateCacheMut.Unlock()
+		battleLobbiesBountyUpdateCacheMut.Lock()
+		battleLobbiesBountyUpdateCache[key] = cache
+		battleLobbiesBountyUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q battleLobbyBountyQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q battleLobbiesBountyQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: unable to update all for battle_lobbies_bounties")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for battle_lobbies_bounties")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o BattleLobbyBountySlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BattleLobbiesBountySlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1101,13 +1101,13 @@ func (o BattleLobbyBountySlice) UpdateAll(exec boil.Executor, cols M) (int64, er
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbyBountyPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbiesBountyPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"battle_lobby_bounties\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleLobbyBountyPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, battleLobbiesBountyPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1115,21 +1115,21 @@ func (o BattleLobbyBountySlice) UpdateAll(exec boil.Executor, cols M) (int64, er
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in battleLobbyBounty slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in battleLobbiesBounty slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleLobbyBounty")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all battleLobbiesBounty")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *BattleLobbyBounty) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BattleLobbiesBounty) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no battle_lobby_bounties provided for upsert")
+		return errors.New("boiler: no battle_lobbies_bounties provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1142,7 +1142,7 @@ func (o *BattleLobbyBounty) Upsert(exec boil.Executor, updateOnConflict bool, co
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(battleLobbyBountyColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(battleLobbiesBountyColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1172,42 +1172,42 @@ func (o *BattleLobbyBounty) Upsert(exec boil.Executor, updateOnConflict bool, co
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	battleLobbyBountyUpsertCacheMut.RLock()
-	cache, cached := battleLobbyBountyUpsertCache[key]
-	battleLobbyBountyUpsertCacheMut.RUnlock()
+	battleLobbiesBountyUpsertCacheMut.RLock()
+	cache, cached := battleLobbiesBountyUpsertCache[key]
+	battleLobbiesBountyUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			battleLobbyBountyAllColumns,
-			battleLobbyBountyColumnsWithDefault,
-			battleLobbyBountyColumnsWithoutDefault,
+			battleLobbiesBountyAllColumns,
+			battleLobbiesBountyColumnsWithDefault,
+			battleLobbiesBountyColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			battleLobbyBountyAllColumns,
-			battleLobbyBountyPrimaryKeyColumns,
+			battleLobbiesBountyAllColumns,
+			battleLobbiesBountyPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert battle_lobby_bounties, could not build update column list")
+			return errors.New("boiler: unable to upsert battle_lobbies_bounties, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(battleLobbyBountyPrimaryKeyColumns))
-			copy(conflict, battleLobbyBountyPrimaryKeyColumns)
+			conflict = make([]string, len(battleLobbiesBountyPrimaryKeyColumns))
+			copy(conflict, battleLobbiesBountyPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_lobby_bounties\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"battle_lobbies_bounties\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, ret)
+			cache.retMapping, err = queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1234,23 +1234,23 @@ func (o *BattleLobbyBounty) Upsert(exec boil.Executor, updateOnConflict bool, co
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert battle_lobby_bounties")
+		return errors.Wrap(err, "boiler: unable to upsert battle_lobbies_bounties")
 	}
 
 	if !cached {
-		battleLobbyBountyUpsertCacheMut.Lock()
-		battleLobbyBountyUpsertCache[key] = cache
-		battleLobbyBountyUpsertCacheMut.Unlock()
+		battleLobbiesBountyUpsertCacheMut.Lock()
+		battleLobbiesBountyUpsertCache[key] = cache
+		battleLobbiesBountyUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single BattleLobbyBounty record with an executor.
+// Delete deletes a single BattleLobbiesBounty record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleLobbyBounty) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *BattleLobbiesBounty) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no BattleLobbyBounty provided for delete")
+		return 0, errors.New("boiler: no BattleLobbiesBounty provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1262,16 +1262,16 @@ func (o *BattleLobbyBounty) Delete(exec boil.Executor, hardDelete bool) (int64, 
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleLobbyBountyPrimaryKeyMapping)
-		sql = "DELETE FROM \"battle_lobby_bounties\" WHERE \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleLobbiesBountyPrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_lobbies_bounties\" WHERE \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_lobby_bounties\" SET %s WHERE \"battle_lobby_id\"=$2 AND \"offered_by_id\"=$3 AND \"target_mech_id\"=$4",
+		sql = fmt.Sprintf("UPDATE \"battle_lobbies_bounties\" SET %s WHERE \"battle_lobby_id\"=$2 AND \"offered_by_id\"=$3 AND \"target_mech_id\"=$4",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(battleLobbyBountyType, battleLobbyBountyMapping, append(wl, battleLobbyBountyPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(battleLobbiesBountyType, battleLobbiesBountyMapping, append(wl, battleLobbiesBountyPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1284,12 +1284,12 @@ func (o *BattleLobbyBounty) Delete(exec boil.Executor, hardDelete bool) (int64, 
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: unable to delete from battle_lobbies_bounties")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for battle_lobbies_bounties")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1300,9 +1300,9 @@ func (o *BattleLobbyBounty) Delete(exec boil.Executor, hardDelete bool) (int64, 
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleLobbyBountyQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q battleLobbiesBountyQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no battleLobbyBountyQuery provided for delete all")
+		return 0, errors.New("boiler: no battleLobbiesBountyQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1314,24 +1314,24 @@ func (q battleLobbyBountyQuery) DeleteAll(exec boil.Executor, hardDelete bool) (
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battle_lobbies_bounties")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobbies_bounties")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleLobbyBountySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o BattleLobbiesBountySlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(battleLobbyBountyBeforeDeleteHooks) != 0 {
+	if len(battleLobbiesBountyBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1345,21 +1345,21 @@ func (o BattleLobbyBountySlice) DeleteAll(exec boil.Executor, hardDelete bool) (
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbyBountyPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbiesBountyPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"battle_lobby_bounties\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbyBountyPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"battle_lobbies_bounties\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbiesBountyPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbyBountyPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbiesBountyPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"battle_lobby_bounties\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleLobbyBountyPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"battle_lobbies_bounties\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleLobbiesBountyPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1371,15 +1371,15 @@ func (o BattleLobbyBountySlice) DeleteAll(exec boil.Executor, hardDelete bool) (
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from battleLobbyBounty slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from battleLobbiesBounty slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobby_bounties")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for battle_lobbies_bounties")
 	}
 
-	if len(battleLobbyBountyAfterDeleteHooks) != 0 {
+	if len(battleLobbiesBountyAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1392,8 +1392,8 @@ func (o BattleLobbyBountySlice) DeleteAll(exec boil.Executor, hardDelete bool) (
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *BattleLobbyBounty) Reload(exec boil.Executor) error {
-	ret, err := FindBattleLobbyBounty(exec, o.BattleLobbyID, o.OfferedByID, o.TargetMechID)
+func (o *BattleLobbiesBounty) Reload(exec boil.Executor) error {
+	ret, err := FindBattleLobbiesBounty(exec, o.BattleLobbyID, o.OfferedByID, o.TargetMechID)
 	if err != nil {
 		return err
 	}
@@ -1404,27 +1404,27 @@ func (o *BattleLobbyBounty) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *BattleLobbyBountySlice) ReloadAll(exec boil.Executor) error {
+func (o *BattleLobbiesBountySlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := BattleLobbyBountySlice{}
+	slice := BattleLobbiesBountySlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbyBountyPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleLobbiesBountyPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"battle_lobby_bounties\".* FROM \"battle_lobby_bounties\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbyBountyPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"battle_lobbies_bounties\".* FROM \"battle_lobbies_bounties\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleLobbiesBountyPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in BattleLobbyBountySlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BattleLobbiesBountySlice")
 	}
 
 	*o = slice
@@ -1432,10 +1432,10 @@ func (o *BattleLobbyBountySlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// BattleLobbyBountyExists checks if the BattleLobbyBounty row exists.
-func BattleLobbyBountyExists(exec boil.Executor, battleLobbyID string, offeredByID string, targetMechID string) (bool, error) {
+// BattleLobbiesBountyExists checks if the BattleLobbiesBounty row exists.
+func BattleLobbiesBountyExists(exec boil.Executor, battleLobbyID string, offeredByID string, targetMechID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_lobby_bounties\" where \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"battle_lobbies_bounties\" where \"battle_lobby_id\"=$1 AND \"offered_by_id\"=$2 AND \"target_mech_id\"=$3 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1445,7 +1445,7 @@ func BattleLobbyBountyExists(exec boil.Executor, battleLobbyID string, offeredBy
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if battle_lobby_bounties exists")
+		return false, errors.Wrap(err, "boiler: unable to check if battle_lobbies_bounties exists")
 	}
 
 	return exists, nil

@@ -93,20 +93,20 @@ var GameMapWhere = struct {
 
 // GameMapRels is where relationship names are stored.
 var GameMapRels = struct {
-	BattleLobbies      string
-	MapBattleMapQueues string
-	Battles            string
+	BattleLobbies         string
+	MapBattleMapQueueOlds string
+	Battles               string
 }{
-	BattleLobbies:      "BattleLobbies",
-	MapBattleMapQueues: "MapBattleMapQueues",
-	Battles:            "Battles",
+	BattleLobbies:         "BattleLobbies",
+	MapBattleMapQueueOlds: "MapBattleMapQueueOlds",
+	Battles:               "Battles",
 }
 
 // gameMapR is where relationships are stored.
 type gameMapR struct {
-	BattleLobbies      BattleLobbySlice    `boiler:"BattleLobbies" boil:"BattleLobbies" json:"BattleLobbies" toml:"BattleLobbies" yaml:"BattleLobbies"`
-	MapBattleMapQueues BattleMapQueueSlice `boiler:"MapBattleMapQueues" boil:"MapBattleMapQueues" json:"MapBattleMapQueues" toml:"MapBattleMapQueues" yaml:"MapBattleMapQueues"`
-	Battles            BattleSlice         `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
+	BattleLobbies         BattleLobbySlice       `boiler:"BattleLobbies" boil:"BattleLobbies" json:"BattleLobbies" toml:"BattleLobbies" yaml:"BattleLobbies"`
+	MapBattleMapQueueOlds BattleMapQueueOldSlice `boiler:"MapBattleMapQueueOlds" boil:"MapBattleMapQueueOlds" json:"MapBattleMapQueueOlds" toml:"MapBattleMapQueueOlds" yaml:"MapBattleMapQueueOlds"`
+	Battles               BattleSlice            `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
 }
 
 // NewStruct creates a new relationship struct
@@ -389,22 +389,22 @@ func (o *GameMap) BattleLobbies(mods ...qm.QueryMod) battleLobbyQuery {
 	return query
 }
 
-// MapBattleMapQueues retrieves all the battle_map_queue's BattleMapQueues with an executor via map_id column.
-func (o *GameMap) MapBattleMapQueues(mods ...qm.QueryMod) battleMapQueueQuery {
+// MapBattleMapQueueOlds retrieves all the battle_map_queue_old's BattleMapQueueOlds with an executor via map_id column.
+func (o *GameMap) MapBattleMapQueueOlds(mods ...qm.QueryMod) battleMapQueueOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_map_queue\".\"map_id\"=?", o.ID),
+		qm.Where("\"battle_map_queue_old\".\"map_id\"=?", o.ID),
 	)
 
-	query := BattleMapQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_map_queue\"")
+	query := BattleMapQueueOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_map_queue_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_map_queue\".*"})
+		queries.SetSelect(query.Query, []string{"\"battle_map_queue_old\".*"})
 	}
 
 	return query
@@ -530,9 +530,9 @@ func (gameMapL) LoadBattleLobbies(e boil.Executor, singular bool, maybeGameMap i
 	return nil
 }
 
-// LoadMapBattleMapQueues allows an eager lookup of values, cached into the
+// LoadMapBattleMapQueueOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (gameMapL) LoadMapBattleMapQueues(e boil.Executor, singular bool, maybeGameMap interface{}, mods queries.Applicator) error {
+func (gameMapL) LoadMapBattleMapQueueOlds(e boil.Executor, singular bool, maybeGameMap interface{}, mods queries.Applicator) error {
 	var slice []*GameMap
 	var object *GameMap
 
@@ -570,8 +570,8 @@ func (gameMapL) LoadMapBattleMapQueues(e boil.Executor, singular bool, maybeGame
 	}
 
 	query := NewQuery(
-		qm.From(`battle_map_queue`),
-		qm.WhereIn(`battle_map_queue.map_id in ?`, args...),
+		qm.From(`battle_map_queue_old`),
+		qm.WhereIn(`battle_map_queue_old.map_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -579,22 +579,22 @@ func (gameMapL) LoadMapBattleMapQueues(e boil.Executor, singular bool, maybeGame
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_map_queue")
+		return errors.Wrap(err, "failed to eager load battle_map_queue_old")
 	}
 
-	var resultSlice []*BattleMapQueue
+	var resultSlice []*BattleMapQueueOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_map_queue")
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_map_queue_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_map_queue")
+		return errors.Wrap(err, "failed to close results in eager load on battle_map_queue_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_map_queue")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_map_queue_old")
 	}
 
-	if len(battleMapQueueAfterSelectHooks) != 0 {
+	if len(battleMapQueueOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -602,10 +602,10 @@ func (gameMapL) LoadMapBattleMapQueues(e boil.Executor, singular bool, maybeGame
 		}
 	}
 	if singular {
-		object.R.MapBattleMapQueues = resultSlice
+		object.R.MapBattleMapQueueOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &battleMapQueueR{}
+				foreign.R = &battleMapQueueOldR{}
 			}
 			foreign.R.Map = object
 		}
@@ -615,9 +615,9 @@ func (gameMapL) LoadMapBattleMapQueues(e boil.Executor, singular bool, maybeGame
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.MapID {
-				local.R.MapBattleMapQueues = append(local.R.MapBattleMapQueues, foreign)
+				local.R.MapBattleMapQueueOlds = append(local.R.MapBattleMapQueueOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &battleMapQueueR{}
+					foreign.R = &battleMapQueueOldR{}
 				}
 				foreign.R.Map = local
 				break
@@ -778,11 +778,11 @@ func (o *GameMap) AddBattleLobbies(exec boil.Executor, insert bool, related ...*
 	return nil
 }
 
-// AddMapBattleMapQueues adds the given related objects to the existing relationships
+// AddMapBattleMapQueueOlds adds the given related objects to the existing relationships
 // of the game_map, optionally inserting them as new records.
-// Appends related to o.R.MapBattleMapQueues.
+// Appends related to o.R.MapBattleMapQueueOlds.
 // Sets related.R.Map appropriately.
-func (o *GameMap) AddMapBattleMapQueues(exec boil.Executor, insert bool, related ...*BattleMapQueue) error {
+func (o *GameMap) AddMapBattleMapQueueOlds(exec boil.Executor, insert bool, related ...*BattleMapQueueOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -792,9 +792,9 @@ func (o *GameMap) AddMapBattleMapQueues(exec boil.Executor, insert bool, related
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_map_queue\" SET %s WHERE %s",
+				"UPDATE \"battle_map_queue_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"map_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleMapQueuePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, battleMapQueueOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -812,15 +812,15 @@ func (o *GameMap) AddMapBattleMapQueues(exec boil.Executor, insert bool, related
 
 	if o.R == nil {
 		o.R = &gameMapR{
-			MapBattleMapQueues: related,
+			MapBattleMapQueueOlds: related,
 		}
 	} else {
-		o.R.MapBattleMapQueues = append(o.R.MapBattleMapQueues, related...)
+		o.R.MapBattleMapQueueOlds = append(o.R.MapBattleMapQueueOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battleMapQueueR{
+			rel.R = &battleMapQueueOldR{
 				Map: o,
 			}
 		} else {
