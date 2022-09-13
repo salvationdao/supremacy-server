@@ -20,6 +20,7 @@ const (
 	ForbiddenAssetModificationReasonXsyn        ForbiddenAssetModificationReason = 2
 	ForbiddenAssetModificationReasonQueue       ForbiddenAssetModificationReason = 3
 	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
+	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
 )
 
 func IsValidCollectionItemType(itemType string) bool {
@@ -37,7 +38,7 @@ func IsValidCollectionItemType(itemType string) bool {
 	return false
 }
 
-func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType string) (bool, ForbiddenAssetModificationReason, error) {
+func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType string, ownerID ...string) (bool, ForbiddenAssetModificationReason, error) {
 	if !IsValidCollectionItemType(itemType) {
 		return false, -1, fmt.Errorf("unknown collection item type")
 	}
@@ -52,6 +53,10 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 	).One(exec)
 	if err != nil {
 		return false, -1, err
+	}
+
+	if len(ownerID) > 0 && ownerID[0] != "" && ci.OwnerID != ownerID[0] {
+		return false, ForbiddenAssetModificationReasonOwner, nil
 	}
 
 	if ci.LockedToMarketplace {
