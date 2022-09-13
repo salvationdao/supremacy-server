@@ -12,6 +12,95 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+type ForbiddenAssetModificationReason int8
+
+const (
+	ForbiddenAssetModificationReasonInvalid     ForbiddenAssetModificationReason = 0
+	ForbiddenAssetModificationReasonMarketplace ForbiddenAssetModificationReason = 1
+	ForbiddenAssetModificationReasonXsyn        ForbiddenAssetModificationReason = 2
+	ForbiddenAssetModificationReasonQueue       ForbiddenAssetModificationReason = 3
+	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
+)
+
+func IsValidCollectionItemType(itemType string) bool {
+	switch itemType {
+	case boiler.ItemTypeUtility,
+		boiler.ItemTypeWeapon,
+		boiler.ItemTypeMech,
+		boiler.ItemTypeMechSkin,
+		boiler.ItemTypeMechAnimation,
+		boiler.ItemTypePowerCore,
+		boiler.ItemTypeMysteryCrate,
+		boiler.ItemTypeWeaponSkin:
+		return true
+	}
+	return false
+}
+
+func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType string) (bool, ForbiddenAssetModificationReason, error) {
+	if !IsValidCollectionItemType(itemType) {
+		return false, -1, fmt.Errorf("unknown collection item type")
+	}
+
+	if itemType == boiler.ItemTypeMysteryCrate || itemType == boiler.ItemTypeWeaponSkin {
+		return false, ForbiddenAssetModificationReasonInvalid, fmt.Errorf("invalid collection item type specified")
+	}
+
+	ci, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.ItemID.EQ(itemID),
+		boiler.CollectionItemWhere.ItemType.EQ(itemType),
+	).One(exec)
+	if err != nil {
+		return false, -1, err
+	}
+
+	if ci.LockedToMarketplace {
+		return false, ForbiddenAssetModificationReasonMarketplace, nil
+	}
+	if ci.XsynLocked {
+		return false, ForbiddenAssetModificationReasonXsyn, nil
+	}
+
+	switch itemType {
+	case boiler.ItemTypeUtility:
+		utility, err := boiler.FindUtility(exec, itemID)
+		if err != nil {
+			return false, -1, err
+		}
+		if utility.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, utility.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	case boiler.ItemTypeWeapon:
+		weapon, err := boiler.FindWeapon(exec, itemID)
+		if err != nil {
+			return false, -1, err
+		}
+		if weapon.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, weapon.EquippedOn.String, boiler.ItemTypeMech)
+		}
+	case boiler.ItemTypeMech:
+		mechStatus, err := GetCollectionItemStatus(*ci)
+		if err != nil {
+			return false, -1, err
+		}
+		if mechStatus.Status == server.MechArenaStatusBattle {
+			return false, ForbiddenAssetModificationReasonBattle, nil
+		}
+	// case boiler.ItemTypeMechSkin:
+	// case boiler.ItemTypeMechAnimation:
+	case boiler.ItemTypePowerCore:
+		powerCore, err := boiler.FindPowerCore(exec, itemID)
+		if err != nil {
+			return false, -1, err
+		}
+		if powerCore.EquippedOn.Valid {
+			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypePowerCore)
+		}
+	}
+
+	return true, -1, nil
+}
+
 // InsertNewCollectionItem inserts a collection item,
 // It takes a TX and DOES NOT COMMIT, commit needs to be called in the parent function.
 func InsertNewCollectionItem(tx boil.Executor,
