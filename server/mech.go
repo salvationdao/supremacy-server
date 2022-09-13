@@ -33,17 +33,22 @@ type Mech struct {
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	CollectionItemID      string     `json:"-"`
 
-	// stats
+	//// stats
+	// speed
 	Speed                     int    `json:"speed"`
 	BoostedSpeed              int    `json:"boosted_speed"`
+	// hit points
 	MaxHitpoints              int    `json:"max_hitpoints"`
 	BoostedMaxHitpoints       int    `json:"boosted_max_hitpoints"`
+	// shield
 	Shield                    int    `json:"shield"`
 	ShieldRechargeRate        int    `json:"shield_recharge_rate"`
 	BoostedShieldRechargeRate int    `json:"boosted_shield_recharge_rate"`
 	ShieldRechargePowerCost   int    `json:"shieldRechargePowerCost"`
+	// slots
 	WeaponHardpoints          int    `json:"weapon_hardpoints"`
 	UtilitySlots              int    `json:"utility_slots"`
+	// other
 	RepairBlocks              int    `json:"repair_blocks"`
 	PowerCoreSize             string `json:"power_core_size"`
 	BoostedStat               string `json:"boosted_stat"`
