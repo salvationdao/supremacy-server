@@ -1342,35 +1342,17 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(err, errorMsg)
 	}
 
-	if mech.OwnerID != user.ID {
-		return terror.Error(terror.ErrUnauthorised, "You cannot modify a mech that does not belong to you.")
-	}
-
-	if mech.LockedToMarketplace {
-		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently on the marketplace.")
-	}
-
 	if mech.XsynLocked {
 		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is not in Supremacy.")
 	}
 
-	mechCI, err := boiler.CollectionItems(
-		boiler.CollectionItemWhere.ItemID.EQ(mech.ID),
-		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
-	).One(gamedb.StdConn)
+	// Check if mech can be modified
+	canModify, reason, err := db.CanAssetBeModifiedOrMoved(gamedb.StdConn, mech.ID, boiler.ItemTypeMech, user.ID)
 	if err != nil {
 		return terror.Error(err, errorMsg)
 	}
-
-	mechStatus, err := db.GetCollectionItemStatus(*mechCI)
-	if err != nil {
-		return terror.Error(err, errorMsg)
-	}
-	if mechStatus.Status == server.MechArenaStatusBattle {
-		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently in battle.")
-	}
-	if mechStatus.Status == server.MechArenaStatusQueue {
-		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently in the battle queue.")
+	if !canModify {
+		return terror.Error(terror.ErrForbidden, fmt.Sprintf("This mech cannot be modified: %s", reason.String()))
 	}
 
 	spew.Dump(req.Payload)
@@ -1382,24 +1364,21 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	defer tx.Rollback()
 
 	if req.Payload.EquipPowerCore != "" {
+		// Check if power core can be modified
+		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipPowerCore, boiler.ItemTypePowerCore, user.ID)
+		if err != nil {
+			return terror.Error(err, errorMsg)
+		}
+		if !canEquip {
+			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected power core cannot be equipped: %s", reason.String()))
+		}
+
 		// Check if specified power core exists
 		powerCore, err := boiler.PowerCores(
 			boiler.PowerCoreWhere.ID.EQ(req.Payload.EquipPowerCore),
 		).One(tx)
 		if err != nil {
 			return terror.Error(err, errorMsg)
-		}
-
-		// Check ownership of power core
-		ownerShipExists, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.EQ(powerCore.ID),
-			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		).Exists(tx)
-		if err != nil {
-			return terror.Error(err, errorMsg)
-		}
-		if !ownerShipExists {
-			return terror.Error(terror.ErrUnauthorised, errorMsg)
 		}
 
 		if powerCore.EquippedOn.Valid {
@@ -1450,10 +1429,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	}
 	if len(req.Payload.EquipUtility) != 0 {
 		ids := []string{}
-		slots := []int{}
 		for _, eu := range req.Payload.EquipUtility {
 			ids = append(ids, eu.UtilityID)
-			slots = append(slots, eu.SlotNumber)
 		}
 
 		// Check if specified utilities exist
@@ -1479,23 +1456,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			return terror.Error(terror.ErrUnauthorised, errorMsg)
 		}
 
-		// Check if equipped utilities can be unequipped, and if so, unequip them
-		for _, u := range mech.Utility {
-			isSlotOccupied := false
-			for _, s := range slots {
-				if u.SlotNumber.Valid && s == u.SlotNumber.Int {
-					isSlotOccupied = true
-					break
-				}
-			}
-			if !isSlotOccupied {
-				continue
-			}
-			if u.LockedToMech {
-				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot de-equip %s from this mech. Please update your selection and try again.", u.Label))
-			}
-		}
-
 		for _, eu := range req.Payload.EquipUtility {
 			if eu.SlotNumber < 0 {
 				return terror.Error(terror.ErrInvalidInput, "This mech does not have the utility slot specified to equip the utility on.")
@@ -1504,6 +1464,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			// Slot number specified does not exist on mech
 			if eu.SlotNumber > mech.UtilitySlots-1 {
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified utilities on the mech as it does not have enough utility slots.")
+			}
+
+			// Check if utility can be modified
+			canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, eu.UtilityID, boiler.ItemTypeUtility, user.ID)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+			if !canEquip {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected utility in slot %d cannot be equipped: %s", eu.SlotNumber, reason.String()))
 			}
 
 			utility, err := boiler.FindUtility(tx, eu.UtilityID)
@@ -1549,6 +1518,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 			if mu.UtilityID.Valid {
 				// Remove previous utility from mech
+				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mu.UtilityID.String, boiler.ItemTypeUtility, user.ID)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+				if !canRemove {
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing utility in slot %d cannot be removed: %s", eu.SlotNumber, reason.String()))
+				}
+
 				previousUtility, err := boiler.FindUtility(tx, mu.UtilityID.String)
 				if err != nil {
 					return terror.Error(err, errorMsg)
@@ -1579,10 +1556,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 	}
 	if len(req.Payload.EquipWeapons) != 0 {
 		ids := []string{}
-		slots := []int{}
 		for _, ew := range req.Payload.EquipWeapons {
 			ids = append(ids, ew.WeaponID)
-			slots = append(slots, ew.SlotNumber)
 		}
 
 		// Check if specified weapons exist
@@ -1609,23 +1584,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			return terror.Error(terror.ErrUnauthorised, errorMsg)
 		}
 
-		// Check if equipped weapons can be unequipped, and if so, unequip them
-		for _, w := range mech.Weapons {
-			isSlotOccupied := false
-			for _, s := range slots {
-				if w.SlotNumber.Valid && s == w.SlotNumber.Int {
-					isSlotOccupied = true
-					break
-				}
-			}
-			if !isSlotOccupied {
-				continue
-			}
-			if w.LockedToMech {
-				return terror.Error(terror.ErrForbidden, fmt.Sprintf("You cannot de-equip %s from this mech. Please update your selection and try again.", w.Label))
-			}
-		}
-
 		for _, ew := range req.Payload.EquipWeapons {
 			if ew.SlotNumber < 0 {
 				return terror.Error(terror.ErrInvalidInput, "This mech does not have the weapon slot specified to equip the weapon on.")
@@ -1634,6 +1592,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			// Slot number specified does not exist on mech
 			if ew.SlotNumber > mech.WeaponHardpoints-1 {
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified weapons on the mech as it does not have enough weapon slots.")
+			}
+
+			// Check if weapon can be modified
+			canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, ew.WeaponID, boiler.ItemTypeWeapon, user.ID)
+			if err != nil {
+				return terror.Error(err, errorMsg)
+			}
+			if !canEquip {
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be equipped: %s", ew.SlotNumber, reason.String()))
 			}
 
 			weapon, err := boiler.Weapons(
@@ -1682,6 +1649,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 			if mw.WeaponID.Valid {
 				// Remove previous weapon from mech
+				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mw.WeaponID.String, boiler.ItemTypeWeapon, user.ID)
+				if err != nil {
+					return terror.Error(err, errorMsg)
+				}
+				if !canRemove {
+					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing weapon in slot %d cannot be removed: %s", ew.SlotNumber, reason.String()))
+				}
+
 				previousWeapon, err := boiler.FindWeapon(tx, mw.WeaponID.String)
 				if err != nil {
 					return terror.Error(err, errorMsg)

@@ -21,6 +21,7 @@ const (
 	ForbiddenAssetModificationReasonQueue       ForbiddenAssetModificationReason = 3
 	ForbiddenAssetModificationReasonBattle      ForbiddenAssetModificationReason = 4
 	ForbiddenAssetModificationReasonOwner       ForbiddenAssetModificationReason = 5
+	ForbiddenAssetModificationReasonMechLocked  ForbiddenAssetModificationReason = 6
 )
 
 func (f ForbiddenAssetModificationReason) String() string {
@@ -35,6 +36,8 @@ func (f ForbiddenAssetModificationReason) String() string {
 		return "The asset is currently in a battle."
 	case ForbiddenAssetModificationReasonOwner:
 		return "You do not own this asset."
+	case ForbiddenAssetModificationReasonMechLocked:
+		return "The asset is locked to its mech."
 	}
 	return "The asset cannot be modified, unequipped, or equipped."
 }
@@ -88,6 +91,9 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		if err != nil {
 			return false, -1, err
 		}
+		if utility.LockedToMech {
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
+		}
 		if utility.EquippedOn.Valid {
 			return CanAssetBeModifiedOrMoved(exec, utility.EquippedOn.String, boiler.ItemTypeMech)
 		}
@@ -95,6 +101,9 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		weapon, err := boiler.FindWeapon(exec, itemID)
 		if err != nil {
 			return false, -1, err
+		}
+		if weapon.LockedToMech {
+			return false, ForbiddenAssetModificationReasonMechLocked, nil
 		}
 		if weapon.EquippedOn.Valid {
 			return CanAssetBeModifiedOrMoved(exec, weapon.EquippedOn.String, boiler.ItemTypeMech)
