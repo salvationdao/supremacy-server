@@ -5,19 +5,22 @@ import (
 )
 
 type MechModel struct {
-	ID                   string      `json:"id"`
-	Label                string      `json:"label"`
-	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
-	BrandID              string      `json:"brand_id"`
-	MechType             string      `json:"mech_type"`
-	BoostStat            string      `json:"boost_stat"`
-	WeaponHardpoints     string      `json:"weapon_hardpoints"`
-	UtilitySlots         string      `json:"utility_slots"`
-	Speed                string      `json:"speed"`
-	MaxHitpoints         string      `json:"max_hitpoints"`
-	PowerCoreSize        string      `json:"power_core_size"`
-	Collection           string      `json:"collection"`
-	AvailabilityID       null.String `json:"availability_id"`
+	ID                      string      `json:"id"`
+	Label                   string      `json:"label"`
+	DefaultChassisSkinID    string      `json:"default_chassis_skin_id"`
+	BrandID                 string      `json:"brand_id"`
+	MechType                string      `json:"mech_type"`
+	BoostStat               string      `json:"boost_stat"`
+	WeaponHardpoints        string      `json:"weapon_hardpoints"`
+	UtilitySlots            string      `json:"utility_slots"`
+	Speed                   string      `json:"speed"`
+	MaxHitpoints            string      `json:"max_hitpoints"`
+	PowerCoreSize           string      `json:"power_core_size"`
+	Collection              string      `json:"collection"`
+	AvailabilityID          null.String `json:"availability_id"`
+	ShieldMax               string      `json:"shield_max"`
+	ShieldRechargeRate      string      `json:"shield_recharge_rate"`
+	ShieldRechargePowerCost string      `json:"shield_recharge_power_cost"`
 }
 
 type Brands struct {
@@ -208,21 +211,4 @@ type BlueprintWeapons struct {
 	Tier                string `json:"tier"`
 	EnergyCost          string `json:"energy_cost"`
 	WeaponModelID       string `json:"weapon_model_id"`
-}
-
-type BlueprintMechs struct {
-	ID               string `json:"id"`
-	Label            string `json:"label"`
-	Slug             string `json:"slug"`
-	WeaponHardpoints string `json:"weapon_hardpoints"`
-	UtilitySlots     string `json:"utility_slots"`
-	Speed            string `json:"speed"`
-	MaxHitpoints     string `json:"max_hitpoints"`
-	DeletedAt        string `json:"deleted_at"`
-	UpdatedAt        string `json:"updated_at"`
-	CreatedAt        string `json:"created_at"`
-	ModelID          string `json:"model_id"`
-	Collection       string `json:"collection"`
-	PowerCoreSize    string `json:"power_core_size"`
-	Tier             string `json:"tier"`
 }

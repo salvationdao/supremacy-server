@@ -23,128 +23,149 @@ import (
 
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
-	ID                   string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label                string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	CreatedAt            time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	DefaultChassisSkinID string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
-	BrandID              string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	MechType             string      `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
-	RepairBlocks         int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
-	BoostStat            null.String `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
-	WeaponHardpoints     int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	PowerCoreSize        string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	UtilitySlots         int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed                int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints         int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Collection           string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	AvailabilityID       null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ID                      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                   string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	CreatedAt               time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	DefaultChassisSkinID    string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
+	BrandID                 string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	MechType                string      `boiler:"mech_type" boil:"mech_type" json:"mech_type" toml:"mech_type" yaml:"mech_type"`
+	RepairBlocks            int         `boiler:"repair_blocks" boil:"repair_blocks" json:"repair_blocks" toml:"repair_blocks" yaml:"repair_blocks"`
+	BoostStat               null.String `boiler:"boost_stat" boil:"boost_stat" json:"boost_stat,omitempty" toml:"boost_stat" yaml:"boost_stat,omitempty"`
+	WeaponHardpoints        int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	PowerCoreSize           string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	UtilitySlots            int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                   int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints            int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Collection              string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	AvailabilityID          null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ShieldMax               int         `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
+	ShieldRechargeRate      int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
+	ShieldRechargePowerCost int         `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechColumns = struct {
-	ID                   string
-	Label                string
-	CreatedAt            string
-	DefaultChassisSkinID string
-	BrandID              string
-	MechType             string
-	RepairBlocks         string
-	BoostStat            string
-	WeaponHardpoints     string
-	PowerCoreSize        string
-	UtilitySlots         string
-	Speed                string
-	MaxHitpoints         string
-	Collection           string
-	AvailabilityID       string
+	ID                      string
+	Label                   string
+	CreatedAt               string
+	DefaultChassisSkinID    string
+	BrandID                 string
+	MechType                string
+	RepairBlocks            string
+	BoostStat               string
+	WeaponHardpoints        string
+	PowerCoreSize           string
+	UtilitySlots            string
+	Speed                   string
+	MaxHitpoints            string
+	Collection              string
+	AvailabilityID          string
+	ShieldMax               string
+	ShieldRechargeRate      string
+	ShieldRechargePowerCost string
 }{
-	ID:                   "id",
-	Label:                "label",
-	CreatedAt:            "created_at",
-	DefaultChassisSkinID: "default_chassis_skin_id",
-	BrandID:              "brand_id",
-	MechType:             "mech_type",
-	RepairBlocks:         "repair_blocks",
-	BoostStat:            "boost_stat",
-	WeaponHardpoints:     "weapon_hardpoints",
-	PowerCoreSize:        "power_core_size",
-	UtilitySlots:         "utility_slots",
-	Speed:                "speed",
-	MaxHitpoints:         "max_hitpoints",
-	Collection:           "collection",
-	AvailabilityID:       "availability_id",
+	ID:                      "id",
+	Label:                   "label",
+	CreatedAt:               "created_at",
+	DefaultChassisSkinID:    "default_chassis_skin_id",
+	BrandID:                 "brand_id",
+	MechType:                "mech_type",
+	RepairBlocks:            "repair_blocks",
+	BoostStat:               "boost_stat",
+	WeaponHardpoints:        "weapon_hardpoints",
+	PowerCoreSize:           "power_core_size",
+	UtilitySlots:            "utility_slots",
+	Speed:                   "speed",
+	MaxHitpoints:            "max_hitpoints",
+	Collection:              "collection",
+	AvailabilityID:          "availability_id",
+	ShieldMax:               "shield_max",
+	ShieldRechargeRate:      "shield_recharge_rate",
+	ShieldRechargePowerCost: "shield_recharge_power_cost",
 }
 
 var BlueprintMechTableColumns = struct {
-	ID                   string
-	Label                string
-	CreatedAt            string
-	DefaultChassisSkinID string
-	BrandID              string
-	MechType             string
-	RepairBlocks         string
-	BoostStat            string
-	WeaponHardpoints     string
-	PowerCoreSize        string
-	UtilitySlots         string
-	Speed                string
-	MaxHitpoints         string
-	Collection           string
-	AvailabilityID       string
+	ID                      string
+	Label                   string
+	CreatedAt               string
+	DefaultChassisSkinID    string
+	BrandID                 string
+	MechType                string
+	RepairBlocks            string
+	BoostStat               string
+	WeaponHardpoints        string
+	PowerCoreSize           string
+	UtilitySlots            string
+	Speed                   string
+	MaxHitpoints            string
+	Collection              string
+	AvailabilityID          string
+	ShieldMax               string
+	ShieldRechargeRate      string
+	ShieldRechargePowerCost string
 }{
-	ID:                   "blueprint_mechs.id",
-	Label:                "blueprint_mechs.label",
-	CreatedAt:            "blueprint_mechs.created_at",
-	DefaultChassisSkinID: "blueprint_mechs.default_chassis_skin_id",
-	BrandID:              "blueprint_mechs.brand_id",
-	MechType:             "blueprint_mechs.mech_type",
-	RepairBlocks:         "blueprint_mechs.repair_blocks",
-	BoostStat:            "blueprint_mechs.boost_stat",
-	WeaponHardpoints:     "blueprint_mechs.weapon_hardpoints",
-	PowerCoreSize:        "blueprint_mechs.power_core_size",
-	UtilitySlots:         "blueprint_mechs.utility_slots",
-	Speed:                "blueprint_mechs.speed",
-	MaxHitpoints:         "blueprint_mechs.max_hitpoints",
-	Collection:           "blueprint_mechs.collection",
-	AvailabilityID:       "blueprint_mechs.availability_id",
+	ID:                      "blueprint_mechs.id",
+	Label:                   "blueprint_mechs.label",
+	CreatedAt:               "blueprint_mechs.created_at",
+	DefaultChassisSkinID:    "blueprint_mechs.default_chassis_skin_id",
+	BrandID:                 "blueprint_mechs.brand_id",
+	MechType:                "blueprint_mechs.mech_type",
+	RepairBlocks:            "blueprint_mechs.repair_blocks",
+	BoostStat:               "blueprint_mechs.boost_stat",
+	WeaponHardpoints:        "blueprint_mechs.weapon_hardpoints",
+	PowerCoreSize:           "blueprint_mechs.power_core_size",
+	UtilitySlots:            "blueprint_mechs.utility_slots",
+	Speed:                   "blueprint_mechs.speed",
+	MaxHitpoints:            "blueprint_mechs.max_hitpoints",
+	Collection:              "blueprint_mechs.collection",
+	AvailabilityID:          "blueprint_mechs.availability_id",
+	ShieldMax:               "blueprint_mechs.shield_max",
+	ShieldRechargeRate:      "blueprint_mechs.shield_recharge_rate",
+	ShieldRechargePowerCost: "blueprint_mechs.shield_recharge_power_cost",
 }
 
 // Generated where
 
 var BlueprintMechWhere = struct {
-	ID                   whereHelperstring
-	Label                whereHelperstring
-	CreatedAt            whereHelpertime_Time
-	DefaultChassisSkinID whereHelperstring
-	BrandID              whereHelperstring
-	MechType             whereHelperstring
-	RepairBlocks         whereHelperint
-	BoostStat            whereHelpernull_String
-	WeaponHardpoints     whereHelperint
-	PowerCoreSize        whereHelperstring
-	UtilitySlots         whereHelperint
-	Speed                whereHelperint
-	MaxHitpoints         whereHelperint
-	Collection           whereHelperstring
-	AvailabilityID       whereHelpernull_String
+	ID                      whereHelperstring
+	Label                   whereHelperstring
+	CreatedAt               whereHelpertime_Time
+	DefaultChassisSkinID    whereHelperstring
+	BrandID                 whereHelperstring
+	MechType                whereHelperstring
+	RepairBlocks            whereHelperint
+	BoostStat               whereHelpernull_String
+	WeaponHardpoints        whereHelperint
+	PowerCoreSize           whereHelperstring
+	UtilitySlots            whereHelperint
+	Speed                   whereHelperint
+	MaxHitpoints            whereHelperint
+	Collection              whereHelperstring
+	AvailabilityID          whereHelpernull_String
+	ShieldMax               whereHelperint
+	ShieldRechargeRate      whereHelperint
+	ShieldRechargePowerCost whereHelperint
 }{
-	ID:                   whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
-	Label:                whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
-	CreatedAt:            whereHelpertime_Time{field: "\"blueprint_mechs\".\"created_at\""},
-	DefaultChassisSkinID: whereHelperstring{field: "\"blueprint_mechs\".\"default_chassis_skin_id\""},
-	BrandID:              whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
-	MechType:             whereHelperstring{field: "\"blueprint_mechs\".\"mech_type\""},
-	RepairBlocks:         whereHelperint{field: "\"blueprint_mechs\".\"repair_blocks\""},
-	BoostStat:            whereHelpernull_String{field: "\"blueprint_mechs\".\"boost_stat\""},
-	WeaponHardpoints:     whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
-	PowerCoreSize:        whereHelperstring{field: "\"blueprint_mechs\".\"power_core_size\""},
-	UtilitySlots:         whereHelperint{field: "\"blueprint_mechs\".\"utility_slots\""},
-	Speed:                whereHelperint{field: "\"blueprint_mechs\".\"speed\""},
-	MaxHitpoints:         whereHelperint{field: "\"blueprint_mechs\".\"max_hitpoints\""},
-	Collection:           whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
-	AvailabilityID:       whereHelpernull_String{field: "\"blueprint_mechs\".\"availability_id\""},
+	ID:                      whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
+	Label:                   whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
+	CreatedAt:               whereHelpertime_Time{field: "\"blueprint_mechs\".\"created_at\""},
+	DefaultChassisSkinID:    whereHelperstring{field: "\"blueprint_mechs\".\"default_chassis_skin_id\""},
+	BrandID:                 whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
+	MechType:                whereHelperstring{field: "\"blueprint_mechs\".\"mech_type\""},
+	RepairBlocks:            whereHelperint{field: "\"blueprint_mechs\".\"repair_blocks\""},
+	BoostStat:               whereHelpernull_String{field: "\"blueprint_mechs\".\"boost_stat\""},
+	WeaponHardpoints:        whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
+	PowerCoreSize:           whereHelperstring{field: "\"blueprint_mechs\".\"power_core_size\""},
+	UtilitySlots:            whereHelperint{field: "\"blueprint_mechs\".\"utility_slots\""},
+	Speed:                   whereHelperint{field: "\"blueprint_mechs\".\"speed\""},
+	MaxHitpoints:            whereHelperint{field: "\"blueprint_mechs\".\"max_hitpoints\""},
+	Collection:              whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
+	AvailabilityID:          whereHelpernull_String{field: "\"blueprint_mechs\".\"availability_id\""},
+	ShieldMax:               whereHelperint{field: "\"blueprint_mechs\".\"shield_max\""},
+	ShieldRechargeRate:      whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_rate\""},
+	ShieldRechargePowerCost: whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_power_cost\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
@@ -189,9 +210,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
 	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type"}
-	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id"}
+	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )

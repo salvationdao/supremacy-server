@@ -149,15 +149,5 @@ func (api *API) SyncStaticData(w http.ResponseWriter, r *http.Request) (int, err
 		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
 	}
 
-	url = fmt.Sprintf("%s/%s/utility_shields.csv", api.SyncConfig.FilePath, branch)
-	f, err = synctool.DownloadFile(api.ctx, url, timeout)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction data")
-	}
-	err = synctool.SyncStaticUtilityShields(f, gamedb.StdConn)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Failed to sync faction with db")
-	}
-
 	return helpers.EncodeJSON(w, "Done Syncing")
 }
