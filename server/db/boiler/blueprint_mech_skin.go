@@ -29,7 +29,6 @@ type BlueprintMechSkin struct {
 	Tier                  string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	DefaultLevel          int         `boiler:"default_level" boil:"default_level" json:"default_level" toml:"default_level" yaml:"default_level"`
-	BlueprintWeaponSkinID null.String `boiler:"blueprint_weapon_skin_id" boil:"blueprint_weapon_skin_id" json:"blueprint_weapon_skin_id,omitempty" toml:"blueprint_weapon_skin_id" yaml:"blueprint_weapon_skin_id,omitempty"`
 	ImageURL              null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
 	AnimationURL          null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	CardAnimationURL      null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
@@ -37,6 +36,7 @@ type BlueprintMechSkin struct {
 	AvatarURL             null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
 	BackgroundColor       null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
 	YoutubeURL            null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	BlueprintWeaponSkinID null.String `boiler:"blueprint_weapon_skin_id" boil:"blueprint_weapon_skin_id" json:"blueprint_weapon_skin_id,omitempty" toml:"blueprint_weapon_skin_id" yaml:"blueprint_weapon_skin_id,omitempty"`
 	ProfileAvatarID       null.String `boiler:"profile_avatar_id" boil:"profile_avatar_id" json:"profile_avatar_id,omitempty" toml:"profile_avatar_id" yaml:"profile_avatar_id,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -50,7 +50,6 @@ var BlueprintMechSkinColumns = struct {
 	Tier                  string
 	CreatedAt             string
 	DefaultLevel          string
-	BlueprintWeaponSkinID string
 	ImageURL              string
 	AnimationURL          string
 	CardAnimationURL      string
@@ -58,6 +57,7 @@ var BlueprintMechSkinColumns = struct {
 	AvatarURL             string
 	BackgroundColor       string
 	YoutubeURL            string
+	BlueprintWeaponSkinID string
 	ProfileAvatarID       string
 }{
 	ID:                    "id",
@@ -66,7 +66,6 @@ var BlueprintMechSkinColumns = struct {
 	Tier:                  "tier",
 	CreatedAt:             "created_at",
 	DefaultLevel:          "default_level",
-	BlueprintWeaponSkinID: "blueprint_weapon_skin_id",
 	ImageURL:              "image_url",
 	AnimationURL:          "animation_url",
 	CardAnimationURL:      "card_animation_url",
@@ -74,6 +73,7 @@ var BlueprintMechSkinColumns = struct {
 	AvatarURL:             "avatar_url",
 	BackgroundColor:       "background_color",
 	YoutubeURL:            "youtube_url",
+	BlueprintWeaponSkinID: "blueprint_weapon_skin_id",
 	ProfileAvatarID:       "profile_avatar_id",
 }
 
@@ -84,7 +84,6 @@ var BlueprintMechSkinTableColumns = struct {
 	Tier                  string
 	CreatedAt             string
 	DefaultLevel          string
-	BlueprintWeaponSkinID string
 	ImageURL              string
 	AnimationURL          string
 	CardAnimationURL      string
@@ -92,6 +91,7 @@ var BlueprintMechSkinTableColumns = struct {
 	AvatarURL             string
 	BackgroundColor       string
 	YoutubeURL            string
+	BlueprintWeaponSkinID string
 	ProfileAvatarID       string
 }{
 	ID:                    "blueprint_mech_skin.id",
@@ -100,7 +100,6 @@ var BlueprintMechSkinTableColumns = struct {
 	Tier:                  "blueprint_mech_skin.tier",
 	CreatedAt:             "blueprint_mech_skin.created_at",
 	DefaultLevel:          "blueprint_mech_skin.default_level",
-	BlueprintWeaponSkinID: "blueprint_mech_skin.blueprint_weapon_skin_id",
 	ImageURL:              "blueprint_mech_skin.image_url",
 	AnimationURL:          "blueprint_mech_skin.animation_url",
 	CardAnimationURL:      "blueprint_mech_skin.card_animation_url",
@@ -108,6 +107,7 @@ var BlueprintMechSkinTableColumns = struct {
 	AvatarURL:             "blueprint_mech_skin.avatar_url",
 	BackgroundColor:       "blueprint_mech_skin.background_color",
 	YoutubeURL:            "blueprint_mech_skin.youtube_url",
+	BlueprintWeaponSkinID: "blueprint_mech_skin.blueprint_weapon_skin_id",
 	ProfileAvatarID:       "blueprint_mech_skin.profile_avatar_id",
 }
 
@@ -120,7 +120,6 @@ var BlueprintMechSkinWhere = struct {
 	Tier                  whereHelperstring
 	CreatedAt             whereHelpertime_Time
 	DefaultLevel          whereHelperint
-	BlueprintWeaponSkinID whereHelpernull_String
 	ImageURL              whereHelpernull_String
 	AnimationURL          whereHelpernull_String
 	CardAnimationURL      whereHelpernull_String
@@ -128,6 +127,7 @@ var BlueprintMechSkinWhere = struct {
 	AvatarURL             whereHelpernull_String
 	BackgroundColor       whereHelpernull_String
 	YoutubeURL            whereHelpernull_String
+	BlueprintWeaponSkinID whereHelpernull_String
 	ProfileAvatarID       whereHelpernull_String
 }{
 	ID:                    whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
@@ -136,7 +136,6 @@ var BlueprintMechSkinWhere = struct {
 	Tier:                  whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
 	DefaultLevel:          whereHelperint{field: "\"blueprint_mech_skin\".\"default_level\""},
-	BlueprintWeaponSkinID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"blueprint_weapon_skin_id\""},
 	ImageURL:              whereHelpernull_String{field: "\"blueprint_mech_skin\".\"image_url\""},
 	AnimationURL:          whereHelpernull_String{field: "\"blueprint_mech_skin\".\"animation_url\""},
 	CardAnimationURL:      whereHelpernull_String{field: "\"blueprint_mech_skin\".\"card_animation_url\""},
@@ -144,6 +143,7 @@ var BlueprintMechSkinWhere = struct {
 	AvatarURL:             whereHelpernull_String{field: "\"blueprint_mech_skin\".\"avatar_url\""},
 	BackgroundColor:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"background_color\""},
 	YoutubeURL:            whereHelpernull_String{field: "\"blueprint_mech_skin\".\"youtube_url\""},
+	BlueprintWeaponSkinID: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"blueprint_weapon_skin_id\""},
 	ProfileAvatarID:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"profile_avatar_id\""},
 }
 
@@ -180,9 +180,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level", "blueprint_weapon_skin_id", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "profile_avatar_id"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "label", "tier", "created_at", "default_level", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "blueprint_weapon_skin_id", "profile_avatar_id"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level", "blueprint_weapon_skin_id", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "profile_avatar_id"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "created_at", "default_level", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "background_color", "youtube_url", "blueprint_weapon_skin_id", "profile_avatar_id"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )

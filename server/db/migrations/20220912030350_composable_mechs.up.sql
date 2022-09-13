@@ -12,9 +12,6 @@ ALTER TABLE power_cores RENAME COLUMN armour TO armour_dont_use;
 
 ALTER TABLE power_cores RENAME COLUMN max_hitpoints TO max_hitpoints_dont_use;
 
-ALTER TABLE blueprint_mech_skin
-    ADD COLUMN IF NOT EXISTS blueprint_weapon_skin_id UUID REFERENCES blueprint_weapon_skin (id);
-
 ALTER TABLE mech_weapons
     ALTER COLUMN weapon_id DROP NOT NULL,
     DROP CONSTRAINT IF EXISTS chassis_weapons_chassis_id_slot_number_key,
