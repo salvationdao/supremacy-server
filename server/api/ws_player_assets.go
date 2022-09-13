@@ -1346,6 +1346,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		return terror.Error(terror.ErrUnauthorised, "You cannot modify a mech that does not belong to you.")
 	}
 
+	if mech.LockedToMarketplace {
+		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is currently on the marketplace.")
+	}
+
 	spew.Dump(req.Payload)
 
 	tx, err := gamedb.StdConn.Begin()
