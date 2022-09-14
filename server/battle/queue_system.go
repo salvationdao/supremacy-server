@@ -124,3 +124,16 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 
 	return nil
 }
+
+func BroadcastBattleBountiesUpdate(battleBountyIDs []string) {
+	bbs, err := boiler.BattleBounties(
+		boiler.BattleBountyWhere.ID.IN(battleBountyIDs),
+		qm.Load(boiler.BattleBountyRels.OfferedBy),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Strs("battle bounty id list", battleBountyIDs).Msg("Failed to load battle bounties")
+		return
+	}
+
+	ws.PublishMessage("/secure/battle_bounties", server.HubKeyBattleBountyListUpdate, server.BattleBountiesFromBoiler(bbs))
+}

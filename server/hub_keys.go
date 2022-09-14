@@ -74,3 +74,5 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyMechArenaStatusUpdate = "PLAYER:ASSET:MECH:STATUS:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
+
+const HubKeyBattleBountyListUpdate = "BATTLE:BOUNTY:LIST:UPDATE"

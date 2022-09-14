@@ -28,6 +28,8 @@ func BattleQueueController(api *API) {
 	api.SecureUserFactionCommand(HubKeyBattleLobbyCreate, api.BattleLobbyCreate)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyJoin, api.BattleLobbyJoin)
 	api.SecureUserFactionCommand(HubKeyBattleLobbyLeave, api.BattleLobbyLeave)
+
+	api.SecureUserFactionCommand(HubKeyBattleBountyCreate, api.BattleBountyCreate)
 }
 
 type BattleLobbyCreateRequest struct {
@@ -844,6 +846,129 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 	return nil
 }
 
+type BattleBountyCreateRequest struct {
+	Payload struct {
+		MechID string          `json:"mech_id"`
+		Amount decimal.Decimal `json:"amount"`
+	} `json:"payload"`
+}
+
+const HubKeyBattleBountyCreate = "BATTLE:BOUNTY:CREATE"
+
+func (api *API) BattleBountyCreate(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &BattleBountyCreateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	blm, err := boiler.BattleLobbiesMechs(
+		boiler.BattleLobbiesMechWhere.MechID.EQ(req.Payload.MechID),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
+		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Str("mech id", req.Payload.MechID).Msg("Failed to load mech from battle lobby")
+		return terror.Error(err, "Failed to load mech from battle lobby")
+	}
+
+	if blm != nil {
+		return terror.Error(fmt.Errorf("mech not in battle lobby"), "The mech does not exist in battle lobby.")
+	}
+
+	if !blm.LockedAt.Valid {
+		return terror.Error(fmt.Errorf("the lobby is not ready"), "The lobby is not ready for setting battle bounties.")
+	}
+
+	err = api.ArenaManager.SendBattleQueueFunc(func() error {
+		err = blm.Reload(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to load battle lobby mech.")
+			return terror.Error(err, "Failed to load mech from battle lobby.")
+		}
+
+		// return error, if battle lobby is not ready
+		if !blm.LockedAt.Valid {
+			return terror.Error(fmt.Errorf("the lobby is not ready"), "The lobby is not ready for setting battle bounties.")
+		}
+
+		// return error, if battle has already ended
+		if !blm.EndedAt.Valid {
+			return terror.Error(fmt.Errorf("the lobby is closed"), "The lobby is already closed.")
+		}
+
+		// if battle has already started
+		if blm.AssignedToBattleID.Valid {
+			// check battle, whether battle is ended
+			b, err := boiler.FindBattle(gamedb.StdConn, blm.AssignedToBattleID.String)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Str("battle id", blm.AssignedToBattleID.String).Err(err).Msg("Failed to load battle.")
+				return terror.Error(err, "Failed to check battle")
+			}
+
+			if b != nil && b.EndedAt.Valid {
+				return terror.Error(fmt.Errorf("battle already ended"), "The battle has already ended.")
+			}
+
+			// check whether mech is still alive
+			bh, err := boiler.BattleHistories(
+				boiler.BattleHistoryWhere.BattleID.EQ(blm.AssignedToBattleID.String),
+				boiler.BattleHistoryWhere.WarMachineOneID.EQ(req.Payload.MechID),
+				boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
+			).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Str("mech id", req.Payload.MechID).Str("battle id", blm.AssignedToBattleID.String).Err(err).Msg("Failed to load battle history.")
+				return terror.Error(err, "Failed to check mech battle stat.")
+			}
+			if bh != nil {
+				return terror.Error(fmt.Errorf("mech already dead"), "The mech has been destroyed in the battle.")
+			}
+		}
+
+		bb := &boiler.BattleBounty{
+			BattleLobbyID:  blm.BattleLobbyID,
+			OfferedByID:    user.ID,
+			TargetedMechID: req.Payload.MechID,
+			Amount:         req.Payload.Amount.Mul(decimal.New(1, 18)),
+		}
+
+		paidTxID, err := api.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(user.ID)),
+			ToUserID:             uuid.Must(uuid.FromString(server.SupremacyBattleUserID)),
+			Amount:               bb.Amount.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("create_battle_bounty|%s|%s|%d", bb.ID, bb.TargetedMechID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupSupremacy),
+			SubGroup:             string(server.TransactionGroupBattle),
+			Description:          "create battle bounty.",
+		})
+		if err != nil {
+			return terror.Error(err, "Failed to pay battle bounty.")
+		}
+
+		bb.PaidTXID = null.StringFrom(paidTxID)
+
+		// insert battle bounties
+		err = bb.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			_, err := api.Passport.RefundSupsMessage(paidTxID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("tx id", paidTxID).Msg("Failed to refund sups transaction.")
+			}
+			gamelog.L.Error().Err(err).Interface("battle bounty", bb).Msg("Failed to insert battle bounty.")
+			return terror.Error(err, "Failed to insert battle bounty")
+		}
+
+		go battle.BroadcastBattleBountiesUpdate([]string{bb.ID})
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // subscriptions
 
 func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -865,5 +990,29 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 
 	reply(resp)
 
+	return nil
+}
+
+func (api *API) BattleBountyListUpdate(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	bbs, err := boiler.BattleBounties(
+		boiler.BattleBountyWhere.RefundTXID.IsNull(),
+		boiler.BattleBountyWhere.PayoutTXID.IsNull(),
+		qm.Load(
+			boiler.BattleBountyRels.OfferedBy,
+			qm.Select(
+				boiler.PlayerTableColumns.ID,
+				boiler.PlayerTableColumns.Username,
+				boiler.PlayerTableColumns.FactionID,
+				boiler.PlayerTableColumns.Gid,
+				boiler.PlayerTableColumns.Rank,
+			),
+		),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle bounties.")
+		return terror.Error(err, "Failed to load battle bounties")
+	}
+
+	reply(server.BattleBountiesFromBoiler(bbs))
 	return nil
 }

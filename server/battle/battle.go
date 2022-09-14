@@ -428,6 +428,30 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		}
 	}()
 
+	now := time.Now()
+
+	// close battle
+	btl.Battle.EndedAt = null.TimeFrom(now)
+	_, err := btl.Battle.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleColumns.EndedAt))
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl.Battle).Msg("Failed to up date end_at of current battle.")
+	}
+
+	// close battle lobby
+	btl.lobby.EndedAt = null.TimeFrom(now)
+	_, err = btl.lobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.EndedAt))
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("lobby", btl.lobby).Msg("Failed to update ended_at of the battle lobby.")
+	}
+
+	// close battle lobby mechs
+	_, err = btl.lobby.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleLobbiesMechColumns.EndedAt: null.TimeFrom(now)})
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Interface("lobby", btl.lobby).Msg("Failed to update ended_at of the battle lobby mechs.")
+	}
+
+	// start the
+
 	winningWarMachines := []*WarMachine{}
 	var winningFaction *Faction
 	winningFactionID := ""
@@ -644,28 +668,6 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	// cache battle end detail
 	btl.arena.LastBattleResult = endInfo
 
-	now := time.Now()
-
-	// close battle
-	btl.Battle.EndedAt = null.TimeFrom(now)
-	_, err = btl.Battle.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleColumns.EndedAt))
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("battle", btl.Battle).Msg("Failed to up date end_at of current battle.")
-	}
-
-	// close battle lobby
-	btl.lobby.EndedAt = null.TimeFrom(now)
-	_, err = btl.lobby.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.EndedAt))
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("lobby", btl.lobby).Msg("Failed to update ended_at of the battle lobby.")
-	}
-
-	// close battle lobby mechs
-	_, err = btl.lobby.BattleLobbiesMechs().UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleLobbiesMechColumns.EndedAt: null.TimeFrom(now)})
-	if err != nil {
-		gamelog.L.Error().Str("log_name", "battle arena").Interface("lobby", btl.lobby).Msg("Failed to update ended_at of the battle lobby mechs.")
-	}
-
 	// broadcast battle changed battle lobby
 	go BroadcastBattleLobbyUpdate(btl.lobby.ID)
 
@@ -782,6 +784,7 @@ func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
 	btl.playerBattleCompleteMessage = []*PlayerBattleCompleteMessage{}
 	btl.mechRewards = []*MechReward{}
 
+	// load reward from entry fee
 	totalSups := btl.lobby.EntryFee.Mul(decimal.NewFromInt(int64(len(btl.warMachineIDs))))
 
 	blms, err := boiler.BattleLobbiesMechs(
@@ -1138,6 +1141,127 @@ func (btl *Battle) RewardMechOwner(
 	}
 
 	btl.playerBattleCompleteMessage[index].RewardedPlayerAbility = ability.R.Blueprint
+}
+
+func (btl *Battle) RewardBattleBounties() {
+	taxRatio := db.GetDecimalWithDefault(db.KeyBattleRewardTaxRatio, decimal.NewFromFloat(0.025))
+
+	// load battle bounties
+	bbs, err := btl.lobby.BattleBounties(
+		boiler.BattleBountyWhere.PayoutTXID.IsNull(),
+		boiler.BattleBountyWhere.RefundTXID.IsNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("battle lobby id", btl.lobby.ID).Msg("Failed to load battle bounties.")
+		return
+	}
+
+	if bbs == nil {
+		return
+	}
+
+	rows, err := boiler.NewQuery(
+		qm.Select(
+			boiler.BattleHistoryTableColumns.WarMachineOneID,
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s) AS player_id",
+				boiler.PlayerKillLogTableColumns.PlayerID,
+				boiler.TableNames.PlayerKillLog,
+				boiler.PlayerKillLogTableColumns.AbilityOfferingID,
+				boiler.BattleHistoryTableColumns.RelatedID,
+			),
+			fmt.Sprintf(
+				"(SELECT %s FROM %s WHERE %s = %s) AS is_team_kill",
+				boiler.PlayerKillLogTableColumns.IsTeamKill,
+				boiler.TableNames.PlayerKillLog,
+				boiler.PlayerKillLogTableColumns.AbilityOfferingID,
+				boiler.BattleHistoryTableColumns.RelatedID,
+			),
+		),
+		qm.From(boiler.TableNames.BattleHistory),
+		boiler.BattleHistoryWhere.BattleID.EQ(btl.ID),
+		boiler.BattleHistoryWhere.RelatedID.IsNotNull(),
+		boiler.BattleHistoryWhere.WarMachineTwoID.IsNull(),
+		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
+	).Query(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("battle id", btl.ID).Msg("Failed to load battle history.")
+	}
+
+	// payout process
+	if rows != nil {
+		type mechKillRecord struct {
+			warMachineOneID string `db:"war_machine_one_id"`
+			playerID        string `db:"player_id"`
+			isTeamKill      bool   `db:"is_team_kill"`
+		}
+		for rows.Next() {
+			mkr := &mechKillRecord{}
+			err = rows.Scan(&mkr.warMachineOneID, &mkr.playerID, &mkr.isTeamKill)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to scan battle history")
+				continue
+			}
+
+			// skip, if team kill
+			if mkr.isTeamKill {
+				continue
+			}
+
+			// payout
+			for _, bb := range bbs {
+				if bb.TargetedMechID != mkr.warMachineOneID {
+					continue
+				}
+
+				if bb.PayoutTXID.Valid {
+					gamelog.L.Warn().Interface("battle bounties", bb).Str("attempt to pay", mkr.playerID).Msg("Duplicate bounty payout is detected.")
+					continue
+				}
+
+				// pay sups to offer repair job
+				payoutTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.FromStringOrNil(server.SupremacyBattleUserID),
+					ToUserID:             uuid.FromStringOrNil(mkr.playerID),
+					Amount:               bb.Amount.String(),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("battle_bounty_payout|%s|%d", bb.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupBattle),
+					Description:          "battle bounty reward",
+				})
+				if err != nil {
+					gamelog.L.Error().Str("player_id", mkr.playerID).Str("amount", bb.Amount.String()).Err(err).Msg("Failed to payout battle bounty")
+					continue
+				}
+
+				tax := bb.Amount.Mul(taxRatio)
+				taxTXID, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.FromStringOrNil(mkr.playerID),
+					ToUserID:             uuid.FromStringOrNil(server.SupremacyChallengeFundUserID),
+					Amount:               tax.String(),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("tax_for_battle_bounty|%s|%d", bb.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupSupremacy),
+					SubGroup:             string(server.TransactionGroupBattle),
+					Description:          "tax for battle bounty reward",
+				})
+				if err != nil {
+					gamelog.L.Error().Str("player_id", mkr.playerID).Str("amount", tax.String()).Err(err).Msg("Failed to pay sups from battle bounty")
+					continue
+				}
+
+				bb.PayoutTXID = null.StringFrom(payoutTXID)
+				_, err = bb.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleBountyColumns.PayoutTXID))
+				if err != nil {
+					gamelog.L.Error().Err(err).Interface("battle bounty", bb).Msg("Failed to update battle bounty")
+					continue
+				}
+			}
+
+		}
+	}
+
+	// refund process
+
 }
 
 func (btl *Battle) processWarMachineRepair() {

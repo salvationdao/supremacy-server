@@ -164,26 +164,26 @@ var BattleLobbyWhere = struct {
 
 // BattleLobbyRels is where relationship names are stored.
 var BattleLobbyRels = struct {
-	AssignedToBattle      string
-	GameMap               string
-	HostBy                string
-	BattleLobbiesBounties string
-	BattleLobbiesMechs    string
+	AssignedToBattle   string
+	GameMap            string
+	HostBy             string
+	BattleBounties     string
+	BattleLobbiesMechs string
 }{
-	AssignedToBattle:      "AssignedToBattle",
-	GameMap:               "GameMap",
-	HostBy:                "HostBy",
-	BattleLobbiesBounties: "BattleLobbiesBounties",
-	BattleLobbiesMechs:    "BattleLobbiesMechs",
+	AssignedToBattle:   "AssignedToBattle",
+	GameMap:            "GameMap",
+	HostBy:             "HostBy",
+	BattleBounties:     "BattleBounties",
+	BattleLobbiesMechs: "BattleLobbiesMechs",
 }
 
 // battleLobbyR is where relationships are stored.
 type battleLobbyR struct {
-	AssignedToBattle      *Battle                  `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
-	GameMap               *GameMap                 `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
-	HostBy                *Player                  `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
-	BattleLobbiesBounties BattleLobbiesBountySlice `boiler:"BattleLobbiesBounties" boil:"BattleLobbiesBounties" json:"BattleLobbiesBounties" toml:"BattleLobbiesBounties" yaml:"BattleLobbiesBounties"`
-	BattleLobbiesMechs    BattleLobbiesMechSlice   `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
+	AssignedToBattle   *Battle                `boiler:"AssignedToBattle" boil:"AssignedToBattle" json:"AssignedToBattle" toml:"AssignedToBattle" yaml:"AssignedToBattle"`
+	GameMap            *GameMap               `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
+	HostBy             *Player                `boiler:"HostBy" boil:"HostBy" json:"HostBy" toml:"HostBy" yaml:"HostBy"`
+	BattleBounties     BattleBountySlice      `boiler:"BattleBounties" boil:"BattleBounties" json:"BattleBounties" toml:"BattleBounties" yaml:"BattleBounties"`
+	BattleLobbiesMechs BattleLobbiesMechSlice `boiler:"BattleLobbiesMechs" boil:"BattleLobbiesMechs" json:"BattleLobbiesMechs" toml:"BattleLobbiesMechs" yaml:"BattleLobbiesMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -487,23 +487,23 @@ func (o *BattleLobby) HostBy(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
-// BattleLobbiesBounties retrieves all the battle_lobbies_bounty's BattleLobbiesBounties with an executor.
-func (o *BattleLobby) BattleLobbiesBounties(mods ...qm.QueryMod) battleLobbiesBountyQuery {
+// BattleBounties retrieves all the battle_bounty's BattleBounties with an executor.
+func (o *BattleLobby) BattleBounties(mods ...qm.QueryMod) battleBountyQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_lobbies_bounties\".\"battle_lobby_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_lobbies_bounties\".\"deleted_at\""),
+		qm.Where("\"battle_bounties\".\"battle_lobby_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_bounties\".\"deleted_at\""),
 	)
 
-	query := BattleLobbiesBounties(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_lobbies_bounties\"")
+	query := BattleBounties(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_bounties\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_lobbies_bounties\".*"})
+		queries.SetSelect(query.Query, []string{"\"battle_bounties\".*"})
 	}
 
 	return query
@@ -848,9 +848,9 @@ func (battleLobbyL) LoadHostBy(e boil.Executor, singular bool, maybeBattleLobby 
 	return nil
 }
 
-// LoadBattleLobbiesBounties allows an eager lookup of values, cached into the
+// LoadBattleBounties allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleLobbyL) LoadBattleLobbiesBounties(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
+func (battleLobbyL) LoadBattleBounties(e boil.Executor, singular bool, maybeBattleLobby interface{}, mods queries.Applicator) error {
 	var slice []*BattleLobby
 	var object *BattleLobby
 
@@ -888,9 +888,9 @@ func (battleLobbyL) LoadBattleLobbiesBounties(e boil.Executor, singular bool, ma
 	}
 
 	query := NewQuery(
-		qm.From(`battle_lobbies_bounties`),
-		qm.WhereIn(`battle_lobbies_bounties.battle_lobby_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_lobbies_bounties.deleted_at`),
+		qm.From(`battle_bounties`),
+		qm.WhereIn(`battle_bounties.battle_lobby_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_bounties.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -898,22 +898,22 @@ func (battleLobbyL) LoadBattleLobbiesBounties(e boil.Executor, singular bool, ma
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_lobbies_bounties")
+		return errors.Wrap(err, "failed to eager load battle_bounties")
 	}
 
-	var resultSlice []*BattleLobbiesBounty
+	var resultSlice []*BattleBounty
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_lobbies_bounties")
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_bounties")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_lobbies_bounties")
+		return errors.Wrap(err, "failed to close results in eager load on battle_bounties")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_lobbies_bounties")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_bounties")
 	}
 
-	if len(battleLobbiesBountyAfterSelectHooks) != 0 {
+	if len(battleBountyAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -921,10 +921,10 @@ func (battleLobbyL) LoadBattleLobbiesBounties(e boil.Executor, singular bool, ma
 		}
 	}
 	if singular {
-		object.R.BattleLobbiesBounties = resultSlice
+		object.R.BattleBounties = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &battleLobbiesBountyR{}
+				foreign.R = &battleBountyR{}
 			}
 			foreign.R.BattleLobby = object
 		}
@@ -934,9 +934,9 @@ func (battleLobbyL) LoadBattleLobbiesBounties(e boil.Executor, singular bool, ma
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.BattleLobbyID {
-				local.R.BattleLobbiesBounties = append(local.R.BattleLobbiesBounties, foreign)
+				local.R.BattleBounties = append(local.R.BattleBounties, foreign)
 				if foreign.R == nil {
-					foreign.R = &battleLobbiesBountyR{}
+					foreign.R = &battleBountyR{}
 				}
 				foreign.R.BattleLobby = local
 				break
@@ -1217,11 +1217,11 @@ func (o *BattleLobby) SetHostBy(exec boil.Executor, insert bool, related *Player
 	return nil
 }
 
-// AddBattleLobbiesBounties adds the given related objects to the existing relationships
+// AddBattleBounties adds the given related objects to the existing relationships
 // of the battle_lobby, optionally inserting them as new records.
-// Appends related to o.R.BattleLobbiesBounties.
+// Appends related to o.R.BattleBounties.
 // Sets related.R.BattleLobby appropriately.
-func (o *BattleLobby) AddBattleLobbiesBounties(exec boil.Executor, insert bool, related ...*BattleLobbiesBounty) error {
+func (o *BattleLobby) AddBattleBounties(exec boil.Executor, insert bool, related ...*BattleBounty) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -1231,11 +1231,11 @@ func (o *BattleLobby) AddBattleLobbiesBounties(exec boil.Executor, insert bool, 
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_lobbies_bounties\" SET %s WHERE %s",
+				"UPDATE \"battle_bounties\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_lobby_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleLobbiesBountyPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, battleBountyPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.BattleLobbyID, rel.OfferedByID, rel.TargetMechID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -1251,15 +1251,15 @@ func (o *BattleLobby) AddBattleLobbiesBounties(exec boil.Executor, insert bool, 
 
 	if o.R == nil {
 		o.R = &battleLobbyR{
-			BattleLobbiesBounties: related,
+			BattleBounties: related,
 		}
 	} else {
-		o.R.BattleLobbiesBounties = append(o.R.BattleLobbiesBounties, related...)
+		o.R.BattleBounties = append(o.R.BattleBounties, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battleLobbiesBountyR{
+			rel.R = &battleBountyR{
 				BattleLobby: o,
 			}
 		} else {

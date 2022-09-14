@@ -204,3 +204,29 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 	return resp, nil
 }
+
+type BattleBounty struct {
+	*boiler.BattleBounty
+	OfferedByPlayer *boiler.Player `json:"offered_by_player"`
+}
+
+func BattleBountiesFromBoiler(bbs []*boiler.BattleBounty) []*BattleBounty {
+	resp := []*BattleBounty{}
+	if bbs == nil || len(bbs) == 0 {
+		return resp
+	}
+
+	for _, bb := range bbs {
+		battleBounty := &BattleBounty{
+			BattleBounty: bb,
+		}
+
+		if bb.R != nil && bb.R.OfferedBy != nil {
+			battleBounty.OfferedByPlayer = bb.R.OfferedBy
+		}
+
+		resp = append(resp, battleBounty)
+	}
+
+	return resp
+}

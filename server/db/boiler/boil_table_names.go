@@ -11,6 +11,7 @@ var TableNames = struct {
 	BattleAbilityOptInLogs                             string
 	BattleAbilityTriggers                              string
 	BattleArena                                        string
+	BattleBounties                                     string
 	BattleContracts                                    string
 	BattleContributions                                string
 	BattleEvents                                       string
@@ -21,7 +22,6 @@ var TableNames = struct {
 	BattleHistory                                      string
 	BattleKills                                        string
 	BattleLobbies                                      string
-	BattleLobbiesBounties                              string
 	BattleLobbiesMechs                                 string
 	BattleMapQueueOld                                  string
 	BattleMechs                                        string
@@ -162,6 +162,7 @@ var TableNames = struct {
 	BattleAbilityOptInLogs:          "battle_ability_opt_in_logs",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleArena:                     "battle_arena",
+	BattleBounties:                  "battle_bounties",
 	BattleContracts:                 "battle_contracts",
 	BattleContributions:             "battle_contributions",
 	BattleEvents:                    "battle_events",
@@ -172,7 +173,6 @@ var TableNames = struct {
 	BattleHistory:                  "battle_history",
 	BattleKills:                    "battle_kills",
 	BattleLobbies:                  "battle_lobbies",
-	BattleLobbiesBounties:          "battle_lobbies_bounties",
 	BattleLobbiesMechs:             "battle_lobbies_mechs",
 	BattleMapQueueOld:              "battle_map_queue_old",
 	BattleMechs:                    "battle_mechs",
