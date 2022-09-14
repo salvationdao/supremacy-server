@@ -58,12 +58,17 @@ func IsValidCollectionItemType(itemType string) bool {
 }
 
 func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType string, ownerID ...string) (bool, ForbiddenAssetModificationReason, error) {
+	l := gamelog.L.With().Str("func", "CanAssetBeModifiedOrMoved").Str("itemID", itemID).Str("itemType", itemType).Logger()
+
 	if !IsValidCollectionItemType(itemType) {
+		l.Debug().Msg("invalid collection item type")
 		return false, -1, fmt.Errorf("unknown collection item type")
 	}
 
 	if itemType == boiler.ItemTypeMysteryCrate || itemType == boiler.ItemTypeWeaponSkin {
-		return false, ForbiddenAssetModificationReasonInvalid, fmt.Errorf("invalid collection item type specified")
+		err := fmt.Errorf("item type cannot be modified or moved")
+		l.Error().Err(err)
+		return false, ForbiddenAssetModificationReasonInvalid, err
 	}
 
 	ci, err := boiler.CollectionItems(
@@ -71,17 +76,23 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 		boiler.CollectionItemWhere.ItemType.EQ(itemType),
 	).One(exec)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get collection item")
 		return false, -1, err
 	}
+	l = l.With().Interface("collectionItem", ci).Logger()
 
 	if len(ownerID) > 0 && ownerID[0] != "" && ci.OwnerID != ownerID[0] {
+		l = l.With().Str("ownerID", ownerID[0]).Logger()
+		l.Debug().Msg("user is not owner of collection item")
 		return false, ForbiddenAssetModificationReasonOwner, nil
 	}
 
 	if ci.LockedToMarketplace {
+		l.Debug().Msg("item is locked to marketplace")
 		return false, ForbiddenAssetModificationReasonMarketplace, nil
 	}
 	if ci.XsynLocked {
+		l.Debug().Msg("item is locked to xsyn")
 		return false, ForbiddenAssetModificationReasonXsyn, nil
 	}
 
@@ -89,9 +100,12 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 	case boiler.ItemTypeUtility:
 		utility, err := boiler.FindUtility(exec, itemID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get utility")
 			return false, -1, err
 		}
+		l = l.With().Interface("utility", utility).Logger()
 		if utility.LockedToMech {
+			l.Debug().Msg("utility is locked to mech")
 			return false, ForbiddenAssetModificationReasonMechLocked, nil
 		}
 		if utility.EquippedOn.Valid {
@@ -100,9 +114,12 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 	case boiler.ItemTypeWeapon:
 		weapon, err := boiler.FindWeapon(exec, itemID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get weapon")
 			return false, -1, err
 		}
+		l = l.With().Interface("weapon", weapon).Logger()
 		if weapon.LockedToMech {
+			l.Debug().Msg("weapon is locked to mech")
 			return false, ForbiddenAssetModificationReasonMechLocked, nil
 		}
 		if weapon.EquippedOn.Valid {
@@ -111,18 +128,27 @@ func CanAssetBeModifiedOrMoved(exec boil.Executor, itemID string, itemType strin
 	case boiler.ItemTypeMech:
 		mechStatus, err := GetCollectionItemStatus(*ci)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech status")
 			return false, -1, err
 		}
+		l = l.With().Interface("mechStatus", mechStatus).Logger()
 		if mechStatus.Status == server.MechArenaStatusBattle {
+			l.Debug().Msg("mech is in battle")
 			return false, ForbiddenAssetModificationReasonBattle, nil
+		}
+		if mechStatus.Status == server.MechArenaStatusQueue {
+			l.Debug().Msg("mech is in queue")
+			return false, ForbiddenAssetModificationReasonQueue, nil
 		}
 	// case boiler.ItemTypeMechSkin:
 	// case boiler.ItemTypeMechAnimation:
 	case boiler.ItemTypePowerCore:
 		powerCore, err := boiler.FindPowerCore(exec, itemID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get power core")
 			return false, -1, err
 		}
+		l = l.With().Interface("powerCore", powerCore).Logger()
 		if powerCore.EquippedOn.Valid {
 			return CanAssetBeModifiedOrMoved(exec, powerCore.EquippedOn.String, boiler.ItemTypePowerCore)
 		}
