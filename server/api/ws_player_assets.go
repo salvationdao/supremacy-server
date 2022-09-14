@@ -1326,32 +1326,37 @@ type EquipUtility struct {
 const HubKeyPlayerAssetMechEquip = "PLAYER:ASSET:MECH:EQUIP"
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	l := gamelog.L.With().Str("func", "PlayerAssetMechEquipHandler").Str("userID", user.ID).Logger()
+
 	errorMsg := "Something happened while trying to save your changes. Please try again or contact support if this problem persists."
 	req := &PlayerAssetMechEquipRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to unmarshal payload")
 		return terror.Error(err, "Invalid request received.")
 	}
+	l = l.With().Interface("payload", req.Payload).Logger()
 
 	if req.Payload.MechID == "" {
+		l.Error().Msg("empty mech ID provided")
 		return terror.Error(terror.ErrInvalidInput, errorMsg)
 	}
 
 	mech, err := db.Mech(gamedb.StdConn, req.Payload.MechID)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to get mech (db.Mech)")
 		return terror.Error(err, errorMsg)
 	}
-
-	if mech.XsynLocked {
-		return terror.Error(terror.ErrForbidden, "You cannot modify a mech that is not in Supremacy.")
-	}
+	l = l.With().Interface("mech", mech).Logger()
 
 	// Check if mech can be modified
 	canModify, reason, err := db.CanAssetBeModifiedOrMoved(gamedb.StdConn, mech.ID, boiler.ItemTypeMech, user.ID)
 	if err != nil {
+		l.Error().Err(err).Msg("failed to check if mech can be modified or moved (db.CanAssetBeModifiedOrMoved)")
 		return terror.Error(err, errorMsg)
 	}
 	if !canModify {
+		l.Error().Msg(fmt.Sprintf("cannot modify mech: %s", reason.String()))
 		return terror.Error(terror.ErrForbidden, fmt.Sprintf("This mech cannot be modified: %s", reason.String()))
 	}
 
@@ -1359,6 +1364,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
+		l.Error().Err(err).Msg("failed to begin tx")
 		return terror.Error(err, errorMsg)
 	}
 	defer tx.Rollback()
@@ -1367,9 +1373,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		// Check if power core can be modified
 		canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, req.Payload.EquipPowerCore, boiler.ItemTypePowerCore, user.ID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to check if power core can be modified or moved (db.CanAssetBeModifiedOrMoved)")
 			return terror.Error(err, errorMsg)
 		}
 		if !canEquip {
+			l.Error().Msg(fmt.Sprintf("cannot equip power core: %s", reason.String()))
 			return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected power core cannot be equipped: %s", reason.String()))
 		}
 
@@ -1378,6 +1386,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			boiler.PowerCoreWhere.ID.EQ(req.Payload.EquipPowerCore),
 		).One(tx)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get power core")
 			return terror.Error(err, errorMsg)
 		}
 
@@ -1385,26 +1394,42 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			// If power core is equipped on another mech, remove it from that mech
 			unequipMech, err := boiler.FindMech(tx, powerCore.EquippedOn.String)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to get mech to unequip selected power core from")
 				return terror.Error(err, errorMsg)
 			}
+			l = l.With().Interface("unequipMech", unequipMech).Logger()
 
 			unequipMech.PowerCoreID = null.String{}
 			_, err = unequipMech.Update(tx, boil.Infer())
 			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip selected power core from its mech")
 				return terror.Error(err, errorMsg)
 			}
 		}
 
 		if mech.PowerCoreID.Valid {
 			// Remove previous power core
-			powerCoreToReplace, err := boiler.FindPowerCore(tx, mech.PowerCoreID.String)
+			canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mech.PowerCore.ID, boiler.ItemTypePowerCore, user.ID)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to check if previous power core can be removed (db.CanAssetBeModifiedOrMoved)")
 				return terror.Error(err, errorMsg)
 			}
+			if !canRemove {
+				l.Error().Msg(fmt.Sprintf("cannot remove previous power core: %s", reason.String()))
+				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The previous power core cannot be removed: %s", reason.String()))
+			}
 
-			powerCoreToReplace.EquippedOn = null.String{}
-			_, err = powerCoreToReplace.Update(tx, boil.Infer())
+			previousPowerCore, err := boiler.FindPowerCore(tx, mech.PowerCoreID.String)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to get previous power core to replace")
+				return terror.Error(err, errorMsg)
+			}
+			l = l.With().Interface("previousPowerCore", previousPowerCore).Logger()
+
+			previousPowerCore.EquippedOn = null.String{}
+			_, err = previousPowerCore.Update(tx, boil.Infer())
+			if err != nil {
+				l.Error().Err(err).Msg("failed to unequip previous power core from its mech")
 				return terror.Error(err, errorMsg)
 			}
 		}
@@ -1412,18 +1437,22 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 		// Equip power core to mech
 		equipMech, err := boiler.FindMech(tx, mech.ID)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get mech to equip on")
 			return terror.Error(err, errorMsg)
 		}
+		l = l.With().Interface("equipMech", equipMech).Logger()
 
 		equipMech.PowerCoreID = null.StringFrom(powerCore.ID)
 		_, err = equipMech.Update(tx, boil.Infer())
 		if err != nil {
+			l.Error().Err(err).Msg("failed to update mech with new power core")
 			return terror.Error(err, errorMsg)
 		}
 
 		powerCore.EquippedOn = null.StringFrom(mech.ID)
 		_, err = powerCore.Update(tx, boil.Infer())
 		if err != nil {
+			l.Error().Err(err).Msg("failed to update power core with new mech")
 			return terror.Error(err, errorMsg)
 		}
 	}
@@ -1438,45 +1467,42 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			boiler.UtilityWhere.ID.IN(ids),
 		).All(tx)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get utilities")
 			return terror.Error(err, errorMsg)
 		}
-		if len(utilities) != len(req.Payload.EquipUtility) {
-			return terror.Error(fmt.Errorf("could not find all specified utilities to equip"), errorMsg)
-		}
+		l = l.With().Interface("utilities", utilities).Logger()
 
-		// Check ownership of utilities
-		ownershipCount, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.IN(ids),
-			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		).Count(tx)
-		if err != nil {
-			return terror.Error(err, errorMsg)
-		}
-		if ownershipCount != int64(len(req.Payload.EquipUtility)) {
-			return terror.Error(terror.ErrUnauthorised, errorMsg)
+		if len(utilities) != len(req.Payload.EquipUtility) {
+			l.Error().Msg("utilities length does not match selected utilities")
+			return terror.Error(fmt.Errorf("could not find all specified utilities to equip"), errorMsg)
 		}
 
 		for _, eu := range req.Payload.EquipUtility {
 			if eu.SlotNumber < 0 {
+				l.Error().Msg(fmt.Sprintf("invalid utility slot number specified: %d", eu.SlotNumber))
 				return terror.Error(terror.ErrInvalidInput, "This mech does not have the utility slot specified to equip the utility on.")
 			}
 
 			// Slot number specified does not exist on mech
 			if eu.SlotNumber > mech.UtilitySlots-1 {
+				l.Error().Msg(fmt.Sprintf("utility slot number specified (%d) exceeds mech utility slot limit (%d)", eu.SlotNumber, mech.UtilitySlots))
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified utilities on the mech as it does not have enough utility slots.")
 			}
 
 			// Check if utility can be modified
 			canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, eu.UtilityID, boiler.ItemTypeUtility, user.ID)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to check if utility can be modified or moved (db.CanAssetBeModifiedOrMoved)")
 				return terror.Error(err, errorMsg)
 			}
 			if !canEquip {
+				l.Error().Msg(fmt.Sprintf("utility in slot %d cannot be equipped: %s", eu.SlotNumber, reason.String()))
 				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected utility in slot %d cannot be equipped: %s", eu.SlotNumber, reason.String()))
 			}
 
 			utility, err := boiler.FindUtility(tx, eu.UtilityID)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to get utility")
 				return terror.Error(err, errorMsg)
 			}
 
@@ -1487,15 +1513,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					boiler.MechUtilityWhere.UtilityID.EQ(null.StringFrom(utility.ID)),
 				).One(tx)
 				if err != nil {
+					l.Error().Err(err).Msg("failed to get mech utility to unequip from")
 					return terror.Error(err, errorMsg)
 				}
 
 				unequipMechUtility.UtilityID = null.String{}
 				updated, err := unequipMechUtility.Update(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to remove utility from mech")
 					return terror.Error(err, errorMsg)
 				}
 				if updated < 1 {
+					l.Error().Msg("failed to remove utility from mech 2")
 					return terror.Error(fmt.Errorf("failed to remove selected utility from mech"), errorMsg)
 				}
 			}
@@ -1510,9 +1539,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 				err := mu.Insert(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to create new mech utility slot")
 					return terror.Error(err, errorMsg)
 				}
 			} else if err != nil {
+				l.Error().Err(err).Msg("failed to get mech utility slot")
 				return terror.Error(err, errorMsg)
 			}
 
@@ -1520,23 +1551,28 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				// Remove previous utility from mech
 				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mu.UtilityID.String, boiler.ItemTypeUtility, user.ID)
 				if err != nil {
+					l.Error().Err(err).Msg(fmt.Sprintf("failed to check if previous utility, %s, can be removed (db.CanAssetBeModifiedOrMoved)", mu.UtilityID.String))
 					return terror.Error(err, errorMsg)
 				}
 				if !canRemove {
+					l.Error().Msg(fmt.Sprintf("cannot remove previous utility: %s", reason.String()))
 					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing utility in slot %d cannot be removed: %s", eu.SlotNumber, reason.String()))
 				}
 
 				previousUtility, err := boiler.FindUtility(tx, mu.UtilityID.String)
 				if err != nil {
+					l.Error().Err(err).Msg("failed to get previous utility")
 					return terror.Error(err, errorMsg)
 				}
 
 				previousUtility.EquippedOn = null.String{}
 				updated, err := previousUtility.Update(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to remove previous utility from mech")
 					return terror.Error(err, errorMsg)
 				}
 				if updated < 1 {
+					l.Error().Msg("failed to remove previous utility from mech 2")
 					return terror.Error(fmt.Errorf("failed to remove previous utility from mech"))
 				}
 			}
@@ -1544,12 +1580,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			utility.EquippedOn = null.StringFrom(mech.ID)
 			_, err = utility.Update(tx, boil.Infer())
 			if err != nil {
+				l.Error().Err(err).Msg("failed to equip utility to mech")
 				return terror.Error(err, errorMsg)
 			}
 
 			mu.UtilityID = null.StringFrom(eu.UtilityID)
 			_, err = mu.Update(tx, boil.Infer())
 			if err != nil {
+				l.Error().Err(err).Msg("failed to update mech utility")
 				return terror.Error(err, errorMsg)
 			}
 		}
@@ -1566,40 +1604,36 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			qm.Load(boiler.WeaponRels.Blueprint),
 		).All(tx)
 		if err != nil {
+			l.Error().Err(err).Msg("failed to get weapons")
 			return terror.Error(err, errorMsg)
 		}
-		if len(weapons) != len(req.Payload.EquipWeapons) {
-			return terror.Error(fmt.Errorf("could not find all specified weapons to equip"), errorMsg)
-		}
+		l = l.With().Interface("weapons", weapons).Logger()
 
-		// Check ownership of weapons
-		ownershipCount, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.IN(ids),
-			boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
-		).Count(tx)
-		if err != nil {
-			return terror.Error(err, errorMsg)
-		}
-		if ownershipCount != int64(len(req.Payload.EquipWeapons)) {
-			return terror.Error(terror.ErrUnauthorised, errorMsg)
+		if len(weapons) != len(req.Payload.EquipWeapons) {
+			l.Error().Msg("weapons length does not match selected weapons")
+			return terror.Error(fmt.Errorf("could not find all specified weapons to equip"), errorMsg)
 		}
 
 		for _, ew := range req.Payload.EquipWeapons {
 			if ew.SlotNumber < 0 {
+				l.Error().Msg(fmt.Sprintf("invalid weapon slot number specified: %d", ew.SlotNumber))
 				return terror.Error(terror.ErrInvalidInput, "This mech does not have the weapon slot specified to equip the weapon on.")
 			}
 
 			// Slot number specified does not exist on mech
 			if ew.SlotNumber > mech.WeaponHardpoints-1 {
+				l.Error().Msg(fmt.Sprintf("wepaon slot number specified (%d) exceeds mech wepaon slot limit (%d)", ew.SlotNumber, mech.WeaponHardpoints))
 				return terror.Error(terror.ErrForbidden, "You cannot equip the specified weapons on the mech as it does not have enough weapon slots.")
 			}
 
 			// Check if weapon can be modified
 			canEquip, reason, err := db.CanAssetBeModifiedOrMoved(tx, ew.WeaponID, boiler.ItemTypeWeapon, user.ID)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to check if weapon can be modified or moved (db.CanAssetBeModifiedOrMoved)")
 				return terror.Error(err, errorMsg)
 			}
 			if !canEquip {
+				l.Error().Msg(fmt.Sprintf("weapon in slot %d cannot be equipped: %s", ew.SlotNumber, reason.String()))
 				return terror.Error(terror.ErrForbidden, fmt.Sprintf("The selected weapon in slot %d cannot be equipped: %s", ew.SlotNumber, reason.String()))
 			}
 
@@ -1608,6 +1642,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				qm.Load(boiler.WeaponRels.Blueprint),
 			).One(tx)
 			if err != nil {
+				l.Error().Err(err).Msg("failed to get weapon")
 				return terror.Error(err, errorMsg)
 			}
 
@@ -1618,15 +1653,18 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 					boiler.MechWeaponWhere.WeaponID.EQ(null.StringFrom(weapon.ID)),
 				).One(tx)
 				if err != nil {
+					l.Error().Err(err).Msg("failed to get mech weapon to unequip from")
 					return terror.Error(err, errorMsg)
 				}
 
 				unequipMechWeapon.WeaponID = null.String{}
 				updated, err := unequipMechWeapon.Update(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to remove weapon from mech")
 					return terror.Error(err, errorMsg)
 				}
 				if updated < 1 {
+					l.Error().Msg("failed to remove weapon from mech 2")
 					return terror.Error(fmt.Errorf("failed to remove selected weapon from mech"), errorMsg)
 				}
 			}
@@ -1641,9 +1679,11 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 
 				err := mw.Insert(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to create new mech weapon slot")
 					return terror.Error(err, errorMsg)
 				}
 			} else if err != nil {
+				l.Error().Err(err).Msg("failed to get mech weapon slot")
 				return terror.Error(err, errorMsg)
 			}
 
@@ -1651,23 +1691,28 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 				// Remove previous weapon from mech
 				canRemove, reason, err := db.CanAssetBeModifiedOrMoved(tx, mw.WeaponID.String, boiler.ItemTypeWeapon, user.ID)
 				if err != nil {
+					l.Error().Err(err).Msg(fmt.Sprintf("failed to check if previous weapon, %s, can be removed (db.CanAssetBeModifiedOrMoved)", mw.WeaponID.String))
 					return terror.Error(err, errorMsg)
 				}
 				if !canRemove {
+					l.Error().Msg(fmt.Sprintf("cannot remove previous utility: %s", reason.String()))
 					return terror.Error(terror.ErrForbidden, fmt.Sprintf("The existing weapon in slot %d cannot be removed: %s", ew.SlotNumber, reason.String()))
 				}
 
 				previousWeapon, err := boiler.FindWeapon(tx, mw.WeaponID.String)
 				if err != nil {
+					l.Error().Err(err).Msg("failed to get previous weapon")
 					return terror.Error(err, errorMsg)
 				}
 
 				previousWeapon.EquippedOn = null.String{}
 				updated, err := previousWeapon.Update(tx, boil.Infer())
 				if err != nil {
+					l.Error().Err(err).Msg("failed to remove previous weapon from mech")
 					return terror.Error(err, errorMsg)
 				}
 				if updated < 1 {
+					l.Error().Msg("failed to remove previous weapon from mech 2")
 					return terror.Error(fmt.Errorf("failed to remove previous weapon from mech"))
 				}
 			}
@@ -1675,6 +1720,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			weapon.EquippedOn = null.StringFrom(mech.ID)
 			_, err = weapon.Update(tx, boil.Infer())
 			if err != nil {
+				l.Error().Err(err).Msg("failed to equip weapon to mech")
 				return terror.Error(err, errorMsg)
 			}
 
@@ -1683,6 +1729,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechEquipHandler(ctx context.Con
 			mw.AllowMelee = weapon.R.Blueprint.IsMelee
 			_, err = mw.Update(tx, boil.Infer())
 			if err != nil {
+				l.Error().Err(err).Msg("failed to update mech weapon")
 				return terror.Error(err, errorMsg)
 			}
 		}
