@@ -86,7 +86,7 @@ type MechBattleBrief struct {
 	Tier      string      `json:"tier"`
 	ImageUrl  string      `json:"image_url"`
 	FactionID string      `json:"faction_id"`
-	Kills     []*KillInfo `json:"kills"`
+	Kills     []*KillInfo `json:"kills,omitempty"`
 	KilledBy  *KillInfo   `json:"killed,omitempty"`
 }
 
@@ -646,8 +646,15 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 		}
 	}
 
-	// reward winners
+	// declare rewards
+	btl.playerBattleCompleteMessage = []*PlayerBattleCompleteMessage{}
+	btl.mechRewards = []*MechReward{}
+
+	// reward mech owners
 	btl.RewardBattleMechOwners(winningFactionIDOrder)
+
+	// reward battle bounties
+	btl.RewardBattleBounties()
 
 	// end info
 	endInfo := &BattleEndDetail{
@@ -764,7 +771,7 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 				SenderID: server.SupremacyBattleUserID,
 				DataType: null.StringFrom(string(system_messages.SystemMessageDataTypeMechBattleComplete)),
 				Title:    "Battle Complete",
-				Message:  fmt.Sprintf("Your faction is the %s rank in the battle #%d.", msg.FactionRank, battle.BattleNumber),
+				Message:  fmt.Sprintf("Summary of the battle #%d.", battle.BattleNumber),
 				Data:     null.JSONFrom(b),
 			}
 			err = sysMsg.Insert(gamedb.StdConn, boil.Infer())
@@ -778,14 +785,25 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 }
 
 type PlayerBattleCompleteMessage struct {
-	PlayerID              string                         `json:"player_id"`
+	PlayerID string `json:"player_id"`
+
+	FactionReward    *FactionReward     `json:"faction_reward,omitempty"`
+	MechBattleBriefs []*MechBattleBrief `json:"mech_battle_briefs,omitempty"`
+	ObtainedBounties []*Bounty          `json:"obtained_bounties,omitempty"`
+}
+
+type FactionReward struct {
 	RewardedSups          decimal.Decimal                `json:"rewarded_sups"`
 	RewardedSupsBonus     decimal.Decimal                `json:"rewarded_sups_bonus"`
 	RewardedPlayerAbility *boiler.BlueprintPlayerAbility `json:"rewarded_player_ability"`
 	FactionRank           string                         `json:"faction_rank"`
-
-	MechBattleBriefs []*MechBattleBrief `json:"mech_battle_briefs"`
 }
+
+type Bounty struct {
+	DestroyedMech *MechBattleBrief `json:"destroyed_mech"`
+	Amount        decimal.Decimal  `json:"amount"`
+}
+
 type MechReward struct {
 	ID                string          `json:"id"`
 	Name              string          `json:"name"`
@@ -799,11 +817,6 @@ type MechReward struct {
 
 // RewardBattleMechOwners give reward to war machine owner
 func (btl *Battle) RewardBattleMechOwners(winningFactionOrder []string) {
-
-	// declare rewards
-	btl.playerBattleCompleteMessage = []*PlayerBattleCompleteMessage{}
-	btl.mechRewards = []*MechReward{}
-
 	// load reward from entry fee
 	totalSups := btl.lobby.EntryFee.Mul(decimal.NewFromInt(int64(len(btl.warMachineIDs))))
 
@@ -925,8 +938,7 @@ func (btl *Battle) RewardMechOwner(
 	}()
 
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
-	pw := &PlayerBattleCompleteMessage{
-		PlayerID:          owner.ID,
+	pw := &FactionReward{
 		RewardedSups:      rewardedSups,
 		RewardedSupsBonus: decimal.Zero,
 		FactionRank:       ranking,
@@ -1071,22 +1083,26 @@ func (btl *Battle) RewardMechOwner(
 	}
 
 	index := slices.IndexFunc(btl.playerBattleCompleteMessage, func(pr *PlayerBattleCompleteMessage) bool { return pr.PlayerID == owner.ID })
-	if index != -1 {
-		// sum the sups reward
-		btl.playerBattleCompleteMessage[index].RewardedSups = btl.playerBattleCompleteMessage[index].RewardedSups.Add(rewardedSups)
-		btl.playerBattleCompleteMessage[index].RewardedSupsBonus = btl.playerBattleCompleteMessage[index].RewardedSupsBonus.Add(bonusSups)
-
-	} else {
-		// append new player reward and set index
-		btl.playerBattleCompleteMessage = append(btl.playerBattleCompleteMessage, pw)
+	if index == -1 {
+		btl.playerBattleCompleteMessage = append(btl.playerBattleCompleteMessage, &PlayerBattleCompleteMessage{
+			PlayerID: owner.ID,
+		})
 		index = len(btl.playerBattleCompleteMessage) - 1
+	}
+
+	pbm := btl.playerBattleCompleteMessage[index]
+	if pbm.FactionReward == nil {
+		pbm.FactionReward = pw
+	} else {
+		pbm.FactionReward.RewardedSups = pbm.FactionReward.RewardedSups.Add(rewardedSups)
+		pbm.FactionReward.RewardedSupsBonus = pbm.FactionReward.RewardedSupsBonus.Add(bonusSups)
 	}
 
 	// skip ability reward, if
 	// 1. the player is AI
 	// 2. the player is not eligible
 	// 3. the player has already got an ability
-	if owner.IsAi || !rewardAbility || btl.playerBattleCompleteMessage[index].RewardedPlayerAbility != nil {
+	if owner.IsAi || !rewardAbility || pbm.FactionReward.RewardedPlayerAbility != nil {
 		return
 	}
 
@@ -1154,13 +1170,13 @@ func (btl *Battle) RewardMechOwner(
 	rand.Seed(time.Now().UnixNano())
 	ability := availableAbilities[rand.Intn(len(availableAbilities))]
 
-	err = db.PlayerAbilityAssign(pw.PlayerID, ability.BlueprintID)
+	err = db.PlayerAbilityAssign(pbm.PlayerID, ability.BlueprintID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("player id", owner.ID).Str("ability id", ability.ID).Msg("Failed to assign ability to the player")
 		return
 	}
 
-	btl.playerBattleCompleteMessage[index].RewardedPlayerAbility = ability.R.Blueprint
+	pbm.FactionReward.RewardedPlayerAbility = ability.R.Blueprint
 }
 
 func (btl *Battle) RewardBattleBounties() {
@@ -1228,6 +1244,8 @@ func (btl *Battle) RewardBattleBounties() {
 				continue
 			}
 
+			totalAmount := decimal.Zero
+
 			// payout
 			for _, bb := range bbs {
 				if bb.TargetedMechID != mkr.warMachineOneID {
@@ -1291,7 +1309,42 @@ func (btl *Battle) RewardBattleBounties() {
 					gamelog.L.Error().Err(err).Interface("battle bounty", bb).Msg("Failed to update battle bounty")
 					continue
 				}
+
+				totalAmount = totalAmount.Add(bb.Amount)
 			}
+
+			// record battle bounties reward
+			bounty := &Bounty{
+				Amount: totalAmount,
+			}
+
+			for _, wm := range btl.WarMachines {
+				if wm.ID == mkr.warMachineOneID {
+					bounty.DestroyedMech = &MechBattleBrief{
+						MechID:    wm.ID,
+						Name:      wm.Label,
+						Tier:      wm.Tier,
+						ImageUrl:  wm.ImageAvatar,
+						FactionID: wm.FactionID,
+					}
+					if wm.Name != "" {
+						bounty.DestroyedMech.Name = wm.Name
+					}
+					break
+				}
+			}
+
+			idx := slices.IndexFunc(btl.playerBattleCompleteMessage, func(pbm *PlayerBattleCompleteMessage) bool { return pbm.PlayerID == mkr.playerID })
+			if idx == -1 {
+				btl.playerBattleCompleteMessage = append(btl.playerBattleCompleteMessage, &PlayerBattleCompleteMessage{
+					PlayerID: mkr.playerID,
+				})
+				idx = len(btl.playerBattleCompleteMessage) - 1
+			}
+
+			pbm := btl.playerBattleCompleteMessage[idx]
+			pbm.ObtainedBounties = append(pbm.ObtainedBounties, bounty)
+
 		}
 	}
 
