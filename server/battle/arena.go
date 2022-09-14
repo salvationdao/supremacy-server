@@ -682,7 +682,7 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		gamelog.L.Error().Str("log_name", "battle arena").Interface("payload", payload).Err(err).Msg("failed to write websocket message to game client")
 		return
 	}
-	gamelog.L.Info().Str("message data", string(b)).Msg("game client message sent")
+	gamelog.L.Info().RawJSON("message data", b).Msg("game client message sent")
 }
 
 type ArenaStatus struct {
@@ -1323,7 +1323,7 @@ func (arena *Arena) GameClientJsonDataParser() {
 			continue
 		}
 
-		L := gamelog.L.With().Str("game_client_data", string(data)).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
+		L := gamelog.L.With().RawJSON("game_client_data", data).Int("message_type", int(JSON)).Str("battleCommand", msg.BattleCommand).Logger()
 		L.Info().Msg("game client message received")
 
 		command := strings.TrimSpace(msg.BattleCommand) // temp fix for issue on gameclient

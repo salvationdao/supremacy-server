@@ -1075,6 +1075,7 @@ func (o *Player) OwnerCollectionItems(mods ...qm.QueryMod) collectionItemQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"collection_items\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"collection_items\".\"deleted_at\""),
 	)
 
 	query := CollectionItems(queryMods...)
@@ -4366,6 +4367,7 @@ func (playerL) LoadOwnerCollectionItems(e boil.Executor, singular bool, maybePla
 	query := NewQuery(
 		qm.From(`collection_items`),
 		qm.WhereIn(`collection_items.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`collection_items.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

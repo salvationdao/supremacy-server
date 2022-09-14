@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,10 +23,11 @@ import (
 
 // UtilityShieldDontUse is an object representing the database table.
 type UtilityShieldDontUse struct {
-	UtilityID          string `boiler:"utility_id" boil:"utility_id" json:"utility_id" toml:"utility_id" yaml:"utility_id"`
-	Hitpoints          int    `boiler:"hitpoints" boil:"hitpoints" json:"hitpoints" toml:"hitpoints" yaml:"hitpoints"`
-	RechargeRate       int    `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
-	RechargeEnergyCost int    `boiler:"recharge_energy_cost" boil:"recharge_energy_cost" json:"recharge_energy_cost" toml:"recharge_energy_cost" yaml:"recharge_energy_cost"`
+	UtilityID          string    `boiler:"utility_id" boil:"utility_id" json:"utility_id" toml:"utility_id" yaml:"utility_id"`
+	Hitpoints          int       `boiler:"hitpoints" boil:"hitpoints" json:"hitpoints" toml:"hitpoints" yaml:"hitpoints"`
+	RechargeRate       int       `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
+	RechargeEnergyCost int       `boiler:"recharge_energy_cost" boil:"recharge_energy_cost" json:"recharge_energy_cost" toml:"recharge_energy_cost" yaml:"recharge_energy_cost"`
+	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *utilityShieldDontUseR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L utilityShieldDontUseL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -36,11 +38,13 @@ var UtilityShieldDontUseColumns = struct {
 	Hitpoints          string
 	RechargeRate       string
 	RechargeEnergyCost string
+	DeletedAt          string
 }{
 	UtilityID:          "utility_id",
 	Hitpoints:          "hitpoints",
 	RechargeRate:       "recharge_rate",
 	RechargeEnergyCost: "recharge_energy_cost",
+	DeletedAt:          "deleted_at",
 }
 
 var UtilityShieldDontUseTableColumns = struct {
@@ -48,11 +52,13 @@ var UtilityShieldDontUseTableColumns = struct {
 	Hitpoints          string
 	RechargeRate       string
 	RechargeEnergyCost string
+	DeletedAt          string
 }{
 	UtilityID:          "utility_shield_dont_use.utility_id",
 	Hitpoints:          "utility_shield_dont_use.hitpoints",
 	RechargeRate:       "utility_shield_dont_use.recharge_rate",
 	RechargeEnergyCost: "utility_shield_dont_use.recharge_energy_cost",
+	DeletedAt:          "utility_shield_dont_use.deleted_at",
 }
 
 // Generated where
@@ -62,11 +68,13 @@ var UtilityShieldDontUseWhere = struct {
 	Hitpoints          whereHelperint
 	RechargeRate       whereHelperint
 	RechargeEnergyCost whereHelperint
+	DeletedAt          whereHelpernull_Time
 }{
 	UtilityID:          whereHelperstring{field: "\"utility_shield_dont_use\".\"utility_id\""},
 	Hitpoints:          whereHelperint{field: "\"utility_shield_dont_use\".\"hitpoints\""},
 	RechargeRate:       whereHelperint{field: "\"utility_shield_dont_use\".\"recharge_rate\""},
 	RechargeEnergyCost: whereHelperint{field: "\"utility_shield_dont_use\".\"recharge_energy_cost\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"utility_shield_dont_use\".\"deleted_at\""},
 }
 
 // UtilityShieldDontUseRels is where relationship names are stored.
@@ -90,9 +98,9 @@ func (*utilityShieldDontUseR) NewStruct() *utilityShieldDontUseR {
 type utilityShieldDontUseL struct{}
 
 var (
-	utilityShieldDontUseAllColumns            = []string{"utility_id", "hitpoints", "recharge_rate", "recharge_energy_cost"}
+	utilityShieldDontUseAllColumns            = []string{"utility_id", "hitpoints", "recharge_rate", "recharge_energy_cost", "deleted_at"}
 	utilityShieldDontUseColumnsWithoutDefault = []string{"utility_id"}
-	utilityShieldDontUseColumnsWithDefault    = []string{"hitpoints", "recharge_rate", "recharge_energy_cost"}
+	utilityShieldDontUseColumnsWithDefault    = []string{"hitpoints", "recharge_rate", "recharge_energy_cost", "deleted_at"}
 	utilityShieldDontUsePrimaryKeyColumns     = []string{"utility_id"}
 	utilityShieldDontUseGeneratedColumns      = []string{}
 )
@@ -507,7 +515,7 @@ func (o *UtilityShieldDontUse) SetUtility(exec boil.Executor, insert bool, relat
 
 // UtilityShieldDontUses retrieves all the records using an executor.
 func UtilityShieldDontUses(mods ...qm.QueryMod) utilityShieldDontUseQuery {
-	mods = append(mods, qm.From("\"utility_shield_dont_use\""))
+	mods = append(mods, qm.From("\"utility_shield_dont_use\""), qmhelper.WhereIsNull("\"utility_shield_dont_use\".\"deleted_at\""))
 	return utilityShieldDontUseQuery{NewQuery(mods...)}
 }
 
@@ -521,7 +529,7 @@ func FindUtilityShieldDontUse(exec boil.Executor, utilityID string, selectCols .
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"utility_shield_dont_use\" where \"utility_id\"=$1", sel,
+		"select %s from \"utility_shield_dont_use\" where \"utility_id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, utilityID)
@@ -862,7 +870,7 @@ func (o *UtilityShieldDontUse) Upsert(exec boil.Executor, updateOnConflict bool,
 
 // Delete deletes a single UtilityShieldDontUse record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *UtilityShieldDontUse) Delete(exec boil.Executor) (int64, error) {
+func (o *UtilityShieldDontUse) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no UtilityShieldDontUse provided for delete")
 	}
@@ -871,8 +879,26 @@ func (o *UtilityShieldDontUse) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), utilityShieldDontUsePrimaryKeyMapping)
-	sql := "DELETE FROM \"utility_shield_dont_use\" WHERE \"utility_id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), utilityShieldDontUsePrimaryKeyMapping)
+		sql = "DELETE FROM \"utility_shield_dont_use\" WHERE \"utility_id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"utility_shield_dont_use\" SET %s WHERE \"utility_id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(utilityShieldDontUseType, utilityShieldDontUseMapping, append(wl, utilityShieldDontUsePrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -896,12 +922,17 @@ func (o *UtilityShieldDontUse) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q utilityShieldDontUseQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q utilityShieldDontUseQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no utilityShieldDontUseQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -917,7 +948,7 @@ func (q utilityShieldDontUseQuery) DeleteAll(exec boil.Executor) (int64, error) 
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UtilityShieldDontUseSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o UtilityShieldDontUseSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -930,14 +961,31 @@ func (o UtilityShieldDontUseSlice) DeleteAll(exec boil.Executor) (int64, error) 
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), utilityShieldDontUsePrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), utilityShieldDontUsePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"utility_shield_dont_use\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, utilityShieldDontUsePrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), utilityShieldDontUsePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"utility_shield_dont_use\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, utilityShieldDontUsePrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"utility_shield_dont_use\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, utilityShieldDontUsePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -991,7 +1039,8 @@ func (o *UtilityShieldDontUseSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"utility_shield_dont_use\".* FROM \"utility_shield_dont_use\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, utilityShieldDontUsePrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, utilityShieldDontUsePrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1008,7 +1057,7 @@ func (o *UtilityShieldDontUseSlice) ReloadAll(exec boil.Executor) error {
 // UtilityShieldDontUseExists checks if the UtilityShieldDontUse row exists.
 func UtilityShieldDontUseExists(exec boil.Executor, utilityID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"utility_shield_dont_use\" where \"utility_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"utility_shield_dont_use\" where \"utility_id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
