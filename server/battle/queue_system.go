@@ -160,8 +160,17 @@ func (am *ArenaManager) DefaultPublicLobbiesCheck() error {
 	return nil
 }
 
-func BroadcastBattleBountiesUpdate(battleBountyIDs []string) {
+func BroadcastBattleBountiesUpdate(battleBountyIDs ...string) {
 	bbs, err := boiler.BattleBounties(
+		qm.Select(
+			boiler.BattleBountyColumns.ID,
+			boiler.BattleBountyColumns.BattleLobbyID,
+			boiler.BattleBountyColumns.TargetedMechID,
+			boiler.BattleBountyColumns.Amount,
+			boiler.BattleBountyColumns.OfferedByID,
+			boiler.BattleBountyColumns.PayoutTXID,
+			boiler.BattleBountyColumns.RefundTXID,
+		),
 		boiler.BattleBountyWhere.ID.IN(battleBountyIDs),
 		qm.Load(boiler.BattleBountyRels.OfferedBy),
 	).All(gamedb.StdConn)

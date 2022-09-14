@@ -787,12 +787,12 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 type PlayerBattleCompleteMessage struct {
 	PlayerID string `json:"player_id"`
 
-	FactionReward    *FactionReward     `json:"faction_reward,omitempty"`
+	BattleReward     *BattleReward      `json:"battle_reward,omitempty"`
 	MechBattleBriefs []*MechBattleBrief `json:"mech_battle_briefs,omitempty"`
 	ObtainedBounties []*Bounty          `json:"obtained_bounties,omitempty"`
 }
 
-type FactionReward struct {
+type BattleReward struct {
 	RewardedSups          decimal.Decimal                `json:"rewarded_sups"`
 	RewardedSupsBonus     decimal.Decimal                `json:"rewarded_sups_bonus"`
 	RewardedPlayerAbility *boiler.BlueprintPlayerAbility `json:"rewarded_player_ability"`
@@ -938,7 +938,7 @@ func (btl *Battle) RewardMechOwner(
 	}()
 
 	l := gamelog.L.With().Str("function", "RewardMechOwner").Logger()
-	pw := &FactionReward{
+	pw := &BattleReward{
 		RewardedSups:      rewardedSups,
 		RewardedSupsBonus: decimal.Zero,
 		FactionRank:       ranking,
@@ -1091,18 +1091,18 @@ func (btl *Battle) RewardMechOwner(
 	}
 
 	pbm := btl.playerBattleCompleteMessage[index]
-	if pbm.FactionReward == nil {
-		pbm.FactionReward = pw
+	if pbm.BattleReward == nil {
+		pbm.BattleReward = pw
 	} else {
-		pbm.FactionReward.RewardedSups = pbm.FactionReward.RewardedSups.Add(rewardedSups)
-		pbm.FactionReward.RewardedSupsBonus = pbm.FactionReward.RewardedSupsBonus.Add(bonusSups)
+		pbm.BattleReward.RewardedSups = pbm.BattleReward.RewardedSups.Add(rewardedSups)
+		pbm.BattleReward.RewardedSupsBonus = pbm.BattleReward.RewardedSupsBonus.Add(bonusSups)
 	}
 
 	// skip ability reward, if
 	// 1. the player is AI
 	// 2. the player is not eligible
 	// 3. the player has already got an ability
-	if owner.IsAi || !rewardAbility || pbm.FactionReward.RewardedPlayerAbility != nil {
+	if owner.IsAi || !rewardAbility || pbm.BattleReward.RewardedPlayerAbility != nil {
 		return
 	}
 
@@ -1176,7 +1176,7 @@ func (btl *Battle) RewardMechOwner(
 		return
 	}
 
-	pbm.FactionReward.RewardedPlayerAbility = ability.R.Blueprint
+	pbm.BattleReward.RewardedPlayerAbility = ability.R.Blueprint
 }
 
 func (btl *Battle) RewardBattleBounties() {
@@ -1348,8 +1348,11 @@ func (btl *Battle) RewardBattleBounties() {
 		}
 	}
 
+	bountyIDs := []string{}
+
 	// refund process
 	for _, bb := range bbs {
+		bountyIDs = append(bountyIDs, bb.ID)
 		// skip, if already payout
 		if bb.PayoutTXID.Valid {
 			continue
@@ -1374,6 +1377,9 @@ func (btl *Battle) RewardBattleBounties() {
 			continue
 		}
 	}
+
+	// clean up battle bounties in frontend
+	go BroadcastBattleBountiesUpdate(bountyIDs...)
 }
 
 func (btl *Battle) processWarMachineRepair() {

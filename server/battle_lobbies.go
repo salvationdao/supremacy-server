@@ -234,6 +234,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 
 type BattleBounty struct {
 	*boiler.BattleBounty
+	IsClosed        bool           `json:"is_closed"`
 	OfferedByPlayer *boiler.Player `json:"offered_by_player"`
 }
 
@@ -246,10 +247,22 @@ func BattleBountiesFromBoiler(bbs []*boiler.BattleBounty) []*BattleBounty {
 	for _, bb := range bbs {
 		battleBounty := &BattleBounty{
 			BattleBounty: bb,
+			IsClosed:     bb.PayoutTXID.Valid && bb.RefundTXID.Valid,
 		}
 
+		// clean up transaction id
+		battleBounty.PayoutTXID = null.StringFromPtr(nil)
+		battleBounty.RefundTXID = null.StringFromPtr(nil)
+
 		if bb.R != nil && bb.R.OfferedBy != nil {
-			battleBounty.OfferedByPlayer = bb.R.OfferedBy
+			player := bb.R.OfferedBy
+			battleBounty.OfferedByPlayer = &boiler.Player{
+				ID:        player.ID,
+				Username:  player.Username,
+				FactionID: player.FactionID,
+				Gid:       player.Gid,
+				Rank:      player.Rank,
+			}
 		}
 
 		resp = append(resp, battleBounty)

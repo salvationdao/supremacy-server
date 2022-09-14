@@ -963,7 +963,7 @@ func (api *API) BattleBountyCreate(ctx context.Context, user *boiler.Player, fac
 			return terror.Error(err, "Failed to insert battle bounty")
 		}
 
-		go battle.BroadcastBattleBountiesUpdate([]string{bb.ID})
+		go battle.BroadcastBattleBountiesUpdate(bb.ID)
 
 		return nil
 	})
@@ -1029,6 +1029,13 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 
 func (api *API) BattleBountyListUpdate(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	bbs, err := boiler.BattleBounties(
+		qm.Select(
+			boiler.BattleBountyColumns.ID,
+			boiler.BattleBountyColumns.BattleLobbyID,
+			boiler.BattleBountyColumns.TargetedMechID,
+			boiler.BattleBountyColumns.Amount,
+			boiler.BattleBountyColumns.OfferedByID,
+		),
 		boiler.BattleBountyWhere.RefundTXID.IsNull(),
 		boiler.BattleBountyWhere.PayoutTXID.IsNull(),
 		qm.Load(
