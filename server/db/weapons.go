@@ -112,6 +112,7 @@ func InsertNewWeapon(tx *sql.Tx, ownerID uuid.UUID, weapon *server.BlueprintWeap
 		GenesisTokenID:        weapon.GenesisTokenID,
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		EquippedWeaponSkinID:  wpnSkin.ID,
+		LockedToMech:          weapon.ID == "c1c78867-9de7-43d3-97e9-91381800f38e" || weapon.ID == "41099781-8586-4783-9d1c-b515a386fe9f" || weapon.ID == "e9fc2417-6a5b-489d-b82e-42942535af90",
 	}
 
 	err = newWeapon.Insert(tx, boil.Infer())
