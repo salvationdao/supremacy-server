@@ -2262,6 +2262,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			MaxShield:               uint32(mech.Shield),
 			ShieldRechargeRate:      uint32(mech.BoostedShieldRechargeRate),
 			ShieldRechargePowerCost: uint32(mech.ShieldRechargePowerCost),
+			ShieldTypeID:            mech.ShieldTypeID,
+			ShieldTypeLabel:         mech.ShieldTypeLabel,
+			ShieldTypeDescription:   mech.ShieldTypeDescription,
 
 			Faction: &Faction{
 				ID:    mech.Faction.ID,

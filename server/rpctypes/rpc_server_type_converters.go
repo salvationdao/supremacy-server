@@ -76,6 +76,21 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				TraitType: "Power Core Size",
 				Value:     i.PowerCoreSize,
 			},
+			{
+				DisplayType: BoostNumber,
+				TraitType:   "Shield Hit Points",
+				Value:       i.Shield,
+			},
+			{
+				DisplayType: BoostNumber,
+				TraitType:   "Shield Recharge Rate",
+				Value:       i.ShieldRechargeRate,
+			},
+			{
+				DisplayType: BoostNumber,
+				TraitType:   "Shield Recharge Power Cost",
+				Value:       i.ShieldRechargePowerCost,
+			},
 		}
 
 		for i, wep := range i.Weapons {

@@ -35,23 +35,26 @@ type Mech struct {
 
 	//// stats
 	// speed
-	Speed                     int    `json:"speed"`
-	BoostedSpeed              int    `json:"boosted_speed"`
+	Speed        int `json:"speed"`
+	BoostedSpeed int `json:"boosted_speed"`
 	// hit points
-	MaxHitpoints              int    `json:"max_hitpoints"`
-	BoostedMaxHitpoints       int    `json:"boosted_max_hitpoints"`
+	MaxHitpoints        int `json:"max_hitpoints"`
+	BoostedMaxHitpoints int `json:"boosted_max_hitpoints"`
 	// shield
 	Shield                    int    `json:"shield"`
 	ShieldRechargeRate        int    `json:"shield_recharge_rate"`
 	BoostedShieldRechargeRate int    `json:"boosted_shield_recharge_rate"`
-	ShieldRechargePowerCost   int    `json:"shieldRechargePowerCost"`
+	ShieldRechargePowerCost   int    `json:"shield_recharge_power_cost"`
+	ShieldTypeID              string `json:"shield_type"`
+	ShieldTypeLabel           string `json:"shield_type_label"`
+	ShieldTypeDescription     string `json:"shield_type_description"`
 	// slots
-	WeaponHardpoints          int    `json:"weapon_hardpoints"`
-	UtilitySlots              int    `json:"utility_slots"`
+	WeaponHardpoints int `json:"weapon_hardpoints"`
+	UtilitySlots     int `json:"utility_slots"`
 	// other
-	RepairBlocks              int    `json:"repair_blocks"`
-	PowerCoreSize             string `json:"power_core_size"`
-	BoostedStat               string `json:"boosted_stat"`
+	RepairBlocks  int    `json:"repair_blocks"`
+	PowerCoreSize string `json:"power_core_size"`
+	BoostedStat   string `json:"boosted_stat"`
 
 	// state
 	QueuePosition null.Int    `json:"queue_position"`

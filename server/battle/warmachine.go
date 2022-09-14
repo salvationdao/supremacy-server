@@ -12,21 +12,26 @@ import (
 )
 
 type WarMachine struct {
-	ID                      string  `json:"id"`
-	Hash                    string  `json:"hash"`
-	OwnedByID               string  `json:"ownedByID"`
-	OwnerUsername           string  `json:"ownerUsername"`
-	Name                    string  `json:"name"`
-	Label                   string  `json:"label"`
-	ParticipantID           byte    `json:"participantID"`
-	MaxHealth               uint32  `json:"maxHealth"`
-	MaxShield               uint32  `json:"maxShield"`
-	Health                  uint32  `json:"health"`
-	Shield                  uint32  `json:"shield"`
-	ShieldRechargeRate      uint32  `json:"shieldRechargeRate"`
-	ShieldRechargePowerCost uint32  `json:"shieldRechargePowerCost"`
-	ShieldType              string  `json:"shieldType"`
-	AIType                  *AIType `json:"aiType"`
+	ID            string `json:"id"`
+	Hash          string `json:"hash"`
+	OwnedByID     string `json:"ownedByID"`
+	OwnerUsername string `json:"ownerUsername"`
+	Name          string `json:"name"`
+	Label         string `json:"label"`
+	ParticipantID byte   `json:"participantID"`
+	MaxHealth     uint32 `json:"maxHealth"`
+	MaxShield     uint32 `json:"maxShield"`
+	Health        uint32 `json:"health"`
+
+	AIType *AIType `json:"aiType"`
+
+	// shield
+	Shield                  uint32 `json:"shield"`
+	ShieldRechargeRate      uint32 `json:"shieldRechargeRate"`
+	ShieldRechargePowerCost uint32 `json:"shieldRechargePowerCost"`
+	ShieldTypeID            string `json:"shieldTypeID"`
+	ShieldTypeLabel         string `json:"shieldTypeLabel"`
+	ShieldTypeDescription   string `json:"shieldTypeDescription"`
 
 	ModelID string `json:"modelID"`
 	Model   string `json:"model"`
@@ -80,13 +85,17 @@ type WarMachineGameClient struct {
 	Weapons       []*Weapon               `json:"weapons"`
 	Customisation WarMachineCustomisation `json:"customisation"`
 
-	Health                  uint32 `json:"health"`
-	HealthMax               uint32 `json:"health_max"`
+	Health    uint32 `json:"health"`
+	HealthMax uint32 `json:"health_max"`
+
+	// shield
 	Shield                  uint32 `json:"shield"`
 	ShieldMax               uint32 `json:"shield_max"`
 	ShieldRechargeRate      uint32 `json:"shield_recharge_rate"`
 	ShieldRechargePowerCost uint32 `json:"shield_recharge_power_cost"`
-	ShieldType              string `json:"shield_type"`
+	ShieldTypeID            string `json:"shield_type_id"`
+	ShieldTypeLabel         string `json:"shield_type_label"`
+	ShieldTypeDescription   string `json:"shield_type_description"`
 
 	Speed                int     `json:"speed"`
 	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
@@ -250,6 +259,9 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 		ShieldMax:               wm.MaxShield,
 		ShieldRechargeRate:      wm.ShieldRechargeRate,
 		ShieldRechargePowerCost: wm.ShieldRechargePowerCost,
+		ShieldTypeID:            wm.ShieldTypeID,
+		ShieldTypeLabel:         wm.ShieldTypeLabel,
+		ShieldTypeDescription:   wm.ShieldTypeDescription,
 
 		Speed: wm.Speed,
 
