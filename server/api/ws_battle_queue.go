@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/errors"
-	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
@@ -981,7 +980,6 @@ func (api *API) BattleBountyCreate(ctx context.Context, user *boiler.Player, fac
 
 func (api *API) BattleETASubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	bs, err := boiler.Battles(
-		boiler.BattleWhere.ArenaID.EQ(chi.RouteContext(ctx).URLParam("arena_id")),
 		boiler.BattleWhere.EndedAt.IsNotNull(),
 		qm.OrderBy(boiler.BattleColumns.BattleNumber+" DESC"),
 		qm.Limit(100),

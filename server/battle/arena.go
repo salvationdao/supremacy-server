@@ -1668,6 +1668,9 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
+		// broadcast new queue status
+		go BroadcastLobbyInfoForQueueLockedMechs()
+
 	} else {
 		// reset previous battle
 		battleRecordReset(lastBattle)

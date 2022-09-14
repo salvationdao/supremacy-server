@@ -1,9 +1,11 @@
 package battle
 
 import (
+	"fmt"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
@@ -45,6 +47,37 @@ func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
 	}
 
 	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, resp)
+}
+
+// BroadcastLobbyInfoForQueueLockedMechs
+// mechs which are in "READY" battle lobbies, will receive the new position of the battle lobbies
+func BroadcastLobbyInfoForQueueLockedMechs() {
+	bls, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ReadyAt.IsNotNull(),
+		boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
+		boiler.BattleLobbyWhere.EndedAt.IsNull(),
+		qm.OrderBy(boiler.BattleLobbyColumns.ReadyAt+" DESC"),
+		qm.Load(boiler.BattleLobbyRels.BattleLobbiesMechs),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to load battle lobbies")
+		return
+	}
+
+	for i, bl := range bls {
+		if bl.R == nil || bl.R.BattleLobbiesMechs == nil {
+			continue
+		}
+		mai := &server.MechArenaInfo{
+			Status:                   server.MechArenaStatusQueue,
+			CanDeploy:                false,
+			BattleLobbyNumber:        null.IntFrom(bl.Number),
+			BattleLobbyQueuePosition: null.IntFrom(i + 1),
+		}
+		for _, blm := range bl.R.BattleLobbiesMechs {
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", blm.FactionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
+		}
+	}
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start

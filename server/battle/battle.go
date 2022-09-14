@@ -671,6 +671,26 @@ func (btl *Battle) handleBattleEnd(payload *BattleEndPayload) {
 	// broadcast battle changed battle lobby
 	go BroadcastBattleLobbyUpdate(btl.lobby.ID)
 
+	// broadcast battle eta
+	go func() {
+		bs, err := boiler.Battles(
+			boiler.BattleWhere.EndedAt.IsNotNull(),
+			qm.OrderBy(boiler.BattleColumns.BattleNumber+" DESC"),
+			qm.Limit(100),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to load latest 100 battles")
+			return
+		}
+
+		var totalDuration time.Duration
+		for _, b := range bs {
+			totalDuration += b.EndedAt.Time.Sub(b.StartedAt)
+		}
+
+		ws.PublishMessage("/secure/battle_eta", server.HubKeyBattleETAUpdate, int(totalDuration.Seconds())/len(bs))
+	}()
+
 	// broadcast battle complete system messages
 	go func(battle *Battle) {
 		// broadcast end info
