@@ -1,8 +1,6 @@
 package battle
 
 import (
-	"database/sql"
-	"errors"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
@@ -22,22 +20,26 @@ func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 	return fn()
 }
 
-func BroadcastBattleLobbyUpdate(battleLobbyID string) {
-	bl, err := boiler.BattleLobbies(
-		boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
+func BroadcastBattleLobbyUpdate(battleLobbyIDs ...string) {
+	if battleLobbyIDs == nil || len(battleLobbyIDs) == 0 {
+		return
+	}
+
+	bls, err := boiler.BattleLobbies(
+		boiler.BattleLobbyWhere.ID.IN(battleLobbyIDs),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Str("battle lobby id", battleLobbyID).Msg("Failed to query battle lobby")
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Strs("battle lobby id list", battleLobbyIDs).Msg("Failed to query battle lobby")
 		return
 	}
 
-	if bl == nil {
+	if bls == nil {
 		return
 	}
 
-	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	resp, err := server.BattleLobbiesFromBoiler(bls)
 	if err != nil {
 		return
 	}

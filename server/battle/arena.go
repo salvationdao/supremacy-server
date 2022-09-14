@@ -1668,9 +1668,6 @@ func (arena *Arena) BeginBattle() {
 			return
 		}
 
-		// broadcast battle lobby change
-		go BroadcastBattleLobbyUpdate(battleLobby.ID)
-
 	} else {
 		// reset previous battle
 		battleRecordReset(lastBattle)
@@ -1687,6 +1684,9 @@ func (arena *Arena) BeginBattle() {
 
 		gamelog.L.Info().Msg("Running unfinished battle map")
 	}
+
+	// broadcast battle lobby change
+	go BroadcastBattleLobbyUpdate(battleLobby.ID)
 
 	// load game map from battle lobby
 	gameMap, err := battleLobby.GameMap().One(gamedb.StdConn)

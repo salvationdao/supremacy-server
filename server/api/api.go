@@ -275,6 +275,7 @@ func NewAPI(
 				s.WS("/mech/{mech_id}/active_repair_offer", server.HubKeyMechActiveRepairOffer, api.MechActiveRepairOfferSubscribe)
 				s.WS("/battle_lobbies", server.HubKeyBattleLobbyListUpdate, api.BattleLobbyListUpdate)
 				s.WS("/battle_bounties", server.HubKeyBattleBountyListUpdate, api.BattleBountyListUpdate)
+				s.WS("/arena/{arena_id}/battle_eta", server.HubKeyBattleETAUpdate, api.BattleETASubscribeHandler)
 
 				// user related
 				s.WSTrack("/user/{user_id}", "user_id", server.HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler), MustMatchUserID)

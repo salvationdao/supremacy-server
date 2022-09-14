@@ -12,8 +12,6 @@ const HubKeySaleAbilityPurchase = "SALE:ABILITY:PURCHASE"
 
 const HubKeyGlobalAnnouncementSubscribe = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
-const WarMachineRepairStatusSubscribe = "WAR:MACHINE:REPAIR:STATUS:SUBSCRIBE"
-
 const HubKeySyndicateGeneralDetailSubscribe = "SYNDICATE:GENERAL:DETAIL:SUBSCRIBE"
 const HubKeySyndicateDirectorsSubscribe = "SYNDICATE:DIRECTORS:SUBSCRIBE"
 const HubKeySyndicateCommitteesSubscribe = "SYNDICATE:COMMITTEES:SUBSCRIBE"
@@ -74,5 +72,6 @@ const HubKeyMiniMapAbilityDisplayList = "MINI:MAP:ABILITY:DISPLAY:LIST"
 const HubKeyBattleLobbyListUpdate = "BATTLE:LOBBY:LIST:UPDATE"
 const HubKeyMechArenaStatusUpdate = "PLAYER:ASSET:MECH:STATUS:UPDATE"
 const HubKeyPlayerAssetMechQueueSubscribe = "PLAYER:ASSET:MECH:QUEUE:SUBSCRIBE"
+const HubKeyBattleETAUpdate = "BATTLE:ETA:UPDATE"
 
 const HubKeyBattleBountyListUpdate = "BATTLE:BOUNTY:LIST:UPDATE"
