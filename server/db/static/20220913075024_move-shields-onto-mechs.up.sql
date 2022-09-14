@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS blueprint_shield_types
+CREATE TABLE blueprint_shield_types
 (
     id          UUID PRIMARY KEY         DEFAULT gen_random_uuid() NOT NULL,
     label       TEXT                                               NOT NULL,
