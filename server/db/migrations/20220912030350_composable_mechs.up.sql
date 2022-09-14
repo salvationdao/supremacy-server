@@ -66,3 +66,10 @@ CREATE TRIGGER "t_mech_insert"
     FOR EACH ROW
     EXECUTE PROCEDURE create_mech_slots ();
 
+UPDATE
+    weapons
+SET
+    locked_to_mech = TRUE
+WHERE
+    blueprint_id IN ('c1c78867-9de7-43d3-97e9-91381800f38e', '41099781-8586-4783-9d1c-b515a386fe9f', 'e9fc2417-6a5b-489d-b82e-42942535af90');
+
