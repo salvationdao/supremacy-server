@@ -32,6 +32,7 @@ type BattleBounty struct {
 	PaidTXID       null.String     `boiler:"paid_tx_id" boil:"paid_tx_id" json:"paid_tx_id,omitempty" toml:"paid_tx_id" yaml:"paid_tx_id,omitempty"`
 	PayoutTXID     null.String     `boiler:"payout_tx_id" boil:"payout_tx_id" json:"payout_tx_id,omitempty" toml:"payout_tx_id" yaml:"payout_tx_id,omitempty"`
 	RefundTXID     null.String     `boiler:"refund_tx_id" boil:"refund_tx_id" json:"refund_tx_id,omitempty" toml:"refund_tx_id" yaml:"refund_tx_id,omitempty"`
+	TaxTXID        null.String     `boiler:"tax_tx_id" boil:"tax_tx_id" json:"tax_tx_id,omitempty" toml:"tax_tx_id" yaml:"tax_tx_id,omitempty"`
 	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -49,6 +50,7 @@ var BattleBountyColumns = struct {
 	PaidTXID       string
 	PayoutTXID     string
 	RefundTXID     string
+	TaxTXID        string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -61,6 +63,7 @@ var BattleBountyColumns = struct {
 	PaidTXID:       "paid_tx_id",
 	PayoutTXID:     "payout_tx_id",
 	RefundTXID:     "refund_tx_id",
+	TaxTXID:        "tax_tx_id",
 	CreatedAt:      "created_at",
 	UpdatedAt:      "updated_at",
 	DeletedAt:      "deleted_at",
@@ -75,6 +78,7 @@ var BattleBountyTableColumns = struct {
 	PaidTXID       string
 	PayoutTXID     string
 	RefundTXID     string
+	TaxTXID        string
 	CreatedAt      string
 	UpdatedAt      string
 	DeletedAt      string
@@ -87,6 +91,7 @@ var BattleBountyTableColumns = struct {
 	PaidTXID:       "battle_bounties.paid_tx_id",
 	PayoutTXID:     "battle_bounties.payout_tx_id",
 	RefundTXID:     "battle_bounties.refund_tx_id",
+	TaxTXID:        "battle_bounties.tax_tx_id",
 	CreatedAt:      "battle_bounties.created_at",
 	UpdatedAt:      "battle_bounties.updated_at",
 	DeletedAt:      "battle_bounties.deleted_at",
@@ -124,6 +129,7 @@ var BattleBountyWhere = struct {
 	PaidTXID       whereHelpernull_String
 	PayoutTXID     whereHelpernull_String
 	RefundTXID     whereHelpernull_String
+	TaxTXID        whereHelpernull_String
 	CreatedAt      whereHelpertime_Time
 	UpdatedAt      whereHelpertime_Time
 	DeletedAt      whereHelpernull_Time
@@ -136,6 +142,7 @@ var BattleBountyWhere = struct {
 	PaidTXID:       whereHelpernull_String{field: "\"battle_bounties\".\"paid_tx_id\""},
 	PayoutTXID:     whereHelpernull_String{field: "\"battle_bounties\".\"payout_tx_id\""},
 	RefundTXID:     whereHelpernull_String{field: "\"battle_bounties\".\"refund_tx_id\""},
+	TaxTXID:        whereHelpernull_String{field: "\"battle_bounties\".\"tax_tx_id\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"battle_bounties\".\"created_at\""},
 	UpdatedAt:      whereHelpertime_Time{field: "\"battle_bounties\".\"updated_at\""},
 	DeletedAt:      whereHelpernull_Time{field: "\"battle_bounties\".\"deleted_at\""},
@@ -168,9 +175,9 @@ func (*battleBountyR) NewStruct() *battleBountyR {
 type battleBountyL struct{}
 
 var (
-	battleBountyAllColumns            = []string{"id", "battle_lobby_id", "offered_by_id", "targeted_mech_id", "amount", "paid_tx_id", "payout_tx_id", "refund_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleBountyAllColumns            = []string{"id", "battle_lobby_id", "offered_by_id", "targeted_mech_id", "amount", "paid_tx_id", "payout_tx_id", "refund_tx_id", "tax_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleBountyColumnsWithoutDefault = []string{"battle_lobby_id", "offered_by_id", "targeted_mech_id"}
-	battleBountyColumnsWithDefault    = []string{"id", "amount", "paid_tx_id", "payout_tx_id", "refund_tx_id", "created_at", "updated_at", "deleted_at"}
+	battleBountyColumnsWithDefault    = []string{"id", "amount", "paid_tx_id", "payout_tx_id", "refund_tx_id", "tax_tx_id", "created_at", "updated_at", "deleted_at"}
 	battleBountyPrimaryKeyColumns     = []string{"id"}
 	battleBountyGeneratedColumns      = []string{}
 )

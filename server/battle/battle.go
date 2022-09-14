@@ -1245,23 +1245,62 @@ func (btl *Battle) RewardBattleBounties() {
 					Description:          "tax for battle bounty reward",
 				})
 				if err != nil {
+					_, err = btl.arena.RPCClient.RefundSupsMessage(payoutTXID)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("transaction id", payoutTXID).Msg("Failed to refund payout transaction")
+					}
 					gamelog.L.Error().Str("player_id", mkr.playerID).Str("amount", tax.String()).Err(err).Msg("Failed to pay sups from battle bounty")
 					continue
 				}
 
 				bb.PayoutTXID = null.StringFrom(payoutTXID)
-				_, err = bb.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleBountyColumns.PayoutTXID))
+				bb.TaxTXID = null.StringFrom(taxTXID)
+				_, err = bb.Update(gamedb.StdConn, boil.Whitelist(
+					boiler.BattleBountyColumns.PayoutTXID,
+					boiler.BattleBountyColumns.TaxTXID,
+				))
 				if err != nil {
+					_, err = btl.arena.RPCClient.RefundSupsMessage(taxTXID)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("transaction id", taxTXID).Msg("Failed to refund tax transaction")
+					}
+					_, err = btl.arena.RPCClient.RefundSupsMessage(payoutTXID)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("transaction id", payoutTXID).Msg("Failed to refund payout transaction")
+					}
 					gamelog.L.Error().Err(err).Interface("battle bounty", bb).Msg("Failed to update battle bounty")
 					continue
 				}
 			}
-
 		}
 	}
 
 	// refund process
+	for _, bb := range bbs {
+		// skip, if already payout
+		if bb.PayoutTXID.Valid {
+			continue
+		}
 
+		refundTXID, err := btl.arena.RPCClient.RefundSupsMessage(bb.PaidTXID.String)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to refund battle bounties")
+			continue
+		}
+
+		bb.RefundTXID = null.StringFrom(refundTXID)
+		_, err = bb.Update(gamedb.StdConn, boil.Whitelist(
+			boiler.BattleBountyColumns.RefundTXID,
+		))
+		if err != nil {
+			_, err = btl.arena.RPCClient.RefundSupsMessage(refundTXID)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("transaction id", refundTXID).Msg("Failed to refund tax transaction")
+			}
+			gamelog.L.Error().Err(err).Interface("battle bounty", bb).Msg("Failed to update battle bounty")
+			continue
+		}
+	}
 }
 
 func (btl *Battle) processWarMachineRepair() {

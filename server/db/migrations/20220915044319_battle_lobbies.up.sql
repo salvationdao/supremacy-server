@@ -19,6 +19,8 @@ ALTER TABLE battle_war_machine_queues
 ALTER TABLE battle_map_queue
     RENAME TO battle_map_queue_old;
 
+CREATE INDEX IF NOT EXISTS idx_player_kill_log_offering_id ON player_kill_log (ability_offering_id);
+
 CREATE TABLE battle_lobbies
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
@@ -101,3 +103,5 @@ CREATE TABLE battle_bounties
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at       TIMESTAMPTZ
 );
+
+CREATE INDEX IF NOT EXISTS idx_battle_bounties_available_check ON battle_bounties (battle_lobby_id, payout_tx_id, refund_tx_id, deleted_at);

@@ -7,8 +7,10 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"golang.org/x/exp/slices"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"strconv"
 )
 
@@ -21,12 +23,14 @@ type BattleLobby struct {
 }
 
 type BattleLobbiesMech struct {
-	MechID        string         `json:"mech_id" db:"mech_id"`
-	BattleLobbyID string         `json:"battle_lobby_id" db:"battle_lobby_id"`
-	Name          string         `json:"name" db:"name"`
-	Label         string         `json:"label" db:"label"`
-	Tier          string         `json:"tier" db:"tier"`
-	Owner         *boiler.Player `json:"owner" db:"owner"`
+	MechID        string `json:"mech_id" db:"mech_id"`
+	BattleLobbyID string `json:"battle_lobby_id" db:"battle_lobby_id"`
+	Name          string `json:"name" db:"name"`
+	Label         string `json:"label" db:"label"`
+	Tier          string `json:"tier" db:"tier"`
+
+	IsDestroyed bool           `json:"is_destroyed"`
+	Owner       *boiler.Player `json:"owner"`
 }
 
 func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) {
@@ -36,6 +40,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		return resp, nil
 	}
 
+	battleIDs := []string{}
 	for _, bl := range bls {
 		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
@@ -65,6 +70,25 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 		}
 
 		resp = append(resp, sbl)
+
+		if bl.AssignedToBattleID.Valid {
+			battleIDs = append(battleIDs, bl.AssignedToBattleID.String)
+		}
+	}
+
+	destroyedMechIDs := []string{}
+	if len(battleIDs) > 0 {
+		bhs, err := boiler.BattleHistories(
+			boiler.BattleHistoryWhere.BattleID.IN(battleIDs),
+			boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Strs("battle id list", battleIDs).Msg("Failed to load killed battle histories.")
+		}
+
+		for _, bh := range bhs {
+			destroyedMechIDs = append(destroyedMechIDs, bh.WarMachineOneID)
+		}
 	}
 
 	// get all the related mechs
@@ -196,6 +220,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			if bl.ID != blm.BattleLobbyID {
 				continue
 			}
+
+			// set is destroyed flag
+			blm.IsDestroyed = slices.Index(destroyedMechIDs, blm.MechID) != -1
 
 			bl.BattleLobbiesMechs = append(bl.BattleLobbiesMechs, blm)
 			break
