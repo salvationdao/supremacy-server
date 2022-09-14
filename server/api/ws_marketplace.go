@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"server"
-	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -699,7 +698,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	if ci.ItemType == boiler.ItemTypeMech {
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 			Status: server.MechArenaStatusMarket,
 		})
 	}
@@ -1096,7 +1095,7 @@ func (mp *MarketplaceController) SalesArchiveHandler(ctx context.Context, user *
 			}
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, mai)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", fID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
 	}
 
 	return nil
@@ -1498,7 +1497,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		}
 
 		if ci != nil {
-			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), battle.WSPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+			ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", saleItem.FactionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
 				Status: server.MechArenaStatusSold,
 			})
 		}

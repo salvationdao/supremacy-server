@@ -98,7 +98,7 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 		}
 
 		if len(availableMechIDs) == 0 {
-			return terror.Error(err, "All mechs are already in queue.")
+			return terror.Error(fmt.Errorf("no mech to queue"), "No mech is available to queue.")
 		}
 
 		var deployedMechIDs []string
@@ -198,6 +198,13 @@ func (api *API) BattleLobbyCreate(ctx context.Context, user *boiler.Player, fact
 						gamelog.L.Error().Err(err).Str("entry tx id", entryTxID).Msg("Failed to refund transaction id")
 					}
 				})
+
+				// update mech queue status
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, &server.MechArenaInfo{
+					Status:            server.MechArenaStatusQueue,
+					CanDeploy:         false,
+					BattleLobbyNumber: null.IntFrom(bl.Number),
+				})
 			}
 
 			err = blm.Insert(tx, boil.Infer())
@@ -276,6 +283,14 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 		return terror.Error(fmt.Errorf("battle lobby not exist"), "Battle lobby does not exist.")
 	}
 
+	if bl.EndedAt.Valid {
+		return terror.Error(fmt.Errorf("lobby is ended"), "The battle lobby is already closed.")
+	}
+
+	if bl.ReadyAt.Valid {
+		return terror.Error(fmt.Errorf("lobby is full"), "The battle lobby is already full.")
+	}
+
 	// check password, if needed
 	if bl.Password.Valid && req.Payload.Password != bl.Password.String {
 		return terror.Error(fmt.Errorf("incorrect password"), "The password is incorrect.")
@@ -315,6 +330,7 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			return terror.Error(fmt.Errorf("battle lobby is already full"), "The battle lobby is already full.")
 		}
 
+		var battleLobbyMechs []*boiler.BattleLobbiesMech
 		deployedMechIDs := []string{}
 		availableSlotCount := bl.EachFactionMechAmount
 		// check available slot
@@ -323,6 +339,9 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				if blm.FactionID == factionID {
 					availableSlotCount -= 1
 				}
+
+				// record the mechs in the battle lobby
+				battleLobbyMechs = append(battleLobbyMechs, blm)
 			}
 
 			// return error, if not enough slots
@@ -405,11 +424,14 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 				gamelog.L.Error().Err(err).Interface("battle lobby mech", blm).Msg("Failed to insert battle lobbies mech")
 				return terror.Error(err, "Failed to insert mechs into battle lobby.")
 			}
+
+			// record the mechs in the battle lobby
+			battleLobbyMechs = append(battleLobbyMechs, blm)
 		}
 
 		// mark battle lobby to ready
 		if lobbyReady {
-			bl.ReadyAt = null.TimeFrom(time.Now())
+			bl.ReadyAt = null.TimeFrom(now)
 			_, err = bl.Update(tx, boil.Whitelist(boiler.BattleLobbyColumns.ReadyAt))
 			if err != nil {
 				refund(refundFns)
@@ -455,6 +477,50 @@ func (api *API) BattleLobbyJoin(ctx context.Context, user *boiler.Player, factio
 			gamelog.L.Error().Err(err).Msg("Failed to commit db transaction.")
 			return terror.Error(err, "Failed to queue your mech.")
 		}
+
+		// broadcast mech queue position
+		go func(battleLobby *boiler.BattleLobby, currentDeployedMechIDs []string, allLobbyMechs []*boiler.BattleLobbiesMech) {
+			mai := &server.MechArenaInfo{
+				Status:            server.MechArenaStatusQueue,
+				CanDeploy:         false,
+				BattleLobbyNumber: null.IntFrom(battleLobby.Number),
+			}
+
+			// only broadcast queue status change for deployed mechs, if battle lobby is not ready
+			if !battleLobby.ReadyAt.Valid {
+				for _, mechID := range currentDeployedMechIDs {
+					// update mech queue status
+					ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
+				}
+
+				return
+			}
+
+			// otherwise, get battle lobby queue position
+			battleLobbies, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ReadyAt.LTE(bl.ReadyAt),
+				boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to load battle lobby queue position")
+				return
+			}
+
+			// in case, race condition
+			if battleLobbies == nil {
+				return
+			}
+
+			// set battle lobby queue position
+			mai.BattleLobbyQueuePosition = null.IntFrom(len(battleLobbies))
+			// broadcast status change for all the lobby mechs
+			for _, blm := range allLobbyMechs {
+				// update mech queue status
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", blm.FactionID, blm.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mai)
+			}
+
+		}(bl, deployedMechIDs, battleLobbyMechs)
 
 		// broadcast battle lobby
 		go battle.BroadcastBattleLobbyUpdate(bl.ID)
@@ -716,13 +782,13 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 		}
 
 		for _, bl := range bls {
-			// broadcast new battle lobby status
+			// broadcast new battle lobby status, if the lobby is generated by system or still have mech queued in it
 			if bl.GeneratedBySystem || (bl.R != nil && bl.R.BattleLobbiesMechs != nil && len(bl.R.BattleLobbiesMechs) > 0) {
 				go battle.BroadcastBattleLobbyUpdate(bl.ID)
 				continue
 			}
 
-			// otherwise delete battle lobby
+			// otherwise, soft delete battle lobby
 			bl.DeletedAt = null.TimeFrom(now)
 			_, err = bl.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleLobbyColumns.DeletedAt))
 			if err != nil {
@@ -732,17 +798,40 @@ func (api *API) BattleLobbyLeave(ctx context.Context, user *boiler.Player, facti
 
 			// broadcast deleted battle lobby
 			ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, &server.BattleLobby{
-				BattleLobby: bl,
-				Mechs:       []*boiler.BattleLobbiesMech{},
-				IsPrivate:   bl.Password.Valid,
+				BattleLobby:        bl,
+				BattleLobbiesMechs: []*server.BattleLobbiesMech{},
+				IsPrivate:          bl.Password.Valid,
 			})
 		}
 
 		// restart repair case
-		err = api.ArenaManager.RestartRepairCases(leftMechIDs)
-		if err != nil {
-			gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
-		}
+		go func() {
+			err = api.ArenaManager.RestartRepairCases(leftMechIDs)
+			if err != nil {
+				gamelog.L.Error().Err(err).Strs("mech id list", leftMechIDs).Msg("Failed to restart repair cases")
+			}
+		}()
+
+		// broadcast new mech stat
+		go func() {
+			cis, err := boiler.CollectionItems(
+				boiler.CollectionItemWhere.ItemID.IN(leftMechIDs),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Strs("collection item id list", leftMechIDs).Msg("Failed to load collection items")
+				return
+			}
+
+			for _, ci := range cis {
+				queueDetails, err := db.GetCollectionItemStatus(*ci)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("Failed to get mech arena status")
+					continue
+				}
+
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, ci.ItemID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
+			}
+		}()
 
 		return nil
 	})
@@ -761,11 +850,6 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 	// return all the unfinished lobbies
 	bls, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.EndedAt.IsNull(),
-		qm.Load(
-			boiler.BattleLobbyRels.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
-		),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 	).All(gamedb.StdConn)
@@ -774,7 +858,12 @@ func (api *API) BattleLobbyListUpdate(ctx context.Context, key string, payload [
 		return terror.Error(err, "Failed to load battle lobbies.")
 	}
 
-	reply(server.BattleLobbiesFromBoiler(bls))
+	resp, err := server.BattleLobbiesFromBoiler(bls)
+	if err != nil {
+		return err
+	}
+
+	reply(resp)
 
 	return nil
 }

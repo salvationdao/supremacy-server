@@ -849,7 +849,7 @@ func BroadcastMechQueueStat(mechID string) {
 			return
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), battle.WSPlayerAssetMechQueueSubscribe, queueDetails)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, mechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
 	}
 }
 

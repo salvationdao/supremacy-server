@@ -70,7 +70,7 @@ func broadcastMechQueueStatus(pmrs *boiler.PlayerMechRepairSlot, rc *boiler.Repa
 			return
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), WSPlayerAssetMechQueueSubscribe, queueDetails)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", owner.FactionID.String, pmrs.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, queueDetails)
 	}
 }
 

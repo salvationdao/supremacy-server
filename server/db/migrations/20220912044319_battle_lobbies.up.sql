@@ -45,6 +45,7 @@ CREATE TABLE battle_lobbies
 
 CREATE INDEX idx_battle_lobby_complete_check ON battle_lobbies (ended_at, deleted_at);
 CREATE INDEX idx_battle_lobby_queue_available_check ON battle_lobbies (ready_at, deleted_at);
+CREATE INDEX idx_battle_lobby_queue_position_check ON battle_lobbies (ready_at, assigned_to_battle_id, ended_at, deleted_at);
 
 
 CREATE TABLE battle_lobbies_mechs
@@ -79,19 +80,21 @@ CREATE TABLE battle_lobbies_mechs
     deleted_at            TIMESTAMPTZ
 );
 
-CREATE INDEX idx_battle_lobbies_mechs_queue_check ON battle_lobbies_mechs (mech_id, ended_at, assigned_to_battle_id, refund_tx_id, deleted_at);
+CREATE INDEX idx_battle_lobbies_mechs_queue_battle_check ON battle_lobbies_mechs (mech_id, ended_at, assigned_to_battle_id, refund_tx_id, deleted_at);
+CREATE INDEX idx_battle_lobbies_mechs_queue_check ON battle_lobbies_mechs (mech_id, ended_at, refund_tx_id, deleted_at);
 CREATE INDEX idx_battle_lobbies_mechs_lobby_queue_check ON battle_lobbies_mechs (battle_lobby_id, refund_tx_id, deleted_at);
 
--- only able to set bounties when lobby is ready
+-- only able to set bounties when the lobby is marked as READY
 CREATE TABLE battle_lobbies_bounties
 (
+    id              UUID        NOT NULL DEFAULT gen_random_uuid(),
     battle_lobby_id UUID        NOT NULL REFERENCES battle_lobbies (id),
     offered_by_id   UUID        NOT NULL REFERENCES players (id),
     target_mech_id  UUID        NOT NULL REFERENCES mechs (id),
-    PRIMARY KEY (battle_lobby_id, offered_by_id, target_mech_id),
 
     amount          NUMERIC(28) NOT NULL DEFAULT 0,
     paid_tx_id      TEXT,
+    payout_tx_id    TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at      TIMESTAMPTZ

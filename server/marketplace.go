@@ -167,9 +167,10 @@ const (
 )
 
 type MechArenaInfo struct {
-	Status            MechArenaStatus `json:"status"` // "PENDING_QUEUE" | "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
-	CanDeploy         bool            `json:"can_deploy"`
-	BattleLobbyNumber null.Int        `json:"battle_lobby_number"`
+	Status                   MechArenaStatus `json:"status"` // "PENDING_QUEUE" | "QUEUE" | "BATTLE" | "MARKET" | "IDLE" | "SOLD"
+	CanDeploy                bool            `json:"can_deploy"`
+	BattleLobbyNumber        null.Int        `json:"battle_lobby_number"`
+	BattleLobbyQueuePosition null.Int        `json:"battle_lobby_queue_position"`
 }
 
 type MarketplaceEvent struct {

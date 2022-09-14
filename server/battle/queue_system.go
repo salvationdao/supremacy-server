@@ -25,11 +25,6 @@ func (am *ArenaManager) SendBattleQueueFunc(fn func() error) error {
 func BroadcastBattleLobbyUpdate(battleLobbyID string) {
 	bl, err := boiler.BattleLobbies(
 		boiler.BattleLobbyWhere.ID.EQ(battleLobbyID),
-		qm.Load(
-			boiler.BattleLobbyRels.BattleLobbiesMechs,
-			boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
-			boiler.BattleLobbiesMechWhere.DeletedAt.IsNull(),
-		),
 		qm.Load(boiler.BattleLobbyRels.HostBy),
 		qm.Load(boiler.BattleLobbyRels.GameMap),
 	).One(gamedb.StdConn)
@@ -42,7 +37,12 @@ func BroadcastBattleLobbyUpdate(battleLobbyID string) {
 		return
 	}
 
-	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl}))
+	resp, err := server.BattleLobbiesFromBoiler([]*boiler.BattleLobby{bl})
+	if err != nil {
+		return
+	}
+
+	ws.PublishMessage("/secure/battle_lobbies", server.HubKeyBattleLobbyListUpdate, resp)
 }
 
 // SetDefaultPublicBattleLobbies ensure there are enough battle lobbies when server start

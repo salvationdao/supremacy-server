@@ -57,10 +57,10 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 
 	mechID := collectionItem.ItemID
 
-	var battleLobby *boiler.BattleLobby
 	// Check in battle lobby
 	battleLobbyMech, err := boiler.BattleLobbiesMechs(
 		boiler.BattleLobbiesMechWhere.MechID.EQ(mechID),
+		boiler.BattleLobbiesMechWhere.EndedAt.IsNull(),
 		boiler.BattleLobbiesMechWhere.RefundTXID.IsNull(),
 		qm.Load(boiler.BattleLobbiesMechRels.BattleLobby),
 	).One(gamedb.StdConn)
@@ -69,21 +69,36 @@ func GetCollectionItemStatus(collectionItem boiler.CollectionItem) (*server.Mech
 		return nil, terror.Error(err, "Failed to load the battle lobby of the mech.")
 	}
 
-	if battleLobbyMech != nil && battleLobbyMech.R != nil {
-		battleLobby = battleLobbyMech.R.BattleLobby
-	}
-
-	// if already in battle lobby
-	if battleLobby != nil {
+	// if in battle lobby
+	if battleLobbyMech != nil {
 		mai := &server.MechArenaInfo{
-			Status:            server.MechArenaStatusQueue,
-			CanDeploy:         false,
-			BattleLobbyNumber: null.IntFrom(battleLobby.Number),
+			Status:    server.MechArenaStatusQueue,
+			CanDeploy: false,
+		}
+
+		if battleLobbyMech.R != nil && battleLobbyMech.R.BattleLobby != nil {
+			mai.BattleLobbyNumber = null.IntFrom(battleLobbyMech.R.BattleLobby.Number)
 		}
 
 		// if in battle
-		if battleLobby.AssignedToBattleID.Valid {
+		if battleLobbyMech.AssignedToBattleID.Valid {
 			mai.Status = server.MechArenaStatusBattle
+
+			// if battle lobby is ready but haven't started
+		} else if battleLobbyMech.LockedAt.Valid {
+			// load battle lobby position
+			battleLobbies, err := boiler.BattleLobbies(
+				boiler.BattleLobbyWhere.ReadyAt.LTE(battleLobbyMech.LockedAt),
+				boiler.BattleLobbyWhere.AssignedToBattleID.IsNull(),
+				boiler.BattleLobbyWhere.EndedAt.IsNull(),
+			).All(gamedb.StdConn)
+			if err != nil {
+				return nil, terror.Error(err, "Failed to load battle lobby position")
+			}
+
+			if battleLobbies != nil {
+				mai.BattleLobbyQueuePosition = null.IntFrom(len(battleLobbies))
+			}
 		}
 
 		return mai, nil

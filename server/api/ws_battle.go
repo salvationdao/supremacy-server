@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"server"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -37,7 +38,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 	// commands from battle
 
 	// faction queue
-	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
+	api.SecureUserFactionCommand(server.HubKeyMechArenaStatusUpdate, api.AssetUpdateRequest)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
 
@@ -364,5 +365,37 @@ func (api *API) MiniMapAbilityDisplayList(ctx context.Context, key string, paylo
 
 func (api *API) ChallengeFundSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	reply(api.ChallengeFund)
+	return nil
+}
+
+type AssetUpdateRequest struct {
+	Payload struct {
+		MechID string `json:"mech_id"`
+	} `json:"payload"`
+}
+
+func (api *API) AssetUpdateRequest(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	msg := &AssetUpdateRequest{}
+	err := json.Unmarshal(payload, msg)
+	if err != nil {
+		gamelog.L.Error().Str("log_name", "battle arena").Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue leave")
+		return terror.Error(err, "Issue leaving queue, try again or contact support.")
+	}
+
+	collectionItem, err := boiler.CollectionItems(
+		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech),
+		boiler.CollectionItemWhere.ItemID.EQ(msg.Payload.MechID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to find mech from db")
+	}
+
+	mechStatus, err := db.GetCollectionItemStatus(*collectionItem)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech status")
+	}
+
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue/%s", factionID, msg.Payload.MechID), server.HubKeyPlayerAssetMechQueueSubscribe, mechStatus)
 	return nil
 }
