@@ -83,7 +83,7 @@ func NewSalePlayerAbilitiesSystem() *SalePlayerAbilityManager {
 		UserClaimLimit:             db.GetIntWithDefault(db.KeySaleAbilityClaimLimit, 1),                                       // default 1 claim per user per sale period
 		UserPurchaseLimit:          db.GetIntWithDefault(db.KeySaleAbilityPurchaseLimit, 1),                                    // default 1 purchase per user per sale period
 		PriceTickerIntervalSeconds: priceTickerIntervalSeconds,                                                                 // default 5 seconds
-		TimeBetweenRefreshSeconds:  db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 600),                      // default 10 minutes (600 seconds),
+		TimeBetweenRefreshSeconds:  db.GetIntWithDefault(db.KeySaleAbilityTimeBetweenRefreshSeconds, 5),                        // default 10 minutes (600 seconds),
 		ReductionPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)),  // default 1%
 		InflationPercentage:        db.GetDecimalWithDefault(db.KeySaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)), // default 20%
 		FloorPrice:                 db.GetDecimalWithDefault(db.KeySaleAbilityFloorPrice, decimal.New(10, 18)),                 // default 10 sups
