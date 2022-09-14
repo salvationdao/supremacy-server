@@ -21,6 +21,7 @@ type MechModel struct {
 	ShieldMax               string      `json:"shield_max"`
 	ShieldRechargeRate      string      `json:"shield_recharge_rate"`
 	ShieldRechargePowerCost string      `json:"shield_recharge_power_cost"`
+	ShieldTypeID            string      `json:"shield_type_id"`
 }
 
 type Brands struct {

@@ -38,6 +38,7 @@ type BlueprintMech struct {
 	MaxHitpoints            int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
 	Collection              string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	AvailabilityID          null.String `boiler:"availability_id" boil:"availability_id" json:"availability_id,omitempty" toml:"availability_id" yaml:"availability_id,omitempty"`
+	ShieldTypeID            string      `boiler:"shield_type_id" boil:"shield_type_id" json:"shield_type_id" toml:"shield_type_id" yaml:"shield_type_id"`
 	ShieldMax               int         `boiler:"shield_max" boil:"shield_max" json:"shield_max" toml:"shield_max" yaml:"shield_max"`
 	ShieldRechargeRate      int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
 	ShieldRechargePowerCost int         `boiler:"shield_recharge_power_cost" boil:"shield_recharge_power_cost" json:"shield_recharge_power_cost" toml:"shield_recharge_power_cost" yaml:"shield_recharge_power_cost"`
@@ -62,6 +63,7 @@ var BlueprintMechColumns = struct {
 	MaxHitpoints            string
 	Collection              string
 	AvailabilityID          string
+	ShieldTypeID            string
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
@@ -81,6 +83,7 @@ var BlueprintMechColumns = struct {
 	MaxHitpoints:            "max_hitpoints",
 	Collection:              "collection",
 	AvailabilityID:          "availability_id",
+	ShieldTypeID:            "shield_type_id",
 	ShieldMax:               "shield_max",
 	ShieldRechargeRate:      "shield_recharge_rate",
 	ShieldRechargePowerCost: "shield_recharge_power_cost",
@@ -102,6 +105,7 @@ var BlueprintMechTableColumns = struct {
 	MaxHitpoints            string
 	Collection              string
 	AvailabilityID          string
+	ShieldTypeID            string
 	ShieldMax               string
 	ShieldRechargeRate      string
 	ShieldRechargePowerCost string
@@ -121,6 +125,7 @@ var BlueprintMechTableColumns = struct {
 	MaxHitpoints:            "blueprint_mechs.max_hitpoints",
 	Collection:              "blueprint_mechs.collection",
 	AvailabilityID:          "blueprint_mechs.availability_id",
+	ShieldTypeID:            "blueprint_mechs.shield_type_id",
 	ShieldMax:               "blueprint_mechs.shield_max",
 	ShieldRechargeRate:      "blueprint_mechs.shield_recharge_rate",
 	ShieldRechargePowerCost: "blueprint_mechs.shield_recharge_power_cost",
@@ -144,6 +149,7 @@ var BlueprintMechWhere = struct {
 	MaxHitpoints            whereHelperint
 	Collection              whereHelperstring
 	AvailabilityID          whereHelpernull_String
+	ShieldTypeID            whereHelperstring
 	ShieldMax               whereHelperint
 	ShieldRechargeRate      whereHelperint
 	ShieldRechargePowerCost whereHelperint
@@ -163,6 +169,7 @@ var BlueprintMechWhere = struct {
 	MaxHitpoints:            whereHelperint{field: "\"blueprint_mechs\".\"max_hitpoints\""},
 	Collection:              whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
 	AvailabilityID:          whereHelpernull_String{field: "\"blueprint_mechs\".\"availability_id\""},
+	ShieldTypeID:            whereHelperstring{field: "\"blueprint_mechs\".\"shield_type_id\""},
 	ShieldMax:               whereHelperint{field: "\"blueprint_mechs\".\"shield_max\""},
 	ShieldRechargeRate:      whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_rate\""},
 	ShieldRechargePowerCost: whereHelperint{field: "\"blueprint_mechs\".\"shield_recharge_power_cost\""},
@@ -170,6 +177,7 @@ var BlueprintMechWhere = struct {
 
 // BlueprintMechRels is where relationship names are stored.
 var BlueprintMechRels = struct {
+	ShieldType                            string
 	Availability                          string
 	DefaultChassisSkin                    string
 	ModelBlueprintChasses                 string
@@ -179,6 +187,7 @@ var BlueprintMechRels = struct {
 	MechModelMechModelSkinCompatibilities string
 	BlueprintMechs                        string
 }{
+	ShieldType:                            "ShieldType",
 	Availability:                          "Availability",
 	DefaultChassisSkin:                    "DefaultChassisSkin",
 	ModelBlueprintChasses:                 "ModelBlueprintChasses",
@@ -191,6 +200,7 @@ var BlueprintMechRels = struct {
 
 // blueprintMechR is where relationships are stored.
 type blueprintMechR struct {
+	ShieldType                            *BlueprintShieldType            `boiler:"ShieldType" boil:"ShieldType" json:"ShieldType" toml:"ShieldType" yaml:"ShieldType"`
 	Availability                          *Availability                   `boiler:"Availability" boil:"Availability" json:"Availability" toml:"Availability" yaml:"Availability"`
 	DefaultChassisSkin                    *BlueprintMechSkin              `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
 	ModelBlueprintChasses                 BlueprintChassisSlice           `boiler:"ModelBlueprintChasses" boil:"ModelBlueprintChasses" json:"ModelBlueprintChasses" toml:"ModelBlueprintChasses" yaml:"ModelBlueprintChasses"`
@@ -210,8 +220,8 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
-	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type"}
+	blueprintMechAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_type_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
+	blueprintMechColumnsWithoutDefault = []string{"label", "default_chassis_skin_id", "brand_id", "mech_type", "shield_type_id"}
 	blueprintMechColumnsWithDefault    = []string{"id", "created_at", "repair_blocks", "boost_stat", "weapon_hardpoints", "power_core_size", "utility_slots", "speed", "max_hitpoints", "collection", "availability_id", "shield_max", "shield_recharge_rate", "shield_recharge_power_cost"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
@@ -459,6 +469,21 @@ func (q blueprintMechQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// ShieldType pointed to by the foreign key.
+func (o *BlueprintMech) ShieldType(mods ...qm.QueryMod) blueprintShieldTypeQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ShieldTypeID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintShieldTypes(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_shield_types\"")
+
+	return query
+}
+
 // Availability pointed to by the foreign key.
 func (o *BlueprintMech) Availability(mods ...qm.QueryMod) availabilityQuery {
 	queryMods := []qm.QueryMod{
@@ -615,6 +640,111 @@ func (o *BlueprintMech) BlueprintMechs(mods ...qm.QueryMod) mechQuery {
 	}
 
 	return query
+}
+
+// LoadShieldType allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintMechL) LoadShieldType(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintMech
+	var object *BlueprintMech
+
+	if singular {
+		object = maybeBlueprintMech.(*BlueprintMech)
+	} else {
+		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintMechR{}
+		}
+		args = append(args, object.ShieldTypeID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintMechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ShieldTypeID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ShieldTypeID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_shield_types`),
+		qm.WhereIn(`blueprint_shield_types.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_shield_types.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintShieldType")
+	}
+
+	var resultSlice []*BlueprintShieldType
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintShieldType")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_shield_types")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_shield_types")
+	}
+
+	if len(blueprintMechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ShieldType = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintShieldTypeR{}
+		}
+		foreign.R.ShieldTypeBlueprintMechs = append(foreign.R.ShieldTypeBlueprintMechs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ShieldTypeID == foreign.ID {
+				local.R.ShieldType = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintShieldTypeR{}
+				}
+				foreign.R.ShieldTypeBlueprintMechs = append(foreign.R.ShieldTypeBlueprintMechs, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadAvailability allows an eager lookup of values, cached into the
@@ -1416,6 +1546,52 @@ func (blueprintMechL) LoadBlueprintMechs(e boil.Executor, singular bool, maybeBl
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetShieldType of the blueprintMech to the related item.
+// Sets o.R.ShieldType to related.
+// Adds o to related.R.ShieldTypeBlueprintMechs.
+func (o *BlueprintMech) SetShieldType(exec boil.Executor, insert bool, related *BlueprintShieldType) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_mechs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"shield_type_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintMechPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ShieldTypeID = related.ID
+	if o.R == nil {
+		o.R = &blueprintMechR{
+			ShieldType: related,
+		}
+	} else {
+		o.R.ShieldType = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintShieldTypeR{
+			ShieldTypeBlueprintMechs: BlueprintMechSlice{o},
+		}
+	} else {
+		related.R.ShieldTypeBlueprintMechs = append(related.R.ShieldTypeBlueprintMechs, o)
 	}
 
 	return nil

@@ -28,3 +28,6 @@ ALTER TABLE mech_utility
     ALTER COLUMN utility_id DROP NOT NULL;
 
 UPDATE mech_utility SET utility_id = NULL; -- we can get this id for the down from the shield.equipped_on
+
+ALTER TABLE blueprint_mechs
+    ALTER COLUMN shield_type_id SET NOT NULL;

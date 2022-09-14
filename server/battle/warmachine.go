@@ -25,6 +25,7 @@ type WarMachine struct {
 	Shield                  uint32  `json:"shield"`
 	ShieldRechargeRate      uint32  `json:"shieldRechargeRate"`
 	ShieldRechargePowerCost uint32  `json:"shieldRechargePowerCost"`
+	ShieldType              string  `json:"shieldType"`
 	AIType                  *AIType `json:"aiType"`
 
 	ModelID string `json:"modelID"`
@@ -85,6 +86,7 @@ type WarMachineGameClient struct {
 	ShieldMax               uint32 `json:"shield_max"`
 	ShieldRechargeRate      uint32 `json:"shield_recharge_rate"`
 	ShieldRechargePowerCost uint32 `json:"shield_recharge_power_cost"`
+	ShieldType              string `json:"shield_type"`
 
 	Speed                int     `json:"speed"`
 	SprintSpreadModifier float32 `json:"sprint_spread_modifier"`
@@ -243,10 +245,10 @@ func WarMachineToClient(wm *WarMachine) *WarMachineGameClient {
 
 		Weapons: wm.Weapons,
 
-		Health:             wm.Health,
-		HealthMax:          wm.MaxHealth,
-		ShieldMax:          wm.MaxShield,
-		ShieldRechargeRate: wm.ShieldRechargeRate,
+		Health:                  wm.Health,
+		HealthMax:               wm.MaxHealth,
+		ShieldMax:               wm.MaxShield,
+		ShieldRechargeRate:      wm.ShieldRechargeRate,
 		ShieldRechargePowerCost: wm.ShieldRechargePowerCost,
 
 		Speed: wm.Speed,

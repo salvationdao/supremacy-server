@@ -43,6 +43,7 @@ var TableNames = struct {
 	BlueprintPlayerAbilities                           string
 	BlueprintPowerCores                                string
 	BlueprintQuests                                    string
+	BlueprintShieldTypes                               string
 	BlueprintUtility                                   string
 	BlueprintUtilityShieldOld                          string
 	BlueprintWeaponSkin                                string
@@ -191,6 +192,7 @@ var TableNames = struct {
 	BlueprintPlayerAbilities:       "blueprint_player_abilities",
 	BlueprintPowerCores:            "blueprint_power_cores",
 	BlueprintQuests:                "blueprint_quests",
+	BlueprintShieldTypes:           "blueprint_shield_types",
 	BlueprintUtility:               "blueprint_utility",
 	BlueprintUtilityShieldOld:      "blueprint_utility_shield_old",
 	BlueprintWeaponSkin:            "blueprint_weapon_skin",

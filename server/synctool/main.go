@@ -46,6 +46,16 @@ func SyncTool(dt *StaticSyncTool) error {
 	}
 	f.Close()
 
+	f, err = readFile(fmt.Sprintf("%sshield_types.csv", dt.FilePath))
+	if err != nil {
+		return err
+	}
+	err = SyncShieldTypes(f, dt.DB)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
 	f, err = readFile(fmt.Sprintf("%smech_skins.csv", dt.FilePath))
 	if err != nil {
 		return err
@@ -283,6 +293,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			ShieldMax:               record[14],
 			ShieldRechargeRate:      record[15],
 			ShieldRechargePowerCost: record[16],
+			ShieldTypeID:            record[17],
 		}
 
 		MechModels = append(MechModels, *mechModel)
@@ -308,9 +319,10 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			                             		availability_id,
 												shield_max,
 												shield_recharge_rate,
-												shield_recharge_power_cost
+												shield_recharge_power_cost,
+			                             		shield_type_id
 			                                   )
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 			ON CONFLICT (id)
 			DO
 				UPDATE SET 
@@ -329,7 +341,8 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 							availability_id=$13,
 							shield_max=$14,
 							shield_recharge_rate=$15,
-							shield_recharge_power_cost=$16;
+							shield_recharge_power_cost=$16,
+							shield_type_id=$17;
 		`,
 			mechModel.ID,
 			mechModel.Label,
@@ -347,6 +360,7 @@ func SyncMechModels(f io.Reader, db *sql.DB) error {
 			mechModel.ShieldMax,
 			mechModel.ShieldRechargeRate,
 			mechModel.ShieldRechargePowerCost,
+			mechModel.ShieldTypeID,
 		)
 		if err != nil {
 			fmt.Println("ERROR: " + err.Error())
@@ -440,6 +454,52 @@ func SyncMechModelSkinCompatibilities(f io.Reader, db *sql.DB) error {
 	fmt.Println("Finish syncing mech_model_skin_compatibilities Count: " + strconv.Itoa(count))
 
 	return nil
+}
+
+func SyncShieldTypes(f io.Reader, db *sql.DB) error {
+	r := csv.NewReader(f)
+
+	if _, err := r.Read(); err != nil {
+		return err
+	}
+
+	records, err := r.ReadAll()
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		blueprintShield := &boiler.BlueprintShieldType{
+			ID:          record[0],
+			Label:       record[1],
+			Description: record[2],
+		}
+
+		// upsert blueprint quest
+		err = blueprintShield.Upsert(
+			db,
+			true,
+			[]string{
+				boiler.BlueprintShieldTypeColumns.ID,
+			},
+			boil.Whitelist(
+				boiler.BlueprintShieldTypeColumns.Label,
+				boiler.BlueprintShieldTypeColumns.Description,
+			),
+			boil.Infer(),
+		)
+		if err != nil {
+			fmt.Printf("%s: %s %s", err.Error(), blueprintShield.ID, blueprintShield.Label)
+			return err
+		}
+
+		fmt.Printf("UPDATED: %s\n", blueprintShield.Label)
+	}
+
+	fmt.Println("Finish syncing blueprint shield types")
+
+	return nil
+
 }
 
 func SyncMechSkins(f io.Reader, db *sql.DB) error {
