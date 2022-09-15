@@ -503,12 +503,8 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 
 		swm := 0
 		for _, wm := range btl.SpawnedAI {
-
-			fmt.Printf("this is wm %+v\n", wm.Faction)
-			fmt.Printf("this is wm %+v\n", wm.AIType)
-
-			// if mini mech && alive && same faction as owner
-			if wm.AIType != nil && *wm.AIType == "Mini Mech" && wm.Health > 0 && pa.R.Owner.FactionID == null.StringFrom(wm.Faction.ID) {
+			// add if mini mech && alive && same faction as owner
+			if wm.AIType != nil && *wm.AIType == "Mini Mech" && wm.Health > 0 && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID) {
 				swm++
 			}
 		}
@@ -517,26 +513,6 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to use player abiltiy, already 3 support machines in this battle for")
 			return terror.Error(fmt.Errorf("too many support warmachines"), "there are already 3 support war machines for your faction in battle")
 		}
-
-		// // get support machines in battle for the players faction
-		// swm, err := btl.ConsumedAbilities(
-		// 	qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
-		// 		boiler.TableNames.Players,
-		// 		qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-		// 		qm.Rels(boiler.TableNames.ConsumedAbilities, boiler.ConsumedAbilityColumns.ConsumedBy),
-		// 	)),
-		// 	boiler.ConsumedAbilityWhere.GameClientAbilityID.EQ(SupportMechGameAbility),
-		// 	qm.Where("players.faction_id = ?", pa.R.Owner.FactionID),
-		// ).Count(gamedb.StdConn)
-		// if err != nil {
-		// 	gamelog.L.Error().Str("log_name", "battle arena").Err(err).Msg("unable to begin tx")
-		// 	return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
-		// }
-
-		// // check if more than 3 support mechs in battle
-		// if swm >= 3 {
-		// 	gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to use player abiltiy, already 3 support machines in this battle for")
-		// 	return terror.Error(fmt.Errorf("too many support warmachines"), "there are already 3 support war machines for your faction in battle")
 
 	}
 
