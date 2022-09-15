@@ -504,14 +504,23 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		swm := 0
 		for _, wm := range btl.SpawnedAI {
 			// add if mini mech && alive && same faction as owner
-			if wm.AIType != nil && *wm.AIType == MiniMech && wm.Health > 0 && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID) {
+			isMiniMech := wm.AIType != nil && *wm.AIType == MiniMech
+			isAlive := wm.Health > 0
+			inOwnersFaction := pa.R != nil && pa.R.Owner.FactionID == null.StringFrom(wm.FactionID)
+			if isMiniMech && isAlive && inOwnersFaction {
 				swm++
 			}
 		}
 
 		if swm >= 3 {
-			gamelog.L.Error().Str("log_name", "battle arena").Err(err).Interface("playerAbility", pa).Msg("failed to use player abiltiy, already 3 support machines in this battle for this faction")
-			return terror.Error(fmt.Errorf("too many support warmachines"), "Only 3 active support war machines allowed in battle at one time")
+
+			// get faction
+			faction, err := boiler.FindFaction(gamedb.StdConn, pa.R.Owner.FactionID.String)
+			if err != nil {
+				gamelog.L.Error().Str("log_name", "battle arena").Str("Faction ID", pa.R.Owner.FactionID.String).Err(err).Msg("unable to retrieve faction from database")
+			}
+			gamelog.L.Debug().Msg(fmt.Sprintf("too many support warmachines for %s", faction.Label))
+			return terror.Error(fmt.Errorf(fmt.Sprintf("too many support warmachines for %s", faction.Label)), "Only 3 active support war machines allowed in battle at one time")
 		}
 
 	}
