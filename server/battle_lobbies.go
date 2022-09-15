@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"strconv"
 )
 
 type BattleLobby struct {
@@ -25,6 +24,7 @@ type BattleLobby struct {
 type BattleLobbiesMech struct {
 	MechID        string `json:"mech_id" db:"mech_id"`
 	BattleLobbyID string `json:"battle_lobby_id" db:"battle_lobby_id"`
+	AvatarURL     string `json:"avatar_url" db:"avatar_url"`
 	Name          string `json:"name" db:"name"`
 	Label         string `json:"label" db:"label"`
 	Tier          string `json:"tier" db:"tier"`
@@ -44,8 +44,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 	for _, bl := range bls {
 		copiedBattleLobby := *bl
 		sbl := &BattleLobby{
-			BattleLobby: &copiedBattleLobby,
-			IsPrivate:   copiedBattleLobby.Password.Valid,
+			BattleLobby:        &copiedBattleLobby,
+			IsPrivate:          copiedBattleLobby.Password.Valid,
+			BattleLobbiesMechs: []*BattleLobbiesMech{},
 		}
 
 		// omit password
@@ -92,11 +93,9 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 	}
 
 	// get all the related mechs
-	var args []interface{}
 	battleLobbyIDInClause := " IN ("
 	for i, bl := range bls {
-		args = append(args, bl.ID)
-		battleLobbyIDInClause += "$" + strconv.Itoa(len(args))
+		battleLobbyIDInClause += "'" + bl.ID + "'"
 
 		if i < len(bls)-1 {
 			battleLobbyIDInClause += ","
@@ -115,6 +114,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			boiler.MechTableColumns.Name,
 			boiler.BlueprintMechTableColumns.Label,
 			boiler.BlueprintMechSkinTableColumns.Tier,
+			boiler.BlueprintMechSkinTableColumns.AvatarURL,
 
 			// owner info
 			fmt.Sprintf("_ci.%s", boiler.CollectionItemColumns.OwnerID),
@@ -186,12 +186,13 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			"%s ON %s = %s",
 			boiler.TableNames.BlueprintMechSkin,
 			boiler.MechSkinTableColumns.BlueprintID,
-			boiler.BlueprintMechSkinColumns.ID,
+			boiler.BlueprintMechSkinTableColumns.ID,
 		)),
 	}
 
 	rows, err := boiler.NewQuery(queries...).Query(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Interface("queries", queries).Msg("Failed to load battle lobbies")
 		return nil, terror.Error(err, "Failed to load battle mechs")
 	}
 
@@ -205,6 +206,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			&blm.Name,
 			&blm.Label,
 			&blm.Tier,
+			&blm.AvatarURL,
 			&blm.Owner.ID,
 			&blm.Owner.Username,
 			&blm.Owner.FactionID,
@@ -212,6 +214,7 @@ func BattleLobbiesFromBoiler(bls []*boiler.BattleLobby) ([]*BattleLobby, error) 
 			&blm.Owner.Rank,
 		)
 		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to scan battle lobby.")
 			return nil, terror.Error(err, "Failed to scan battle lobby mech")
 		}
 
