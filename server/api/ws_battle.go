@@ -40,6 +40,7 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	// faction queue
 	api.SecureUserFactionCommand(battle.WSQueueJoin, api.ArenaManager.QueueJoinHandler)
+	api.SecureUserFactionCommand(battle.WSQueueLeave, api.ArenaManager.QueueLeaveHandler)
 	api.SecureUserFactionCommand(battle.WSMechArenaStatusUpdate, api.ArenaManager.AssetUpdateRequest)
 
 	api.SecureUserFactionCommand(battle.HubKeyPlayerAbilityUse, api.ArenaManager.PlayerAbilityUse)
