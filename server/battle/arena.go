@@ -2212,11 +2212,6 @@ func (btl *Battle) AISpawned(payload *AISpawnedRequest) error {
 		Status:        &Status{},
 	}
 
-	fmt.Println("faction")
-	fmt.Println("faction", payload.FactionID)
-	fmt.Println("faction")
-	fmt.Println("faction")
-
 	gamelog.L.Info().Msgf("Battle Update: %s - AI Spawned: %d", payload.BattleID, spawnedAI.ParticipantID)
 
 	btl.spawnedAIMux.Lock()
