@@ -513,16 +513,9 @@ func (am *ArenaManager) PlayerAbilityUse(ctx context.Context, user *boiler.Playe
 		}
 
 		if swm >= 3 {
-
-			// get faction
-			faction, err := boiler.FindFaction(gamedb.StdConn, pa.R.Owner.FactionID.String)
-			if err != nil {
-				gamelog.L.Error().Str("log_name", "battle arena").Str("Faction ID", pa.R.Owner.FactionID.String).Err(err).Msg("unable to retrieve faction from database")
-			}
-			gamelog.L.Debug().Msg(fmt.Sprintf("too many support warmachines for %s", faction.Label))
-			return terror.Error(fmt.Errorf(fmt.Sprintf("too many support warmachines for %s", faction.Label)), "Only 3 active support war machines allowed in battle at one time")
+			gamelog.L.Debug().Msg("too many support warmachines for this faction")
+			return terror.Error(fmt.Errorf("too many support warmachines for this faction"), "Only 3 active support war machines allowed in battle at one time for your faction")
 		}
-
 	}
 
 	// Create consumed_abilities entry
