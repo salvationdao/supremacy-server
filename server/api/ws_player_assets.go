@@ -1947,27 +1947,8 @@ type PlayerAssetWeaponSubmodelListRequest struct {
 }
 
 type PlayerAssetWeaponSubmodelListResp struct {
-	Total     int64                        `json:"total"`
-	Submodels []*PlayerAssetWeaponSubmodel `json:"submodels"`
-}
-
-type PlayerAssetWeaponSubmodel struct {
-	Images              *server.Images `json:"images"`
-	CollectionSlug      string         `json:"collection_slug"`
-	Hash                string         `json:"hash"`
-	TokenID             int64          `json:"token_id"`
-	Tier                string         `json:"tier"`
-	OwnerID             string         `json:"owner_id"`
-	MarketLocked        bool           `json:"market_locked"`
-	XsynLocked          bool           `json:"xsyn_locked"`
-	LockedToMarketplace bool           `json:"locked_to_marketplace"`
-
-	EquippedOn string `json:"equipped_on"`
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Total     int64                `json:"total"`
+	Submodels []*server.WeaponSkin `json:"submodels"`
 }
 
 func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -2013,51 +1994,9 @@ func (pac *PlayerAssetsControllerWS) playerAssetWeaponSubmodelListHandler(ctx co
 		return terror.Error(err, "Failed to find your weapon skin assets, please try again or contact support.")
 	}
 
-	playerAssetWeaponSubmodel := []*PlayerAssetWeaponSubmodel{}
-
-	for _, s := range submodels {
-
-		paws := &PlayerAssetWeaponSubmodel{
-			Images: &server.Images{
-				ImageURL:         s.SkinSwatch.ImageURL,
-				CardAnimationURL: s.SkinSwatch.CardAnimationURL,
-				AvatarURL:        s.SkinSwatch.AvatarURL,
-				AnimationURL:     s.SkinSwatch.AnimationURL,
-				BackgroundColor:  s.SkinSwatch.BackgroundColor,
-				YoutubeURL:       s.SkinSwatch.YoutubeURL,
-				LargeImageURL:    s.SkinSwatch.LargeImageURL,
-			},
-			ID:                  s.ID,
-			Label:               s.Label,
-			EquippedOn:          s.EquippedOn.String,
-			CreatedAt:           s.CreatedAt,
-			CollectionSlug:      s.CollectionItem.CollectionSlug,
-			Hash:                s.CollectionItem.Hash,
-			TokenID:             s.CollectionItem.TokenID,
-			Tier:                s.Tier,
-			OwnerID:             s.CollectionItem.OwnerID,
-			XsynLocked:          s.CollectionItem.XsynLocked,
-			MarketLocked:        s.CollectionItem.MarketLocked,
-			LockedToMarketplace: s.CollectionItem.LockedToMarketplace,
-		}
-
-		//if there isnt an image url (which skin swatch should have) return image from weapon model compatibility tables
-		if !paws.Images.ImageURL.Valid || paws.Images.ImageURL.String == "" {
-			paws.Images.ImageURL = s.Images.ImageURL
-			paws.Images.CardAnimationURL = s.Images.CardAnimationURL
-			paws.Images.AvatarURL = s.Images.AvatarURL
-			paws.Images.AnimationURL = s.Images.AnimationURL
-			paws.Images.BackgroundColor = s.Images.BackgroundColor
-			paws.Images.YoutubeURL = s.Images.YoutubeURL
-			paws.Images.LargeImageURL = s.Images.LargeImageURL
-		}
-
-		playerAssetWeaponSubmodel = append(playerAssetWeaponSubmodel, paws)
-	}
-
 	reply(&PlayerAssetWeaponSubmodelListResp{
 		Total:     total,
-		Submodels: playerAssetWeaponSubmodel,
+		Submodels: submodels,
 	})
 	return nil
 }
