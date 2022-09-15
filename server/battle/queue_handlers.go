@@ -673,6 +673,12 @@ func (am *ArenaManager) QueueLeaveHandler(ctx context.Context, user *boiler.Play
 
 	reply(true)
 
+	// Send updated battle queue status to all subscribers
+	go CalcNextQueueStatus(factionID)
+
+	// send queue update signal
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue-update", factionID), WSPlayerAssetMechQueueUpdateSubscribe, true)
+
 	return nil
 }
 
